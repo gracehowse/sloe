@@ -11,10 +11,21 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { getRecipeById, RECIPE_CATALOG } from "../data/recipeCatalog.ts";
+import { supabase } from "../lib/supabase/browserClient.ts";
 import type { DayPlan, LoggedMeal, RecipeCard, ShoppingItem, UserTier } from "../types/recipe.ts";
+import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
 
 const STORAGE_KEY = "platemate-app-v1";
 const FREE_SAVE_LIMIT = 10;
+
+function looksLikeMissingTableError(message: string): boolean {
+  const msg = message ?? "";
+  return (
+    msg.includes("Could not find the table") ||
+    msg.toLowerCase().includes("schema cache") ||
+    msg.toLowerCase().includes("does not exist")
+  );
+}
 
 interface PersistedSnapshot {
   savedRecipeIds: string[];
@@ -61,10 +72,13 @@ function defaultSnapshot(): PersistedSnapshot {
     },
   ];
   return {
-    savedRecipeIds: ["3", "4"],
+    savedRecipeIds: [
+      "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    ],
     savedAtById: {
-      "3": new Date("2026-04-05").toISOString(),
-      "4": new Date("2026-04-03").toISOString(),
+      "cccccccc-cccc-cccc-cccc-cccccccccccc": new Date("2026-04-05").toISOString(),
+      "dddddddd-dddd-dddd-dddd-dddddddddddd": new Date("2026-04-03").toISOString(),
     },
     shoppingItems: [
       {
@@ -185,6 +199,15 @@ function loadSnapshot(): PersistedSnapshot {
 }
 
 interface AppDataContextValue {
+  authEmail: string | null;
+  profileDisplayName: string | null;
+  profileTier: UserTier;
+  signOut: () => Promise<void>;
+  generateMealPlan: (options?: {
+    targetsOverride?: { calories: number; protein: number };
+    days?: number;
+  }) => Promise<void>;
+  generateShoppingListFromPlan: () => Promise<void>;
   discoverRecipes: RecipeCard[];
   toggleSaveRecipe: (recipeId: string, tier: UserTier) => void;
   isRecipeSaved: (recipeId: string) => boolean;
@@ -202,6 +225,7 @@ interface AppDataContextValue {
   setSelectedDateKey: Dispatch<SetStateAction<string>>;
   mealsForSelectedDate: LoggedMeal[];
   addLoggedMeal: (meal: Omit<LoggedMeal, "id">) => void;
+  addLoggedMealForDate: (dayKey: string, meal: Omit<LoggedMeal, "id">) => void;
   removeLoggedMeal: (mealId: string) => void;
   mealPlan: DayPlan[] | null;
   setMealPlan: Dispatch<SetStateAction<DayPlan[] | null>>;
@@ -219,6 +243,386 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [mealPlan, setMealPlan] = useState<DayPlan[] | null>(initial.mealPlan);
   const [nutritionTargets, setNutritionTargets] = useState(initial.nutritionTargets);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [profileTier, setProfileTier] = useState<UserTier>("free");
+  const [dbSavesEnabled, setDbSavesEnabled] = useState(true);
+  const [dbSavesWarned, setDbSavesWarned] = useState(false);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [dbMealPlanEnabled, setDbMealPlanEnabled] = useState(true);
+  const [dbMealPlanWarned, setDbMealPlanWarned] = useState(false);
+  const [dbNutritionEnabled, setDbNutritionEnabled] = useState(true);
+  const [dbNutritionWarned, setDbNutritionWarned] = useState(false);
+
+  const tryEnableDbSaves = useCallback(async () => {
+    if (!authedUserId) return false;
+    const { error } = await supabase.from("saves").select("recipe_id").limit(1);
+    if (error) {
+      return false;
+    }
+    setDbSavesEnabled(true);
+    toast.success("Supabase saves reconnected");
+    return true;
+  }, [authedUserId]);
+
+  const tryEnableDbMealPlans = useCallback(async () => {
+    if (!authedUserId) return false;
+    const { error } = await supabase.from("meal_plans").select("user_id").limit(1);
+    if (error) {
+      return false;
+    }
+    setDbMealPlanEnabled(true);
+    toast.success("Supabase meal plans reconnected");
+    return true;
+  }, [authedUserId]);
+
+  const tryEnableDbNutrition = useCallback(async () => {
+    if (!authedUserId) return false;
+    const { error } = await supabase.from("nutrition_journals").select("user_id").limit(1);
+    if (error) {
+      return false;
+    }
+    setDbNutritionEnabled(true);
+    toast.success("Supabase nutrition logs reconnected");
+    return true;
+  }, [authedUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) {
+        return;
+      }
+      setAuthedUserId(data.session?.user.id ?? null);
+      setAuthEmail(data.session?.user.email ?? null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthedUserId(session?.user.id ?? null);
+      setAuthEmail(session?.user.email ?? null);
+    });
+    return () => {
+      cancelled = true;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  // If we disabled DB saves due to schema cache/table creation timing, keep retrying in the background.
+  useEffect(() => {
+    if (!authedUserId || dbSavesEnabled) return;
+    let cancelled = false;
+    const delaysMs = [2000, 5000, 15000, 30000];
+    (async () => {
+      for (const delay of delaysMs) {
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, delay));
+        if (cancelled) return;
+        const ok = await tryEnableDbSaves();
+        if (ok) return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbSavesEnabled, tryEnableDbSaves]);
+
+  useEffect(() => {
+    if (!authedUserId || dbMealPlanEnabled) return;
+    let cancelled = false;
+    const delaysMs = [2000, 5000, 15000, 30000];
+    (async () => {
+      for (const delay of delaysMs) {
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, delay));
+        if (cancelled) return;
+        const ok = await tryEnableDbMealPlans();
+        if (ok) return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbMealPlanEnabled, tryEnableDbMealPlans]);
+
+  useEffect(() => {
+    if (!authedUserId || dbNutritionEnabled) return;
+    let cancelled = false;
+    const delaysMs = [2000, 5000, 15000, 30000];
+    (async () => {
+      for (const delay of delaysMs) {
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, delay));
+        if (cancelled) return;
+        const ok = await tryEnableDbNutrition();
+        if (ok) return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbNutritionEnabled, tryEnableDbNutrition]);
+
+  // Load profile basics (tier/display name). Falls back to local profile if needed.
+  useEffect(() => {
+    if (!authedUserId) {
+      const local = loadLocalProfile(null);
+      setProfileTier(local?.userTier ?? "free");
+      setProfileDisplayName(local?.displayName ?? null);
+      if (local?.targets) {
+        setNutritionTargets(local.targets);
+      }
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "display_name, user_tier, target_calories, target_protein, target_carbs, target_fat",
+        )
+        .eq("id", authedUserId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        const local = loadLocalProfile(authedUserId);
+        setProfileTier(local?.userTier ?? "free");
+        setProfileDisplayName(local?.displayName ?? null);
+        if (local?.targets) {
+          setNutritionTargets(local.targets);
+        }
+        return;
+      }
+      setProfileTier((data?.user_tier as UserTier) ?? "free");
+      setProfileDisplayName((data?.display_name as string | null) ?? null);
+      const hasTargets = Boolean(
+        data?.target_calories &&
+          data?.target_protein &&
+          data?.target_carbs &&
+          data?.target_fat,
+      );
+      if (hasTargets) {
+        setNutritionTargets({
+          calories: data!.target_calories as number,
+          protein: data!.target_protein as number,
+          carbs: data!.target_carbs as number,
+          fat: data!.target_fat as number,
+        });
+      } else {
+        const local = loadLocalProfile(authedUserId);
+        if (local?.targets) {
+          setNutritionTargets(local.targets);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId]);
+
+  // Load persisted meal plan + nutrition journal from Supabase (fallback stays local).
+  useEffect(() => {
+    if (!authedUserId) return;
+    let cancelled = false;
+    (async () => {
+      if (dbMealPlanEnabled) {
+        const { data, error } = await supabase
+          .from("meal_plans")
+          .select("plan")
+          .eq("user_id", authedUserId)
+          .maybeSingle();
+        if (!cancelled) {
+          if (error) {
+            if (looksLikeMissingTableError(error.message ?? "")) {
+              setDbMealPlanEnabled(false);
+              if (!dbMealPlanWarned) {
+                setDbMealPlanWarned(true);
+                toast.error("Supabase meal plans not available yet. Using local plan for now.");
+              }
+            }
+          } else if (data?.plan) {
+            setMealPlan(data.plan as DayPlan[]);
+          }
+        }
+      }
+
+      if (dbNutritionEnabled) {
+        const { data, error } = await supabase
+          .from("nutrition_journals")
+          .select("by_day")
+          .eq("user_id", authedUserId)
+          .maybeSingle();
+        if (!cancelled) {
+          if (error) {
+            if (looksLikeMissingTableError(error.message ?? "")) {
+              setDbNutritionEnabled(false);
+              if (!dbNutritionWarned) {
+                setDbNutritionWarned(true);
+                toast.error("Supabase nutrition logs not available yet. Using local logs for now.");
+              }
+            }
+          } else if (data?.by_day && typeof data.by_day === "object") {
+            setNutritionByDay(data.by_day as Record<string, LoggedMeal[]>);
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, dbNutritionEnabled, dbNutritionWarned]);
+
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    clearLocalProfile();
+    window.location.href = "/login";
+  }, []);
+
+  const generateMealPlan = useCallback(
+    async (options?: { targetsOverride?: { calories: number; protein: number }; days?: number }) => {
+      const { generatePlanFromLibrary } = await import("../lib/planning/generateMealPlan.ts");
+      setIsGeneratingPlan(true);
+      try {
+        const targets = options?.targetsOverride ?? {
+          calories: nutritionTargets.calories,
+          protein: nutritionTargets.protein,
+        };
+        const days = options?.days ?? 1;
+        const savedRecipes = savedRecipeIds
+          .map((id) => getRecipeById(id))
+          .filter((r): r is NonNullable<typeof r> => Boolean(r));
+        const plan = generatePlanFromLibrary({ savedRecipes, targets, days });
+        setMealPlan(plan);
+        toast.success("Meal plan generated");
+      } finally {
+        setIsGeneratingPlan(false);
+      }
+    },
+    [nutritionTargets.calories, nutritionTargets.protein, savedRecipeIds],
+  );
+
+  const generateShoppingListFromPlan = useCallback(async () => {
+    const { generateShoppingListFromRecipeTitles } = await import(
+      "../lib/planning/generateShoppingList.ts"
+    );
+    const titleToId = (title: string) => {
+      const r = RECIPE_CATALOG.find((x) => x.title === title);
+      return r?.id ?? null;
+    };
+    const titles = (mealPlan ?? [])
+      .flatMap((d) => d.meals)
+      .map((m) => m.recipeTitle)
+      .filter((t) => Boolean(t && titleToId(t)));
+    const list = generateShoppingListFromRecipeTitles({ recipeTitles: titles, recipeTitleToId: titleToId });
+    setShoppingItems(list);
+    toast.success("Shopping list generated");
+  }, [mealPlan]);
+
+  // Sync DB-backed saves (Phase 0). Other state remains local for now.
+  useEffect(() => {
+    if (!authedUserId || !dbSavesEnabled) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("saves")
+        .select("recipe_id, created_at")
+        .order("created_at", { ascending: false });
+      if (cancelled) {
+        return;
+      }
+      if (error) {
+        // If schema cache doesn't include the table yet, fall back to localStorage so the app stays usable.
+        const msg = error.message ?? "";
+        if (looksLikeMissingTableError(msg)) {
+          setDbSavesEnabled(false);
+          if (!dbSavesWarned) {
+            setDbSavesWarned(true);
+            toast.error("Supabase saves table not available yet. Using local saves for now.");
+          }
+          return;
+        }
+        toast.error(`Failed to load saved recipes: ${msg}`);
+        return;
+      }
+      const ids = (data ?? []).map((r) => r.recipe_id as string);
+      const savedAt: Record<string, string> = {};
+      for (const r of data ?? []) {
+        savedAt[r.recipe_id as string] = (r.created_at as string) ?? new Date().toISOString();
+      }
+      setSavedRecipeIds(ids);
+      setSavedAtById(savedAt);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbSavesEnabled, dbSavesWarned]);
+
+  // Persist meal plan to Supabase (debounced), fallback remains local.
+  useEffect(() => {
+    if (!authedUserId || !dbMealPlanEnabled) return;
+    const t = setTimeout(() => {
+      supabase
+        .from("meal_plans")
+        .upsert({ user_id: authedUserId, updated_at: new Date().toISOString(), plan: mealPlan }, { onConflict: "user_id" })
+        .then(({ error }) => {
+          if (error) {
+            const msg = error.message ?? "";
+            if (looksLikeMissingTableError(msg)) {
+              setDbMealPlanEnabled(false);
+              if (!dbMealPlanWarned) {
+                setDbMealPlanWarned(true);
+                toast.error("Supabase meal plans not available yet. Using local plan for now.");
+              }
+              return;
+            }
+            if (msg.toLowerCase().includes("violates foreign key constraint")) {
+              toast.error("Meal plan save failed due to account mismatch. Please sign out and sign back in.");
+              return;
+            }
+            toast.error(`Failed to save meal plan: ${msg}`);
+          }
+        });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
+
+  // Persist nutrition journal to Supabase (debounced), fallback remains local.
+  useEffect(() => {
+    if (!authedUserId || !dbNutritionEnabled) return;
+    const t = setTimeout(() => {
+      supabase
+        .from("nutrition_journals")
+        .upsert(
+          { user_id: authedUserId, updated_at: new Date().toISOString(), by_day: nutritionByDay },
+          { onConflict: "user_id" },
+        )
+        .then(({ error }) => {
+          if (error) {
+            const msg = error.message ?? "";
+            if (looksLikeMissingTableError(msg)) {
+              setDbNutritionEnabled(false);
+              if (!dbNutritionWarned) {
+                setDbNutritionWarned(true);
+                toast.error("Supabase nutrition logs not available yet. Using local logs for now.");
+              }
+              return;
+            }
+            if (msg.toLowerCase().includes("violates foreign key constraint")) {
+              toast.error("Nutrition log save failed due to account mismatch. Please sign out and sign back in.");
+              return;
+            }
+            toast.error(`Failed to save nutrition logs: ${msg}`);
+          }
+        });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, nutritionByDay]);
 
   useEffect(() => {
     const snapshot: PersistedSnapshot = {
@@ -241,13 +645,38 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (recipeId: string, tier: UserTier) => {
       const exists = savedRecipeIds.includes(recipeId);
       if (exists) {
+        // optimistic
         setSavedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
         setSavedAtById((prev) => {
           const next = { ...prev };
           delete next[recipeId];
           return next;
         });
-        toast.success("Removed from library");
+        if (authedUserId && dbSavesEnabled) {
+          supabase
+            .from("saves")
+            .delete()
+            .eq("user_id", authedUserId)
+            .eq("recipe_id", recipeId)
+            .then(({ error }) => {
+              if (error) {
+                const msg = error.message ?? "";
+                if (msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache")) {
+                  setDbSavesEnabled(false);
+                  if (!dbSavesWarned) {
+                    setDbSavesWarned(true);
+                    toast.error("Supabase saves table not available yet. Using local saves for now.");
+                  }
+                  return;
+                }
+                toast.error(`Failed to remove save: ${error.message}`);
+              } else {
+                toast.success("Removed from library");
+              }
+            });
+        } else {
+          toast.success("Removed from library");
+        }
         return;
       }
       if (tier === "free" && savedRecipeIds.length >= FREE_SAVE_LIMIT) {
@@ -257,9 +686,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const iso = new Date().toISOString();
       setSavedRecipeIds((prev) => [recipeId, ...prev.filter((id) => id !== recipeId)]);
       setSavedAtById((prev) => ({ ...prev, [recipeId]: iso }));
-      toast.success("Saved to library");
+      if (authedUserId && dbSavesEnabled) {
+        supabase
+          .from("saves")
+          .insert({ user_id: authedUserId, recipe_id: recipeId })
+          .then(({ error }) => {
+            if (error) {
+              const msg = error.message ?? "";
+              if (msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache")) {
+                setDbSavesEnabled(false);
+                if (!dbSavesWarned) {
+                  setDbSavesWarned(true);
+                  toast.error("Supabase saves table not available yet. Using local saves for now.");
+                }
+                return;
+              }
+              toast.error(`Failed to save recipe: ${error.message}`);
+            } else {
+              toast.success("Saved to library");
+            }
+          });
+      } else {
+        toast.success("Saved to library");
+      }
     },
-    [savedRecipeIds],
+    [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned],
   );
 
   const discoverRecipes = useMemo((): RecipeCard[] => {
@@ -288,13 +739,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return nutritionByDay[selectedDateKey] ?? [];
   }, [nutritionByDay, selectedDateKey]);
 
-  const addLoggedMeal = useCallback((meal: Omit<LoggedMeal, "id">) => {
+  const addLoggedMealForDate = useCallback((dayKey: string, meal: Omit<LoggedMeal, "id">) => {
     const id = newId("meal");
     setNutritionByDay((prev) => {
-      const day = prev[selectedDateKey] ?? [];
-      return { ...prev, [selectedDateKey]: [...day, { ...meal, id }] };
+      const day = prev[dayKey] ?? [];
+      return { ...prev, [dayKey]: [...day, { ...meal, id }] };
     });
-  }, [selectedDateKey]);
+  }, []);
+
+  const addLoggedMeal = useCallback(
+    (meal: Omit<LoggedMeal, "id">) => {
+      addLoggedMealForDate(selectedDateKey, meal);
+    },
+    [addLoggedMealForDate, selectedDateKey],
+  );
 
   const removeLoggedMeal = useCallback(
     (mealId: string) => {
@@ -330,6 +788,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     (): AppDataContextValue => ({
+      authEmail,
+      profileDisplayName,
+      profileTier,
+      signOut,
+      generateMealPlan,
+      generateShoppingListFromPlan,
       discoverRecipes,
       toggleSaveRecipe,
       isRecipeSaved,
@@ -345,11 +809,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setSelectedDateKey,
       mealsForSelectedDate,
       addLoggedMeal,
+      addLoggedMealForDate,
       removeLoggedMeal,
       mealPlan,
       setMealPlan,
     }),
     [
+      authEmail,
+      profileDisplayName,
+      profileTier,
+      signOut,
+      generateMealPlan,
+      generateShoppingListFromPlan,
       discoverRecipes,
       toggleSaveRecipe,
       isRecipeSaved,
@@ -361,6 +832,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       nutritionTargets,
       mealsForSelectedDate,
       addLoggedMeal,
+      addLoggedMealForDate,
       removeLoggedMeal,
       mealPlan,
     ],

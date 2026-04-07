@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calculator, TrendingUp, Activity, User, Crown, LineChart, Target } from "lucide-react";
+import { supabase } from "../../lib/supabase/browserClient.ts";
+import { useAppData } from "../../context/AppDataContext.tsx";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
+  displayName?: string | null;
 }
 
-export function Profile({ userTier }: ProfileProps) {
+export function Profile({ userTier, displayName }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
+  const { nutritionTargets } = useAppData();
 
   // User stats
   const [age, setAge] = useState(28);
@@ -15,6 +19,31 @@ export function Profile({ userTier }: ProfileProps) {
   const [sex, setSex] = useState<"male" | "female">("male");
   const [activityLevel, setActivityLevel] = useState<"sedentary" | "light" | "moderate" | "active" | "very_active">("moderate");
   const [goal, setGoal] = useState<"cut" | "maintain" | "bulk">("maintain");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user.id ?? null;
+      if (!uid || cancelled) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal")
+        .eq("id", uid)
+        .maybeSingle();
+      if (!profile || cancelled) return;
+
+      if (profile.age) setAge(profile.age as number);
+      if (profile.weight_kg) setWeight(profile.weight_kg as number);
+      if (profile.height_cm) setHeight(profile.height_cm as number);
+      if (profile.sex) setSex((profile.sex as "male" | "female") ?? "male");
+      if (profile.activity_level) setActivityLevel(profile.activity_level as typeof activityLevel);
+      if (profile.goal) setGoal(profile.goal as typeof goal);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Calculate BMR using Mifflin-St Jeor
   const calculateBMR = () => {
@@ -48,6 +77,11 @@ export function Profile({ userTier }: ProfileProps) {
   const targetFat = Math.round(targetCalories * 0.25 / 9); // 25% of calories from fat
   const targetCarbs = Math.round((targetCalories - targetProtein * 4 - targetFat * 9) / 4);
 
+  const displayTargets =
+    nutritionTargets?.calories && nutritionTargets?.protein
+      ? nutritionTargets
+      : { calories: targetCalories, protein: targetProtein, carbs: targetCarbs, fat: targetFat };
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
@@ -57,7 +91,9 @@ export function Profile({ userTier }: ProfileProps) {
             <User className="w-10 h-10 text-white" />
           </div>
           <div>
-            <h1 className="mb-1 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Alex Chen</h1>
+            <h1 className="mb-1 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+              {displayName?.trim() ? displayName : "Your profile"}
+            </h1>
             <div className="flex items-center gap-2">
               <span
                 className={`px-3 py-1 rounded-full text-sm capitalize inline-flex items-center gap-1.5 font-semibold shadow-sm ${
@@ -225,21 +261,21 @@ export function Profile({ userTier }: ProfileProps) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{targetCalories}</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.calories}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Calories</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{targetProtein}g</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.protein}g</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Protein</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">2.2g per kg</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{targetCarbs}g</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.carbs}g</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Carbs</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Remainder</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{targetFat}g</p>
+                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fat}g</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Fat</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">25% of kcal</p>
               </div>

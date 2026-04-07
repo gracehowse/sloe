@@ -11,6 +11,14 @@ create table if not exists public.profiles (
   display_name text,
   avatar_url text,
   user_tier text not null default 'free' check (user_tier in ('free','base','pro')),
+  sex text check (sex in ('female','male')),
+  age int,
+  height_cm int,
+  weight_kg int,
+  activity_level text check (activity_level in ('sedentary','light','moderate','active','very_active')),
+  goal text check (goal in ('cut','maintain','bulk')),
+  dietary jsonb,
+  measurement_system text check (measurement_system in ('metric','imperial')),
   -- macro targets (manual for now; we can add calculated fields later)
   target_calories int,
   target_protein int,
@@ -20,14 +28,45 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
-create policy "profiles_select_own"
-on public.profiles for select
-using (auth.uid() = id);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'profiles_select_own'
+  ) then
+    create policy "profiles_select_own"
+    on public.profiles for select
+    using (auth.uid() = id);
+  end if;
 
-create policy "profiles_update_own"
-on public.profiles for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'profiles_insert_own'
+  ) then
+    create policy "profiles_insert_own"
+    on public.profiles for insert
+    with check (auth.uid() = id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'profiles_update_own'
+  ) then
+    create policy "profiles_update_own"
+    on public.profiles for update
+    using (auth.uid() = id)
+    with check (auth.uid() = id);
+  end if;
+end $$;
 
 -- Creators (Phase 0: lightweight; can expand in Phase 2)
 create table if not exists public.creators (
@@ -42,9 +81,20 @@ create table if not exists public.creators (
 
 alter table public.creators enable row level security;
 -- public read (needed for browsing creator library)
-create policy "creators_select_public"
-on public.creators for select
-using (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'creators'
+      and policyname = 'creators_select_public'
+  ) then
+    create policy "creators_select_public"
+    on public.creators for select
+    using (true);
+  end if;
+end $$;
 
 -- Recipes
 create table if not exists public.recipes (
@@ -65,9 +115,20 @@ create table if not exists public.recipes (
 create index if not exists recipes_creator_id_idx on public.recipes(creator_id);
 
 alter table public.recipes enable row level security;
-create policy "recipes_select_public"
-on public.recipes for select
-using (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recipes'
+      and policyname = 'recipes_select_public'
+  ) then
+    create policy "recipes_select_public"
+    on public.recipes for select
+    using (true);
+  end if;
+end $$;
 
 -- Ingredients (cataloged items; Phase 0: simple)
 create table if not exists public.ingredients (
@@ -86,9 +147,20 @@ create table if not exists public.ingredients (
 );
 
 alter table public.ingredients enable row level security;
-create policy "ingredients_select_public"
-on public.ingredients for select
-using (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'ingredients'
+      and policyname = 'ingredients_select_public'
+  ) then
+    create policy "ingredients_select_public"
+    on public.ingredients for select
+    using (true);
+  end if;
+end $$;
 
 -- Recipe ingredient rows (amounts + snapshot macros)
 create table if not exists public.recipe_ingredients (
@@ -111,9 +183,20 @@ create table if not exists public.recipe_ingredients (
 create index if not exists recipe_ingredients_recipe_id_idx on public.recipe_ingredients(recipe_id);
 
 alter table public.recipe_ingredients enable row level security;
-create policy "recipe_ingredients_select_public"
-on public.recipe_ingredients for select
-using (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recipe_ingredients'
+      and policyname = 'recipe_ingredients_select_public'
+  ) then
+    create policy "recipe_ingredients_select_public"
+    on public.recipe_ingredients for select
+    using (true);
+  end if;
+end $$;
 
 -- Saves (user ↔ recipe)
 create table if not exists public.saves (
@@ -126,17 +209,142 @@ create table if not exists public.saves (
 create index if not exists saves_user_id_created_at_idx on public.saves(user_id, created_at desc);
 
 alter table public.saves enable row level security;
-create policy "saves_select_own"
-on public.saves for select
-using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'saves'
+      and policyname = 'saves_select_own'
+  ) then
+    create policy "saves_select_own"
+    on public.saves for select
+    using (auth.uid() = user_id);
+  end if;
 
-create policy "saves_insert_own"
-on public.saves for insert
-with check (auth.uid() = user_id);
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'saves'
+      and policyname = 'saves_insert_own'
+  ) then
+    create policy "saves_insert_own"
+    on public.saves for insert
+    with check (auth.uid() = user_id);
+  end if;
 
-create policy "saves_delete_own"
-on public.saves for delete
-using (auth.uid() = user_id);
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'saves'
+      and policyname = 'saves_delete_own'
+  ) then
+    create policy "saves_delete_own"
+    on public.saves for delete
+    using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Meal plan (per user, JSON for Phase 0)
+create table if not exists public.meal_plans (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  updated_at timestamptz not null default now(),
+  plan jsonb
+);
+
+alter table public.meal_plans enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'meal_plans'
+      and policyname = 'meal_plans_select_own'
+  ) then
+    create policy "meal_plans_select_own"
+    on public.meal_plans for select
+    using (auth.uid() = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'meal_plans'
+      and policyname = 'meal_plans_insert_own'
+  ) then
+    create policy "meal_plans_insert_own"
+    on public.meal_plans for insert
+    with check (auth.uid() = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'meal_plans'
+      and policyname = 'meal_plans_update_own'
+  ) then
+    create policy "meal_plans_update_own"
+    on public.meal_plans for update
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Nutrition journal (per user, JSON for Phase 0)
+create table if not exists public.nutrition_journals (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  updated_at timestamptz not null default now(),
+  by_day jsonb not null default '{}'::jsonb
+);
+
+alter table public.nutrition_journals enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'nutrition_journals'
+      and policyname = 'nutrition_journals_select_own'
+  ) then
+    create policy "nutrition_journals_select_own"
+    on public.nutrition_journals for select
+    using (auth.uid() = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'nutrition_journals'
+      and policyname = 'nutrition_journals_insert_own'
+  ) then
+    create policy "nutrition_journals_insert_own"
+    on public.nutrition_journals for insert
+    with check (auth.uid() = user_id);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'nutrition_journals'
+      and policyname = 'nutrition_journals_update_own'
+  ) then
+    create policy "nutrition_journals_update_own"
+    on public.nutrition_journals for update
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- Follows (user ↔ creator)
 create table if not exists public.follows (
@@ -147,17 +355,44 @@ create table if not exists public.follows (
 );
 
 alter table public.follows enable row level security;
-create policy "follows_select_own"
-on public.follows for select
-using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'follows'
+      and policyname = 'follows_select_own'
+  ) then
+    create policy "follows_select_own"
+    on public.follows for select
+    using (auth.uid() = user_id);
+  end if;
 
-create policy "follows_insert_own"
-on public.follows for insert
-with check (auth.uid() = user_id);
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'follows'
+      and policyname = 'follows_insert_own'
+  ) then
+    create policy "follows_insert_own"
+    on public.follows for insert
+    with check (auth.uid() = user_id);
+  end if;
 
-create policy "follows_delete_own"
-on public.follows for delete
-using (auth.uid() = user_id);
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'follows'
+      and policyname = 'follows_delete_own'
+  ) then
+    create policy "follows_delete_own"
+    on public.follows for delete
+    using (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()

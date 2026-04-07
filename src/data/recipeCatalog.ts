@@ -2,7 +2,7 @@ import type { IngredientRow, RecipeCard } from "../types/recipe.ts";
 
 export const RECIPE_CATALOG: RecipeCard[] = [
   {
-    id: "1",
+    id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     creatorName: "Alex Chen",
     creatorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
     title: "High-Protein Chicken & Rice Bowl",
@@ -17,7 +17,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isSaved: false,
   },
   {
-    id: "2",
+    id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
     creatorName: "Maria Santos",
     creatorImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
     title: "Overnight Protein Oats",
@@ -33,7 +33,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isSaved: false,
   },
   {
-    id: "3",
+    id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
     creatorName: "Jordan Kim",
     creatorImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
     title: "Grilled Salmon with Roasted Vegetables",
@@ -48,7 +48,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isSaved: true,
   },
   {
-    id: "4",
+    id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
     creatorName: "Emma Wilson",
     creatorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
     title: "Greek Yogurt Parfait",
@@ -65,7 +65,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
 ];
 
 const INGREDIENTS: Record<string, IngredientRow[]> = {
-  "1": [
+  "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa": [
     {
       name: "Chicken breast, skinless",
       amount: "200",
@@ -100,7 +100,7 @@ const INGREDIENTS: Record<string, IngredientRow[]> = {
       source: "USDA",
     },
   ],
-  "2": [
+  "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb": [
     {
       name: "Rolled oats",
       amount: "50",
@@ -146,7 +146,7 @@ const INGREDIENTS: Record<string, IngredientRow[]> = {
       source: "USDA",
     },
   ],
-  "3": [
+  "cccccccc-cccc-cccc-cccc-cccccccccccc": [
     {
       name: "Salmon fillet",
       amount: "180",
@@ -181,7 +181,7 @@ const INGREDIENTS: Record<string, IngredientRow[]> = {
       source: "USDA",
     },
   ],
-  "4": [
+  "dddddddd-dddd-dddd-dddd-dddddddddddd": [
     {
       name: "Greek yogurt, plain",
       amount: "150",
@@ -219,24 +219,24 @@ const INGREDIENTS: Record<string, IngredientRow[]> = {
 };
 
 const INSTRUCTIONS: Record<string, string[]> = {
-  "1": [
+  "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa": [
     "Season chicken breast with salt and pepper. Heat olive oil in a pan over medium-high heat.",
     "Cook chicken for 6–7 minutes per side until golden and cooked through. Rest 5 minutes, then slice.",
     "Prepare rice according to package instructions. Warm if needed.",
     "Plate rice, top with sliced chicken, and serve immediately.",
   ],
-  "2": [
+  "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb": [
     "Stir oats, protein powder, and chia seeds in a jar.",
     "Add almond milk and mix until smooth. Cover and refrigerate overnight.",
     "Stir before serving and add toppings as desired.",
   ],
-  "3": [
+  "cccccccc-cccc-cccc-cccc-cccccccccccc": [
     "Preheat oven to 400°F (200°C). Toss vegetables with olive oil, salt, and pepper.",
     "Roast vegetables until tender and lightly browned, about 20–25 minutes.",
     "Season salmon and pan-sear or bake until flaky and opaque.",
     "Serve salmon with roasted vegetables.",
   ],
-  "4": [
+  "dddddddd-dddd-dddd-dddd-dddddddddddd": [
     "Layer Greek yogurt in a glass or bowl.",
     "Add berries and granola, then repeat layers if desired.",
     "Serve chilled.",

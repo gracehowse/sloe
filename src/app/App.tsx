@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, BookMarked, Calendar, User, Sparkles, Target, ShoppingCart, Settings as SettingsIcon, ChefHat } from "lucide-react";
+import { Home, BookMarked, Calendar, User, Sparkles, Target, ShoppingCart, Settings as SettingsIcon, ChefHat, LogOut } from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { Library } from "./components/Library.tsx";
 import { MealPlanner } from "./components/MealPlanner.tsx";
@@ -8,12 +8,13 @@ import { NutritionTracker } from "./components/NutritionTracker.tsx";
 import { ShoppingList } from "./components/ShoppingList.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { RecipeUpload } from "./components/RecipeUpload.tsx";
+import { useAppData } from "../context/AppDataContext.tsx";
 
 type View = "discover" | "library" | "planner" | "profile" | "tracker" | "shopping" | "settings" | "upload";
 
 export default function App() {
+  const { profileTier: userTier, profileDisplayName: displayName, authEmail, signOut } = useAppData();
   const [currentView, setCurrentView] = useState<View>("discover");
-  const [userTier] = useState<"free" | "base" | "pro">("pro");
 
   const renderView = () => {
     switch (currentView) {
@@ -30,9 +31,9 @@ export default function App() {
       case "upload":
         return <RecipeUpload userTier={userTier} />;
       case "settings":
-        return <Settings userTier={userTier} />;
+        return <Settings userTier={userTier} authEmail={authEmail} />;
       case "profile":
-        return <Profile userTier={userTier} />;
+        return <Profile userTier={userTier} displayName={displayName} />;
       default:
         return <DiscoverFeed userTier={userTier} />;
     }
@@ -64,6 +65,14 @@ export default function App() {
               {userTier}
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm text-slate-700 dark:text-slate-200 inline-flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
         </div>
       </header>
 

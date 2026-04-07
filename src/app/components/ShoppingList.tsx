@@ -8,7 +8,13 @@ interface ShoppingListProps {
 }
 
 export function ShoppingList({ userTier }: ShoppingListProps) {
-  const { shoppingItems, toggleShoppingChecked, removeShoppingItem, addShoppingItem } = useAppData();
+  const {
+    shoppingItems,
+    toggleShoppingChecked,
+    removeShoppingItem,
+    addShoppingItem,
+    generateShoppingListFromPlan,
+  } = useAppData();
   const [customName, setCustomName] = useState("");
 
   const isPaidUser = userTier === "base" || userTier === "pro";
@@ -177,8 +183,12 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
       {/* Actions */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <p className="text-slate-600 dark:text-slate-400">Your list is saved in this browser</p>
-          <button type="button" className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all font-medium">
+          <p className="text-slate-600 dark:text-slate-400">Generate from your current meal plan</p>
+          <button
+            type="button"
+            onClick={() => void generateShoppingListFromPlan()}
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all font-medium"
+          >
             Regenerate from Plan
           </button>
         </div>
