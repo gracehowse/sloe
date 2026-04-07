@@ -1,64 +1,73 @@
-import { useState } from "react";
-import { Calendar, Plus, TrendingUp, Target, Award } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, Plus, TrendingUp, Target, Award, Trash2 } from "lucide-react";
+import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
+import { useAppData } from "../../context/AppDataContext.tsx";
+import type { UserTier } from "../../types/recipe.ts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog.tsx";
+import { Button } from "./ui/button.tsx";
 
 interface NutritionTrackerProps {
-  userTier: "free" | "base" | "pro";
+  userTier: UserTier;
 }
 
-interface LoggedMeal {
-  id: string;
-  name: string;
-  recipeTitle: string;
-  time: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+function parseDateKey(key: string): Date {
+  const [y, m, day] = key.split("-").map(Number);
+  return new Date(y, m - 1, day);
 }
 
-const mockMeals: LoggedMeal[] = [
-  {
-    id: "1",
-    name: "Breakfast",
-    recipeTitle: "Overnight Protein Oats",
-    time: "8:30 AM",
-    calories: 387,
-    protein: 32,
-    carbs: 48,
-    fat: 8
-  },
-  {
-    id: "2",
-    name: "Lunch",
-    recipeTitle: "High-Protein Chicken & Rice Bowl",
-    time: "12:45 PM",
-    calories: 542,
-    protein: 48,
-    carbs: 52,
-    fat: 12
-  }
-];
+function shiftDateKey(key: string, delta: number): string {
+  const d = parseDateKey(key);
+  d.setDate(d.getDate() + delta);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
+
+function todayKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
 
 export function NutritionTracker({ userTier }: NutritionTrackerProps) {
-  const [selectedDate] = useState(new Date());
-  const [loggedMeals] = useState<LoggedMeal[]>(mockMeals);
+  void userTier;
+  const {
+    nutritionTargets,
+    selectedDateKey,
+    setSelectedDateKey,
+    mealsForSelectedDate,
+    addLoggedMeal,
+    removeLoggedMeal,
+  } = useAppData();
 
-  const targets = {
-    calories: 1400,
-    protein: 120,
-    carbs: 150,
-    fat: 40
-  };
+  const [addOpen, setAddOpen] = useState(false);
+  const [mealSlot, setMealSlot] = useState("Breakfast");
+  const [recipeId, setRecipeId] = useState(RECIPE_CATALOG[0]?.id ?? "");
+  const [timeLabel, setTimeLabel] = useState("12:00 PM");
 
-  const totals = loggedMeals.reduce(
+  const selectedDate = useMemo(() => parseDateKey(selectedDateKey), [selectedDateKey]);
+
+  const totals = mealsForSelectedDate.reduce(
     (acc, meal) => ({
       calories: acc.calories + meal.calories,
       protein: acc.protein + meal.protein,
       carbs: acc.carbs + meal.carbs,
-      fat: acc.fat + meal.fat
+      fat: acc.fat + meal.fat,
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
+
+  const targets = nutritionTargets;
 
   const getProgress = (current: number, target: number) => {
     return Math.min((current / target) * 100, 100);
@@ -66,9 +75,30 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
 
   const getProgressColor = (current: number, target: number) => {
     const percentage = (current / target) * 100;
-    if (percentage >= 90 && percentage <= 110) return "text-green-600 dark:text-green-400 bg-green-500";
-    if (percentage > 110) return "text-orange-600 dark:text-orange-400 bg-orange-500";
+    if (percentage >= 90 && percentage <= 110) {
+      return "text-green-600 dark:text-green-400 bg-green-500";
+    }
+    if (percentage > 110) {
+      return "text-orange-600 dark:text-orange-400 bg-orange-500";
+    }
     return "text-violet-600 dark:text-violet-400 bg-violet-500";
+  };
+
+  const handleAddMeal = () => {
+    const recipe = RECIPE_CATALOG.find((r) => r.id === recipeId);
+    if (!recipe) {
+      return;
+    }
+    addLoggedMeal({
+      name: mealSlot,
+      recipeTitle: recipe.title,
+      time: timeLabel,
+      calories: recipe.calories,
+      protein: recipe.protein,
+      carbs: recipe.carbs,
+      fat: recipe.fat,
+    });
+    setAddOpen(false);
   };
 
   return (
@@ -86,7 +116,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
 
       {/* Date Selector */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-slate-600 dark:text-slate-400" />
             <h3 className="text-slate-900 dark:text-white">
@@ -94,13 +124,25 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </h3>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, -1))}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
+            >
               ← Prev
             </button>
-            <button className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey(todayKey())}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
+            >
               Today
             </button>
-            <button className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, 1))}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
+            >
               Next →
             </button>
           </div>
@@ -111,10 +153,9 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       <div className="backdrop-blur-xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 border-2 border-green-200/50 dark:border-green-800/50 rounded-2xl p-8 mb-8 shadow-2xl">
         <div className="flex items-center gap-2 mb-6">
           <Award className="w-6 h-6 text-green-600 dark:text-green-400" />
-          <h3 className="text-slate-900 dark:text-white">Today's Progress</h3>
+          <h3 className="text-slate-900 dark:text-white">Daily Progress</h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {/* Calories */}
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Calories</p>
             <div className="flex items-baseline gap-2 mb-3">
@@ -131,7 +172,6 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </div>
           </div>
 
-          {/* Protein */}
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Protein</p>
             <div className="flex items-baseline gap-2 mb-3">
@@ -148,7 +188,6 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </div>
           </div>
 
-          {/* Carbs */}
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Carbs</p>
             <div className="flex items-baseline gap-2 mb-3">
@@ -165,7 +204,6 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </div>
           </div>
 
-          {/* Fat */}
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Fat</p>
             <div className="flex items-baseline gap-2 mb-3">
@@ -183,7 +221,6 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           </div>
         </div>
 
-        {/* Remaining */}
         <div className="mt-6 pt-6 border-t border-green-200 dark:border-green-800">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Remaining Calories</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -196,14 +233,18 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-slate-900 dark:text-white">Logged Meals</h3>
-          <button className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold">
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
+          >
             <Plus className="w-4 h-4" />
             Add Meal
           </button>
         </div>
 
         <div className="space-y-4">
-          {loggedMeals.map((meal) => (
+          {mealsForSelectedDate.map((meal) => (
             <div key={meal.id} className="p-5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700 transition-all">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -213,12 +254,13 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                   <h4 className="text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{meal.time}</p>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <circle cx="10" cy="4" r="1.5" />
-                    <circle cx="10" cy="10" r="1.5" />
-                    <circle cx="10" cy="16" r="1.5" />
-                  </svg>
+                <button
+                  type="button"
+                  onClick={() => removeLoggedMeal(meal.id)}
+                  className="text-slate-400 hover:text-red-500 transition-colors"
+                  aria-label={`Remove ${meal.recipeTitle}`}
+                >
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
               <div className="grid grid-cols-4 gap-4">
@@ -242,10 +284,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </div>
           ))}
 
-          {loggedMeals.length === 0 && (
+          {mealsForSelectedDate.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-slate-500 dark:text-slate-400 mb-4">No meals logged today</p>
-              <button className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 font-semibold">
+              <p className="text-slate-500 dark:text-slate-400 mb-4">No meals logged on this day</p>
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 font-semibold"
+              >
                 <Plus className="w-5 h-5" />
                 Log Your First Meal
               </button>
@@ -253,6 +299,65 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           )}
         </div>
       </div>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-white">Log a meal</DialogTitle>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              Choose a recipe from the catalog to add macros for {selectedDate.toLocaleDateString()}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <label className="grid gap-1">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Meal</span>
+              <select
+                value={mealSlot}
+                onChange={(e) => setMealSlot(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                {["Breakfast", "Lunch", "Dinner", "Snack"].map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Recipe</span>
+              <select
+                value={recipeId}
+                onChange={(e) => setRecipeId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                {RECIPE_CATALOG.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Time</span>
+              <input
+                type="text"
+                value={timeLabel}
+                onChange={(e) => setTimeLabel(e.target.value)}
+                placeholder="e.g. 12:30 PM"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleAddMeal}>
+              Add meal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Stats */}
       <div className="grid md:grid-cols-3 gap-6">

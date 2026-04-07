@@ -1,74 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Filter, Lock, AlertCircle } from "lucide-react";
+import { useAppData } from "../../context/AppDataContext.tsx";
+import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 
 interface LibraryProps {
-  userTier: "free" | "base" | "pro";
+  userTier: UserTier;
 }
-
-interface SavedRecipe {
-  id: string;
-  creatorName: string;
-  creatorImage: string;
-  title: string;
-  image: string;
-  servings: number;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  isVerified: boolean;
-  savedCount: number;
-  isSaved: boolean;
-  savedAt: Date;
-}
-
-const mockSavedRecipes: SavedRecipe[] = [
-  {
-    id: "3",
-    creatorName: "Jordan Kim",
-    creatorImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
-    title: "Grilled Salmon with Roasted Vegetables",
-    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=600&fit=crop",
-    servings: 1,
-    calories: 468,
-    protein: 42,
-    carbs: 28,
-    fat: 20,
-    isVerified: true,
-    savedCount: 2103,
-    isSaved: true,
-    savedAt: new Date("2026-04-05"),
-  },
-  {
-    id: "4",
-    creatorName: "Emma Wilson",
-    creatorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-    title: "Greek Yogurt Parfait",
-    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&h=600&fit=crop",
-    servings: 1,
-    calories: 285,
-    protein: 24,
-    carbs: 38,
-    fat: 6,
-    isVerified: true,
-    savedCount: 756,
-    isSaved: true,
-    savedAt: new Date("2026-04-03"),
-  },
-];
 
 export function Library({ userTier }: LibraryProps) {
-  const [savedRecipes] = useState<SavedRecipe[]>(mockSavedRecipes);
-  const [selectedRecipe, setSelectedRecipe] = useState<SavedRecipe | null>(null);
+  const { savedRecipesForLibrary } = useAppData();
+  const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const FREE_TIER_LIMIT = 10;
-  const savedCount = savedRecipes.length;
+  const savedCount = savedRecipesForLibrary.length;
   const limitReached = userTier === "free" && savedCount >= FREE_TIER_LIMIT;
 
+  const filteredRecipes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return savedRecipesForLibrary;
+    }
+    return savedRecipesForLibrary.filter(
+      (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
+    );
+  }, [savedRecipesForLibrary, searchQuery]);
+
   if (selectedRecipe) {
-    return <RecipeDetail recipe={selectedRecipe} onBack={() => setSelectedRecipe(null)} />;
+    return (
+      <RecipeDetail
+        recipe={selectedRecipe}
+        userTier={userTier}
+        onBack={() => setSelectedRecipe(null)}
+      />
+    );
   }
 
   return (
@@ -115,7 +81,7 @@ export function Library({ userTier }: LibraryProps) {
                   : "Upgrade to Base or Pro for unlimited recipe storage"}
               </p>
             </div>
-            <button className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 whitespace-nowrap font-semibold">
+            <button type="button" className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 whitespace-nowrap font-semibold">
               Upgrade
             </button>
           </div>
@@ -133,7 +99,7 @@ export function Library({ userTier }: LibraryProps) {
               className="w-full pl-12 pr-4 py-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 shadow-sm transition-all"
             />
           </div>
-          <button className="px-5 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm">
+          <button type="button" className="px-5 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm">
             <Filter className="w-5 h-5" />
             <span className="font-medium">Filter</span>
           </button>
@@ -141,22 +107,27 @@ export function Library({ userTier }: LibraryProps) {
       </div>
 
       {/* Empty State */}
-      {savedRecipes.length === 0 && (
+      {filteredRecipes.length === 0 && (
         <div className="text-center py-24">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-slate-400" />
           </div>
           <h3 className="mb-3 text-slate-900 dark:text-white">No saved recipes</h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-8">Browse the Discover feed to save your first recipe</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-8">
+            {savedRecipesForLibrary.length === 0
+              ? "Browse the Discover feed to save your first recipe"
+              : "No recipes match your search"}
+          </p>
         </div>
       )}
 
       {/* Recipe Grid */}
-      {savedRecipes.length > 0 && (
+      {filteredRecipes.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {savedRecipes.map((recipe) => (
+          {filteredRecipes.map((recipe) => (
             <button
               key={recipe.id}
+              type="button"
               onClick={() => setSelectedRecipe(recipe)}
               className="group backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg"
             >

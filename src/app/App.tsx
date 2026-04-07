@@ -18,7 +18,7 @@ export default function App() {
   const renderView = () => {
     switch (currentView) {
       case "discover":
-        return <DiscoverFeed />;
+        return <DiscoverFeed userTier={userTier} />;
       case "library":
         return <Library userTier={userTier} />;
       case "planner":
@@ -34,7 +34,7 @@ export default function App() {
       case "profile":
         return <Profile userTier={userTier} />;
       default:
-        return <DiscoverFeed />;
+        return <DiscoverFeed userTier={userTier} />;
     }
   };
 

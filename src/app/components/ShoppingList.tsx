@@ -1,47 +1,35 @@
 import { useState } from "react";
 import { ShoppingCart, Check, Plus, Trash2, Download, Printer } from "lucide-react";
+import { useAppData } from "../../context/AppDataContext.tsx";
+import type { UserTier } from "../../types/recipe.ts";
 
 interface ShoppingListProps {
-  userTier: "free" | "base" | "pro";
+  userTier: UserTier;
 }
-
-interface ShoppingItem {
-  id: string;
-  name: string;
-  amount: string;
-  unit: string;
-  category: string;
-  checked: boolean;
-  from: string;
-}
-
-const mockItems: ShoppingItem[] = [
-  { id: "1", name: "Chicken Breast", amount: "1.5", unit: "lb", category: "Protein", checked: false, from: "High-Protein Chicken Bowl" },
-  { id: "2", name: "Brown Rice", amount: "2", unit: "cups", category: "Grains", checked: false, from: "High-Protein Chicken Bowl" },
-  { id: "3", name: "Broccoli", amount: "1", unit: "head", category: "Vegetables", checked: false, from: "High-Protein Chicken Bowl" },
-  { id: "4", name: "Rolled Oats", amount: "1", unit: "cup", category: "Grains", checked: false, from: "Overnight Protein Oats" },
-  { id: "5", name: "Protein Powder", amount: "2", unit: "scoops", category: "Protein", checked: true, from: "Overnight Protein Oats" },
-  { id: "6", name: "Almond Milk", amount: "1", unit: "cup", category: "Dairy", checked: true, from: "Overnight Protein Oats" },
-  { id: "7", name: "Salmon Fillet", amount: "8", unit: "oz", category: "Protein", checked: false, from: "Grilled Salmon" },
-  { id: "8", name: "Sweet Potato", amount: "2", unit: "medium", category: "Vegetables", checked: false, from: "Grilled Salmon" },
-  { id: "9", name: "Olive Oil", amount: "2", unit: "tbsp", category: "Oils", checked: false, from: "Multiple recipes" }
-];
 
 export function ShoppingList({ userTier }: ShoppingListProps) {
-  const [items, setItems] = useState<ShoppingItem[]>(mockItems);
+  const { shoppingItems, toggleShoppingChecked, removeShoppingItem, addShoppingItem } = useAppData();
+  const [customName, setCustomName] = useState("");
 
   const isPaidUser = userTier === "base" || userTier === "pro";
 
-  const toggleItem = (id: string) => {
-    setItems(items.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-  };
+  const categories = Array.from(new Set(shoppingItems.map((item) => item.category)));
+  const checkedCount = shoppingItems.filter((item) => item.checked).length;
 
-  const removeItem = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
+  const handleAddCustom = () => {
+    const name = customName.trim();
+    if (!name) {
+      return;
+    }
+    addShoppingItem({
+      name,
+      amount: "1",
+      unit: "item",
+      category: "Other",
+      from: "Custom",
+    });
+    setCustomName("");
   };
-
-  const categories = Array.from(new Set(items.map(item => item.category)));
-  const checkedCount = items.filter(item => item.checked).length;
 
   if (!isPaidUser) {
     return (
@@ -64,7 +52,7 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
           </p>
         </div>
 
-        <button className="px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 text-lg font-semibold">
+        <button type="button" className="px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 text-lg font-semibold">
           Upgrade to Access
         </button>
       </div>
@@ -86,11 +74,11 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
             <p className="text-slate-600 dark:text-slate-400">From your 7-day meal plan</p>
           </div>
           <div className="flex gap-3">
-            <button className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm">
+            <button type="button" className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm">
               <Printer className="w-4 h-4" />
               Print
             </button>
-            <button className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm">
+            <button type="button" className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm">
               <Download className="w-4 h-4" />
               Export
             </button>
@@ -103,13 +91,13 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-slate-900 dark:text-white">Shopping Progress</h3>
           <span className="text-lg font-bold text-violet-600 dark:text-violet-400">
-            {checkedCount} / {items.length} items
+            {checkedCount} / {shoppingItems.length} items
           </span>
         </div>
         <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-500"
-            style={{ width: `${(checkedCount / items.length) * 100}%` }}
+            style={{ width: `${shoppingItems.length ? (checkedCount / shoppingItems.length) * 100 : 0}%` }}
           ></div>
         </div>
       </div>
@@ -120,9 +108,16 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
           <input
             type="text"
             placeholder="Add custom item..."
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddCustom()}
             className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
           />
-          <button className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold">
+          <button
+            type="button"
+            onClick={handleAddCustom}
+            className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
+          >
             <Plus className="w-5 h-5" />
             Add
           </button>
@@ -130,13 +125,13 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
       </div>
 
       {/* Items by Category */}
-      {categories.map(category => {
-        const categoryItems = items.filter(item => item.category === category);
+      {categories.map((category) => {
+        const categoryItems = shoppingItems.filter((item) => item.category === category);
         return (
           <div key={category} className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
             <h3 className="text-slate-900 dark:text-white mb-4">{category}</h3>
             <div className="space-y-3">
-              {categoryItems.map(item => (
+              {categoryItems.map((item) => (
                 <div
                   key={item.id}
                   className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
@@ -146,7 +141,8 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
                   }`}
                 >
                   <button
-                    onClick={() => toggleItem(item.id)}
+                    type="button"
+                    onClick={() => toggleShoppingChecked(item.id)}
                     className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${
                       item.checked
                         ? "bg-violet-600 border-violet-600"
@@ -164,8 +160,10 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
                     </p>
                   </div>
                   <button
-                    onClick={() => removeItem(item.id)}
+                    type="button"
+                    onClick={() => removeShoppingItem(item.id)}
                     className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors"
+                    aria-label={`Remove ${item.name}`}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -179,8 +177,8 @@ export function ShoppingList({ userTier }: ShoppingListProps) {
       {/* Actions */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <p className="text-slate-600 dark:text-slate-400">Generated from 3 recipes in your meal plan</p>
-          <button className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all font-medium">
+          <p className="text-slate-600 dark:text-slate-400">Your list is saved in this browser</p>
+          <button type="button" className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all font-medium">
             Regenerate from Plan
           </button>
         </div>

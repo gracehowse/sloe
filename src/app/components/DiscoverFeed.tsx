@@ -1,76 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Heart, Bookmark, CheckCircle2, AlertCircle, Search, SlidersHorizontal, X } from "lucide-react";
+import { useAppData } from "../../context/AppDataContext.tsx";
+import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
+import type { RecipeCard } from "../../types/recipe.ts";
 
-interface Recipe {
-  id: string;
-  creatorName: string;
-  creatorImage: string;
-  title: string;
-  image: string;
-  servings: number;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  isVerified: boolean;
-  creatorCalories?: number;
-  savedCount: number;
-  isSaved: boolean;
+interface DiscoverFeedProps {
+  userTier: UserTier;
 }
 
-const mockRecipes: Recipe[] = [
-  {
-    id: "1",
-    creatorName: "Alex Chen",
-    creatorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-    title: "High-Protein Chicken & Rice Bowl",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
-    servings: 1,
-    calories: 542,
-    protein: 48,
-    carbs: 52,
-    fat: 12,
-    isVerified: true,
-    savedCount: 1247,
-    isSaved: false,
-  },
-  {
-    id: "2",
-    creatorName: "Maria Santos",
-    creatorImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-    title: "Overnight Protein Oats",
-    image: "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=800&h=600&fit=crop",
-    servings: 1,
-    calories: 387,
-    protein: 32,
-    carbs: 48,
-    fat: 8,
-    isVerified: true,
-    creatorCalories: 420,
-    savedCount: 892,
-    isSaved: false,
-  },
-  {
-    id: "3",
-    creatorName: "Jordan Kim",
-    creatorImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
-    title: "Grilled Salmon with Roasted Vegetables",
-    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=600&fit=crop",
-    servings: 1,
-    calories: 468,
-    protein: 42,
-    carbs: 28,
-    fat: 20,
-    isVerified: true,
-    savedCount: 2103,
-    isSaved: true,
-  },
-];
-
-export function DiscoverFeed() {
-  const [recipes] = useState<Recipe[]>(mockRecipes);
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
+  const { discoverRecipes, toggleSaveRecipe } = useAppData();
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -78,11 +19,37 @@ export function DiscoverFeed() {
     maxCalories: "",
     minProtein: "",
     mealType: "all",
-    dietary: "all"
+    dietary: "all",
   });
 
+  const recipes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return discoverRecipes.filter((recipe) => {
+      if (q) {
+        const hay = `${recipe.title} ${recipe.creatorName}`.toLowerCase();
+        if (!hay.includes(q)) {
+          return false;
+        }
+      }
+      if (filters.verified && !recipe.isVerified) {
+        return false;
+      }
+      const maxC = filters.maxCalories === "" ? null : Number(filters.maxCalories);
+      if (maxC !== null && !Number.isNaN(maxC) && recipe.calories > maxC) {
+        return false;
+      }
+      const minP = filters.minProtein === "" ? null : Number(filters.minProtein);
+      if (minP !== null && !Number.isNaN(minP) && recipe.protein < minP) {
+        return false;
+      }
+      return true;
+    });
+  }, [discoverRecipes, searchQuery, filters]);
+
   if (selectedRecipe) {
-    return <RecipeDetail recipe={selectedRecipe} onBack={() => setSelectedRecipe(null)} />;
+    return (
+      <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} />
+    );
   }
 
   return (
@@ -186,7 +153,9 @@ export function DiscoverFeed() {
               </div>
               <div className="flex items-end">
                 <button
-                  onClick={() => setFilters({ verified: false, maxCalories: "", minProtein: "", mealType: "all", dietary: "all" })}
+                  onClick={() =>
+                    setFilters({ verified: false, maxCalories: "", minProtein: "", mealType: "all", dietary: "all" })
+                  }
                   className="text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium"
                 >
                   Clear All
@@ -199,7 +168,10 @@ export function DiscoverFeed() {
 
       <div className="space-y-8">
         {recipes.map((recipe) => (
-          <article key={recipe.id} className="group bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]">
+          <article
+            key={recipe.id}
+            className="group bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
+          >
             {/* Creator Header */}
             <div className="px-5 py-4 flex items-center gap-3">
               <div className="relative">
@@ -214,7 +186,7 @@ export function DiscoverFeed() {
                 <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">2 hours ago</p>
               </div>
-              <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button type="button" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                   <circle cx="10" cy="4" r="1.5" />
                   <circle cx="10" cy="10" r="1.5" />
@@ -224,20 +196,31 @@ export function DiscoverFeed() {
             </div>
 
             {/* Recipe Image */}
-            <button onClick={() => setSelectedRecipe(recipe)} className="w-full relative overflow-hidden">
+            <button type="button" onClick={() => setSelectedRecipe(recipe)} className="w-full relative overflow-hidden">
               <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-105 transition-transform duration-500" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
             {/* Actions */}
             <div className="px-5 py-4 flex items-center gap-4">
-              <button className="text-slate-400 hover:text-red-500 transition-all hover:scale-110 active:scale-95">
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-500 transition-all hover:scale-110 active:scale-95"
+                aria-label="Like"
+              >
                 <Heart className="w-6 h-6" />
               </button>
               <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleSaveRecipe(recipe.id, userTier);
+                }}
                 className={`transition-all hover:scale-110 active:scale-95 ${
                   recipe.isSaved ? "text-violet-600" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 }`}
+                aria-label={recipe.isSaved ? "Remove from library" : "Save to library"}
               >
                 <Bookmark className="w-6 h-6" fill={recipe.isSaved ? "currentColor" : "none"} />
               </button>
@@ -249,7 +232,7 @@ export function DiscoverFeed() {
 
             {/* Recipe Details */}
             <div className="px-5 pb-5">
-              <button onClick={() => setSelectedRecipe(recipe)} className="text-left w-full">
+              <button type="button" onClick={() => setSelectedRecipe(recipe)} className="text-left w-full">
                 <h3 className="mb-4 text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{recipe.title}</h3>
               </button>
 
