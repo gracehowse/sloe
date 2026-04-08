@@ -20,6 +20,8 @@ export interface RecipeCard {
   isSaved: boolean;
   /** ISO timestamp for feed ordering (uploaded recipes). Catalog demos omit this. */
   feedCreatedAt?: string;
+  /** `community` = published from Supabase; `catalog` = curated Platemate picks (not a live creator post). */
+  feedSource?: "community" | "catalog";
 }
 
 export interface IngredientRow {

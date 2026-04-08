@@ -18,9 +18,17 @@ import {
   type PlannerTargets,
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
-import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
+import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
+import { useAuthSession } from "./AuthSessionContext.tsx";
+import {
+  STORAGE_KEY,
+  dateKey,
+  defaultSnapshot,
+  loadSnapshot,
+  newId,
+  type PersistedSnapshot,
+} from "./appData/persistence.ts";
 
-const STORAGE_KEY = "platemate-app-v1";
 const FREE_SAVE_LIMIT = 10;
 
 function looksLikeMissingTableError(message: string): boolean {
@@ -34,211 +42,6 @@ function looksLikeMissingTableError(message: string): boolean {
 
 const DEFAULT_UPLOADED_RECIPE_IMAGE =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
-
-interface PersistedSnapshot {
-  savedRecipeIds: string[];
-  savedAtById: Record<string, string>;
-  shoppingItems: ShoppingItem[];
-  nutritionByDay: Record<string, LoggedMeal[]>;
-  mealPlan: DayPlan[] | null;
-  nutritionTargets: MacroTargets;
-  /** Extra water (ml) per day not tied to a meal row (quick-add). */
-  extraWaterByDay?: Record<string, number>;
-  /** Demo / placeholder until Apple Health sync supplies burn (MFP-style eat-back). */
-  activityBurnKcal?: number;
-}
-
-function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function newId(prefix: string): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function defaultSnapshot(): PersistedSnapshot {
-  const today = dateKey(new Date());
-  const initialMeals: LoggedMeal[] = [
-    {
-      id: "seed-breakfast",
-      name: "Breakfast",
-      recipeTitle: "Overnight Protein Oats",
-      time: "8:30 AM",
-      calories: 387,
-      protein: 32,
-      carbs: 48,
-      fat: 8,
-    },
-    {
-      id: "seed-lunch",
-      name: "Lunch",
-      recipeTitle: "High-Protein Chicken & Rice Bowl",
-      time: "12:45 PM",
-      calories: 542,
-      protein: 48,
-      carbs: 52,
-      fat: 12,
-    },
-  ];
-  return {
-    savedRecipeIds: [
-      "cccccccc-cccc-cccc-cccc-cccccccccccc",
-      "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    ],
-    savedAtById: {
-      "cccccccc-cccc-cccc-cccc-cccccccccccc": new Date("2026-04-05").toISOString(),
-      "dddddddd-dddd-dddd-dddd-dddddddddddd": new Date("2026-04-03").toISOString(),
-    },
-    shoppingItems: [
-      {
-        id: "1",
-        name: "Chicken Breast",
-        amount: "1.5",
-        unit: "lb",
-        category: "Protein",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "2",
-        name: "Brown Rice",
-        amount: "2",
-        unit: "cups",
-        category: "Grains",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "3",
-        name: "Broccoli",
-        amount: "1",
-        unit: "head",
-        category: "Vegetables",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "4",
-        name: "Rolled Oats",
-        amount: "1",
-        unit: "cup",
-        category: "Grains",
-        checked: false,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "5",
-        name: "Protein Powder",
-        amount: "2",
-        unit: "scoops",
-        category: "Protein",
-        checked: true,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "6",
-        name: "Almond Milk",
-        amount: "1",
-        unit: "cup",
-        category: "Dairy",
-        checked: true,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "7",
-        name: "Salmon Fillet",
-        amount: "8",
-        unit: "oz",
-        category: "Protein",
-        checked: false,
-        from: "Grilled Salmon",
-      },
-      {
-        id: "8",
-        name: "Sweet Potato",
-        amount: "2",
-        unit: "medium",
-        category: "Vegetables",
-        checked: false,
-        from: "Grilled Salmon",
-      },
-      {
-        id: "9",
-        name: "Olive Oil",
-        amount: "2",
-        unit: "tbsp",
-        category: "Oils",
-        checked: false,
-        from: "Multiple recipes",
-      },
-    ],
-    nutritionByDay: { [today]: initialMeals },
-    mealPlan: null,
-    nutritionTargets: { ...DEFAULT_MACRO_TARGETS },
-  };
-}
-
-function normalizeLoggedMealRow(m: unknown): LoggedMeal | null {
-  if (!m || typeof m !== "object") return null;
-  const o = m as Partial<LoggedMeal>;
-  if (typeof o.id !== "string") return null;
-  return {
-    id: o.id,
-    name: typeof o.name === "string" ? o.name : "Meal",
-    recipeTitle: typeof o.recipeTitle === "string" ? o.recipeTitle : "",
-    time: typeof o.time === "string" ? o.time : "",
-    calories: Math.max(0, Math.round(Number(o.calories) || 0)),
-    protein: Math.max(0, Math.round(Number(o.protein) || 0)),
-    carbs: Math.max(0, Math.round(Number(o.carbs) || 0)),
-    fat: Math.max(0, Math.round(Number(o.fat) || 0)),
-    ...(typeof o.fiberG === "number" && Number.isFinite(o.fiberG) ? { fiberG: Math.max(0, Math.round(o.fiberG)) } : {}),
-    ...(typeof o.waterMl === "number" && Number.isFinite(o.waterMl) ? { waterMl: Math.max(0, Math.round(o.waterMl)) } : {}),
-  };
-}
-
-function loadSnapshot(): PersistedSnapshot {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return defaultSnapshot();
-    }
-    const parsed = JSON.parse(raw) as Partial<PersistedSnapshot>;
-    const base = defaultSnapshot();
-    let nutritionByDay = base.nutritionByDay;
-    if (parsed.nutritionByDay && typeof parsed.nutritionByDay === "object") {
-      const next: Record<string, LoggedMeal[]> = {};
-      for (const [k, day] of Object.entries(parsed.nutritionByDay)) {
-        if (!Array.isArray(day)) continue;
-        next[k] = day.map((row) => normalizeLoggedMealRow(row)).filter((x): x is LoggedMeal => Boolean(x));
-      }
-      nutritionByDay = next;
-    }
-    return {
-      savedRecipeIds: Array.isArray(parsed.savedRecipeIds) ? parsed.savedRecipeIds : base.savedRecipeIds,
-      savedAtById:
-        parsed.savedAtById && typeof parsed.savedAtById === "object"
-          ? { ...base.savedAtById, ...parsed.savedAtById }
-          : base.savedAtById,
-      shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
-      nutritionByDay,
-      mealPlan: parsed.mealPlan === null || Array.isArray(parsed.mealPlan) ? parsed.mealPlan : base.mealPlan,
-      nutritionTargets: normalizeMacroTargets(parsed.nutritionTargets ?? base.nutritionTargets),
-      extraWaterByDay:
-        parsed.extraWaterByDay && typeof parsed.extraWaterByDay === "object"
-          ? parsed.extraWaterByDay
-          : undefined,
-      activityBurnKcal:
-        typeof parsed.activityBurnKcal === "number" && Number.isFinite(parsed.activityBurnKcal)
-          ? Math.max(0, Math.round(parsed.activityBurnKcal))
-          : undefined,
-    };
-  } catch {
-    return defaultSnapshot();
-  }
-}
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -258,11 +61,16 @@ interface AppDataContextValue {
   authEmail: string | null;
   profileDisplayName: string | null;
   profileTier: UserTier;
+  /** Display preference from profile; internal storage remains metric. */
+  profileMeasurementSystem: "metric" | "imperial";
+  setProfileMeasurementSystem: Dispatch<SetStateAction<"metric" | "imperial">>;
   redeemPromoCode: (code: string) => Promise<RedeemPromoResult>;
   signOut: () => Promise<void>;
   generateMealPlan: (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
   discoverRecipes: RecipeCard[];
+  /** Recipes published by real users (Supabase). Catalog picks are excluded. */
+  communityFeedCount: number;
   refreshDiscoverRecipes: () => Promise<void>;
   toggleSaveRecipe: (recipeId: string, tier: UserTier) => void;
   isRecipeSaved: (recipeId: string) => boolean;
@@ -290,11 +98,14 @@ interface AppDataContextValue {
   removeLoggedMeal: (mealId: string) => void;
   mealPlan: DayPlan[] | null;
   setMealPlan: Dispatch<SetStateAction<DayPlan[] | null>>;
+  /** All logged meals by `YYYY-MM-DD` (for streaks / weekly stats in Tracker). */
+  nutritionByDay: Record<string, LoggedMeal[]>;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { authedUserId, authEmail } = useAuthSession();
   const initial = useMemo(() => loadSnapshot(), []);
 
   const [savedRecipeIds, setSavedRecipeIds] = useState<string[]>(initial.savedRecipeIds);
@@ -310,10 +121,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     () => initial.extraWaterByDay ?? {},
   );
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
-  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
-  const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
+  const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
   const [dbSavesEnabled, setDbSavesEnabled] = useState(true);
   const [dbSavesWarned, setDbSavesWarned] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
@@ -363,25 +173,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setDbShoppingEnabled(true);
     return true;
   }, [authedUserId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) {
-        return;
-      }
-      setAuthedUserId(data.session?.user.id ?? null);
-      setAuthEmail(data.session?.user.email ?? null);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthedUserId(session?.user.id ?? null);
-      setAuthEmail(session?.user.email ?? null);
-    });
-    return () => {
-      cancelled = true;
-      data.subscription.unsubscribe();
-    };
-  }, []);
 
   // If we disabled DB saves due to schema cache/table creation timing, keep retrying in the background.
   useEffect(() => {
@@ -462,6 +253,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const local = loadLocalProfile(null);
       setProfileTier(local?.userTier ?? "free");
       setProfileDisplayName(local?.displayName ?? null);
+      setProfileMeasurementSystem(local?.measurementSystem ?? "metric");
       if (local?.targets) {
         setNutritionTargets(normalizeMacroTargets(local.targets));
       }
@@ -473,7 +265,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
+          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -483,6 +275,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const local = loadLocalProfile(authedUserId);
         setProfileTier(local?.userTier ?? "free");
         setProfileDisplayName(local?.displayName ?? null);
+        setProfileMeasurementSystem(local?.measurementSystem ?? "metric");
         if (local?.targets) {
           setNutritionTargets(normalizeMacroTargets(local.targets));
         }
@@ -491,6 +284,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       setProfileTier((data?.user_tier as UserTier) ?? "free");
       setProfileDisplayName((data?.display_name as string | null) ?? null);
+      const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
+      setProfileMeasurementSystem(ms);
       setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
       const hasTargets = Boolean(
         data?.target_calories &&
@@ -1026,13 +821,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const uploaded = uploadedRecipes.map((r) => ({
       ...r,
       isSaved: savedRecipeIds.includes(r.id),
+      feedSource: "community" as const,
     }));
     const catalog = RECIPE_CATALOG.map((r) => ({
       ...r,
       isSaved: savedRecipeIds.includes(r.id),
+      feedSource: "catalog" as const,
     }));
     return [...uploaded, ...catalog];
   }, [savedRecipeIds, uploadedRecipes]);
+
+  const communityFeedCount = uploadedRecipes.length;
 
   const savedRecipesForLibrary = useMemo((): Array<RecipeCard & { savedAt: Date }> => {
     const enriched = savedRecipeIds
@@ -1105,11 +904,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authEmail,
       profileDisplayName,
       profileTier,
+      profileMeasurementSystem,
+      setProfileMeasurementSystem,
       redeemPromoCode,
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
       discoverRecipes,
+      communityFeedCount,
       refreshDiscoverRecipes,
       toggleSaveRecipe,
       isRecipeSaved,
@@ -1135,16 +937,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeLoggedMeal,
       mealPlan,
       setMealPlan,
+      nutritionByDay,
     }),
     [
       authEmail,
       profileDisplayName,
       profileTier,
+      profileMeasurementSystem,
+      setProfileMeasurementSystem,
       redeemPromoCode,
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
       discoverRecipes,
+      communityFeedCount,
       refreshDiscoverRecipes,
       toggleSaveRecipe,
       isRecipeSaved,
@@ -1165,6 +971,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addLoggedMealForDate,
       removeLoggedMeal,
       mealPlan,
+      nutritionByDay,
     ],
   );
 

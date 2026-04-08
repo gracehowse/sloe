@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
@@ -167,6 +169,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [importBusy, setImportBusy] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
   const [importHint, setImportHint] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -374,6 +377,49 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const runOcrFromImage = async () => {
+    const url = coverImageUrl;
+    if (!url.startsWith("data:")) {
+      toast.error("Choose or paste a local image first.");
+      return;
+    }
+    setOcrBusy(true);
+    try {
+      const blob = await fetch(url).then((r) => r.blob());
+      const fd = new FormData();
+      fd.append("image", new File([blob], "recipe.jpg", { type: blob.type || "image/jpeg" }));
+      const res = await fetch("/api/recipe-import/image", { method: "POST", body: fd });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        ingredients?: string[];
+        steps?: string[];
+        title?: string | null;
+        message?: string;
+      };
+      if (!res.ok || !data.ok) {
+        toast.error(data.message ?? "Could not extract text from this image.");
+        return;
+      }
+      track(AnalyticsEvents.recipe_import_image, { ingredientCount: data.ingredients?.length ?? 0 });
+      if (data.title) setTitle(data.title);
+      if (data.ingredients?.length) {
+        setIngredients(
+          data.ingredients.map((line, idx) => {
+            const p = parseIngredientLine(line);
+            const name = p.name.trim() || line.trim();
+            return { id: `ocr-${idx}`, name, amount: p.amount, unit: p.unit };
+          }),
+        );
+      }
+      if (data.steps?.length) {
+        setInstructions(data.steps.map((s, i) => `${i + 1}. ${s}`).join("\n"));
+      }
+      toast.success("Extracted text from image — review amounts and steps.");
+    } finally {
+      setOcrBusy(false);
+    }
   };
 
   const runImportFromUrl = async () => {
@@ -899,7 +945,11 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
           </button>
         </div>
         {loadingList ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <div className="space-y-2 animate-pulse" aria-busy="true" aria-label="Loading recipes">
+            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+          </div>
         ) : myRecipes.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">No saved drafts yet. Save a draft to see it here.</p>
         ) : (
@@ -929,12 +979,13 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
         )}
       </div>
 
-      {/* Image Upload — social / screenshot pipeline (ReciMe-style): image → cover; OCR deferred */}
+      {/* Image Upload — screenshot → cover + optional OCR (OpenAI vision on server) */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
         <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Recipe photo</label>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Paste a screenshot (social or camera roll) here, or choose a file. Full text extraction is planned; for now
-          use as cover and enter ingredients below.
+          Paste a screenshot or choose a file for the cover. When the server has{" "}
+          <span className="font-medium">OPENAI_API_KEY</span>, use “Extract from image” to fill title, ingredients, and
+          steps.
         </p>
         <div
           role="button"
@@ -969,6 +1020,14 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
               if (f) applyImageFile(f);
             }}
           />
+          <button
+            type="button"
+            disabled={ocrBusy}
+            onClick={() => void runOcrFromImage()}
+            className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium hover:opacity-90 disabled:opacity-40"
+          >
+            {ocrBusy ? "Extracting…" : "Extract from image"}
+          </button>
         </div>
       </div>
 

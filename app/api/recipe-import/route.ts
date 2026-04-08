@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseRecipeFromHtml } from "@/lib/recipe-import/parseRecipeFromHtml";
+import { rateLimit } from "@/lib/server/rateLimit";
 
 function isAllowedUrl(url: string): boolean {
   try {
@@ -100,6 +101,14 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
 }
 
 export async function POST(req: Request) {
+  const rl = await rateLimit({ keyPrefix: "api:recipe-import", limit: 20, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many imports. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

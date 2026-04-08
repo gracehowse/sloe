@@ -15,8 +15,29 @@ import {
 } from "./ui/dialog.tsx";
 import { Button } from "./ui/button.tsx";
 import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
+import {
+  computeCalorieGoalFitPercent,
+  computeLoggingStreak,
+  computeWeekLoggedDays,
+} from "../../lib/nutrition/trackerStats.ts";
+import { formatWaterMl } from "../../lib/units/imperial.ts";
 
 const RECENT_BARCODE_KEY = "platemate-recent-foods-v1";
+
+type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string };
+type UsdaFoodDetails = {
+  fdcId: number;
+  description: string;
+  macrosPer100g: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+  };
+};
 
 interface NutritionTrackerProps {
   userTier: UserTier;
@@ -76,13 +97,26 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
     setActivityBurnKcal,
     addWaterMlForSelectedDay,
     extraWaterMlForSelectedDay,
+    profileMeasurementSystem,
+    nutritionByDay,
   } = useAppData();
+
+  const useImperialWater = profileMeasurementSystem === "imperial";
+  const formatWaterLine = (ml: number) =>
+    useImperialWater ? formatWaterMl(ml, true) : ml >= 1000 ? `${(ml / 1000).toFixed(1).replace(/\.0$/, "")}L` : `${ml}ml`;
+
+  const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
+  const weekLogged = useMemo(() => computeWeekLoggedDays(nutritionByDay), [nutritionByDay]);
+  const goalFit = useMemo(
+    () => computeCalorieGoalFitPercent(nutritionByDay, nutritionTargets.calories, 7),
+    [nutritionByDay, nutritionTargets.calories],
+  );
 
   const [addOpen, setAddOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
-  const [addMode, setAddMode] = useState<"recipe" | "manual">("recipe");
+  const [addMode, setAddMode] = useState<"recipe" | "manual" | "search">("recipe");
   const [manualName, setManualName] = useState("");
   const [manualCalories, setManualCalories] = useState(0);
   const [manualProtein, setManualProtein] = useState(0);
@@ -93,6 +127,11 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState("");
   const [barcodeBusy, setBarcodeBusy] = useState(false);
+  const [foodQuery, setFoodQuery] = useState("");
+  const [foodHits, setFoodHits] = useState<UsdaHit[] | null>(null);
+  const [foodLoading, setFoodLoading] = useState(false);
+  const [foodSelected, setFoodSelected] = useState<UsdaFoodDetails | null>(null);
+  const [foodGrams, setFoodGrams] = useState(100);
   const [recentFoods, setRecentFoods] = useState<string[]>(() =>
     typeof window !== "undefined" ? loadRecentFoods() : [],
   );
@@ -175,6 +214,31 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       setManualFat(0);
       setManualFiber(0);
       setManualWater(0);
+      return;
+    }
+    if (addMode === "search") {
+      if (!foodSelected) {
+        toast.error("Select a food first.");
+        return;
+      }
+      const g = Math.max(1, Math.round(foodGrams) || 1);
+      const mult = g / 100;
+      const m = foodSelected.macrosPer100g;
+      addLoggedMeal({
+        name: mealSlot,
+        recipeTitle: `${foodSelected.description} (${g}g)`,
+        time: timeLabel,
+        calories: Math.max(0, Math.round(m.calories * mult)),
+        protein: Math.max(0, Math.round(m.protein * mult)),
+        carbs: Math.max(0, Math.round(m.carbs * mult)),
+        fat: Math.max(0, Math.round(m.fat * mult)),
+        ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
+      });
+      setAddOpen(false);
+      setFoodQuery("");
+      setFoodHits(null);
+      setFoodSelected(null);
+      setFoodGrams(100);
       return;
     }
     if (!recipeOptions.length) {
@@ -335,15 +399,10 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Water</p>
             <div className="flex items-baseline gap-2 mb-3">
               <span className={`text-3xl font-bold ${getProgressColor(totalWaterMl, targets.waterMl)}`}>
-                {totalWaterMl >= 1000
-                  ? `${(totalWaterMl / 1000).toFixed(1).replace(/\.0$/, "")}L`
-                  : `${totalWaterMl}ml`}
+                {formatWaterLine(totalWaterMl)}
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">
-                /{" "}
-                {targets.waterMl >= 1000
-                  ? `${(targets.waterMl / 1000).toFixed(1).replace(/\.0$/, "")}L`
-                  : `${targets.waterMl}ml`}
+                / {formatWaterLine(targets.waterMl)}
               </span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
@@ -380,7 +439,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                 onClick={() => addWaterMlForSelectedDay(ml)}
                 className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 hover:border-violet-400"
               >
-                +{ml} ml
+                +{useImperialWater ? formatWaterMl(ml, true) : `${ml} ml`}
               </button>
             ))}
           </div>
@@ -491,7 +550,9 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
               {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
                   {meal.fiberG != null && meal.fiberG > 0 ? <span>Fiber: {meal.fiberG}g</span> : null}
-                  {meal.waterMl != null && meal.waterMl > 0 ? <span>Water: {meal.waterMl} ml</span> : null}
+                  {meal.waterMl != null && meal.waterMl > 0 ? (
+                    <span>Water: {formatWaterLine(meal.waterMl)}</span>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -519,6 +580,10 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           setAddOpen(open);
           if (!open) {
             setAddMode("recipe");
+            setFoodQuery("");
+            setFoodHits(null);
+            setFoodSelected(null);
+            setFoodGrams(100);
           }
         }}
       >
@@ -552,6 +617,17 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                 }`}
               >
                 Manual food
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddMode("search")}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                  addMode === "search"
+                    ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white"
+                    : "text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                Search
               </button>
             </div>
             <label className="grid gap-1">
@@ -587,6 +663,105 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                   <span className="text-xs text-slate-500">Save recipes from Discover to see them here.</span>
                 )}
               </label>
+            ) : addMode === "search" ? (
+              <div className="grid gap-2">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Food search (USDA)</span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={foodQuery}
+                    onChange={(e) => setFoodQuery(e.target.value)}
+                    placeholder="e.g. chicken breast, rice cooked"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={foodLoading}
+                    onClick={() => {
+                      const q = foodQuery.trim();
+                      if (!q) return;
+                      setFoodLoading(true);
+                      setFoodSelected(null);
+                      fetch(`/api/usda/search?q=${encodeURIComponent(q)}`)
+                        .then((r) => r.json())
+                        .then((data: { ok?: boolean; hits?: UsdaHit[]; message?: string }) => {
+                          if (!data.ok || !data.hits) {
+                            toast.error(data.message ?? "Food search failed");
+                            return;
+                          }
+                          setFoodHits(data.hits.slice(0, 10));
+                        })
+                        .catch(() => toast.error("Food search failed"))
+                        .finally(() => setFoodLoading(false));
+                    }}
+                  >
+                    {foodLoading ? "…" : "Go"}
+                  </Button>
+                </div>
+
+                {foodHits?.length ? (
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-800">
+                    {foodHits.map((h) => (
+                      <button
+                        key={h.fdcId}
+                        type="button"
+                        className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                        onClick={() => {
+                          setFoodLoading(true);
+                          fetch(`/api/usda/food?fdcId=${h.fdcId}`)
+                            .then((r) => r.json())
+                            .then((data: { ok?: boolean; message?: string } & Partial<UsdaFoodDetails>) => {
+                              if (!data.ok || !data.macrosPer100g || !data.description) {
+                                toast.error(data.message ?? "Could not load food details");
+                                return;
+                              }
+                              setFoodSelected({
+                                fdcId: data.fdcId!,
+                                description: data.description!,
+                                macrosPer100g: data.macrosPer100g!,
+                              });
+                            })
+                            .catch(() => toast.error("Could not load food details"))
+                            .finally(() => setFoodLoading(false));
+                        }}
+                      >
+                        <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{h.description}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          {h.dataType ?? "Food"}
+                          {h.brandName ? ` · ${h.brandName}` : ""}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {foodSelected ? (
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/40">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{foodSelected.description}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm text-slate-700 dark:text-slate-300 w-16">Grams</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={foodGrams}
+                        onChange={(e) => setFoodGrams(Number(e.target.value))}
+                        className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                      {(() => {
+                        const g = Math.max(1, Math.round(foodGrams) || 1);
+                        const mult = g / 100;
+                        const m = foodSelected.macrosPer100g;
+                        return `${Math.round(m.calories * mult)} kcal · ${Math.round(m.protein * mult)}P · ${Math.round(
+                          m.carbs * mult,
+                        )}C · ${Math.round(m.fat * mult)}F`;
+                      })()}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <>
                 <label className="grid gap-1">
@@ -781,28 +956,44 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Stats */}
+      {/* Insights (from your log — same calorie target as Profile for fit %) */}
       <div className="grid md:grid-cols-3 gap-6">
         <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">7-Day Streak</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Logging streak</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">7 days</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            {streakDays > 0 ? `${streakDays} ${streakDays === 1 ? "day" : "days"}` : "—"}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+            Consecutive days (today or yesterday through past) with at least one meal logged.
+          </p>
         </div>
         <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Accuracy</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">7-day calorie fit</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">96%</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            {goalFit != null ? `${goalFit}%` : "—"}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+            Average closeness to your calorie target ({nutritionTargets.calories} kcal) on days you logged food. Activity
+            adjustments are not applied per day here yet.
+          </p>
         </div>
         <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-2">
             <Award className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">This Week</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">This week (Mon–Sun)</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">5/7 days</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            {weekLogged.logged}/{weekLogged.total} days
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+            Days in the current calendar week with at least one meal logged.
+          </p>
         </div>
       </div>
     </div>

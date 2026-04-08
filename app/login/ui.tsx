@@ -100,6 +100,23 @@ export function LoginClient() {
     setMessage("Check your email for a sign-in link.");
   };
 
+  const sendPasswordReset = async () => {
+    const trimmed = validateEmail();
+    if (!trimmed) return;
+    setStatus("working");
+    setMessage(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined,
+    });
+    if (error) {
+      setStatus("error");
+      setMessage(error.message);
+      return;
+    }
+    setStatus("sent");
+    setMessage("Check your email for a password reset link.");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6">
       <div className="w-full max-w-md backdrop-blur-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 shadow-2xl">
@@ -176,6 +193,17 @@ export function LoginClient() {
           {status === "working" ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
         </button>
 
+        {mode === "signin" ? (
+          <button
+            type="button"
+            onClick={() => void sendPasswordReset()}
+            disabled={status === "working"}
+            className="mt-3 text-sm text-violet-700 dark:text-violet-300 hover:underline font-medium"
+          >
+            Forgot password?
+          </button>
+        ) : null}
+
         <div className="mt-5">
           <button
             type="button"
@@ -207,8 +235,7 @@ export function LoginClient() {
         )}
 
         <p className="mt-6 text-xs text-slate-500 dark:text-slate-500">
-          In Supabase Auth settings, enable Email + Password. If email confirmations are enabled,
-          confirm your email before signing in.
+          If you just created an account, you may need to confirm your email before signing in.
         </p>
       </div>
     </div>

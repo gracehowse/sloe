@@ -1,7 +1,14 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, Sparkles, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
+import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportPlatemateLocalData.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -11,11 +18,41 @@ interface SettingsProps {
   onScrollToPromoConsumed?: () => void;
 }
 
+const LOCAL_CLEAR_KEYS = [
+  STORAGE_KEY,
+  "platemate-profile-v2",
+  "platemate-collections-v1",
+  "platemate-recent-foods-v1",
+];
+
 export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
   const { signOut, profileDisplayName, redeemPromoCode } = useAppData();
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
+  const [stripeBusy, setStripeBusy] = useState(false);
+
+  async function startStripeCheckout(tier: "base" | "pro") {
+    setStripeBusy(true);
+    track(AnalyticsEvents.checkout_started, { tier });
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier }),
+      });
+      const data = (await res.json()) as { ok?: boolean; url?: string; message?: string; error?: string };
+      if (!res.ok || !data.ok || !data.url) {
+        toast.error(data.message ?? data.error ?? "Checkout unavailable. Configure Stripe price env vars.");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      toast.error("Could not start checkout.");
+    } finally {
+      setStripeBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -109,7 +146,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
             </p>
             {userTier !== "free" && (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Billing is not enabled in this build.
+                Subscription billing uses Stripe. Promo codes below still work for testing and partners.
               </p>
             )}
           </div>
@@ -127,8 +164,8 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
             <button
               type="button"
               onClick={() =>
-                toast.message("Billing not enabled", {
-                  description: "Use a promo code to change tiers in this build.",
+                toast.message("Manage in Stripe", {
+                  description: "Use the Stripe customer portal from your account email when enabled, or apply a promo code below.",
                 })
               }
               className="px-6 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300"
@@ -358,11 +395,22 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
                   </li>
                 ))}
               </ul>
-              {getTierIndex() !== index && (
-                <button className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-lg transition-all font-medium">
-                  {index > getTierIndex() ? "Upgrade" : "Current"}
-                </button>
-              )}
+              {getTierIndex() !== index &&
+                (index > getTierIndex() ? (
+                  <button
+                    type="button"
+                    disabled={stripeBusy || index === 0}
+                    onClick={() => {
+                      if (index === 1) void startStripeCheckout("base");
+                      else if (index === 2) void startStripeCheckout("pro");
+                    }}
+                    className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-lg transition-all font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {stripeBusy ? "Redirecting…" : "Subscribe"}
+                  </button>
+                ) : (
+                  <p className="text-center text-sm text-slate-500 dark:text-slate-400">Lower tier</p>
+                ))}
             </div>
           ))}
         </div>
@@ -403,18 +451,64 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
           <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h3 className="text-slate-900 dark:text-white">Privacy & Security</h3>
         </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Download includes nutrition snapshots, library saves, collections, and profile data stored in this browser.
+          Server-side data may also exist in Supabase for signed-in users.
+        </p>
         <div className="space-y-3">
-          <button className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300">
-            Download your data
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const data = buildLocalDataExport();
+                downloadJsonFile(`platemate-export-${new Date().toISOString().slice(0, 10)}.json`, data);
+                toast.success("Download started.");
+              } catch {
+                toast.error("Could not build export.");
+              }
+            }}
+            className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+          >
+            Download your data (JSON)
           </button>
-          <button className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300">
+          <Link
+            href="/privacy"
+            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+          >
             Privacy policy
-          </button>
-          <button className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300">
+          </Link>
+          <Link
+            href="/terms"
+            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+          >
             Terms of service
-          </button>
-          <button className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-600 dark:text-red-400">
-            Delete account
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                typeof window !== "undefined" &&
+                !window.confirm(
+                  "This will sign you out and remove Platemate data stored in this browser. Your Supabase account will still exist until you delete it in the Supabase dashboard or through your host. Continue?",
+                )
+              ) {
+                return;
+              }
+              for (const k of LOCAL_CLEAR_KEYS) {
+                try {
+                  localStorage.removeItem(k);
+                } catch {
+                  /* ignore */
+                }
+              }
+              void signOut().then(() => {
+                toast.success("Local data cleared. Signed out.");
+                window.location.href = "/login";
+              });
+            }}
+            className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-600 dark:text-red-400"
+          >
+            Delete local data &amp; sign out
           </button>
         </div>
       </div>

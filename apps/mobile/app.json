@@ -25,8 +25,17 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "extra": {
+      "platemateApiUrl": ""
+    },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Platemate to scan product barcodes."
+        }
+      ],
       [
         "expo-splash-screen",
         {

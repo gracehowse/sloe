@@ -6,6 +6,13 @@ import { normalizeServingToMacros, pickBestServing, servingMassGrams, type Verif
 import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClient";
 import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
+import { rateLimit } from "@/lib/server/rateLimit";
+import {
+  hasFatSecretConfig,
+  hasUsdaConfig,
+  misconfiguredFatSecretResponse,
+  misconfiguredUsdaResponse,
+} from "@/lib/server/serverEnv";
 
 type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
@@ -64,6 +71,14 @@ function normalizeQueryForUsda(name: string): string {
 }
 
 export async function POST(req: Request) {
+  const rl = await rateLimit({ keyPrefix: "api:verify-recipe", limit: 10, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many verification requests. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -87,30 +102,26 @@ export async function POST(req: Request) {
   let fatsecretCfg: ReturnType<typeof fatSecretConfigFromEnv> | null = null;
 
   if (wantUsda) {
-    try {
-      usdaCfg = fdcConfigFromEnv();
-    } catch (e) {
+    if (!hasUsdaConfig()) {
       if (provider === "usda") {
-        return NextResponse.json(
-          { ok: false, error: "missing_usda_env", message: e instanceof Error ? e.message : "Missing USDA key" },
-          { status: 500 },
-        );
+        const r = misconfiguredUsdaResponse();
+        if (r) return r;
       }
       usdaCfg = null;
+    } else {
+      usdaCfg = fdcConfigFromEnv();
     }
   }
 
   if (wantFatSecret) {
-    try {
-      fatsecretCfg = fatSecretConfigFromEnv();
-    } catch (e) {
+    if (!hasFatSecretConfig()) {
       if (provider === "fatsecret") {
-        return NextResponse.json(
-          { ok: false, error: "missing_fatsecret_env", message: e instanceof Error ? e.message : "Missing FatSecret keys" },
-          { status: 500 },
-        );
+        const r = misconfiguredFatSecretResponse();
+        if (r) return r;
       }
       fatsecretCfg = null;
+    } else {
+      fatsecretCfg = fatSecretConfigFromEnv();
     }
   }
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/server/rateLimit";
+import { misconfiguredServiceRoleResponse, ServerEnv } from "@/lib/server/serverEnv";
 
 type Body = {
   barcode: string;
@@ -10,19 +12,24 @@ type Body = {
   createdBy?: string | null;
 };
 
-function env(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing env var ${name}`);
-  return v;
-}
-
 function serverSupabase() {
-  return createClient(env("NEXT_PUBLIC_SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
-    auth: { persistSession: false },
-  });
+  const url = process.env[ServerEnv.NEXT_PUBLIC_SUPABASE_URL]!;
+  const key = process.env[ServerEnv.SUPABASE_SERVICE_ROLE_KEY]!;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 export async function POST(req: Request) {
+  const misconfigured = misconfiguredServiceRoleResponse();
+  if (misconfigured) return misconfigured;
+
+  const rl = await rateLimit({ keyPrefix: "api:barcode-mapping", limit: 30, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Heart, Bookmark, CheckCircle2, AlertCircle, Search, SlidersHorizontal, X, Share2, FolderPlus } from "lucide-react";
+import {
+  Heart,
+  Bookmark,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  SlidersHorizontal,
+  X,
+  Share2,
+  FolderPlus,
+  MessageCircle,
+  MoreHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { UserTier } from "../../types/recipe.ts";
@@ -7,6 +19,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 
 const COLLECTIONS_KEY = "platemate-collections-v1";
+const HEARTS_KEY = "platemate-feed-hearts-v1";
 
 type CollectionRow = { id: string; name: string; recipeIds: string[] };
 
@@ -23,6 +36,28 @@ function loadCollections(): CollectionRow[] {
 
 function saveCollections(rows: CollectionRow[]) {
   localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(rows));
+}
+
+function loadHeartSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(HEARTS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    return new Set(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistHeartSet(ids: Set<string>) {
+  localStorage.setItem(HEARTS_KEY, JSON.stringify([...ids]));
+}
+
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 10_000) return `${Math.round(n / 1000)}k`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
 }
 
 interface DiscoverFeedProps {
@@ -49,12 +84,14 @@ function formatFeedTime(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+type StoryCreator = { key: string; name: string; image: string; recipeId: string };
+
 export function DiscoverFeed({
   userTier,
   initialOpenRecipeId,
   onConsumedDeepLinkRecipe,
 }: DiscoverFeedProps) {
-  const { discoverRecipes, toggleSaveRecipe } = useAppData();
+  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -66,6 +103,22 @@ export function DiscoverFeed({
   const [collections, setCollections] = useState<CollectionRow[]>(() => loadCollections());
   const [newCollectionName, setNewCollectionName] = useState("");
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [heartTick, setHeartTick] = useState(0);
+  const hearts = useMemo(() => loadHeartSet(), [heartTick]);
+
+  const toggleHeart = (recipeId: string) => {
+    const next = loadHeartSet();
+    if (next.has(recipeId)) next.delete(recipeId);
+    else next.add(recipeId);
+    persistHeartSet(next);
+    setHeartTick((t) => t + 1);
+  };
+
+  const likeCount = (recipe: RecipeCard) => {
+    const base = recipe.savedCount;
+    const liked = hearts.has(recipe.id);
+    return formatCompactNumber(base + (liked ? 1 : 0));
+  };
 
   useEffect(() => {
     saveCollections(collections);
@@ -83,6 +136,22 @@ export function DiscoverFeed({
       onConsumedDeepLinkRecipe();
     }
   }, [initialOpenRecipeId, discoverRecipes, onConsumedDeepLinkRecipe]);
+
+  const storyCreators: StoryCreator[] = useMemo(() => {
+    const seen = new Set<string>();
+    const out: StoryCreator[] = [];
+    for (const r of discoverRecipes) {
+      const key = `${r.creatorName}|${r.creatorImage}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ key: r.id, name: r.creatorName, image: r.creatorImage, recipeId: r.id });
+    }
+    return out;
+  }, [discoverRecipes]);
+
+  const scrollToPost = (recipeId: string) => {
+    document.getElementById(`discover-post-${recipeId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const addToCollection = (recipeId: string, collectionId: string) => {
     setCollections((prev) =>
@@ -107,7 +176,7 @@ export function DiscoverFeed({
   const copyShareLink = (recipeId: string) => {
     const url = `${window.location.origin}${window.location.pathname}?recipe=${encodeURIComponent(recipeId)}`;
     void navigator.clipboard.writeText(url).then(
-      () => toast.success("Share link copied"),
+      () => toast.success("Link copied"),
       () => toast.error("Could not copy link"),
     );
   };
@@ -149,302 +218,388 @@ export function DiscoverFeed({
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-6">
-      {/* Search and Filters */}
-      <div className="mb-8 space-y-4">
-        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 shadow-lg">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collections (LTK-style lists)</p>
-          <div className="flex flex-wrap gap-2 mb-3">
+    <div className="max-w-lg mx-auto min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
+      {/* App bar — Instagram-style */}
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white font-[system-ui]">
+          Platemate
+        </h1>
+        <div className="flex flex-1 max-w-[220px] items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            type="search"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+          />
+          {searchQuery ? (
+            <button type="button" onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`p-2 rounded-lg border-2 transition-colors ${
+            showFilters
+              ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+          aria-label="Filters"
+        >
+          <SlidersHorizontal className="w-5 h-5" />
+        </button>
+      </header>
+
+      <div className="px-0 sm:px-2">
+        {/* Community vs curated — honest copy */}
+        {communityFeedCount === 0 ? (
+          <div className="mx-4 mt-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/90 dark:bg-amber-950/25 px-4 py-3 text-sm text-amber-950 dark:text-amber-100/90">
+            <p className="font-medium text-amber-900 dark:text-amber-100/95">No creator posts yet</p>
+            <p className="mt-1 text-amber-900/85 dark:text-amber-200/80 leading-relaxed">
+              When people publish recipes to Platemate, they show up here. Until then, browse{" "}
+              <strong>Platemate picks</strong> — curated recipes so you can explore the app. Each pick is labeled on the
+              card.
+            </p>
             <button
               type="button"
-              onClick={() => setActiveCollectionId(null)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                activeCollectionId === null
-                  ? "bg-violet-600 text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              }`}
+              onClick={() => void refreshDiscoverRecipes()}
+              className="mt-2 text-sm font-semibold text-amber-900 dark:text-amber-100 underline-offset-2 hover:underline"
             >
-              All recipes
+              Refresh feed
             </button>
-            {collections.map((c) => (
+          </div>
+        ) : (
+            <p className="mx-4 mt-4 text-xs text-slate-500 dark:text-slate-400">
+            {communityFeedCount} live creator post{communityFeedCount === 1 ? "" : "s"} · newest first
+          </p>
+        )}
+
+        {/* Stories strip — creator avatars (Instagram-style) */}
+        {storyCreators.length > 0 ? (
+          <div className="mt-4 pl-4 pr-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+              Creators
+            </p>
+            <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {storyCreators.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => scrollToPost(s.recipeId)}
+                  className="flex flex-col items-center gap-1 shrink-0 w-[72px]"
+                >
+                  <span className="rounded-full p-[3px] bg-gradient-to-tr from-amber-400 via-violet-500 to-fuchsia-500">
+                    <img
+                      src={s.image}
+                      alt=""
+                      className="w-[64px] h-[64px] rounded-full object-cover border-2 border-white dark:border-slate-950"
+                    />
+                  </span>
+                  <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate w-full text-center">
+                    {s.name.split(" ")[0]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Collections + filters */}
+        <div className="mx-4 mt-6 space-y-3">
+          <div className="rounded-2xl border border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/70 p-4 shadow-sm">
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Saved collections</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Organize library saves — filter the feed to one list.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
               <button
-                key={c.id}
                 type="button"
-                onClick={() => setActiveCollectionId(c.id)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                  activeCollectionId === c.id
-                    ? "bg-violet-600 text-white"
+                onClick={() => setActiveCollectionId(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                  activeCollectionId === null
+                    ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 }`}
               >
-                {c.name} ({c.recipeIds.length})
+                For you
               </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <input
-              type="text"
-              value={newCollectionName}
-              onChange={(e) => setNewCollectionName(e.target.value)}
-              placeholder="New collection name"
-              className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-            />
-            <button
-              type="button"
-              onClick={createCollection}
-              className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium"
-            >
-              Create
-            </button>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search recipes, ingredients, creators..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-5 py-3.5 rounded-xl border-2 transition-all flex items-center gap-2 font-medium shadow-sm ${
-              showFilters
-                ? "bg-violet-600 text-white border-violet-600"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
-            }`}
-          >
-            <SlidersHorizontal className="w-5 h-5" />
-            Filters
-          </button>
-        </div>
-
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-xl">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Max Calories</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 500"
-                  value={filters.maxCalories}
-                  onChange={(e) => setFilters({ ...filters, maxCalories: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Min Protein (g)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 30"
-                  value={filters.minProtein}
-                  onChange={(e) => setFilters({ ...filters, minProtein: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.verified}
-                    onChange={(e) => setFilters({ ...filters, verified: e.target.checked })}
-                    className="w-5 h-5 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Verified Only</span>
-                </label>
-              </div>
-              <div className="flex items-end">
+              {collections.map((c) => (
                 <button
-                  onClick={() =>
-                    setFilters({ verified: false, maxCalories: "", minProtein: "" })
-                  }
-                  className="text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium"
+                  key={c.id}
+                  type="button"
+                  onClick={() => setActiveCollectionId(c.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                    activeCollectionId === c.id
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  }`}
                 >
-                  Clear All
+                  {c.name} ({c.recipeIds.length})
                 </button>
-              </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                placeholder="New collection"
+                className="flex-1 min-w-[140px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              />
+              <button
+                type="button"
+                onClick={createCollection}
+                className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium"
+              >
+                Add
+              </button>
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="space-y-8">
-        {recipes.map((recipe) => (
-          <article
-            key={recipe.id}
-            className="group bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
-          >
-            {/* Creator Header */}
-            <div className="px-5 py-4 flex items-center gap-3">
-              <div className="relative">
-                <img
-                  src={recipe.creatorImage}
-                  alt={recipe.creatorName}
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-200/50 dark:ring-slate-700/50"
+          {showFilters && (
+            <div className="rounded-2xl border border-slate-200/70 dark:border-slate-800/70 bg-white/90 dark:bg-slate-900/80 p-4 shadow-lg space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-xs font-medium text-slate-600 dark:text-slate-400">Max kcal</label>
+                  <input
+                    type="number"
+                    placeholder="500"
+                    value={filters.maxCalories}
+                    onChange={(e) => setFilters({ ...filters, maxCalories: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-xs font-medium text-slate-600 dark:text-slate-400">Min protein</label>
+                  <input
+                    type="number"
+                    placeholder="30"
+                    value={filters.minProtein}
+                    onChange={(e) => setFilters({ ...filters, minProtein: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.verified}
+                  onChange={(e) => setFilters({ ...filters, verified: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-300 text-violet-600"
                 />
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-900"></div>
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {recipe.feedCreatedAt ? formatFeedTime(recipe.feedCreatedAt) : "Sample catalog"}
-                </p>
-              </div>
-              <button type="button" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="4" r="1.5" />
-                  <circle cx="10" cy="10" r="1.5" />
-                  <circle cx="10" cy="16" r="1.5" />
-                </svg>
+                <span className="text-sm text-slate-700 dark:text-slate-300">Verified macros only</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setFilters({ verified: false, maxCalories: "", minProtein: "" })}
+                className="text-sm font-medium text-violet-600 dark:text-violet-400"
+              >
+                Clear filters
               </button>
             </div>
+          )}
+        </div>
 
-            {/* Recipe Image */}
-            <button type="button" onClick={() => setSelectedRecipe(recipe)} className="w-full relative overflow-hidden">
-              <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-
-            {/* Actions */}
-            <div className="px-5 py-4 flex items-center gap-4">
-              <button
-                type="button"
-                className="text-slate-400 hover:text-red-500 transition-all hover:scale-110 active:scale-95"
-                aria-label="Like"
-              >
-                <Heart className="w-6 h-6" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  copyShareLink(recipe.id);
-                }}
-                className="text-slate-400 hover:text-violet-600 transition-all hover:scale-110 active:scale-95"
-                aria-label="Copy share link"
-              >
-                <Share2 className="w-6 h-6" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleSaveRecipe(recipe.id, userTier);
-                }}
-                className={`transition-all hover:scale-110 active:scale-95 ${
-                  recipe.isSaved ? "text-violet-600" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                }`}
-                aria-label={recipe.isSaved ? "Remove from library" : "Save to library"}
-              >
-                <Bookmark className="w-6 h-6" fill={recipe.isSaved ? "currentColor" : "none"} />
-              </button>
-              {collections.length > 0 ? (
-                <label
-                  className="inline-flex items-center gap-1 text-slate-500"
-                  onClick={(e) => e.stopPropagation()}
+        {/* Feed posts */}
+        <div className="mt-8 space-y-10">
+          {recipes.length === 0 ? (
+            <div className="mx-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-900/40 p-8 text-center">
+              <p className="text-slate-900 dark:text-white font-medium mb-2">Nothing to show</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                {discoverRecipes.length === 0
+                  ? "No recipes loaded. Check connection and seed data, or publish recipes with an author in Supabase."
+                  : "Adjust search or filters, or switch back to For you."}
+              </p>
+              {discoverRecipes.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilters({ verified: false, maxCalories: "", minProtein: "" });
+                    setActiveCollectionId(null);
+                  }}
+                  className="text-sm font-semibold text-violet-600 dark:text-violet-400"
                 >
-                  <FolderPlus className="w-5 h-5" />
-                  <select
-                    className="text-xs bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 max-w-[120px]"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const cid = e.target.value;
-                      if (cid) addToCollection(recipe.id, cid);
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="" disabled>
-                      Collection…
-                    </option>
-                    {collections.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  Reset
+                </button>
               ) : null}
-              <span className="text-sm text-slate-500 dark:text-slate-400 ml-auto flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
-                {recipe.savedCount.toLocaleString()} saved
-              </span>
             </div>
+          ) : null}
 
-            {/* Recipe Details */}
-            <div className="px-5 pb-5">
-              <button type="button" onClick={() => setSelectedRecipe(recipe)} className="text-left w-full">
-                <h3 className="mb-4 text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{recipe.title}</h3>
-              </button>
-
-              {/* Verified Macro Display */}
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-200/50 dark:border-slate-700/50">
-                <div className="flex items-center gap-2 mb-3">
-                  {recipe.isVerified ? (
-                    <>
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-950/30 rounded-full">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Verified</span>
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">nutrition per serving</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/30 rounded-full">
-                        <AlertCircle className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
-                        <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Estimate</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{recipe.calories}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{recipe.protein}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{recipe.carbs}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{recipe.fat}g</p>
-                  </div>
-                </div>
-
-                {/* Creator Discrepancy Warning */}
-                {recipe.creatorCalories && Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-start gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200/50 dark:border-orange-800/50">
-                      <AlertCircle className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-orange-700 dark:text-orange-300">
-                        Creator stated: {recipe.creatorCalories} kcal (
-                        {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
-                      </p>
+          {recipes.map((recipe) => {
+            const isCommunity = recipe.feedSource === "community";
+            const isCatalog = recipe.feedSource === "catalog";
+            const liked = hearts.has(recipe.id);
+            return (
+              <article
+                key={recipe.id}
+                id={`discover-post-${recipe.id}`}
+                className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-y sm:border sm:rounded-xl overflow-hidden shadow-sm"
+              >
+                {/* Post header */}
+                <div className="flex items-center gap-3 px-3 py-3">
+                  <button
+                    type="button"
+                    onClick={() => scrollToPost(recipe.id)}
+                    className="relative shrink-0"
+                    aria-hidden
+                  >
+                    <img
+                      src={recipe.creatorImage}
+                      alt=""
+                      className="w-9 h-9 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                    />
+                    {isCommunity ? (
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+                    ) : null}
+                  </button>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{recipe.creatorName}</p>
+                      {isCatalog ? (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300">
+                          Platemate pick
+                        </span>
+                      ) : null}
+                      {isCommunity ? (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+                          Live
+                        </span>
+                      ) : null}
                     </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {recipe.feedCreatedAt ? formatFeedTime(recipe.feedCreatedAt) : isCatalog ? "Curated recipe" : ""}
+                    </p>
                   </div>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
+                  <button
+                    type="button"
+                    onClick={() => copyShareLink(recipe.id)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
+                    aria-label="Copy link"
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Media — square like Instagram */}
+                <button type="button" onClick={() => setSelectedRecipe(recipe)} className="block w-full bg-black/5 dark:bg-black/20">
+                  <img
+                    src={recipe.image}
+                    alt={recipe.title}
+                    className="w-full aspect-square object-cover"
+                  />
+                </button>
+
+                {/* Actions */}
+                <div className="flex items-center px-3 pt-3">
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => toggleHeart(recipe.id)}
+                      className={`p-1 -m-1 transition-transform active:scale-90 ${liked ? "text-red-500" : "text-slate-800 dark:text-slate-200"}`}
+                      aria-label={liked ? "Unlike" : "Like"}
+                    >
+                      <Heart className="w-7 h-7" fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.75} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRecipe(recipe)}
+                      className="p-1 -m-1 text-slate-800 dark:text-slate-200"
+                      aria-label="Open recipe"
+                    >
+                      <MessageCircle className="w-7 h-7" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyShareLink(recipe.id)}
+                      className="p-1 -m-1 text-slate-800 dark:text-slate-200"
+                      aria-label="Share link"
+                    >
+                      <Share2 className="w-7 h-7" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleSaveRecipe(recipe.id, userTier);
+                    }}
+                    className={`p-1 -m-1 ml-auto ${recipe.isSaved ? "text-violet-600" : "text-slate-800 dark:text-slate-200"}`}
+                    aria-label="Save"
+                  >
+                    <Bookmark className="w-7 h-7" fill={recipe.isSaved ? "currentColor" : "none"} />
+                  </button>
+                </div>
+
+                <p className="px-3 pt-2 text-sm text-slate-900 dark:text-white">
+                  <span className="font-semibold">{likeCount(recipe)} likes</span>
+                </p>
+
+                {/* Caption */}
+                <div className="px-3 pb-1 pt-1">
+                  <p className="text-sm text-slate-900 dark:text-white leading-snug">
+                    <span className="font-semibold">{recipe.creatorName}</span>{" "}
+                    <span className="font-normal">{recipe.title}</span>
+                  </p>
+                </div>
+
+                {/* Macros — compact, “details” feel */}
+                <div className="px-3 pb-3 flex flex-wrap items-center gap-2 text-xs">
+                  {recipe.isVerified ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Estimate
+                    </span>
+                  )}
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {recipe.calories} kcal · P {recipe.protein}g · C {recipe.carbs}g · F {recipe.fat}g
+                  </span>
+                </div>
+
+                {collections.length > 0 ? (
+                  <div className="px-3 pb-4 flex items-center gap-2">
+                    <FolderPlus className="w-4 h-4 text-slate-400 shrink-0" />
+                    <select
+                      className="flex-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const cid = e.target.value;
+                        if (cid) addToCollection(recipe.id, cid);
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="" disabled>
+                        Add to collection…
+                      </option>
+                      {collections.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {recipe.creatorCalories && Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 ? (
+                  <div className="mx-3 mb-3 px-3 py-2 rounded-lg bg-orange-50/90 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/50">
+                    <p className="text-[11px] text-orange-800 dark:text-orange-300">
+                      Creator stated {recipe.creatorCalories} kcal (
+                      {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% vs our estimate)
+                    </p>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

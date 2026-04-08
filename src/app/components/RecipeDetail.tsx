@@ -260,8 +260,15 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
 
   if (!isCatalogRecipe && dbLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-600 dark:text-slate-400">
-        Loading recipe…
+      <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
+        <div className="h-8 w-48 rounded-md bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        <div className="aspect-video w-full rounded-xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        <div className="space-y-2">
+          <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+          <div className="h-4 w-5/6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+          <div className="h-4 w-4/6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        </div>
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">Loading recipe…</p>
       </div>
     );
   }

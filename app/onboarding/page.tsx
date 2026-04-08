@@ -16,6 +16,8 @@ import {
 import { saveLocalProfile } from "../../src/lib/profile/profileStorage.ts";
 import { Checkbox } from "../../src/app/components/ui/checkbox.tsx";
 import { toast } from "sonner";
+import { AppLoadingSkeleton } from "../../src/app/components/AppLoadingSkeleton.tsx";
+import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../src/lib/units/imperial.ts";
 
 const ACTIVITY_LEVELS: Array<{ value: ActivityLevel; label: string; desc: string }> = [
   { value: "sedentary", label: "Sedentary", desc: "Little to no exercise" },
@@ -60,6 +62,10 @@ export default function OnboardingPage() {
   const [age, setAge] = useState<string>("28");
   const [heightCm, setHeightCm] = useState<string>("170");
   const [weightKg, setWeightKg] = useState<string>("65");
+  /** Display-only for imperial inputs (synced from cm/kg). */
+  const [heightFt, setHeightFt] = useState("5");
+  const [heightIn, setHeightIn] = useState("7");
+  const [weightLb, setWeightLb] = useState("143");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("moderate");
   const [goal, setGoal] = useState<Goal>("maintain");
   const [dietary, setDietary] = useState<string[]>([]);
@@ -68,6 +74,16 @@ export default function OnboardingPage() {
   const [targetsMode, setTargetsMode] = useState<"auto" | "manual">("auto");
   const [manualTargets, setManualTargets] = useState<MacroTargets>({ ...DEFAULT_MACRO_TARGETS });
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
+
+  useEffect(() => {
+    const cm = coerceInt(heightCm) ?? 170;
+    const kg = Number(weightKg.replace(",", "."));
+    const safeKg = Number.isFinite(kg) && kg > 0 ? kg : 65;
+    const { feet, inches } = cmToFeetInches(cm);
+    setHeightFt(String(feet));
+    setHeightIn(String(inches));
+    setWeightLb(kgToLb(safeKg).toFixed(1));
+  }, [measurementSystem, heightCm, weightKg]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,11 +249,7 @@ export default function OnboardingPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center text-slate-600 dark:text-slate-300">
-        Loading…
-      </div>
-    );
+    return <AppLoadingSkeleton label="Loading your profile…" />;
   }
 
   return (
@@ -291,6 +303,18 @@ export default function OnboardingPage() {
               className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
             />
 
+            <div className="mt-5">
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Units</label>
+              <select
+                value={measurementSystem}
+                onChange={(e) => setMeasurementSystem(e.target.value as "metric" | "imperial")}
+                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              >
+                <option value="metric">Metric (cm, kg)</option>
+                <option value="imperial">Imperial (ft/in, lb)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 mt-5">
               <div>
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -316,28 +340,93 @@ export default function OnboardingPage() {
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 />
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Height (cm)
-                </label>
-                <input
-                  type="number"
-                  value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Weight (kg)
-                </label>
-                <input
-                  type="number"
-                  value={weightKg}
-                  onChange={(e) => setWeightKg(e.target.value)}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
+              {measurementSystem === "metric" ? (
+                <>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Height (cm)
+                    </label>
+                    <input
+                      type="number"
+                      value={heightCm}
+                      onChange={(e) => setHeightCm(e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Weight (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={weightKg}
+                      onChange={(e) => setWeightKg(e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Height (ft)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={heightFt}
+                        onChange={(e) => setHeightFt(e.target.value)}
+                        onBlur={() => {
+                          const ft = Number(heightFt);
+                          const inch = Number(heightIn);
+                          if (Number.isFinite(ft) && Number.isFinite(inch) && inch >= 0 && inch < 12) {
+                            setHeightCm(String(Math.round(feetInchesToCm(ft, inch))));
+                          }
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Height (in)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={11}
+                        value={heightIn}
+                        onChange={(e) => setHeightIn(e.target.value)}
+                        onBlur={() => {
+                          const ft = Number(heightFt);
+                          const inch = Number(heightIn);
+                          if (Number.isFinite(ft) && Number.isFinite(inch) && inch >= 0 && inch < 12) {
+                            setHeightCm(String(Math.round(feetInchesToCm(ft, inch))));
+                          }
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Weight (lb)
+                    </label>
+                    <input
+                      type="number"
+                      value={weightLb}
+                      onChange={(e) => setWeightLb(e.target.value)}
+                      onBlur={() => {
+                        const lb = Number(weightLb.replace(",", "."));
+                        if (Number.isFinite(lb) && lb > 0) {
+                          setWeightKg(String(Number(lbToKg(lb).toFixed(1))));
+                        }
+                      }}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-5">
@@ -525,19 +614,6 @@ export default function OnboardingPage() {
               </label>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-200/70 dark:border-slate-800/70">
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                Units
-              </label>
-              <select
-                value={measurementSystem}
-                onChange={(e) => setMeasurementSystem(e.target.value as "metric" | "imperial")}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-              >
-                <option value="metric">Metric</option>
-                <option value="imperial">Imperial</option>
-              </select>
-            </div>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
 import { normalizeMacroTargets } from "../../types/profile.ts";
+import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
 
 interface ProfileProps {
@@ -19,6 +20,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
     setNutritionTargets,
     preferActivityAdjustedCalories,
     setPreferActivityAdjustedCalories,
+    setProfileMeasurementSystem,
   } = useAppData();
   const [saving, setSaving] = useState(false);
   const [isEditingTargets, setIsEditingTargets] = useState(false);
@@ -32,6 +34,10 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
   const [sex, setSex] = useState<"male" | "female">("male");
   const [activityLevel, setActivityLevel] = useState<"sedentary" | "light" | "moderate" | "active" | "very_active">("moderate");
   const [goal, setGoal] = useState<"cut" | "maintain" | "bulk">("maintain");
+  const [measurementSystem, setMeasurementSystem] = useState<"metric" | "imperial">("metric");
+  const [heightFt, setHeightFt] = useState("5");
+  const [heightIn, setHeightIn] = useState("10");
+  const [weightLb, setWeightLb] = useState("165");
 
   useEffect(() => {
     let cancelled = false;
@@ -41,7 +47,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal, measurement_system")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
@@ -52,6 +58,9 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
       if (profile.sex) setSex((profile.sex as "male" | "female") ?? "male");
       if (profile.activity_level) setActivityLevel(profile.activity_level as typeof activityLevel);
       if (profile.goal) setGoal(profile.goal as typeof goal);
+      if (profile.measurement_system === "imperial" || profile.measurement_system === "metric") {
+        setMeasurementSystem(profile.measurement_system);
+      }
     })();
     return () => {
       cancelled = true;
@@ -61,6 +70,13 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
   useEffect(() => {
     setActivityAdjustPref(preferActivityAdjustedCalories);
   }, [preferActivityAdjustedCalories]);
+
+  useEffect(() => {
+    const { feet, inches } = cmToFeetInches(height);
+    setHeightFt(String(feet));
+    setHeightIn(String(inches));
+    setWeightLb(kgToLb(weight).toFixed(1));
+  }, [measurementSystem, height, weight]);
 
   // Calculate BMR using Mifflin-St Jeor
   const calculateBMR = () => {
@@ -156,6 +172,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
             weight_kg: weight,
             activity_level: activityLevel,
             goal,
+            measurement_system: measurementSystem,
             target_calories: manualTargets.calories,
             target_protein: manualTargets.protein,
             target_carbs: manualTargets.carbs,
@@ -174,6 +191,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
 
       setNutritionTargets(normalizeMacroTargets(manualTargets));
       setPreferActivityAdjustedCalories(activityAdjustPref);
+      setProfileMeasurementSystem(measurementSystem);
       setIsEditingTargets(false);
       toast.success("Saved profile");
     } finally {
@@ -255,13 +273,25 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
               <h3 className="text-slate-900 dark:text-white">Calculate Your Targets</h3>
             </div>
 
+            <div className="mb-6">
+              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Units</label>
+              <select
+                value={measurementSystem}
+                onChange={(e) => setMeasurementSystem(e.target.value as "metric" | "imperial")}
+                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              >
+                <option value="metric">Metric (cm, kg)</option>
+                <option value="imperial">Imperial (ft/in, lb)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Age</label>
                 <input
                   type="number"
                   value={age}
-                  onChange={(e) => setAge(parseInt(e.target.value))}
+                  onChange={(e) => setAge(parseInt(e.target.value, 10))}
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 />
               </div>
@@ -276,24 +306,84 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
                   <option value="female">Female</option>
                 </select>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Weight (kg)</label>
-                <input
-                  type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(parseInt(e.target.value))}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (cm)</label>
-                <input
-                  type="number"
-                  value={height}
-                  onChange={(e) => setHeight(parseInt(e.target.value))}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-              </div>
+              {measurementSystem === "metric" ? (
+                <>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Weight (kg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={weight}
+                      onChange={(e) => setWeight(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (cm)</label>
+                    <input
+                      type="number"
+                      value={height}
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (ft)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={heightFt}
+                        onChange={(e) => setHeightFt(e.target.value)}
+                        onBlur={() => {
+                          const ft = Number(heightFt);
+                          const inch = Number(heightIn);
+                          if (Number.isFinite(ft) && Number.isFinite(inch) && inch >= 0 && inch < 12) {
+                            setHeight(Math.round(feetInchesToCm(ft, inch)));
+                          }
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (in)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={heightIn}
+                        onChange={(e) => setHeightIn(e.target.value)}
+                        onBlur={() => {
+                          const ft = Number(heightFt);
+                          const inch = Number(heightIn);
+                          if (Number.isFinite(ft) && Number.isFinite(inch) && inch >= 0 && inch < 12) {
+                            setHeight(Math.round(feetInchesToCm(ft, inch)));
+                          }
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Weight (lb)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={weightLb}
+                      onChange={(e) => setWeightLb(e.target.value)}
+                      onBlur={() => {
+                        const lb = Number(weightLb.replace(",", "."));
+                        if (Number.isFinite(lb) && lb > 0) {
+                          setWeight(Math.round(lbToKg(lb) * 10) / 10);
+                        }
+                      }}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mb-6">

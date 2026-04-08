@@ -1,6 +1,7 @@
 "use client";
 
 import App from "../src/app/App.tsx";
+import { AppLoadingSkeleton } from "../src/app/components/AppLoadingSkeleton.tsx";
 import { Suspense, useEffect, useState } from "react";
 import { supabase } from "../src/lib/supabase/browserClient.ts";
 
@@ -94,11 +95,7 @@ export default function Page() {
   }, [authed, userId]);
 
   if (!ready) {
-    return (
-      <div className="min-h-screen grid place-items-center text-slate-600 dark:text-slate-300">
-        Loading…
-      </div>
-    );
+    return <AppLoadingSkeleton label="Starting Platemate…" />;
   }
 
   if (!authed) {
@@ -110,21 +107,11 @@ export default function Page() {
   }
 
   if (!checkedProfile) {
-    return (
-      <div className="min-h-screen grid place-items-center text-slate-600 dark:text-slate-300">
-        Loading your profile…
-      </div>
-    );
+    return <AppLoadingSkeleton label="Loading your profile…" />;
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen grid place-items-center text-slate-600 dark:text-slate-300">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<AppLoadingSkeleton label="Loading app…" />}>
       <App />
     </Suspense>
   );

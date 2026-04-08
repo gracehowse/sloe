@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Home, BookMarked, Calendar, User, Sparkles, Target, ShoppingCart, Settings as SettingsIcon, ChefHat, LogOut } from "lucide-react";
+import {
+  Home,
+  BookMarked,
+  Calendar,
+  User,
+  Sparkles,
+  Target,
+  ShoppingCart,
+  Settings as SettingsIcon,
+  ChefHat,
+  LogOut,
+} from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { Library } from "./components/Library.tsx";
 import { MealPlanner } from "./components/MealPlanner.tsx";
@@ -153,7 +164,7 @@ export default function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Navigation Sidebar */}
-        <nav className="w-72 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col shadow-lg">
+        <nav className="hidden md:flex w-72 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border-r border-slate-200/50 dark:border-slate-800/50 flex-col shadow-lg">
           <div className="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
             <button
               onClick={() => navigateToView("discover")}
@@ -263,8 +274,74 @@ export default function App() {
         </nav>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto">{renderView()}</main>
+        <main className="flex-1 overflow-auto pb-20 md:pb-0">{renderView()}</main>
       </div>
+
+      {/* Bottom tabs (mobile) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto px-2 py-2 grid grid-cols-5 gap-1">
+          <button
+            type="button"
+            onClick={() => navigateToView("discover")}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+              currentView === "discover"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            Discover
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToView("library")}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+              currentView === "library"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <BookMarked className="w-5 h-5" />
+            Library
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToView("planner")}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+              currentView === "planner"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Calendar className="w-5 h-5" />
+            Plan
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToView("tracker")}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+              currentView === "tracker"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Target className="w-5 h-5" />
+            Track
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToView("settings")}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+              currentView === "settings"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <SettingsIcon className="w-5 h-5" />
+            Settings
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
