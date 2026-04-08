@@ -98,6 +98,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 ## Related implementation areas in repo
 
+- **Mob-inspired UX / smart-suggestions notes (ingredient overlap, shopping polish):** [`docs/mob-inspired-notes.md`](mob-inspired-notes.md).
 - Nutrition UI: `src/app/components/NutritionTracker.tsx`, `AppDataContext`.
 - Planner: `src/lib/planning/generateMealPlan.ts`, `MealPlanner.tsx`.
 - Feed / social: `DiscoverFeed.tsx`, `RecipeDetail.tsx`, saves and follows in context + Supabase schema.

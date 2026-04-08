@@ -11,6 +11,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { getRecipeById, RECIPE_CATALOG } from "../data/recipeCatalog.ts";
+import { effectivePortionMultiplier, normalizeDayPlans } from "../lib/nutrition/portionMultiplier.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
 import type { DayPlan, LoggedMeal, RecipeCard, ShoppingItem, UserTier } from "../types/recipe.ts";
 import {
@@ -416,7 +417,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               }
             }
           } else if (data?.plan) {
-            setMealPlan(data.plan as DayPlan[]);
+            const normalized = normalizeDayPlans(data.plan);
+            setMealPlan(
+              normalized ?? (Array.isArray(data.plan) ? (data.plan as DayPlan[]) : null),
+            );
           }
         }
       }
@@ -569,7 +573,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const generateShoppingListFromPlan = useCallback(async () => {
-    const { generateShoppingListFromRecipeTitlesAsync } = await import(
+    const { generateShoppingListFromRecipeEntriesAsync } = await import(
       "../lib/planning/generateShoppingList.ts"
     );
     const titleToId = (title: string) => {
@@ -578,10 +582,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const u = uploadedRecipes.find((x) => x.title === title);
       return u?.id ?? null;
     };
-    const titles = (mealPlan ?? [])
+    const entries = (mealPlan ?? [])
       .flatMap((d) => d.meals)
-      .map((m) => m.recipeTitle)
-      .filter((t) => Boolean(t && titleToId(t)));
+      .filter((m) => !m.isPlaceholder && m.recipeTitle && titleToId(m.recipeTitle))
+      .map((m) => ({
+        title: m.recipeTitle,
+        multiplier: effectivePortionMultiplier(m.portionMultiplier),
+      }));
     const fetchDbIngredients = async (recipeId: string) => {
       const { data, error } = await supabase
         .from("recipe_ingredients")
@@ -602,8 +609,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         unit: String((row as { unit: string | null }).unit ?? ""),
       }));
     };
-    const list = await generateShoppingListFromRecipeTitlesAsync({
-      recipeTitles: titles,
+    const list = await generateShoppingListFromRecipeEntriesAsync({
+      entries,
       recipeTitleToId: titleToId,
       fetchDbIngredients,
     });

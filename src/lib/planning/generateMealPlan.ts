@@ -1,3 +1,4 @@
+import { dayPlanTotalsFromMeals } from "../nutrition/portionMultiplier.ts";
 import type { DayPlan, DayPlanMeal, RecipeCard } from "../../types/recipe.ts";
 
 /** Daily macro targets + optional tolerance bands for the optimizer. */
@@ -154,6 +155,7 @@ function mealFromRecipe(name: string, recipe: RecipeCard): DayPlanMeal {
     protein: recipe.protein,
     carbs: recipe.carbs,
     fat: recipe.fat,
+    portionMultiplier: 1,
   };
 }
 
@@ -209,15 +211,7 @@ export function generatePlanFromLibrary(input: {
       recentRecipeIds.clear();
     }
     const meals = buildMealsForDay({ savedRecipes, targets, recentRecipeIds });
-    const totals = meals.reduce(
-      (acc, m) => ({
-        calories: acc.calories + m.calories,
-        protein: acc.protein + m.protein,
-        carbs: acc.carbs + m.carbs,
-        fat: acc.fat + m.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    );
+    const totals = dayPlanTotalsFromMeals(meals);
     plans.push({ day: d, meals, totals });
   }
 

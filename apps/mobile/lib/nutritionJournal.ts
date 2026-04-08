@@ -8,6 +8,7 @@ export type JournalMeal = {
   protein: number;
   carbs: number;
   fat: number;
+  portionMultiplier?: number;
   fiberG?: number;
   waterMl?: number;
 };

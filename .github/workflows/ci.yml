@@ -7,6 +7,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Baked into the Next client bundle at build; set repo secrets for real Supabase auth in E2E.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,8 +32,9 @@ jobs:
       - name: E2E (smoke)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: |
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
           npm run test:e2e
-

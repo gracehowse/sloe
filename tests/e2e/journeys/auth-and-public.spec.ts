@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoSeriousA11yViolations } from "../utils/a11y";
 
 /**
  * Human-style journeys: each step reads like “when I do X, I expect Y”.
@@ -19,6 +20,7 @@ test.describe("Public auth journey", () => {
       await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
       await expect(page.getByRole("heading", { name: /^sign in$/i })).toBeVisible();
       await expect(page.getByText(/use your email/i)).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("I expect email and password fields I can type into", async () => {
@@ -38,6 +40,19 @@ test.describe("Public auth journey", () => {
     });
     await test.step("I expect a clear privacy title", async () => {
       await expect(page.getByRole("heading", { name: /privacy/i }).first()).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+  });
+
+  test("when I open /reset-password I see the reset form", async ({ page }) => {
+    await test.step("I open the reset password page", async () => {
+      await page.goto("/reset-password");
+    });
+    await test.step("I expect password fields and update action", async () => {
+      await expect(page.getByRole("heading", { name: /reset password/i })).toBeVisible();
+      await expect(page.getByPlaceholder(/at least 8 characters/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: /update password/i })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
     });
   });
 
@@ -47,6 +62,7 @@ test.describe("Public auth journey", () => {
     });
     await test.step("I expect terms content", async () => {
       await expect(page.getByRole("heading", { name: /terms/i }).first()).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
     });
   });
 });
@@ -61,6 +77,7 @@ test.describe("Unauthenticated app shell", () => {
     await test.step("I expect to be sent to login (client redirect)", async () => {
       await page.waitForURL(/\/login/, { timeout: 15_000 });
       await expect(page.getByRole("heading", { name: /create your account|sign in/i })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
     });
   });
 });

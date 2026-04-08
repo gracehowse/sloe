@@ -31,6 +31,11 @@ import {
   computeLoggingStreak,
   computeWeekLoggedDays,
 } from "../../lib/nutrition/trackerStats.ts";
+import {
+  clampPortionMultiplier,
+  effectivePortionMultiplier,
+  scaledMacro,
+} from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import { TrackerSummaryCard } from "./TrackerSummaryCard.tsx";
 
@@ -154,6 +159,8 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
   const [quickSelected, setQuickSelected] = useState<UsdaFoodDetails | null>(null);
   const [quickGrams, setQuickGrams] = useState(100);
   const [quickMealSlot, setQuickMealSlot] = useState("Lunch");
+  /** Recipe log: scale catalog/saved recipe macros (1 = solo, 2 = shared dinner, etc.). */
+  const [recipePortionMultiplier, setRecipePortionMultiplier] = useState(1);
 
   const recipeOptions = useMemo((): RecipeCard[] => {
     const byId = new Map<string, RecipeCard>();
@@ -267,16 +274,19 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
     if (!recipe) {
       return;
     }
+    const p = clampPortionMultiplier(recipePortionMultiplier);
     addLoggedMeal({
       name: mealSlot,
       recipeTitle: recipe.title,
       time: timeLabel,
-      calories: recipe.calories,
-      protein: recipe.protein,
-      carbs: recipe.carbs,
-      fat: recipe.fat,
+      calories: scaledMacro(recipe.calories, p),
+      protein: scaledMacro(recipe.protein, p),
+      carbs: scaledMacro(recipe.carbs, p),
+      fat: scaledMacro(recipe.fat, p),
+      ...(p !== 1 ? { portionMultiplier: p } : {}),
     });
     setAddOpen(false);
+    setRecipePortionMultiplier(1);
   };
 
   return (
@@ -679,13 +689,24 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
         </div>
 
         <div className="space-y-4">
-          {mealsForSelectedDate.map((meal) => (
+          {mealsForSelectedDate.map((meal) => {
+            const loggedPortion = effectivePortionMultiplier(meal.portionMultiplier);
+            const portionLabel =
+              loggedPortion === Math.floor(loggedPortion) ? `${loggedPortion}×` : `${loggedPortion.toFixed(1)}×`;
+            return (
             <div key={meal.id} className="p-5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700 transition-all">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <span className="inline-block px-3 py-1 bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold mb-2">
-                    {meal.name}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="inline-block px-3 py-1 bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold">
+                      {meal.name}
+                    </span>
+                    {loggedPortion !== 1 ? (
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                        {portionLabel} portions
+                      </span>
+                    ) : null}
+                  </div>
                   <h4 className="text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{meal.time}</p>
                 </div>
@@ -725,7 +746,8 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                 </div>
               ) : null}
             </div>
-          ))}
+            );
+          })}
 
           {mealsForSelectedDate.length === 0 && (
             <div className="text-center py-12">
@@ -753,6 +775,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             setFoodHits(null);
             setFoodSelected(null);
             setFoodGrams(100);
+            setRecipePortionMultiplier(1);
           }
         }}
       >
@@ -814,24 +837,56 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
               </select>
             </label>
             {addMode === "recipe" ? (
-              <label className="grid gap-1">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Recipe</span>
-                <select
-                  value={recipeId}
-                  onChange={(e) => setRecipeId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  disabled={!recipeOptions.length}
-                >
-                  {recipeOptions.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.title}
-                    </option>
-                  ))}
-                </select>
-                {savedRecipesForLibrary.length === 0 && (
-                  <span className="text-xs text-slate-500">Save recipes from Discover to see them here.</span>
-                )}
-              </label>
+              <>
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Recipe</span>
+                  <select
+                    value={recipeId}
+                    onChange={(e) => setRecipeId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    disabled={!recipeOptions.length}
+                  >
+                    {recipeOptions.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}
+                      </option>
+                    ))}
+                  </select>
+                  {savedRecipesForLibrary.length === 0 && (
+                    <span className="text-xs text-slate-500">Save recipes from Discover to see them here.</span>
+                  )}
+                </label>
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800/40">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Portions</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 max-w-[14rem]">
+                    1 = just you · 2 = shared (partner, family plate, double batch)
+                  </span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <button
+                      type="button"
+                      aria-label="Fewer portions"
+                      onClick={() => setRecipePortionMultiplier((m) => clampPortionMultiplier(m - 0.5))}
+                      className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-600 text-lg font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-[3rem] text-center text-sm font-semibold text-slate-900 dark:text-white">
+                      {recipePortionMultiplier === Math.floor(recipePortionMultiplier)
+                        ? recipePortionMultiplier
+                        : recipePortionMultiplier.toFixed(1)}
+                      ×
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="More portions"
+                      onClick={() => setRecipePortionMultiplier((m) => clampPortionMultiplier(m + 0.5))}
+                      className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-600 text-lg font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : addMode === "search" ? (
               <div className="grid gap-2">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Food search (USDA)</span>

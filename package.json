@@ -88,6 +88,7 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@midscene/web": "^1.7.1",
     "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.12",

@@ -1,3 +1,4 @@
+import { normalizeDayPlans } from "../../lib/nutrition/portionMultiplier.ts";
 import type { DayPlan, LoggedMeal, ShoppingItem } from "../../types/recipe.ts";
 import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from "../../types/profile.ts";
 
@@ -40,6 +41,13 @@ export function normalizeLoggedMealRow(m: unknown): LoggedMeal | null {
     fat: Math.max(0, Math.round(Number(o.fat) || 0)),
     ...(typeof o.fiberG === "number" && Number.isFinite(o.fiberG) ? { fiberG: Math.max(0, Math.round(o.fiberG)) } : {}),
     ...(typeof o.waterMl === "number" && Number.isFinite(o.waterMl) ? { waterMl: Math.max(0, Math.round(o.waterMl)) } : {}),
+    ...(typeof o.portionMultiplier === "number" &&
+    Number.isFinite(o.portionMultiplier) &&
+    o.portionMultiplier > 0
+      ? {
+          portionMultiplier: Math.min(8, Math.max(0.5, Math.round(o.portionMultiplier * 2) / 2)),
+        }
+      : {}),
   };
 }
 
@@ -182,6 +190,13 @@ export function loadSnapshot(): PersistedSnapshot {
       }
       nutritionByDay = next;
     }
+    let mealPlan: DayPlan[] | null = base.mealPlan;
+    if (parsed.mealPlan === null) {
+      mealPlan = null;
+    } else if (Array.isArray(parsed.mealPlan)) {
+      mealPlan = normalizeDayPlans(parsed.mealPlan) ?? base.mealPlan;
+    }
+
     return {
       savedRecipeIds: Array.isArray(parsed.savedRecipeIds) ? parsed.savedRecipeIds : base.savedRecipeIds,
       savedAtById:
@@ -190,7 +205,7 @@ export function loadSnapshot(): PersistedSnapshot {
           : base.savedAtById,
       shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
       nutritionByDay,
-      mealPlan: parsed.mealPlan === null || Array.isArray(parsed.mealPlan) ? parsed.mealPlan : base.mealPlan,
+      mealPlan,
       nutritionTargets: normalizeMacroTargets(parsed.nutritionTargets ?? base.nutritionTargets),
       extraWaterByDay:
         parsed.extraWaterByDay && typeof parsed.extraWaterByDay === "object"

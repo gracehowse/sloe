@@ -3,6 +3,12 @@ import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2, AlertCircle, BookMa
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { DEFAULT_PLANNER_BANDS } from "../../lib/planning/generateMealPlan.ts";
+import {
+  clampPortionMultiplier,
+  dayPlanTotalsFromMeals,
+  effectivePortionMultiplier,
+  scaledMacro,
+} from "../../lib/nutrition/portionMultiplier.ts";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -99,16 +105,21 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     });
   };
 
-  const recalcTotals = (meals: DayPlan["meals"]): DayPlan["totals"] => {
-    return meals.reduce(
-      (acc, m) => ({
-        calories: acc.calories + m.calories,
-        protein: acc.protein + m.protein,
-        carbs: acc.carbs + m.carbs,
-        fat: acc.fat + m.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    );
+  const recalcTotals = (meals: DayPlan["meals"]): DayPlan["totals"] => dayPlanTotalsFromMeals(meals);
+
+  const bumpMealPortion = (day: number, mealIndex: number, delta: number) => {
+    setMealPlan((prev) => {
+      if (!prev) return prev;
+      return prev.map((dp) => {
+        if (dp.day !== day) return dp;
+        const meals = dp.meals.map((m, idx) => {
+          if (idx !== mealIndex || m.isPlaceholder) return m;
+          const next = clampPortionMultiplier(effectivePortionMultiplier(m.portionMultiplier) + delta);
+          return { ...m, portionMultiplier: next };
+        });
+        return { ...dp, meals, totals: dayPlanTotalsFromMeals(meals) };
+      });
+    });
   };
 
   const swapMeal = (day: number, mealIndex: number) => {
@@ -144,6 +155,7 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
               protein: nextRecipe.protein,
               carbs: nextRecipe.carbs,
               fat: nextRecipe.fat,
+              portionMultiplier: 1,
             }
           : m,
       );
@@ -163,14 +175,16 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     d.setDate(d.getDate() + (day - 1));
     const key = d.toISOString().slice(0, 10);
     setSelectedDateKey(key);
+    const p = effectivePortionMultiplier(meal.portionMultiplier);
     addLoggedMealForDate(key, {
       name: meal.name,
       recipeTitle: meal.recipeTitle,
       time: "Planned",
-      calories: meal.calories,
-      protein: meal.protein,
-      carbs: meal.carbs,
-      fat: meal.fat,
+      calories: scaledMacro(meal.calories, p),
+      protein: scaledMacro(meal.protein, p),
+      carbs: scaledMacro(meal.carbs, p),
+      fat: scaledMacro(meal.fat, p),
+      ...(p !== 1 ? { portionMultiplier: p } : {}),
     });
     toast.success(`Logged to Nutrition Tracker (Day ${day})`);
   };
@@ -582,12 +596,13 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                       </div>
                     );
                   }
+                  const portion = effectivePortionMultiplier(meal.portionMultiplier);
                   return (
                     <div
                       key={slotKey}
                       className="group backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
                     >
-                      <div className="flex items-start justify-between mb-5">
+                      <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
                         <div>
                           <span className="inline-block px-3 py-1 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold mb-2">
                             {meal.name}
@@ -595,8 +610,32 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                           <h3 className="text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                             {meal.recipeTitle}
                           </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Portions affect day totals, tracker log, and shopping list amounts.
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 px-1 py-1">
+                            <button
+                              type="button"
+                              aria-label="Decrease portions"
+                              onClick={() => bumpMealPortion(dp.day, index, -0.5)}
+                              className="w-9 h-9 rounded-lg text-lg font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700"
+                            >
+                              −
+                            </button>
+                            <span className="min-w-[2.5rem] text-center text-sm font-semibold text-slate-900 dark:text-white">
+                              {portion === Math.floor(portion) ? portion : portion.toFixed(1)}×
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Increase portions"
+                              onClick={() => bumpMealPortion(dp.day, index, 0.5)}
+                              className="w-9 h-9 rounded-lg text-lg font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700"
+                            >
+                              +
+                            </button>
+                          </div>
                           <button
                             type="button"
                             onClick={() => swapMeal(dp.day, index)}
@@ -616,19 +655,27 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                       <div className="grid grid-cols-4 gap-4">
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.calories}</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                            {scaledMacro(meal.calories, portion)}
+                          </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.protein}g</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                            {scaledMacro(meal.protein, portion)}g
+                          </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.carbs}g</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                            {scaledMacro(meal.carbs, portion)}g
+                          </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.fat}g</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                            {scaledMacro(meal.fat, portion)}g
+                          </p>
                         </div>
                       </div>
                     </div>

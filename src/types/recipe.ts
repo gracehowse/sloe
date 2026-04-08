@@ -58,6 +58,11 @@ export interface LoggedMeal {
   protein: number;
   carbs: number;
   fat: number;
+  /**
+   * How many “plates” / people this log represents (1 = solo, 2 = shared dinner, etc.).
+   * Macros on the row are already scaled; this is for display and analytics.
+   */
+  portionMultiplier?: number;
   /** Optional fiber logged with this entry (grams). */
   fiberG?: number;
   /** Optional water logged with this entry (ml). */
@@ -67,10 +72,16 @@ export interface LoggedMeal {
 export interface DayPlanMeal {
   name: string;
   recipeTitle: string;
+  /** Base recipe macros for one portion (multiplier 1). */
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  /**
+   * Scale for this slot (1 = one serving as above, 2 = double / partner, etc.).
+   * Day totals and shopping list use base macros × this value.
+   */
+  portionMultiplier?: number;
   /** True when no saved recipes exist for this slot (should not appear after macro-aware generation). */
   isPlaceholder?: boolean;
 }
