@@ -32,6 +32,7 @@ import {
   computeWeekLoggedDays,
 } from "../../lib/nutrition/trackerStats.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
+import { TrackerSummaryCard } from "./TrackerSummaryCard.tsx";
 
 const RECENT_BARCODE_KEY = "platemate-recent-foods-v1";
 
@@ -290,6 +291,15 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
         </div>
         <p className="text-slate-600 dark:text-slate-400">Track your daily nutrition and hit your targets</p>
       </div>
+
+      <TrackerSummaryCard
+        dateLabel={selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        caloriesToday={totals.calories}
+        calorieTarget={effectiveCalorieTarget}
+        streakDays={streakDays}
+        weekLogged={weekLogged}
+        goalFitPercent={goalFit}
+      />
 
       {/* Date Selector */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">

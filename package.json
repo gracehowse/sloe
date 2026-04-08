@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "seed:discover": "node --import tsx scripts/seed-discover.ts"
+    "seed:discover": "node --import tsx scripts/seed-discover.ts",
+    "verify:production-env": "node --import tsx scripts/verify-production-env.ts"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
