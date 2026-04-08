@@ -12,3 +12,6 @@ tsconfig.tsbuildinfo
 # Cursor
 .cursor/
 
+# Office
+~$*.docx
+
