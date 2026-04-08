@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
+    "test:e2e:ai": "playwright test tests/e2e/ai",
     "seed:discover": "node --import tsx scripts/seed-discover.ts",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts"
   },
@@ -84,6 +85,7 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@midscene/web": "^1.7.1",
     "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/vite": "4.1.12",
