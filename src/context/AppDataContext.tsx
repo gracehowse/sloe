@@ -20,29 +20,14 @@ import {
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
 import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
+import { AnalyticsEvents } from "../lib/analytics/events.ts";
+import { track } from "../lib/analytics/track.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
-import {
-  STORAGE_KEY,
-  dateKey,
-  defaultSnapshot,
-  loadSnapshot,
-  newId,
-  type PersistedSnapshot,
-} from "./appData/persistence.ts";
-
-const FREE_SAVE_LIMIT = 10;
-
-function looksLikeMissingTableError(message: string): boolean {
-  const msg = message ?? "";
-  return (
-    msg.includes("Could not find the table") ||
-    msg.toLowerCase().includes("schema cache") ||
-    msg.toLowerCase().includes("does not exist")
-  );
-}
-
-const DEFAULT_UPLOADED_RECIPE_IMAGE =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+import { dateKey, defaultSnapshot, loadSnapshot, newId } from "./appData/persistence.ts";
+import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
+import { looksLikeMissingTableError } from "./appData/supabaseErrors.ts";
+import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
+import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -75,7 +60,8 @@ interface AppDataContextValue {
   /** Recipes published by real users (Supabase). Catalog picks are excluded. */
   communityFeedCount: number;
   refreshDiscoverRecipes: () => Promise<void>;
-  toggleSaveRecipe: (recipeId: string, tier: UserTier) => void;
+  /** Returns true when a new save was started (not un-save, not blocked by tier limit). */
+  toggleSaveRecipe: (recipeId: string, tier: UserTier) => boolean;
   isRecipeSaved: (recipeId: string) => boolean;
   savedRecipesForLibrary: Array<RecipeCard & { savedAt: Date }>;
   shoppingItems: ShoppingItem[];
@@ -177,78 +163,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return true;
   }, [authedUserId]);
 
-  // If we disabled DB saves due to schema cache/table creation timing, keep retrying in the background.
-  useEffect(() => {
-    if (!authedUserId || dbSavesEnabled) return;
-    let cancelled = false;
-    const delaysMs = [2000, 5000, 15000, 30000];
-    (async () => {
-      for (const delay of delaysMs) {
-        if (cancelled) return;
-        await new Promise((r) => setTimeout(r, delay));
-        if (cancelled) return;
-        const ok = await tryEnableDbSaves();
-        if (ok) return;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId, dbSavesEnabled, tryEnableDbSaves]);
-
-  useEffect(() => {
-    if (!authedUserId || dbMealPlanEnabled) return;
-    let cancelled = false;
-    const delaysMs = [2000, 5000, 15000, 30000];
-    (async () => {
-      for (const delay of delaysMs) {
-        if (cancelled) return;
-        await new Promise((r) => setTimeout(r, delay));
-        if (cancelled) return;
-        const ok = await tryEnableDbMealPlans();
-        if (ok) return;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId, dbMealPlanEnabled, tryEnableDbMealPlans]);
-
-  useEffect(() => {
-    if (!authedUserId || dbNutritionEnabled) return;
-    let cancelled = false;
-    const delaysMs = [2000, 5000, 15000, 30000];
-    (async () => {
-      for (const delay of delaysMs) {
-        if (cancelled) return;
-        await new Promise((r) => setTimeout(r, delay));
-        if (cancelled) return;
-        const ok = await tryEnableDbNutrition();
-        if (ok) return;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId, dbNutritionEnabled, tryEnableDbNutrition]);
-
-  useEffect(() => {
-    if (!authedUserId || dbShoppingEnabled) return;
-    let cancelled = false;
-    const delaysMs = [2000, 5000, 15000, 30000];
-    (async () => {
-      for (const delay of delaysMs) {
-        if (cancelled) return;
-        await new Promise((r) => setTimeout(r, delay));
-        if (cancelled) return;
-        const ok = await tryEnableDbShopping();
-        if (ok) return;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId, dbShoppingEnabled, tryEnableDbShopping]);
+  useRetryEnableDbTable(authedUserId, dbSavesEnabled, tryEnableDbSaves);
+  useRetryEnableDbTable(authedUserId, dbMealPlanEnabled, tryEnableDbMealPlans);
+  useRetryEnableDbTable(authedUserId, dbNutritionEnabled, tryEnableDbNutrition);
+  useRetryEnableDbTable(authedUserId, dbShoppingEnabled, tryEnableDbShopping);
 
   // Load profile basics (tier/display name). Falls back to local profile if needed.
   useEffect(() => {
@@ -558,6 +476,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const plan = generatePlanFromLibrary({ savedRecipes, targets, days });
         setMealPlan(plan);
         toast.success("Meal plan generated");
+        track(AnalyticsEvents.meal_plan_generated, { days });
       } finally {
         setIsGeneratingPlan(false);
       }
@@ -616,6 +535,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setShoppingItems(list);
     toast.success("Shopping list generated");
+    track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
   }, [mealPlan, uploadedRecipes]);
 
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
@@ -762,19 +682,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [selectedDateKey],
   );
 
-  useEffect(() => {
-    const snapshot: PersistedSnapshot = {
-      savedRecipeIds,
-      savedAtById,
-      shoppingItems,
-      nutritionByDay,
-      mealPlan,
-      nutritionTargets,
-      extraWaterByDay,
-      activityBurnKcal,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-  }, [
+  usePersistLocalAppSnapshot({
     savedRecipeIds,
     savedAtById,
     shoppingItems,
@@ -783,7 +691,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     nutritionTargets,
     extraWaterByDay,
     activityBurnKcal,
-  ]);
+  });
 
   const isRecipeSaved = useCallback(
     (recipeId: string) => savedRecipeIds.includes(recipeId),
@@ -791,7 +699,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleSaveRecipe = useCallback(
-    (recipeId: string, tier: UserTier) => {
+    (recipeId: string, tier: UserTier): boolean => {
       const exists = savedRecipeIds.includes(recipeId);
       if (exists) {
         // optimistic
@@ -826,15 +734,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         } else {
           toast.success("Removed from library");
         }
-        return;
+        return false;
       }
       if (tier === "free" && savedRecipeIds.length >= FREE_SAVE_LIMIT) {
         toast.error("Recipe limit reached. Remove a recipe or upgrade to save more.");
-        return;
+        return false;
       }
       const iso = new Date().toISOString();
       setSavedRecipeIds((prev) => [recipeId, ...prev.filter((id) => id !== recipeId)]);
       setSavedAtById((prev) => ({ ...prev, [recipeId]: iso }));
+      track(AnalyticsEvents.recipe_saved, { recipeId });
       if (authedUserId && dbSavesEnabled) {
         supabase
           .from("saves")
@@ -858,6 +767,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } else {
         toast.success("Saved to library");
       }
+      return true;
     },
     [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned],
   );
@@ -902,6 +812,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setNutritionByDay((prev) => {
       const day = prev[dayKey] ?? [];
       return { ...prev, [dayKey]: [...day, { ...meal, id }] };
+    });
+    track(AnalyticsEvents.food_logged, {
+      calories: meal.calories,
+      fromPlanner: meal.time === "Planned",
     });
   }, []);
 

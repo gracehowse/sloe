@@ -25,6 +25,8 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 import { Button } from "./ui/button.tsx";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import {
   computeCalorieGoalFitPercent,
@@ -1169,6 +1171,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                   setBarcodeValue("");
                   setBarcodeOpen(false);
                   toast.success("Logged from barcode");
+                  track(AnalyticsEvents.barcode_lookup, { ok: true });
                 } finally {
                   setBarcodeBusy(false);
                 }

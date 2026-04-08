@@ -1,5 +1,5 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "platemate",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -18,7 +18,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:ai": "playwright test tests/e2e/ai",
     "seed:discover": "node --import tsx scripts/seed-discover.ts",
-    "verify:production-env": "node --import tsx scripts/verify-production-env.ts"
+    "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
+    "smoke:production": "node --import tsx scripts/production-smoke.ts"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

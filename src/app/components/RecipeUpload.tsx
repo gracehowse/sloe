@@ -483,6 +483,11 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
         setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
       }
       toast.success("Imported — review amounts and nutrition before publishing");
+      try {
+        track(AnalyticsEvents.recipe_import_url, { host: new URL(u).hostname });
+      } catch {
+        track(AnalyticsEvents.recipe_import_url, { host: "invalid" });
+      }
     } catch {
       toast.error("Import failed — check the URL or paste a screenshot.");
       setImportHint("Try another URL, or paste a screenshot into the recipe photo area and fill fields manually.");

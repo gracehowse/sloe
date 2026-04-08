@@ -1,11 +1,39 @@
+# Platemate
 
-  # Recipe and Nutrition Platform UI
+Web app for macro-first meal planning, recipe discovery, nutrition logging, and shopping lists. Built with Next.js (App Router), React, Supabase, and Stripe.
 
-  This is a code bundle for Recipe and Nutrition Platform UI. The original project is available at https://www.figma.com/design/AmEqDqg68ueUN1mzDEUKRt/Recipe-and-Nutrition-Platform-UI.
+## Prerequisites
 
-  ## Running the code
+- Node.js 20+ (recommended)
+- npm
 
-  Run `npm i` to install the dependencies.
+## Setup
 
-  Run `npm run dev` to start the development server.
-  
+```bash
+npm install
+```
+
+Copy environment variables from your team vault or Vercel. See [`docs/environment.md`](docs/environment.md) for the full variable matrix.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Next.js dev server (Turbopack) |
+| `npm run build` | Production build |
+| `npm run start` | Run production server locally |
+| `npm run typecheck` | TypeScript check |
+| `npm test` | Unit / integration tests (Vitest) |
+| `npm run test:e2e` | Playwright E2E |
+| `npm run smoke:production` | HTTP smoke against `PLAYWRIGHT_BASE_URL` |
+
+## Documentation
+
+- [Environment variables](docs/environment.md)
+- [Supabase RLS checklist](docs/supabase-rls-checklist.md)
+- [Observability (analytics & errors)](docs/observability.md)
+- [Product roadmap](docs/product-roadmap.md)
+
+## License
+
+Private / all rights reserved unless otherwise stated by the project owners.

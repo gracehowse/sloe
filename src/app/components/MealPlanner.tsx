@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2, AlertCircle, BookMarked, Home } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2, AlertCircle, BookMarked, Home, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 import { DEFAULT_PLANNER_BANDS } from "../../lib/planning/generateMealPlan.ts";
+import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
 import {
   clampPortionMultiplier,
   dayPlanTotalsFromMeals,
@@ -51,6 +55,8 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     addLoggedMealForDate,
     setSelectedDateKey,
     nutritionTargets,
+    toggleSaveRecipe,
+    isRecipeSaved,
   } = useAppData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<DayPlan[] | null>(() => mealPlan);
@@ -216,6 +222,21 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
       return { day: dp.day, cal, pro, carb, fat };
     });
   }, [generatedPlan, mealPlan, targetCalories, targetProtein, targetCarbs, targetFat, calorieBandPct, carbFatBandPct]);
+
+  const titleToId = useCallback(
+    (title: string) => {
+      const catalog = RECIPE_CATALOG.find((r) => r.title === title);
+      if (catalog) return catalog.id;
+      const uploaded = savedRecipesForLibrary.find((r) => r.title === title);
+      return uploaded?.id ?? null;
+    },
+    [savedRecipesForLibrary],
+  );
+
+  const smartSuggestions = useMemo(() => {
+    const plan = generatedPlan ?? mealPlan;
+    return computeSmartRecipeSuggestions({ mealPlan: plan, titleToId });
+  }, [generatedPlan, mealPlan, titleToId]);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -496,6 +517,64 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
         </div>
       ) : generatedPlan ? (
         <div className="space-y-10">
+          {smartSuggestions.length > 0 ? (
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                <h3 className="text-slate-900 dark:text-white">Smart suggestions</h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Catalog recipes that overlap ingredients with your plan—save them to cook with less waste.
+              </p>
+              <ul className="space-y-3">
+                {smartSuggestions.map(({ recipe, sharedIngredients }) => {
+                  const saved = isRecipeSaved(recipe.id);
+                  return (
+                    <li
+                      key={recipe.id}
+                      className="flex flex-wrap items-center gap-4 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/80 dark:bg-slate-800/40"
+                    >
+                      <img
+                        src={recipe.image}
+                        alt={recipe.title}
+                        className="w-16 h-16 rounded-lg object-cover shrink-0"
+                      />
+                      <div className="flex-1 min-w-[12rem]">
+                        <p className="font-medium text-slate-900 dark:text-white">{recipe.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Also uses: {sharedIngredients.slice(0, 5).join(", ")}
+                          {sharedIngredients.length > 5 ? "…" : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={saved}
+                        onClick={() => {
+                          const started = toggleSaveRecipe(recipe.id, userTier);
+                          if (started) {
+                            track(AnalyticsEvents.smart_suggestion_saved, { recipeId: recipe.id });
+                          }
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-violet-500/25"
+                      >
+                        {saved ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Saved
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Add to library
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           {generatedPlan.map((dp) => {
             const summary = daySummaries.find((s) => s.day === dp.day);
             const toneClass = (tone: "ok" | "low" | "high") =>

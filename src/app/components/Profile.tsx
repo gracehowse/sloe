@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -194,6 +196,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
       setProfileMeasurementSystem(measurementSystem);
       setIsEditingTargets(false);
       toast.success("Saved profile");
+      track(AnalyticsEvents.profile_targets_saved, { activityAdjusted: activityAdjustPref });
     } finally {
       setSaving(false);
     }
@@ -544,9 +547,11 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
                   className="mt-0.5"
                 />
                 <span className="text-sm text-slate-600 dark:text-slate-400">
-                  <span className="text-slate-800 dark:text-slate-200 font-medium">Adjust calories for activity (Apple Health)</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-medium">Adjust calories for activity</span>
                   <span className="block mt-1">
-                    Prefer a higher calorie goal on active days when steps and workouts sync (coming soon).
+                    Apple Health sync is not wired yet. When enabled here, the Nutrition tracker uses a{" "}
+                    <strong>manual activity burn</strong> (kcal) you enter to raise your net calorie goal—useful until
+                    automatic sync ships.
                   </span>
                 </span>
               </label>

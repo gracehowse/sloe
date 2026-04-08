@@ -254,12 +254,19 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
                   <span className="hidden print:inline w-6 text-center text-sm text-slate-500">
                     {item.checked ? "☑" : "☐"}
                   </span>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className={`font-medium ${item.checked ? "line-through text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}>
-                      {item.name}
+                      {item.amount} {item.unit} {item.name}
                     </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {item.amount} {item.unit} · {item.from}
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                      {item.from.includes(",") ? (
+                        <>
+                          <span className="font-medium text-slate-600 dark:text-slate-300">Combined from plan: </span>
+                          {item.from}
+                        </>
+                      ) : (
+                        <>From: {item.from}</>
+                      )}
                     </p>
                   </div>
                   <button
