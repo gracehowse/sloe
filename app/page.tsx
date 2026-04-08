@@ -1,9 +1,8 @@
 "use client";
 
 import App from "../src/app/App.tsx";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { supabase } from "../src/lib/supabase/browserClient.ts";
-import { isProfileComplete, loadLocalProfile } from "../src/lib/profile/profileStorage.ts";
 
 export default function Page() {
   const [ready, setReady] = useState(false);
@@ -53,21 +52,16 @@ export default function Page() {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat")
+        .select("target_calories, target_protein, target_carbs, target_fat, age, height_cm, weight_kg, sex, activity_level, goal")
         .eq("id", uid)
         .maybeSingle();
 
       // If Supabase profile table isn't reachable yet, fall back to local profile
       // so users aren't stuck on a loading screen.
       if (error) {
-        const local = loadLocalProfile(uid);
-        const localComplete = isProfileComplete(local);
-        if (!localComplete && typeof window !== "undefined") {
+        // If profiles is temporarily unavailable, send user to onboarding to unblock.
+        if (typeof window !== "undefined") {
           window.location.href = "/onboarding";
-          return;
-        }
-        if (!cancelled) {
-          setCheckedProfile(true);
         }
         return;
       }
@@ -76,16 +70,18 @@ export default function Page() {
         profile?.target_calories &&
           profile?.target_protein &&
           profile?.target_carbs &&
-          profile?.target_fat,
+          profile?.target_fat &&
+          profile?.age &&
+          profile?.height_cm &&
+          profile?.weight_kg &&
+          profile?.sex &&
+          profile?.activity_level &&
+          profile?.goal,
       );
 
-      if (!dbComplete) {
-        const local = loadLocalProfile(uid);
-        const localComplete = isProfileComplete(local);
-        if (!localComplete && typeof window !== "undefined") {
-          window.location.href = "/onboarding";
-          return;
-        }
+      if (!dbComplete && typeof window !== "undefined") {
+        window.location.href = "/onboarding";
+        return;
       }
 
       if (!cancelled) {
@@ -121,6 +117,16 @@ export default function Page() {
     );
   }
 
-  return <App />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center text-slate-600 dark:text-slate-300">
+          Loading…
+        </div>
+      }
+    >
+      <App />
+    </Suspense>
+  );
 }
 

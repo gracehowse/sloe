@@ -1,14 +1,25 @@
-import type { UserProfile } from "../../types/profile.ts";
+import { normalizeMacroTargets, type UserProfile } from "../../types/profile.ts";
 
-const KEY = "platemate-profile-v1";
+const KEY = "platemate-profile-v2";
+
+const LEGACY_KEY = "platemate-profile-v1";
 
 export function loadLocalProfile(expectedUserId?: string | null): UserProfile | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    let raw = localStorage.getItem(KEY);
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_KEY);
+    }
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as UserProfile;
+    const parsed = JSON.parse(raw) as UserProfile & { preferActivityAdjustedCalories?: boolean };
     if (expectedUserId && parsed?.id && parsed.id !== expectedUserId) {
       return null;
+    }
+    if (parsed.preferActivityAdjustedCalories === undefined) {
+      parsed.preferActivityAdjustedCalories = false;
+    }
+    if (parsed.targets) {
+      parsed.targets = normalizeMacroTargets(parsed.targets);
     }
     return parsed;
   } catch {
@@ -17,7 +28,12 @@ export function loadLocalProfile(expectedUserId?: string | null): UserProfile | 
 }
 
 export function saveLocalProfile(profile: UserProfile): void {
-  localStorage.setItem(KEY, JSON.stringify(profile));
+  const normalized: UserProfile = {
+    ...profile,
+    preferActivityAdjustedCalories: profile.preferActivityAdjustedCalories ?? false,
+    targets: profile.targets ? normalizeMacroTargets(profile.targets) : null,
+  };
+  localStorage.setItem(KEY, JSON.stringify(normalized));
 }
 
 export function clearLocalProfile(): void {

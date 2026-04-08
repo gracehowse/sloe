@@ -1,16 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calculator, TrendingUp, Activity, User, Crown, LineChart, Target } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { toast } from "sonner";
+import { normalizeMacroTargets } from "../../types/profile.ts";
+import { Checkbox } from "./ui/checkbox.tsx";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
   displayName?: string | null;
+  onUpgrade?: () => void;
 }
 
-export function Profile({ userTier, displayName }: ProfileProps) {
+export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
-  const { nutritionTargets } = useAppData();
+  const {
+    nutritionTargets,
+    setNutritionTargets,
+    preferActivityAdjustedCalories,
+    setPreferActivityAdjustedCalories,
+  } = useAppData();
+  const [saving, setSaving] = useState(false);
+  const [isEditingTargets, setIsEditingTargets] = useState(false);
+  const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
+  const [activityAdjustPref, setActivityAdjustPref] = useState(preferActivityAdjustedCalories);
 
   // User stats
   const [age, setAge] = useState(28);
@@ -45,6 +58,10 @@ export function Profile({ userTier, displayName }: ProfileProps) {
     };
   }, []);
 
+  useEffect(() => {
+    setActivityAdjustPref(preferActivityAdjustedCalories);
+  }, [preferActivityAdjustedCalories]);
+
   // Calculate BMR using Mifflin-St Jeor
   const calculateBMR = () => {
     if (sex === "male") {
@@ -76,11 +93,93 @@ export function Profile({ userTier, displayName }: ProfileProps) {
   const targetProtein = Math.round(weight * 2.2); // 2.2g per kg
   const targetFat = Math.round(targetCalories * 0.25 / 9); // 25% of calories from fat
   const targetCarbs = Math.round((targetCalories - targetProtein * 4 - targetFat * 9) / 4);
+  const targetFiber = Math.max(14, Math.min(45, Math.round((14 * targetCalories) / 1000)));
+  const targetWaterMl = Math.min(4500, Math.max(1500, Math.round(weight * 33)));
 
-  const displayTargets =
+  const displayTargets = normalizeMacroTargets(
     nutritionTargets?.calories && nutritionTargets?.protein
       ? nutritionTargets
-      : { calories: targetCalories, protein: targetProtein, carbs: targetCarbs, fat: targetFat };
+      : {
+          calories: targetCalories,
+          protein: targetProtein,
+          carbs: targetCarbs,
+          fat: targetFat,
+          fiber: targetFiber,
+          waterMl: targetWaterMl,
+        },
+  );
+
+  useEffect(() => {
+    if (!isEditingTargets) {
+      setManualTargets({ ...displayTargets });
+    }
+  }, [
+    displayTargets.calories,
+    displayTargets.protein,
+    displayTargets.carbs,
+    displayTargets.fat,
+    displayTargets.fiber,
+    displayTargets.waterMl,
+    isEditingTargets,
+  ]);
+
+  const canSave = useMemo(() => {
+    return (
+      Number.isFinite(manualTargets.calories) &&
+      Number.isFinite(manualTargets.protein) &&
+      Number.isFinite(manualTargets.carbs) &&
+      Number.isFinite(manualTargets.fat) &&
+      Number.isFinite(manualTargets.fiber) &&
+      Number.isFinite(manualTargets.waterMl) &&
+      manualTargets.calories > 0
+    );
+  }, [manualTargets]);
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user.id ?? null;
+      if (!uid) {
+        toast.error("Please sign in again.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: uid,
+            sex,
+            age,
+            height_cm: height,
+            weight_kg: weight,
+            activity_level: activityLevel,
+            goal,
+            target_calories: manualTargets.calories,
+            target_protein: manualTargets.protein,
+            target_carbs: manualTargets.carbs,
+            target_fat: manualTargets.fat,
+            target_fiber_g: manualTargets.fiber,
+            target_water_ml: manualTargets.waterMl,
+            prefer_activity_adjusted_calories: activityAdjustPref,
+          },
+          { onConflict: "id" },
+        );
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      setNutritionTargets(normalizeMacroTargets(manualTargets));
+      setPreferActivityAdjustedCalories(activityAdjustPref);
+      setIsEditingTargets(false);
+      toast.success("Saved profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -111,7 +210,11 @@ export function Profile({ userTier, displayName }: ProfileProps) {
           </div>
         </div>
         {userTier === "free" && (
-          <button className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold">
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold"
+          >
             Upgrade
           </button>
         )}
@@ -259,37 +362,143 @@ export function Profile({ userTier, displayName }: ProfileProps) {
                 <h3 className="text-slate-900 dark:text-white">Your Daily Targets</h3>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.calories}</p>
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.calories}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, calories: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.calories}</p>
+                )}
                 <p className="text-sm text-slate-600 dark:text-slate-400">Calories</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.protein}g</p>
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.protein}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, protein: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.protein}g</p>
+                )}
                 <p className="text-sm text-slate-600 dark:text-slate-400">Protein</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">2.2g per kg</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.carbs}g</p>
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.carbs}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, carbs: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.carbs}g</p>
+                )}
                 <p className="text-sm text-slate-600 dark:text-slate-400">Carbs</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Remainder</p>
               </div>
               <div className="px-6 py-6 text-center">
-                <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fat}g</p>
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.fat}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, fat: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fat}g</p>
+                )}
                 <p className="text-sm text-slate-600 dark:text-slate-400">Fat</p>
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">25% of kcal</p>
               </div>
+              <div className="px-6 py-6 text-center">
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.fiber}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, fiber: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fiber}g</p>
+                )}
+                <p className="text-sm text-slate-600 dark:text-slate-400">Fiber</p>
+              </div>
+              <div className="px-6 py-6 text-center">
+                {isEditingTargets ? (
+                  <input
+                    type="number"
+                    value={manualTargets.waterMl}
+                    onChange={(e) => setManualTargets((p) => ({ ...p, waterMl: Number(e.target.value) }))}
+                    className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.waterMl}</p>
+                )}
+                <p className="text-sm text-slate-600 dark:text-slate-400">Water (ml)</p>
+              </div>
             </div>
-            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800">
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800 space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={activityAdjustPref}
+                  onCheckedChange={(c) => setActivityAdjustPref(c === true)}
+                  disabled={!isEditingTargets}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  <span className="text-slate-800 dark:text-slate-200 font-medium">Adjust calories for activity (Apple Health)</span>
+                  <span className="block mt-1">
+                    Prefer a higher calorie goal on active days when steps and workouts sync (coming soon).
+                  </span>
+                </span>
+              </label>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                All targets are customizable. Click "Edit Targets" to override these values with your own preferences.
+                All targets are customizable. Click &quot;Edit Targets&quot; to override these values with your own preferences.
               </p>
             </div>
           </div>
 
-          <button className="w-full py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium">
-            Edit Targets Manually
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {!isEditingTargets ? (
+              <button
+                type="button"
+                onClick={() => setIsEditingTargets(true)}
+                className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium"
+              >
+                Edit Targets Manually
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingTargets(false);
+                    setManualTargets({ ...displayTargets });
+                    setActivityAdjustPref(preferActivityAdjustedCalories);
+                  }}
+                  className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSave || saving}
+                  onClick={() => void saveProfile()}
+                  className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -305,6 +514,9 @@ export function Profile({ userTier, displayName }: ProfileProps) {
               <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all text-sm font-medium">
                 Log Weight
               </button>
+            </div>
+            <div className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+              Demo data (progress logging is not wired up yet).
             </div>
             <div className="h-64 flex items-end justify-around gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
               {[72, 73, 74, 75, 75.5, 74.8, 75].map((weight, i) => (

@@ -2,6 +2,12 @@
 dist/
 node_modules/
 .DS_Store
+.env.local
+.next
+dist
+node_modules
+test-results
+tsconfig.tsbuildinfo
 
 # Cursor
 .cursor/

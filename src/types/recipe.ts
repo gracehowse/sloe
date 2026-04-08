@@ -11,10 +11,15 @@ export interface RecipeCard {
   protein: number;
   carbs: number;
   fat: number;
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
   isVerified: boolean;
   creatorCalories?: number;
   savedCount: number;
   isSaved: boolean;
+  /** ISO timestamp for feed ordering (uploaded recipes). Catalog demos omit this. */
+  feedCreatedAt?: string;
 }
 
 export interface IngredientRow {
@@ -25,8 +30,11 @@ export interface IngredientRow {
   protein: number;
   carbs: number;
   fat: number;
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
   isVerified: boolean;
-  source: "Open Food Facts" | "Nutritionix" | "USDA";
+  source: "FatSecret" | "Open Food Facts" | "Nutritionix" | "USDA" | "Manual" | "Estimated";
 }
 
 export interface ShoppingItem {
@@ -48,6 +56,10 @@ export interface LoggedMeal {
   protein: number;
   carbs: number;
   fat: number;
+  /** Optional fiber logged with this entry (grams). */
+  fiberG?: number;
+  /** Optional water logged with this entry (ml). */
+  waterMl?: number;
 }
 
 export interface DayPlanMeal {
@@ -57,6 +69,8 @@ export interface DayPlanMeal {
   protein: number;
   carbs: number;
   fat: number;
+  /** True when no saved recipes exist for this slot (should not appear after macro-aware generation). */
+  isPlaceholder?: boolean;
 }
 
 export interface DayPlan {

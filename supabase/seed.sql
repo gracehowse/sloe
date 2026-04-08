@@ -198,3 +198,17 @@ set title = excluded.title,
     carbs = excluded.carbs,
     fat = excluded.fat;
 
+-- Test / dev promo: full Pro access (high max_uses; restrict in production)
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public' and table_name = 'promo_codes'
+  ) then
+    insert into public.promo_codes (code, tier, max_uses)
+    values ('PLATEMATE_PRO', 'pro', 10000)
+    on conflict (code) do nothing;
+  end if;
+end $$;
+

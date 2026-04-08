@@ -1,15 +1,59 @@
-import { useMemo, useState } from "react";
-import { Heart, Bookmark, CheckCircle2, AlertCircle, Search, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Heart, Bookmark, CheckCircle2, AlertCircle, Search, SlidersHorizontal, X, Share2, FolderPlus } from "lucide-react";
+import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 
-interface DiscoverFeedProps {
-  userTier: UserTier;
+const COLLECTIONS_KEY = "platemate-collections-v1";
+
+type CollectionRow = { id: string; name: string; recipeIds: string[] };
+
+function loadCollections(): CollectionRow[] {
+  try {
+    const raw = localStorage.getItem(COLLECTIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CollectionRow[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
+function saveCollections(rows: CollectionRow[]) {
+  localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(rows));
+}
+
+interface DiscoverFeedProps {
+  userTier: UserTier;
+  /** Open a recipe when landing with `?recipe=` (share link). */
+  initialOpenRecipeId?: string | null;
+  onConsumedDeepLinkRecipe?: () => void;
+}
+
+function formatFeedTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function DiscoverFeed({
+  userTier,
+  initialOpenRecipeId,
+  onConsumedDeepLinkRecipe,
+}: DiscoverFeedProps) {
   const { discoverRecipes, toggleSaveRecipe } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -18,13 +62,65 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
     verified: false,
     maxCalories: "",
     minProtein: "",
-    mealType: "all",
-    dietary: "all",
   });
+  const [collections, setCollections] = useState<CollectionRow[]>(() => loadCollections());
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    saveCollections(collections);
+  }, [collections]);
+
+  useEffect(() => {
+    if (!initialOpenRecipeId || !onConsumedDeepLinkRecipe) return;
+    const r = discoverRecipes.find((x) => x.id === initialOpenRecipeId);
+    if (r) {
+      setSelectedRecipe(r);
+      onConsumedDeepLinkRecipe();
+      return;
+    }
+    if (discoverRecipes.length > 0) {
+      onConsumedDeepLinkRecipe();
+    }
+  }, [initialOpenRecipeId, discoverRecipes, onConsumedDeepLinkRecipe]);
+
+  const addToCollection = (recipeId: string, collectionId: string) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId && !c.recipeIds.includes(recipeId)
+          ? { ...c, recipeIds: [...c.recipeIds, recipeId] }
+          : c,
+      ),
+    );
+    toast.success("Saved to collection");
+  };
+
+  const createCollection = () => {
+    const name = newCollectionName.trim();
+    if (!name) return;
+    const id = `col-${Date.now()}`;
+    setCollections((prev) => [...prev, { id, name, recipeIds: [] }]);
+    setNewCollectionName("");
+    toast.success("Collection created — use Add on a recipe");
+  };
+
+  const copyShareLink = (recipeId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?recipe=${encodeURIComponent(recipeId)}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Share link copied"),
+      () => toast.error("Could not copy link"),
+    );
+  };
 
   const recipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    const inCollection = (recipe: RecipeCard) => {
+      if (!activeCollectionId) return true;
+      const c = collections.find((x) => x.id === activeCollectionId);
+      return c ? c.recipeIds.includes(recipe.id) : true;
+    };
     return discoverRecipes.filter((recipe) => {
+      if (!inCollection(recipe)) return false;
       if (q) {
         const hay = `${recipe.title} ${recipe.creatorName}`.toLowerCase();
         if (!hay.includes(q)) {
@@ -44,7 +140,7 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
       }
       return true;
     });
-  }, [discoverRecipes, searchQuery, filters]);
+  }, [discoverRecipes, searchQuery, filters, activeCollectionId, collections]);
 
   if (selectedRecipe) {
     return (
@@ -56,6 +152,52 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
     <div className="max-w-2xl mx-auto py-8 px-6">
       {/* Search and Filters */}
       <div className="mb-8 space-y-4">
+        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 shadow-lg">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collections (LTK-style lists)</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setActiveCollectionId(null)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                activeCollectionId === null
+                  ? "bg-violet-600 text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              }`}
+            >
+              All recipes
+            </button>
+            {collections.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setActiveCollectionId(c.id)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                  activeCollectionId === c.id
+                    ? "bg-violet-600 text-white"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                }`}
+              >
+                {c.name} ({c.recipeIds.length})
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={newCollectionName}
+              onChange={(e) => setNewCollectionName(e.target.value)}
+              placeholder="New collection name"
+              className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+            />
+            <button
+              type="button"
+              onClick={createCollection}
+              className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium"
+            >
+              Create
+            </button>
+          </div>
+        </div>
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -93,34 +235,6 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
           <div className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-xl">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Meal Type</label>
-                <select
-                  value={filters.mealType}
-                  onChange={(e) => setFilters({ ...filters, mealType: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  <option value="all">All Meals</option>
-                  <option value="breakfast">Breakfast</option>
-                  <option value="lunch">Lunch</option>
-                  <option value="dinner">Dinner</option>
-                  <option value="snack">Snack</option>
-                </select>
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Dietary</label>
-                <select
-                  value={filters.dietary}
-                  onChange={(e) => setFilters({ ...filters, dietary: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  <option value="all">All Diets</option>
-                  <option value="vegan">Vegan</option>
-                  <option value="vegetarian">Vegetarian</option>
-                  <option value="keto">Keto</option>
-                  <option value="paleo">Paleo</option>
-                </select>
-              </div>
-              <div>
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Max Calories</label>
                 <input
                   type="number"
@@ -154,7 +268,7 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
               <div className="flex items-end">
                 <button
                   onClick={() =>
-                    setFilters({ verified: false, maxCalories: "", minProtein: "", mealType: "all", dietary: "all" })
+                    setFilters({ verified: false, maxCalories: "", minProtein: "" })
                   }
                   className="text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium"
                 >
@@ -184,7 +298,9 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">2 hours ago</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {recipe.feedCreatedAt ? formatFeedTime(recipe.feedCreatedAt) : "Sample catalog"}
+                </p>
               </div>
               <button type="button" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -215,6 +331,18 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  copyShareLink(recipe.id);
+                }}
+                className="text-slate-400 hover:text-violet-600 transition-all hover:scale-110 active:scale-95"
+                aria-label="Copy share link"
+              >
+                <Share2 className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   toggleSaveRecipe(recipe.id, userTier);
                 }}
                 className={`transition-all hover:scale-110 active:scale-95 ${
@@ -224,6 +352,32 @@ export function DiscoverFeed({ userTier }: DiscoverFeedProps) {
               >
                 <Bookmark className="w-6 h-6" fill={recipe.isSaved ? "currentColor" : "none"} />
               </button>
+              {collections.length > 0 ? (
+                <label
+                  className="inline-flex items-center gap-1 text-slate-500"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FolderPlus className="w-5 h-5" />
+                  <select
+                    className="text-xs bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 max-w-[120px]"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const cid = e.target.value;
+                      if (cid) addToCollection(recipe.id, cid);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="" disabled>
+                      Collection…
+                    </option>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <span className="text-sm text-slate-500 dark:text-slate-400 ml-auto flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
                 {recipe.savedCount.toLocaleString()} saved

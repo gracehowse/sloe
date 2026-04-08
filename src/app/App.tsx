@@ -1,4 +1,7 @@
-import { useState } from "react";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Home, BookMarked, Calendar, User, Sparkles, Target, ShoppingCart, Settings as SettingsIcon, ChefHat, LogOut } from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { Library } from "./components/Library.tsx";
@@ -14,26 +17,93 @@ type View = "discover" | "library" | "planner" | "profile" | "tracker" | "shoppi
 
 export default function App() {
   const { profileTier: userTier, profileDisplayName: displayName, authEmail, signOut } = useAppData();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const deepLinkRecipeId = searchParams.get("recipe");
+  const viewParam = searchParams.get("view");
   const [currentView, setCurrentView] = useState<View>("discover");
+  const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
+
+  const normalizedViewParam = useMemo(() => {
+    if (!viewParam) return null;
+    const v = viewParam.toLowerCase();
+    const allowed: View[] = ["discover", "library", "planner", "profile", "tracker", "shopping", "settings", "upload"];
+    return (allowed as string[]).includes(v) ? (v as View) : null;
+  }, [viewParam]);
+
+  // URL → state (deep links, refresh)
+  useEffect(() => {
+    if (normalizedViewParam && normalizedViewParam !== currentView) {
+      setCurrentView(normalizedViewParam);
+    }
+  }, [normalizedViewParam, currentView]);
+
+  const navigateToView = useCallback(
+    (view: View) => {
+      setCurrentView(view);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("view", view);
+      // Keep deep-linked recipe query if present.
+      const q = params.toString();
+      router.replace(q ? `/?${q}` : "/", { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const clearRecipeQuery = useCallback(() => {
+    router.replace("/", { scroll: false });
+  }, [router]);
+
+  const clearSettingsScrollToPromo = useCallback(() => setSettingsScrollToPromo(false), []);
+
+  const openUpgradePromo = useCallback(() => {
+    setSettingsScrollToPromo(true);
+    navigateToView("settings");
+  }, []);
+
+  useEffect(() => {
+    if (currentView !== "settings") {
+      setSettingsScrollToPromo(false);
+    }
+  }, [currentView]);
 
   const renderView = () => {
     switch (currentView) {
       case "discover":
-        return <DiscoverFeed userTier={userTier} />;
+        return (
+          <DiscoverFeed
+            userTier={userTier}
+            initialOpenRecipeId={deepLinkRecipeId}
+            onConsumedDeepLinkRecipe={deepLinkRecipeId ? clearRecipeQuery : undefined}
+          />
+        );
       case "library":
-        return <Library userTier={userTier} />;
+        return <Library userTier={userTier} onUpgrade={openUpgradePromo} />;
       case "planner":
-        return <MealPlanner userTier={userTier} />;
+        return (
+          <MealPlanner
+            userTier={userTier}
+            onUpgrade={openUpgradePromo}
+            onNavigate={(view) => navigateToView(view)}
+          />
+        );
       case "tracker":
         return <NutritionTracker userTier={userTier} />;
       case "shopping":
-        return <ShoppingList userTier={userTier} />;
+        return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} />;
       case "upload":
-        return <RecipeUpload userTier={userTier} />;
+        return <RecipeUpload userTier={userTier} onUpgrade={openUpgradePromo} />;
       case "settings":
-        return <Settings userTier={userTier} authEmail={authEmail} />;
+        return (
+          <Settings
+            userTier={userTier}
+            authEmail={authEmail}
+            scrollToPromoOnOpen={settingsScrollToPromo}
+            onScrollToPromoConsumed={clearSettingsScrollToPromo}
+          />
+        );
       case "profile":
-        return <Profile userTier={userTier} displayName={displayName} />;
+        return <Profile userTier={userTier} displayName={displayName} onUpgrade={openUpgradePromo} />;
       default:
         return <DiscoverFeed userTier={userTier} />;
     }
@@ -56,7 +126,11 @@ export default function App() {
         </div>
         <div className="flex items-center gap-3">
           {userTier === "free" && (
-            <button className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105">
+            <button
+              type="button"
+              onClick={openUpgradePromo}
+              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105"
+            >
               Upgrade
             </button>
           )}
@@ -82,7 +156,7 @@ export default function App() {
         <nav className="w-72 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col shadow-lg">
           <div className="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
             <button
-              onClick={() => setCurrentView("discover")}
+              onClick={() => navigateToView("discover")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
                 currentView === "discover"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -93,7 +167,7 @@ export default function App() {
               <span className="font-medium">Discover</span>
             </button>
             <button
-              onClick={() => setCurrentView("library")}
+              onClick={() => navigateToView("library")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
                 currentView === "library"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -104,7 +178,7 @@ export default function App() {
               <span className="font-medium">Library</span>
             </button>
             <button
-              onClick={() => setCurrentView("planner")}
+              onClick={() => navigateToView("planner")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group relative ${
                 currentView === "planner"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -118,7 +192,7 @@ export default function App() {
               )}
             </button>
             <button
-              onClick={() => setCurrentView("tracker")}
+              onClick={() => navigateToView("tracker")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
                 currentView === "tracker"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -129,7 +203,7 @@ export default function App() {
               <span className="font-medium">Tracker</span>
             </button>
             <button
-              onClick={() => setCurrentView("shopping")}
+              onClick={() => navigateToView("shopping")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group relative ${
                 currentView === "shopping"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -149,7 +223,7 @@ export default function App() {
                   <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
                 </div>
                 <button
-                  onClick={() => setCurrentView("upload")}
+                  onClick={() => navigateToView("upload")}
                   className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
                     currentView === "upload"
                       ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -164,7 +238,7 @@ export default function App() {
           </div>
           <div className="px-4 pb-6 space-y-2">
             <button
-              onClick={() => setCurrentView("settings")}
+              onClick={() => navigateToView("settings")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 border border-slate-200/50 dark:border-slate-800/50 group ${
                 currentView === "settings"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
@@ -175,7 +249,7 @@ export default function App() {
               <span className="font-medium">Settings</span>
             </button>
             <button
-              onClick={() => setCurrentView("profile")}
+              onClick={() => navigateToView("profile")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 border border-slate-200/50 dark:border-slate-800/50 group ${
                 currentView === "profile"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"

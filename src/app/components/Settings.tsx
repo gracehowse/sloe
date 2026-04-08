@@ -1,14 +1,30 @@
-import { useState } from "react";
-import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, Sparkles, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, Sparkles, Check, Ticket } from "lucide-react";
+import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
   authEmail?: string | null;
+  /** When true (e.g. user tapped header Upgrade), scroll promo into view once */
+  scrollToPromoOnOpen?: boolean;
+  onScrollToPromoConsumed?: () => void;
 }
 
-export function Settings({ userTier, authEmail }: SettingsProps) {
-  const { signOut, profileDisplayName } = useAppData();
+export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
+  const { signOut, profileDisplayName, redeemPromoCode } = useAppData();
+  const promoSectionRef = useRef<HTMLDivElement>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoSubmitting, setPromoSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!scrollToPromoOnOpen) return;
+    const id = requestAnimationFrame(() => {
+      promoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      onScrollToPromoConsumed?.();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [scrollToPromoOnOpen, onScrollToPromoConsumed]);
   const [notifications, setNotifications] = useState({
     newRecipes: true,
     mealReminders: false,
@@ -92,18 +108,91 @@ export function Settings({ userTier, authEmail }: SettingsProps) {
               {userTier === "pro" && "You have full access to all premium features"}
             </p>
             {userTier !== "free" && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Next billing: April 15, 2026</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Billing is not enabled in this build.
+              </p>
             )}
           </div>
           {userTier === "free" ? (
-            <button className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold">
+            <button
+              type="button"
+              onClick={() =>
+                promoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold"
+            >
               Upgrade
             </button>
           ) : (
-            <button className="px-6 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300">
+            <button
+              type="button"
+              onClick={() =>
+                toast.message("Billing not enabled", {
+                  description: "Use a promo code to change tiers in this build.",
+                })
+              }
+              className="px-6 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300"
+            >
               Manage Plan
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Promo code (e.g. testing / partner access) */}
+      <div
+        ref={promoSectionRef}
+        className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Ticket className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <h3 className="text-slate-900 dark:text-white">Promo code</h3>
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Redeem a code to upgrade your plan (one use per account per code).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            placeholder="e.g. PLATEMATE_PRO"
+            autoComplete="off"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+          />
+          <button
+            type="button"
+            disabled={promoSubmitting || !promoCode.trim()}
+            onClick={async () => {
+              setPromoSubmitting(true);
+              try {
+                const result = await redeemPromoCode(promoCode);
+                if (result.ok) {
+                  if (result.alreadyRedeemed) {
+                    toast.success(`Plan confirmed: ${result.tier} (this code was already applied to your account).`);
+                  } else {
+                    toast.success(`Plan updated: ${result.tier}`);
+                  }
+                  setPromoCode("");
+                } else {
+                  const messages: Record<string, string> = {
+                    not_authenticated: "Sign in to redeem a code.",
+                    invalid_code: "Enter a promo code.",
+                    invalid_or_expired: "That code is not valid or has expired.",
+                    already_redeemed: "You have already redeemed this code.",
+                    rpc_error: result.message ?? "Could not redeem code.",
+                    not_deployed: "Promo codes are not available on this environment yet.",
+                  };
+                  toast.error(messages[result.error] ?? "Could not redeem code.");
+                }
+              } finally {
+                setPromoSubmitting(false);
+              }
+            }}
+            className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            {promoSubmitting ? "Applying…" : "Apply"}
+          </button>
         </div>
       </div>
 
@@ -277,6 +366,35 @@ export function Settings({ userTier, authEmail }: SettingsProps) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Product policy (MFP / ReciMe alignment) */}
+      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          <h3 className="text-slate-900 dark:text-white">Nutrition transparency</h3>
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+          Activity-adjusted calories use a simple net model: net goal = base goal + activity adjustment when you opt in
+          (see Tracker for live copy). When Apple Health ships, we will document dedupe rules so steps and manual workouts
+          are not double-counted.
+        </p>
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Free vs paid boundaries</h4>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+          Basic diary and macro logging stay accessible on Free. Base adds unlimited saves, macro-aware planning, and merged shopping lists. Pro adds creator tools and higher import/analytics limits — not basic logging.
+        </p>
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Data quality</h4>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+          We prioritize verified sources (structured recipes, Open Food Facts for barcodes) over crowdsourced chaos. Conflicting entries are merged or labeled for review.
+        </p>
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Roadmap (deferred)</h4>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+          Voice log and meal-scan are intentionally later. Grocery retailer checkout waits until export/share and aisle merge feel great.
+        </p>
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Creator commerce</h4>
+        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          Sponsored or affiliate content will show clear disclosure in-feed and on recipe detail, consistent with LTK-style expectations.
+        </p>
       </div>
 
       {/* Privacy */}

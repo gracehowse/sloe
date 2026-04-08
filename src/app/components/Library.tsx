@@ -6,9 +6,10 @@ import { RecipeDetail } from "./RecipeDetail";
 
 interface LibraryProps {
   userTier: UserTier;
+  onUpgrade?: () => void;
 }
 
-export function Library({ userTier }: LibraryProps) {
+export function Library({ userTier, onUpgrade }: LibraryProps) {
   const { savedRecipesForLibrary } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,7 +82,11 @@ export function Library({ userTier }: LibraryProps) {
                   : "Upgrade to Base or Pro for unlimited recipe storage"}
               </p>
             </div>
-            <button type="button" className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 whitespace-nowrap font-semibold">
+            <button
+              type="button"
+              onClick={onUpgrade}
+              className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 whitespace-nowrap font-semibold"
+            >
               Upgrade
             </button>
           </div>

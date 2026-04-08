@@ -1,127 +1,214 @@
 import type { DayPlan, DayPlanMeal, RecipeCard } from "../../types/recipe.ts";
 
-function scoreRecipe(
-  recipe: RecipeCard,
-  targets: { calories: number; protein: number },
-  pickedIds: Set<string>,
-): number {
-  // Penalize repeats to encourage variety.
-  const repeatPenalty = pickedIds.has(recipe.id) ? 50 : 0;
-
-  // Prefer recipes with decent protein density and reasonable calories.
-  const proteinPerCal = recipe.calories > 0 ? recipe.protein / recipe.calories : 0;
-  const proteinScore = proteinPerCal * 1000;
-
-  // Prefer closer to target calories/3 for each meal.
-  const idealMealCalories = targets.calories / 3;
-  const calDiff = Math.abs(recipe.calories - idealMealCalories);
-
-  return proteinScore - calDiff / 5 - repeatPenalty;
+/** Daily macro targets + optional tolerance bands for the optimizer. */
+export interface PlannerTargets {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  /** ±% around calorie goal (e.g. 12 → 88%–112% of calories). */
+  calorieBandPct: number;
+  /** ±% around carb and fat day targets. */
+  carbFatBandPct: number;
 }
 
-function pickBest(
+export const DEFAULT_PLANNER_BANDS = {
+  calorieBandPct: 12,
+  carbFatBandPct: 18,
+} as const;
+
+/** Meal slot labels (order matters for display). */
+export const PLAN_MEAL_SLOTS = ["Breakfast", "Lunch", "Snack", "Dinner"] as const;
+
+const MEALS_PER_DAY = PLAN_MEAL_SLOTS.length;
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function mulberry32(seed: number): () => number {
+  return () => {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Lower score = better fit to daily targets (calories, protein, carbs, fat within bands).
+ */
+function scoreMealSet(
   recipes: RecipeCard[],
-  targets: { calories: number; protein: number },
-  pickedIds: Set<string>,
-): RecipeCard | null {
-  if (recipes.length === 0) return null;
-  let best: RecipeCard | null = null;
-  let bestScore = -Infinity;
-  for (const r of recipes) {
-    const s = scoreRecipe(r, targets, pickedIds);
-    if (s > bestScore) {
-      bestScore = s;
-      best = r;
+  targets: PlannerTargets,
+  recentRecipeIds: Set<string>,
+): number {
+  const sumCal = recipes.reduce((a, r) => a + r.calories, 0);
+  const sumPro = recipes.reduce((a, r) => a + r.protein, 0);
+  const sumCarbs = recipes.reduce((a, r) => a + r.carbs, 0);
+  const sumFat = recipes.reduce((a, r) => a + r.fat, 0);
+
+  const calBand = targets.calorieBandPct / 100;
+  const calLo = targets.calories * (1 - calBand);
+  const calHi = targets.calories * (1 + calBand);
+  let e = 0;
+  if (sumCal < calLo) {
+    e += (calLo - sumCal) * 1.85;
+  } else if (sumCal > calHi) {
+    e += (sumCal - calHi) * 1.25;
+  } else {
+    e += Math.abs(sumCal - targets.calories) * 0.04;
+  }
+
+  const proMin = targets.protein * 0.88;
+  const proMax = targets.protein * 1.22;
+  if (sumPro < proMin) {
+    e += (proMin - sumPro) * 4.2;
+  } else if (sumPro > proMax) {
+    e += (sumPro - proMax) * 0.75;
+  } else {
+    e += Math.abs(sumPro - targets.protein) * 0.12;
+  }
+
+  const mBand = targets.carbFatBandPct / 100;
+  const cBase = Math.max(1, targets.carbs);
+  const fBase = Math.max(1, targets.fat);
+  const cLo = cBase * (1 - mBand);
+  const cHi = cBase * (1 + mBand);
+  const fLo = fBase * (1 - mBand);
+  const fHi = fBase * (1 + mBand);
+  if (sumCarbs < cLo) e += (cLo - sumCarbs) * 0.55;
+  else if (sumCarbs > cHi) e += (sumCarbs - cHi) * 0.45;
+  else e += Math.abs(sumCarbs - cBase) * 0.06;
+
+  if (sumFat < fLo) e += (fLo - sumFat) * 0.55;
+  else if (sumFat > fHi) e += (sumFat - fHi) * 0.45;
+  else e += Math.abs(sumFat - fBase) * 0.06;
+
+  const ids = recipes.map((r) => r.id);
+  const uniq = new Set(ids);
+  if (uniq.size < recipes.length) {
+    e += (recipes.length + 1 - uniq.size) * 7;
+  }
+
+  for (const id of ids) {
+    if (recentRecipeIds.has(id)) {
+      e += 5.5;
     }
   }
+
+  return e;
+}
+
+function findBestMealSet(
+  pool: RecipeCard[],
+  targets: PlannerTargets,
+  recentRecipeIds: Set<string>,
+): RecipeCard[] | null {
+  if (pool.length === 0) return null;
+
+  const n = pool.length;
+  const totalCombos = n ** MEALS_PER_DAY;
+  const maxFull = 24_000;
+  let best: RecipeCard[] | null = null;
+  let bestScore = Infinity;
+
+  const scoreAndUpdate = (recipes: RecipeCard[]) => {
+    const s = scoreMealSet(recipes, targets, recentRecipeIds);
+    if (s < bestScore) {
+      bestScore = s;
+      best = recipes;
+    }
+  };
+
+  if (totalCombos <= maxFull) {
+    for (const m0 of pool) {
+      for (const m1 of pool) {
+        for (const m2 of pool) {
+          for (const m3 of pool) {
+            scoreAndUpdate([m0, m1, m2, m3]);
+          }
+        }
+      }
+    }
+  } else {
+    const rand = mulberry32(0xfeed + n * 997 + Math.floor(targets.calories));
+    const samples = Math.min(12_000, totalCombos);
+    for (let i = 0; i < samples; i++) {
+      const recipes: RecipeCard[] = [];
+      for (let k = 0; k < MEALS_PER_DAY; k++) {
+        recipes.push(pool[Math.floor(rand() * n)]!);
+      }
+      scoreAndUpdate(recipes);
+    }
+  }
+
   return best;
+}
+
+function mealFromRecipe(name: string, recipe: RecipeCard): DayPlanMeal {
+  return {
+    name,
+    recipeTitle: recipe.title,
+    calories: recipe.calories,
+    protein: recipe.protein,
+    carbs: recipe.carbs,
+    fat: recipe.fat,
+  };
+}
+
+function placeholderMeal(name: string): DayPlanMeal {
+  return {
+    name,
+    recipeTitle: "Save recipes to build a macro-aware plan",
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    isPlaceholder: true,
+  };
 }
 
 function buildMealsForDay(input: {
   savedRecipes: RecipeCard[];
-  targets: { calories: number; protein: number };
-  pickedIds: Set<string>;
+  targets: PlannerTargets;
+  recentRecipeIds: Set<string>;
 }): DayPlanMeal[] {
-  const { savedRecipes, targets, pickedIds } = input;
+  const { savedRecipes, targets, recentRecipeIds } = input;
   const pool = savedRecipes.length ? savedRecipes : [];
 
-  // If user has too few saved recipes, we'll reuse, but still choose best fits.
-  const breakfast = pickBest(pool, targets, pickedIds);
-  if (breakfast) pickedIds.add(breakfast.id);
-  const lunch = pickBest(pool, targets, pickedIds);
-  if (lunch) pickedIds.add(lunch.id);
-  const dinner = pickBest(pool, targets, pickedIds);
-  if (dinner) pickedIds.add(dinner.id);
+  if (pool.length === 0) {
+    return PLAN_MEAL_SLOTS.map((name) => placeholderMeal(name));
+  }
 
-  return [
-    breakfast
-      ? {
-          name: "Breakfast",
-          recipeTitle: breakfast.title,
-          calories: breakfast.calories,
-          protein: breakfast.protein,
-          carbs: breakfast.carbs,
-          fat: breakfast.fat,
-        }
-      : {
-          name: "Breakfast",
-          recipeTitle: "Add more recipes to your Library",
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-        },
-    lunch
-      ? {
-          name: "Lunch",
-          recipeTitle: lunch.title,
-          calories: lunch.calories,
-          protein: lunch.protein,
-          carbs: lunch.carbs,
-          fat: lunch.fat,
-        }
-      : {
-          name: "Lunch",
-          recipeTitle: "Add more recipes to your Library",
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-        },
-    dinner
-      ? {
-          name: "Dinner",
-          recipeTitle: dinner.title,
-          calories: dinner.calories,
-          protein: dinner.protein,
-          carbs: dinner.carbs,
-          fat: dinner.fat,
-        }
-      : {
-          name: "Dinner",
-          recipeTitle: "Add more recipes to your Library",
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-        },
-  ];
+  const picked = findBestMealSet(pool, targets, recentRecipeIds);
+  if (!picked || picked.length !== MEALS_PER_DAY) {
+    return PLAN_MEAL_SLOTS.map((name) => placeholderMeal(name));
+  }
+
+  for (const r of picked) {
+    recentRecipeIds.add(r.id);
+  }
+
+  return PLAN_MEAL_SLOTS.map((name, i) => mealFromRecipe(name, picked[i]!));
 }
 
 export function generatePlanFromLibrary(input: {
   savedRecipes: RecipeCard[];
-  targets: { calories: number; protein: number };
+  targets: PlannerTargets;
   days: number;
 }): DayPlan[] {
   const { savedRecipes, targets } = input;
-  const daysCount = Math.max(1, Math.min(7, Math.floor(input.days)));
+  const daysCount = clamp(Math.floor(input.days), 1, 7);
 
-  // Track picks across the whole plan to encourage variety across days.
-  const pickedIds = new Set<string>();
+  const recentRecipeIds = new Set<string>();
 
   const plans: DayPlan[] = [];
   for (let d = 1; d <= daysCount; d++) {
-    const meals = buildMealsForDay({ savedRecipes, targets, pickedIds });
+    if (d > 1 && (d - 1) % 3 === 0) {
+      recentRecipeIds.clear();
+    }
+    const meals = buildMealsForDay({ savedRecipes, targets, recentRecipeIds });
     const totals = meals.reduce(
       (acc, m) => ({
         calories: acc.calories + m.calories,
@@ -136,4 +223,3 @@ export function generatePlanFromLibrary(input: {
 
   return plans;
 }
-

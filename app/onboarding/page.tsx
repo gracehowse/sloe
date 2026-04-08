@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, Calculator, CheckCircle2, Sparkles, User } from "lucide-react";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import { calculateMacroTargets } from "../../src/lib/macros/calculateTargets.ts";
-import type { ActivityLevel, Goal, MacroTargets, Sex, UserProfile } from "../../src/types/profile.ts";
+import {
+  DEFAULT_MACRO_TARGETS,
+  normalizeMacroTargets,
+  type ActivityLevel,
+  type Goal,
+  type MacroTargets,
+  type Sex,
+  type UserProfile,
+} from "../../src/types/profile.ts";
 import { saveLocalProfile } from "../../src/lib/profile/profileStorage.ts";
 import { Checkbox } from "../../src/app/components/ui/checkbox.tsx";
 import { toast } from "sonner";
@@ -58,12 +66,8 @@ export default function OnboardingPage() {
   const [measurementSystem, setMeasurementSystem] = useState<"metric" | "imperial">("metric");
 
   const [targetsMode, setTargetsMode] = useState<"auto" | "manual">("auto");
-  const [manualTargets, setManualTargets] = useState<MacroTargets>({
-    calories: 2000,
-    protein: 140,
-    carbs: 200,
-    fat: 60,
-  });
+  const [manualTargets, setManualTargets] = useState<MacroTargets>({ ...DEFAULT_MACRO_TARGETS });
+  const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +85,7 @@ export default function OnboardingPage() {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(
-          "display_name, avatar_url, user_tier, sex, age, height_cm, weight_kg, activity_level, goal, dietary, measurement_system, target_calories, target_protein, target_carbs, target_fat",
+          "display_name, avatar_url, user_tier, sex, age, height_cm, weight_kg, activity_level, goal, dietary, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
         )
         .eq("id", uid)
         .maybeSingle();
@@ -103,12 +107,19 @@ export default function OnboardingPage() {
           profile.target_fat
         ) {
           setTargetsMode("manual");
-          setManualTargets({
-            calories: profile.target_calories,
-            protein: profile.target_protein,
-            carbs: profile.target_carbs,
-            fat: profile.target_fat,
-          });
+          setManualTargets(
+            normalizeMacroTargets({
+              calories: profile.target_calories,
+              protein: profile.target_protein,
+              carbs: profile.target_carbs,
+              fat: profile.target_fat,
+              fiber: profile.target_fiber_g ?? undefined,
+              waterMl: profile.target_water_ml ?? undefined,
+            }),
+          );
+        }
+        if (profile.prefer_activity_adjusted_calories !== null && profile.prefer_activity_adjusted_calories !== undefined) {
+          setPreferActivityAdjustedCalories(Boolean(profile.prefer_activity_adjusted_calories));
         }
       }
       if (!cancelled && profileError) {
@@ -157,7 +168,7 @@ export default function OnboardingPage() {
     }
     setSaving(true);
 
-    const targets = finalTargets;
+    const targets = normalizeMacroTargets(finalTargets);
     const profile: UserProfile = {
       id: userId,
       displayName: displayName.trim() ? displayName.trim() : null,
@@ -172,6 +183,7 @@ export default function OnboardingPage() {
       activityLevel,
       goal,
       targets,
+      preferActivityAdjustedCalories,
     };
 
     // Save locally so the UX works even if Supabase schema cache is flaky.
@@ -196,6 +208,9 @@ export default function OnboardingPage() {
           target_protein: targets.protein,
           target_carbs: targets.carbs,
           target_fat: targets.fat,
+          target_fiber_g: targets.fiber,
+          target_water_ml: targets.waterMl,
+          prefer_activity_adjusted_calories: preferActivityAdjustedCalories,
         },
         { onConflict: "id" },
       );
@@ -437,13 +452,15 @@ export default function OnboardingPage() {
                       <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                       Calculated using Mifflin–St Jeor
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {(
                         [
                           ["Calories", `${computedTargets.calories}`],
                           ["Protein", `${computedTargets.protein}g`],
                           ["Carbs", `${computedTargets.carbs}g`],
                           ["Fat", `${computedTargets.fat}g`],
+                          ["Fiber", `${computedTargets.fiber}g`],
+                          ["Water", `${computedTargets.waterMl} ml`],
                         ] as const
                       ).map(([label, value]) => (
                         <div key={label} className="p-4 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50">
@@ -462,13 +479,15 @@ export default function OnboardingPage() {
             )}
 
             {targetsMode === "manual" && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {(
                   [
                     ["Calories", "calories"],
                     ["Protein (g)", "protein"],
                     ["Carbs (g)", "carbs"],
                     ["Fat (g)", "fat"],
+                    ["Fiber (g)", "fiber"],
+                    ["Water (ml)", "waterMl"],
                   ] as const
                 ).map(([label, key]) => (
                   <div key={key}>
@@ -487,6 +506,24 @@ export default function OnboardingPage() {
                 ))}
               </div>
             )}
+
+            <div className="mt-6 pt-6 border-t border-slate-200/70 dark:border-slate-800/70">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Activity &amp; devices</p>
+              <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-white/60 dark:bg-slate-900/40 cursor-pointer">
+                <Checkbox
+                  checked={preferActivityAdjustedCalories}
+                  onCheckedChange={(c) => setPreferActivityAdjustedCalories(c === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="text-slate-900 dark:text-white font-medium">Adjust calories for activity (Apple Health)</span>
+                  <span className="block text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    When this is on, we will increase your calorie allowance from steps and workouts once HealthKit is
+                    connected (similar to MyFitnessPal). Integration ships in a future app update.
+                  </span>
+                </span>
+              </label>
+            </div>
 
             <div className="mt-6 pt-6 border-t border-slate-200/70 dark:border-slate-800/70">
               <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">

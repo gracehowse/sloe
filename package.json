@@ -4,11 +4,17 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",
     "dev:vite": "vite",
-    "build:vite": "vite build"
+    "build:vite": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -42,6 +48,7 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
+    "@supabase/supabase-js": "^2.56.0",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -53,7 +60,7 @@
     "motion": "12.23.24",
     "next": "^15.5.0",
     "next-themes": "0.4.6",
-    "@supabase/supabase-js": "^2.56.0",
+    "oauth-1.0a": "^2.2.6",
     "react": "18.3.1",
     "react-day-picker": "8.10.1",
     "react-dnd": "16.0.1",
@@ -74,14 +81,22 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/vite": "4.1.12",
+    "@playwright/test": "^1.55.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "wait-on": "^8.0.5",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "4.7.0",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^26.1.0",
     "postcss": "^8.4.0",
     "tailwindcss": "4.1.12",
     "typescript": "6.0.2",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^3.2.4"
   },
   "pnpm": {
     "overrides": {

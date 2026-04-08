@@ -1,13 +1,42 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
-import { getIngredientsForRecipe, getInstructionsForRecipe } from "../../data/recipeCatalog.ts";
+import { toast } from "sonner";
+import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import type { RecipeCard, UserTier } from "../../types/recipe.ts";
+import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 
 interface RecipeDetailProps {
   recipe: RecipeCard;
   userTier: UserTier;
   onBack: () => void;
+}
+
+type DbIngredientRow = {
+  id: string;
+  name: string;
+  amount: number | null;
+  unit: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  is_verified: boolean;
+  source: string | null;
+};
+
+function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
+  return {
+    name: row.name,
+    amount: row.amount != null ? String(row.amount) : "",
+    unit: row.unit ?? "",
+    calories: row.calories,
+    protein: row.protein,
+    carbs: row.carbs,
+    fat: row.fat,
+    isVerified: row.is_verified,
+    source: "Manual",
+  };
 }
 
 export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
@@ -17,14 +46,203 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
   const [showIngredients, setShowIngredients] = useState(true);
   const [showInstructions, setShowInstructions] = useState(true);
 
-  const ingredients = useMemo(() => getIngredientsForRecipe(recipe.id), [recipe.id]);
-  const instructions = useMemo(() => getInstructionsForRecipe(recipe.id), [recipe.id]);
+  const isCatalogRecipe = Boolean(getRecipeById(recipe.id));
+
+  const [dbLoading, setDbLoading] = useState(!isCatalogRecipe);
+  const [dbDescription, setDbDescription] = useState<string | null>(null);
+  const [dbInstructionsText, setDbInstructionsText] = useState<string | null>(null);
+  const [dbServings, setDbServings] = useState<number | null>(null);
+  const [dbMacros, setDbMacros] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null>(null);
+  const [dbIngredients, setDbIngredients] = useState<IngredientRow[]>([]);
+  const [dbFetchFailed, setDbFetchFailed] = useState(false);
+
+  const [followCreatorId, setFollowCreatorId] = useState<string | null>(null);
+  const [recipeAuthorId, setRecipeAuthorId] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followMetaLoaded, setFollowMetaLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setFollowMetaLoaded(false);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id ?? null;
+      if (cancelled) return;
+      setAuthUserId(uid);
+
+      const { data: metaRow } = await supabase
+        .from("recipes")
+        .select("creator_id, author_id")
+        .eq("id", recipe.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (!metaRow) {
+        setFollowCreatorId(null);
+        setRecipeAuthorId(null);
+        setIsFollowing(false);
+        setFollowMetaLoaded(true);
+        return;
+      }
+
+      const cid = (metaRow.creator_id as string | null) ?? null;
+      const aid = (metaRow.author_id as string | null) ?? null;
+      setFollowCreatorId(cid);
+      setRecipeAuthorId(aid);
+
+      if (cid && uid) {
+        const { data: fol } = await supabase
+          .from("follows")
+          .select("creator_id")
+          .eq("user_id", uid)
+          .eq("creator_id", cid)
+          .maybeSingle();
+        if (!cancelled) {
+          setIsFollowing(Boolean(fol));
+        }
+      } else {
+        setIsFollowing(false);
+      }
+      setFollowMetaLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe.id]);
+
+  const showFollowButton =
+    followMetaLoaded &&
+    Boolean(followCreatorId && authUserId && recipeAuthorId !== authUserId);
+
+  const toggleFollow = async () => {
+    if (!followCreatorId || !authUserId || followBusy) return;
+    setFollowBusy(true);
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("user_id", authUserId)
+          .eq("creator_id", followCreatorId);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        setIsFollowing(false);
+        toast.success("Unfollowed");
+      } else {
+        const { error } = await supabase.from("follows").insert({
+          user_id: authUserId,
+          creator_id: followCreatorId,
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        setIsFollowing(true);
+        toast.success("Following");
+      }
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCatalogRecipe) {
+      setDbLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setDbLoading(true);
+      setDbFetchFailed(false);
+      const { data: row, error: recipeError } = await supabase
+        .from("recipes")
+        .select(
+          "description, instructions, servings, calories, protein, carbs, fat, is_verified",
+        )
+        .eq("id", recipe.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (recipeError || !row) {
+        setDbFetchFailed(true);
+        setDbLoading(false);
+        return;
+      }
+
+      setDbDescription((row.description as string | null) ?? null);
+      setDbInstructionsText((row.instructions as string | null) ?? null);
+      setDbServings((row.servings as number) ?? recipe.servings);
+      setDbMacros({
+        calories: (row.calories as number) ?? 0,
+        protein: (row.protein as number) ?? 0,
+        carbs: (row.carbs as number) ?? 0,
+        fat: (row.fat as number) ?? 0,
+      });
+
+      const { data: ingRows, error: ingError } = await supabase
+        .from("recipe_ingredients")
+        .select("id, name, amount, unit, calories, protein, carbs, fat, is_verified, source")
+        .eq("recipe_id", recipe.id)
+        .order("created_at", { ascending: true });
+
+      if (cancelled) return;
+      if (!ingError && ingRows?.length) {
+        setDbIngredients(ingRows.map((r) => mapDbIngredientToRow(r as DbIngredientRow)));
+      } else {
+        setDbIngredients([]);
+      }
+      setDbLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe.id, isCatalogRecipe]);
+
+  const catalogIngredients = useMemo(() => getIngredientsForRecipe(recipe.id), [recipe.id]);
+  const catalogInstructions = useMemo(() => getInstructionsForRecipe(recipe.id), [recipe.id]);
+
+  const ingredients = isCatalogRecipe ? catalogIngredients : dbIngredients;
+  const instructionSteps = useMemo(() => {
+    if (isCatalogRecipe) {
+      return catalogInstructions;
+    }
+    const text = dbInstructionsText?.trim() ?? "";
+    if (!text) return [];
+    return text
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [isCatalogRecipe, catalogInstructions, dbInstructionsText]);
+
+  const baseServings = isCatalogRecipe ? recipe.servings : (dbServings ?? recipe.servings);
+  const displayRecipe = useMemo(() => {
+    if (isCatalogRecipe || !dbMacros) {
+      return recipe;
+    }
+    return {
+      ...recipe,
+      servings: baseServings,
+      calories: dbMacros.calories,
+      protein: dbMacros.protein,
+      carbs: dbMacros.carbs,
+      fat: dbMacros.fat,
+    };
+  }, [recipe, isCatalogRecipe, dbMacros, baseServings]);
 
   const scaledMacros = {
-    calories: Math.round((recipe.calories * servings) / recipe.servings),
-    protein: Math.round((recipe.protein * servings) / recipe.servings),
-    carbs: Math.round((recipe.carbs * servings) / recipe.servings),
-    fat: Math.round((recipe.fat * servings) / recipe.servings),
+    calories: Math.round((displayRecipe.calories * servings) / baseServings),
+    protein: Math.round((displayRecipe.protein * servings) / baseServings),
+    carbs: Math.round((displayRecipe.carbs * servings) / baseServings),
+    fat: Math.round((displayRecipe.fat * servings) / baseServings),
   };
 
   const ingredientTotal = ingredients.reduce(
@@ -37,7 +255,32 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
 
-  const macroAccuracy = Math.abs(ingredientTotal.calories - recipe.calories);
+  const macroAccuracy = Math.abs(ingredientTotal.calories - displayRecipe.calories);
+  const showVerifiedAccuracy = isCatalogRecipe && ingredients.length > 0;
+
+  if (!isCatalogRecipe && dbLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-600 dark:text-slate-400">
+        Loading recipe…
+      </div>
+    );
+  }
+
+  if (!isCatalogRecipe && dbFetchFailed) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-6 p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-2"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+        <p className="text-slate-700 dark:text-slate-300">This recipe could not be loaded.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -59,7 +302,18 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
         >
           <Bookmark className="w-5 h-5" fill={saved ? "currentColor" : "none"} />
         </button>
-        <button type="button" className="p-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+        <button
+          type="button"
+          onClick={() => {
+            const url = `${window.location.origin}${window.location.pathname}?recipe=${encodeURIComponent(recipe.id)}`;
+            void navigator.clipboard.writeText(url).then(
+              () => toast.success("Share link copied"),
+              () => toast.error("Could not copy link"),
+            );
+          }}
+          className="p-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+          aria-label="Copy share link"
+        >
           <Share2 className="w-5 h-5" />
         </button>
       </div>
@@ -71,6 +325,10 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
         </div>
 
+        {!isCatalogRecipe && dbDescription && (
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{dbDescription}</p>
+        )}
+
         {/* Creator Info */}
         <div className="flex items-center gap-4 p-6 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-lg">
           <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-violet-500/20" />
@@ -78,9 +336,16 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
             <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">{recipe.savedCount.toLocaleString()} saves · 2.4k followers</p>
           </div>
-          <button type="button" className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105">
-            Follow
-          </button>
+          {showFollowButton ? (
+            <button
+              type="button"
+              disabled={followBusy}
+              onClick={() => void toggleFollow()}
+              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 disabled:opacity-50"
+            >
+              {followBusy ? "…" : isFollowing ? "Following" : "Follow"}
+            </button>
+          ) : null}
         </div>
 
         {/* Servings Selector */}
@@ -105,14 +370,19 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           </div>
         </div>
 
-        {/* Verified Macros */}
+        {/* Macros */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-xl">
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 px-6 py-4 flex items-center gap-3 border-b border-green-200/50 dark:border-green-800/50">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
-            <span className="font-semibold text-slate-900 dark:text-white flex-1">Verified Nutrition</span>
-            {macroAccuracy <= 1 && (
+            <span className="font-semibold text-slate-900 dark:text-white flex-1">
+              {isCatalogRecipe ? "Verified Nutrition" : "Nutrition (per recipe)"}
+              <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                Scaled for {servings} serving{servings === 1 ? "" : "s"} (base {baseServings})
+              </span>
+            </span>
+            {showVerifiedAccuracy && macroAccuracy <= 1 && (
               <span className="px-3 py-1.5 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/50 rounded-full border border-green-200/50 dark:border-green-800/50">
                 ±{macroAccuracy} kcal accuracy
               </span>
@@ -138,7 +408,8 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           </div>
 
           {/* Creator Discrepancy */}
-          {recipe.creatorCalories &&
+          {isCatalogRecipe &&
+            recipe.creatorCalories &&
             Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
               <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-t border-orange-200 dark:border-orange-900 px-6 py-4 flex items-start gap-3">
                 <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
@@ -173,32 +444,40 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           </button>
           {showIngredients && (
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              {ingredients.map((ingredient, index) => (
-                <div key={index} className="px-6 py-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900 dark:text-white">{ingredient.name}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      {(parseFloat(ingredient.amount) * servings) / recipe.servings} {ingredient.unit}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/30 rounded-full">
-                        <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">{ingredient.source}</span>
+              {ingredients.length === 0 ? (
+                <div className="px-6 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                  No ingredients listed yet.
+                </div>
+              ) : (
+                ingredients.map((ingredient, index) => (
+                  <div key={index} className="px-6 py-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900 dark:text-white">{ingredient.name}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        {ingredient.amount
+                          ? `${(parseFloat(ingredient.amount) * servings) / baseServings} ${ingredient.unit}`.trim()
+                          : ingredient.unit}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/30 rounded-full">
+                          <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          <span className="text-xs font-medium text-green-700 dark:text-green-400">{ingredient.source}</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right ml-4">
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {Math.round((ingredient.calories * servings) / baseServings)} kcal
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        P: {Math.round((ingredient.protein * servings) / baseServings)}g · C:{" "}
+                        {Math.round((ingredient.carbs * servings) / baseServings)}g · F:{" "}
+                        {Math.round((ingredient.fat * servings) / baseServings)}g
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right ml-4">
-                    <p className="font-semibold text-slate-900 dark:text-white">
-                      {Math.round((ingredient.calories * servings) / recipe.servings)} kcal
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      P: {Math.round((ingredient.protein * servings) / recipe.servings)}g · C:{" "}
-                      {Math.round((ingredient.carbs * servings) / recipe.servings)}g · F:{" "}
-                      {Math.round((ingredient.fat * servings) / recipe.servings)}g
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>
@@ -219,14 +498,18 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           </button>
           {showInstructions && (
             <div className="px-6 py-6 space-y-5">
-              {instructions.map((step, index) => (
-                <div key={index} className="flex gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-sm font-semibold shadow-lg shadow-violet-500/20">
-                    {index + 1}
-                  </span>
-                  <p className="text-slate-700 dark:text-slate-300 pt-1">{step}</p>
-                </div>
-              ))}
+              {instructionSteps.length === 0 ? (
+                <p className="text-slate-500 dark:text-slate-400 text-sm">No instructions yet.</p>
+              ) : (
+                instructionSteps.map((step, index) => (
+                  <div key={index} className="flex gap-4">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-sm font-semibold shadow-lg shadow-violet-500/20">
+                      {index + 1}
+                    </span>
+                    <p className="text-slate-700 dark:text-slate-300 pt-1">{step}</p>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

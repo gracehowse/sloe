@@ -1,38 +1,62 @@
-import { useEffect, useState } from "react";
-import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2, AlertCircle, BookMarked, Home } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { DEFAULT_PLANNER_BANDS } from "../../lib/planning/generateMealPlan.ts";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
   userTier: "free" | "base" | "pro";
+  onUpgrade?: () => void;
+  onNavigate?: (view: "discover" | "library") => void;
 }
 
-const DEFAULT_GENERATED_PLAN: DayPlan[] = [
-  {
-    day: 1,
-    meals: [],
-    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  },
-];
+function formatVsTarget(
+  actual: number,
+  target: number,
+  bandPct: number,
+  unit: string,
+): { tone: "ok" | "low" | "high"; text: string } {
+  if (target <= 0) {
+    return { tone: "ok", text: `— ${unit}` };
+  }
+  const lo = target * (1 - bandPct / 100);
+  const hi = target * (1 + bandPct / 100);
+  if (actual < lo) {
+    const d = target - actual;
+    return { tone: "low", text: `${Math.round(d)} ${unit} under band` };
+  }
+  if (actual > hi) {
+    const d = actual - target;
+    return { tone: "high", text: `${Math.round(d)} ${unit} over band` };
+  }
+  const pct = Math.round(((actual - target) / target) * 100);
+  const sign = pct > 0 ? "+" : "";
+  return { tone: "ok", text: `${sign}${pct}% vs goal` };
+}
 
-export function MealPlanner({ userTier }: MealPlannerProps) {
+export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProps) {
   const {
     mealPlan,
     setMealPlan,
     generateMealPlan,
     generateShoppingListFromPlan,
     savedRecipesForLibrary,
-    addLoggedMeal,
     addLoggedMealForDate,
     setSelectedDateKey,
+    nutritionTargets,
   } = useAppData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<DayPlan[] | null>(() => mealPlan);
-  const { nutritionTargets } = useAppData();
   const [targetCalories, setTargetCalories] = useState(nutritionTargets.calories);
   const [targetProtein, setTargetProtein] = useState(nutritionTargets.protein);
+  const [targetCarbs, setTargetCarbs] = useState(nutritionTargets.carbs);
+  const [targetFat, setTargetFat] = useState(nutritionTargets.fat);
+  const [calorieBandPct, setCalorieBandPct] = useState<number>(DEFAULT_PLANNER_BANDS.calorieBandPct);
+  const [carbFatBandPct, setCarbFatBandPct] = useState<number>(DEFAULT_PLANNER_BANDS.carbFatBandPct);
   const [planDays, setPlanDays] = useState<1 | 3 | 7>(1);
+
+  const hasLibraryRecipes = savedRecipesForLibrary.length > 0;
 
   const isPaidUser = userTier === "base" || userTier === "pro";
 
@@ -43,9 +67,23 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
   }, [isPaidUser]);
 
   const handleGenerate = () => {
+    if (!hasLibraryRecipes) {
+      toast.error("Save at least one recipe first.");
+      return;
+    }
     setIsGenerating(true);
     setTimeout(async () => {
-      await generateMealPlan({ targetsOverride: { calories: targetCalories, protein: targetProtein }, days: planDays });
+      await generateMealPlan({
+        targetsOverride: {
+          calories: targetCalories,
+          protein: targetProtein,
+          carbs: targetCarbs,
+          fat: targetFat,
+          calorieBandPct,
+          carbFatBandPct,
+        },
+        days: planDays,
+      });
       await generateShoppingListFromPlan();
       setIsGenerating(false);
     }, 400);
@@ -56,7 +94,9 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
   };
 
   const handleSavePlan = () => {
-    // Plan is persisted automatically in context.
+    toast.message("Plan saves automatically", {
+      description: "Your meal plan is persisted as you generate or swap meals.",
+    });
   };
 
   const recalcTotals = (meals: DayPlan["meals"]): DayPlan["totals"] => {
@@ -72,6 +112,11 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
   };
 
   const swapMeal = (day: number, mealIndex: number) => {
+    const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
+    if (dp?.meals[mealIndex]?.isPlaceholder) {
+      toast.error("Save recipes to enable swapping");
+      return;
+    }
     const pool = savedRecipesForLibrary.map((r) => r.title);
     setMealPlan((prev) => {
       if (!prev) return prev;
@@ -112,7 +157,7 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
   const logPlannedMeal = (day: number, mealIndex: number) => {
     const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
     const meal = dp?.meals[mealIndex];
-    if (!meal) return;
+    if (!meal || meal.isPlaceholder) return;
 
     const d = new Date();
     d.setDate(d.getDate() + (day - 1));
@@ -137,7 +182,26 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
   useEffect(() => {
     setTargetCalories(nutritionTargets.calories);
     setTargetProtein(nutritionTargets.protein);
-  }, [nutritionTargets.calories, nutritionTargets.protein]);
+    setTargetCarbs(nutritionTargets.carbs);
+    setTargetFat(nutritionTargets.fat);
+  }, [
+    nutritionTargets.calories,
+    nutritionTargets.protein,
+    nutritionTargets.carbs,
+    nutritionTargets.fat,
+  ]);
+
+  const daySummaries = useMemo(() => {
+    const plan = generatedPlan ?? mealPlan;
+    if (!plan) return [];
+    return plan.map((dp) => {
+      const cal = formatVsTarget(dp.totals.calories, targetCalories, calorieBandPct, "kcal");
+      const pro = formatVsTarget(dp.totals.protein, targetProtein, 10, "g");
+      const carb = formatVsTarget(dp.totals.carbs, targetCarbs, carbFatBandPct, "g");
+      const fat = formatVsTarget(dp.totals.fat, targetFat, carbFatBandPct, "g");
+      return { day: dp.day, cal, pro, carb, fat };
+    });
+  }, [generatedPlan, mealPlan, targetCalories, targetProtein, targetCarbs, targetFat, calorieBandPct, carbFatBandPct]);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -193,11 +257,48 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
             </div>
             <button
               type="button"
+              onClick={onUpgrade}
               className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 font-semibold inline-flex items-center gap-2"
             >
               <Sparkles className="w-4 h-4" />
               Upgrade
             </button>
+          </div>
+        </div>
+      )}
+
+      {!hasLibraryRecipes && (
+        <div className="max-w-3xl mx-auto mb-8 backdrop-blur-xl bg-amber-50/90 dark:bg-amber-950/25 border-2 border-amber-200/80 dark:border-amber-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="flex gap-4">
+            <div className="shrink-0 w-11 h-11 rounded-xl bg-amber-500/20 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-amber-700 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-900 dark:text-white">Save recipes to unlock planning</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                The planner builds each day from your Library so totals can match your calorie and macro targets. Save at
+                least one recipe (from Discover or URL import on Pro), then generate. Empty slots surface swaps once your
+                library has options.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.("discover")}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium hover:opacity-90"
+                >
+                  <Home className="w-4 h-4" />
+                  Discover
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.("library")}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                >
+                  <BookMarked className="w-4 h-4" />
+                  Library
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -210,8 +311,12 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 flex items-center justify-center">
                 <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <h3 className="text-slate-900 dark:text-white">Daily Targets</h3>
+              <h3 className="text-slate-900 dark:text-white">Daily targets (optimizer)</h3>
             </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              Defaults come from your profile. We search breakfast + lunch + snack + dinner combinations from your saved
+              recipes to land near these totals within the bands below.
+            </p>
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block mb-3 text-slate-700 dark:text-slate-300 font-medium">Calories</label>
@@ -236,6 +341,60 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
                   />
                   <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 font-medium">g</span>
                 </div>
+              </div>
+              <div>
+                <label className="block mb-3 text-slate-700 dark:text-slate-300 font-medium">Carbs</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={targetCarbs}
+                    onChange={(e) => setTargetCarbs(Number(e.target.value))}
+                    className="w-full px-5 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 font-medium">g</span>
+                </div>
+              </div>
+              <div>
+                <label className="block mb-3 text-slate-700 dark:text-slate-300 font-medium">Fat</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={targetFat}
+                    onChange={(e) => setTargetFat(Number(e.target.value))}
+                    className="w-full px-5 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 font-medium">g</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-slate-200/70 dark:border-slate-800/70">
+              <div>
+                <label className="block mb-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
+                  Calorie band (±%)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  max={35}
+                  value={calorieBandPct}
+                  onChange={(e) => setCalorieBandPct(Math.max(5, Math.min(35, Number(e.target.value) || 12)))}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">Allowed spread around calorie goal</p>
+              </div>
+              <div>
+                <label className="block mb-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
+                  Carb / fat band (±%)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  max={40}
+                  value={carbFatBandPct}
+                  onChange={(e) => setCarbFatBandPct(Math.max(5, Math.min(40, Number(e.target.value) || 18)))}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">How tightly to match carb &amp; fat day totals</p>
               </div>
             </div>
           </div>
@@ -295,7 +454,7 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !hasLibraryRecipes}
             className="w-full py-5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg font-semibold hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -323,105 +482,162 @@ export function MealPlanner({ userTier }: MealPlannerProps) {
         </div>
       ) : generatedPlan ? (
         <div className="space-y-10">
-          {generatedPlan.map((dp) => (
+          {generatedPlan.map((dp) => {
+            const summary = daySummaries.find((s) => s.day === dp.day);
+            const toneClass = (tone: "ok" | "low" | "high") =>
+              tone === "ok"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : tone === "low"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-orange-600 dark:text-orange-400";
+            return (
             <div key={dp.day}>
               <div className="backdrop-blur-xl bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-200/50 dark:border-violet-800/50 rounded-2xl p-8 mb-6 shadow-2xl">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/50">
                     <Calendar className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-slate-900 dark:text-white">Day {dp.day} Plan</h3>
+                  <div>
+                    <h3 className="text-slate-900 dark:text-white">Day {dp.day}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      vs targets · ±{calorieBandPct}% calories · ±{carbFatBandPct}% carbs/fat
+                    </p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div className="backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 rounded-xl p-5 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Total Calories</p>
-                    <div className="flex items-baseline gap-2 mb-2">
-                      <p className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                        {dp.totals.calories}
-                      </p>
-                      <span className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5" />
-                        {Math.round(((dp.totals.calories - targetCalories) / targetCalories) * 100)}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Target: {targetCalories} kcal</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Calories</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+                      {dp.totals.calories}{" "}
+                      <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">/ {targetCalories}</span>
+                    </p>
+                    <p className={`text-xs font-medium mt-2 ${summary ? toneClass(summary.cal.tone) : ""}`}>
+                      {summary?.cal.text ?? "—"}
+                    </p>
                   </div>
                   <div className="backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 rounded-xl p-5 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Protein</p>
-                    <div className="flex items-baseline gap-2 mb-2">
-                      <p className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                        {dp.totals.protein}g
-                      </p>
-                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Target: {targetProtein}g</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+                      {dp.totals.protein}g{" "}
+                      <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">/ {targetProtein}g</span>
+                    </p>
+                    <p className={`text-xs font-medium mt-2 flex items-center gap-1 ${summary ? toneClass(summary.pro.tone) : ""}`}>
+                      {summary?.pro.tone === "ok" && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                      {summary?.pro.text ?? "—"}
+                    </p>
                   </div>
                   <div className="backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 rounded-xl p-5 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Carbs</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{dp.totals.carbs}g</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                      {dp.totals.carbs}g{" "}
+                      <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">/ {targetCarbs}g</span>
+                    </p>
+                    <p className={`text-xs font-medium mt-2 ${summary ? toneClass(summary.carb.tone) : ""}`}>
+                      {summary?.carb.text ?? "—"}
+                    </p>
                   </div>
                   <div className="backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 rounded-xl p-5 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Fat</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{dp.totals.fat}g</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                      {dp.totals.fat}g <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">/ {targetFat}g</span>
+                    </p>
+                    <p className={`text-xs font-medium mt-2 ${summary ? toneClass(summary.fat.tone) : ""}`}>
+                      {summary?.fat.text ?? "—"}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-5">
-                {dp.meals.map((meal, index) => (
-                  <div
-                    key={`${dp.day}-${index}`}
-                    className="group backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
-                  >
-                    <div className="flex items-start justify-between mb-5">
-                      <div>
-                        <span className="inline-block px-3 py-1 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold mb-2">
+                {dp.meals.map((meal, index) => {
+                  const slotKey = `${dp.day}-${index}`;
+                  if (meal.isPlaceholder) {
+                    return (
+                      <div
+                        key={slotKey}
+                        className="backdrop-blur-xl bg-slate-50/80 dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-6"
+                      >
+                        <span className="inline-block px-3 py-1 bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-semibold mb-2">
                           {meal.name}
                         </span>
-                        <h3 className="text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                          {meal.recipeTitle}
-                        </h3>
+                        <p className="text-slate-700 dark:text-slate-300 mb-4">{meal.recipeTitle}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onNavigate?.("discover")}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium"
+                          >
+                            <Home className="w-4 h-4" />
+                            Discover
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onNavigate?.("library")}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-sm font-medium"
+                          >
+                            <BookMarked className="w-4 h-4" />
+                            Library
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => swapMeal(dp.day, index)}
-                          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all font-medium border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
-                        >
-                          Swap
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => logPlannedMeal(dp.day, index)}
-                          className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 font-semibold"
-                        >
-                          Log
-                        </button>
+                    );
+                  }
+                  return (
+                    <div
+                      key={slotKey}
+                      className="group backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
+                    >
+                      <div className="flex items-start justify-between mb-5">
+                        <div>
+                          <span className="inline-block px-3 py-1 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold mb-2">
+                            {meal.name}
+                          </span>
+                          <h3 className="text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                            {meal.recipeTitle}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => swapMeal(dp.day, index)}
+                            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all font-medium border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                          >
+                            Swap
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => logPlannedMeal(dp.day, index)}
+                            className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 font-semibold"
+                          >
+                            Log
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.calories}</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.protein}g</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.carbs}g</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.fat}g</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.calories}</p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.protein}g</p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.carbs}g</p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">{meal.fat}g</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : null}
     </div>

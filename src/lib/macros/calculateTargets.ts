@@ -47,6 +47,11 @@ export function calculateMacroTargets(input: {
   const fat = Math.max(0, Math.round((calories * 0.25) / 9));
   const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
 
-  return { calories, protein, carbs, fat };
+  // ~14 g fiber per 1000 kcal (common guideline band); clamp for usability.
+  const fiber = Math.max(14, Math.min(45, Math.round((14 * calories) / 1000)));
+  // ~33 ml/kg/day hydration heuristic (adjust in UI).
+  const waterMl = Math.min(4500, Math.max(1500, Math.round(input.weightKg * 33)));
+
+  return { calories, protein, carbs, fat, fiber, waterMl };
 }
 
