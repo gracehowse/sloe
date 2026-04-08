@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Plus, TrendingUp, Target, Award, Trash2, Package, Droplets, Activity } from "lucide-react";
+import {
+  Calendar,
+  Plus,
+  TrendingUp,
+  Target,
+  Award,
+  Trash2,
+  Package,
+  Droplets,
+  Activity,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -135,6 +146,13 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
   const [recentFoods, setRecentFoods] = useState<string[]>(() =>
     typeof window !== "undefined" ? loadRecentFoods() : [],
   );
+
+  const [quickQuery, setQuickQuery] = useState("");
+  const [quickHits, setQuickHits] = useState<UsdaHit[] | null>(null);
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickSelected, setQuickSelected] = useState<UsdaFoodDetails | null>(null);
+  const [quickGrams, setQuickGrams] = useState(100);
+  const [quickMealSlot, setQuickMealSlot] = useState("Lunch");
 
   const recipeOptions = useMemo((): RecipeCard[] => {
     const byId = new Map<string, RecipeCard>();
@@ -306,6 +324,147 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Quick log — USDA search without opening Add Meal */}
+      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-violet-200/40 dark:border-violet-900/40 rounded-2xl p-4 sm:p-6 mb-6 shadow-lg">
+        <div className="flex items-center gap-2 mb-3">
+          <Search className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          <h3 className="text-slate-900 dark:text-white text-sm font-semibold">Quick log (USDA)</h3>
+        </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+          Search foods and log portions for {selectedDate.toLocaleDateString()} — same data as Add meal → Search.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <label className="text-xs text-slate-600 dark:text-slate-400 sm:w-36 shrink-0 flex items-center gap-2">
+            Meal
+            <select
+              value={quickMealSlot}
+              onChange={(e) => setQuickMealSlot(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+            >
+              {["Breakfast", "Lunch", "Dinner", "Snack"].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex-1 flex gap-2 min-w-0">
+            <input
+              type="text"
+              value={quickQuery}
+              onChange={(e) => setQuickQuery(e.target.value)}
+              placeholder="e.g. chicken breast, oats cooked"
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              disabled={quickLoading}
+              onClick={() => {
+                const q = quickQuery.trim();
+                if (!q) return;
+                setQuickLoading(true);
+                setQuickSelected(null);
+                fetch(`/api/usda/search?q=${encodeURIComponent(q)}`)
+                  .then((r) => r.json())
+                  .then((data: { ok?: boolean; hits?: UsdaHit[]; message?: string }) => {
+                    if (!data.ok || !data.hits) {
+                      toast.error(data.message ?? "Food search failed");
+                      return;
+                    }
+                    setQuickHits(data.hits.slice(0, 8));
+                  })
+                  .catch(() => toast.error("Food search failed"))
+                  .finally(() => setQuickLoading(false));
+              }}
+            >
+              {quickLoading ? "…" : "Search"}
+            </Button>
+          </div>
+        </div>
+        {quickHits?.length ? (
+          <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-800 mb-3">
+            {quickHits.map((h) => (
+              <button
+                key={h.fdcId}
+                type="button"
+                className="w-full text-left p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-sm"
+                onClick={() => {
+                  setQuickLoading(true);
+                  fetch(`/api/usda/food?fdcId=${h.fdcId}`)
+                    .then((r) => r.json())
+                    .then((data: { ok?: boolean; message?: string } & Partial<UsdaFoodDetails>) => {
+                      if (!data.ok || !data.macrosPer100g || !data.description) {
+                        toast.error(data.message ?? "Could not load food details");
+                        return;
+                      }
+                      setQuickSelected({
+                        fdcId: data.fdcId!,
+                        description: data.description!,
+                        macrosPer100g: data.macrosPer100g!,
+                      });
+                    })
+                    .catch(() => toast.error("Could not load food details"))
+                    .finally(() => setQuickLoading(false));
+                }}
+              >
+                <div className="font-medium text-slate-900 dark:text-white truncate">{h.description}</div>
+                <div className="text-xs text-slate-500 truncate">
+                  {h.dataType ?? "Food"}
+                  {h.brandName ? ` · ${h.brandName}` : ""}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {quickSelected ? (
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3 rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/40">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{quickSelected.description}</div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-600 dark:text-slate-400 w-14">Grams</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={quickGrams}
+                  onChange={(e) => setQuickGrams(Number(e.target.value))}
+                  className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="w-full sm:w-auto shrink-0"
+              onClick={() => {
+                const g = Math.max(1, Math.round(quickGrams) || 1);
+                const mult = g / 100;
+                const m = quickSelected.macrosPer100g;
+                addLoggedMeal({
+                  name: quickMealSlot,
+                  recipeTitle: `${quickSelected.description} (${g}g)`,
+                  time: timeLabel,
+                  calories: Math.max(0, Math.round(m.calories * mult)),
+                  protein: Math.max(0, Math.round(m.protein * mult)),
+                  carbs: Math.max(0, Math.round(m.carbs * mult)),
+                  fat: Math.max(0, Math.round(m.fat * mult)),
+                  ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
+                });
+                pushRecentFood(quickSelected.description);
+                setRecentFoods(loadRecentFoods());
+                setQuickQuery("");
+                setQuickHits(null);
+                setQuickSelected(null);
+                setQuickGrams(100);
+                toast.success("Logged to today");
+              }}
+            >
+              Log to today
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* Daily Progress */}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { getUserIdFromAuthHeader } from "@/lib/supabase/serverAnonClient";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,14 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
+  }
+
+  const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, error: "unauthorized", message: "Sign in again, then retry checkout." },
+      { status: 401 },
     );
   }
 
@@ -72,6 +81,11 @@ export async function POST(req: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
+      client_reference_id: userId,
+      metadata: { supabase_user_id: userId, tier },
+      subscription_data: {
+        metadata: { supabase_user_id: userId, tier },
+      },
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancel`,
       allow_promotion_codes: true,

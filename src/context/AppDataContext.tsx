@@ -61,6 +61,8 @@ interface AppDataContextValue {
   authEmail: string | null;
   profileDisplayName: string | null;
   profileTier: UserTier;
+  /** Re-fetch tier/display/targets from Supabase (e.g. after Stripe checkout). */
+  refreshProfileBasics: () => Promise<void>;
   /** Display preference from profile; internal storage remains metric. */
   profileMeasurementSystem: "metric" | "imperial";
   setProfileMeasurementSystem: Dispatch<SetStateAction<"metric" | "imperial">>;
@@ -317,6 +319,42 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, [authedUserId]);
+
+  const refreshProfileBasics = useCallback(async () => {
+    if (!authedUserId) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
+      )
+      .eq("id", authedUserId)
+      .maybeSingle();
+
+    if (error) return;
+    setProfileTier((data?.user_tier as UserTier) ?? "free");
+    setProfileDisplayName((data?.display_name as string | null) ?? null);
+    const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
+    setProfileMeasurementSystem(ms);
+    setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
+    const hasTargets = Boolean(
+      data?.target_calories &&
+        data?.target_protein &&
+        data?.target_carbs &&
+        data?.target_fat,
+    );
+    if (hasTargets) {
+      setNutritionTargets(
+        normalizeMacroTargets({
+          calories: data!.target_calories as number,
+          protein: data!.target_protein as number,
+          carbs: data!.target_carbs as number,
+          fat: data!.target_fat as number,
+          fiber: data!.target_fiber_g ?? undefined,
+          waterMl: data!.target_water_ml ?? undefined,
+        }),
+      );
+    }
   }, [authedUserId]);
 
   const redeemPromoCode = useCallback(async (code: string): Promise<RedeemPromoResult> => {
@@ -904,6 +942,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authEmail,
       profileDisplayName,
       profileTier,
+      refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,
       redeemPromoCode,
@@ -943,6 +982,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authEmail,
       profileDisplayName,
       profileTier,
+      refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,
       redeemPromoCode,

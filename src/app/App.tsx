@@ -13,6 +13,7 @@ import {
   Settings as SettingsIcon,
   ChefHat,
   LogOut,
+  Menu,
 } from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { Library } from "./components/Library.tsx";
@@ -23,17 +24,25 @@ import { ShoppingList } from "./components/ShoppingList.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { RecipeUpload } from "./components/RecipeUpload.tsx";
 import { useAppData } from "../context/AppDataContext.tsx";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "./components/ui/sheet.tsx";
 
 type View = "discover" | "library" | "planner" | "profile" | "tracker" | "shopping" | "settings" | "upload";
 
 export default function App() {
-  const { profileTier: userTier, profileDisplayName: displayName, authEmail, signOut } = useAppData();
+  const { profileTier: userTier, profileDisplayName: displayName, authEmail, signOut, refreshProfileBasics } =
+    useAppData();
   const searchParams = useSearchParams();
   const router = useRouter();
   const deepLinkRecipeId = searchParams.get("recipe");
   const viewParam = searchParams.get("view");
   const [currentView, setCurrentView] = useState<View>("discover");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const normalizedViewParam = useMemo(() => {
     if (!viewParam) return null;
@@ -77,6 +86,16 @@ export default function App() {
       setSettingsScrollToPromo(false);
     }
   }, [currentView]);
+
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "success") return;
+    void refreshProfileBasics().then(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("checkout");
+      const q = params.toString();
+      router.replace(q ? `/?${q}` : "/", { scroll: false });
+    });
+  }, [searchParams, router, refreshProfileBasics]);
 
   const renderView = () => {
     switch (currentView) {
@@ -123,40 +142,40 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <header className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/50 dark:border-slate-800/50 px-8 py-5 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg shadow-violet-500/20 flex items-center justify-center">
+      <header className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/50 dark:border-slate-800/50 px-4 sm:px-6 md:px-8 py-3 md:py-5 flex items-center justify-between sticky top-0 z-50 shadow-sm gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg shadow-violet-500/20 flex items-center justify-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white">
               <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" opacity="0.3"/>
               <path d="M2 17L12 22L22 17V7L12 12L2 7V17Z" fill="currentColor"/>
             </svg>
           </div>
-          <h1 className="tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+          <h1 className="text-base sm:text-lg md:text-xl tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent truncate">
             Platemate
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {userTier === "free" && (
             <button
               type="button"
               onClick={openUpgradePromo}
-              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105"
+              className="px-3 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105"
             >
               Upgrade
             </button>
           )}
           {userTier !== "free" && (
-            <div className="px-4 py-2 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-full text-sm capitalize font-medium border border-violet-200/50 dark:border-violet-800/50">
+            <div className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-full text-xs sm:text-sm capitalize font-medium border border-violet-200/50 dark:border-violet-800/50 max-w-[5rem] sm:max-w-none truncate">
               {userTier}
             </div>
           )}
           <button
             type="button"
             onClick={() => void signOut()}
-            className="px-4 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm text-slate-700 dark:text-slate-200 inline-flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 sm:py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm text-slate-700 dark:text-slate-200 inline-flex items-center gap-2"
           >
-            <LogOut className="w-4 h-4" />
-            Sign out
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </header>
@@ -278,12 +297,12 @@ export default function App() {
       </div>
 
       {/* Bottom tabs (mobile) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-2 py-2 grid grid-cols-5 gap-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-4xl mx-auto px-1 py-1.5 grid grid-cols-6 gap-0.5">
           <button
             type="button"
             onClick={() => navigateToView("discover")}
-            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
               currentView === "discover"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
@@ -295,7 +314,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigateToView("library")}
-            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
               currentView === "library"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
@@ -307,7 +326,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigateToView("planner")}
-            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
               currentView === "planner"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
@@ -319,7 +338,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigateToView("tracker")}
-            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
               currentView === "tracker"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
@@ -330,18 +349,78 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => navigateToView("settings")}
-            className={`rounded-xl px-2 py-2 flex flex-col items-center justify-center gap-1 text-xs font-medium ${
-              currentView === "settings"
+            onClick={() => {
+              navigateToView("shopping");
+              setMoreOpen(false);
+            }}
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
+              currentView === "shopping"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
             }`}
           >
-            <SettingsIcon className="w-5 h-5" />
-            Settings
+            <ShoppingCart className="w-5 h-5" />
+            Shop
+          </button>
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
+              ["settings", "profile", "upload"].includes(currentView)
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Menu className="w-5 h-5" />
+            More
           </button>
         </div>
       </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+          <SheetHeader>
+            <SheetTitle className="text-slate-900 dark:text-white">More</SheetTitle>
+          </SheetHeader>
+          <div className="grid gap-2 px-4 pb-6">
+            <button
+              type="button"
+              className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+              onClick={() => {
+                navigateToView("settings");
+                setMoreOpen(false);
+              }}
+            >
+              <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">Settings</span>
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+              onClick={() => {
+                navigateToView("profile");
+                setMoreOpen(false);
+              }}
+            >
+              <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">Profile</span>
+            </button>
+            {userTier === "pro" && (
+              <button
+                type="button"
+                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+                onClick={() => {
+                  navigateToView("upload");
+                  setMoreOpen(false);
+                }}
+              >
+                <ChefHat className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                <span className="font-medium text-slate-900 dark:text-white">Create recipe</span>
+              </button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

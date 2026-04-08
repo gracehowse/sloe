@@ -9,6 +9,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportPlatemateLocalData.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -36,9 +37,15 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
     setStripeBusy(true);
     track(AnalyticsEvents.checkout_started, { tier });
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error("Session expired — sign in again.");
+        return;
+      }
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ tier }),
       });
       const data = (await res.json()) as { ok?: boolean; url?: string; message?: string; error?: string };
