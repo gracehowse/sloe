@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Heart,
   Bookmark,
@@ -14,12 +14,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 
 const COLLECTIONS_KEY = "platemate-collections-v1";
 const HEARTS_KEY = "platemate-feed-hearts-v1";
+/** ISO timestamp: last time the user left the Discover view (used for “new from follows” banner). */
+const DISCOVER_LAST_LEFT_AT_KEY = "platemate-discover-last-left-at";
 
 type CollectionRow = { id: string; name: string; recipeIds: string[] };
 
@@ -105,6 +108,116 @@ export function DiscoverFeed({
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [heartTick, setHeartTick] = useState(0);
   const hearts = useMemo(() => loadHeartSet(), [heartTick]);
+  const [feedScope, setFeedScope] = useState<"forYou" | "following">("forYou");
+  const [followedAuthorIds, setFollowedAuthorIds] = useState<Set<string>>(() => new Set());
+  const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(() => new Set());
+  const [followGraphLoading, setFollowGraphLoading] = useState(true);
+  const [newFromFollowsCount, setNewFromFollowsCount] = useState(0);
+  const [dismissNewFromFollows, setDismissNewFromFollows] = useState(false);
+  const prevDetailRef = useRef<RecipeCard | null>(null);
+
+  useEffect(() => {
+    return () => {
+      try {
+        localStorage.setItem(DISCOVER_LAST_LEFT_AT_KEY, new Date().toISOString());
+      } catch {
+        // ignore quota / private mode
+      }
+    };
+  }, []);
+
+  const loadFollowGraph = useCallback(async () => {
+    setFollowGraphLoading(true);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user.id;
+    if (!uid) {
+      setFollowedAuthorIds(new Set());
+      setFollowedCreatorIds(new Set());
+      setFollowGraphLoading(false);
+      return;
+    }
+    const [af, cf] = await Promise.all([
+      supabase.from("author_follows").select("author_id").eq("follower_id", uid),
+      supabase.from("follows").select("creator_id").eq("user_id", uid),
+    ]);
+    const authors = new Set<string>();
+    if (!af.error && af.data) {
+      for (const row of af.data as { author_id: string }[]) {
+        if (row.author_id) authors.add(row.author_id);
+      }
+    }
+    const creators = new Set<string>();
+    if (!cf.error && cf.data) {
+      for (const row of cf.data as { creator_id: string }[]) {
+        if (row.creator_id) creators.add(row.creator_id);
+      }
+    }
+    setFollowedAuthorIds(authors);
+    setFollowedCreatorIds(creators);
+    setFollowGraphLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadFollowGraph();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      void loadFollowGraph();
+    });
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [loadFollowGraph]);
+
+  useEffect(() => {
+    if (prevDetailRef.current && !selectedRecipe) {
+      void loadFollowGraph();
+    }
+    prevDetailRef.current = selectedRecipe;
+  }, [selectedRecipe, loadFollowGraph]);
+
+  useEffect(() => {
+    if (followGraphLoading) return;
+    const authorIds = [...followedAuthorIds];
+    const creatorIds = [...followedCreatorIds];
+    if (authorIds.length === 0 && creatorIds.length === 0) {
+      setNewFromFollowsCount(0);
+      return;
+    }
+    let lastLeft: string | null = null;
+    try {
+      lastLeft = localStorage.getItem(DISCOVER_LAST_LEFT_AT_KEY);
+    } catch {
+      lastLeft = null;
+    }
+    if (!lastLeft || Number.isNaN(Date.parse(lastLeft))) {
+      setNewFromFollowsCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let q = supabase
+        .from("recipes")
+        .select("id", { count: "exact", head: true })
+        .eq("published", true)
+        .gt("created_at", lastLeft);
+      if (authorIds.length > 0 && creatorIds.length > 0) {
+        q = q.or(`author_id.in.(${authorIds.join(",")}),creator_id.in.(${creatorIds.join(",")})`);
+      } else if (authorIds.length > 0) {
+        q = q.in("author_id", authorIds);
+      } else {
+        q = q.in("creator_id", creatorIds);
+      }
+      const { count, error } = await q;
+      if (error && process.env.NODE_ENV === "development") {
+        console.warn("newFromFollowsCount:", error.message);
+      }
+      if (!cancelled) {
+        setNewFromFollowsCount(error || count == null ? 0 : count);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [followGraphLoading, followedAuthorIds, followedCreatorIds]);
 
   const toggleHeart = (recipeId: string) => {
     const next = loadHeartSet();
@@ -188,7 +301,15 @@ export function DiscoverFeed({
       const c = collections.find((x) => x.id === activeCollectionId);
       return c ? c.recipeIds.includes(recipe.id) : true;
     };
+    const matchesFollowing = (recipe: RecipeCard) => {
+      const cid = recipe.creatorId ?? null;
+      const aid = recipe.authorId ?? null;
+      if (cid && followedCreatorIds.has(cid)) return true;
+      if (aid && followedAuthorIds.has(aid)) return true;
+      return false;
+    };
     return discoverRecipes.filter((recipe) => {
+      if (feedScope === "following" && !matchesFollowing(recipe)) return false;
       if (!inCollection(recipe)) return false;
       if (q) {
         const hay = `${recipe.title} ${recipe.creatorName}`.toLowerCase();
@@ -209,7 +330,16 @@ export function DiscoverFeed({
       }
       return true;
     });
-  }, [discoverRecipes, searchQuery, filters, activeCollectionId, collections]);
+  }, [
+    discoverRecipes,
+    searchQuery,
+    filters,
+    activeCollectionId,
+    collections,
+    feedScope,
+    followedAuthorIds,
+    followedCreatorIds,
+  ]);
 
   if (selectedRecipe) {
     return (
@@ -219,7 +349,7 @@ export function DiscoverFeed({
 
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
-      {/* App bar — Instagram-style */}
+      {/* App bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
         <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white font-[system-ui]">
           Platemate
@@ -254,6 +384,66 @@ export function DiscoverFeed({
       </header>
 
       <div className="px-0 sm:px-2">
+        <div className="mx-4 mt-3 flex rounded-xl border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-100/80 dark:bg-slate-900/80">
+          <button
+            type="button"
+            onClick={() => setFeedScope("forYou")}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              feedScope === "forYou"
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            For you
+          </button>
+          <button
+            type="button"
+            disabled={followGraphLoading}
+            onClick={() => setFeedScope("following")}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              feedScope === "following"
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {followGraphLoading ? "Following…" : "Following"}
+          </button>
+        </div>
+
+        {feedScope === "forYou" &&
+        !followGraphLoading &&
+        newFromFollowsCount > 0 &&
+        !dismissNewFromFollows ? (
+          <div className="mx-4 mt-3 rounded-2xl border border-violet-200/90 dark:border-violet-900/50 bg-violet-50/95 dark:bg-violet-950/35 px-4 py-3 text-sm text-violet-950 dark:text-violet-100/95 flex gap-3 items-start">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-violet-900 dark:text-violet-100">
+                {newFromFollowsCount} new recipe{newFromFollowsCount === 1 ? "" : "s"} from people you follow
+              </p>
+              <p className="mt-0.5 text-violet-900/85 dark:text-violet-200/80 text-xs leading-relaxed">
+                Since you last opened Discover. Switch to Following to see their posts first.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedScope("following");
+                  setDismissNewFromFollows(true);
+                }}
+                className="mt-2 text-xs font-semibold text-violet-700 dark:text-violet-300 underline-offset-2 hover:underline"
+              >
+                Open Following feed
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDismissNewFromFollows(true)}
+              className="p-1 rounded-lg text-violet-600 dark:text-violet-400 hover:bg-violet-100/80 dark:hover:bg-violet-900/50 shrink-0"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : null}
+
         {/* Community vs curated — honest copy */}
         {communityFeedCount === 0 ? (
           <div className="mx-4 mt-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/90 dark:bg-amber-950/25 px-4 py-3 text-sm text-amber-950 dark:text-amber-100/90">
@@ -277,7 +467,7 @@ export function DiscoverFeed({
           </p>
         )}
 
-        {/* Stories strip — creator avatars (Instagram-style) */}
+        {/* Stories strip — creator avatars */}
         {storyCreators.length > 0 ? (
           <div className="mt-4 pl-4 pr-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
@@ -324,7 +514,7 @@ export function DiscoverFeed({
                     : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 }`}
               >
-                For you
+                All posts
               </button>
               {collections.map((c) => (
                 <button
@@ -410,8 +600,12 @@ export function DiscoverFeed({
               <p className="text-slate-900 dark:text-white font-medium mb-2">Nothing to show</p>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                 {discoverRecipes.length === 0
-                  ? "No recipes loaded. Check connection and seed data, or publish recipes with an author in Supabase."
-                  : "Adjust search or filters, or switch back to For you."}
+                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you’re the builder, publish a recipe with an author in Supabase or run the seed script—community posts will show up here."
+                  : feedScope === "following"
+                    ? followedAuthorIds.size + followedCreatorIds.size === 0
+                      ? "Open a recipe and follow the author to build your Following feed."
+                      : "No posts from people you follow match your search, filters, or collection."
+                    : "Nothing matches right now. Clear search or filters, or pick another collection."}
               </p>
               {discoverRecipes.length > 0 ? (
                 <button
@@ -420,6 +614,7 @@ export function DiscoverFeed({
                     setSearchQuery("");
                     setFilters({ verified: false, maxCalories: "", minProtein: "" });
                     setActiveCollectionId(null);
+                    setFeedScope("forYou");
                   }}
                   className="text-sm font-semibold text-violet-600 dark:text-violet-400"
                 >
@@ -484,14 +679,61 @@ export function DiscoverFeed({
                   </button>
                 </div>
 
-                {/* Media — square like Instagram */}
-                <button type="button" onClick={() => setSelectedRecipe(recipe)} className="block w-full bg-black/5 dark:bg-black/20">
-                  <img
-                    src={recipe.image}
-                    alt={recipe.title}
-                    className="w-full aspect-square object-cover"
+                {/* Media — editorial card: fixed 1:1, scrim, title lockup */}
+                <div className="relative w-full aspect-square bg-black/5 dark:bg-black/25">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRecipe(recipe)}
+                    className="absolute inset-0 block"
+                    aria-label={`Open ${recipe.title}`}
+                  >
+                    <img src={recipe.image} alt="" className="h-full w-full object-cover" />
+                  </button>
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"
+                    aria-hidden
                   />
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSaveRecipe(recipe.id, userTier);
+                    }}
+                    className={`absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/90 shadow-md backdrop-blur-sm transition-pm dark:bg-slate-900/80 dark:border-slate-600/50 ${
+                      recipe.isSaved ? "text-violet-600 dark:text-violet-400" : "text-slate-800 dark:text-slate-100"
+                    }`}
+                    aria-label={recipe.isSaved ? "Saved" : "Save recipe"}
+                  >
+                    <Bookmark className="h-5 w-5" fill={recipe.isSaved ? "currentColor" : "none"} />
+                  </button>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 text-left text-white">
+                    <p className="text-xs font-medium text-white/80">{recipe.creatorName}</p>
+                    <h2 className="mt-1 text-lg font-bold leading-tight tracking-tight text-white drop-shadow-sm sm:text-xl">
+                      {recipe.title}
+                    </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium sm:text-xs">
+                      {isCommunity ? (
+                        <span className="rounded-md bg-white/15 px-2 py-0.5 backdrop-blur-sm">Community</span>
+                      ) : (
+                        <span className="rounded-md bg-violet-500/40 px-2 py-0.5 backdrop-blur-sm">Curated</span>
+                      )}
+                      {recipe.isVerified ? (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500/35 px-2 py-0.5">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-500/35 px-2 py-0.5">
+                          <AlertCircle className="h-3 w-3" />
+                          Estimate
+                        </span>
+                      )}
+                      <span className="rounded-md bg-black/30 px-2 py-0.5 font-semibold tabular-nums">
+                        {recipe.calories} kcal · P{recipe.protein} C{recipe.carbs} F{recipe.fat}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Actions */}
                 <div className="flex items-center px-3 pt-3">
@@ -499,7 +741,7 @@ export function DiscoverFeed({
                     <button
                       type="button"
                       onClick={() => toggleHeart(recipe.id)}
-                      className={`p-1 -m-1 transition-transform active:scale-90 ${liked ? "text-red-500" : "text-slate-800 dark:text-slate-200"}`}
+                      className={`p-1 -m-1 transition-pm active:scale-95 ${liked ? "text-red-500" : "text-slate-800 dark:text-slate-200"}`}
                       aria-label={liked ? "Unlike" : "Like"}
                     >
                       <Heart className="w-7 h-7" fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.75} />
@@ -507,7 +749,7 @@ export function DiscoverFeed({
                     <button
                       type="button"
                       onClick={() => setSelectedRecipe(recipe)}
-                      className="p-1 -m-1 text-slate-800 dark:text-slate-200"
+                      className="p-1 -m-1 text-slate-800 dark:text-slate-200 transition-pm"
                       aria-label="Open recipe"
                     >
                       <MessageCircle className="w-7 h-7" />
@@ -515,7 +757,7 @@ export function DiscoverFeed({
                     <button
                       type="button"
                       onClick={() => copyShareLink(recipe.id)}
-                      className="p-1 -m-1 text-slate-800 dark:text-slate-200"
+                      className="p-1 -m-1 text-slate-800 dark:text-slate-200 transition-pm"
                       aria-label="Share link"
                     >
                       <Share2 className="w-7 h-7" />
@@ -527,7 +769,7 @@ export function DiscoverFeed({
                       e.preventDefault();
                       toggleSaveRecipe(recipe.id, userTier);
                     }}
-                    className={`p-1 -m-1 ml-auto ${recipe.isSaved ? "text-violet-600" : "text-slate-800 dark:text-slate-200"}`}
+                    className={`p-1 -m-1 ml-auto transition-pm ${recipe.isSaved ? "text-violet-600" : "text-slate-800 dark:text-slate-200"}`}
                     aria-label="Save"
                   >
                     <Bookmark className="w-7 h-7" fill={recipe.isSaved ? "currentColor" : "none"} />
@@ -537,32 +779,6 @@ export function DiscoverFeed({
                 <p className="px-3 pt-2 text-sm text-slate-900 dark:text-white">
                   <span className="font-semibold">{likeCount(recipe)} likes</span>
                 </p>
-
-                {/* Caption */}
-                <div className="px-3 pb-1 pt-1">
-                  <p className="text-sm text-slate-900 dark:text-white leading-snug">
-                    <span className="font-semibold">{recipe.creatorName}</span>{" "}
-                    <span className="font-normal">{recipe.title}</span>
-                  </p>
-                </div>
-
-                {/* Macros — compact, “details” feel */}
-                <div className="px-3 pb-3 flex flex-wrap items-center gap-2 text-xs">
-                  {recipe.isVerified ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Verified
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Estimate
-                    </span>
-                  )}
-                  <span className="text-slate-500 dark:text-slate-400">
-                    {recipe.calories} kcal · P {recipe.protein}g · C {recipe.carbs}g · F {recipe.fat}g
-                  </span>
-                </div>
 
                 {collections.length > 0 ? (
                   <div className="px-3 pb-4 flex items-center gap-2">

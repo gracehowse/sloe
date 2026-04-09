@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   const cleaned = code.replace(/\D/g, "");
 
-  // Prefer any stored correction mapping for this barcode (MFP-style "remember my match").
+  // Prefer any stored correction mapping for this barcode (remember prior match).
   let preferredName: string | null = null;
   let preferredExternalId: string | null = null;
   try {

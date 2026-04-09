@@ -8,6 +8,8 @@ type TrackerSummaryCardProps = {
   streakDays: number;
   weekLogged: { logged: number; total: number };
   goalFitPercent: number | null;
+  /** Mon–Sun days meeting fiber / water goals (optional). */
+  weekFiberWater?: { fiberDaysMet: number; waterDaysMet: number; total: 7 };
 };
 
 export function TrackerSummaryCard({
@@ -17,6 +19,7 @@ export function TrackerSummaryCard({
   streakDays,
   weekLogged,
   goalFitPercent,
+  weekFiberWater,
 }: TrackerSummaryCardProps) {
   const pctOfGoal =
     calorieTarget > 0 ? Math.min(100, Math.round((caloriesToday / calorieTarget) * 100)) : null;
@@ -75,6 +78,22 @@ export function TrackerSummaryCard({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Avg closeness to target</p>
         </div>
       </div>
+      {weekFiberWater ? (
+        <div className="mt-4 pt-4 border-t border-violet-200/50 dark:border-violet-900/50 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-lg bg-white/60 dark:bg-slate-900/40 px-3 py-2 border border-violet-200/30 dark:border-violet-900/30">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Fiber goal (Mon–Sun)</p>
+            <p className="font-semibold text-slate-900 dark:text-white tabular-nums">
+              {weekFiberWater.fiberDaysMet}/{weekFiberWater.total} days
+            </p>
+          </div>
+          <div className="rounded-lg bg-white/60 dark:bg-slate-900/40 px-3 py-2 border border-violet-200/30 dark:border-violet-900/30">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Water goal (Mon–Sun)</p>
+            <p className="font-semibold text-slate-900 dark:text-white tabular-nums">
+              {weekFiberWater.waterDaysMet}/{weekFiberWater.total} days
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -163,7 +163,14 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [myRecipes, setMyRecipes] = useState<
-    { id: string; title: string; published: boolean; created_at: string }[]
+    {
+      id: string;
+      title: string;
+      published: boolean;
+      created_at: string;
+      saveCount: number;
+      planAddCount: number;
+    }[]
   >([]);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingRecipe, setLoadingRecipe] = useState(false);
@@ -317,8 +324,10 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
 
   useEffect(() => () => stopScanner(), [stopScanner]);
 
-  const isPaidUser = userTier === "base" || userTier === "pro";
-  const isCreator = userTier === "pro"; // Only Pro users can create recipes
+  void userTier;
+  void onUpgrade;
+  // Temporarily: all features unlocked.
+  const isCreator = true;
 
   const loadMyRecipes = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -335,7 +344,32 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       if (error) {
         return;
       }
-      setMyRecipes((data ?? []) as { id: string; title: string; published: boolean; created_at: string }[]);
+      const rows = (data ?? []) as { id: string; title: string; published: boolean; created_at: string }[];
+      const [saveRes, planRes] = await Promise.all([
+        supabase.rpc("my_recipe_save_stats"),
+        supabase.rpc("my_recipe_plan_add_stats"),
+      ]);
+      const saveMap = new Map<string, number>();
+      if (!saveRes.error && Array.isArray(saveRes.data)) {
+        for (const row of saveRes.data as { recipe_id: string; save_count: number | string }[]) {
+          const n = Number(row.save_count);
+          saveMap.set(row.recipe_id, Number.isFinite(n) ? n : 0);
+        }
+      }
+      const planMap = new Map<string, number>();
+      if (!planRes.error && Array.isArray(planRes.data)) {
+        for (const row of planRes.data as { recipe_id: string; plan_add_count: number | string }[]) {
+          const n = Number(row.plan_add_count);
+          planMap.set(row.recipe_id, Number.isFinite(n) ? n : 0);
+        }
+      }
+      setMyRecipes(
+        rows.map((r) => ({
+          ...r,
+          saveCount: saveMap.get(r.id) ?? 0,
+          planAddCount: planMap.get(r.id) ?? 0,
+        })),
+      );
     } finally {
       setLoadingList(false);
     }
@@ -832,55 +866,6 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
     }
   };
 
-  if (!isCreator) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <div className="relative inline-block mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-3xl blur-2xl opacity-30 animate-pulse"></div>
-          <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/50">
-            <ChefHat className="w-12 h-12 text-white" />
-          </div>
-        </div>
-        <h1 className="mb-4 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Recipe Creator</h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto text-lg">
-          Share your recipes with the Platemate community. Pro subscribers can upload recipes with automatically verified nutrition data.
-        </p>
-
-        <div className="backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 mb-10 text-left max-w-2xl mx-auto shadow-2xl">
-          <h3 className="mb-6 text-slate-900 dark:text-white">Pro Creator Features</h3>
-          <ul className="space-y-3 text-slate-600 dark:text-slate-400">
-            <li className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-violet-600 dark:text-violet-400 text-sm">✓</span>
-              </div>
-              <span>Automatic nutrition verification using our database of 500k+ ingredients</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-violet-600 dark:text-violet-400 text-sm">✓</span>
-              </div>
-              <span>Recipe analytics showing saves, views, and user ratings</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-violet-600 dark:text-violet-400 text-sm">✓</span>
-              </div>
-              <span>Build your following and share your culinary expertise</span>
-            </li>
-          </ul>
-        </div>
-
-        <button
-          type="button"
-          onClick={onUpgrade}
-          className="px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 text-lg font-semibold"
-        >
-          Upgrade to Pro
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
@@ -905,7 +890,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
         <p className="text-slate-600 dark:text-slate-400">Share your recipe with verified nutrition data</p>
       </div>
 
-      {/* Import from URL (MFP-style) */}
+      {/* Import from URL */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-3">
           <Globe className="w-5 h-5 text-violet-600 dark:text-violet-400" />
@@ -967,9 +952,15 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
                   onClick={() => void loadRecipeForEdit(r.id)}
                   className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-600 disabled:opacity-50 flex flex-wrap items-center justify-between gap-2"
                 >
-                  <span className="font-medium text-slate-900 dark:text-white truncate">{r.title}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-slate-900 dark:text-white truncate block">{r.title}</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                      {r.saveCount} save{r.saveCount === 1 ? "" : "s"} · {r.planAddCount} planner log
+                      {r.planAddCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
+                    className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
                       r.published
                         ? "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"

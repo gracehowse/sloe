@@ -32,6 +32,8 @@ Copy environment variables from your team vault or Vercel. See [`docs/environmen
 - [Environment variables](docs/environment.md)
 - [Supabase RLS checklist](docs/supabase-rls-checklist.md)
 - [Observability (analytics & errors)](docs/observability.md)
+- [Health / Apple Health platform decision (Phase B)](docs/health-platform-phase-b.md)
+- [Best-in-class execution plan](docs/best-in-class-plan.md)
 - [Product roadmap](docs/product-roadmap.md)
 
 ## License

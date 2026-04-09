@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, Sparkles, Check, Ticket } from "lucide-react";
+import { Settings as SettingsIcon, User, Bell, Shield, Sparkles, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -28,10 +28,12 @@ const LOCAL_CLEAR_KEYS = [
 
 export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
   const { signOut, profileDisplayName, redeemPromoCode } = useAppData();
+  void userTier;
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
   const [stripeBusy, setStripeBusy] = useState(false);
+  void stripeBusy;
 
   async function startStripeCheckout(tier: "base" | "pro") {
     setStripeBusy(true);
@@ -60,6 +62,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
       setStripeBusy(false);
     }
   }
+  void startStripeCheckout;
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -79,51 +82,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
   const [dietary, setDietary] = useState<string[]>(["vegetarian"]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");
 
-  const tiers = [
-    {
-      name: "Free",
-      price: "$0",
-      features: [
-        "10 saved recipes",
-        "Basic nutrition tracking",
-        "Recipe discovery",
-        "Profile & macro calculator"
-      ]
-    },
-    {
-      name: "Base",
-      price: "$4.99",
-      period: "/month",
-      features: [
-        "Unlimited saved recipes",
-        "AI meal planner",
-        "Shopping list generator",
-        "Recipe collections",
-        "Advanced filters",
-        "Priority support"
-      ]
-    },
-    {
-      name: "Pro",
-      price: "$9.99",
-      period: "/month",
-      features: [
-        "Everything in Base",
-        "Recipe creation tools",
-        "Progress tracking",
-        "Meal prep mode",
-        "Custom macro targets",
-        "Export & share plans"
-      ],
-      badge: "Most Popular"
-    }
-  ];
-
-  const getTierIndex = () => {
-    if (userTier === "pro") return 2;
-    if (userTier === "base") return 1;
-    return 0;
-  };
+  // Pricing / tiers are intentionally hidden for now (all features unlocked).
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -138,50 +97,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
         <p className="text-slate-600 dark:text-slate-400">Manage your account and preferences</p>
       </div>
 
-      {/* Current Plan */}
-      <div className="backdrop-blur-xl bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-200/50 dark:border-violet-800/50 rounded-2xl p-6 mb-8 shadow-xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-              <h3 className="text-slate-900 dark:text-white capitalize">{userTier} Plan</h3>
-            </div>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              {userTier === "free" && "Upgrade to unlock AI meal planning and unlimited recipes"}
-              {userTier === "base" && "You have access to AI meal planning and unlimited recipes"}
-              {userTier === "pro" && "You have full access to all premium features"}
-            </p>
-            {userTier !== "free" && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Subscription billing uses Stripe. Promo codes below still work for testing and partners.
-              </p>
-            )}
-          </div>
-          {userTier === "free" ? (
-            <button
-              type="button"
-              onClick={() =>
-                promoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
-              className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold"
-            >
-              Upgrade
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                toast.message("Manage in Stripe", {
-                  description: "Use the Stripe customer portal from your account email when enabled, or apply a promo code below.",
-                })
-              }
-              className="px-6 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300"
-            >
-              Manage Plan
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Features are temporarily all unlocked; pricing is hidden for now. */}
 
       {/* Promo code (e.g. testing / partner access) */}
       <div
@@ -363,80 +279,22 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
         </div>
       </div>
 
-      {/* Subscription Plans */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-        <div className="flex items-center gap-2 mb-6">
-          <CreditCard className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">All Plans</h3>
-        </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          {tiers.map((tier, index) => (
-            <div
-              key={tier.name}
-              className={`relative p-5 rounded-xl border-2 transition-all ${
-                getTierIndex() === index
-                  ? "border-violet-600 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/20 dark:to-indigo-950/20 shadow-lg"
-                  : "border-slate-200 dark:border-slate-700"
-              }`}
-            >
-              {tier.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold rounded-full">
-                  {tier.badge}
-                </div>
-              )}
-              {getTierIndex() === index && (
-                <div className="absolute top-4 right-4 w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-              )}
-              <h4 className="font-bold text-slate-900 dark:text-white mb-2">{tier.name}</h4>
-              <div className="mb-4">
-                <span className="text-3xl font-bold text-slate-900 dark:text-white">{tier.price}</span>
-                {tier.period && <span className="text-slate-500 dark:text-slate-400">{tier.period}</span>}
-              </div>
-              <ul className="space-y-2 mb-4">
-                {tier.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <Check className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              {getTierIndex() !== index &&
-                (index > getTierIndex() ? (
-                  <button
-                    type="button"
-                    disabled={stripeBusy || index === 0}
-                    onClick={() => {
-                      if (index === 1) void startStripeCheckout("base");
-                      else if (index === 2) void startStripeCheckout("pro");
-                    }}
-                    className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-lg transition-all font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {stripeBusy ? "Redirecting…" : "Subscribe"}
-                  </button>
-                ) : (
-                  <p className="text-center text-sm text-slate-500 dark:text-slate-400">Lower tier</p>
-                ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Subscription plans are hidden for now. */}
 
-      {/* Product policy (MFP / ReciMe alignment) */}
+      {/* Product policy */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
           <h3 className="text-slate-900 dark:text-white">Nutrition transparency</h3>
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          Activity-adjusted calories use a simple net model: net goal = base goal + activity adjustment when you opt in
-          (see Tracker for live copy). When Apple Health ships, we will document dedupe rules so steps and manual workouts
-          are not double-counted.
+          Activity-adjusted calories use a net model per calendar day: net goal = base goal + activity burn for that day
+          when you opt in (see Nutrition tracker). When Apple Health ships, we will document dedupe rules so steps and
+          manual workouts are not double-counted.
         </p>
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Free vs paid boundaries</h4>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          Basic diary and macro logging stay accessible on Free. Base adds unlimited saves, macro-aware planning, and merged shopping lists. Pro adds creator tools and higher import/analytics limits — not basic logging.
+          All features are temporarily available while we decide pricing boundaries.
         </p>
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Data quality</h4>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
@@ -448,7 +306,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
         </p>
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Creator commerce</h4>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Sponsored or affiliate content will show clear disclosure in-feed and on recipe detail, consistent with LTK-style expectations.
+          Sponsored or affiliate content will show clear disclosure in-feed and on recipe detail.
         </p>
       </div>
 

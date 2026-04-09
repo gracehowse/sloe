@@ -51,7 +51,7 @@ begin
   end if;
 end $$;
 
--- Barcode → canonical food mapping (MFP-style "find a better match" persistence)
+-- Barcode → canonical food mapping (persist “find a better match”)
 create table if not exists public.barcode_mappings (
   barcode text primary key,
   created_at timestamptz not null default now(),

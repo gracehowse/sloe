@@ -1,14 +1,14 @@
 # Product roadmap — ReciMe / recipe + macro platform
 
-This document extends the MVP hardening work with **nutrition depth**, **activity-adjusted targets**, and **social / LTK-style discovery**. It is the north-star for prioritization; implementation order should follow dependencies below.
+This document extends the MVP hardening work with **nutrition depth**, **activity-adjusted targets**, and **social discovery**. It is the north-star for prioritization; implementation order should follow dependencies below.
 
 ---
 
 ## Product thesis
 
-- **Macro trackers** (MFP, Cronometer, MacroFactor): strong logging and targets; weak joyful food discovery and meal planning from real recipes.
+- **Macro trackers**: strong logging and targets; weak joyful food discovery and meal planning from real recipes.
 - **Recipe / social food apps**: strong scroll and saves; weak closing the loop to *your* calorie and protein budget.
-- **Our wedge**: targets → plan → shop → cook → log in one place, with a feed people scroll like Instagram—and **creator-friendly** flows (save, plan, shop) similar in spirit to LTK, but for recipes.
+- **Our wedge**: targets → plan → shop → cook → log in one place, with a feed that’s genuinely fun to browse—and **creator-friendly** flows (save, plan, shop) built for recipes.
 
 ---
 
@@ -31,7 +31,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 ---
 
-## Phase B — Activity-adjusted calorie allowance (MFP-style)
+## Phase B — Activity-adjusted calorie allowance
 
 **Goal:** Steps and workouts adjust **net** or **goal calories** so the product matches how serious trackers behave.
 
@@ -57,12 +57,12 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 ---
 
-## Phase D — Social / LTK-style feed (differentiator)
+## Phase D — Social feed (differentiator)
 
-**Goal:** If users want recipe inspiration, they open **this** app—not only Instagram.
+**Goal:** If users want recipe inspiration, they open **this** app.
 
 - Feed: scroll, save, filters (macros, diet), creator attribution, honest timestamps (sample vs community).
-- **LTK-like behaviors:** save → library → add to meal plan → shopping list; creator collections; share links for recipes/lists.
+- Behaviors: save → library → add to meal plan → shopping list; creator collections; share links for recipes/lists.
 - **Creator loop (later):** analytics (saves, plan adds), notifications when you follow a creator who publishes.
 
 *Depends on:* stable publish/discover pipeline; can run in parallel with Phase B once core logging is solid.
@@ -76,7 +76,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 ---
 
-## Suggested sequencing (fastest path to “MacroFactor × Instagram × LTK”)
+## Suggested sequencing
 
 1. **Fiber + water** in targets, logging, and daily summary (Phase A/C overlap).
 2. **Macro-aware meal planner** constraints and empty states (Phase A).

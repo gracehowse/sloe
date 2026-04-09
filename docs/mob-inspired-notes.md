@@ -30,18 +30,18 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 ## Platemate today (rough parity)
 
-- **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). We do **not** yet show Mob-style **thumbnails per line** or **“300g + 2 breasts”** style **human-readable fusion** of incompatible units.
+- **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). **Display grouping** now merges rows that share a **normalized ingredient name** and shows **mixed units** as `amount unit + amount unit` (no false summing)—see `shoppingDisplayGroups.ts` + `ShoppingList.tsx`. We still do **not** show Mob-style **thumbnails per line**.
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).
-- **Smart suggestions:** **Not built yet**—would need **ingredient overlap scoring** against catalog + saved/community recipes and a **UI block** (likely on planner or discover).
+- **Smart suggestions:** **Shipped (MVP)** — catalog overlap with the current plan in `MealPlanner.tsx` (`smartSuggestions.ts`); save-to-library + analytics. Extending overlap to **community recipes** (DB ingredients) is a follow-up.
 
 ---
 
 ## Backlog ideas (prioritize later)
 
-1. **Smart suggestions (shared ingredients)** — Score recipes by overlap with **current plan** (and optionally library); show **shared ingredient list** + add-to-plan/save.
+1. **Smart suggestions — community / DB ingredients** — Same overlap scoring using Supabase `recipe_ingredients` where catalog data is missing.
 2. **Shopping list UX pass** — Category headers polish, optional **recipe thumbnails** where we have images, **badge** on nav for unchecked count.
 3. **Plan switcher** — Named plans (“Week of …”, “Your first plan”) if we outgrow a single `mealPlan`.
-4. **Display-only merge copy** — When the same “thing” appears as **g + count** from different rows, consider a **single line** explanation instead of only summed numbers (product + parsing spike).
+4. **Stronger merge heuristics** — Same-unit conversion (e.g. g ↔ kg) before summing, where safe.
 5. **Themed collections / rails** — Editorial carousels on Discover (reuse feed data + manual collections).
 
 ---
@@ -49,7 +49,7 @@ Session screenshots (if available locally) may live under the Cursor project `as
 ## Related code (when implementing)
 
 - Planner + portions: `MealPlanner.tsx`, `generateMealPlan.ts`, `portionMultiplier.ts`.
-- List merge: `generateShoppingList.ts`, `guessGroceryCategory` / `category.ts`.
+- List merge: `generateShoppingList.ts`, `guessGroceryCategory` / `category.ts`, `shoppingDisplayGroups.ts`, `ingredientNameKey.ts`.
 - Ingredients source: `recipeCatalog.ts`, Supabase `recipe_ingredients`.
 
 Update this file as you decide what to ship and what to drop.

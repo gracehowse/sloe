@@ -67,6 +67,8 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMetaLoaded, setFollowMetaLoaded] = useState(false);
+  const [publicSaveCount, setPublicSaveCount] = useState<number | null>(null);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +78,16 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
       const uid = sessionData.session?.user?.id ?? null;
       if (cancelled) return;
       setAuthUserId(uid);
+
+      if (isCatalogRecipe) {
+        setFollowCreatorId(null);
+        setRecipeAuthorId(null);
+        setIsFollowing(false);
+        setPublicSaveCount(recipe.savedCount);
+        setFollowerCount(null);
+        setFollowMetaLoaded(true);
+        return;
+      }
 
       const { data: metaRow } = await supabase
         .from("recipes")
@@ -88,6 +100,8 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
         setFollowCreatorId(null);
         setRecipeAuthorId(null);
         setIsFollowing(false);
+        setPublicSaveCount(recipe.savedCount);
+        setFollowerCount(null);
         setFollowMetaLoaded(true);
         return;
       }
@@ -104,53 +118,133 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           .eq("user_id", uid)
           .eq("creator_id", cid)
           .maybeSingle();
-        if (!cancelled) {
-          setIsFollowing(Boolean(fol));
-        }
-      } else {
+        if (!cancelled) setIsFollowing(Boolean(fol));
+      } else if (aid && uid) {
+        const { data: afol } = await supabase
+          .from("author_follows")
+          .select("author_id")
+          .eq("follower_id", uid)
+          .eq("author_id", aid)
+          .maybeSingle();
+        if (!cancelled) setIsFollowing(Boolean(afol));
+      } else if (!cancelled) {
         setIsFollowing(false);
       }
+
+      const { data: sc, error: scErr } = await supabase.rpc("public_recipe_save_count", { p_recipe_id: recipe.id });
+      if (!cancelled) {
+        if (!scErr && sc != null) {
+          const n = Number(sc);
+          setPublicSaveCount(Number.isFinite(n) ? n : recipe.savedCount);
+        } else {
+          setPublicSaveCount(recipe.savedCount);
+        }
+      }
+
+      if (cid) {
+        const { data: fc, error: fcErr } = await supabase.rpc("public_creator_follower_count", { p_creator_id: cid });
+        if (!cancelled) {
+          if (!fcErr && fc != null) {
+            const n = Number(fc);
+            setFollowerCount(Number.isFinite(n) ? n : 0);
+          } else {
+            setFollowerCount(0);
+          }
+        }
+      } else if (aid) {
+        const { data: fc, error: fcErr } = await supabase.rpc("public_author_follower_count", { p_author_id: aid });
+        if (!cancelled) {
+          if (!fcErr && fc != null) {
+            const n = Number(fc);
+            setFollowerCount(Number.isFinite(n) ? n : 0);
+          } else {
+            setFollowerCount(0);
+          }
+        }
+      } else if (!cancelled) {
+        setFollowerCount(null);
+      }
+
       setFollowMetaLoaded(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [recipe.id]);
+  }, [recipe.id, recipe.savedCount, isCatalogRecipe]);
 
   const showFollowButton =
+    !isCatalogRecipe &&
     followMetaLoaded &&
-    Boolean(followCreatorId && authUserId && recipeAuthorId !== authUserId);
+    Boolean(authUserId && recipeAuthorId && authUserId !== recipeAuthorId);
 
   const toggleFollow = async () => {
-    if (!followCreatorId || !authUserId || followBusy) return;
-    setFollowBusy(true);
-    try {
-      if (isFollowing) {
-        const { error } = await supabase
-          .from("follows")
-          .delete()
-          .eq("user_id", authUserId)
-          .eq("creator_id", followCreatorId);
-        if (error) {
-          toast.error(error.message);
-          return;
+    if (!authUserId || followBusy) return;
+    if (followCreatorId) {
+      setFollowBusy(true);
+      try {
+        if (isFollowing) {
+          const { error } = await supabase
+            .from("follows")
+            .delete()
+            .eq("user_id", authUserId)
+            .eq("creator_id", followCreatorId);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          setIsFollowing(false);
+          setFollowerCount((c) => (c != null ? Math.max(0, c - 1) : c));
+          toast.success("Unfollowed");
+        } else {
+          const { error } = await supabase.from("follows").insert({
+            user_id: authUserId,
+            creator_id: followCreatorId,
+          });
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          setIsFollowing(true);
+          setFollowerCount((c) => (c != null ? c + 1 : 1));
+          toast.success("Following");
         }
-        setIsFollowing(false);
-        toast.success("Unfollowed");
-      } else {
-        const { error } = await supabase.from("follows").insert({
-          user_id: authUserId,
-          creator_id: followCreatorId,
-        });
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
-        setIsFollowing(true);
-        toast.success("Following");
+      } finally {
+        setFollowBusy(false);
       }
-    } finally {
-      setFollowBusy(false);
+      return;
+    }
+    if (recipeAuthorId) {
+      setFollowBusy(true);
+      try {
+        if (isFollowing) {
+          const { error } = await supabase
+            .from("author_follows")
+            .delete()
+            .eq("follower_id", authUserId)
+            .eq("author_id", recipeAuthorId);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          setIsFollowing(false);
+          setFollowerCount((c) => (c != null ? Math.max(0, c - 1) : c));
+          toast.success("Unfollowed");
+        } else {
+          const { error } = await supabase.from("author_follows").insert({
+            follower_id: authUserId,
+            author_id: recipeAuthorId,
+          });
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          setIsFollowing(true);
+          setFollowerCount((c) => (c != null ? c + 1 : 1));
+          toast.success("Following");
+        }
+      } finally {
+        setFollowBusy(false);
+      }
     }
   };
 
@@ -326,6 +420,21 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
       </div>
 
       <div className="px-6 py-8 space-y-8">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/50 px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+          {isCatalogRecipe ? (
+            <p>
+              <span className="font-semibold text-slate-900 dark:text-white">Verified curated recipe.</span> Macros and
+              ingredients are checked against structured sources in our catalog.
+            </p>
+          ) : (
+            <p>
+              <span className="font-semibold text-slate-900 dark:text-white">Community recipe.</span> Macros are as
+              published by the author; ingredient nutrition may be mixed verified and estimated — review before relying on
+              it for medical goals.
+            </p>
+          )}
+        </div>
+
         {/* Hero Image */}
         <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
           <img src={recipe.image} alt={recipe.title} className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -341,7 +450,18 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-violet-500/20" />
           <div className="flex-1">
             <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{recipe.savedCount.toLocaleString()} saves · 2.4k followers</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {!followMetaLoaded && !isCatalogRecipe ? (
+                <span className="text-slate-400">Loading reach…</span>
+              ) : (
+                <>
+                  {(publicSaveCount != null ? publicSaveCount : recipe.savedCount).toLocaleString()} saves
+                  {!isCatalogRecipe && followerCount != null
+                    ? ` · ${followerCount.toLocaleString()} followers`
+                    : null}
+                </>
+              )}
+            </p>
           </div>
           {showFollowButton ? (
             <button

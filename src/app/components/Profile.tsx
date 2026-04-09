@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calculator, TrendingUp, Activity, User, Crown, LineChart, Target } from "lucide-react";
+import { Calculator, TrendingUp, Activity, User, Crown, Target, UtensilsCrossed } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
@@ -13,9 +13,11 @@ interface ProfileProps {
   userTier: "free" | "base" | "pro";
   displayName?: string | null;
   onUpgrade?: () => void;
+  onOpenNutrition?: () => void;
 }
 
-export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
+export function Profile({ userTier, displayName, onUpgrade, onOpenNutrition }: ProfileProps) {
+  void onUpgrade;
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
   const {
     nutritionTargets,
@@ -23,7 +25,15 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
     preferActivityAdjustedCalories,
     setPreferActivityAdjustedCalories,
     setProfileMeasurementSystem,
+    nutritionByDay,
   } = useAppData();
+
+  const loggingStats = useMemo(() => {
+    const daysWithLogs = Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k]?.length ?? 0) > 0);
+    const totalMeals = daysWithLogs.reduce((acc, k) => acc + (nutritionByDay[k]?.length ?? 0), 0);
+    const recentDayKeys = [...daysWithLogs].sort((a, b) => b.localeCompare(a)).slice(0, 7);
+    return { daysWithLogs: daysWithLogs.length, totalMeals, recentDayKeys };
+  }, [nutritionByDay]);
   const [saving, setSaving] = useState(false);
   const [isEditingTargets, setIsEditingTargets] = useState(false);
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
@@ -230,15 +240,7 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
             </div>
           </div>
         </div>
-        {userTier === "free" && (
-          <button
-            type="button"
-            onClick={onUpgrade}
-            className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 font-semibold"
-          >
-            Upgrade
-          </button>
-        )}
+        {userTier === "free" ? null : null}
       </div>
 
       {/* Tabs */}
@@ -553,6 +555,10 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
                     <strong>manual activity burn</strong> (kcal) you enter to raise your net calorie goal—useful until
                     automatic sync ships.
                   </span>
+                  <span className="block mt-2 text-xs text-slate-500 dark:text-slate-500">
+                    <span className="font-medium text-slate-600 dark:text-slate-400">Formula:</span> net calorie goal
+                    = base target + activity burn for that calendar day (set per day in Nutrition).
+                  </span>
                 </span>
               </label>
               <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -599,99 +605,88 @@ export function Profile({ userTier, displayName, onUpgrade }: ProfileProps) {
 
       {activeTab === "progress" && (
         <div className="space-y-6">
-          {/* Weight Chart */}
           <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <LineChart className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                <h3 className="text-slate-900 dark:text-white">Weight Progress</h3>
-              </div>
-              <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all text-sm font-medium">
-                Log Weight
-              </button>
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              <h3 className="text-slate-900 dark:text-white">Weight</h3>
             </div>
-            <div className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              Demo data (progress logging is not wired up yet).
-            </div>
-            <div className="h-64 flex items-end justify-around gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-              {[72, 73, 74, 75, 75.5, 74.8, 75].map((weight, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-gradient-to-t from-violet-600 to-indigo-600 rounded-t-lg"
-                    style={{ height: `${(weight / 80) * 100}%` }}
-                  ></div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">{weight}kg</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">75.0</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Current</p>
-              </div>
-              <div className="text-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">+3.0</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Change</p>
-              </div>
-              <div className="text-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">72.0</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Starting</p>
-              </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              Weight history and charts are not available yet. The number below is your{" "}
+              <strong className="text-slate-800 dark:text-slate-200">profile weight</strong> from the Targets tab—it updates
+              when you save your profile.
+            </p>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-center">
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {measurementSystem === "imperial" ? `${weightLb} lb` : `${weight} kg`}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Current (profile)</p>
             </div>
           </div>
 
-          {/* Streaks & Stats */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Logging Streak</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Days with food logged</p>
               </div>
-              <p className="text-4xl font-bold text-slate-900 dark:text-white">12 days</p>
+              <p className="text-4xl font-bold text-slate-900 dark:text-white">{loggingStats.daysWithLogs}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Distinct days in your nutrition journal</p>
             </div>
             <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Avg Accuracy</p>
+                <UtensilsCrossed className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total log entries</p>
               </div>
-              <p className="text-4xl font-bold text-slate-900 dark:text-white">94%</p>
-            </div>
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Days Logged</p>
-              </div>
-              <p className="text-4xl font-bold text-slate-900 dark:text-white">89</p>
+              <p className="text-4xl font-bold text-slate-900 dark:text-white">{loggingStats.totalMeals}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Meals and snacks recorded across all days</p>
             </div>
           </div>
 
-          {/* Recent Activity */}
           <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
-            <h3 className="text-slate-900 dark:text-white mb-4">Recent Activity</h3>
-            <div className="space-y-3">
-              {[
-                { date: "Today", weight: "75.0 kg", calories: "1,397 / 1,400", status: "On track" },
-                { date: "Yesterday", weight: "74.8 kg", calories: "1,512 / 1,400", status: "Slightly over" },
-                { date: "2 days ago", weight: "75.5 kg", calories: "1,398 / 1,400", status: "On track" },
-              ].map((day, i) => (
-                <div key={i} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">{day.date}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Weight: {day.weight}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Calories: {day.calories}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      day.status === "On track"
-                        ? "bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400"
-                        : "bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400"
-                    }`}>
-                      {day.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h3 className="text-slate-900 dark:text-white">Recent days</h3>
+              {onOpenNutrition ? (
+                <button
+                  type="button"
+                  onClick={onOpenNutrition}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all text-sm font-medium shrink-0"
+                >
+                  Open tracker
+                </button>
+              ) : null}
             </div>
+            {loggingStats.recentDayKeys.length === 0 ? (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                No nutrition log yet. Use Nutrition to add food—counts here update from your real journal (stored on this
+                device and synced when cloud sync is available).
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {loggingStats.recentDayKeys.map((key) => {
+                  const n = nutritionByDay[key]?.length ?? 0;
+                  const label = (() => {
+                    try {
+                      const [y, mo, d] = key.split("-").map(Number);
+                      const dt = new Date(y, mo - 1, d);
+                      return dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+                    } catch {
+                      return key;
+                    }
+                  })();
+                  return (
+                    <li
+                      key={key}
+                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm"
+                    >
+                      <span className="font-medium text-slate-900 dark:text-white">{label}</span>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {n} {n === 1 ? "entry" : "entries"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
       )}

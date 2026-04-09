@@ -51,7 +51,7 @@ export interface UserProfile {
   activityLevel: ActivityLevel | null;
   goal: Goal | null;
   targets: MacroTargets | null;
-  /** When true, user wants calorie goal adjusted from Apple Health / activity when integrated (MFP-style). */
+  /** When true, user wants calorie goal adjusted from Apple Health / activity when integrated. */
   preferActivityAdjustedCalories: boolean;
 }
 

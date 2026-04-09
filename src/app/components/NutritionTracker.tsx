@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Calendar,
   Plus,
   TrendingUp,
   Target,
@@ -31,8 +30,10 @@ import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBar
 import {
   computeCalorieGoalFitPercent,
   computeLoggingStreak,
+  computeWeekFiberWaterHits,
   computeWeekLoggedDays,
 } from "../../lib/nutrition/trackerStats.ts";
+import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
@@ -40,8 +41,11 @@ import {
 } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import { TrackerSummaryCard } from "./TrackerSummaryCard.tsx";
+import { TodayAtAGlance } from "./TodayAtAGlance.tsx";
 
 const RECENT_BARCODE_KEY = "platemate-recent-foods-v1";
+
+const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack", "Planned"];
 
 type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string };
 type UsdaFoodDetails = {
@@ -112,12 +116,13 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
     removeLoggedMeal,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
-    activityBurnKcal,
-    setActivityBurnKcal,
+    activityBurnForSelectedDay,
+    setActivityBurnForSelectedDay,
     addWaterMlForSelectedDay,
     extraWaterMlForSelectedDay,
     profileMeasurementSystem,
     nutritionByDay,
+    extraWaterByDay,
   } = useAppData();
 
   const useImperialWater = profileMeasurementSystem === "imperial";
@@ -129,6 +134,17 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
   const goalFit = useMemo(
     () => computeCalorieGoalFitPercent(nutritionByDay, nutritionTargets.calories, 7),
     [nutritionByDay, nutritionTargets.calories],
+  );
+
+  const weekFiberWater = useMemo(
+    () =>
+      computeWeekFiberWaterHits(
+        nutritionByDay,
+        extraWaterByDay,
+        normalizeMacroTargets(nutritionTargets).fiber,
+        normalizeMacroTargets(nutritionTargets).waterMl,
+      ),
+    [nutritionByDay, extraWaterByDay, nutritionTargets],
   );
 
   const [addOpen, setAddOpen] = useState(false);
@@ -196,9 +212,28 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
     { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, waterMl: 0 },
   );
 
+  const mealsGrouped = useMemo(() => {
+    const map = new Map<string, typeof mealsForSelectedDate>();
+    for (const m of mealsForSelectedDate) {
+      const k = m.name?.trim() || "Other";
+      const arr = map.get(k);
+      if (arr) arr.push(m);
+      else map.set(k, [m]);
+    }
+    const keys = [...map.keys()].sort((a, b) => {
+      const ia = MEAL_SECTION_ORDER.indexOf(a);
+      const ib = MEAL_SECTION_ORDER.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    return keys.map((name) => ({ name, meals: map.get(name)! }));
+  }, [mealsForSelectedDate]);
+
   const targets = normalizeMacroTargets(nutritionTargets);
   const baseCalorieTarget = targets.calories;
-  const activityAdjustment = preferActivityAdjustedCalories ? activityBurnKcal : 0;
+  const activityAdjustment = preferActivityAdjustedCalories ? activityBurnForSelectedDay : 0;
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
@@ -206,15 +241,26 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
     return Math.min((current / target) * 100, 100);
   };
 
-  const getProgressColor = (current: number, target: number) => {
+  const getProgressTextClass = (current: number, target: number) => {
     const percentage = (current / target) * 100;
     if (percentage >= 90 && percentage <= 110) {
-      return "text-green-600 dark:text-green-400 bg-green-500";
+      return "text-green-600 dark:text-green-400";
     }
     if (percentage > 110) {
-      return "text-orange-600 dark:text-orange-400 bg-orange-500";
+      return "text-orange-600 dark:text-orange-400";
     }
-    return "text-violet-600 dark:text-violet-400 bg-violet-500";
+    return "text-violet-600 dark:text-violet-400";
+  };
+
+  const getProgressBarClass = (current: number, target: number) => {
+    const percentage = (current / target) * 100;
+    if (percentage >= 90 && percentage <= 110) {
+      return "bg-green-500";
+    }
+    if (percentage > 110) {
+      return "bg-orange-500";
+    }
+    return "bg-violet-500";
   };
 
   const handleAddMeal = () => {
@@ -277,6 +323,8 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       return;
     }
     const p = clampPortionMultiplier(recipePortionMultiplier);
+    const fiberFromRecipe =
+      recipe.fiberG != null && recipe.fiberG > 0 ? scaledMacro(recipe.fiberG, p) : null;
     addLoggedMeal({
       name: mealSlot,
       recipeTitle: recipe.title,
@@ -285,6 +333,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       protein: scaledMacro(recipe.protein, p),
       carbs: scaledMacro(recipe.carbs, p),
       fat: scaledMacro(recipe.fat, p),
+      ...(fiberFromRecipe != null && fiberFromRecipe > 0 ? { fiberG: fiberFromRecipe } : {}),
       ...(p !== 1 ? { portionMultiplier: p } : {}),
     });
     setAddOpen(false);
@@ -292,17 +341,87 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl">
-            <Target className="w-5 h-5 text-white" />
+    <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
+      {/* Dense day header — date, nav, primary add */}
+      <div className="sticky top-0 z-20 -mx-1 mb-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-b from-white/95 to-white/80 pb-3 backdrop-blur-md dark:from-slate-950/95 dark:to-slate-950/80 px-1 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="shrink-0 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 p-1.5">
+              <Target className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold text-slate-900 dark:text-white sm:text-lg">Nutrition</h1>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {selectedDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </p>
+            </div>
           </div>
-          <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Nutrition Tracker</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, -1))}
+              className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey(todayKey())}
+              className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, 1))}
+              className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              →
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const csv = buildNutritionCsvForDay(
+                  selectedDateKey,
+                  mealsForSelectedDate,
+                  extraWaterMlForSelectedDay,
+                );
+                downloadCsvFile(`platemate-${selectedDateKey}.csv`, csv);
+              }}
+              className="rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-pm hover:shadow-md hover:shadow-violet-500/20"
+            >
+              <Plus className="h-4 w-4" />
+              Add food
+            </button>
+          </div>
         </div>
-        <p className="text-slate-600 dark:text-slate-400">Track your daily nutrition and hit your targets</p>
       </div>
+
+      <TodayAtAGlance
+        dateLabel={selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        caloriesEaten={totals.calories}
+        calorieGoalNet={effectiveCalorieTarget}
+        proteinEaten={totals.protein}
+        proteinGoal={targets.protein}
+        carbsEaten={totals.carbs}
+        carbsGoal={targets.carbs}
+        fatEaten={totals.fat}
+        fatGoal={targets.fat}
+        fiberEaten={totals.fiber}
+        fiberGoal={targets.fiber}
+        waterEatenLabel={formatWaterLine(totalWaterMl)}
+        waterGoalLabel={formatWaterLine(targets.waterMl)}
+        preferActivityAdjusted={preferActivityAdjustedCalories}
+        activityBurnKcal={activityBurnForSelectedDay}
+        baseCalorieGoal={baseCalorieTarget}
+      />
 
       <TrackerSummaryCard
         dateLabel={selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -311,42 +430,8 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
         streakDays={streakDays}
         weekLogged={weekLogged}
         goalFitPercent={goalFit}
+        weekFiberWater={weekFiberWater}
       />
-
-      {/* Date Selector */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            <h3 className="text-slate-900 dark:text-white">
-              {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            </h3>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, -1))}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
-            >
-              ← Prev
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDateKey(todayKey())}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDateKey((k) => shiftDateKey(k, 1))}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300 text-sm font-medium"
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Quick log — USDA search without opening Add Meal */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-violet-200/40 dark:border-violet-900/40 rounded-2xl p-4 sm:p-6 mb-6 shadow-lg">
@@ -355,7 +440,8 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <h3 className="text-slate-900 dark:text-white text-sm font-semibold">Quick log (USDA)</h3>
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-          Search foods and log portions for {selectedDate.toLocaleDateString()} — same data as Add meal → Search.
+          <span className="font-medium text-slate-700 dark:text-slate-300">Estimated</span> from USDA FoodData Central — search
+          foods and log portions for {selectedDate.toLocaleDateString()} (same flow as Add meal → Search).
         </p>
         <div className="flex flex-col sm:flex-row gap-2 mb-3">
           <label className="text-xs text-slate-600 dark:text-slate-400 sm:w-36 shrink-0 flex items-center gap-2">
@@ -499,14 +585,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Calories (net goal)</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totals.calories, effectiveCalorieTarget)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totals.calories, effectiveCalorieTarget)}`}>
                 {totals.calories}
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">/ {effectiveCalorieTarget}</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totals.calories, effectiveCalorieTarget)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totals.calories, effectiveCalorieTarget)} transition-all duration-500`}
                 style={{ width: `${getProgress(totals.calories, effectiveCalorieTarget)}%` }}
               ></div>
             </div>
@@ -515,14 +601,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Protein</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totals.protein, targets.protein)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totals.protein, targets.protein)}`}>
                 {totals.protein}g
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">/ {targets.protein}g</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totals.protein, targets.protein)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totals.protein, targets.protein)} transition-all duration-500`}
                 style={{ width: `${getProgress(totals.protein, targets.protein)}%` }}
               ></div>
             </div>
@@ -531,14 +617,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Carbs</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totals.carbs, targets.carbs)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totals.carbs, targets.carbs)}`}>
                 {totals.carbs}g
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">/ {targets.carbs}g</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totals.carbs, targets.carbs)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totals.carbs, targets.carbs)} transition-all duration-500`}
                 style={{ width: `${getProgress(totals.carbs, targets.carbs)}%` }}
               ></div>
             </div>
@@ -547,14 +633,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Fat</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totals.fat, targets.fat)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totals.fat, targets.fat)}`}>
                 {totals.fat}g
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">/ {targets.fat}g</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totals.fat, targets.fat)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totals.fat, targets.fat)} transition-all duration-500`}
                 style={{ width: `${getProgress(totals.fat, targets.fat)}%` }}
               ></div>
             </div>
@@ -563,14 +649,14 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Fiber</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totals.fiber, targets.fiber)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totals.fiber, targets.fiber)}`}>
                 {totals.fiber}g
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">/ {targets.fiber}g</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totals.fiber, targets.fiber)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totals.fiber, targets.fiber)} transition-all duration-500`}
                 style={{ width: `${getProgress(totals.fiber, targets.fiber)}%` }}
               ></div>
             </div>
@@ -579,7 +665,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Water</p>
             <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold ${getProgressColor(totalWaterMl, targets.waterMl)}`}>
+              <span className={`text-3xl font-bold ${getProgressTextClass(totalWaterMl, targets.waterMl)}`}>
                 {formatWaterLine(totalWaterMl)}
               </span>
               <span className="text-lg text-slate-500 dark:text-slate-400">
@@ -588,7 +674,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full ${getProgressColor(totalWaterMl, targets.waterMl)} transition-all duration-500`}
+                className={`h-full ${getProgressBarClass(totalWaterMl, targets.waterMl)} transition-all duration-500`}
                 style={{ width: `${getProgress(totalWaterMl, targets.waterMl)}%` }}
               ></div>
             </div>
@@ -603,7 +689,9 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Net goal = base goal
-              {preferActivityAdjustedCalories ? ` + activity adjustment (${activityBurnKcal} kcal)` : " (activity adjustment off in Profile)"}
+              {preferActivityAdjustedCalories
+                ? ` + activity (${activityBurnForSelectedDay} kcal this day)`
+                : " (activity adjustment off in Profile)"}
               .
             </p>
           </div>
@@ -628,11 +716,12 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
           <div className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/40 rounded-xl p-4 border border-green-200/50 dark:border-green-900/50">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">Activity adjustment (MFP-style)</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Activity adjustment</p>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-              Toggle lives in Profile. Until Apple Health sync ships, set a manual burn to preview net calories. Avoid
-              logging the same workout twice when integrations go live.
+              Toggle lives in Profile. Formula: <span className="font-medium text-slate-700 dark:text-slate-300">net goal = base + activity burn</span> for
+              the selected day (web-first; Apple Health can replace manual burn later). Avoid double-counting workouts when
+              sync ships.
             </p>
             {!preferActivityAdjustedCalories ? (
               <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
@@ -650,8 +739,10 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                   <input
                     type="number"
                     min={0}
-                    value={activityBurnKcal}
-                    onChange={(e) => setActivityBurnKcal(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                    value={activityBurnForSelectedDay}
+                    onChange={(e) =>
+                      setActivityBurnForSelectedDay(Math.max(0, Math.round(Number(e.target.value) || 0)))
+                    }
                     className="w-24 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                   />
                   <span className="text-slate-600 dark:text-slate-400">kcal</span>
@@ -666,101 +757,119 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
         </div>
       </div>
 
-      {/* Logged Meals */}
+      {/* Logged Meals — grouped by meal slot */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h3 className="text-slate-900 dark:text-white">Logged Meals</h3>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setBarcodeOpen(true)}
-              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200"
-            >
-              <Package className="w-4 h-4" />
-              Barcode
-            </button>
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
-            >
-              <Plus className="w-4 h-4" />
-              Add Meal
-            </button>
-          </div>
+          <h3 className="text-slate-900 dark:text-white">Day log</h3>
+          <button
+            type="button"
+            onClick={() => setBarcodeOpen(true)}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200 transition-pm"
+          >
+            <Package className="w-4 h-4" />
+            Barcode
+          </button>
         </div>
 
-        <div className="space-y-4">
-          {mealsForSelectedDate.map((meal) => {
-            const loggedPortion = effectivePortionMultiplier(meal.portionMultiplier);
-            const portionLabel =
-              loggedPortion === Math.floor(loggedPortion) ? `${loggedPortion}×` : `${loggedPortion.toFixed(1)}×`;
-            return (
-            <div key={meal.id} className="p-5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700 transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="inline-block px-3 py-1 bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm font-semibold">
-                      {meal.name}
-                    </span>
-                    {loggedPortion !== 1 ? (
-                      <span className="inline-block px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                        {portionLabel} portions
-                      </span>
-                    ) : null}
-                  </div>
-                  <h4 className="text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{meal.time}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeLoggedMeal(meal.id)}
-                  className="text-slate-400 hover:text-red-500 transition-colors"
-                  aria-label={`Remove ${meal.recipeTitle}`}
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+        <div className="space-y-8">
+          {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => (
+            <section key={sectionName} className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2 dark:border-slate-700/80">
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {sectionName}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">({sectionMeals.length})</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{meal.calories}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{meal.protein}g</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{meal.carbs}g</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{meal.fat}g</p>
-                </div>
+              <div className="space-y-3">
+                {sectionMeals.map((meal) => {
+                  const loggedPortion = effectivePortionMultiplier(meal.portionMultiplier);
+                  const portionLabel =
+                    loggedPortion === Math.floor(loggedPortion) ? `${loggedPortion}×` : `${loggedPortion.toFixed(1)}×`;
+                  return (
+                    <div
+                      key={meal.id}
+                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50 transition-pm hover:border-violet-300/80 dark:hover:border-violet-700/80"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            {loggedPortion !== 1 ? (
+                              <span className="inline-block rounded-md bg-slate-200/90 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                {portionLabel} portions
+                              </span>
+                            ) : null}
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{meal.time}</span>
+                          </div>
+                          <h4 className="text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeLoggedMeal(meal.id)}
+                          className="shrink-0 text-slate-400 transition-pm hover:text-red-500"
+                          aria-label={`Remove ${meal.recipeTitle}`}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Cal
+                          </p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{meal.calories}</p>
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            P
+                          </p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{meal.protein}g</p>
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            C
+                          </p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{meal.carbs}g</p>
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            F
+                          </p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{meal.fat}g</p>
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Fiber
+                          </p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">
+                            {meal.fiberG != null && meal.fiberG > 0 ? `${meal.fiberG}g` : "—"}
+                          </p>
+                        </div>
+                      </div>
+                      {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">
+                          {meal.fiberG != null && meal.fiberG > 0 ? <span>Fiber: {meal.fiberG}g</span> : null}
+                          {meal.waterMl != null && meal.waterMl > 0 ? (
+                            <span>Water: {formatWaterLine(meal.waterMl)}</span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
-              {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
-                <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
-                  {meal.fiberG != null && meal.fiberG > 0 ? <span>Fiber: {meal.fiberG}g</span> : null}
-                  {meal.waterMl != null && meal.waterMl > 0 ? (
-                    <span>Water: {formatWaterLine(meal.waterMl)}</span>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            );
-          })}
+            </section>
+          ))}
 
           {mealsForSelectedDate.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-slate-500 dark:text-slate-400 mb-4">No meals logged on this day</p>
+            <div className="py-12 text-center">
+              <p className="mb-4 text-slate-500 dark:text-slate-400">No meals logged on this day</p>
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 font-semibold"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-3 font-semibold text-white transition-pm hover:shadow-lg hover:shadow-violet-500/25"
               >
-                <Plus className="w-5 h-5" />
-                Log Your First Meal
+                <Plus className="h-5 w-5" />
+                Log your first meal
               </button>
             </div>
           )}
@@ -1166,7 +1275,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
                     protein: p.protein,
                     carbs: p.carbs,
                     fat: p.fat,
-                    fiberG: p.fiberG,
+                    ...(p.fiberG > 0 ? { fiberG: p.fiberG } : {}),
                   });
                   setBarcodeValue("");
                   setBarcodeOpen(false);

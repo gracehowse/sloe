@@ -16,6 +16,7 @@ import {
   Menu,
 } from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
+import { NotificationsBell } from "./components/NotificationsBell.tsx";
 import { Library } from "./components/Library.tsx";
 import { MealPlanner } from "./components/MealPlanner.tsx";
 import { Profile } from "./components/Profile.tsx";
@@ -34,8 +35,15 @@ import {
 type View = "discover" | "library" | "planner" | "profile" | "tracker" | "shopping" | "settings" | "upload";
 
 export default function App() {
-  const { profileTier: userTier, profileDisplayName: displayName, authEmail, signOut, refreshProfileBasics } =
-    useAppData();
+  const {
+    profileTier: userTier,
+    profileDisplayName: displayName,
+    authEmail,
+    signOut,
+    refreshProfileBasics,
+    shoppingItems,
+  } = useAppData();
+  void userTier;
   const searchParams = useSearchParams();
   const router = useRouter();
   const deepLinkRecipeId = searchParams.get("recipe");
@@ -43,6 +51,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>("discover");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
 
   const normalizedViewParam = useMemo(() => {
     if (!viewParam) return null;
@@ -74,6 +83,23 @@ export default function App() {
     router.replace("/", { scroll: false });
   }, [router]);
 
+  const openRecipeById = useCallback(
+    (recipeId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("view", "discover");
+      params.set("recipe", recipeId);
+      const q = params.toString();
+      router.replace(q ? `/?${q}` : "/", { scroll: false });
+      setCurrentView("discover");
+    },
+    [router, searchParams],
+  );
+
+  const shoppingUncheckedCount = useMemo(
+    () => shoppingItems.filter((i) => !i.checked).length,
+    [shoppingItems],
+  );
+
   const clearSettingsScrollToPromo = useCallback(() => setSettingsScrollToPromo(false), []);
 
   const openUpgradePromo = useCallback(() => {
@@ -84,6 +110,12 @@ export default function App() {
   useEffect(() => {
     if (currentView !== "settings") {
       setSettingsScrollToPromo(false);
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    if (currentView !== "planner") {
+      setPlannerMobileTab("plan");
     }
   }, [currentView]);
 
@@ -108,14 +140,54 @@ export default function App() {
           />
         );
       case "library":
-        return <Library userTier={userTier} onUpgrade={openUpgradePromo} />;
+        return (
+          <Library userTier={userTier} onUpgrade={openUpgradePromo} onGoDiscover={() => navigateToView("discover")} />
+        );
       case "planner":
         return (
-          <MealPlanner
-            userTier={userTier}
-            onUpgrade={openUpgradePromo}
-            onNavigate={(view) => navigateToView(view)}
-          />
+          <>
+            <div className="md:hidden sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-2">
+              <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPlannerMobileTab("plan")}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
+                    plannerMobileTab === "plan"
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-violet-700 dark:text-violet-300"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  Plan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlannerMobileTab("shop")}
+                  className={`relative flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
+                    plannerMobileTab === "shop"
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-violet-700 dark:text-violet-300"
+                      : "text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  Shop
+                  {shoppingUncheckedCount > 0 ? (
+                    <span className="absolute -top-0.5 right-2 min-w-[1rem] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-4 text-center">
+                      {shoppingUncheckedCount > 99 ? "99+" : shoppingUncheckedCount}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </div>
+            {plannerMobileTab === "plan" ? (
+              <MealPlanner
+                userTier={userTier}
+                onUpgrade={openUpgradePromo}
+                onNavigate={(view) => navigateToView(view)}
+                onOpenRecipe={openRecipeById}
+              />
+            ) : (
+              <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} />
+            )}
+          </>
         );
       case "tracker":
         return <NutritionTracker userTier={userTier} />;
@@ -133,7 +205,14 @@ export default function App() {
           />
         );
       case "profile":
-        return <Profile userTier={userTier} displayName={displayName} onUpgrade={openUpgradePromo} />;
+        return (
+          <Profile
+            userTier={userTier}
+            displayName={displayName}
+            onUpgrade={openUpgradePromo}
+            onOpenNutrition={() => navigateToView("tracker")}
+          />
+        );
       default:
         return <DiscoverFeed userTier={userTier} />;
     }
@@ -155,20 +234,7 @@ export default function App() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {userTier === "free" && (
-            <button
-              type="button"
-              onClick={openUpgradePromo}
-              className="px-3 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105"
-            >
-              Upgrade
-            </button>
-          )}
-          {userTier !== "free" && (
-            <div className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300 rounded-full text-xs sm:text-sm capitalize font-medium border border-violet-200/50 dark:border-violet-800/50 max-w-[5rem] sm:max-w-none truncate">
-              {userTier}
-            </div>
-          )}
+          <NotificationsBell onOpenRecipe={openRecipeById} />
           <button
             type="button"
             onClick={() => void signOut()}
@@ -217,9 +283,6 @@ export default function App() {
             >
               <Calendar className={`w-5 h-5 transition-transform duration-200 ${currentView === "planner" ? "" : "group-hover:scale-110"}`} />
               <span className="font-medium">Meal Planner</span>
-              {(userTier === "base" || userTier === "pro") && (
-                <Sparkles className="w-3.5 h-3.5 ml-auto text-yellow-400 animate-pulse" />
-              )}
             </button>
             <button
               onClick={() => navigateToView("tracker")}
@@ -240,31 +303,31 @@ export default function App() {
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
               }`}
             >
-              <ShoppingCart className={`w-5 h-5 transition-transform duration-200 ${currentView === "shopping" ? "" : "group-hover:scale-110"}`} />
+              <span className="relative inline-flex">
+                <ShoppingCart className={`w-5 h-5 transition-transform duration-200 ${currentView === "shopping" ? "" : "group-hover:scale-110"}`} />
+                {shoppingUncheckedCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-2 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {shoppingUncheckedCount > 99 ? "99+" : shoppingUncheckedCount}
+                  </span>
+                ) : null}
+              </span>
               <span className="font-medium">Shopping List</span>
-              {(userTier === "base" || userTier === "pro") && (
-                <Sparkles className="w-3.5 h-3.5 ml-auto text-yellow-400 animate-pulse" />
-              )}
             </button>
 
-            {userTier === "pro" && (
-              <>
-                <div className="py-2">
-                  <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
-                </div>
-                <button
-                  onClick={() => navigateToView("upload")}
-                  className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                    currentView === "upload"
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-                  }`}
-                >
-                  <ChefHat className={`w-5 h-5 transition-transform duration-200 ${currentView === "upload" ? "" : "group-hover:scale-110"}`} />
-                  <span className="font-medium">Create Recipe</span>
-                </button>
-              </>
-            )}
+            <div className="py-2">
+              <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
+            </div>
+            <button
+              onClick={() => navigateToView("upload")}
+              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
+                currentView === "upload"
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <ChefHat className={`w-5 h-5 transition-transform duration-200 ${currentView === "upload" ? "" : "group-hover:scale-110"}`} />
+              <span className="font-medium">Create Recipe</span>
+            </button>
           </div>
           <div className="px-4 pb-6 space-y-2">
             <button
@@ -353,13 +416,20 @@ export default function App() {
               navigateToView("shopping");
               setMoreOpen(false);
             }}
-            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium relative ${
               currentView === "shopping"
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
             }`}
           >
-            <ShoppingCart className="w-5 h-5" />
+            <span className="relative">
+              <ShoppingCart className="w-5 h-5" />
+              {shoppingUncheckedCount > 0 ? (
+                <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">
+                  {shoppingUncheckedCount > 9 ? "9+" : shoppingUncheckedCount}
+                </span>
+              ) : null}
+            </span>
             Shop
           </button>
           <button

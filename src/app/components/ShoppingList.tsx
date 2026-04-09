@@ -1,7 +1,16 @@
-import { useMemo, useState } from "react";
-import { ShoppingCart, Check, Plus, Trash2, Download, Printer, FileText } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { ShoppingCart, Check, Plus, Trash2, Download, Printer, FileText, Minus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
+import {
+  formatMixedShoppingAmounts,
+  groupShoppingItemsByIngredientName,
+  isShoppingGroupFullyChecked,
+  mergeShoppingFromFields,
+  singleRecipeTitleFromFromField,
+  type ShoppingDisplayGroup,
+} from "../../lib/planning/shoppingDisplayGroups.ts";
 import type { UserTier } from "../../types/recipe.ts";
 
 interface ShoppingListProps {
@@ -16,13 +25,57 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
     removeShoppingItem,
     addShoppingItem,
     generateShoppingListFromPlan,
+    shoppingListOutOfSync,
+    savedRecipesForLibrary,
   } = useAppData();
+
+  const resolveRecipeThumb = useCallback(
+    (from: string) => {
+      const title = singleRecipeTitleFromFromField(from);
+      if (!title) return null;
+      const cat = RECIPE_CATALOG.find((r) => r.title === title);
+      if (cat) return cat.image;
+      const lib = savedRecipesForLibrary.find((r) => r.title === title);
+      return lib?.image ?? null;
+    },
+    [savedRecipesForLibrary],
+  );
   const [customName, setCustomName] = useState("");
 
-  const isPaidUser = userTier === "base" || userTier === "pro";
+  void userTier;
+  void onUpgrade;
 
   const categories = Array.from(new Set(shoppingItems.map((item) => item.category)));
-  const checkedCount = shoppingItems.filter((item) => item.checked).length;
+
+  const displayProgress = useMemo(() => {
+    let groupCount = 0;
+    let checkedGroups = 0;
+    for (const cat of categories) {
+      const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((i) => i.category === cat));
+      for (const g of groups) {
+        groupCount++;
+        if (isShoppingGroupFullyChecked(g)) checkedGroups++;
+      }
+    }
+    return { groupCount, checkedGroups };
+  }, [shoppingItems, categories]);
+
+  const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
+    const allChecked = isShoppingGroupFullyChecked(group);
+    for (const item of group.items) {
+      if (allChecked) {
+        if (item.checked) toggleShoppingChecked(item.id);
+      } else if (!item.checked) {
+        toggleShoppingChecked(item.id);
+      }
+    }
+  };
+
+  const removeGroup = (group: ShoppingDisplayGroup) => {
+    for (const item of group.items) {
+      removeShoppingItem(item.id);
+    }
+  };
 
   const csvContent = useMemo(() => {
     const header = "category,name,amount,unit,checked,from";
@@ -47,11 +100,16 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
     }
     const lines: string[] = ["Platemate shopping list", ""];
     for (const cat of categories) {
-      const categoryItems = shoppingItems.filter((item) => item.category === cat);
+      const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === cat));
       lines.push(`## ${cat}`, "");
-      for (const item of categoryItems) {
-        const box = item.checked ? "[x]" : "[ ]";
-        lines.push(`${box} ${item.name} — ${item.amount} ${item.unit} (${item.from})`);
+      for (const g of groups) {
+        const box = isShoppingGroupFullyChecked(g) ? "[x]" : "[ ]";
+        const qty =
+          g.items.length === 1
+            ? `${g.items[0]!.amount} ${g.items[0]!.unit}`
+            : formatMixedShoppingAmounts(g.items);
+        const from = mergeShoppingFromFields(g.items);
+        lines.push(`${box} ${g.displayName} — ${qty} (${from})`);
       }
       lines.push("");
     }
@@ -109,38 +167,6 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
     setCustomName("");
   };
 
-  if (!isPaidUser) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <div className="relative inline-block mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-3xl blur-2xl opacity-30 animate-pulse"></div>
-          <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/50">
-            <ShoppingCart className="w-12 h-12 text-white" />
-          </div>
-        </div>
-        <h1 className="mb-4 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Shopping List</h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto text-lg">
-          Automatically generate organized shopping lists from your meal plans. Never forget an ingredient again.
-        </p>
-
-        <div className="backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 mb-10 text-left max-w-2xl mx-auto shadow-2xl">
-          <h3 className="mb-6 text-slate-900 dark:text-white">Premium Feature</h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
-            Shopping lists are available for Base and Pro subscribers. Generate lists from meal plans, automatically combine duplicate ingredients, and organize by category for efficient shopping.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onUpgrade}
-          className="px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 text-lg font-semibold"
-        >
-          Upgrade to Access
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 print:max-w-none print:px-4 print:py-4">
       {/* Header */}
@@ -186,18 +212,45 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
         </div>
       </div>
 
+      {shoppingListOutOfSync ? (
+        <div
+          className="mb-6 rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/60 bg-amber-50/95 dark:bg-amber-950/35 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden"
+          role="status"
+        >
+          <div className="flex gap-3 min-w-0">
+            <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">List may not match your meal plan</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Your planner changed (meals or portions) after this list was built. Regenerate so quantities match what you
+                intend to cook.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void generateShoppingListFromPlan()}
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm"
+          >
+            Regenerate from plan
+          </button>
+        </div>
+      ) : null}
+
       {/* Progress */}
       <div className="backdrop-blur-xl bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-200/50 dark:border-violet-800/50 rounded-2xl p-6 mb-8 shadow-xl print:hidden">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-slate-900 dark:text-white">Shopping Progress</h3>
           <span className="text-lg font-bold text-violet-600 dark:text-violet-400">
-            {checkedCount} / {shoppingItems.length} items
+            {displayProgress.checkedGroups} / {displayProgress.groupCount} items
           </span>
         </div>
         <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-500"
-            style={{ width: `${shoppingItems.length ? (checkedCount / shoppingItems.length) * 100 : 0}%` }}
+            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-pm duration-[180ms]"
+            style={{
+              width: `${displayProgress.groupCount ? (displayProgress.checkedGroups / displayProgress.groupCount) * 100 : 0}%`,
+            }}
           ></div>
         </div>
       </div>
@@ -226,59 +279,94 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
 
       {/* Items by Category */}
       {categories.map((category) => {
-        const categoryItems = shoppingItems.filter((item) => item.category === category);
+        const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === category));
         return (
           <div key={category} className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-            <h3 className="text-slate-900 dark:text-white mb-4">{category}</h3>
+            <div className="sticky top-0 z-10 -mx-2 mb-4 border-b border-slate-200/90 dark:border-slate-700/90 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2 py-2">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{category}</h3>
+            </div>
             <div className="space-y-3">
-              {categoryItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
-                    item.checked
-                      ? "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60"
-                      : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleShoppingChecked(item.id)}
-                    className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center print:hidden ${
-                      item.checked
-                        ? "bg-violet-600 border-violet-600"
-                        : "border-slate-300 dark:border-slate-600 hover:border-violet-500"
+              {groups.map((group) => {
+                const allChecked = isShoppingGroupFullyChecked(group);
+                const someChecked = group.items.some((i) => i.checked);
+                const dimmed = allChecked;
+                const lineThrough = allChecked;
+                const qtyLine =
+                  group.items.length === 1
+                    ? `${group.items[0]!.amount} ${group.items[0]!.unit}`
+                    : formatMixedShoppingAmounts(group.items);
+                const fromMerged = mergeShoppingFromFields(group.items);
+                const multiFrom = fromMerged.includes(",");
+                const thumb = resolveRecipeThumb(fromMerged);
+                return (
+                  <div
+                    key={group.key}
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-pm ${
+                      dimmed
+                        ? "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60"
+                        : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
                     }`}
                   >
-                    {item.checked && <Check className="w-4 h-4 text-white" />}
-                  </button>
-                  <span className="hidden print:inline w-6 text-center text-sm text-slate-500">
-                    {item.checked ? "☑" : "☐"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium ${item.checked ? "line-through text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}>
-                      {item.amount} {item.unit} {item.name}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                      {item.from.includes(",") ? (
-                        <>
-                          <span className="font-medium text-slate-600 dark:text-slate-300">Combined from plan: </span>
-                          {item.from}
-                        </>
-                      ) : (
-                        <>From: {item.from}</>
-                      )}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => toggleGroupChecked(group)}
+                      className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center print:hidden ${
+                        allChecked
+                          ? "bg-violet-600 border-violet-600"
+                          : someChecked
+                            ? "border-violet-500 bg-violet-100 dark:bg-violet-950/40"
+                            : "border-slate-300 dark:border-slate-600 hover:border-violet-500"
+                      }`}
+                    >
+                      {allChecked ? (
+                        <Check className="w-4 h-4 text-white" />
+                      ) : someChecked ? (
+                        <Minus className="w-4 h-4 text-violet-700 dark:text-violet-300" />
+                      ) : null}
+                    </button>
+                    <span className="hidden print:inline w-6 text-center text-sm text-slate-500">
+                      {allChecked ? "☑" : "☐"}
+                    </span>
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="hidden h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200/80 dark:ring-slate-600/80 sm:block"
+                      />
+                    ) : null}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`font-medium ${lineThrough ? "line-through text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}
+                      >
+                        {qtyLine} {group.displayName}
+                      </p>
+                      {group.items.length > 1 ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                          Multiple quantities/units combined for shopping — amounts are not added when units differ.
+                        </p>
+                      ) : null}
+                      <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                        {multiFrom ? (
+                          <>
+                            <span className="font-medium text-slate-600 dark:text-slate-300">Combined from plan: </span>
+                            {fromMerged}
+                          </>
+                        ) : (
+                          <>From: {fromMerged}</>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(group)}
+                      className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors print:hidden"
+                      aria-label={`Remove ${group.displayName}`}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeShoppingItem(item.id)}
-                    className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors print:hidden"
-                    aria-label={`Remove ${item.name}`}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

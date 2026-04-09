@@ -31,6 +31,8 @@ const UNIT_PREFIXES: { re: RegExp; unit: string }[] = [
   { re: /^cloves?\b/i, unit: "clove" },
   { re: /^sprigs?\b/i, unit: "sprig" },
   { re: /^slices?\b/i, unit: "slice" },
+  /** "2 sticks celery" — stick form is common in US/UK recipes */
+  { re: /^sticks?\b/i, unit: "stalk" },
   { re: /^stalks?\b/i, unit: "stalk" },
   { re: /^medium\b/i, unit: "medium" },
   { re: /^large\b/i, unit: "large" },
@@ -248,10 +250,17 @@ function splitUnitAndName(amountStr: string, rest: string): { amount: string; un
       return { amount: amountStr, unit, name: after || rest };
     }
   }
-  const tail = rest.match(/^(.+?)\s+(cloves?|rashers?|sprigs?|sticks?|stalks?)\s*$/i);
-  if (tail) {
-    const canonical = normalizeCountableUnit(tail[2]);
-    return { amount: amountStr, unit: canonical, name: tail[1].trim() };
+  /**
+   * Embedded countable units: "garlic cloves finely chopped", "celery sticks diced"
+   * (unit follows the food word; optional prep after). Prefix-only patterns miss these.
+   */
+  const embedded = rest.match(
+    /^(.+?)\s+(cloves?|sticks?|stalks?|sprigs?|rashers?|slices?)\b(?:\s+(.+))?$/i,
+  );
+  if (embedded) {
+    const canonical = normalizeCountableUnit(embedded[2]);
+    const name = [embedded[1].trim(), embedded[3]?.trim()].filter(Boolean).join(" ").trim();
+    return { amount: amountStr, unit: canonical, name };
   }
   const leafT = rest.match(/^(.+?)\s+leaves\s*$/i);
   if (leafT) {

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -23,11 +24,25 @@ import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
 import { AnalyticsEvents } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
-import { dateKey, defaultSnapshot, loadSnapshot, newId } from "./appData/persistence.ts";
+import {
+  dateKey,
+  DEFAULT_MEAL_PLAN_SLOT_ID,
+  defaultSnapshot,
+  loadSnapshot,
+  newId,
+  type MealPlanNamedSlot,
+} from "./appData/persistence.ts";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
-import { looksLikeMissingTableError } from "./appData/supabaseErrors.ts";
+import {
+  looksLikeMissingTableError,
+  syncDisabledBecauseSchemaMessage,
+  syncFailedRetryMessage,
+} from "./appData/supabaseErrors.ts";
+import { useNutritionJournalState } from "./appData/useNutritionJournalState.ts";
 import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
+import { useShoppingListState } from "./appData/useShoppingListState.ts";
+import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -56,6 +71,8 @@ interface AppDataContextValue {
   signOut: () => Promise<void>;
   generateMealPlan: (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
+  /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
+  shoppingListOutOfSync: boolean;
   discoverRecipes: RecipeCard[];
   /** Recipes published by real users (Supabase). Catalog picks are excluded. */
   communityFeedCount: number;
@@ -73,12 +90,17 @@ interface AppDataContextValue {
   setNutritionTargets: Dispatch<SetStateAction<MacroTargets>>;
   preferActivityAdjustedCalories: boolean;
   setPreferActivityAdjustedCalories: Dispatch<SetStateAction<boolean>>;
-  /** Placeholder burn (kcal) until Health sync; used for net goal when activity adjustment is on. */
+  /** Default activity burn (kcal) for days without a per-day value in `activityBurnByDay`. */
   activityBurnKcal: number;
   setActivityBurnKcal: Dispatch<SetStateAction<number>>;
+  /** Activity burn for the selected tracker day (per-day override or default). */
+  activityBurnForSelectedDay: number;
+  setActivityBurnForSelectedDay: (kcal: number) => void;
   /** Quick-add water (ml) for the selected day, in addition to per-meal water. */
   addWaterMlForSelectedDay: (ml: number) => void;
   extraWaterMlForSelectedDay: number;
+  /** All quick-add water amounts by `YYYY-MM-DD` (for weekly summaries / export). */
+  extraWaterByDay: Record<string, number>;
   selectedDateKey: string;
   setSelectedDateKey: Dispatch<SetStateAction<string>>;
   mealsForSelectedDate: LoggedMeal[];
@@ -87,6 +109,12 @@ interface AppDataContextValue {
   removeLoggedMeal: (mealId: string) => void;
   mealPlan: DayPlan[] | null;
   setMealPlan: Dispatch<SetStateAction<DayPlan[] | null>>;
+  mealPlanSlots: MealPlanNamedSlot[];
+  activeMealPlanSlotId: string;
+  switchMealPlanSlot: (slotId: string) => void;
+  createMealPlanSlot: (name: string) => string;
+  renameMealPlanSlot: (slotId: string, name: string) => void;
+  deleteMealPlanSlot: (slotId: string) => void;
   /** All logged meals by `YYYY-MM-DD` (for streaks / weekly stats in Tracker). */
   nutritionByDay: Record<string, LoggedMeal[]>;
 }
@@ -100,16 +128,78 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [savedRecipeIds, setSavedRecipeIds] = useState<string[]>(initial.savedRecipeIds);
   const [savedAtById, setSavedAtById] = useState<Record<string, string>>(initial.savedAtById);
   const [uploadedRecipes, setUploadedRecipes] = useState<RecipeCard[]>([]);
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(initial.shoppingItems);
-  const [nutritionByDay, setNutritionByDay] = useState<Record<string, LoggedMeal[]>>(initial.nutritionByDay);
-  const [mealPlan, setMealPlan] = useState<DayPlan[] | null>(initial.mealPlan);
+  const [mealPlanSlots, setMealPlanSlots] = useState<MealPlanNamedSlot[]>(() => {
+    if (initial.mealPlanSlots?.length) {
+      return initial.mealPlanSlots;
+    }
+    return [{ id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week", plan: initial.mealPlan }];
+  });
+  const [activeMealPlanSlotId, setActiveMealPlanSlotId] = useState(
+    () => initial.activeMealPlanSlotId ?? DEFAULT_MEAL_PLAN_SLOT_ID,
+  );
+  const activeMealPlanSlotIdRef = useRef(activeMealPlanSlotId);
+  activeMealPlanSlotIdRef.current = activeMealPlanSlotId;
+  const mealPlanSlotsRef = useRef(mealPlanSlots);
+  mealPlanSlotsRef.current = mealPlanSlots;
+
+  const mealPlan = useMemo(() => {
+    return mealPlanSlots.find((s) => s.id === activeMealPlanSlotId)?.plan ?? null;
+  }, [mealPlanSlots, activeMealPlanSlotId]);
+
+  const setMealPlan = useCallback(
+    (action: SetStateAction<DayPlan[] | null>) => {
+      setMealPlanSlots((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeMealPlanSlotIdRef.current) return s;
+          const next =
+            typeof action === "function"
+              ? (action as (p: DayPlan[] | null) => DayPlan[] | null)(s.plan)
+              : action;
+          return { ...s, plan: next };
+        }),
+      );
+    },
+    [],
+  );
+
+  const switchMealPlanSlot = useCallback((slotId: string) => {
+    if (!mealPlanSlotsRef.current.some((s) => s.id === slotId)) return;
+    setActiveMealPlanSlotId(slotId);
+  }, []);
+
+  const createMealPlanSlot = useCallback((name: string) => {
+    const id = newId("planslot");
+    const label = name.trim() || "New plan";
+    setMealPlanSlots((prev) => [...prev, { id, name: label, plan: null }]);
+    setActiveMealPlanSlotId(id);
+    return id;
+  }, []);
+
+  const renameMealPlanSlot = useCallback((slotId: string, name: string) => {
+    const n = name.trim();
+    if (!n) return;
+    setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, name: n } : s)));
+  }, []);
+
+  const deleteMealPlanSlot = useCallback((slotId: string) => {
+    setMealPlanSlots((prev) => {
+      if (prev.length <= 1) return prev;
+      const filtered = prev.filter((s) => s.id !== slotId);
+      if (activeMealPlanSlotIdRef.current === slotId) {
+        setActiveMealPlanSlotId(filtered[0]!.id);
+      }
+      return filtered;
+    });
+  }, []);
   const [nutritionTargets, setNutritionTargets] = useState(initial.nutritionTargets);
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   const [activityBurnKcal, setActivityBurnKcal] = useState(() => initial.activityBurnKcal ?? 0);
+  const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>(
+    () => initial.activityBurnByDay ?? {},
+  );
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>(
     () => initial.extraWaterByDay ?? {},
   );
-  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
   const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
@@ -118,10 +208,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [dbMealPlanEnabled, setDbMealPlanEnabled] = useState(true);
   const [dbMealPlanWarned, setDbMealPlanWarned] = useState(false);
-  const [dbNutritionEnabled, setDbNutritionEnabled] = useState(true);
-  const [dbNutritionWarned, setDbNutritionWarned] = useState(false);
-  const [dbShoppingEnabled, setDbShoppingEnabled] = useState(true);
-  const [dbShoppingWarned, setDbShoppingWarned] = useState(false);
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
+
+  const {
+    shoppingItems,
+    setShoppingItems,
+    toggleShoppingChecked,
+    removeShoppingItem,
+    addShoppingItem,
+  } = useShoppingListState({ authedUserId, initialItems: initial.shoppingItems });
+
+  const [shoppingListSourceFingerprint, setShoppingListSourceFingerprint] = useState<string | null>(
+    initial.shoppingListSourceFingerprint ?? null,
+  );
+
+  const {
+    nutritionByDay,
+    addLoggedMealForDate,
+    addLoggedMeal,
+    removeLoggedMeal,
+    mealsForSelectedDate,
+  } = useNutritionJournalState({
+    authedUserId,
+    initialByDay: initial.nutritionByDay,
+    selectedDateKey,
+  });
 
   const tryEnableDbSaves = useCallback(async () => {
     if (!authedUserId) return false;
@@ -143,30 +254,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return true;
   }, [authedUserId]);
 
-  const tryEnableDbNutrition = useCallback(async () => {
-    if (!authedUserId) return false;
-    const { error } = await supabase.from("nutrition_journals").select("user_id").limit(1);
-    if (error) {
-      return false;
-    }
-    setDbNutritionEnabled(true);
-    return true;
-  }, [authedUserId]);
-
-  const tryEnableDbShopping = useCallback(async () => {
-    if (!authedUserId) return false;
-    const { error } = await supabase.from("shopping_lists").select("user_id").limit(1);
-    if (error) {
-      return false;
-    }
-    setDbShoppingEnabled(true);
-    return true;
-  }, [authedUserId]);
-
   useRetryEnableDbTable(authedUserId, dbSavesEnabled, tryEnableDbSaves);
   useRetryEnableDbTable(authedUserId, dbMealPlanEnabled, tryEnableDbMealPlans);
-  useRetryEnableDbTable(authedUserId, dbNutritionEnabled, tryEnableDbNutrition);
-  useRetryEnableDbTable(authedUserId, dbShoppingEnabled, tryEnableDbShopping);
+
+  const shoppingListOutOfSync = useMemo(() => {
+    if (shoppingItems.length === 0) return false;
+    if (shoppingListSourceFingerprint === null) return false;
+    return fingerprintMealPlanForShopping(mealPlan) !== shoppingListSourceFingerprint;
+  }, [shoppingItems.length, shoppingListSourceFingerprint, mealPlan]);
 
   // Load profile basics (tier/display name). Falls back to local profile if needed.
   useEffect(() => {
@@ -314,7 +409,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, tier, alreadyRedeemed: Boolean(payload.already_redeemed) };
   }, [authedUserId]);
 
-  // Load persisted meal plan + nutrition journal from Supabase (fallback stays local).
+  // Load persisted meal plan from Supabase (nutrition + shopping load in domain hooks).
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
@@ -331,56 +426,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               setDbMealPlanEnabled(false);
               if (!dbMealPlanWarned) {
                 setDbMealPlanWarned(true);
-                toast.error("Supabase meal plans not available yet. Using local plan for now.");
+                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
               }
             }
           } else if (data?.plan) {
-            const normalized = normalizeDayPlans(data.plan);
-            setMealPlan(
-              normalized ?? (Array.isArray(data.plan) ? (data.plan as DayPlan[]) : null),
-            );
-          }
-        }
-      }
-
-      if (dbNutritionEnabled) {
-        const { data, error } = await supabase
-          .from("nutrition_journals")
-          .select("by_day")
-          .eq("user_id", authedUserId)
-          .maybeSingle();
-        if (!cancelled) {
-          if (error) {
-            if (looksLikeMissingTableError(error.message ?? "")) {
-              setDbNutritionEnabled(false);
-              if (!dbNutritionWarned) {
-                setDbNutritionWarned(true);
-                toast.error("Supabase nutrition logs not available yet. Using local logs for now.");
-              }
-            }
-          } else if (data?.by_day && typeof data.by_day === "object") {
-            setNutritionByDay(data.by_day as Record<string, LoggedMeal[]>);
-          }
-        }
-      }
-
-      if (dbShoppingEnabled) {
-        const { data, error } = await supabase
-          .from("shopping_lists")
-          .select("items")
-          .eq("user_id", authedUserId)
-          .maybeSingle();
-        if (!cancelled) {
-          if (error) {
-            if (looksLikeMissingTableError(error.message ?? "")) {
-              setDbShoppingEnabled(false);
-              if (!dbShoppingWarned) {
-                setDbShoppingWarned(true);
-                toast.error("Supabase shopping list not available yet. Using local list for now.");
-              }
-            }
-          } else if (Array.isArray(data?.items)) {
-            setShoppingItems(data.items as ShoppingItem[]);
+            const normalized =
+              normalizeDayPlans(data.plan) ?? (Array.isArray(data.plan) ? (data.plan as DayPlan[]) : null);
+            const slotId = activeMealPlanSlotIdRef.current;
+            setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: normalized } : s)));
           }
         }
       }
@@ -388,15 +441,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [
-    authedUserId,
-    dbMealPlanEnabled,
-    dbMealPlanWarned,
-    dbNutritionEnabled,
-    dbNutritionWarned,
-    dbShoppingEnabled,
-    dbShoppingWarned,
-  ]);
+  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned]);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
@@ -412,7 +457,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, created_at, author:profiles(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, author:profiles(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -436,11 +481,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       protein: (row.protein as number) ?? 0,
       carbs: (row.carbs as number) ?? 0,
       fat: (row.fat as number) ?? 0,
+      fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
       isVerified: Boolean(row.is_verified),
       creatorCalories: (row.creator_calories as number | null) ?? undefined,
       savedCount: 0,
       isSaved: false,
       feedCreatedAt: row.created_at as string,
+      authorId: (row.author_id as string | null) ?? null,
+      creatorId: (row.creator_id as string | null) ?? null,
     }));
 
     setUploadedRecipes(mapped);
@@ -534,6 +582,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       fetchDbIngredients,
     });
     setShoppingItems(list);
+    setShoppingListSourceFingerprint(fingerprintMealPlanForShopping(mealPlan));
     toast.success("Shopping list generated");
     track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
   }, [mealPlan, uploadedRecipes]);
@@ -559,11 +608,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setDbSavesEnabled(false);
           if (!dbSavesWarned) {
             setDbSavesWarned(true);
-            toast.error("Supabase saves table not available yet. Using local saves for now.");
+            toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
           }
           return;
         }
-        toast.error(`Failed to load saved recipes: ${msg}`);
+        toast.error(syncFailedRetryMessage("saved recipes", msg));
         return;
       }
       const ids = (data ?? []).map((r) => r.recipe_id as string);
@@ -593,82 +642,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               setDbMealPlanEnabled(false);
               if (!dbMealPlanWarned) {
                 setDbMealPlanWarned(true);
-                toast.error("Supabase meal plans not available yet. Using local plan for now.");
+                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
               }
               return;
             }
             if (msg.toLowerCase().includes("violates foreign key constraint")) {
-              toast.error("Meal plan save failed due to account mismatch. Please sign out and sign back in.");
+              toast.error(
+                "Meal plan couldn’t sync—your account session may be out of date. Sign out and sign back in. Your plan is still on this device.",
+              );
               return;
             }
-            toast.error(`Failed to save meal plan: ${msg}`);
+            toast.error(syncFailedRetryMessage("meal plan", msg));
           }
         });
     }, 600);
     return () => clearTimeout(t);
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
 
-  // Persist nutrition journal to Supabase (debounced), fallback remains local.
-  useEffect(() => {
-    if (!authedUserId || !dbNutritionEnabled) return;
-    const t = setTimeout(() => {
-      supabase
-        .from("nutrition_journals")
-        .upsert(
-          { user_id: authedUserId, updated_at: new Date().toISOString(), by_day: nutritionByDay },
-          { onConflict: "user_id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (looksLikeMissingTableError(msg)) {
-              setDbNutritionEnabled(false);
-              if (!dbNutritionWarned) {
-                setDbNutritionWarned(true);
-                toast.error("Supabase nutrition logs not available yet. Using local logs for now.");
-              }
-              return;
-            }
-            if (msg.toLowerCase().includes("violates foreign key constraint")) {
-              toast.error("Nutrition log save failed due to account mismatch. Please sign out and sign back in.");
-              return;
-            }
-            toast.error(`Failed to save nutrition logs: ${msg}`);
-          }
-        });
-    }, 600);
-    return () => clearTimeout(t);
-  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, nutritionByDay]);
-
-  // Persist shopping list to Supabase (debounced), fallback remains local.
-  useEffect(() => {
-    if (!authedUserId || !dbShoppingEnabled) return;
-    const t = setTimeout(() => {
-      supabase
-        .from("shopping_lists")
-        .upsert(
-          { user_id: authedUserId, updated_at: new Date().toISOString(), items: shoppingItems },
-          { onConflict: "user_id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (looksLikeMissingTableError(msg)) {
-              setDbShoppingEnabled(false);
-              if (!dbShoppingWarned) {
-                setDbShoppingWarned(true);
-                toast.error("Supabase shopping list not available yet. Using local list for now.");
-              }
-              return;
-            }
-            toast.error(`Failed to save shopping list: ${msg}`);
-          }
-        });
-    }, 600);
-    return () => clearTimeout(t);
-  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, shoppingItems]);
-
   const extraWaterMlForSelectedDay = extraWaterByDay[selectedDateKey] ?? 0;
+
+  const activityBurnForSelectedDay = activityBurnByDay[selectedDateKey] ?? activityBurnKcal;
+
+  const setActivityBurnForSelectedDay = useCallback(
+    (kcal: number) => {
+      const v = Math.max(0, Math.round(kcal));
+      setActivityBurnByDay((prev) => ({ ...prev, [selectedDateKey]: v }));
+    },
+    [selectedDateKey],
+  );
 
   const addWaterMlForSelectedDay = useCallback(
     (ml: number) => {
@@ -686,11 +687,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     savedRecipeIds,
     savedAtById,
     shoppingItems,
+    shoppingListSourceFingerprint,
     nutritionByDay,
     mealPlan,
+    mealPlanSlots,
+    activeMealPlanSlotId,
     nutritionTargets,
     extraWaterByDay,
     activityBurnKcal,
+    activityBurnByDay,
   });
 
   const isRecipeSaved = useCallback(
@@ -718,15 +723,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             .then(({ error }) => {
               if (error) {
                 const msg = error.message ?? "";
-                if (msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache")) {
+                if (looksLikeMissingTableError(msg)) {
                   setDbSavesEnabled(false);
                   if (!dbSavesWarned) {
                     setDbSavesWarned(true);
-                    toast.error("Supabase saves table not available yet. Using local saves for now.");
+                    toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
                   }
                   return;
                 }
-                toast.error(`Failed to remove save: ${error.message}`);
+                toast.error(syncFailedRetryMessage("library update", error.message ?? ""));
               } else {
                 toast.success("Removed from library");
               }
@@ -736,10 +741,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return false;
       }
-      if (tier === "free" && savedRecipeIds.length >= FREE_SAVE_LIMIT) {
-        toast.error("Recipe limit reached. Remove a recipe or upgrade to save more.");
-        return false;
-      }
+      // Temporarily: no tier-based save limits (all features unlocked).
       const iso = new Date().toISOString();
       setSavedRecipeIds((prev) => [recipeId, ...prev.filter((id) => id !== recipeId)]);
       setSavedAtById((prev) => ({ ...prev, [recipeId]: iso }));
@@ -751,15 +753,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           .then(({ error }) => {
             if (error) {
               const msg = error.message ?? "";
-              if (msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache")) {
+              if (looksLikeMissingTableError(msg)) {
                 setDbSavesEnabled(false);
                 if (!dbSavesWarned) {
                   setDbSavesWarned(true);
-                  toast.error("Supabase saves table not available yet. Using local saves for now.");
+                  toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
                 }
                 return;
               }
-              toast.error(`Failed to save recipe: ${error.message}`);
+              toast.error(syncFailedRetryMessage("saved recipe", error.message ?? ""));
             } else {
               toast.success("Saved to library");
             }
@@ -803,61 +805,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return enriched;
   }, [savedRecipeIds, savedAtById]);
 
-  const mealsForSelectedDate = useMemo(() => {
-    return nutritionByDay[selectedDateKey] ?? [];
-  }, [nutritionByDay, selectedDateKey]);
-
-  const addLoggedMealForDate = useCallback((dayKey: string, meal: Omit<LoggedMeal, "id">) => {
-    const id = newId("meal");
-    setNutritionByDay((prev) => {
-      const day = prev[dayKey] ?? [];
-      return { ...prev, [dayKey]: [...day, { ...meal, id }] };
-    });
-    track(AnalyticsEvents.food_logged, {
-      calories: meal.calories,
-      fromPlanner: meal.time === "Planned",
-    });
-  }, []);
-
-  const addLoggedMeal = useCallback(
-    (meal: Omit<LoggedMeal, "id">) => {
-      addLoggedMealForDate(selectedDateKey, meal);
-    },
-    [addLoggedMealForDate, selectedDateKey],
-  );
-
-  const removeLoggedMeal = useCallback(
-    (mealId: string) => {
-      setNutritionByDay((prev) => ({
-        ...prev,
-        [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
-      }));
-    },
-    [selectedDateKey],
-  );
-
-  const toggleShoppingChecked = useCallback((itemId: string) => {
-    setShoppingItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, checked: !item.checked } : item)),
-    );
-  }, []);
-
-  const removeShoppingItem = useCallback((itemId: string) => {
-    setShoppingItems((prev) => prev.filter((item) => item.id !== itemId));
-  }, []);
-
-  const addShoppingItem = useCallback(
-    (item: Omit<ShoppingItem, "id" | "checked"> & { checked?: boolean }) => {
-      const row: ShoppingItem = {
-        ...item,
-        id: newId("shop"),
-        checked: item.checked ?? false,
-      };
-      setShoppingItems((prev) => [...prev, row]);
-    },
-    [],
-  );
-
   const value = useMemo(
     (): AppDataContextValue => ({
       authEmail,
@@ -870,6 +817,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
+      shoppingListOutOfSync,
       discoverRecipes,
       communityFeedCount,
       refreshDiscoverRecipes,
@@ -887,8 +835,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPreferActivityAdjustedCalories,
       activityBurnKcal,
       setActivityBurnKcal,
+      activityBurnForSelectedDay,
+      setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      extraWaterByDay,
       selectedDateKey,
       setSelectedDateKey,
       mealsForSelectedDate,
@@ -897,6 +848,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeLoggedMeal,
       mealPlan,
       setMealPlan,
+      mealPlanSlots,
+      activeMealPlanSlotId,
+      switchMealPlanSlot,
+      createMealPlanSlot,
+      renameMealPlanSlot,
+      deleteMealPlanSlot,
       nutritionByDay,
     }),
     [
@@ -910,6 +867,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
+      shoppingListOutOfSync,
       discoverRecipes,
       communityFeedCount,
       refreshDiscoverRecipes,
@@ -925,14 +883,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPreferActivityAdjustedCalories,
       activityBurnKcal,
       setActivityBurnKcal,
+      activityBurnForSelectedDay,
+      setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      extraWaterByDay,
       mealsForSelectedDate,
       addLoggedMeal,
       addLoggedMealForDate,
       removeLoggedMeal,
       mealPlan,
+      mealPlanSlots,
+      activeMealPlanSlotId,
+      switchMealPlanSlot,
+      createMealPlanSlot,
+      renameMealPlanSlot,
+      deleteMealPlanSlot,
       nutritionByDay,
+      selectedDateKey,
+      setSelectedDateKey,
+      activityBurnByDay,
     ],
   );
 

@@ -69,5 +69,6 @@ Repository secrets should include at least `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_
 
 ## Related
 
-- [Observability (PostHog dashboards, Sentry, smoke)](observability.md)
+- [Observability (PostHog dashboards, Sentry verification, smoke)](observability.md)
 - [Supabase RLS verification](supabase-rls-checklist.md)
+- [Phase B Health / platform decision (web vs native)](health-platform-phase-b.md)

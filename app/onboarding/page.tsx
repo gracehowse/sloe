@@ -608,7 +608,7 @@ export default function OnboardingPage() {
                   <span className="text-slate-900 dark:text-white font-medium">Adjust calories for activity (Apple Health)</span>
                   <span className="block text-sm text-slate-600 dark:text-slate-400 mt-1">
                     When this is on, we will increase your calorie allowance from steps and workouts once HealthKit is
-                    connected (similar to MyFitnessPal). Integration ships in a future app update.
+                    connected. Integration ships in a future app update.
                   </span>
                 </span>
               </label>

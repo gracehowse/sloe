@@ -25,5 +25,29 @@ describe("parseIngredientLine", () => {
       name: "chopped tomatoes",
     });
   });
+
+  it("parses garlic cloves with trailing prep (unit not at line start)", () => {
+    expect(parseIngredientLine("2 garlic cloves finely chopped")).toMatchObject({
+      amount: "2",
+      unit: "clove",
+      name: "garlic finely chopped",
+    });
+  });
+
+  it("parses celery sticks with trailing prep", () => {
+    expect(parseIngredientLine("2 celery sticks finely chopped")).toMatchObject({
+      amount: "2",
+      unit: "stalk",
+      name: "celery finely chopped",
+    });
+  });
+
+  it("parses unit-first cloves line", () => {
+    expect(parseIngredientLine("3 cloves garlic")).toMatchObject({
+      amount: "3",
+      unit: "clove",
+      name: "garlic",
+    });
+  });
 });
 

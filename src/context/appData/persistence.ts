@@ -4,15 +4,43 @@ import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from 
 
 export const STORAGE_KEY = "platemate-app-v1";
 
+/** Default slot id for users without `mealPlanSlots` in localStorage yet. */
+export const DEFAULT_MEAL_PLAN_SLOT_ID = "plan-slot-default";
+
+export type MealPlanNamedSlot = {
+  id: string;
+  name: string;
+  plan: DayPlan[] | null;
+};
+
+function normalizeMealPlanSlot(row: unknown): MealPlanNamedSlot | null {
+  if (!row || typeof row !== "object") return null;
+  const o = row as Partial<MealPlanNamedSlot>;
+  if (typeof o.id !== "string" || !o.id.trim()) return null;
+  const name = typeof o.name === "string" && o.name.trim() ? o.name.trim() : "Plan";
+  let plan: DayPlan[] | null = null;
+  if (o.plan === null) plan = null;
+  else if (Array.isArray(o.plan)) plan = normalizeDayPlans(o.plan) ?? null;
+  return { id: o.id.trim(), name, plan };
+}
+
 export interface PersistedSnapshot {
   savedRecipeIds: string[];
   savedAtById: Record<string, string>;
   shoppingItems: ShoppingItem[];
+  /** Fingerprint of meal plan when shopping list was last built from plan (`fingerprintMealPlanForShopping`). */
+  shoppingListSourceFingerprint?: string | null;
   nutritionByDay: Record<string, LoggedMeal[]>;
   mealPlan: DayPlan[] | null;
+  /** Named plan slots (active = `activeMealPlanSlotId`). Cloud still syncs active plan JSON only. */
+  mealPlanSlots?: MealPlanNamedSlot[];
+  activeMealPlanSlotId?: string | null;
   nutritionTargets: MacroTargets;
   extraWaterByDay?: Record<string, number>;
+  /** Default activity burn (kcal) when a day has no explicit entry in `activityBurnByDay`. */
   activityBurnKcal?: number;
+  /** Per calendar day (`YYYY-MM-DD`) activity burn when activity-adjusted calories are on. */
+  activityBurnByDay?: Record<string, number>;
 }
 
 export function dateKey(d: Date): string {
@@ -169,7 +197,10 @@ export function defaultSnapshot(): PersistedSnapshot {
     ],
     nutritionByDay: { [today]: initialMeals },
     mealPlan: null,
+    mealPlanSlots: [{ id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week", plan: null }],
+    activeMealPlanSlotId: DEFAULT_MEAL_PLAN_SLOT_ID,
     nutritionTargets: { ...DEFAULT_MACRO_TARGETS },
+    shoppingListSourceFingerprint: null,
   };
 }
 
@@ -197,6 +228,30 @@ export function loadSnapshot(): PersistedSnapshot {
       mealPlan = normalizeDayPlans(parsed.mealPlan) ?? base.mealPlan;
     }
 
+    let mealPlanSlots: MealPlanNamedSlot[] | undefined;
+    let activeMealPlanSlotId: string | undefined;
+    if (Array.isArray(parsed.mealPlanSlots)) {
+      const slots = parsed.mealPlanSlots
+        .map((row) => normalizeMealPlanSlot(row))
+        .filter((x): x is MealPlanNamedSlot => Boolean(x));
+      if (slots.length > 0) {
+        mealPlanSlots = slots;
+        activeMealPlanSlotId =
+          typeof parsed.activeMealPlanSlotId === "string" &&
+          slots.some((s) => s.id === parsed.activeMealPlanSlotId)
+            ? parsed.activeMealPlanSlotId
+            : slots[0]!.id;
+      }
+    }
+    if (!mealPlanSlots?.length) {
+      mealPlanSlots = [{ id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week", plan: mealPlan }];
+      activeMealPlanSlotId = DEFAULT_MEAL_PLAN_SLOT_ID;
+      mealPlan = mealPlanSlots[0]!.plan;
+    } else {
+      const active = mealPlanSlots.find((s) => s.id === activeMealPlanSlotId) ?? mealPlanSlots[0]!;
+      mealPlan = active.plan;
+    }
+
     return {
       savedRecipeIds: Array.isArray(parsed.savedRecipeIds) ? parsed.savedRecipeIds : base.savedRecipeIds,
       savedAtById:
@@ -204,8 +259,14 @@ export function loadSnapshot(): PersistedSnapshot {
           ? { ...base.savedAtById, ...parsed.savedAtById }
           : base.savedAtById,
       shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
+      shoppingListSourceFingerprint:
+        typeof parsed.shoppingListSourceFingerprint === "string" || parsed.shoppingListSourceFingerprint === null
+          ? parsed.shoppingListSourceFingerprint
+          : undefined,
       nutritionByDay,
       mealPlan,
+      mealPlanSlots,
+      activeMealPlanSlotId: activeMealPlanSlotId ?? DEFAULT_MEAL_PLAN_SLOT_ID,
       nutritionTargets: normalizeMacroTargets(parsed.nutritionTargets ?? base.nutritionTargets),
       extraWaterByDay:
         parsed.extraWaterByDay && typeof parsed.extraWaterByDay === "object"
@@ -214,6 +275,14 @@ export function loadSnapshot(): PersistedSnapshot {
       activityBurnKcal:
         typeof parsed.activityBurnKcal === "number" && Number.isFinite(parsed.activityBurnKcal)
           ? Math.max(0, Math.round(parsed.activityBurnKcal))
+          : undefined,
+      activityBurnByDay:
+        parsed.activityBurnByDay && typeof parsed.activityBurnByDay === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.activityBurnByDay as Record<string, unknown>)
+                .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+                .map(([k, v]) => [k, Math.max(0, Math.round(v as number))]),
+            )
           : undefined,
     };
   } catch {

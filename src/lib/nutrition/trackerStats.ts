@@ -11,6 +11,14 @@ function sumCalories(meals: LoggedMeal[]): number {
   return meals.reduce((a, m) => a + Math.max(0, m.calories), 0);
 }
 
+function sumFiber(meals: LoggedMeal[]): number {
+  return meals.reduce((a, m) => a + (m.fiberG ?? 0), 0);
+}
+
+function sumWaterFromMeals(meals: LoggedMeal[]): number {
+  return meals.reduce((a, m) => a + (m.waterMl ?? 0), 0);
+}
+
 /** Consecutive days ending today or yesterday with at least one logged meal. */
 export function computeLoggingStreak(
   nutritionByDay: Record<string, LoggedMeal[]>,
@@ -82,4 +90,33 @@ export function computeCalorieGoalFitPercent(
   }
   if (scores.length === 0) return null;
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
+/** Mon–Sun: count days meeting fiber / water goals (≥ target). Empty days count as not met. */
+export function computeWeekFiberWaterHits(
+  nutritionByDay: Record<string, LoggedMeal[]>,
+  extraWaterByDay: Record<string, number> | undefined,
+  fiberGoal: number,
+  waterGoalMl: number,
+  now: Date = new Date(),
+): { fiberDaysMet: number; waterDaysMet: number; total: 7 } {
+  const d = new Date(now);
+  const day = d.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + mondayOffset);
+  monday.setHours(0, 0, 0, 0);
+  let fiberDaysMet = 0;
+  let waterDaysMet = 0;
+  for (let i = 0; i < 7; i++) {
+    const x = new Date(monday);
+    x.setDate(monday.getDate() + i);
+    const key = dateKeyFromDate(x);
+    const meals = nutritionByDay[key] ?? [];
+    const fiber = sumFiber(meals);
+    const waterMl = sumWaterFromMeals(meals) + (extraWaterByDay?.[key] ?? 0);
+    if (fiberGoal > 0 && fiber >= fiberGoal) fiberDaysMet++;
+    if (waterGoalMl > 0 && waterMl >= waterGoalMl) waterDaysMet++;
+  }
+  return { fiberDaysMet, waterDaysMet, total: 7 };
 }

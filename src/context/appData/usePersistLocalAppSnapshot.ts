@@ -7,11 +7,15 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
     savedRecipeIds,
     savedAtById,
     shoppingItems,
+    shoppingListSourceFingerprint,
     nutritionByDay,
     mealPlan,
+    mealPlanSlots,
+    activeMealPlanSlotId,
     nutritionTargets,
     extraWaterByDay,
     activityBurnKcal,
+    activityBurnByDay,
   } = snapshot;
 
   useEffect(() => {
@@ -19,21 +23,29 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
       savedRecipeIds,
       savedAtById,
       shoppingItems,
+      shoppingListSourceFingerprint,
       nutritionByDay,
       mealPlan,
+      mealPlanSlots,
+      activeMealPlanSlotId,
       nutritionTargets,
       extraWaterByDay,
       activityBurnKcal,
+      activityBurnByDay,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [
     savedRecipeIds,
     savedAtById,
     shoppingItems,
+    shoppingListSourceFingerprint,
     nutritionByDay,
     mealPlan,
+    mealPlanSlots,
+    activeMealPlanSlotId,
     nutritionTargets,
     extraWaterByDay,
     activityBurnKcal,
+    activityBurnByDay,
   ]);
 }

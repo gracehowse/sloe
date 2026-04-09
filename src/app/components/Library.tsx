@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Filter, Lock, AlertCircle } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
@@ -7,16 +7,15 @@ import { RecipeDetail } from "./RecipeDetail";
 interface LibraryProps {
   userTier: UserTier;
   onUpgrade?: () => void;
+  onGoDiscover?: () => void;
 }
 
-export function Library({ userTier, onUpgrade }: LibraryProps) {
+export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
   const { savedRecipesForLibrary } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const FREE_TIER_LIMIT = 10;
   const savedCount = savedRecipesForLibrary.length;
-  const limitReached = userTier === "free" && savedCount >= FREE_TIER_LIMIT;
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -44,53 +43,10 @@ export function Library({ userTier, onUpgrade }: LibraryProps) {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Library</h1>
-          {userTier === "free" && (
-            <div
-              className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border ${
-                limitReached
-                  ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
-                  : savedCount >= FREE_TIER_LIMIT * 0.8
-                  ? "bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-              }`}
-            >
-              {savedCount} / {FREE_TIER_LIMIT} recipes
-              {limitReached && <Lock className="w-3.5 h-3.5" />}
-            </div>
-          )}
-        </div>
-
-        {/* Free Tier Upgrade Prompt */}
-        {userTier === "free" && savedCount >= FREE_TIER_LIMIT * 0.8 && (
-          <div
-            className={`backdrop-blur-xl rounded-2xl p-6 flex items-start gap-4 border shadow-lg ${
-              limitReached
-                ? "bg-red-50/80 dark:bg-red-950/30 border-red-200/50 dark:border-red-800/50"
-                : "bg-orange-50/80 border-orange-200/50 dark:bg-orange-950/30 dark:border-orange-800/50"
-            }`}
-          >
-            <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${limitReached ? "bg-red-100 dark:bg-red-900/30" : "bg-orange-100 dark:bg-orange-900/30"}`}>
-              <AlertCircle className={`w-6 h-6 ${limitReached ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"}`} />
-            </div>
-            <div className="flex-1">
-              <p className={`font-semibold text-lg ${limitReached ? "text-red-900 dark:text-red-200" : "text-orange-900 dark:text-orange-200"}`}>
-                {limitReached ? "Recipe limit reached" : `${FREE_TIER_LIMIT - savedCount} recipes remaining`}
-              </p>
-              <p className={`text-sm mt-1 ${limitReached ? "text-red-700 dark:text-red-300" : "text-orange-700 dark:text-orange-300"}`}>
-                {limitReached
-                  ? "Remove a recipe or upgrade to save more"
-                  : "Upgrade to Base or Pro for unlimited recipe storage"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onUpgrade}
-              className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105 whitespace-nowrap font-semibold"
-            >
-              Upgrade
-            </button>
+          <div className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+            {savedCount} recipe{savedCount === 1 ? "" : "s"}
           </div>
-        )}
+        </div>
 
         {/* Search and Filter */}
         <div className="flex gap-3 mt-6">
@@ -113,16 +69,27 @@ export function Library({ userTier, onUpgrade }: LibraryProps) {
 
       {/* Empty State */}
       {filteredRecipes.length === 0 && (
-        <div className="text-center py-24">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-10 h-10 text-slate-400" />
+        <div className="text-center py-24 max-w-md mx-auto">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/40 dark:to-indigo-950/40 flex items-center justify-center mx-auto mb-6">
+            <Search className="w-10 h-10 text-violet-500 dark:text-violet-400" />
           </div>
-          <h3 className="mb-3 text-slate-900 dark:text-white">No saved recipes</h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-8">
+          <h3 className="mb-3 text-slate-900 dark:text-white">
+            {savedRecipesForLibrary.length === 0 ? "Your library is empty" : "No matches"}
+          </h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
             {savedRecipesForLibrary.length === 0
-              ? "Browse the Discover feed to save your first recipe"
-              : "No recipes match your search"}
+              ? "Save recipes from Discover to plan meals and build shopping lists from what you actually want to cook."
+              : "Try another search term or clear the filter."}
           </p>
+          {savedRecipesForLibrary.length === 0 && onGoDiscover ? (
+            <button
+              type="button"
+              onClick={onGoDiscover}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+            >
+              Go to Discover
+            </button>
+          ) : null}
         </div>
       )}
 

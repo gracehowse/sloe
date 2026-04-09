@@ -1,12 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, Calendar, Lock, TrendingUp, CheckCircle2, AlertCircle, BookMarked, Home, Plus } from "lucide-react";
+import {
+  Sparkles,
+  Calendar,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
+  BookMarked,
+  Home,
+  Plus,
+  BookOpen,
+  Layers,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { DEFAULT_PLANNER_BANDS } from "../../lib/planning/generateMealPlan.ts";
+import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
   clampPortionMultiplier,
   dayPlanTotalsFromMeals,
@@ -19,6 +34,8 @@ interface MealPlannerProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
   onNavigate?: (view: "discover" | "library") => void;
+  /** Opens recipe detail (e.g. Discover + `?recipe=`). */
+  onOpenRecipe?: (recipeId: string) => void;
 }
 
 function formatVsTarget(
@@ -45,7 +62,7 @@ function formatVsTarget(
   return { tone: "ok", text: `${sign}${pct}% vs goal` };
 }
 
-export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProps) {
+export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: MealPlannerProps) {
   const {
     mealPlan,
     setMealPlan,
@@ -57,6 +74,12 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     nutritionTargets,
     toggleSaveRecipe,
     isRecipeSaved,
+    mealPlanSlots,
+    activeMealPlanSlotId,
+    switchMealPlanSlot,
+    createMealPlanSlot,
+    renameMealPlanSlot,
+    deleteMealPlanSlot,
   } = useAppData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<DayPlan[] | null>(() => mealPlan);
@@ -70,13 +93,10 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
 
   const hasLibraryRecipes = savedRecipesForLibrary.length > 0;
 
-  const isPaidUser = userTier === "base" || userTier === "pro";
+  void userTier;
+  void onUpgrade;
 
-  useEffect(() => {
-    if (!isPaidUser) {
-      setPlanDays(1);
-    }
-  }, [isPaidUser]);
+  // Temporarily: all features unlocked (no tier-based caps).
 
   const handleGenerate = () => {
     if (!hasLibraryRecipes) {
@@ -182,6 +202,11 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     const key = d.toISOString().slice(0, 10);
     setSelectedDateKey(key);
     const p = effectivePortionMultiplier(meal.portionMultiplier);
+    const catalogRecipe = RECIPE_CATALOG.find((r) => r.title === meal.recipeTitle);
+    const savedMatch = savedRecipesForLibrary.find((r) => r.title === meal.recipeTitle);
+    const fiberBase = savedMatch?.fiberG ?? catalogRecipe?.fiberG;
+    const fiberScaled =
+      fiberBase != null && fiberBase > 0 ? scaledMacro(fiberBase, p) : null;
     addLoggedMealForDate(key, {
       name: meal.name,
       recipeTitle: meal.recipeTitle,
@@ -190,9 +215,26 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
       protein: scaledMacro(meal.protein, p),
       carbs: scaledMacro(meal.carbs, p),
       fat: scaledMacro(meal.fat, p),
+      ...(fiberScaled != null && fiberScaled > 0 ? { fiberG: fiberScaled } : {}),
       ...(p !== 1 ? { portionMultiplier: p } : {}),
     });
     toast.success(`Logged to Nutrition Tracker (Day ${day})`);
+
+    const rid = resolveRecipeId(meal.recipeTitle);
+    if (rid && !isCatalogRecipeId(rid)) {
+      void (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user.id;
+        if (!uid) return;
+        const { error } = await supabase.from("recipe_plan_add_events").insert({
+          user_id: uid,
+          recipe_id: rid,
+        });
+        if (error && process.env.NODE_ENV === "development") {
+          console.warn("recipe_plan_add_events:", error.message);
+        }
+      })();
+    }
   };
 
   useEffect(() => {
@@ -233,17 +275,81 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
     [savedRecipesForLibrary],
   );
 
-  const smartSuggestions = useMemo(() => {
+  const [dbIngByRecipe, setDbIngByRecipe] = useState<Map<string, string[]>>(() => new Map());
+
+  useEffect(() => {
     const plan = generatedPlan ?? mealPlan;
-    return computeSmartRecipeSuggestions({ mealPlan: plan, titleToId });
+    if (!plan?.length) {
+      setDbIngByRecipe(new Map());
+      return;
+    }
+    const ids = new Set<string>();
+    for (const day of plan) {
+      for (const m of day.meals) {
+        if (m.isPlaceholder) continue;
+        const id = titleToId(m.recipeTitle);
+        if (id && !isCatalogRecipeId(id)) ids.add(id);
+      }
+    }
+    if (ids.size === 0) {
+      setDbIngByRecipe(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const map = new Map<string, string[]>();
+      await Promise.all(
+        [...ids].map(async (rid) => {
+          const { data, error } = await supabase
+            .from("recipe_ingredients")
+            .select("name")
+            .eq("recipe_id", rid)
+            .order("created_at", { ascending: true });
+          if (cancelled || error || !data?.length) return;
+          map.set(
+            rid,
+            data.map((row: { name: string }) => String(row.name ?? "").trim()).filter(Boolean),
+          );
+        }),
+      );
+      if (!cancelled) setDbIngByRecipe(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [generatedPlan, mealPlan, titleToId]);
 
+  const communitySuggestionPool = useMemo(
+    () => savedRecipesForLibrary.filter((r) => !isCatalogRecipeId(r.id)),
+    [savedRecipesForLibrary],
+  );
+
+  const smartSuggestions = useMemo(() => {
+    const plan = generatedPlan ?? mealPlan;
+    return computeSmartRecipeSuggestions({
+      mealPlan: plan,
+      titleToId,
+      dbIngredientsByRecipeId: dbIngByRecipe,
+      extraRecipePool: communitySuggestionPool,
+    });
+  }, [generatedPlan, mealPlan, titleToId, dbIngByRecipe, communitySuggestionPool]);
+
+  const resolveRecipeId = useCallback(
+    (recipeTitle: string) => {
+      const catalog = RECIPE_CATALOG.find((r) => r.title === recipeTitle);
+      if (catalog) return catalog.id;
+      const uploaded = savedRecipesForLibrary.find((r) => r.title === recipeTitle);
+      return uploaded?.id ?? null;
+    },
+    [savedRecipesForLibrary],
+  );
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-pm-6 py-pm-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 gap-pm-4 flex-wrap">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-pm-3 mb-2">
             <div className="p-2 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
@@ -278,29 +384,70 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
         )}
       </div>
 
-      {!isPaidUser && (
-        <div className="mb-8 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <Lock className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-slate-900 dark:text-white">Free tier: 1-day planner</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                You can generate a 1-day plan + shopping list. Upgrade unlocks multi-day planning.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onUpgrade}
-              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 font-semibold inline-flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              Upgrade
-            </button>
-          </div>
+      <div className="mb-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">Named plans</p>
         </div>
-      )}
+        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+          Switch between weekly setups (e.g. &quot;Cut week&quot; vs &quot;Family dinners&quot;). The cloud still syncs the
+          active plan only—other slots stay on this device until you switch.
+        </p>
+        <div className="flex flex-wrap items-stretch gap-2">
+          <select
+            value={activeMealPlanSlotId}
+            onChange={(e) => switchMealPlanSlot(e.target.value)}
+            className="flex-1 min-w-[10rem] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white transition-pm"
+          >
+            {mealPlanSlots.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt("New plan name (e.g. Week of Apr 8)", "");
+              if (name === null) return;
+              createMealPlanSlot(name);
+              toast.success("Created plan");
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-sm font-medium hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-pm"
+          >
+            <Plus className="w-4 h-4" />
+            New
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const cur = mealPlanSlots.find((s) => s.id === activeMealPlanSlotId);
+              const name = window.prompt("Rename this plan", cur?.name ?? "");
+              if (name === null || !name.trim()) return;
+              renameMealPlanSlot(activeMealPlanSlotId, name.trim());
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-pm"
+            aria-label="Rename plan"
+          >
+            <Pencil className="w-4 h-4" />
+            Rename
+          </button>
+          <button
+            type="button"
+            disabled={mealPlanSlots.length <= 1}
+            onClick={() => {
+              if (!window.confirm("Delete this named plan? This cannot be undone.")) return;
+              deleteMealPlanSlot(activeMealPlanSlotId);
+              toast.message("Plan removed");
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900 disabled:opacity-40 disabled:pointer-events-none transition-pm"
+            aria-label="Delete plan"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      </div>
 
       {!hasLibraryRecipes && (
         <div className="max-w-3xl mx-auto mb-8 backdrop-blur-xl bg-amber-50/90 dark:bg-amber-950/25 border-2 border-amber-200/80 dark:border-amber-800/50 rounded-2xl p-6 shadow-lg">
@@ -448,19 +595,13 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                   key={days}
                   type="button"
                   onClick={() => {
-                    if (!isPaidUser && days !== 1) {
-                      toast.error("Upgrade to plan multiple days");
-                      return;
-                    }
                     setPlanDays(days as 1 | 3 | 7);
                   }}
-                  disabled={!isPaidUser && days !== 1}
                   className={[
                     "group relative px-6 py-5 border-2 rounded-xl transition-all duration-300 hover:scale-105",
                     planDays === days
                       ? "border-violet-600 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/20 dark:to-indigo-950/20 text-violet-700 dark:text-violet-300 hover:shadow-xl hover:shadow-violet-500/20"
                       : "border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 hover:shadow-lg",
-                    !isPaidUser && days !== 1 ? "opacity-60 cursor-not-allowed hover:scale-100" : "",
                   ].join(" ")}
                 >
                   <div className="text-2xl font-bold mb-1">{days}</div>
@@ -524,7 +665,8 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                 <h3 className="text-slate-900 dark:text-white">Smart suggestions</h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Catalog recipes that overlap ingredients with your plan—save them to cook with less waste.
+                Curated catalog picks and saved community recipes whose Supabase ingredients overlap your plan—save them to
+                cook with less waste.
               </p>
               <ul className="space-y-3">
                 {smartSuggestions.map(({ recipe, sharedIngredients }) => {
@@ -722,6 +864,20 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate }: MealPlannerProp
                           >
                             Swap
                           </button>
+                          {onOpenRecipe ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const id = resolveRecipeId(meal.recipeTitle);
+                                if (id) onOpenRecipe(id);
+                                else toast.error("Open this recipe from Library or Discover after saving.");
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
+                            >
+                              <BookOpen className="w-4 h-4" />
+                              Recipe
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => logPlannedMeal(dp.day, index)}

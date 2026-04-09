@@ -22,6 +22,10 @@ export interface RecipeCard {
   feedCreatedAt?: string;
   /** `community` = published from Supabase; `catalog` = curated Platemate picks (not a live creator post). */
   feedSource?: "community" | "catalog";
+  /** Recipe author (profiles.id) when loaded from Supabase — used for follows / Following feed. */
+  authorId?: string | null;
+  /** Optional legacy `creators` row linked from recipes.creator_id. */
+  creatorId?: string | null;
 }
 
 export interface IngredientRow {

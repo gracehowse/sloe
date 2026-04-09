@@ -1,21 +1,18 @@
 import type { DayPlan, RecipeCard } from "../../types/recipe.ts";
 import { getIngredientsForRecipe, RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { isCatalogRecipeId } from "./generateShoppingList.ts";
+import { normalizeIngredientNameKey } from "./ingredientNameKey.ts";
 
-function normalizeIngredientKey(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, " ")
-    .split(",")[0]!
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+const catalogIds = new Set(RECIPE_CATALOG.map((r) => r.id));
 
-/** Ingredient name keys already required by non-placeholder meals in the plan (catalog recipes only in MVP). */
+/**
+ * Ingredient name keys already required by non-placeholder meals in the plan.
+ * Uses catalog ingredients and optional Supabase-backed names for community recipes.
+ */
 export function collectPlanIngredientKeys(
   mealPlan: DayPlan[] | null,
   titleToId: (title: string) => string | null,
+  dbIngredientsByRecipeId?: ReadonlyMap<string, readonly string[]>,
 ): Set<string> {
   const keys = new Set<string>();
   if (!mealPlan?.length) return keys;
@@ -23,10 +20,20 @@ export function collectPlanIngredientKeys(
     for (const meal of day.meals) {
       if (meal.isPlaceholder) continue;
       const id = titleToId(meal.recipeTitle);
-      if (!id || !isCatalogRecipeId(id)) continue;
-      for (const ing of getIngredientsForRecipe(id)) {
-        const k = normalizeIngredientKey(ing.name);
-        if (k.length > 1) keys.add(k);
+      if (!id) continue;
+      if (isCatalogRecipeId(id)) {
+        for (const ing of getIngredientsForRecipe(id)) {
+          const k = normalizeIngredientNameKey(ing.name);
+          if (k.length > 1) keys.add(k);
+        }
+      } else {
+        const names = dbIngredientsByRecipeId?.get(id);
+        if (names?.length) {
+          for (const name of names) {
+            const k = normalizeIngredientNameKey(name);
+            if (k.length > 1) keys.add(k);
+          }
+        }
       }
     }
   }
@@ -40,15 +47,23 @@ export type SmartSuggestion = {
 };
 
 /**
- * Recipes in the catalog that are not already on the plan and share ingredients with plan recipes.
+ * Catalog + optional community recipes that are not already on the plan and share ingredients with plan recipes.
  */
 export function computeSmartRecipeSuggestions(input: {
   mealPlan: DayPlan[] | null;
   titleToId: (title: string) => string | null;
   max?: number;
+  /** Ingredient display names from Supabase `recipe_ingredients` keyed by recipe id. */
+  dbIngredientsByRecipeId?: ReadonlyMap<string, readonly string[]>;
+  /** Saved community (non-catalog) recipes to include in the suggestion pool. */
+  extraRecipePool?: readonly RecipeCard[];
 }): SmartSuggestion[] {
   const max = input.max ?? 6;
-  const planKeys = collectPlanIngredientKeys(input.mealPlan, input.titleToId);
+  const planKeys = collectPlanIngredientKeys(
+    input.mealPlan,
+    input.titleToId,
+    input.dbIngredientsByRecipeId,
+  );
   if (planKeys.size === 0) return [];
 
   const titlesOnPlan = new Set<string>();
@@ -59,19 +74,35 @@ export function computeSmartRecipeSuggestions(input: {
   }
 
   const out: SmartSuggestion[] = [];
+  const seenIds = new Set<string>();
 
-  for (const recipe of RECIPE_CATALOG) {
-    if (titlesOnPlan.has(recipe.title)) continue;
-    const ings = getIngredientsForRecipe(recipe.id);
+  const scoreRecipe = (recipe: RecipeCard, ingredientNames: readonly string[]) => {
+    if (titlesOnPlan.has(recipe.title)) return;
     const shared: string[] = [];
-    for (const ing of ings) {
-      const k = normalizeIngredientKey(ing.name);
+    for (const name of ingredientNames) {
+      const k = normalizeIngredientNameKey(name);
       if (k.length > 1 && planKeys.has(k)) {
-        shared.push(ing.name);
+        shared.push(name);
       }
     }
-    if (shared.length === 0) continue;
+    if (shared.length === 0) return;
+    if (seenIds.has(recipe.id)) return;
+    seenIds.add(recipe.id);
     out.push({ recipe, sharedIngredients: shared.slice(0, 8), score: shared.length });
+  };
+
+  for (const recipe of RECIPE_CATALOG) {
+    const ings = getIngredientsForRecipe(recipe.id).map((i) => i.name);
+    scoreRecipe(recipe, ings);
+  }
+
+  const extra = input.extraRecipePool ?? [];
+  for (const recipe of extra) {
+    if (catalogIds.has(recipe.id)) continue;
+    const fromDb = input.dbIngredientsByRecipeId?.get(recipe.id);
+    if (fromDb?.length) {
+      scoreRecipe(recipe, fromDb);
+    }
   }
 
   out.sort((a, b) => b.score - a.score || a.recipe.title.localeCompare(b.recipe.title));

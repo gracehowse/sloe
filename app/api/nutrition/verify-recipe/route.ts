@@ -18,7 +18,7 @@ type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
   servings: number;
   provider?: "auto" | "fatsecret" | "usda";
-  // Optional per-line USDA override (MFP-style “swap”).
+  // Optional per-line USDA override (manual “swap”).
   overrides?: { index: number; fdcId?: number; barcode?: string; description?: string }[];
 };
 

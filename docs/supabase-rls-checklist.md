@@ -10,6 +10,9 @@ For each table below, confirm in the Supabase SQL editor (or `psql`) that **RLS 
 | --- | --- |
 | `profiles` | Select/insert/update own row only (`auth.uid() = id`). |
 | `saves` | Own saves only (see schema / migrations). |
+| `author_follows` | Follower can read/insert/delete own follow rows only. |
+| `recipe_plan_add_events` | Insert own rows only; recipe authors read aggregates via RPC `my_recipe_plan_add_stats`. |
+| `follows` | Existing user↔creator follows; follower counts via `public_creator_follower_count`. |
 | `meal_plans` | One row per user; upsert keyed by `user_id`. |
 | `nutrition_journals` | One row per user; journal JSON is private. |
 | `shopping_lists` | One row per user. |
