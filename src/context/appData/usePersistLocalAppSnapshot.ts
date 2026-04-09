@@ -18,6 +18,8 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
     extraWaterByDay,
     activityBurnKcal,
     activityBurnByDay,
+    notificationsInbox,
+    notificationPrefs,
   } = snapshot;
 
   useEffect(() => {
@@ -36,6 +38,8 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
       extraWaterByDay,
       activityBurnKcal,
       activityBurnByDay,
+      notificationsInbox,
+      notificationPrefs,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [
@@ -53,5 +57,7 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
     extraWaterByDay,
     activityBurnKcal,
     activityBurnByDay,
+    notificationsInbox,
+    notificationPrefs,
   ]);
 }
