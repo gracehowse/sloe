@@ -600,7 +600,7 @@ export function DiscoverFeed({
               <p className="text-slate-900 dark:text-white font-medium mb-2">Nothing to show</p>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                 {discoverRecipes.length === 0
-                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you’re the builder, publish a recipe with an author in Supabase or run the seed script—community posts will show up here."
+                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you’re setting up the app, publish a recipe with an author so community posts can appear here."
                   : feedScope === "following"
                     ? followedAuthorIds.size + followedCreatorIds.size === 0
                       ? "Open a recipe and follow the author to build your Following feed."

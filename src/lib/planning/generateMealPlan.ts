@@ -1,5 +1,11 @@
 import { dayPlanTotalsFromMeals } from "../nutrition/portionMultiplier.ts";
-import type { DayPlan, DayPlanMeal, RecipeCard } from "../../types/recipe.ts";
+import type {
+  DayPlan,
+  DayPlanMeal,
+  PlannerMealSlot,
+  RecipeCard,
+} from "../../types/recipe.ts";
+import { PLANNER_MEAL_SLOT_LABELS } from "../../types/recipe.ts";
 
 /** Daily macro targets + optional tolerance bands for the optimizer. */
 export interface PlannerTargets {
@@ -19,7 +25,29 @@ export const DEFAULT_PLANNER_BANDS = {
 } as const;
 
 /** Meal slot labels (order matters for display). */
-export const PLAN_MEAL_SLOTS = ["Breakfast", "Lunch", "Snack", "Dinner"] as const;
+export const PLAN_MEAL_SLOTS = PLANNER_MEAL_SLOT_LABELS;
+
+export type { PlannerMealSlot };
+
+/** Map creator `meal_type` (recipe upload) to planner slots. */
+export function mealPlannerSlotsFromMealType(raw: string | null | undefined): PlannerMealSlot[] | undefined {
+  const v = (raw ?? "").toLowerCase().trim();
+  if (!v) return undefined;
+  const map: Record<string, PlannerMealSlot[]> = {
+    breakfast: ["Breakfast"],
+    lunch: ["Lunch", "Dinner"],
+    dinner: ["Dinner", "Lunch"],
+    snack: ["Snack"],
+  };
+  return map[v];
+}
+
+/** Recipe fits a planner slot when tagged, or when untagged (legacy). */
+export function recipeFitsMealSlot(recipe: RecipeCard, slot: PlannerMealSlot): boolean {
+  const slots = recipe.mealSlots;
+  if (!slots || slots.length === 0) return true;
+  return slots.includes(slot);
+}
 
 const MEALS_PER_DAY = PLAN_MEAL_SLOTS.length;
 
@@ -108,8 +136,12 @@ function findBestMealSet(
 ): RecipeCard[] | null {
   if (pool.length === 0) return null;
 
-  const n = pool.length;
-  const totalCombos = n ** MEALS_PER_DAY;
+  const perSlotPools = PLAN_MEAL_SLOTS.map((slot) => {
+    const fits = pool.filter((r) => recipeFitsMealSlot(r, slot));
+    return fits.length > 0 ? fits : pool;
+  });
+  const [p0, p1, p2, p3] = perSlotPools;
+  const totalCombos = p0.length * p1.length * p2.length * p3.length;
   const maxFull = 24_000;
   let best: RecipeCard[] | null = null;
   let bestScore = Infinity;
@@ -123,23 +155,29 @@ function findBestMealSet(
   };
 
   if (totalCombos <= maxFull) {
-    for (const m0 of pool) {
-      for (const m1 of pool) {
-        for (const m2 of pool) {
-          for (const m3 of pool) {
+    for (const m0 of p0) {
+      for (const m1 of p1) {
+        for (const m2 of p2) {
+          for (const m3 of p3) {
             scoreAndUpdate([m0, m1, m2, m3]);
           }
         }
       }
     }
   } else {
-    const rand = mulberry32(0xfeed + n * 997 + Math.floor(targets.calories));
+    const n0 = p0.length;
+    const n1 = p1.length;
+    const n2 = p2.length;
+    const n3 = p3.length;
+    const rand = mulberry32(0xfeed + n0 * 997 + Math.floor(targets.calories));
     const samples = Math.min(12_000, totalCombos);
     for (let i = 0; i < samples; i++) {
-      const recipes: RecipeCard[] = [];
-      for (let k = 0; k < MEALS_PER_DAY; k++) {
-        recipes.push(pool[Math.floor(rand() * n)]!);
-      }
+      const recipes: RecipeCard[] = [
+        p0[Math.floor(rand() * n0)]!,
+        p1[Math.floor(rand() * n1)]!,
+        p2[Math.floor(rand() * n2)]!,
+        p3[Math.floor(rand() * n3)]!,
+      ];
       scoreAndUpdate(recipes);
     }
   }

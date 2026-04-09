@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Search, Filter } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import type { RecipeCard, UserTier } from "../../types/recipe.ts";
+import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
+import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
+import { useRouter } from "next/navigation";
 
 interface LibraryProps {
   userTier: UserTier;
@@ -10,22 +12,65 @@ interface LibraryProps {
   onGoDiscover?: () => void;
 }
 
+function entryKindForRecipe(
+  recipe: RecipeCard,
+  explicit: LibraryEntryKind | undefined,
+  userId: string | null,
+): LibraryEntryKind {
+  if (explicit) return explicit;
+  if (isCatalogRecipeId(recipe.id)) return "saved";
+  if (recipe.creatorName === "Unavailable") return "saved";
+  if (userId && recipe.authorId && recipe.authorId === userId) return "created";
+  return "saved";
+}
+
+function kindBadgeClasses(kind: LibraryEntryKind): string {
+  switch (kind) {
+    case "created":
+      return "bg-violet-100 dark:bg-violet-950/50 text-violet-800 dark:text-violet-200";
+    case "imported":
+      return "bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200";
+    case "saved":
+    default:
+      return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+  }
+}
+
+function kindLabel(kind: LibraryEntryKind): string {
+  switch (kind) {
+    case "created":
+      return "Your recipe";
+    case "imported":
+      return "Imported";
+    case "saved":
+    default:
+      return "Saved";
+  }
+}
+
 export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
-  const { savedRecipesForLibrary } = useAppData();
+  const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft } = useAppData();
+  const uid = userId;
+  const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | LibraryEntryKind>("all");
 
   const savedCount = savedRecipesForLibrary.length;
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) {
-      return savedRecipesForLibrary;
+    let list = savedRecipesForLibrary;
+    if (q) {
+      list = list.filter(
+        (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
+      );
     }
-    return savedRecipesForLibrary.filter(
-      (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
+    if (kindFilter === "all") return list;
+    return list.filter(
+      (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === kindFilter,
     );
-  }, [savedRecipesForLibrary, searchQuery]);
+  }, [savedRecipesForLibrary, searchQuery, kindFilter, libraryEntryKindByRecipeId, uid]);
 
   if (selectedRecipe) {
     return (
@@ -60,10 +105,26 @@ export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
               className="w-full pl-12 pr-4 py-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 shadow-sm transition-all"
             />
           </div>
-          <button type="button" className="px-5 py-3 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm">
-            <Filter className="w-5 h-5" />
-            <span className="font-medium">Filter</span>
-          </button>
+          <div className="flex flex-wrap gap-2 items-center">
+            {(["all", "saved", "created", "imported"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKindFilter(k)}
+                className={[
+                  "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
+                  kindFilter === k
+                    ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-800 dark:text-violet-200"
+                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800",
+                ].join(" ")}
+              >
+                {k === "all" ? "All sources" : kindLabel(k)}
+              </button>
+            ))}
+            <span className="hidden sm:inline-flex items-center gap-2 text-slate-400 text-sm ml-1" aria-hidden>
+              <Filter className="w-4 h-4" />
+            </span>
+          </div>
         </div>
       </div>
 
@@ -78,8 +139,8 @@ export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
           </h3>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             {savedRecipesForLibrary.length === 0
-              ? "Save recipes from Discover to plan meals and build shopping lists from what you actually want to cook."
-              : "Try another search term or clear the filter."}
+              ? "Save public recipes from Discover, add your own creations, or import cookbooks and links—each type is labeled here."
+              : "Try another search term or switch the source filter."}
           </p>
           {savedRecipesForLibrary.length === 0 && onGoDiscover ? (
             <button
@@ -105,6 +166,17 @@ export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
             >
               <div className="relative overflow-hidden">
                 <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div
+                  className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/30 ${kindBadgeClasses(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}`}
+                >
+                  {kindLabel(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}
+                </div>
+                {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) !== "saved" &&
+                recipe.isPublished === false ? (
+                  <div className="absolute top-3 left-[6.75rem] px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/20 bg-slate-900/80 text-white">
+                    Draft
+                  </div>
+                ) : null}
                 <div className="absolute top-3 right-3 px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg text-sm font-semibold shadow-lg">
                   {recipe.calories} kcal
                 </div>
@@ -112,6 +184,39 @@ export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
               </div>
               <div className="p-5">
                 <h4 className="mb-3 text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{recipe.title}</h4>
+                {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) === "created" &&
+                recipe.isPublished === false ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
+                      router.replace(`/?${q}`, { scroll: false });
+                    }}
+                    className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:opacity-90"
+                  >
+                    Go public
+                  </button>
+                ) : null}
+                {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) === "imported" ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void (async () => {
+                        const newId = await duplicateRecipeToCreatedDraft(recipe.id);
+                        if (!newId) return;
+                        const q = new URLSearchParams({ view: "create", editRecipe: newId }).toString();
+                        router.replace(`/?${q}`, { scroll: false });
+                      })();
+                    }}
+                    className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:opacity-90"
+                  >
+                    Create your own version
+                  </button>
+                ) : null}
                 <div className="flex items-center gap-2 mb-4">
                   <img
                     src={recipe.creatorImage}

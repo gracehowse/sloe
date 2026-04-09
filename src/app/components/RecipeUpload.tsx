@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Plus, X, ChefHat, Camera, AlertCircle, Pencil, Globe } from "lucide-react";
+import { Upload, Plus, X, ChefHat, Camera, AlertCircle, Pencil, Globe, BookPlus } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
+import { GoPublicDialog } from "./GoPublicDialog.tsx";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
+  /** Create = your original recipe (manual entry, your photos). Import = third-party / cookbook / URL / scan for your library only. */
+  mode: "create" | "import";
+  onSwitchToImport?: () => void;
+  onSwitchToCreate?: () => void;
 }
 
 interface Ingredient {
@@ -147,8 +153,9 @@ function resolveStructuredIngredient(i: { name: string; amount: string; unit: st
   return { name: foodName, amount, unit };
 }
 
-export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
-  const { refreshDiscoverRecipes } = useAppData();
+export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes } = useAppData();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [servings, setServings] = useState(1);
@@ -162,17 +169,6 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   const [dietary, setDietary] = useState<string[]>([]);
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
-  const [myRecipes, setMyRecipes] = useState<
-    {
-      id: string;
-      title: string;
-      published: boolean;
-      created_at: string;
-      saveCount: number;
-      planAddCount: number;
-    }[]
-  >([]);
-  const [loadingList, setLoadingList] = useState(false);
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [importBusy, setImportBusy] = useState(false);
@@ -198,6 +194,8 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   const [barcodeResult, setBarcodeResult] = useState<{ name: string; calories: number; servingLabel: string } | null>(null);
   const [barcodeLoading, setBarcodeLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [attestOriginalWork, setAttestOriginalWork] = useState(false);
+  const [loadedPublished, setLoadedPublished] = useState<boolean>(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStopRef = useRef<(() => void) | null>(null);
@@ -329,59 +327,11 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   // Temporarily: all features unlocked.
   const isCreator = true;
 
-  const loadMyRecipes = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const uid = sessionData.session?.user.id ?? null;
-    if (!uid) return;
-    setLoadingList(true);
-    try {
-      const { data, error } = await supabase
-        .from("recipes")
-        .select("id, title, published, created_at")
-        .eq("author_id", uid)
-        .order("created_at", { ascending: false })
-        .limit(30);
-      if (error) {
-        return;
-      }
-      const rows = (data ?? []) as { id: string; title: string; published: boolean; created_at: string }[];
-      const [saveRes, planRes] = await Promise.all([
-        supabase.rpc("my_recipe_save_stats"),
-        supabase.rpc("my_recipe_plan_add_stats"),
-      ]);
-      const saveMap = new Map<string, number>();
-      if (!saveRes.error && Array.isArray(saveRes.data)) {
-        for (const row of saveRes.data as { recipe_id: string; save_count: number | string }[]) {
-          const n = Number(row.save_count);
-          saveMap.set(row.recipe_id, Number.isFinite(n) ? n : 0);
-        }
-      }
-      const planMap = new Map<string, number>();
-      if (!planRes.error && Array.isArray(planRes.data)) {
-        for (const row of planRes.data as { recipe_id: string; plan_add_count: number | string }[]) {
-          const n = Number(row.plan_add_count);
-          planMap.set(row.recipe_id, Number.isFinite(n) ? n : 0);
-        }
-      }
-      setMyRecipes(
-        rows.map((r) => ({
-          ...r,
-          saveCount: saveMap.get(r.id) ?? 0,
-          planAddCount: planMap.get(r.id) ?? 0,
-        })),
-      );
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isCreator) return;
-    void loadMyRecipes();
-  }, [isCreator, loadMyRecipes]);
+  void isCreator;
 
   const resetForm = () => {
     setRecipeId(null);
+    setAttestOriginalWork(false);
     setTitle("");
     setDescription("");
     setServings(1);
@@ -545,6 +495,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
         return;
       }
       setRecipeId(row.id as string);
+      setLoadedPublished(Boolean((row as { published?: boolean | null }).published));
       setTitle((row.title as string) ?? "");
       setDescription((row.description as string) ?? "");
       setInstructions((row.instructions as string) ?? "");
@@ -583,6 +534,13 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       setLoadingRecipe(false);
     }
   };
+
+  useEffect(() => {
+    const id = searchParams.get("editRecipe");
+    if (!id) return;
+    void loadRecipeForEdit(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const addIngredient = () => {
     setIngredients([...ingredients, { id: Date.now().toString(), name: "", amount: "", unit: "g" }]);
@@ -718,6 +676,15 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
   }, [ingredients, servings, isCreator, lineOverrides]);
 
   const saveRecipe = async (published: boolean) => {
+    const effectivePublished = mode === "import" ? false : published;
+    if (published && mode === "import") {
+      toast.error("Imported recipes stay in your library only—you can’t publish someone else’s content as your own.");
+      return;
+    }
+    if (effectivePublished && mode === "create" && !attestOriginalWork) {
+      toast.error("Confirm you created this recipe and have the right to share it before publishing.");
+      return;
+    }
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       toast.error("Add a recipe title first.");
@@ -739,7 +706,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       return;
     }
 
-    setSaving(published ? "publish" : "draft");
+    setSaving(effectivePublished ? "publish" : "draft");
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
@@ -793,7 +760,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
             cook_time_min: cookTime,
             meal_type: mealType,
             dietary,
-            published,
+            published: effectivePublished,
             is_verified: verifiedOk,
             verified_source: verifiedOk ? "FatSecret" : null,
             verified_confidence: verifiedOk ? verifiedTotals.avgConfidence : null,
@@ -818,6 +785,7 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
 
       const id = recipeRow.id as string;
       setRecipeId(id);
+      setLoadedPublished(effectivePublished);
 
       // Replace ingredient rows (simple and reliable for Phase 0).
       const { error: deleteError } = await supabase.from("recipe_ingredients").delete().eq("recipe_id", id);
@@ -857,10 +825,14 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       }
 
       await refreshDiscoverRecipes();
-      void loadMyRecipes();
-      toast.success(published ? "Recipe published" : "Draft saved", {
-        description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
-      });
+      await refreshMyLibraryRecipes();
+      ensureRecipeInLibraryWithKind(id, mode === "create" ? "created" : "imported");
+      toast.success(
+        effectivePublished ? "Recipe published" : mode === "import" ? "Saved to your library" : "Draft saved",
+        {
+          description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+        },
+      );
     } finally {
       setSaving(null);
     }
@@ -873,115 +845,122 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl">
-              <ChefHat className="w-5 h-5 text-white" />
+              {mode === "import" ? (
+                <BookPlus className="w-5 h-5 text-white" />
+              ) : (
+                <ChefHat className="w-5 h-5 text-white" />
+              )}
             </div>
             <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Create Recipe
+              {mode === "import" ? "Import recipe" : "Create recipe"}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={resetForm}
-            className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            New recipe
-          </button>
-        </div>
-        <p className="text-slate-600 dark:text-slate-400">Share your recipe with verified nutrition data</p>
-      </div>
-
-      {/* Import from URL */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-        <div className="flex items-center gap-2 mb-3">
-          <Globe className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h3 className="text-slate-900 dark:text-white">Import from URL</h3>
-        </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-          We parse public recipe pages that expose schema.org Recipe data. You review and edit before publishing.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="url"
-            value={importUrl}
-            onChange={(e) => setImportUrl(e.target.value)}
-            placeholder="https://example.com/recipe"
-            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-          />
-          <button
-            type="button"
-            disabled={importBusy}
-            onClick={() => void runImportFromUrl()}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold disabled:opacity-50"
-          >
-            {importBusy ? "Importing…" : "Import"}
-          </button>
-        </div>
-        {importHint ? <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">{importHint}</p> : null}
-      </div>
-
-      {/* Your recipes */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-slate-900 dark:text-white flex items-center gap-2">
-            <Pencil className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-            Your recipes
-          </h3>
-          <button
-            type="button"
-            onClick={() => void loadMyRecipes()}
-            className="text-sm text-violet-600 dark:text-violet-400 hover:underline"
-          >
-            Refresh
-          </button>
-        </div>
-        {loadingList ? (
-          <div className="space-y-2 animate-pulse" aria-busy="true" aria-label="Loading recipes">
-            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
-            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
-            <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+          <div className="flex flex-wrap gap-2">
+            {mode === "create" && onSwitchToImport ? (
+              <button
+                type="button"
+                onClick={onSwitchToImport}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Import instead
+              </button>
+            ) : null}
+            {mode === "import" && onSwitchToCreate ? (
+              <button
+                type="button"
+                onClick={onSwitchToCreate}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Create instead
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Clear form
+            </button>
           </div>
-        ) : myRecipes.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No saved drafts yet. Save a draft to see it here.</p>
-        ) : (
-          <ul className="space-y-2 max-h-48 overflow-y-auto">
-            {myRecipes.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  disabled={loadingRecipe || saving !== null}
-                  onClick={() => void loadRecipeForEdit(r.id)}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-600 disabled:opacity-50 flex flex-wrap items-center justify-between gap-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-900 dark:text-white truncate block">{r.title}</span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-                      {r.saveCount} save{r.saveCount === 1 ? "" : "s"} · {r.planAddCount} planner log
-                      {r.planAddCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
-                      r.published
-                        ? "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                    }`}
-                  >
-                    {r.published ? "Published" : "Draft"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        </div>
+        <p className="text-slate-600 dark:text-slate-400">
+          {mode === "import"
+            ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don’t publish them as your own work."
+            : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it’s your content. Scanning a cookbook page you bought belongs under Import, not here."}
+        </p>
       </div>
 
-      {/* Image Upload — screenshot → cover + optional OCR (OpenAI vision on server) */}
+      {mode === "create" && onSwitchToImport ? (
+        <div className="backdrop-blur-xl bg-violet-50/80 dark:bg-violet-950/20 border border-violet-200/60 dark:border-violet-800/50 rounded-2xl p-5 mb-6 text-sm text-slate-700 dark:text-slate-300">
+          <p className="font-medium text-slate-900 dark:text-white mb-1">Not your original recipe?</p>
+          <p className="mb-3">
+            Use Import for URLs, cookbook scans, or anything you didn’t write yourself—so your library stays honest and
+            imports aren’t offered as your creations.
+          </p>
+          <button
+            type="button"
+            onClick={onSwitchToImport}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:opacity-90"
+          >
+            <BookPlus className="w-4 h-4" />
+            Open Import recipe
+          </button>
+        </div>
+      ) : null}
+
+      {mode === "create" && recipeId && !loadedPublished ? (
+        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-6 mb-6 shadow-lg">
+          <h3 className="text-slate-900 dark:text-white mb-1">Ready to share?</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            When you go public, other people can discover and save this recipe. Only publish if it’s your original work.
+          </p>
+          <GoPublicDialog
+            recipeTitle={title.trim() || "Untitled recipe"}
+            disabled={saving !== null}
+            onConfirmPublish={() => void saveRecipe(true)}
+          />
+        </div>
+      ) : null}
+
+      {/* Import from URL (import flow only — create flow uses the callout above) */}
+      {mode === "import" ? (
+        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <Globe className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            <h3 className="text-slate-900 dark:text-white">Import from URL</h3>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+            We parse public recipe pages that expose schema.org Recipe data. You review and edit, then save to your
+            library only.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="url"
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="https://example.com/recipe"
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+            <button
+              type="button"
+              disabled={importBusy}
+              onClick={() => void runImportFromUrl()}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold disabled:opacity-50"
+            >
+              {importBusy ? "Importing…" : "Import"}
+            </button>
+          </div>
+          {importHint ? <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">{importHint}</p> : null}
+        </div>
+      ) : null}
+
+      {/* Image Upload — screenshot → cover + optional text extraction */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
         <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Recipe photo</label>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Paste a screenshot or choose a file for the cover. When the server has{" "}
-          <span className="font-medium">OPENAI_API_KEY</span>, use “Extract from image” to fill title, ingredients, and
-          steps.
+          {mode === "import"
+            ? "Paste a screenshot or choose a file. If “Extract from image” is available, it can pull text from a cookbook or card photo—review, then save as an imported library copy."
+            : "Paste a screenshot or choose a file. If “Extract from image” is available, it can digitize your own handwritten or typed recipe."}
         </p>
         <div
           role="button"
@@ -1093,6 +1072,10 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
                 <option value="dinner">Dinner</option>
                 <option value="snack">Snack</option>
               </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                Helps the meal planner place this recipe in the right slot. Lunch and dinner recipes can be swapped
+                between those two; breakfast and snack stay separate unless you pick a recipe tagged for both.
+              </p>
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Dietary Tags</label>
@@ -1658,25 +1641,55 @@ export function RecipeUpload({ userTier, onUpgrade }: RecipeUploadProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-4">
-        <button
-          type="button"
-          disabled={saving !== null}
-          onClick={() => void saveRecipe(false)}
-          className="flex-1 px-6 py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving === "draft" ? "Saving…" : "Save as Draft"}
-        </button>
-        <button
-          type="button"
-          disabled={saving !== null}
-          onClick={() => void saveRecipe(true)}
-          className="flex-1 px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Upload className="w-5 h-5" />
-          {saving === "publish" ? "Publishing…" : "Publish Recipe"}
-        </button>
-      </div>
+      {mode === "import" ? (
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Publishing isn’t available on this screen—imported copies are for your account only. To share original work
+            with the community, use Create recipe.
+          </p>
+          <button
+            type="button"
+            disabled={saving !== null}
+            onClick={() => void saveRecipe(false)}
+            className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving === "draft" ? "Saving…" : "Save to my library"}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50/80 dark:bg-slate-900/40">
+            <input
+              type="checkbox"
+              className="mt-1 rounded border-slate-300"
+              checked={attestOriginalWork}
+              onChange={(e) => setAttestOriginalWork(e.target.checked)}
+            />
+            <span className="text-sm text-slate-700 dark:text-slate-300">
+              I created this recipe and I have the right to share it publicly (required to publish).
+            </span>
+          </label>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              disabled={saving !== null}
+              onClick={() => void saveRecipe(false)}
+              className="flex-1 px-6 py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving === "draft" ? "Saving…" : "Save as draft"}
+            </button>
+            <button
+              type="button"
+              disabled={saving !== null}
+              onClick={() => void saveRecipe(true)}
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              {saving === "publish" ? "Publishing…" : "Publish recipe"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

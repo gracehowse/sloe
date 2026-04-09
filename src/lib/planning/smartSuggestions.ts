@@ -7,7 +7,7 @@ const catalogIds = new Set(RECIPE_CATALOG.map((r) => r.id));
 
 /**
  * Ingredient name keys already required by non-placeholder meals in the plan.
- * Uses catalog ingredients and optional Supabase-backed names for community recipes.
+ * Uses catalog ingredients and optional DB ingredient names for community recipes.
  */
 export function collectPlanIngredientKeys(
   mealPlan: DayPlan[] | null,
@@ -53,7 +53,7 @@ export function computeSmartRecipeSuggestions(input: {
   mealPlan: DayPlan[] | null;
   titleToId: (title: string) => string | null;
   max?: number;
-  /** Ingredient display names from Supabase `recipe_ingredients` keyed by recipe id. */
+  /** Ingredient display names from `recipe_ingredients` keyed by recipe id. */
   dbIngredientsByRecipeId?: ReadonlyMap<string, readonly string[]>;
   /** Saved community (non-catalog) recipes to include in the suggestion pool. */
   extraRecipePool?: readonly RecipeCard[];

@@ -65,7 +65,7 @@ export default function TrackerScreen() {
         .maybeSingle();
       if (cancelled) return;
       if (error) {
-        setLoadError(error.message);
+        setLoadError("Couldn’t load your journal right now.");
         setHydrated(true);
         return;
       }
@@ -90,7 +90,7 @@ export default function TrackerScreen() {
         )
         .then(({ error }) => {
           if (error) {
-            setNote(`Sync issue: ${error.message}`);
+            setNote("Couldn’t sync right now. Your changes are saved on this device.");
           }
         });
     }, 600);
@@ -120,7 +120,7 @@ export default function TrackerScreen() {
     });
     setKcal("");
     setTitle("");
-    setNote("Saved — syncing with Platemate web via Supabase.");
+    setNote("Saved — syncing with your Platemate account.");
   }, [dayKey, kcal, title]);
 
   async function signOut() {
@@ -133,16 +133,12 @@ export default function TrackerScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <ThemedText type="title">Tracker</ThemedText>
         <ThemedText style={styles.sub}>
-          Logged meals sync to your account — same data as the web Nutrition Tracker (Supabase{" "}
-          <ThemedText type="defaultSemiBold">nutrition_journals</ThemedText>).
+          Logged meals sync to your account — the same journal as the web Nutrition Tracker.
         </ThemedText>
 
-        {base ? (
-          <ThemedText style={styles.ok}>API URL (search/barcode): {base}</ThemedText>
-        ) : (
+        {base ? null : (
           <ThemedText style={styles.warn}>
-            Optional: set <ThemedText type="defaultSemiBold">expo.extra.platemateApiUrl</ThemedText> in app.json for
-            hosted USDA search routes.
+            Food search isn’t available in this build yet.
           </ThemedText>
         )}
 

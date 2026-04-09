@@ -437,11 +437,11 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-violet-200/40 dark:border-violet-900/40 rounded-2xl p-4 sm:p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-3">
           <Search className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h3 className="text-slate-900 dark:text-white text-sm font-semibold">Quick log (USDA)</h3>
+          <h3 className="text-slate-900 dark:text-white text-sm font-semibold">Quick log</h3>
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-          <span className="font-medium text-slate-700 dark:text-slate-300">Estimated</span> from USDA FoodData Central — search
-          foods and log portions for {selectedDate.toLocaleDateString()} (same flow as Add meal → Search).
+          <span className="font-medium text-slate-700 dark:text-slate-300">Estimated</span> nutrition — search foods and
+          log portions for {selectedDate.toLocaleDateString()} (same flow as Add meal → Search).
         </p>
         <div className="flex flex-col sm:flex-row gap-2 mb-3">
           <label className="text-xs text-slate-600 dark:text-slate-400 sm:w-36 shrink-0 flex items-center gap-2">
@@ -1000,7 +1000,7 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
               </>
             ) : addMode === "search" ? (
               <div className="grid gap-2">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Food search (USDA)</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Food search</span>
                 <div className="flex gap-2">
                   <input
                     type="text"

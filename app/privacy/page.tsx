@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Account:</strong> email and profile fields you provide (e.g. display name, goals, measurements)
-              when you use Supabase authentication.
+              when you create an account and sign in.
             </li>
             <li>
               <strong>App usage data:</strong> nutrition logs, saved recipes, and preferences you store in the
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your choices</h2>
           <p>
             You can export locally stored data from Settings (Download your data) and sign out at any time. For
-            data held in Supabase, use your account controls or contact the operator of your deployment.
+            data stored with your account online, use your account controls or contact the operator of your deployment.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>

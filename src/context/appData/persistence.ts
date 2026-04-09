@@ -1,5 +1,5 @@
 import { normalizeDayPlans } from "../../lib/nutrition/portionMultiplier.ts";
-import type { DayPlan, LoggedMeal, ShoppingItem } from "../../types/recipe.ts";
+import type { DayPlan, LibraryEntryKind, LoggedMeal, ShoppingItem } from "../../types/recipe.ts";
 import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from "../../types/profile.ts";
 
 export const STORAGE_KEY = "platemate-app-v1";
@@ -27,6 +27,20 @@ function normalizeMealPlanSlot(row: unknown): MealPlanNamedSlot | null {
 export interface PersistedSnapshot {
   savedRecipeIds: string[];
   savedAtById: Record<string, string>;
+  /** Cached card metadata so saved recipes can be shown even if unpublished later. */
+  savedRecipeMetaById?: Record<
+    string,
+    {
+      title: string;
+      image?: string | null;
+      creatorName?: string | null;
+      creatorImage?: string | null;
+      calories?: number | null;
+      protein?: number | null;
+      carbs?: number | null;
+      fat?: number | null;
+    }
+  >;
   shoppingItems: ShoppingItem[];
   /** Fingerprint of meal plan when shopping list was last built from plan (`fingerprintMealPlanForShopping`). */
   shoppingListSourceFingerprint?: string | null;
@@ -41,6 +55,8 @@ export interface PersistedSnapshot {
   activityBurnKcal?: number;
   /** Per calendar day (`YYYY-MM-DD`) activity burn when activity-adjusted calories are on. */
   activityBurnByDay?: Record<string, number>;
+  /** Per saved recipe id: saved from feed vs your own creation vs imported third-party copy. */
+  libraryEntryKindByRecipeId?: Record<string, LibraryEntryKind>;
 }
 
 export function dateKey(d: Date): string {
@@ -112,6 +128,7 @@ export function defaultSnapshot(): PersistedSnapshot {
       "cccccccc-cccc-cccc-cccc-cccccccccccc": new Date("2026-04-05").toISOString(),
       "dddddddd-dddd-dddd-dddd-dddddddddddd": new Date("2026-04-03").toISOString(),
     },
+    savedRecipeMetaById: {},
     shoppingItems: [
       {
         id: "1",
@@ -201,6 +218,7 @@ export function defaultSnapshot(): PersistedSnapshot {
     activeMealPlanSlotId: DEFAULT_MEAL_PLAN_SLOT_ID,
     nutritionTargets: { ...DEFAULT_MACRO_TARGETS },
     shoppingListSourceFingerprint: null,
+    libraryEntryKindByRecipeId: {},
   };
 }
 
@@ -258,6 +276,10 @@ export function loadSnapshot(): PersistedSnapshot {
         parsed.savedAtById && typeof parsed.savedAtById === "object"
           ? { ...base.savedAtById, ...parsed.savedAtById }
           : base.savedAtById,
+      savedRecipeMetaById:
+        parsed.savedRecipeMetaById && typeof parsed.savedRecipeMetaById === "object"
+          ? { ...base.savedRecipeMetaById, ...(parsed.savedRecipeMetaById as any) }
+          : base.savedRecipeMetaById,
       shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
       shoppingListSourceFingerprint:
         typeof parsed.shoppingListSourceFingerprint === "string" || parsed.shoppingListSourceFingerprint === null
@@ -284,6 +306,10 @@ export function loadSnapshot(): PersistedSnapshot {
                 .map(([k, v]) => [k, Math.max(0, Math.round(v as number))]),
             )
           : undefined,
+      libraryEntryKindByRecipeId:
+        parsed.libraryEntryKindByRecipeId && typeof parsed.libraryEntryKindByRecipeId === "object"
+          ? { ...base.libraryEntryKindByRecipeId, ...parsed.libraryEntryKindByRecipeId }
+          : base.libraryEntryKindByRecipeId,
     };
   } catch {
     return defaultSnapshot();

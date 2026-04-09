@@ -21,7 +21,7 @@ export default function SearchScreen() {
 
   const runSearch = async () => {
     if (!base) {
-      setErr("Configure platemateApiUrl in app.json expo.extra.");
+      setErr("Food search isn’t available in this build yet.");
       return;
     }
     setBusy(true);
@@ -47,7 +47,7 @@ export default function SearchScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Food search</ThemedText>
-      <ThemedText style={styles.sub}>USDA FoodData Central via your Platemate web API.</ThemedText>
+      <ThemedText style={styles.sub}>Search foods and log portions.</ThemedText>
 
       <View style={styles.row}>
         <TextInput value={q} onChangeText={setQ} placeholder="e.g. chicken breast" style={styles.input} />

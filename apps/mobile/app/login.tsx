@@ -19,7 +19,8 @@ export default function LoginScreen() {
       <ThemedView style={styles.container}>
         <ThemedText type="title">Sign in</ThemedText>
         <ThemedText style={styles.warn}>
-          Set expo.extra.supabaseUrl and supabaseAnonKey in app.json (same project as the Platemate web app).
+          Sign-in isn’t configured for this build yet. Please use the web app, or contact the person who set up this
+          app.
         </ThemedText>
       </ThemedView>
     );
