@@ -1,7 +1,5 @@
-"use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -53,14 +51,28 @@ export default function NotificationsScreen() {
   const userId = session?.user.id ?? null;
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<InboxItem[]>([]);
 
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endCursorRef = useRef<string | null>(null);
 
   const unreadCount = useMemo(() => items.filter((n) => !n.readAt).length, [items]);
 
-  async function load() {
+  const mergeAndSet = useCallback((next: InboxItem[], mode: "replace" | "append") => {
+    setItems((prev) => {
+      const merged = mode === "replace" ? next : [...prev, ...next];
+      const uniq = new Map<string, InboxItem>();
+      for (const it of merged) uniq.set(it.id, it);
+      return Array.from(uniq.values())
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+        .slice(0, 100);
+    });
+  }, []);
+
+  async function loadPage(mode: "replace" | "append") {
     if (!userId) return;
     setError(null);
     const [appRes, pubRes] = await Promise.all([
@@ -68,12 +80,12 @@ export default function NotificationsScreen() {
         .from("app_notifications")
         .select("id, kind, title, body, recipe_id, created_at, read_at")
         .order("created_at", { ascending: false })
-        .limit(25),
+        .range(mode === "append" && endCursorRef.current ? 25 : 0, mode === "append" && endCursorRef.current ? 49 : 24),
       supabase
         .from("creator_publish_notifications")
         .select("recipe_id, created_at, read_at, recipes(title)")
         .order("created_at", { ascending: false })
-        .limit(25),
+        .limit(25), // publish notifications are keyed by recipe_id; keep it simple and just re-merge latest
     ]);
 
     if (appRes.error || pubRes.error) {
@@ -113,7 +125,10 @@ export default function NotificationsScreen() {
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
       .slice(0, 50);
 
-    setItems(merged);
+    mergeAndSet(merged, mode);
+
+    const last = fromApp[fromApp.length - 1];
+    endCursorRef.current = last?.createdAt ?? endCursorRef.current;
   }
 
   useEffect(() => {
@@ -121,7 +136,7 @@ export default function NotificationsScreen() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      await load();
+      await loadPage("replace");
       if (!cancelled) setLoading(false);
     })();
     return () => {
@@ -136,7 +151,7 @@ export default function NotificationsScreen() {
     const refreshSoon = () => {
       if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
       refreshDebounceRef.current = setTimeout(() => {
-        void load();
+        void loadPage("replace");
       }, 350);
     };
 
@@ -166,6 +181,20 @@ export default function NotificationsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const onRefresh = useCallback(async () => {
+    if (!userId) return;
+    setRefreshing(true);
+    await loadPage("replace");
+    setRefreshing(false);
+  }, [userId]);
+
+  const onEndReached = useCallback(async () => {
+    if (!userId || loadingMore || loading) return;
+    setLoadingMore(true);
+    await loadPage("append");
+    setLoadingMore(false);
+  }, [userId, loadingMore, loading]);
+
   async function markAllRead() {
     if (!userId) return;
     const now = new Date().toISOString();
@@ -194,6 +223,22 @@ export default function NotificationsScreen() {
     }
     await supabase.from("app_notifications").update({ read_at: now }).eq("user_id", userId).eq("id", n.id);
   }
+
+  const renderItem = useCallback(
+    ({ item: n }: { item: InboxItem }) => (
+      <Pressable onPress={() => void markOneRead(n)} style={styles.card}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {!n.readAt ? <View style={styles.dot} /> : <View style={styles.dotSpacer} />}
+          <View style={{ flex: 1 }}>
+            <ThemedText type="defaultSemiBold">{n.title}</ThemedText>
+            {n.body ? <ThemedText style={styles.body}>{n.body}</ThemedText> : null}
+            <ThemedText style={styles.stamp}>{formatStamp(n.createdAt)}</ThemedText>
+          </View>
+        </View>
+      </Pressable>
+    ),
+    [markOneRead],
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -225,27 +270,28 @@ export default function NotificationsScreen() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-          {items.length === 0 ? (
+        <FlatList
+          data={items}
+          keyExtractor={(n) => n.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+          ListEmptyComponent={
             <View style={styles.empty}>
               <ThemedText type="defaultSemiBold">No notifications yet</ThemedText>
               <ThemedText style={styles.sub}>When something important happens, you’ll see it here.</ThemedText>
             </View>
-          ) : (
-            items.map((n) => (
-              <Pressable key={n.id} onPress={() => void markOneRead(n)} style={styles.card}>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  {!n.readAt ? <View style={styles.dot} /> : <View style={styles.dotSpacer} />}
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="defaultSemiBold">{n.title}</ThemedText>
-                    {n.body ? <ThemedText style={styles.body}>{n.body}</ThemedText> : null}
-                    <ThemedText style={styles.stamp}>{formatStamp(n.createdAt)}</ThemedText>
-                  </View>
-                </View>
-              </Pressable>
-            ))
-          )}
-        </ScrollView>
+          }
+          onEndReachedThreshold={0.5}
+          onEndReached={() => void onEndReached()}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16 }}>
+                <ActivityIndicator />
+              </View>
+            ) : null
+          }
+        />
       )}
     </ThemedView>
   );
