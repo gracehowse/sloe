@@ -97,7 +97,7 @@ export default function OnboardingPage() {
       }
       setUserId(uid);
 
-      // Try to hydrate from Supabase profile if available.
+      // Try to hydrate from saved profile if available.
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(
@@ -139,10 +139,7 @@ export default function OnboardingPage() {
         }
       }
       if (!cancelled && profileError) {
-        const msg = profileError.message ?? "";
-        if (msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache")) {
-          toast.error("Supabase profiles table not available yet. Onboarding will save locally for now.");
-        }
+        toast.error("Profile sync isn’t available yet. Onboarding will save on this device for now.");
       }
 
       if (!cancelled) {
@@ -202,7 +199,7 @@ export default function OnboardingPage() {
       preferActivityAdjustedCalories,
     };
 
-    // Save locally so the UX works even if Supabase schema cache is flaky.
+    // Save locally so the UX works even if profile sync is unavailable.
     saveLocalProfile(profile);
 
     const { error: upsertError } = await supabase
@@ -233,15 +230,13 @@ export default function OnboardingPage() {
 
     if (upsertError) {
       const msg = upsertError.message ?? "";
-      const looksLikeMissingTable =
-        msg.includes("Could not find the table") || msg.toLowerCase().includes("schema cache") || msg.toLowerCase().includes("does not exist");
-      if (!looksLikeMissingTable) {
-        setSaving(false);
-        setError(msg);
+      setSaving(false);
+      if (msg) {
+        setError("We couldn’t save your profile right now. Your info is still saved on this device.");
         return;
       }
-      // If Supabase isn't ready, keep the user moving with local profile storage.
-      toast.error("Supabase profile save unavailable. Using local profile for now.");
+      toast.error("Couldn’t save your profile right now. Your info is still saved on this device.");
+      return;
     }
 
     setSaving(false);

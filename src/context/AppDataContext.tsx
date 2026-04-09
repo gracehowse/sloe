@@ -14,9 +14,17 @@ import { toast } from "sonner";
 import { getRecipeById, RECIPE_CATALOG } from "../data/recipeCatalog.ts";
 import { effectivePortionMultiplier, normalizeDayPlans } from "../lib/nutrition/portionMultiplier.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
-import type { DayPlan, LoggedMeal, RecipeCard, ShoppingItem, UserTier } from "../types/recipe.ts";
+import type {
+  DayPlan,
+  LibraryEntryKind,
+  LoggedMeal,
+  RecipeCard,
+  ShoppingItem,
+  UserTier,
+} from "../types/recipe.ts";
 import {
   DEFAULT_PLANNER_BANDS,
+  mealPlannerSlotsFromMealType,
   type PlannerTargets,
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
@@ -59,6 +67,8 @@ export type RedeemPromoResult =
     };
 
 interface AppDataContextValue {
+  /** Signed-in user id, when available (for library labels). */
+  userId: string | null;
   authEmail: string | null;
   profileDisplayName: string | null;
   profileTier: UserTier;
@@ -74,11 +84,21 @@ interface AppDataContextValue {
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
   shoppingListOutOfSync: boolean;
   discoverRecipes: RecipeCard[];
-  /** Recipes published by real users (Supabase). Catalog picks are excluded. */
+  /** Recipes published by real users. Catalog picks are excluded. */
   communityFeedCount: number;
   refreshDiscoverRecipes: () => Promise<void>;
   /** Returns true when a new save was started (not un-save, not blocked by tier limit). */
-  toggleSaveRecipe: (recipeId: string, tier: UserTier) => boolean;
+  toggleSaveRecipe: (recipeId: string, tier: UserTier, kind?: LibraryEntryKind) => boolean;
+  /** Add a recipe to the library with a source label (e.g. after create/import save). */
+  ensureRecipeInLibraryWithKind: (recipeId: string, kind: LibraryEntryKind) => void;
+  /** Per-recipe library source; keys are recipe ids. */
+  libraryEntryKindByRecipeId: Readonly<Record<string, LibraryEntryKind>>;
+  /** Cached card metadata so saved recipes can be shown even if unpublished later. */
+  savedRecipeMetaById: Readonly<Record<string, { title: string }>>;
+  /** Refresh your private drafts/published recipes for Library display. */
+  refreshMyLibraryRecipes: () => Promise<void>;
+  /** Duplicate a recipe into a new private draft under your account. */
+  duplicateRecipeToCreatedDraft: (sourceRecipeId: string) => Promise<string | null>;
   isRecipeSaved: (recipeId: string) => boolean;
   savedRecipesForLibrary: Array<RecipeCard & { savedAt: Date }>;
   shoppingItems: ShoppingItem[];
@@ -127,7 +147,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const [savedRecipeIds, setSavedRecipeIds] = useState<string[]>(initial.savedRecipeIds);
   const [savedAtById, setSavedAtById] = useState<Record<string, string>>(initial.savedAtById);
+  const [savedRecipeMetaById, setSavedRecipeMetaById] = useState<
+    NonNullable<NonNullable<typeof initial>["savedRecipeMetaById"]>
+  >(() => initial.savedRecipeMetaById ?? {});
+  const [libraryEntryKindByRecipeId, setLibraryEntryKindByRecipeId] = useState<
+    Record<string, LibraryEntryKind>
+  >(() => initial.libraryEntryKindByRecipeId ?? {});
   const [uploadedRecipes, setUploadedRecipes] = useState<RecipeCard[]>([]);
+  const [myLibraryRecipes, setMyLibraryRecipes] = useState<RecipeCard[]>([]);
   const [mealPlanSlots, setMealPlanSlots] = useState<MealPlanNamedSlot[]>(() => {
     if (initial.mealPlanSlots?.length) {
       return initial.mealPlanSlots;
@@ -457,7 +484,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, author:profiles(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, author:profiles(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -489,6 +516,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       feedCreatedAt: row.created_at as string,
       authorId: (row.author_id as string | null) ?? null,
       creatorId: (row.creator_id as string | null) ?? null,
+      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string | null }).meal_type),
     }));
 
     setUploadedRecipes(mapped);
@@ -498,6 +526,161 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!authedUserId) return;
     void refreshDiscoverRecipes();
   }, [authedUserId, refreshDiscoverRecipes]);
+
+  const refreshMyLibraryRecipes = useCallback(async () => {
+    if (!authedUserId) return;
+    const { data, error } = await supabase
+      .from("recipes")
+      .select(
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published",
+      )
+      .eq("author_id", authedUserId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) return;
+    const mapped: RecipeCard[] = (data ?? []).map((row: any) => ({
+      id: row.id as string,
+      creatorName: profileDisplayName ?? "You",
+      creatorImage:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+      title: (row.title as string) ?? "Untitled",
+      image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+      servings: (row.servings as number) ?? 1,
+      calories: (row.calories as number) ?? 0,
+      protein: (row.protein as number) ?? 0,
+      carbs: (row.carbs as number) ?? 0,
+      fat: (row.fat as number) ?? 0,
+      fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
+      isVerified: Boolean(row.is_verified),
+      creatorCalories: (row.creator_calories as number | null) ?? undefined,
+      savedCount: 0,
+      isSaved: false,
+      feedCreatedAt: row.created_at as string,
+      authorId: (row.author_id as string | null) ?? null,
+      creatorId: (row.creator_id as string | null) ?? null,
+      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string | null }).meal_type),
+      isPublished: Boolean((row as { published?: boolean | null }).published),
+    }));
+    setMyLibraryRecipes(mapped);
+  }, [authedUserId, profileDisplayName]);
+
+  useEffect(() => {
+    if (!authedUserId) return;
+    void refreshMyLibraryRecipes();
+  }, [authedUserId, refreshMyLibraryRecipes]);
+
+  const duplicateRecipeToCreatedDraft = useCallback(
+    async (sourceRecipeId: string): Promise<string | null> => {
+      if (!authedUserId) {
+        toast.error("Please sign in again.");
+        return null;
+      }
+      const { data: src, error: srcErr } = await supabase
+        .from("recipes")
+        .select("title, description, instructions, servings, prep_time_min, cook_time_min, meal_type, dietary, image_url")
+        .eq("id", sourceRecipeId)
+        .maybeSingle();
+      if (srcErr || !src) {
+        toast.error(srcErr?.message ?? "Could not load recipe.");
+        return null;
+      }
+      const { data: ingRows, error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, fatsecret_food_id, confidence, is_verified, source")
+        .eq("recipe_id", sourceRecipeId)
+        .order("created_at", { ascending: true });
+      if (ingErr) {
+        toast.error(ingErr.message);
+        return null;
+      }
+
+      const title = String((src as any).title ?? "Untitled").trim() || "Untitled";
+      const nextTitle = `My version: ${title}`;
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("recipes")
+        .insert({
+          author_id: authedUserId,
+          title: nextTitle,
+          description: (src as any).description ?? null,
+          instructions: (src as any).instructions ?? "",
+          image_url: (src as any).image_url ?? null,
+          servings: (src as any).servings ?? 1,
+          prep_time_min: (src as any).prep_time_min ?? null,
+          cook_time_min: (src as any).cook_time_min ?? null,
+          meal_type: (src as any).meal_type ?? null,
+          dietary: (src as any).dietary ?? [],
+          published: false,
+          is_verified: false,
+          verified_source: null,
+          verified_confidence: null,
+          verified_at: null,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber_g: 0,
+          sugar_g: 0,
+          sodium_mg: 0,
+        })
+        .select("id")
+        .single();
+      if (insErr || !inserted) {
+        toast.error(insErr?.message ?? "Could not duplicate recipe.");
+        return null;
+      }
+      const newId = String((inserted as any).id);
+
+      const inserts = (ingRows ?? []).map((r: any) => ({
+        recipe_id: newId,
+        ingredient_id: null,
+        name: String(r.name ?? ""),
+        amount: r.amount ?? null,
+        unit: r.unit ?? null,
+        calories: r.calories ?? 0,
+        protein: r.protein ?? 0,
+        carbs: r.carbs ?? 0,
+        fat: r.fat ?? 0,
+        fiber_g: r.fiber_g ?? 0,
+        sugar_g: r.sugar_g ?? 0,
+        sodium_mg: r.sodium_mg ?? 0,
+        fatsecret_food_id: r.fatsecret_food_id ?? null,
+        confidence: r.confidence ?? null,
+        is_verified: Boolean(r.is_verified),
+        source: r.source ?? null,
+      }));
+      if (inserts.length > 0) {
+        const { error: insIngErr } = await supabase.from("recipe_ingredients").insert(inserts);
+        if (insIngErr) {
+          toast.error(insIngErr.message);
+          return null;
+        }
+      }
+
+      // Inline the "ensure in library" behavior here to avoid ordering issues with hook declarations.
+      const iso = new Date().toISOString();
+      setSavedRecipeIds((prev) => (prev.includes(newId) ? prev : [newId, ...prev]));
+      setSavedAtById((prev) => ({ ...prev, [newId]: prev[newId] ?? iso }));
+      setLibraryEntryKindByRecipeId((prev) => ({ ...prev, [newId]: "created" }));
+      setSavedRecipeMetaById((prev) => ({
+        ...prev,
+        [newId]: {
+          title: nextTitle,
+          image: (src as any).image_url ?? null,
+          creatorName: profileDisplayName ?? "You",
+          creatorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        },
+      }));
+      await refreshMyLibraryRecipes();
+      toast.success("Created your own draft version");
+      return newId;
+    },
+    [authedUserId, refreshMyLibraryRecipes, profileDisplayName],
+  );
 
   const generateMealPlan = useCallback(
     async (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => {
@@ -686,6 +869,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   usePersistLocalAppSnapshot({
     savedRecipeIds,
     savedAtById,
+    savedRecipeMetaById,
+    libraryEntryKindByRecipeId,
     shoppingItems,
     shoppingListSourceFingerprint,
     nutritionByDay,
@@ -704,12 +889,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleSaveRecipe = useCallback(
-    (recipeId: string, tier: UserTier): boolean => {
+    (recipeId: string, tier: UserTier, kind?: LibraryEntryKind): boolean => {
       const exists = savedRecipeIds.includes(recipeId);
       if (exists) {
         // optimistic
         setSavedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
         setSavedAtById((prev) => {
+          const next = { ...prev };
+          delete next[recipeId];
+          return next;
+        });
+        setLibraryEntryKindByRecipeId((prev) => {
+          const next = { ...prev };
+          delete next[recipeId];
+          return next;
+        });
+        setSavedRecipeMetaById((prev) => {
           const next = { ...prev };
           delete next[recipeId];
           return next;
@@ -745,6 +940,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const iso = new Date().toISOString();
       setSavedRecipeIds((prev) => [recipeId, ...prev.filter((id) => id !== recipeId)]);
       setSavedAtById((prev) => ({ ...prev, [recipeId]: iso }));
+      setLibraryEntryKindByRecipeId((prev) => ({ ...prev, [recipeId]: kind ?? "saved" }));
+      setSavedRecipeMetaById((prev) => {
+        const fromCatalog = getRecipeById(recipeId);
+        const fromCommunity = uploadedRecipes.find((r) => r.id === recipeId) ?? myLibraryRecipes.find((r) => r.id === recipeId);
+        const r = fromCatalog ?? fromCommunity;
+        if (!r) return prev;
+        return {
+          ...prev,
+          [recipeId]: {
+            title: r.title,
+            image: r.image,
+            creatorName: r.creatorName,
+            creatorImage: r.creatorImage,
+            calories: r.calories,
+            protein: r.protein,
+            carbs: r.carbs,
+            fat: r.fat,
+          },
+        };
+      });
       track(AnalyticsEvents.recipe_saved, { recipeId });
       if (authedUserId && dbSavesEnabled) {
         supabase
@@ -774,6 +989,60 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned],
   );
 
+  const ensureRecipeInLibraryWithKind = useCallback(
+    (recipeId: string, kind: LibraryEntryKind) => {
+      const iso = new Date().toISOString();
+      setSavedRecipeIds((prev) => (prev.includes(recipeId) ? prev : [recipeId, ...prev]));
+      setSavedAtById((prev) => ({ ...prev, [recipeId]: prev[recipeId] ?? iso }));
+      setLibraryEntryKindByRecipeId((prev) => ({ ...prev, [recipeId]: kind }));
+      setSavedRecipeMetaById((prev) => {
+        const r =
+          myLibraryRecipes.find((x) => x.id === recipeId) ??
+          uploadedRecipes.find((x) => x.id === recipeId) ??
+          getRecipeById(recipeId) ??
+          null;
+        if (!r) return prev;
+        return {
+          ...prev,
+          [recipeId]: {
+            title: r.title,
+            image: r.image,
+            creatorName: r.creatorName,
+            creatorImage: r.creatorImage,
+            calories: r.calories,
+            protein: r.protein,
+            carbs: r.carbs,
+            fat: r.fat,
+          },
+        };
+      });
+      void refreshMyLibraryRecipes();
+      if (authedUserId && dbSavesEnabled) {
+        supabase
+          .from("saves")
+          .insert({ user_id: authedUserId, recipe_id: recipeId })
+          .then(({ error }) => {
+            if (error) {
+              const msg = error.message ?? "";
+              if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique")) {
+                return;
+              }
+              if (looksLikeMissingTableError(msg)) {
+                setDbSavesEnabled(false);
+                if (!dbSavesWarned) {
+                  setDbSavesWarned(true);
+                  toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
+                }
+                return;
+              }
+              toast.error(syncFailedRetryMessage("saved recipe", error.message ?? ""));
+            }
+          });
+      }
+    },
+    [authedUserId, dbSavesEnabled, dbSavesWarned, refreshMyLibraryRecipes, myLibraryRecipes, uploadedRecipes],
+  );
+
   const discoverRecipes = useMemo((): RecipeCard[] => {
     const uploaded = uploadedRecipes.map((r) => ({
       ...r,
@@ -793,9 +1062,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const savedRecipesForLibrary = useMemo((): Array<RecipeCard & { savedAt: Date }> => {
     const enriched = savedRecipeIds
       .map((id) => {
-        const base = getRecipeById(id) ?? uploadedRecipes.find((r) => r.id === id) ?? null;
+        const base =
+          getRecipeById(id) ??
+          uploadedRecipes.find((r) => r.id === id) ??
+          myLibraryRecipes.find((r) => r.id === id) ??
+          null;
         if (!base) {
-          return null;
+          const meta = savedRecipeMetaById[id];
+          if (!meta?.title) return null;
+          const fallback: RecipeCard = {
+            id,
+            creatorName: meta.creatorName ?? "Unavailable",
+            creatorImage:
+              meta.creatorImage ??
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+            title: meta.title,
+            image:
+              meta.image ??
+              "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
+            servings: 1,
+            calories: Math.max(0, Math.round(Number(meta.calories ?? 0) || 0)),
+            protein: Math.max(0, Math.round(Number(meta.protein ?? 0) || 0)),
+            carbs: Math.max(0, Math.round(Number(meta.carbs ?? 0) || 0)),
+            fat: Math.max(0, Math.round(Number(meta.fat ?? 0) || 0)),
+            isVerified: false,
+            savedCount: 0,
+            isSaved: true,
+            isPublished: false,
+          };
+          const savedAt = new Date(savedAtById[id] ?? Date.now());
+          return { ...fallback, savedAt };
         }
         const savedAt = new Date(savedAtById[id] ?? Date.now());
         return { ...base, isSaved: true, savedAt };
@@ -803,10 +1099,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .filter((x): x is RecipeCard & { savedAt: Date } => x !== null);
     enriched.sort((a, b) => b.savedAt.getTime() - a.savedAt.getTime());
     return enriched;
-  }, [savedRecipeIds, savedAtById]);
+  }, [savedRecipeIds, savedAtById, uploadedRecipes, myLibraryRecipes, savedRecipeMetaById]);
 
   const value = useMemo(
     (): AppDataContextValue => ({
+      userId: authedUserId,
       authEmail,
       profileDisplayName,
       profileTier,
@@ -822,6 +1119,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       communityFeedCount,
       refreshDiscoverRecipes,
       toggleSaveRecipe,
+      ensureRecipeInLibraryWithKind,
+      libraryEntryKindByRecipeId,
+      savedRecipeMetaById,
+      refreshMyLibraryRecipes,
+      duplicateRecipeToCreatedDraft,
       isRecipeSaved,
       savedRecipesForLibrary,
       shoppingItems,
@@ -857,6 +1159,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       nutritionByDay,
     }),
     [
+      authedUserId,
       authEmail,
       profileDisplayName,
       profileTier,
@@ -872,6 +1175,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       communityFeedCount,
       refreshDiscoverRecipes,
       toggleSaveRecipe,
+      ensureRecipeInLibraryWithKind,
+      libraryEntryKindByRecipeId,
+      savedRecipeMetaById,
+      refreshMyLibraryRecipes,
+      duplicateRecipeToCreatedDraft,
       isRecipeSaved,
       savedRecipesForLibrary,
       shoppingItems,

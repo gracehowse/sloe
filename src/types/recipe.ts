@@ -1,5 +1,12 @@
 export type UserTier = "free" | "base" | "pro";
 
+/** How a recipe ended up in your library (local + synced metadata). */
+export type LibraryEntryKind = "saved" | "created" | "imported";
+
+/** Planner meal slots (order matches UI: breakfast → lunch → snack → dinner). */
+export const PLANNER_MEAL_SLOT_LABELS = ["Breakfast", "Lunch", "Snack", "Dinner"] as const;
+export type PlannerMealSlot = (typeof PLANNER_MEAL_SLOT_LABELS)[number];
+
 export interface RecipeCard {
   id: string;
   creatorName: string;
@@ -18,14 +25,21 @@ export interface RecipeCard {
   creatorCalories?: number;
   savedCount: number;
   isSaved: boolean;
+  /** Whether this recipe is publicly visible. Undefined for catalog / legacy objects. */
+  isPublished?: boolean;
   /** ISO timestamp for feed ordering (uploaded recipes). Catalog demos omit this. */
   feedCreatedAt?: string;
-  /** `community` = published from Supabase; `catalog` = curated Platemate picks (not a live creator post). */
+  /** `community` = published by a creator; `catalog` = curated picks (not a live creator post). */
   feedSource?: "community" | "catalog";
-  /** Recipe author (profiles.id) when loaded from Supabase — used for follows / Following feed. */
+  /** Recipe author id when loaded from the community feed — used for follows / Following feed. */
   authorId?: string | null;
   /** Optional legacy `creators` row linked from recipes.creator_id. */
   creatorId?: string | null;
+  /**
+   * Which planner slots this recipe is intended for. Used when generating plans and Swap.
+   * Omit for legacy data — treated as fitting any slot.
+   */
+  mealSlots?: readonly PlannerMealSlot[];
 }
 
 export interface IngredientRow {

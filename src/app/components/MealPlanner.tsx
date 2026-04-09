@@ -18,7 +18,11 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
-import { DEFAULT_PLANNER_BANDS } from "../../lib/planning/generateMealPlan.ts";
+import {
+  DEFAULT_PLANNER_BANDS,
+  recipeFitsMealSlot,
+  type PlannerMealSlot,
+} from "../../lib/planning/generateMealPlan.ts";
 import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -163,11 +167,24 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
       if (!current) return prev;
 
       const used = new Set(dp.meals.map((m) => m.recipeTitle));
-      const candidates = pool.filter((t) => t !== current.recipeTitle && !used.has(t));
-      const nextTitle = (candidates[0] ?? pool.find((t) => t !== current.recipeTitle)) ?? null;
+      const slot = current.name as PlannerMealSlot;
+      const fitsSlot = (title: string) => {
+        const r = savedRecipesForLibrary.find((x) => x.title === title);
+        return r ? recipeFitsMealSlot(r, slot) : false;
+      };
+      const candidates = pool.filter(
+        (t) => t !== current.recipeTitle && !used.has(t) && fitsSlot(t),
+      );
+      const nextTitle =
+        candidates[0] ??
+        pool.find((t) => t !== current.recipeTitle && !used.has(t)) ??
+        null;
       if (!nextTitle) {
         toast.error("Save more recipes to enable swapping");
         return prev;
+      }
+      if (candidates.length === 0) {
+        toast.message("No other recipe matched this meal type in your library—showing a broader pick.");
       }
       const nextRecipe = savedRecipesForLibrary.find((r) => r.title === nextTitle);
       if (!nextRecipe) return prev;
@@ -496,8 +513,9 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
               <h3 className="text-slate-900 dark:text-white">Daily targets (optimizer)</h3>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              Defaults come from your profile. We search breakfast + lunch + snack + dinner combinations from your saved
-              recipes to land near these totals within the bands below.
+              Defaults come from your profile. The planner picks breakfast, lunch, snack, and dinner from your saved
+              recipes—each recipe is matched to appropriate meal types when possible—then tunes totals within the bands
+              below.
             </p>
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -658,6 +676,14 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
         </div>
       ) : generatedPlan ? (
         <div className="space-y-10">
+          <div className="backdrop-blur-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-5 text-sm text-slate-600 dark:text-slate-400">
+            <p className="font-medium text-slate-900 dark:text-white mb-1">Logging your day</p>
+            <p>
+              Tap <span className="text-slate-800 dark:text-slate-200">Log</span> to add a planned meal to your
+              Nutrition Tracker. You don&apos;t have to log every slot—open the tracker to scan a barcode, search foods,
+              or log ingredients instead of a planned meal whenever you like.
+            </p>
+          </div>
           {smartSuggestions.length > 0 ? (
             <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -665,8 +691,8 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
                 <h3 className="text-slate-900 dark:text-white">Smart suggestions</h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Curated catalog picks and saved community recipes whose Supabase ingredients overlap your plan—save them to
-                cook with less waste.
+                Curated picks and saved community recipes that share ingredients with your plan—save them to cook with
+                less waste.
               </p>
               <ul className="space-y-3">
                 {smartSuggestions.map(({ recipe, sharedIngredients }) => {
@@ -818,6 +844,12 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
                     );
                   }
                   const portion = effectivePortionMultiplier(meal.portionMultiplier);
+                  const recipeMeta =
+                    savedRecipesForLibrary.find((r) => r.title === meal.recipeTitle) ??
+                    RECIPE_CATALOG.find((r) => r.title === meal.recipeTitle);
+                  const bestForLabel = recipeMeta?.mealSlots?.length
+                    ? recipeMeta.mealSlots.join(", ")
+                    : null;
                   return (
                     <div
                       key={slotKey}
@@ -831,8 +863,13 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
                           <h3 className="text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                             {meal.recipeTitle}
                           </h3>
+                          {bestForLabel ? (
+                            <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 font-medium">
+                              Best for: {bestForLabel}
+                            </p>
+                          ) : null}
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            Portions affect day totals, tracker log, and shopping list amounts.
+                            Portions scale day totals, tracker entries, and shopping amounts.
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">

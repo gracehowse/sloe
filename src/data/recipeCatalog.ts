@@ -16,6 +16,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isVerified: true,
     savedCount: 1247,
     isSaved: false,
+    mealSlots: ["Lunch", "Dinner"],
   },
   {
     id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
@@ -33,6 +34,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     creatorCalories: 420,
     savedCount: 892,
     isSaved: false,
+    mealSlots: ["Breakfast"],
   },
   {
     id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
@@ -49,6 +51,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isVerified: true,
     savedCount: 2103,
     isSaved: true,
+    mealSlots: ["Lunch", "Dinner"],
   },
   {
     id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
@@ -65,6 +68,7 @@ export const RECIPE_CATALOG: RecipeCard[] = [
     isVerified: true,
     savedCount: 756,
     isSaved: true,
+    mealSlots: ["Breakfast", "Snack"],
   },
 ];
 

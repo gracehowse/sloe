@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    // Supabase will set a recovery session on this page after the user clicks the email link.
+    // The auth system sets a recovery session after the user clicks the email link.
     // If it didn't, don't block the user, but show a helpful message.
     supabase.auth.getSession().then(() => setReady(true));
   }, []);

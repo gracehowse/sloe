@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Settings as SettingsIcon,
   ChefHat,
+  BookPlus,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -32,7 +33,16 @@ import {
   SheetTitle,
 } from "./components/ui/sheet.tsx";
 
-type View = "discover" | "library" | "planner" | "profile" | "tracker" | "shopping" | "settings" | "upload";
+type View =
+  | "discover"
+  | "library"
+  | "planner"
+  | "profile"
+  | "tracker"
+  | "shopping"
+  | "settings"
+  | "create"
+  | "import";
 
 export default function App() {
   const {
@@ -55,8 +65,19 @@ export default function App() {
 
   const normalizedViewParam = useMemo(() => {
     if (!viewParam) return null;
-    const v = viewParam.toLowerCase();
-    const allowed: View[] = ["discover", "library", "planner", "profile", "tracker", "shopping", "settings", "upload"];
+    let v = viewParam.toLowerCase();
+    if (v === "upload") v = "create";
+    const allowed: View[] = [
+      "discover",
+      "library",
+      "planner",
+      "profile",
+      "tracker",
+      "shopping",
+      "settings",
+      "create",
+      "import",
+    ];
     return (allowed as string[]).includes(v) ? (v as View) : null;
   }, [viewParam]);
 
@@ -193,8 +214,24 @@ export default function App() {
         return <NutritionTracker userTier={userTier} />;
       case "shopping":
         return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} />;
-      case "upload":
-        return <RecipeUpload userTier={userTier} onUpgrade={openUpgradePromo} />;
+      case "create":
+        return (
+          <RecipeUpload
+            userTier={userTier}
+            onUpgrade={openUpgradePromo}
+            mode="create"
+            onSwitchToImport={() => navigateToView("import")}
+          />
+        );
+      case "import":
+        return (
+          <RecipeUpload
+            userTier={userTier}
+            onUpgrade={openUpgradePromo}
+            mode="import"
+            onSwitchToCreate={() => navigateToView("create")}
+          />
+        );
       case "settings":
         return (
           <Settings
@@ -318,15 +355,26 @@ export default function App() {
               <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
             </div>
             <button
-              onClick={() => navigateToView("upload")}
+              onClick={() => navigateToView("create")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "upload"
+                currentView === "create"
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
               }`}
             >
-              <ChefHat className={`w-5 h-5 transition-transform duration-200 ${currentView === "upload" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Create Recipe</span>
+              <ChefHat className={`w-5 h-5 transition-transform duration-200 ${currentView === "create" ? "" : "group-hover:scale-110"}`} />
+              <span className="font-medium">Create recipe</span>
+            </button>
+            <button
+              onClick={() => navigateToView("import")}
+              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
+                currentView === "import"
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <BookPlus className={`w-5 h-5 transition-transform duration-200 ${currentView === "import" ? "" : "group-hover:scale-110"}`} />
+              <span className="font-medium">Import recipe</span>
             </button>
           </div>
           <div className="px-4 pb-6 space-y-2">
@@ -436,7 +484,7 @@ export default function App() {
             type="button"
             onClick={() => setMoreOpen(true)}
             className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
-              ["settings", "profile", "upload"].includes(currentView)
+              ["settings", "profile", "create", "import"].includes(currentView)
                 ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
             }`}
@@ -475,19 +523,28 @@ export default function App() {
               <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               <span className="font-medium text-slate-900 dark:text-white">Profile</span>
             </button>
-            {userTier === "pro" && (
-              <button
-                type="button"
-                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
-                onClick={() => {
-                  navigateToView("upload");
-                  setMoreOpen(false);
-                }}
-              >
-                <ChefHat className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                <span className="font-medium text-slate-900 dark:text-white">Create recipe</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+              onClick={() => {
+                navigateToView("create");
+                setMoreOpen(false);
+              }}
+            >
+              <ChefHat className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">Create recipe</span>
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+              onClick={() => {
+                navigateToView("import");
+                setMoreOpen(false);
+              }}
+            >
+              <BookPlus className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">Import recipe</span>
+            </button>
           </div>
         </SheetContent>
       </Sheet>

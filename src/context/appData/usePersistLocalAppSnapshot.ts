@@ -6,6 +6,8 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
   const {
     savedRecipeIds,
     savedAtById,
+    savedRecipeMetaById,
+    libraryEntryKindByRecipeId,
     shoppingItems,
     shoppingListSourceFingerprint,
     nutritionByDay,
@@ -22,6 +24,8 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
     const payload: PersistedSnapshot = {
       savedRecipeIds,
       savedAtById,
+      savedRecipeMetaById,
+      libraryEntryKindByRecipeId,
       shoppingItems,
       shoppingListSourceFingerprint,
       nutritionByDay,
@@ -37,6 +41,8 @@ export function usePersistLocalAppSnapshot(snapshot: PersistedSnapshot): void {
   }, [
     savedRecipeIds,
     savedAtById,
+    savedRecipeMetaById,
+    libraryEntryKindByRecipeId,
     shoppingItems,
     shoppingListSourceFingerprint,
     nutritionByDay,

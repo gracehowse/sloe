@@ -52,7 +52,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
       });
       const data = (await res.json()) as { ok?: boolean; url?: string; message?: string; error?: string };
       if (!res.ok || !data.ok || !data.url) {
-        toast.error(data.message ?? data.error ?? "Checkout unavailable. Configure Stripe price env vars.");
+        toast.error(data.message ?? data.error ?? "Checkout is unavailable right now.");
         return;
       }
       window.location.href = data.url;
@@ -141,7 +141,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
                     invalid_or_expired: "That code is not valid or has expired.",
                     already_redeemed: "You have already redeemed this code.",
                     rpc_error: result.message ?? "Could not redeem code.",
-                    not_deployed: "Promo codes are not available on this environment yet.",
+                    not_deployed: "Promo codes aren’t available in this build yet.",
                   };
                   toast.error(messages[result.error] ?? "Could not redeem code.");
                 }
@@ -281,35 +281,6 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
 
       {/* Subscription plans are hidden for now. */}
 
-      {/* Product policy */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h3 className="text-slate-900 dark:text-white">Nutrition transparency</h3>
-        </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          Activity-adjusted calories use a net model per calendar day: net goal = base goal + activity burn for that day
-          when you opt in (see Nutrition tracker). When Apple Health ships, we will document dedupe rules so steps and
-          manual workouts are not double-counted.
-        </p>
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Free vs paid boundaries</h4>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          All features are temporarily available while we decide pricing boundaries.
-        </p>
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Data quality</h4>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          We prioritize verified sources (structured recipes, Open Food Facts for barcodes) over crowdsourced chaos. Conflicting entries are merged or labeled for review.
-        </p>
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Roadmap (deferred)</h4>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-          Voice log and meal-scan are intentionally later. Grocery retailer checkout waits until export/share and aisle merge feel great.
-        </p>
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Creator commerce</h4>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Sponsored or affiliate content will show clear disclosure in-feed and on recipe detail.
-        </p>
-      </div>
-
       {/* Privacy */}
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
@@ -317,8 +288,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
           <h3 className="text-slate-900 dark:text-white">Privacy & Security</h3>
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-          Download includes nutrition snapshots, library saves, collections, and profile data stored in this browser.
-          Server-side data may also exist in Supabase for signed-in users.
+          Download includes nutrition snapshots, library saves, collections, and profile data stored on this device.
         </p>
         <div className="space-y-3">
           <button
@@ -343,6 +313,12 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
             Privacy policy
           </Link>
           <Link
+            href="/help"
+            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+          >
+            Help
+          </Link>
+          <Link
             href="/terms"
             className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
           >
@@ -354,7 +330,7 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
               if (
                 typeof window !== "undefined" &&
                 !window.confirm(
-                  "This will sign you out and remove Platemate data stored in this browser. Your Supabase account will still exist until you delete it in the Supabase dashboard or through your host. Continue?",
+                  "This will sign you out and remove Platemate data stored on this device. Continue?",
                 )
               ) {
                 return;

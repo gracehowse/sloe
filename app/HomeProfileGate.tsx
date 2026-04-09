@@ -107,8 +107,8 @@ export function ProfileLoadErrorPanel(props: { message: string; onRetry: () => v
         Try again
       </Button>
       <p className="text-xs text-slate-500">
-        If this keeps happening, confirm Supabase is up and <code className="text-xs">profiles</code> RLS allows your
-        user.
+        If this keeps happening, check your connection and try signing out and back in. If it still fails, contact support
+        for your deployment.
       </p>
     </div>
   );

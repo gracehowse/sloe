@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
+import { GoPublicDialog } from "./GoPublicDialog.tsx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog.tsx";
 
 interface RecipeDetailProps {
   recipe: RecipeCard;
@@ -40,13 +53,16 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
 }
 
 export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
-  const { toggleSaveRecipe, isRecipeSaved } = useAppData();
+  const { toggleSaveRecipe, isRecipeSaved, refreshDiscoverRecipes, refreshMyLibraryRecipes } = useAppData();
+  const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
   const [servings, setServings] = useState(recipe.servings);
   const [showIngredients, setShowIngredients] = useState(true);
   const [showInstructions, setShowInstructions] = useState(true);
 
   const isCatalogRecipe = Boolean(getRecipeById(recipe.id));
+  const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
+  const isPublished = publishedOverride ?? (recipe.isPublished ?? null);
 
   const [dbLoading, setDbLoading] = useState(!isCatalogRecipe);
   const [dbDescription, setDbDescription] = useState<string | null>(null);
@@ -69,6 +85,34 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
   const [followMetaLoaded, setFollowMetaLoaded] = useState(false);
   const [publicSaveCount, setPublicSaveCount] = useState<number | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
+
+  const isMyRecipe = Boolean(
+    !isCatalogRecipe &&
+      authUserId &&
+      (recipe.authorId ?? recipeAuthorId) &&
+      authUserId === (recipe.authorId ?? recipeAuthorId),
+  );
+
+  const setPublished = async (nextPublished: boolean) => {
+    if (!authUserId || !isMyRecipe) return;
+    try {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ published: nextPublished })
+        .eq("id", recipe.id)
+        .eq("author_id", authUserId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setPublishedOverride(nextPublished);
+      await refreshDiscoverRecipes();
+      await refreshMyLibraryRecipes();
+      toast.success(nextPublished ? "Recipe published" : "Recipe unpublished");
+    } catch {
+      toast.error("Could not update publish status.");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -391,6 +435,53 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="flex-1 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">{recipe.title}</h2>
+        {isMyRecipe ? (
+          <button
+            type="button"
+            onClick={() => {
+              const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
+              router.replace(`/?${q}`, { scroll: false });
+            }}
+            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold"
+          >
+            Edit
+          </button>
+        ) : null}
+        {isMyRecipe && isPublished === false ? (
+          <GoPublicDialog
+            recipeTitle={recipe.title}
+            disabled={dbLoading}
+            onConfirmPublish={() => void setPublished(true)}
+            triggerLabel="Go public"
+          />
+        ) : null}
+        {isMyRecipe && isPublished === true ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                disabled={dbLoading}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Unpublish
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Unpublish this recipe?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes it from public discovery. It will stay in your library as a private draft.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                <AlertDialogAction className="rounded-xl" onClick={() => void setPublished(false)}>
+                  Unpublish
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
         <button
           type="button"
           onClick={() => toggleSaveRecipe(recipe.id, userTier)}
