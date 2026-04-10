@@ -7,10 +7,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUnreadNotificationsCount } from '@/lib/notifications';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { session, loading } = useAuth();
+  const unreadCount = useUnreadNotificationsCount(session?.user?.id ?? null);
 
   if (loading) {
     return (
@@ -50,6 +52,15 @@ export default function TabLayout() {
         options={{
           title: 'Barcode',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="barcode.viewfinder" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Alerts',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bell.fill" color={color} />,
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#7c3aed' },
         }}
       />
     </Tabs>

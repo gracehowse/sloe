@@ -53,7 +53,14 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
 }
 
 export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
-  const { toggleSaveRecipe, isRecipeSaved, refreshDiscoverRecipes, refreshMyLibraryRecipes } = useAppData();
+  const {
+    toggleSaveRecipe,
+    isRecipeSaved,
+    refreshDiscoverRecipes,
+    refreshMyLibraryRecipes,
+    addNotification,
+    notificationPrefs,
+  } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
   const [servings, setServings] = useState(recipe.servings);
@@ -109,6 +116,14 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
       toast.success(nextPublished ? "Recipe published" : "Recipe unpublished");
+      if (notificationPrefs.creatorUpdates) {
+        addNotification({
+          kind: nextPublished ? "recipe_published" : "recipe_unpublished",
+          title: nextPublished ? "Recipe published" : "Recipe unpublished",
+          body: recipe.title ? `"${recipe.title}"` : undefined,
+          recipeId: recipe.id,
+        });
+      }
     } catch {
       toast.error("Could not update publish status.");
     }

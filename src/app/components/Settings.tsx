@@ -27,7 +27,7 @@ const LOCAL_CLEAR_KEYS = [
 ];
 
 export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
-  const { signOut, profileDisplayName, redeemPromoCode } = useAppData();
+  const { signOut, profileDisplayName, redeemPromoCode, notificationPrefs, setNotificationPrefs } = useAppData();
   void userTier;
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -72,12 +72,8 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
     });
     return () => cancelAnimationFrame(id);
   }, [scrollToPromoOnOpen, onScrollToPromoConsumed]);
-  const [notifications, setNotifications] = useState({
-    newRecipes: true,
-    mealReminders: false,
-    weeklyReport: true,
-    creatorUpdates: true
-  });
+  const notifications = notificationPrefs;
+  const setNotifications = setNotificationPrefs;
 
   const [dietary, setDietary] = useState<string[]>(["vegetarian"]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");

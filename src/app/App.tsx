@@ -7,6 +7,7 @@ import {
   BookMarked,
   Calendar,
   User,
+  Bell,
   Sparkles,
   Target,
   ShoppingCart,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
+import { NotificationsCenter } from "./components/NotificationsCenter.tsx";
 import { Library } from "./components/Library.tsx";
 import { MealPlanner } from "./components/MealPlanner.tsx";
 import { Profile } from "./components/Profile.tsx";
@@ -41,6 +43,7 @@ type View =
   | "tracker"
   | "shopping"
   | "settings"
+  | "notifications"
   | "create"
   | "import";
 
@@ -75,6 +78,7 @@ export default function App() {
       "tracker",
       "shopping",
       "settings",
+      "notifications",
       "create",
       "import",
     ];
@@ -241,6 +245,8 @@ export default function App() {
             onScrollToPromoConsumed={clearSettingsScrollToPromo}
           />
         );
+      case "notifications":
+        return <NotificationsCenter onOpenRecipe={openRecipeById} />;
       case "profile":
         return (
           <Profile
@@ -271,7 +277,12 @@ export default function App() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <NotificationsBell onOpenRecipe={openRecipeById} />
+          <NotificationsBell
+            onOpenRecipe={openRecipeById}
+            onOpenAll={() => {
+              navigateToView("notifications");
+            }}
+          />
           <button
             type="button"
             onClick={() => void signOut()}
@@ -354,6 +365,17 @@ export default function App() {
             <div className="py-2">
               <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
             </div>
+            <button
+              onClick={() => navigateToView("notifications")}
+              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
+                currentView === "notifications"
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <Bell className={`w-5 h-5 transition-transform duration-200 ${currentView === "notifications" ? "" : "group-hover:scale-110"}`} />
+              <span className="font-medium">Notifications</span>
+            </button>
             <button
               onClick={() => navigateToView("create")}
               className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
@@ -501,6 +523,17 @@ export default function App() {
             <SheetTitle className="text-slate-900 dark:text-white">More</SheetTitle>
           </SheetHeader>
           <div className="grid gap-2 px-4 pb-6">
+            <button
+              type="button"
+              className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"
+              onClick={() => {
+                navigateToView("notifications");
+                setMoreOpen(false);
+              }}
+            >
+              <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">Notifications</span>
+            </button>
             <button
               type="button"
               className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-900"

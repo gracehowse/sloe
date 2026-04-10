@@ -1,6 +1,7 @@
 import { normalizeDayPlans } from "../../lib/nutrition/portionMultiplier.ts";
 import type { DayPlan, LibraryEntryKind, LoggedMeal, ShoppingItem } from "../../types/recipe.ts";
 import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from "../../types/profile.ts";
+import { DEFAULT_NOTIFICATION_PREFS, type AppNotification, type NotificationPrefs } from "../../types/notifications.ts";
 
 export const STORAGE_KEY = "platemate-app-v1";
 
@@ -57,6 +58,10 @@ export interface PersistedSnapshot {
   activityBurnByDay?: Record<string, number>;
   /** Per saved recipe id: saved from feed vs your own creation vs imported third-party copy. */
   libraryEntryKindByRecipeId?: Record<string, LibraryEntryKind>;
+  /** Notifications shown in the in-app inbox (newest-first). */
+  notificationsInbox?: AppNotification[];
+  /** User preference toggles for which notifications are generated/shown. */
+  notificationPrefs?: NotificationPrefs;
 }
 
 export function dateKey(d: Date): string {
@@ -219,6 +224,8 @@ export function defaultSnapshot(): PersistedSnapshot {
     nutritionTargets: { ...DEFAULT_MACRO_TARGETS },
     shoppingListSourceFingerprint: null,
     libraryEntryKindByRecipeId: {},
+    notificationsInbox: [],
+    notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS },
   };
 }
 
@@ -270,6 +277,33 @@ export function loadSnapshot(): PersistedSnapshot {
       mealPlan = active.plan;
     }
 
+    const notificationsInbox: AppNotification[] = Array.isArray(parsed.notificationsInbox)
+      ? (parsed.notificationsInbox as unknown[])
+          .map((row) => {
+            if (!row || typeof row !== "object") return null;
+            const o = row as Partial<AppNotification>;
+            if (typeof o.id !== "string" || typeof o.kind !== "string" || typeof o.createdAt !== "string") return null;
+            return {
+              id: o.id,
+              kind: o.kind as AppNotification["kind"],
+              createdAt: o.createdAt,
+              readAt: typeof o.readAt === "string" || o.readAt === null ? (o.readAt ?? null) : null,
+              title: typeof o.title === "string" ? o.title : "Update",
+              ...(typeof o.body === "string" && o.body.trim() ? { body: o.body } : {}),
+              ...(typeof o.recipeId === "string" && o.recipeId.trim() ? { recipeId: o.recipeId } : {}),
+            };
+          })
+          .filter((x): x is AppNotification => Boolean(x))
+      : base.notificationsInbox ?? [];
+
+    const notificationPrefs: NotificationPrefs =
+      parsed.notificationPrefs && typeof parsed.notificationPrefs === "object"
+        ? {
+            ...DEFAULT_NOTIFICATION_PREFS,
+            ...(parsed.notificationPrefs as Partial<NotificationPrefs>),
+          }
+        : base.notificationPrefs ?? { ...DEFAULT_NOTIFICATION_PREFS };
+
     return {
       savedRecipeIds: Array.isArray(parsed.savedRecipeIds) ? parsed.savedRecipeIds : base.savedRecipeIds,
       savedAtById:
@@ -310,6 +344,8 @@ export function loadSnapshot(): PersistedSnapshot {
         parsed.libraryEntryKindByRecipeId && typeof parsed.libraryEntryKindByRecipeId === "object"
           ? { ...base.libraryEntryKindByRecipeId, ...parsed.libraryEntryKindByRecipeId }
           : base.libraryEntryKindByRecipeId,
+      notificationsInbox,
+      notificationPrefs,
     };
   } catch {
     return defaultSnapshot();
