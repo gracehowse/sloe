@@ -40,10 +40,19 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
   - Define a clear rule (product + copy): e.g. “add back” a fraction of active calories to the daily budget, or use a TDEE-style adjustment—**document the formula** for trust.
 - **Manual fallback:** log exercise minutes / steps without Health for users who opt out.
 - **UX:** show **base goal vs activity adjustment vs net target** in one line or expandable panel (avoid black-box math).
+- **Daily deficit from full burn (Apple Health):**
+  - Read **total daily energy expenditure** from HealthKit in line with Apple Health’s end-of-day picture—e.g. **basal/resting energy + active energy** (so if the user burned ~500 active kcal and Health reports ~1900 kcal total burned, implied BMR/resting is ~1400; not only “add back active” but **intake vs total out**).
+  - **Deficit for the day:** `total calories burned − calories eaten` (positive = under maintenance). Example: burned ~1900, ate ~1500 → **~400 kcal deficit today**.
+  - **Projection UX (benchmark: Lose It):** surface copy like “You’re at about **400 kcal under** today” and, if that pace held all week, “**~2,800 kcal** deficit this week → rough order **~0.4 kg** fat-equivalent” with a **goal-weight-by date** estimate—always framed as **projected**, not guaranteed.
+  - **Trust / timing:** totals and deficit **finalize toward end of day** (resting burn and activity still accrue); messaging should admit uncertainty intraday and refresh after EOD—same psychological contract as strong calorie apps (reference UI: Lose It–style projection screens for design reviews).
+- **Lose It–style onboarding & day-math transparency (UX benchmark):**
+  - **Onboarding:** dense but clear first-run flow—primary objective, plan speed (e.g. kg/week) with **calorie budget** and weeks-to-goal, optional **flexible weekly calorie schedule** (“high days” that shuffle the same weekly allowance), **nutrition strategy** (e.g. high protein vs high satisfaction with explicit macro targets), then a **program summary** with a **weight projection** headline (goal weight + target date) before paywall/continue.
+  - **Deficit / allowance copy:** spell out **extra burn today vs typical**, **estimated total burn** (intraday partial + projection or EOD), **baseline budget / expected average**, and **how much extra food fits** while **holding the same intended deficit**—users should never wonder why the number moved.
+  - **Imported food logs:** when nutrition is **read from HealthKit**, entries may originate in another logger (e.g. MacroFactor); show **source** where the platform provides it and expect **day totals to match the writer app** when import is complete. Operational reality (batching, read timing) is documented in [`health-platform-phase-b.md`](health-platform-phase-b.md).
 
 *Depends on:* Phase A daily targets UI; native or Capacitor wrapper if web-only today (HealthKit requires native iOS surface—roadmap should flag **platform decision**).
 
-*Risks / notes:* Web apps cannot access HealthKit directly; typical paths are **iOS app shell**, **Shortcuts export**, or **partner wearables API** later. Engineering spike: choose one path for private beta.
+*Risks / notes:* Web apps cannot access HealthKit directly; typical paths are **iOS app shell**, **Shortcuts export**, or **partner wearables API** later. Engineering spike: choose one path for private beta. **Apple Health is a permissioned datastore, not a live sync bus**—see [`health-platform-phase-b.md`](health-platform-phase-b.md).
 
 ---
 
@@ -91,6 +100,8 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 |--------|----------|
 | Health data | Web-only vs native iOS for HealthKit? |
 | Calorie math | Add-back vs TDEE model; show formula to users? |
+| Deficit vs allowance | Separate “activity-adjusted goal” (Phase B) from **intake vs total burn** deficit view + weekly/goal projection? |
+| Health nutrition | Read dietary data **from** Health only vs also **writing** our logs to HealthKit for cross-app use? |
 | Fiber | Per-recipe from DB vs estimates from ingredients first? |
 | Water | Single daily total vs time-bucketed logs? |
 
@@ -99,6 +110,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 ## Related implementation areas in repo
 
 - **Mob-inspired UX / smart-suggestions notes (ingredient overlap, shopping polish):** [`docs/mob-inspired-notes.md`](mob-inspired-notes.md).
+- **HealthKit semantics (writer/reader, batching):** [`docs/health-platform-phase-b.md`](health-platform-phase-b.md).
 - Nutrition UI: `src/app/components/NutritionTracker.tsx`, `AppDataContext`.
 - Planner: `src/lib/planning/generateMealPlan.ts`, `MealPlanner.tsx`.
 - Feed / social: `DiscoverFeed.tsx`, `RecipeDetail.tsx`, saves and follows in context + Supabase schema.

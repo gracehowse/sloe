@@ -2,6 +2,21 @@
 
 Pure browser apps **cannot** read Apple Health (HealthKit). Phase B in [`product-roadmap.md`](product-roadmap.md) requires a deliberate platform choice before engineering invests in sync.
 
+## How Apple Health behaves (architecture, not marketing)
+
+Treat HealthKit as a **central, permissioned datastore**—not a **real-time sync engine** between apps.
+
+1. **Apps write**  
+   A logger (e.g. MacroFactor) records a meal internally, maps it to HealthKit types (**dietary energy**, **protein**, **carbs**, **fat**, etc.), and **writes samples**. Delivery may be **immediate** or **batched in the background** (common).
+
+2. **The Health app stores**  
+   Each sample has **timestamp**, **values**, and **source bundle / app**. Health **does not** reconcile meals or run your product logic—it **persists** and **enforces read/write authorization**.
+
+3. **Other apps read**  
+   A consumer app (e.g. Lose It) **queries** for nutrition (and energy) samples, often **since last fetch** or for a **date range**, when the app **opens** or on **periodic background refresh**. Updates are **not continuous**; expect **eventual consistency** and occasional **duplicate or lag** if multiple writers exist.
+
+**Product implication:** UI that shows an Apple Health badge on imported days and **line-item source** is honest; “synced” means **last successful read**, not a live pipe from the other app. Multi-app ecosystems (MacroFactor → Health → our app) only line up **after** the writer has flushed samples and the reader has queried.
+
 ## Decision (current)
 
 **Ship web-first with manual activity burn** (already reflected in Profile + Nutrition copy): users enter an optional **activity burn (kcal)** to raise net calories when “adjust for activity” is enabled. No HealthKit dependency.
