@@ -49,7 +49,7 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
         </div>
       </div>
 
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg overflow-hidden">
         {notificationsInbox.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/40 dark:to-indigo-950/40 flex items-center justify-center mx-auto mb-4">

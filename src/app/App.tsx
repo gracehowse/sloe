@@ -333,131 +333,84 @@ export default function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Navigation Sidebar */}
-        <nav className="hidden md:flex w-72 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border-r border-slate-200/50 dark:border-slate-800/50 flex-col shadow-lg">
-          <div className="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
-            <button
-              onClick={() => navigateToView("discover")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "discover"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <Home className={`w-5 h-5 transition-transform duration-200 ${currentView === "discover" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Discover</span>
-            </button>
-            <button
-              onClick={() => navigateToView("library")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "library"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <BookMarked className={`w-5 h-5 transition-transform duration-200 ${currentView === "library" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Library</span>
-            </button>
-            <button
-              onClick={() => navigateToView("planner")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group relative ${
-                currentView === "planner"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <Calendar className={`w-5 h-5 transition-transform duration-200 ${currentView === "planner" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Meal Planner</span>
-            </button>
-            <button
-              onClick={() => navigateToView("tracker")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "tracker"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <Target className={`w-5 h-5 transition-transform duration-200 ${currentView === "tracker" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Tracker</span>
-            </button>
-            <button
-              onClick={() => navigateToView("shopping")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group relative ${
-                currentView === "shopping"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <span className="relative inline-flex">
-                <ShoppingCart className={`w-5 h-5 transition-transform duration-200 ${currentView === "shopping" ? "" : "group-hover:scale-110"}`} />
-                {shoppingUncheckedCount > 0 ? (
-                  <span className="absolute -top-1.5 -right-2 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {shoppingUncheckedCount > 99 ? "99+" : shoppingUncheckedCount}
-                  </span>
-                ) : null}
-              </span>
-              <span className="font-medium">Shopping List</span>
-            </button>
+        <nav className="hidden md:flex w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex-col">
+          {/* Primary nav — core loop */}
+          <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Core</p>
+            {([
+              { view: "discover" as const, icon: Home, label: "Discover", badge: 0 },
+              { view: "library" as const, icon: BookMarked, label: "Library", badge: 0 },
+              { view: "planner" as const, icon: Calendar, label: "Planner", badge: 0 },
+              { view: "tracker" as const, icon: Target, label: "Tracker", badge: 0 },
+              { view: "shopping" as const, icon: ShoppingCart, label: "Shopping", badge: shoppingUncheckedCount },
+            ]).map(({ view, icon: Icon, label, badge }) => (
+              <button
+                key={view}
+                onClick={() => navigateToView(view)}
+                className={`w-full px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors duration-150 group relative ${
+                  currentView === view
+                    ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 font-semibold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-900"
+                }`}
+              >
+                {currentView === view && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-violet-600 dark:bg-violet-400" />
+                )}
+                <span className="relative inline-flex">
+                  <Icon className="w-[18px] h-[18px]" />
+                  {badge != null && badge > 0 ? (
+                    <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-sm">{label}</span>
+              </button>
+            ))}
 
-            <div className="py-2">
-              <div className="h-px bg-slate-200 dark:bg-slate-800"></div>
+            {/* Secondary nav */}
+            <div className="pt-4 pb-1">
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Create</p>
             </div>
-            <button
-              onClick={() => navigateToView("notifications")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "notifications"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <Bell className={`w-5 h-5 transition-transform duration-200 ${currentView === "notifications" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Notifications</span>
-            </button>
-            <button
-              onClick={() => navigateToView("create")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "create"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <ChefHat className={`w-5 h-5 transition-transform duration-200 ${currentView === "create" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Create recipe</span>
-            </button>
-            <button
-              onClick={() => navigateToView("import")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 group ${
-                currentView === "import"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <BookPlus className={`w-5 h-5 transition-transform duration-200 ${currentView === "import" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Import recipe</span>
-            </button>
+            {([
+              { view: "create" as const, icon: ChefHat, label: "New recipe" },
+              { view: "import" as const, icon: BookPlus, label: "Import" },
+            ] as const).map(({ view, icon: Icon, label }) => (
+              <button
+                key={view}
+                onClick={() => navigateToView(view)}
+                className={`w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-colors duration-150 text-sm ${
+                  currentView === view
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                    : "text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
-          <div className="px-4 pb-6 space-y-2">
-            <button
-              onClick={() => navigateToView("settings")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 border border-slate-200/50 dark:border-slate-800/50 group ${
-                currentView === "settings"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <SettingsIcon className={`w-5 h-5 transition-transform duration-200 ${currentView === "settings" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Settings</span>
-            </button>
-            <button
-              onClick={() => navigateToView("profile")}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 rounded-xl transition-all duration-200 border border-slate-200/50 dark:border-slate-800/50 group ${
-                currentView === "profile"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <User className={`w-5 h-5 transition-transform duration-200 ${currentView === "profile" ? "" : "group-hover:scale-110"}`} />
-              <span className="font-medium">Profile</span>
-            </button>
+
+          {/* Footer utility items */}
+          <div className="px-3 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1">
+            {([
+              { view: "notifications" as const, icon: Bell, label: "Notifications" },
+              { view: "settings" as const, icon: SettingsIcon, label: "Settings" },
+              { view: "profile" as const, icon: User, label: "Profile" },
+            ] as const).map(({ view, icon: Icon, label }) => (
+              <button
+                key={view}
+                onClick={() => navigateToView(view)}
+                className={`w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-colors duration-150 text-sm ${
+                  currentView === view
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                    : "text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
         </nav>
 

@@ -162,7 +162,7 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
               key={recipe.id}
               type="button"
               onClick={() => setSelectedRecipe(recipe)}
-              className="group backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg"
+              className="group bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg"
             >
               <div className="relative overflow-hidden">
                 <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />

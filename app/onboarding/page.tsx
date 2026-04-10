@@ -285,7 +285,7 @@ export default function OnboardingPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile */}
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-6">
               <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               <h3 className="text-slate-900 dark:text-white">Profile</h3>
@@ -500,7 +500,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Targets */}
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-6">
               <Calculator className="w-5 h-5 text-violet-600 dark:text-violet-400" />
               <h3 className="text-slate-900 dark:text-white">Macro targets</h3>

@@ -81,7 +81,7 @@ export function TodayAtAGlance({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Calories</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">
             {caloriesEaten} <span className="text-slate-500 font-medium text-sm">/ {calorieGoalNet}</span>
           </p>
           <p className={`text-xs mt-1 font-medium ${
@@ -94,27 +94,27 @@ export function TodayAtAGlance({
         </div>
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Protein left</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">{pLeft}g</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">{pLeft}g</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">of {proteinGoal}g</p>
         </div>
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Carbs left</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">{cLeft}g</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">{cLeft}g</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">of {carbsGoal}g</p>
         </div>
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Fat left</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">{fLeft}g</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">{fLeft}g</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">of {fatGoal}g</p>
         </div>
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Fiber left</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">{fiLeft}g</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">{fiLeft}g</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">of {fiberGoal}g</p>
         </div>
         <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 border border-slate-200/60 dark:border-slate-700/60">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Water</p>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">{waterEatenLabel}</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">{waterEatenLabel}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">goal {waterGoalLabel}</p>
         </div>
       </div>

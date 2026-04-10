@@ -934,7 +934,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
       {/* Import from URL (import flow only — create flow uses the callout above) */}
       {mode === "import" ? (
-        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <Globe className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             <h3 className="text-slate-900 dark:text-white">Import from URL</h3>
@@ -965,7 +965,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Recipe photo</label>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
           {mode === "import"
@@ -1017,7 +1017,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Basic Info */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <h3 className="text-slate-900 dark:text-white mb-6">Basic Information</h3>
         <div className="space-y-4">
           <div>
@@ -1110,7 +1110,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Ingredients */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
           <h3 className="text-slate-900 dark:text-white">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
@@ -1639,7 +1639,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Instructions */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <h3 className="text-slate-900 dark:text-white mb-4">Cooking Instructions</h3>
         <textarea
           value={instructions}

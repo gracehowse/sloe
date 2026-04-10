@@ -25,6 +25,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 - **Expanded macros in planning & logging (foundation):**
   - **Fiber** — track per food/recipe/day; optional daily target and “remaining fiber” in summaries.
   - **Water** — daily goal (ml or cups), quick log, optional streaks; show on dashboard / nutrition day view.
+- **Dietary requirements & medical diets:** first-class **user constraints** and **recipe labeling** so discovery and planning stay trustworthy — e.g. **coeliac/celiac** (strict gluten-free), other allergies, intolerances, and common diet labels (vegan, halal, kosher-style flags as you define them). Discover, Library, and the planner should **respect** these rules (filter, warn, or exclude) rather than relying on the user to self-police every card. Start with explicit recipe tags + profile preferences; evolve toward ingredient-level and sourcing confidence where data allows.
 - **Schema / data:** extend recipe and log models beyond P/C/F where needed (fiber per serving; water as its own daily series, not a “macro” in the chemical sense but a first-class health metric).
 
 *Depends on:* stable `nutrition_journals` / per-day logging patterns in the app.
@@ -73,6 +74,8 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 - Feed: scroll, save, filters (macros, diet), creator attribution, honest timestamps (sample vs community).
 - Behaviors: save → library → add to meal plan → shopping list; creator collections; share links for recipes/lists.
 - **Creator loop (later):** analytics (saves, plan adds), notifications when you follow a creator who publishes.
+- **Creator publishing — LTK-style multi-format (future):** many creators will not want a **recipe-only** upload that feels disconnected from how they work on **Instagram, TikTok, and similar**. They will expect to attach the **same kind of content** they already ship elsewhere — e.g. **reels, short video, carousel-style posts, captions** — alongside (or wrapped around) the structured recipe so the feed feels native and shoppable.
+- **Create once, share everywhere (future):** investigate a **single authoring or syndication path** analogous to how **LTK (LikeToKnow.it)**-class tools let creators produce once and fan out to every channel that matters. Platemate should be a **first-class destination** in that mix: creators publish once (or connect an existing source) and reach **Platemate plus their other platforms** without maintaining a separate “recipe-only” production line. Product implications: media pipeline, rights and attribution, moderation, and how structured recipe data maps to rich posts (likely post-MVP; overlaps disclosure/commerce notes in Phase E).
 
 *Depends on:* stable publish/discover pipeline; can run in parallel with Phase B once core logging is solid.
 
@@ -89,8 +92,9 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 1. **Fiber + water** in targets, logging, and daily summary (Phase A/C overlap).
 2. **Macro-aware meal planner** constraints and empty states (Phase A).
-3. **Activity adjustment** spike → Apple Health path decision → implement adjustment + UI (Phase B).
-4. **Feed + save + plan** depth (Phase D) in parallel where staffing allows.
+3. **Dietary requirements** — profile + recipe labeling so coeliac/celiac, allergies, and chosen diets gate discovery and planning (Phase A; surfaced again in feed filters, Phase D).
+4. **Activity adjustment** spike → Apple Health path decision → implement adjustment + UI (Phase B).
+5. **Feed + save + plan** depth (Phase D) in parallel where staffing allows. **LTK-style multi-format creator publishing and cross-platform syndication** stay exploratory until the core feed and compliance baseline (Phase E) are clear.
 
 ---
 
@@ -104,6 +108,8 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 | Health nutrition | Read dietary data **from** Health only vs also **writing** our logs to HealthKit for cross-app use? |
 | Fiber | Per-recipe from DB vs estimates from ingredients first? |
 | Water | Single daily total vs time-bucketed logs? |
+| Dietary requirements | Profile-level hard filters vs soft warnings; allergen data source (manual, supplier, third-party)? |
+| Creator syndication | Build in-house “post once” vs partner integrations / ingest from existing creator tools; v1 format scope (recipe + link vs in-app video)? |
 
 ---
 

@@ -384,14 +384,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             <button
               type="button"
               onClick={handleRegenerate}
-              className="px-5 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+              className="px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
             >
               Regenerate
             </button>
             <button
               type="button"
               onClick={() => void generateShoppingListFromPlan()}
-              className="px-5 py-2.5 backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+              className="px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
             >
               Generate Shopping List
             </button>
@@ -510,7 +510,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       {!generatedPlan ? (
         <div className="max-w-3xl mx-auto">
           {/* Target Settings */}
-          <div className="backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 mb-6 shadow-xl">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 mb-6 shadow-xl">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 flex items-center justify-center">
                 <TrendingUp className="w-4 h-4 text-violet-600 dark:text-violet-400" />
@@ -605,7 +605,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           </div>
 
           {/* Plan Duration */}
-          <div className="backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 mb-6 shadow-xl">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 mb-6 shadow-xl">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 flex items-center justify-center">
                 <Calendar className="w-4 h-4 text-violet-600 dark:text-violet-400" />
@@ -858,7 +858,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   return (
                     <div
                       key={slotKey}
-                      className="group backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
+                      className="group bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
                     >
                       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
                         <div>
@@ -946,25 +946,25 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                       <div className="grid grid-cols-4 gap-4">
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Calories</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                             {scaledMacro(meal.calories, portion)}
                           </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Protein</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                             {scaledMacro(meal.protein, portion)}g
                           </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Carbs</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                             {scaledMacro(meal.carbs, portion)}g
                           </p>
                         </div>
                         <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fat</p>
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                             {scaledMacro(meal.fat, portion)}g
                           </p>
                         </div>

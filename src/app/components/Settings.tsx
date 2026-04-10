@@ -65,7 +65,7 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
       {/* Promo code (e.g. testing / partner access) */}
       <div
         ref={promoSectionRef}
-        className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
+        className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
       >
         <div className="flex items-center gap-2 mb-4">
           <Ticket className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -120,7 +120,7 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
       </div>
 
       {/* Account Section */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
           <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h3 className="text-slate-900 dark:text-white">Account</h3>
@@ -163,7 +163,7 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
       </div>
 
       {/* Preferences */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
           <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h3 className="text-slate-900 dark:text-white">Preferences</h3>
@@ -216,7 +216,7 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
       </div>
 
       {/* Notifications */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
           <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h3 className="text-slate-900 dark:text-white">Notifications</h3>
@@ -245,7 +245,7 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
       {/* Subscription plans are hidden for now. */}
 
       {/* Privacy */}
-      <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
           <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h3 className="text-slate-900 dark:text-white">Privacy & Security</h3>

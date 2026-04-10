@@ -271,7 +271,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       {activeTab === "targets" && (
         <div className="space-y-8">
           {/* Macro Calculator */}
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-6">
               <Calculator className="w-5 h-5 text-violet-600 dark:text-violet-400" />
               <h3 className="text-slate-900 dark:text-white">Calculate Your Targets</h3>
@@ -449,7 +449,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           {/* Calculated Targets */}
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
             <div className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 px-6 py-4 border-b border-violet-200 dark:border-violet-800">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-violet-600 dark:text-violet-400" />
@@ -604,7 +604,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
       {activeTab === "progress" && (
         <div className="space-y-6">
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
               <h3 className="text-slate-900 dark:text-white">Weight</h3>
@@ -623,7 +623,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">Days with food logged</p>
@@ -631,7 +631,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               <p className="text-4xl font-bold text-slate-900 dark:text-white">{loggingStats.daysWithLogs}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Distinct days in your nutrition journal</p>
             </div>
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <UtensilsCrossed className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total log entries</p>
@@ -641,7 +641,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </div>
           </div>
 
-          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h3 className="text-slate-900 dark:text-white">Recent days</h3>
               {onOpenNutrition ? (
