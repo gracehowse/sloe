@@ -1,3 +1,8 @@
+/**
+ * Reads `supabaseUrl` and `supabaseAnonKey` from `app.json` → `expo.extra`.
+ * For local dev: set those fields (or use EAS secrets / app.config that injects them).
+ * `platemateApiUrl` in the same block is used by the tracker food search when configured.
+ */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";

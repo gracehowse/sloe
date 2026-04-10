@@ -19,7 +19,8 @@
     "test:e2e:ai": "playwright test tests/e2e/ai",
     "seed:discover": "node --import tsx scripts/seed-discover.ts",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
-    "smoke:production": "node --import tsx scripts/production-smoke.ts"
+    "smoke:production": "node --import tsx scripts/production-smoke.ts",
+    "mobile:dev": "npm run start --prefix apps/mobile"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
