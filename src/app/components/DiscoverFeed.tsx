@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Heart,
   Bookmark,
@@ -67,6 +67,10 @@ interface DiscoverFeedProps {
   userTier: UserTier;
   /** Open a recipe when landing with `?recipe=` (share link). */
   initialOpenRecipeId?: string | null;
+  /** Auto-open cook mode when recipe is deep-linked. */
+  initialCookMode?: boolean;
+  /** Pre-fill servings when opening from planner (portion multiplier). */
+  initialPortions?: number;
   onConsumedDeepLinkRecipe?: () => void;
 }
 
@@ -89,9 +93,11 @@ function formatFeedTime(iso: string): string {
 
 type StoryCreator = { key: string; name: string; image: string; recipeId: string };
 
-export function DiscoverFeed({
+export const DiscoverFeed = memo(function DiscoverFeed({
   userTier,
   initialOpenRecipeId,
+  initialCookMode,
+  initialPortions,
   onConsumedDeepLinkRecipe,
 }: DiscoverFeedProps) {
   const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes } = useAppData();
@@ -343,7 +349,7 @@ export function DiscoverFeed({
 
   if (selectedRecipe) {
     return (
-      <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} />
+      <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} autoOpenCookMode={initialCookMode} initialServings={initialPortions} />
     );
   }
 
@@ -819,4 +825,4 @@ export function DiscoverFeed({
       </div>
     </div>
   );
-}
+});

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Calculator, CheckCircle2, Sparkles, User } from "lucide-react";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
+import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
+import { track } from "../../src/lib/analytics/track.ts";
 import { calculateMacroTargets } from "../../src/lib/macros/calculateTargets.ts";
 import {
   DEFAULT_MACRO_TARGETS,
@@ -240,6 +242,7 @@ export default function OnboardingPage() {
     }
 
     setSaving(false);
+    track(AnalyticsEvents.onboarding_completed);
     window.location.href = "/";
   };
 

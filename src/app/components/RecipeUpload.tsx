@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 
@@ -174,6 +175,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [importBusy, setImportBusy] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [importHint, setImportHint] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
@@ -322,12 +324,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
   useEffect(() => () => stopScanner(), [stopScanner]);
 
-  void userTier;
-  void onUpgrade;
-  // Temporarily: all features unlocked.
+  // userTier/onUpgrade reserved for tier-gating; all features unlocked for now
   const isCreator = true;
-
-  void isCreator;
 
   const resetForm = () => {
     setRecipeId(null);
@@ -342,6 +340,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     setMealType("lunch");
     setDietary([]);
     setCoverImageUrl(DEFAULT_COVER_IMAGE);
+    setCoverImageFile(null);
     setImportUrl("");
     setImportHint(null);
     setVerifiedLines(null);
@@ -353,14 +352,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       toast.error("Choose an image file");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setCoverImageUrl(reader.result);
-        setImportHint("Cover image set from file — review title and ingredients before publish.");
-      }
-    };
-    reader.readAsDataURL(file);
+    setCoverImageFile(file);
+    setCoverImageUrl(URL.createObjectURL(file));
+    setImportHint("Cover image set from file — review title and ingredients before publish.");
   };
 
   const runOcrFromImage = async () => {
@@ -745,6 +739,22 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           }
         : perServing;
 
+      // Upload image to Supabase Storage if a local file was selected
+      let finalImageUrl = coverImageUrl;
+      if (coverImageFile) {
+        const uploadResult = await uploadRecipeImage(coverImageFile, uid);
+        if (uploadResult.ok) {
+          finalImageUrl = uploadResult.publicUrl;
+        } else {
+          // Non-blocking: fall back to default, warn user
+          toast.warning(uploadResult.error);
+          finalImageUrl = DEFAULT_COVER_IMAGE;
+        }
+      } else if (finalImageUrl.startsWith("blob:") || finalImageUrl.startsWith("data:")) {
+        // Don't store blob/data URLs in the DB
+        finalImageUrl = DEFAULT_COVER_IMAGE;
+      }
+
       const { data: recipeRow, error: recipeError } = await supabase
         .from("recipes")
         .upsert(
@@ -754,7 +764,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             title: trimmedTitle,
             description: description.trim() || null,
             instructions: instructions.trim(),
-            image_url: coverImageUrl || DEFAULT_COVER_IMAGE,
+            image_url: finalImageUrl || DEFAULT_COVER_IMAGE,
             servings: s,
             prep_time_min: prepTime,
             cook_time_min: cookTime,

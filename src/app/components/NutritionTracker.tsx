@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   Plus,
   TrendingUp,
@@ -105,8 +105,7 @@ function pushRecentFood(name: string) {
   localStorage.setItem(RECENT_BARCODE_KEY, JSON.stringify(next));
 }
 
-export function NutritionTracker({ userTier }: NutritionTrackerProps) {
-  void userTier;
+export const NutritionTracker = memo(function NutritionTracker({ userTier: _userTier }: NutritionTrackerProps) {
   const {
     nutritionTargets,
     selectedDateKey,
@@ -1334,4 +1333,4 @@ export function NutritionTracker({ userTier }: NutritionTrackerProps) {
       </div>
     </div>
   );
-}
+});

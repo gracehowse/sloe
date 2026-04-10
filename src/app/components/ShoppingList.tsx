@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { ShoppingCart, Check, Plus, Trash2, Download, Printer, FileText, Minus, AlertTriangle } from "lucide-react";
+import { memo, useCallback, useMemo, useState } from "react";
+import { ShoppingCart, Check, Plus, Trash2, Download, Printer, FileText, Minus, AlertTriangle, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
@@ -12,13 +12,15 @@ import {
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
 import type { UserTier } from "../../types/recipe.ts";
+import { EmptyState } from "./EmptyState.tsx";
 
 interface ShoppingListProps {
   userTier: UserTier;
   onUpgrade?: () => void;
+  onNavigate?: (view: string) => void;
 }
 
-export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
+export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, onUpgrade: _onUpgrade, onNavigate }: ShoppingListProps) {
   const {
     shoppingItems,
     toggleShoppingChecked,
@@ -42,8 +44,6 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
   );
   const [customName, setCustomName] = useState("");
 
-  void userTier;
-  void onUpgrade;
 
   const categories = Array.from(new Set(shoppingItems.map((item) => item.category)));
 
@@ -277,6 +277,17 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
         </div>
       </div>
 
+      {/* Empty State */}
+      {shoppingItems.length === 0 && (
+        <EmptyState
+          icon={Calendar}
+          title="Your shopping list is empty"
+          description="Generate a meal plan first, then build your shopping list from it. You can also add custom items manually above."
+          ctaLabel="Go to Meal Planner"
+          onCtaClick={() => onNavigate?.("planner")}
+        />
+      )}
+
       {/* Items by Category */}
       {categories.map((category) => {
         const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === category));
@@ -387,4 +398,4 @@ export function ShoppingList({ userTier, onUpgrade }: ShoppingListProps) {
       </div>
     </div>
   );
-}
+});

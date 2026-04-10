@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Calculator, TrendingUp, Activity, User, Crown, Target, UtensilsCrossed } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -16,8 +16,7 @@ interface ProfileProps {
   onOpenNutrition?: () => void;
 }
 
-export function Profile({ userTier, displayName, onUpgrade, onOpenNutrition }: ProfileProps) {
-  void onUpgrade;
+export const Profile = memo(function Profile({ userTier, displayName, onUpgrade: _onUpgrade, onOpenNutrition }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
   const {
     nutritionTargets,
@@ -692,4 +691,4 @@ export function Profile({ userTier, displayName, onUpgrade, onOpenNutrition }: P
       )}
     </div>
   );
-}
+});

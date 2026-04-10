@@ -51,10 +51,13 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
 
       <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-2 border-slate-200/50 dark:border-slate-800/50 rounded-2xl shadow-lg overflow-hidden">
         {notificationsInbox.length === 0 ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-slate-900 dark:text-white font-semibold mb-1">No notifications yet</p>
+          <div className="px-6 py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950/40 dark:to-indigo-950/40 flex items-center justify-center mx-auto mb-4">
+              <Bell className="w-7 h-7 text-violet-500 dark:text-violet-400" />
+            </div>
+            <p className="text-slate-900 dark:text-white font-semibold mb-1">All caught up</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              When something important happens, you’ll see it here.
+              When creators you follow publish recipes or your meal plan is ready, you’ll see it here.
             </p>
           </div>
         ) : (

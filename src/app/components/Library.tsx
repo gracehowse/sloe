@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Search, Filter } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
@@ -48,7 +48,7 @@ function kindLabel(kind: LibraryEntryKind): string {
   }
 }
 
-export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
+export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
   const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft } = useAppData();
   const uid = userId;
   const router = useRouter();
@@ -237,4 +237,4 @@ export function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
       )}
     </div>
   );
-}
+});

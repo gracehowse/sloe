@@ -17,17 +17,42 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
-import { NotificationsCenter } from "./components/NotificationsCenter.tsx";
 import { Library } from "./components/Library.tsx";
-import { MealPlanner } from "./components/MealPlanner.tsx";
-import { Profile } from "./components/Profile.tsx";
-import { NutritionTracker } from "./components/NutritionTracker.tsx";
-import { ShoppingList } from "./components/ShoppingList.tsx";
-import { Settings } from "./components/Settings.tsx";
-import { RecipeUpload } from "./components/RecipeUpload.tsx";
+import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
+
+const NotificationsCenter = dynamic(
+  () => import("./components/NotificationsCenter.tsx").then((m) => ({ default: m.NotificationsCenter })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading notifications..." /> },
+);
+const MealPlanner = dynamic(
+  () => import("./components/MealPlanner.tsx").then((m) => ({ default: m.MealPlanner })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading planner..." /> },
+);
+const Profile = dynamic(
+  () => import("./components/Profile.tsx").then((m) => ({ default: m.Profile })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading profile..." /> },
+);
+const NutritionTracker = dynamic(
+  () => import("./components/NutritionTracker.tsx").then((m) => ({ default: m.NutritionTracker })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading tracker..." /> },
+);
+const ShoppingList = dynamic(
+  () => import("./components/ShoppingList.tsx").then((m) => ({ default: m.ShoppingList })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading shopping list..." /> },
+);
+const Settings = dynamic(
+  () => import("./components/Settings.tsx").then((m) => ({ default: m.Settings })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading settings..." /> },
+);
+const RecipeUpload = dynamic(
+  () => import("./components/RecipeUpload.tsx").then((m) => ({ default: m.RecipeUpload })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading recipe editor..." /> },
+);
 import { useAppData } from "../context/AppDataContext.tsx";
+import { FirstRunChecklist } from "./components/FirstRunChecklist.tsx";
 import {
   Sheet,
   SheetContent,
@@ -56,7 +81,6 @@ export default function App() {
     refreshProfileBasics,
     shoppingItems,
   } = useAppData();
-  void userTier;
   const searchParams = useSearchParams();
   const router = useRouter();
   const deepLinkRecipeId = searchParams.get("recipe");
@@ -109,10 +133,11 @@ export default function App() {
   }, [router]);
 
   const openRecipeById = useCallback(
-    (recipeId: string) => {
+    (recipeId: string, opts?: { cook?: boolean }) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("view", "discover");
       params.set("recipe", recipeId);
+      if (opts?.cook) params.set("cook", "1");
       const q = params.toString();
       router.replace(q ? `/?${q}` : "/", { scroll: false });
       setCurrentView("discover");
@@ -161,6 +186,8 @@ export default function App() {
           <DiscoverFeed
             userTier={userTier}
             initialOpenRecipeId={deepLinkRecipeId}
+            initialCookMode={searchParams.get("cook") === "1"}
+            initialPortions={parseFloat(searchParams.get("portions") ?? "") || undefined}
             onConsumedDeepLinkRecipe={deepLinkRecipeId ? clearRecipeQuery : undefined}
           />
         );
@@ -208,16 +235,25 @@ export default function App() {
                 onUpgrade={openUpgradePromo}
                 onNavigate={(view) => navigateToView(view)}
                 onOpenRecipe={openRecipeById}
+                onCookRecipe={(id, portion) => {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set("view", "discover");
+                  params.set("recipe", id);
+                  params.set("cook", "1");
+                  if (portion && portion !== 1) params.set("portions", String(portion));
+                  router.replace(`/?${params.toString()}`, { scroll: false });
+                  setCurrentView("discover");
+                }}
               />
             ) : (
-              <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} />
+              <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} />
             )}
           </>
         );
       case "tracker":
         return <NutritionTracker userTier={userTier} />;
       case "shopping":
-        return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} />;
+        return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} />;
       case "create":
         return (
           <RecipeUpload
@@ -581,6 +617,9 @@ export default function App() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* First-run guided checklist */}
+      <FirstRunChecklist onNavigate={(view) => navigateToView(view as View)} />
     </div>
   );
 }

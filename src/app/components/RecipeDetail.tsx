@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, CookingPot } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
+import { CookMode } from "./CookMode.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,10 @@ interface RecipeDetailProps {
   recipe: RecipeCard;
   userTier: UserTier;
   onBack: () => void;
+  /** Auto-open cook mode when recipe loads (from planner "Cook" button). */
+  autoOpenCookMode?: boolean;
+  /** Pre-fill servings from planner portion multiplier. */
+  initialServings?: number;
 }
 
 type DbIngredientRow = {
@@ -52,7 +57,7 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   };
 }
 
-export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
     isRecipeSaved,
@@ -63,9 +68,14 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
   } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
-  const [servings, setServings] = useState(recipe.servings);
+  const [servings, setServings] = useState(
+    initialServings != null && initialServings > 0
+      ? Math.round(recipe.servings * initialServings * 10) / 10
+      : recipe.servings,
+  );
   const [showIngredients, setShowIngredients] = useState(true);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
   const isCatalogRecipe = Boolean(getRecipeById(recipe.id));
   const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
@@ -442,6 +452,18 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
     );
   }
 
+  if (cookModeOpen && instructionSteps.length > 0) {
+    return (
+      <CookMode
+        recipe={displayRecipe}
+        instructionSteps={instructionSteps}
+        ingredients={ingredients}
+        servings={baseServings}
+        onExit={() => setCookModeOpen(false)}
+      />
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -497,6 +519,16 @@ export function RecipeDetail({ recipe, userTier, onBack }: RecipeDetailProps) {
             </AlertDialogContent>
           </AlertDialog>
         ) : null}
+        {instructionSteps.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setCookModeOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+          >
+            <CookingPot className="w-4 h-4" />
+            Cook
+          </button>
+        )}
         <button
           type="button"
           onClick={() => toggleSaveRecipe(recipe.id, userTier)}

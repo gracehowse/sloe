@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Settings as SettingsIcon, User, Bell, Shield, Sparkles, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportPlatemateLocalData.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
-import { supabase } from "../../lib/supabase/browserClient.ts";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -26,43 +23,13 @@ const LOCAL_CLEAR_KEYS = [
   "platemate-recent-foods-v1",
 ];
 
-export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
+export const Settings = memo(function Settings({ userTier: _userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
   const { signOut, profileDisplayName, redeemPromoCode, notificationPrefs, setNotificationPrefs } = useAppData();
-  void userTier;
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
-  const [stripeBusy, setStripeBusy] = useState(false);
-  void stripeBusy;
+  // Stripe checkout is now handled via /pricing page
 
-  async function startStripeCheckout(tier: "base" | "pro") {
-    setStripeBusy(true);
-    track(AnalyticsEvents.checkout_started, { tier });
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        toast.error("Session expired — sign in again.");
-        return;
-      }
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tier }),
-      });
-      const data = (await res.json()) as { ok?: boolean; url?: string; message?: string; error?: string };
-      if (!res.ok || !data.ok || !data.url) {
-        toast.error(data.message ?? data.error ?? "Checkout is unavailable right now.");
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      toast.error("Could not start checkout.");
-    } finally {
-      setStripeBusy(false);
-    }
-  }
-  void startStripeCheckout;
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -351,4 +318,4 @@ export function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToP
       </div>
     </div>
   );
-}
+});

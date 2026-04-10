@@ -51,3 +51,46 @@ https://www.bbcgoodfood.com/recipes/coffee-cake
 https://www.bbcgoodfood.com/recipes/lemon-meringue-pie
 https://www.bbcgoodfood.com/recipes/apple-strudel
 https://www.bbcgoodfood.com/recipes/egg-fried-rice
+
+# High-protein / fitness-focused
+https://www.bbcgoodfood.com/recipes/high-protein-chicken-burrito-bowl
+https://www.bbcgoodfood.com/recipes/turkey-meatballs
+https://www.bbcgoodfood.com/recipes/chicken-caesar-salad
+https://www.bbcgoodfood.com/recipes/prawn-stir-fry
+https://www.bbcgoodfood.com/recipes/teriyaki-salmon
+https://www.bbcgoodfood.com/recipes/grilled-chicken-salad
+https://www.bbcgoodfood.com/recipes/tuna-pasta-bake
+https://www.bbcgoodfood.com/recipes/chicken-stir-fry
+
+# Breakfast
+https://www.bbcgoodfood.com/recipes/fluffy-american-pancakes
+https://www.bbcgoodfood.com/recipes/banana-pancakes
+https://www.bbcgoodfood.com/recipes/perfect-scrambled-eggs
+https://www.bbcgoodfood.com/recipes/shakshuka
+https://www.bbcgoodfood.com/recipes/avocado-toast
+https://www.bbcgoodfood.com/recipes/granola
+https://www.bbcgoodfood.com/recipes/porridge
+
+# Vegetarian
+https://www.bbcgoodfood.com/recipes/vegetable-lasagne
+https://www.bbcgoodfood.com/recipes/vegetable-curry
+https://www.bbcgoodfood.com/recipes/bean-chilli
+https://www.bbcgoodfood.com/recipes/halloumi-salad
+https://www.bbcgoodfood.com/recipes/falafel
+https://www.bbcgoodfood.com/recipes/sweet-potato-curry
+https://www.bbcgoodfood.com/recipes/lentil-soup
+https://www.bbcgoodfood.com/recipes/veggie-stir-fry
+https://www.bbcgoodfood.com/recipes/spinach-ricotta-cannelloni
+
+# Quick / under 30 min
+https://www.bbcgoodfood.com/recipes/quesadillas
+https://www.bbcgoodfood.com/recipes/carbonara
+https://www.bbcgoodfood.com/recipes/omelette
+https://www.bbcgoodfood.com/recipes/pesto-pasta
+https://www.bbcgoodfood.com/recipes/steak-chips
+
+# Snacks
+https://www.bbcgoodfood.com/recipes/hummus
+https://www.bbcgoodfood.com/recipes/energy-balls
+https://www.bbcgoodfood.com/recipes/smoothie-bowl
+https://www.bbcgoodfood.com/recipes/protein-balls

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Sparkles,
   Calendar,
@@ -12,6 +12,7 @@ import {
   Layers,
   Pencil,
   Trash2,
+  CookingPot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -40,6 +41,8 @@ interface MealPlannerProps {
   onNavigate?: (view: "discover" | "library") => void;
   /** Opens recipe detail (e.g. Discover + `?recipe=`). */
   onOpenRecipe?: (recipeId: string) => void;
+  /** Opens recipe detail in cook mode directly. Optionally pass portion multiplier. */
+  onCookRecipe?: (recipeId: string, portionMultiplier?: number) => void;
 }
 
 function formatVsTarget(
@@ -66,7 +69,7 @@ function formatVsTarget(
   return { tone: "ok", text: `${sign}${pct}% vs goal` };
 }
 
-export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: MealPlannerProps) {
+export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe, onCookRecipe }: MealPlannerProps) {
   const {
     mealPlan,
     setMealPlan,
@@ -97,10 +100,7 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
 
   const hasLibraryRecipes = savedRecipesForLibrary.length > 0;
 
-  void userTier;
-  void onUpgrade;
-
-  // Temporarily: all features unlocked (no tier-based caps).
+  const isFree = userTier === "free";
 
   const handleGenerate = () => {
     if (!hasLibraryRecipes) {
@@ -109,20 +109,25 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
     }
     setIsGenerating(true);
     setTimeout(async () => {
-      await generateMealPlan({
-        targetsOverride: {
-          calories: targetCalories,
-          protein: targetProtein,
-          carbs: targetCarbs,
-          fat: targetFat,
-          calorieBandPct,
-          carbFatBandPct,
-        },
-        days: planDays,
-      });
-      await generateShoppingListFromPlan();
-      setIsGenerating(false);
-    }, 400);
+      try {
+        await generateMealPlan({
+          targetsOverride: {
+            calories: targetCalories,
+            protein: targetProtein,
+            carbs: targetCarbs,
+            fat: targetFat,
+            calorieBandPct,
+            carbFatBandPct,
+          },
+          days: planDays,
+        });
+        await generateShoppingListFromPlan();
+      } catch (err) {
+        toast.error("Could not generate plan. Try saving more recipes or adjusting your targets.");
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 50);
   };
 
   const handleRegenerate = () => {
@@ -901,6 +906,20 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
                           >
                             Swap
                           </button>
+                          {onCookRecipe ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const id = resolveRecipeId(meal.recipeTitle);
+                                if (id) onCookRecipe(id, portion);
+                                else toast.error("Open this recipe from Library or Discover after saving.");
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950/50 font-medium"
+                            >
+                              <CookingPot className="w-4 h-4" />
+                              Cook
+                            </button>
+                          ) : null}
                           {onOpenRecipe ? (
                             <button
                               type="button"
@@ -961,4 +980,4 @@ export function MealPlanner({ userTier, onUpgrade, onNavigate, onOpenRecipe }: M
       ) : null}
     </div>
   );
-}
+});
