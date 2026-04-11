@@ -1,0 +1,3 @@
+- [Full product audit (Apr 2026)](project_full_audit_apr2026.md) — Comprehensive audit: promising prototype, needs content/onboarding/cook-mode before launch
+- [Execution progress (Apr 2026)](project_execution_progress_apr2026.md) — 12/13 plan tasks completed; AppDataContext split remains
+- [Iteration 2 fixes (Apr 2026)](project_iteration2_apr2026.md) — Re-audit fixes: CookMode bugs, dead analytics, image upload, pricing auth, Cook from planner

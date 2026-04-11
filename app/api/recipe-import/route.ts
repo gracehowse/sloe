@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { parseRecipeFromHtml } from "@/lib/recipe-import/parseRecipeFromHtml";
+import {
+  detectSocialPlatform,
+  fetchSocialPostMeta,
+  extractRecipeFromCaption,
+} from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 
 function isAllowedUrl(url: string): boolean {
@@ -124,6 +129,59 @@ export async function POST(req: Request) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 20000);
   try {
+    // Instagram / TikTok: extract caption via meta tags, then parse recipe with OpenAI.
+    const socialPlatform = detectSocialPlatform(trimmed);
+    if (socialPlatform) {
+      const openaiKey = process.env.OPENAI_API_KEY?.trim();
+      if (!openaiKey) {
+        return NextResponse.json(
+          { ok: false, error: "openai_not_configured", message: "Set OPENAI_API_KEY to enable social recipe import." },
+          { status: 503 },
+        );
+      }
+
+      const meta = await fetchSocialPostMeta(trimmed);
+      if (!meta || (!meta.caption && !meta.title)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "social_no_caption",
+            message: `Could not extract content from this ${socialPlatform} post. Try screenshotting the recipe and using image import instead.`,
+          },
+          { status: 422 },
+        );
+      }
+
+      const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
+      const recipe = await extractRecipeFromCaption(captionText, openaiKey, meta.imageUrl);
+
+      if (!recipe.ingredients.length && !recipe.steps.length) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "social_no_recipe",
+            message: "This post doesn't appear to contain a recipe. Try a different post or use image import.",
+          },
+          { status: 422 },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        source: socialPlatform,
+        recipe: {
+          title: recipe.title ?? meta.title ?? "Imported recipe",
+          description: null,
+          ingredients: recipe.ingredients,
+          instructions: recipe.steps,
+          servings: recipe.servings,
+          prepTimeMin: null,
+          cookTimeMin: null,
+          imageUrl: meta.imageUrl,
+        },
+      });
+    }
+
     // Pinterest pins usually link out to the original recipe site. Resolve that first.
     let effectiveUrl = trimmed;
     if (isPinterestUrl(trimmed)) {
