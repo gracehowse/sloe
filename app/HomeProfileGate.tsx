@@ -8,6 +8,7 @@ import {
   isTransientProfileFetchError,
   type ProfileGateRow,
 } from "../src/lib/client/homeProfileGate.ts";
+import { loadLocalProfile } from "../src/lib/profile/profileStorage.ts";
 import { AppLoadingSkeleton } from "../src/app/components/AppLoadingSkeleton.tsx";
 import { Button } from "../src/app/components/ui/button.tsx";
 
@@ -55,6 +56,12 @@ export function useHomeProfileGate(): {
       if (error) {
         const msg = error.message ?? "";
         if (isMissingProfilesTableError(msg)) {
+          // DB table missing — check if local profile exists (onboarding completed offline)
+          const local = loadLocalProfile(uid);
+          if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+            setGate("ready");
+            return;
+          }
           if (typeof window !== "undefined") {
             window.location.href = "/onboarding";
           }
@@ -65,6 +72,12 @@ export function useHomeProfileGate(): {
           await sleep(400 * (i + 1));
           continue;
         }
+        // DB error but local profile may exist — let user through if onboarding was completed
+        const local = loadLocalProfile(uid);
+        if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+          setGate("ready");
+          return;
+        }
         setErrorMessage(msg || "Could not load your profile.");
         setGate("error");
         return;
@@ -72,6 +85,12 @@ export function useHomeProfileGate(): {
 
       const row = profile as ProfileGateRow;
       if (!isProfileRowComplete(row)) {
+        // No DB profile — check local fallback before redirecting to onboarding
+        const local = loadLocalProfile(uid);
+        if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+          setGate("ready");
+          return;
+        }
         if (typeof window !== "undefined") {
           window.location.href = "/onboarding";
         }

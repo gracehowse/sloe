@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookMarked, Calendar, CheckCircle2, Target, X, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -16,24 +17,24 @@ const STEPS = [
   {
     id: "save",
     icon: BookMarked,
-    label: "Save 3 recipes",
-    description: "Browse Discover and save recipes you'd like to cook",
+    label: "Pick recipes for your week",
+    description: "Save recipes you want to cook — we'll build your plan from these",
     cta: "Browse Recipes",
     view: "discover",
   },
   {
     id: "plan",
     icon: Calendar,
-    label: "Generate a meal plan",
-    description: "Build a plan that fits your macro targets",
+    label: "Get a plan that hits your targets",
+    description: "One tap generates a week of meals matched to your macros",
     cta: "Open Planner",
     view: "planner",
   },
   {
     id: "log",
     icon: Target,
-    label: "Log your first meal",
-    description: "Track what you eat to see daily progress",
+    label: "See how your day stacks up",
+    description: "Log what you eat and watch your progress toward your goals",
     cta: "Open Tracker",
     view: "tracker",
   },
@@ -63,6 +64,7 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
     if (allDone) {
       localStorage.setItem(DISMISSED_KEY, "1");
       track(AnalyticsEvents.onboarding_completed);
+      toast.success("You're all set! Your core loop is active: plan, cook, track.", { duration: 5000 });
     }
   }, [allDone]);
 

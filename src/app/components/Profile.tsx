@@ -550,13 +550,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                 <span className="text-sm text-slate-600 dark:text-slate-400">
                   <span className="text-slate-800 dark:text-slate-200 font-medium">Adjust calories for activity</span>
                   <span className="block mt-1">
-                    Apple Health sync is not wired yet. When enabled here, the Nutrition tracker uses a{" "}
-                    <strong>manual activity burn</strong> (kcal) you enter to raise your net calorie goal—useful until
-                    automatic sync ships.
-                  </span>
-                  <span className="block mt-2 text-xs text-slate-500 dark:text-slate-500">
-                    <span className="font-medium text-slate-600 dark:text-slate-400">Formula:</span> net calorie goal
-                    = base target + activity burn for that calendar day (set per day in Nutrition).
+                    When on, your daily calorie goal increases by the activity burn you log in the Tracker. Net goal = base target + activity burn for that day.
                   </span>
                 </span>
               </label>

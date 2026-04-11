@@ -195,6 +195,34 @@ export function parseIngredientLine(raw: string): { amount: string; unit: string
   return { amount: "", unit: "", name: s };
 }
 
+/**
+ * Detect whole countable produce/food items that should get a "medium" unit
+ * when no explicit unit is provided.
+ * e.g. "red pepper, diced" → true, "olive oil" → false
+ */
+function isCountableWholeItem(name: string): boolean {
+  const n = name.toLowerCase().replace(/,.*$/, "").trim();
+  const COUNTABLE_ITEMS = [
+    // Vegetables
+    /\bpepper\b/, /\bonion\b/, /\bcarrot\b/, /\bpotato\b/, /\btomato\b/,
+    /\bcourgette\b/, /\bzucchini\b/, /\baubergine\b/, /\beggplant\b/,
+    /\bcucumber\b/, /\bavocado\b/, /\bsweet potato\b/, /\bbeetroot\b/,
+    /\bturnip\b/, /\bparsnip\b/, /\bleek\b/, /\bfennel\b/, /\bceleriac\b/,
+    /\bcauliflower\b/, /\bbroccoli\b/, /\bcabbage\b/, /\blettuce\b/,
+    /\bcorn\b/, /\bsquash\b/, /\bpumpkin\b/,
+    // Fruits
+    /\blemon\b/, /\blime\b/, /\bapple\b/, /\bpear\b/, /\borange\b/,
+    /\bbanana\b/, /\bmango\b/, /\bpeach\b/, /\bnectarine\b/, /\bplum\b/,
+    /\bpomegranate\b/, /\bgrapefruit\b/, /\bkiwi\b/,
+    // Proteins
+    /\begg\b/, /\bchicken breast\b/, /\bchicken thigh\b/, /\bsausage\b/,
+    /\bfillet\b/, /\bsteak\b/,
+    // Baked
+    /\bbread roll\b/, /\bpitta\b/, /\btortilla\b/, /\bwrap\b/, /\bbagel\b/,
+  ];
+  return COUNTABLE_ITEMS.some((pat) => pat.test(n));
+}
+
 /** Remove leading "tins/cans of" style noise left after weight parsing */
 function stripPackagingPrefix(name: string): string {
   return name.replace(/^(?:tins?|cans?|jars?)\s+(?:of\s+)?/i, "").trim() || name;
@@ -266,5 +294,13 @@ function splitUnitAndName(amountStr: string, rest: string): { amount: string; un
   if (leafT) {
     return { amount: amountStr, unit: "leaf", name: leafT[1].trim() };
   }
+
+  // Whole produce items: "1 red pepper, diced" → unit: "medium"
+  // When no explicit unit is found but the ingredient name matches a countable whole food,
+  // assign "medium" so the estimator uses ~110g instead of 80g default.
+  if (amountStr && isCountableWholeItem(rest)) {
+    return { amount: amountStr, unit: "medium", name: rest };
+  }
+
   return { amount: amountStr, unit: "", name: rest };
 }

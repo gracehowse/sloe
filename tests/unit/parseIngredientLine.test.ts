@@ -49,5 +49,29 @@ describe("parseIngredientLine", () => {
       name: "garlic",
     });
   });
+
+  it("assigns 'medium' unit to whole produce items", () => {
+    expect(parseIngredientLine("1 red pepper, diced")).toMatchObject({
+      amount: "1",
+      unit: "medium",
+    });
+    expect(parseIngredientLine("2 courgettes (zucchini), grated")).toMatchObject({
+      amount: "2",
+      unit: "medium",
+    });
+    expect(parseIngredientLine("1 red onion, sliced")).toMatchObject({
+      amount: "1",
+      unit: "medium",
+    });
+  });
+
+  it("does not assign 'medium' to non-produce items", () => {
+    expect(parseIngredientLine("1 tbsp olive oil")).toMatchObject({
+      unit: "tbsp",
+    });
+    expect(parseIngredientLine("500g chicken breast")).toMatchObject({
+      unit: "g",
+    });
+  });
 });
 

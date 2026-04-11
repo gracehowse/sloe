@@ -190,7 +190,7 @@ export default async function RecipePage({ params }: Props) {
             href="/login"
             className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
           >
-            Sign up to plan this meal
+            Plan your week free
           </a>
         </div>
       </header>
@@ -273,19 +273,20 @@ export default async function RecipePage({ params }: Props) {
         )}
 
         {/* CTA */}
-        <div className="text-center py-8 border-t border-slate-200 dark:border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            Plan this recipe to fit your macros
+        <div className="text-center py-10 border-t border-slate-200 dark:border-slate-800">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            Add this to a meal plan that hits your macros
           </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">
-            Platemate builds meal plans from recipes that hit your calorie and protein targets.
+          <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
+            Platemate plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
           </p>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-xl hover:shadow-violet-500/30 transition-all"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-lg hover:shadow-xl hover:shadow-violet-500/30 transition-all"
           >
-            Get started free
+            Start planning free
           </a>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">No credit card required</p>
         </div>
       </main>
     </div>

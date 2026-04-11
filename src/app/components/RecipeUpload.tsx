@@ -219,6 +219,28 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     setMatchHits(null);
   };
 
+  // Auto-search USDA when matchQuery changes (debounced 400ms)
+  const matchSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (matchPickerIdx == null) return;
+    const q = matchQuery.trim();
+    if (!q || q.length < 2) return;
+    if (matchSearchTimerRef.current) clearTimeout(matchSearchTimerRef.current);
+    matchSearchTimerRef.current = setTimeout(() => {
+      void (async () => {
+        setMatchLoading(true);
+        try {
+          const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q)}`);
+          const data = (await res.json()) as { ok?: boolean; hits?: UsdaHit[]; message?: string };
+          if (data.ok && data.hits) setMatchHits(data.hits);
+        } finally {
+          setMatchLoading(false);
+        }
+      })();
+    }, 400);
+    return () => { if (matchSearchTimerRef.current) clearTimeout(matchSearchTimerRef.current); };
+  }, [matchQuery, matchPickerIdx]);
+
   const runUsdaSearch = async () => {
     const q = matchQuery.trim();
     if (!q) return;
@@ -1163,22 +1185,22 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">USDA search</p>
-                <div className="flex gap-2">
+                <div className="relative">
                   <input
+                    autoFocus
                     value={matchQuery}
                     onChange={(e) => setMatchQuery(e.target.value)}
-                    placeholder="e.g. beef mince 5% fat"
-                    className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    onKeyDown={(e) => { if (e.key === "Enter") void runUsdaSearch(); }}
+                    placeholder="Search foods (e.g. red pepper, chicken breast)"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white pr-16"
                   />
-                  <button
-                    type="button"
-                    disabled={matchLoading}
-                    onClick={() => void runUsdaSearch()}
-                    className="px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
-                  >
-                    {matchLoading ? "…" : "Search"}
-                  </button>
+                  {matchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-5 h-5 border-2 border-slate-300 border-t-violet-600 rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Results update as you type</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Barcode (Open Food Facts)</p>

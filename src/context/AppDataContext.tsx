@@ -1006,6 +1006,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
       });
       track(AnalyticsEvents.recipe_saved, { recipeId });
+
+      // Nudge: when user saves their 3rd recipe and has no plan yet, prompt plan generation
+      const newCount = savedRecipeIds.length + 1; // optimistic count after this save
+      const activePlan = mealPlanSlotsRef.current.find((s) => s.id === activeMealPlanSlotIdRef.current)?.plan;
+      if (newCount === 3 && (!activePlan || activePlan.length === 0)) {
+        setTimeout(() => {
+          toast.success("You have 3 recipes — ready to generate a meal plan!", {
+            action: { label: "Open Planner", onClick: () => { window.location.href = "/?view=planner"; } },
+            duration: 8000,
+          });
+        }, 1500);
+      }
+
       if (authedUserId && dbSavesEnabled) {
         supabase
           .from("saves")

@@ -141,7 +141,8 @@ export default function OnboardingPage() {
         }
       }
       if (!cancelled && profileError) {
-        toast.error("Profile sync isn’t available yet. Onboarding will save on this device for now.");
+        // DB may not be configured yet — proceed silently with local-only mode.
+        console.warn("Profile load skipped:", profileError.message);
       }
 
       if (!cancelled) {
@@ -231,14 +232,10 @@ export default function OnboardingPage() {
       );
 
     if (upsertError) {
-      const msg = upsertError.message ?? "";
-      setSaving(false);
-      if (msg) {
-        setError("We couldn’t save your profile right now. Your info is still saved on this device.");
-        return;
-      }
-      toast.error("Couldn’t save your profile right now. Your info is still saved on this device.");
-      return;
+      // Profile save failed (DB not configured or migration not applied).
+      // Don’t block the user — local profile is already saved above.
+      console.warn("Profile upsert failed:", upsertError.message);
+      toast.warning("Profile saved on this device. Cloud sync will activate when the database is ready.");
     }
 
     setSaving(false);
@@ -264,7 +261,7 @@ export default function OnboardingPage() {
               </h1>
             </div>
             <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
-              Set your profile and macro targets. You can edit this later.
+              Tell us about your goals so we can build meal plans that hit your calorie and protein targets. Takes about 60 seconds.
             </p>
           </div>
           <button
@@ -603,10 +600,9 @@ export default function OnboardingPage() {
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="text-slate-900 dark:text-white font-medium">Adjust calories for activity (Apple Health)</span>
+                  <span className="text-slate-900 dark:text-white font-medium">Adjust calories for activity</span>
                   <span className="block text-sm text-slate-600 dark:text-slate-400 mt-1">
-                    When this is on, we will increase your calorie allowance from steps and workouts once HealthKit is
-                    connected. Integration ships in a future app update.
+                    Your daily calorie goal increases based on activity you log. Enter your workout burn in the Tracker and your net goal adjusts automatically.
                   </span>
                 </span>
               </label>

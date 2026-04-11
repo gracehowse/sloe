@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { Target, CheckCircle2, TrendingUp } from "lucide-react";
+import confetti from "canvas-confetti";
 
 type TodayAtAGlanceProps = {
   /** e.g. "Wednesday, April 8" */
@@ -18,6 +20,8 @@ type TodayAtAGlanceProps = {
   preferActivityAdjusted: boolean;
   activityBurnKcal: number;
   baseCalorieGoal: number;
+  /** Current logging streak (consecutive days). Used for streak-at-risk nudge. */
+  streakDays?: number;
 };
 
 export function TodayAtAGlance({
@@ -37,6 +41,7 @@ export function TodayAtAGlance({
   preferActivityAdjusted,
   activityBurnKcal,
   baseCalorieGoal,
+  streakDays = 0,
 }: TodayAtAGlanceProps) {
   const calLeft = Math.max(calorieGoalNet - caloriesEaten, 0);
   const pLeft = Math.max(proteinGoal - proteinEaten, 0);
@@ -51,12 +56,28 @@ export function TodayAtAGlance({
   const allTargetsHit = caloriesOnTrack && proteinHit && caloriesEaten > 0;
   const makingProgress = caloriesEaten > 0 && calPct >= 0.5 && calPct < 0.9;
 
+  // Fire confetti once when targets are first hit
+  const celebratedRef = useRef(false);
+  useEffect(() => {
+    if (allTargetsHit && !celebratedRef.current) {
+      celebratedRef.current = true;
+      confetti({
+        particleCount: 60,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: ["#7c3aed", "#6366f1", "#10b981", "#34d399"],
+        disableForReducedMotion: true,
+      });
+    }
+    if (!allTargetsHit) celebratedRef.current = false;
+  }, [allTargetsHit]);
+
   return (
     <section
-      className={`rounded-2xl border-2 backdrop-blur-xl px-5 py-4 mb-6 shadow-sm ${
+      className={`rounded-2xl border px-5 py-4 mb-6 transition-colors duration-300 ${
         allTargetsHit
-          ? "border-emerald-300/80 dark:border-emerald-700/60 bg-emerald-50/90 dark:bg-emerald-950/20"
-          : "border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/80"
+          ? "border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/20"
+          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
       }`}
       aria-label="Today at a glance"
     >
@@ -76,6 +97,11 @@ export function TodayAtAGlance({
       {allTargetsHit && (
         <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-3">
           You hit your calorie and protein targets today. Great work!
+        </p>
+      )}
+      {!allTargetsHit && streakDays > 0 && caloriesEaten === 0 && (
+        <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-3">
+          You have a {streakDays}-day streak going. Log a meal to keep it alive!
         </p>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -118,15 +144,13 @@ export function TodayAtAGlance({
           <p className="text-xs text-slate-500 dark:text-slate-400">goal {waterGoalLabel}</p>
         </div>
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-        Net calorie goal: {baseCalorieGoal} kcal base
-        {preferActivityAdjusted && activityBurnKcal > 0
-          ? ` + ${activityBurnKcal} kcal activity (this day)`
-          : preferActivityAdjusted
-            ? " — add activity burn below for this day to raise your budget"
-            : ""}
-        .
-      </p>
+      {preferActivityAdjusted && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
+          {activityBurnKcal > 0
+            ? `${baseCalorieGoal} base + ${activityBurnKcal} activity = ${calorieGoalNet} net goal`
+            : "Log activity below to increase your calorie goal for today"}
+        </p>
+      )}
     </section>
   );
 }

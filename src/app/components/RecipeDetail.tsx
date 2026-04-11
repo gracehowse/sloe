@@ -28,6 +28,8 @@ interface RecipeDetailProps {
   autoOpenCookMode?: boolean;
   /** Pre-fill servings from planner portion multiplier. */
   initialServings?: number;
+  /** Navigate to the tracker view (shown after cook mode meal logging). */
+  onViewTracker?: () => void;
 }
 
 type DbIngredientRow = {
@@ -57,7 +59,7 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   };
 }
 
-export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
     isRecipeSaved,
@@ -460,6 +462,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         ingredients={ingredients}
         servings={baseServings}
         onExit={() => setCookModeOpen(false)}
+        onViewTracker={onViewTracker}
       />
     );
   }

@@ -178,7 +178,7 @@ export function estimateLineMacros(input: {
   } else if (u === "leaf" || u === "leaves") {
     grams = amt * 0.35;
   } else if (u === "count" || u === "each" || u === "piece" || u === "pieces") {
-    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana/i.test(name)) {
+    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange|sausage/i.test(name)) {
       const per = /egg/i.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
       grams = amt * per;
     } else {
@@ -186,7 +186,7 @@ export function estimateLineMacros(input: {
     }
   } else if (!u && amt > 0) {
     // e.g. "2 carrots" — amount is count, use per-piece heuristic for vegetables
-    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana/i.test(name)) {
+    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange|sausage/i.test(name)) {
       const per = /egg/i.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
       grams = amt * per;
     } else {

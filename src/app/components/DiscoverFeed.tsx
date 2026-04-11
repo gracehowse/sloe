@@ -72,6 +72,8 @@ interface DiscoverFeedProps {
   /** Pre-fill servings when opening from planner (portion multiplier). */
   initialPortions?: number;
   onConsumedDeepLinkRecipe?: () => void;
+  /** Navigate to tracker (passed through to CookMode after meal logging). */
+  onViewTracker?: () => void;
 }
 
 function formatFeedTime(iso: string): string {
@@ -99,6 +101,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   initialCookMode,
   initialPortions,
   onConsumedDeepLinkRecipe,
+  onViewTracker,
 }: DiscoverFeedProps) {
   const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
@@ -349,7 +352,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
 
   if (selectedRecipe) {
     return (
-      <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} autoOpenCookMode={initialCookMode} initialServings={initialPortions} />
+      <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} autoOpenCookMode={initialCookMode} initialServings={initialPortions} onViewTracker={onViewTracker} />
     );
   }
 

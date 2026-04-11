@@ -119,14 +119,31 @@ export function LoginClient() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6">
-      <div className="w-full max-w-md backdrop-blur-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 shadow-2xl">
-        <h1 className="mb-2 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-          {mode === "signup" ? "Create your account" : "Sign in"}
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">
+      <div className="w-full max-w-md">
+        {/* Value proposition — above the form */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 mb-4 shadow-lg shadow-violet-500/20">
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            Meal plans that hit your macros
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-sm mx-auto">
+            Find recipes, plan your week, generate a shopping list, and track what you eat — all built around your calorie and protein targets.
+          </p>
+        </div>
+
+        {/* Auth form */}
+        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl">
+        <h2 className="text-lg font-semibold mb-1 text-slate-900 dark:text-white">
+          {mode === "signup" ? "Create your account" : "Welcome back"}
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
           {mode === "signup"
-            ? "Start with email + password. You'll confirm by email."
-            : "Use your email + password to sign in."}
+            ? "Free to start. Set your targets and plan your first week."
+            : "Sign in to continue."}
         </p>
 
         <div className="flex gap-2 mb-5">
@@ -237,6 +254,7 @@ export function LoginClient() {
         <p className="mt-6 text-xs text-slate-500 dark:text-slate-500">
           If you just created an account, you may need to confirm your email before signing in.
         </p>
+        </div>
       </div>
     </div>
   );

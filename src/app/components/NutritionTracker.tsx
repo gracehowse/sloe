@@ -112,7 +112,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
     setSelectedDateKey,
     mealsForSelectedDate,
     addLoggedMeal,
+    addLoggedMealForDate,
     removeLoggedMeal,
+    mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
     activityBurnForSelectedDay,
@@ -420,6 +422,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
         preferActivityAdjusted={preferActivityAdjustedCalories}
         activityBurnKcal={activityBurnForSelectedDay}
         baseCalorieGoal={baseCalorieTarget}
+        streakDays={streakDays}
       />
 
       <TrackerSummaryCard
@@ -430,6 +433,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
         weekLogged={weekLogged}
         goalFitPercent={goalFit}
         weekFiberWater={weekFiberWater}
+        totalDaysLogged={Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k] ?? []).length > 0).length}
       />
 
       {/* Quick log — USDA search without opening Add Meal */}
@@ -687,11 +691,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
               {Math.max(effectiveCalorieTarget - totals.calories, 0)} kcal
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Net goal = base goal
-              {preferActivityAdjustedCalories
-                ? ` + activity (${activityBurnForSelectedDay} kcal this day)`
-                : " (activity adjustment off in Profile)"}
-              .
+              {preferActivityAdjustedCalories && activityBurnForSelectedDay > 0
+                ? `${baseCalorieTarget} base + ${activityBurnForSelectedDay} activity = ${effectiveCalorieTarget} net goal`
+                : preferActivityAdjustedCalories
+                  ? "Log activity below to increase your goal for this day"
+                  : "Turn on activity adjustment in Profile to add workout burn to your goal"}
             </p>
           </div>
 
@@ -712,19 +716,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
             ))}
           </div>
 
-          <div className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/40 rounded-xl p-4 border border-green-200/50 dark:border-green-900/50">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="bg-white dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 mb-3">
               <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <p className="text-sm font-semibold text-slate-900 dark:text-white">Activity adjustment</p>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-              Toggle lives in Profile. Formula: <span className="font-medium text-slate-700 dark:text-slate-300">net goal = base + activity burn</span> for
-              the selected day (web-first; Apple Health can replace manual burn later). Avoid double-counting workouts when
-              sync ships.
-            </p>
             {!preferActivityAdjustedCalories ? (
-              <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
-                Turn on “Activity-adjusted calories” in Profile to add the burn below to your daily calorie goal.
+              <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                Turn on &quot;Adjust calories for activity&quot; in Profile to add your burn to your daily goal.
               </p>
             ) : null}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
@@ -860,16 +859,53 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier: _user
           ))}
 
           {mealsForSelectedDate.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="mb-4 text-slate-500 dark:text-slate-400">No meals logged on this day</p>
-              <button
-                type="button"
-                onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-3 font-semibold text-white transition-pm hover:shadow-lg hover:shadow-violet-500/25"
-              >
-                <Plus className="h-5 w-5" />
-                Log your first meal
-              </button>
+            <div className="py-8">
+              {/* Quick-log from plan if plan exists for day 1 */}
+              {mealPlan && mealPlan.length > 0 && mealPlan[0]!.meals.filter((m) => !m.isPlaceholder).length > 0 ? (
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 text-center">Log from today&apos;s plan</p>
+                  <div className="space-y-2">
+                    {mealPlan[0]!.meals.filter((m) => !m.isPlaceholder).map((meal, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          addLoggedMealForDate(selectedDateKey, {
+                            name: meal.name,
+                            recipeTitle: meal.recipeTitle,
+                            time: meal.name,
+                            calories: meal.calories,
+                            protein: meal.protein,
+                            carbs: meal.carbs,
+                            fat: meal.fat,
+                          });
+                          toast.success(`Logged ${meal.recipeTitle}`);
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-violet-300 dark:hover:border-violet-700 transition-colors text-left"
+                      >
+                        <div>
+                          <span className="text-xs font-medium text-violet-600 dark:text-violet-400">{meal.name}</span>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{meal.recipeTitle}</p>
+                        </div>
+                        <span className="text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">{meal.calories} kcal</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="text-center">
+                <p className="mb-4 text-slate-500 dark:text-slate-400">
+                  {mealPlan && mealPlan.length > 0 ? "Or add a custom meal" : "No meals logged on this day"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-3 font-semibold text-white transition-pm hover:shadow-lg hover:shadow-violet-500/25"
+                >
+                  <Plus className="h-5 w-5" />
+                  {mealPlan && mealPlan.length > 0 ? "Add custom meal" : "Log your first meal"}
+                </button>
+              </div>
             </div>
           )}
         </div>

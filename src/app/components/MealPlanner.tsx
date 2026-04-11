@@ -122,6 +122,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           days: planDays,
         });
         await generateShoppingListFromPlan();
+        toast.success(`${planDays}-day plan ready! Shopping list updated.`);
+        // Scroll to top so user sees the generated plan
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (err) {
         toast.error("Could not generate plan. Try saving more recipes or adjusting your targets.");
       } finally {

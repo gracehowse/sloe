@@ -23,6 +23,8 @@ interface CookModeProps {
   ingredients: IngredientRow[];
   servings: number;
   onExit: () => void;
+  /** Navigate to the nutrition tracker after logging a meal. */
+  onViewTracker?: () => void;
 }
 
 /** Parse seconds from step text like "cook for 5 minutes" or "bake 20–25 minutes". */
@@ -57,7 +59,7 @@ function cleanStepText(text: string): string {
   return text.replace(/^\s*(?:step\s*)?\d+[\.\)\:\-]\s*/i, "").trim();
 }
 
-export function CookMode({ recipe, instructionSteps, ingredients, servings, onExit }: CookModeProps) {
+export function CookMode({ recipe, instructionSteps, ingredients, servings, onExit, onViewTracker }: CookModeProps) {
   const { addLoggedMeal } = useAppData();
   const [currentStep, setCurrentStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
@@ -213,18 +215,18 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   }, [goNext, goPrev, onExit]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col">
+      {/* Header — always dark for kitchen context */}
+      <div className="shrink-0 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
         <button
           type="button"
           onClick={onExit}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           Exit Cook Mode
         </button>
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[50%]">
+        <h2 className="text-sm font-semibold text-white truncate max-w-[50%]">
           {recipe.title}
         </h2>
         <button
@@ -232,8 +234,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
           onClick={() => setShowIngredients(!showIngredients)}
           className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
             showIngredients
-              ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              ? "bg-violet-950/40 text-violet-300"
+              : "text-slate-300 hover:bg-slate-800"
           }`}
         >
           <ListChecks className="w-4 h-4" />
@@ -249,7 +251,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
             <>
               {/* Step Counter */}
               <div className="mb-6">
-                <span className="px-4 py-1.5 rounded-full bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-sm font-semibold">
+                <span className="px-4 py-1.5 rounded-full bg-violet-950/40 text-violet-300 text-sm font-semibold">
                   Step {currentStep + 1} of {totalSteps}
                 </span>
               </div>
@@ -274,7 +276,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
 
               {/* Step Text */}
               <div className="max-w-lg text-center mb-8">
-                <p className="text-xl sm:text-2xl leading-relaxed text-slate-900 dark:text-white">
+                <p className="text-2xl sm:text-3xl leading-relaxed text-white">
                   {currentStepText}
                 </p>
               </div>
@@ -284,13 +286,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 <div className="mb-8">
                   {timerActive ? (
                     <div className="flex items-center gap-4">
-                      <div className="text-3xl font-mono font-bold text-violet-600 dark:text-violet-400 tabular-nums">
+                      <div className="text-3xl font-mono font-bold text-violet-400 tabular-nums">
                         {formatTime(timerRemaining)}
                       </div>
                       <button
                         type="button"
                         onClick={stopTimer}
-                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="px-4 py-2 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-800 transition-colors"
                       >
                         Cancel
                       </button>
@@ -299,7 +301,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                     <button
                       type="button"
                       onClick={startTimer}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 font-medium hover:bg-violet-200 dark:hover:bg-violet-950/60 transition-colors"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-950/40 text-violet-300 font-medium hover:bg-violet-200 dark:hover:bg-violet-950/60 transition-colors"
                     >
                       <Timer className="w-4 h-4" />
                       Start {formatTime(stepTimerSeconds)} timer
@@ -314,7 +316,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   type="button"
                   onClick={goPrev}
                   disabled={currentStep === 0}
-                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-3 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -329,13 +331,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   type="button"
                   onClick={goNext}
                   disabled={isLastStep}
-                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-0 disabled:cursor-default"
+                  className="p-3 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-0 disabled:cursor-default"
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
               </div>
 
-              <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-4 text-xs text-slate-500">
                 Use arrow keys or swipe to navigate
               </p>
             </>
@@ -345,10 +347,10 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
                 <CookingPot className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              <h2 className="text-2xl font-bold text-white mb-2">
                 Enjoy your meal!
               </h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-8">
+              <p className="text-slate-400 mb-8">
                 {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""} — {Math.round(recipe.calories * servings / (recipe.servings || 1))} kcal · {Math.round(recipe.protein * servings / (recipe.servings || 1))}g protein
               </p>
 
@@ -362,9 +364,20 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   Log this meal
                 </button>
               ) : (
-                <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold mb-4">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Logged to tracker
+                <div className="flex flex-col items-center gap-3 mb-4">
+                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-950/40 text-emerald-300 font-semibold">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Logged to tracker
+                  </div>
+                  {onViewTracker && (
+                    <button
+                      type="button"
+                      onClick={() => { onExit(); onViewTracker(); }}
+                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+                    >
+                      View in Tracker
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -372,7 +385,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 <button
                   type="button"
                   onClick={onExit}
-                  className="px-6 py-3 rounded-xl text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-6 py-3 rounded-xl text-slate-300 font-medium hover:bg-slate-800 transition-colors"
                 >
                   Back to recipe
                 </button>
@@ -383,9 +396,9 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
 
         {/* Ingredients Sidebar */}
         {showIngredients && (
-          <div className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-y-auto p-4 hidden sm:block">
+          <div className="w-80 shrink-0 border-l border-slate-800 bg-slate-900 overflow-y-auto p-4 hidden sm:block">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+              <h3 className="font-semibold text-white text-sm">
                 Ingredients ({servings} serving{servings !== 1 ? "s" : ""})
               </h3>
               <button
@@ -404,8 +417,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                     onClick={() => toggleIngredientChecked(idx)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       checkedIngredients.has(idx)
-                        ? "line-through text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        ? "line-through text-slate-500 bg-slate-100 dark:bg-slate-800"
+                        : "text-slate-300 hover:bg-slate-800"
                     }`}
                   >
                     <span className="font-medium">

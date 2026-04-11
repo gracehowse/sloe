@@ -189,6 +189,7 @@ export default function App() {
             initialCookMode={searchParams.get("cook") === "1"}
             initialPortions={parseFloat(searchParams.get("portions") ?? "") || undefined}
             onConsumedDeepLinkRecipe={deepLinkRecipeId ? clearRecipeQuery : undefined}
+            onViewTracker={() => navigateToView("tracker")}
           />
         );
       case "library":
