@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { Neon, Spacing, Radius } from "@/constants/theme";
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { session, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,18 +17,17 @@ export default function LoginScreen() {
 
   if (!hasSupabaseConfig()) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">Sign in</ThemedText>
-        <ThemedText style={styles.warn}>
-          Sign-in isn’t configured for this build yet. Please use the web app, or contact the person who set up this
-          app.
-        </ThemedText>
-      </ThemedView>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Text style={styles.title}>PLATEMATE</Text>
+        <Text style={styles.errorText}>
+          Sign-in isn't configured for this build. Use the web app or contact support.
+        </Text>
+      </View>
     );
   }
 
   if (loading) {
-    return <ThemedView style={styles.container} />;
+    return <View style={styles.container} />;
   }
 
   if (session) {
@@ -42,65 +42,122 @@ export default function LoginScreen() {
         email: email.trim(),
         password,
       });
-      if (error) {
-        setMessage(error.message);
-        return;
-      }
+      if (error) setMessage(error.message);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Platemate</ThemedText>
-      <ThemedText style={styles.sub}>Sign in with the same email and password as the web app.</ThemedText>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Brand */}
+      <View style={styles.brandSection}>
+        <View style={styles.brandCircle}>
+          <Text style={styles.brandLetter}>P</Text>
+        </View>
+        <Text style={styles.title}>PLATEMATE</Text>
+        <Text style={styles.tagline}>Meal plans that hit your macros</Text>
+      </View>
 
-      <TextInput
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
-      />
+      {/* Form */}
+      <View style={styles.form}>
+        <TextInput
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholder="Email"
+          placeholderTextColor="#4a4a5a"
+          value={email}
+          onChangeText={setEmail}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Password"
+          placeholderTextColor="#4a4a5a"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          style={styles.input}
+        />
 
-      <Pressable style={[styles.btn, busy && styles.btnDisabled]} onPress={() => void onSignIn()} disabled={busy}>
-        <ThemedText type="defaultSemiBold" style={styles.btnText}>
-          {busy ? "Signing in…" : "Sign in"}
-        </ThemedText>
-      </Pressable>
+        <Pressable
+          style={[styles.btn, busy && styles.btnDisabled]}
+          onPress={() => void onSignIn()}
+          disabled={busy}
+        >
+          <Text style={styles.btnText}>{busy ? "Signing in..." : "Sign In"}</Text>
+        </Pressable>
 
-      {message ? <ThemedText style={styles.err}>{message}</ThemedText> : null}
-    </ThemedView>
+        {message ? <Text style={styles.errorText}>{message}</Text> : null}
+
+        <Text style={styles.hint}>
+          Use the same email and password as the web app.
+        </Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center" },
-  sub: { opacity: 0.85, marginBottom: 8 },
-  warn: { color: "#b45309" },
+  container: {
+    flex: 1,
+    backgroundColor: "#0a0a0f",
+    justifyContent: "center",
+    padding: Spacing.xxl,
+  },
+  brandSection: {
+    alignItems: "center",
+    marginBottom: Spacing.xxxl + Spacing.lg,
+  },
+  brandCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Neon.purple,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+    shadowColor: Neon.purple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+  },
+  brandLetter: { color: "#fff", fontSize: 32, fontWeight: "800" },
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: Neon.purple,
+    letterSpacing: 4,
+  },
+  tagline: {
+    fontSize: 14,
+    color: "#94a3b8",
+    marginTop: Spacing.sm,
+  },
+  form: { gap: Spacing.md },
   input: {
+    backgroundColor: "#16161e",
     borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 12,
-    padding: 12,
+    borderColor: "#1e1e2a",
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    color: "#f8fafc",
+    fontSize: 16,
   },
   btn: {
-    backgroundColor: "#7c3aed",
-    padding: 14,
-    borderRadius: 12,
+    backgroundColor: Neon.purple,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: "#fff" },
-  err: { color: "#b91c1c", marginTop: 8 },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+  errorText: { color: Neon.red, fontSize: 13, textAlign: "center" },
+  hint: {
+    color: "#4a4a5a",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: Spacing.sm,
+  },
 });
