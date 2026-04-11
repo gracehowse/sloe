@@ -1,56 +1,95 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Colors, Spacing, Radius } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Neon, Spacing, Radius } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase";
 
 const ITEMS = [
-  { label: "Shopping List", icon: "cart.fill" as const, route: "/(tabs)/settings" },
-  { label: "Barcode Scanner", icon: "barcode.viewfinder" as const, route: "/(tabs)/barcode" },
-  { label: "Notifications", icon: "bell.fill" as const, route: "/(tabs)/notifications" },
-  { label: "Settings", icon: "gearshape.fill" as const, route: "/(tabs)/settings" },
+  { label: "Barcode Scanner", emoji: "📷", route: "/(tabs)/barcode" },
+  { label: "Notifications", emoji: "🔔", route: "/(tabs)/notifications" },
+  { label: "Settings", emoji: "⚙️", route: "/(tabs)/settings" },
 ];
 
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
-  const colors = Colors[colorScheme];
+  const { session } = useAuth();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>More</Text>
+        <Text style={styles.headerTitle}>MORE</Text>
+      </View>
+
+      {/* User info */}
+      <View style={styles.userCard}>
+        <View style={styles.userAvatar}>
+          <Text style={styles.userAvatarText}>
+            {(session?.user?.email?.[0] ?? "P").toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.userEmail}>{session?.user?.email ?? "Not signed in"}</Text>
       </View>
 
       <View style={styles.list}>
         {ITEMS.map((item) => (
           <Pressable
             key={item.label}
-            style={[styles.row, { borderColor: colors.border }]}
+            style={styles.row}
             onPress={() => router.push(item.route as any)}
           >
-            <IconSymbol size={22} name={item.icon} color={colors.textSecondary} />
-            <Text style={[styles.rowLabel, { color: colors.text }]}>{item.label}</Text>
-            <IconSymbol size={16} name="chevron.right" color={colors.textTertiary} />
+            <Text style={styles.rowEmoji}>{item.emoji}</Text>
+            <Text style={styles.rowLabel}>{item.label}</Text>
+            <Text style={styles.rowChevron}>›</Text>
           </Pressable>
         ))}
       </View>
+
+      <Pressable
+        style={styles.signOutBtn}
+        onPress={() => void supabase.auth.signOut()}
+      >
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
+  container: { flex: 1, backgroundColor: "#0a0a0f" },
+  header: { alignItems: "center", paddingVertical: Spacing.md },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: Neon.purple,
+    letterSpacing: 3,
   },
-  headerTitle: { fontSize: 28, fontWeight: "700" },
+  userCard: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+    backgroundColor: "#16161e",
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Neon.pink + "30",
+    padding: Spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Neon.purple,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userAvatarText: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  userEmail: { color: "#94a3b8", fontSize: 14, flex: 1 },
   list: {
     paddingHorizontal: Spacing.xl,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   row: {
     flexDirection: "row",
@@ -58,12 +97,22 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.lg,
+    backgroundColor: "#16161e",
     borderRadius: Radius.md,
     borderWidth: 1,
+    borderColor: "#1e1e2a",
   },
-  rowLabel: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
+  rowEmoji: { fontSize: 20 },
+  rowLabel: { flex: 1, fontSize: 16, fontWeight: "500", color: "#f8fafc" },
+  rowChevron: { color: "#4a4a5a", fontSize: 22, fontWeight: "600" },
+  signOutBtn: {
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.xxxl,
+    paddingVertical: Spacing.lg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Neon.red + "40",
+    alignItems: "center",
   },
+  signOutText: { color: Neon.red, fontWeight: "600", fontSize: 15 },
 });

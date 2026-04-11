@@ -14,15 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
-import { Brand, Colors, Spacing, Radius } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
-  const colors = Colors[colorScheme];
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -39,44 +36,48 @@ export default function DiscoverScreen() {
       const saved = savedIds.has(item.id);
       return (
         <Pressable
-          style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
+          android_ripple={{ color: "#ffffff10" }}
         >
           <Image source={{ uri: item.image }} style={styles.cardImage} />
+
+          {/* Calorie badge */}
+          <View style={styles.calBadge}>
+            <Text style={styles.calBadgeText}>{item.calories} kcal</Text>
+          </View>
+
           <View style={styles.cardBody}>
-            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
               {item.title}
             </Text>
-            <View style={styles.cardMeta}>
-              <Text style={[styles.macroChip, { color: colors.textSecondary }]}>
-                {item.calories} kcal
-              </Text>
-              <Text style={[styles.macroChip, { color: colors.textSecondary }]}>
-                P: {item.protein}g
-              </Text>
-              <Text style={[styles.macroChip, { color: colors.textSecondary }]}>
-                C: {item.carbs}g
-              </Text>
-              <Text style={[styles.macroChip, { color: colors.textSecondary }]}>
-                F: {item.fat}g
-              </Text>
+
+            {/* Macro chips */}
+            <View style={styles.macroRow}>
+              <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {item.protein}g</Text>
+              </View>
+              <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {item.carbs}g</Text>
+              </View>
+              <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {item.fat}g</Text>
+              </View>
             </View>
+
             <View style={styles.cardFooter}>
               <View style={styles.creatorRow}>
                 <Image source={{ uri: item.creatorImage }} style={styles.avatar} />
-                <Text style={[styles.creatorName, { color: colors.textSecondary }]} numberOfLines={1}>
+                <Text style={styles.creatorName} numberOfLines={1}>
                   {item.creatorName}
                 </Text>
               </View>
               <Pressable
                 onPress={() => toggleSave(item.id)}
                 hitSlop={12}
-                style={[
-                  styles.saveBtn,
-                  saved && { backgroundColor: Brand.violet + "18" },
-                ]}
+                style={[styles.saveBtn, saved && styles.saveBtnActive]}
               >
-                <Text style={{ color: saved ? Brand.violet : colors.textTertiary, fontSize: 18 }}>
+                <Text style={{ color: saved ? Neon.pink : "#4a4a5a", fontSize: 20 }}>
                   {saved ? "★" : "☆"}
                 </Text>
               </Pressable>
@@ -85,14 +86,14 @@ export default function DiscoverScreen() {
         </Pressable>
       );
     },
-    [savedIds, colors, router, toggleSave],
+    [savedIds, router, toggleSave],
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Discover</Text>
+        <Text style={styles.headerTitle}>DISCOVER</Text>
       </View>
 
       {/* Search */}
@@ -101,16 +102,16 @@ export default function DiscoverScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Search recipes..."
-          placeholderTextColor={colors.textTertiary}
-          style={[styles.searchInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
+          placeholderTextColor="#4a4a5a"
+          style={styles.searchInput}
         />
       </View>
 
       {/* Recipe list */}
       {loading && recipes.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Brand.violet} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading recipes...</Text>
+          <ActivityIndicator size="large" color={Neon.purple} />
+          <Text style={styles.loadingText}>Loading recipes...</Text>
         </View>
       ) : (
         <FlatList
@@ -119,12 +120,13 @@ export default function DiscoverScreen() {
           renderItem={renderRecipe}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Brand.violet} />
+            <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Neon.purple} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No recipes yet</Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              <Text style={styles.emptyIcon}>🍽️</Text>
+              <Text style={styles.emptyTitle}>No recipes yet</Text>
+              <Text style={styles.emptySubtext}>
                 Pull down to refresh, or check your connection.
               </Text>
             </View>
@@ -136,24 +138,24 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-  },
+  container: { flex: 1, backgroundColor: "#0a0a0f" },
+  header: { alignItems: "center", paddingVertical: Spacing.md },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
+    color: Neon.purple,
+    letterSpacing: 3,
   },
-  searchRow: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.md,
-  },
+  searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
   searchInput: {
+    backgroundColor: "#16161e",
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: Radius.md,
     fontSize: 15,
+    color: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#1e1e2a",
   },
   list: {
     paddingHorizontal: Spacing.xl,
@@ -161,36 +163,55 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
   },
   card: {
+    backgroundColor: "#16161e",
     borderRadius: Radius.lg,
     borderWidth: 1,
+    borderColor: Neon.pink + "30",
     overflow: "hidden",
   },
   cardImage: {
     width: "100%",
-    height: 180,
-    backgroundColor: "#e2e8f0",
+    height: 190,
+    backgroundColor: "#1e1e2a",
   },
-  cardBody: {
-    padding: Spacing.lg,
+  calBadge: {
+    position: "absolute",
+    top: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: "#000000cc",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
   },
+  calBadgeText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  cardBody: { padding: Spacing.lg, gap: Spacing.sm },
   cardTitle: {
     fontSize: 17,
     fontWeight: "600",
-    marginBottom: Spacing.sm,
+    color: "#f8fafc",
   },
-  cardMeta: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
+  macroRow: { flexDirection: "row", gap: Spacing.sm },
   macroChip: {
-    fontSize: 12,
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+  },
+  macroChipText: {
+    fontSize: 11,
+    fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: Spacing.xs,
   },
   creatorRow: {
     flexDirection: "row",
@@ -202,12 +223,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "#1e1e2a",
   },
-  creatorName: {
-    fontSize: 13,
-    flex: 1,
-  },
+  creatorName: { fontSize: 13, color: "#94a3b8", flex: 1 },
   saveBtn: {
     width: 36,
     height: 36,
@@ -215,27 +233,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  saveBtnActive: {
+    backgroundColor: Neon.pink + "18",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     gap: Spacing.md,
   },
-  loadingText: {
-    fontSize: 14,
-  },
+  loadingText: { fontSize: 14, color: "#94a3b8" },
   emptyContainer: {
     paddingTop: 80,
     alignItems: "center",
     gap: Spacing.sm,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  emptySubtext: {
-    fontSize: 14,
-    textAlign: "center",
-    maxWidth: 260,
-  },
+  emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
+  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#f8fafc" },
+  emptySubtext: { fontSize: 14, color: "#94a3b8", textAlign: "center", maxWidth: 260 },
 });

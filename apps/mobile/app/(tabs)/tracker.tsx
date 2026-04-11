@@ -1,46 +1,150 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import Constants from "expo-constants";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
+import { Colors, MacroColors, Neon, Spacing, Radius } from "@/constants/theme";
 
-function apiBase(): string {
-  const extra = Constants.expoConfig?.extra as { platemateApiUrl?: string } | undefined;
-  return (extra?.platemateApiUrl ?? "").replace(/\/$/, "");
-}
+// Default targets — will come from profile later
+const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65 };
 
 function todayKey(): string {
   return dateKeyFromDate(new Date());
 }
 
-function formatTimeLabel(): string {
-  try {
-    return new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  } catch {
-    return "12:00 PM";
-  }
+/** Circular progress ring component */
+function ProgressRing({
+  progress,
+  size = 180,
+  strokeWidth = 14,
+  color,
+  bgColor = "#1e1e2a",
+  children,
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  color: string;
+  bgColor?: string;
+  children?: React.ReactNode;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - Math.min(1, Math.max(0, progress)));
+
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size} style={{ position: "absolute" }}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={bgColor}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
+/** Small macro ring */
+function MacroRing({
+  label,
+  current,
+  goal,
+  color,
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  color: string;
+}) {
+  const pct = goal > 0 ? current / goal : 0;
+  const remaining = Math.max(0, goal - current);
+  return (
+    <View style={styles.macroRingContainer}>
+      <ProgressRing progress={pct} size={64} strokeWidth={6} color={color}>
+        <Text style={[styles.macroRingPct, { color }]}>
+          {Math.min(100, Math.round(pct * 100))}%
+        </Text>
+      </ProgressRing>
+      <Text style={styles.macroRingLabel}>{label}</Text>
+      <Text style={styles.macroRingRemaining}>{remaining}g Left</Text>
+    </View>
+  );
+}
+
+/** Horizontal progress bar */
+function MacroBar({
+  label,
+  current,
+  goal,
+  color,
+  unit = "g",
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  color: string;
+  unit?: string;
+}) {
+  const pct = goal > 0 ? Math.min(1, current / goal) : 0;
+  const remaining = Math.max(0, goal - current);
+  return (
+    <View style={styles.macroBarRow}>
+      <Text style={styles.macroBarRemaining}>{remaining}{unit}</Text>
+      <Text style={styles.macroBarLabel}>{label}</Text>
+      <Text style={styles.macroBarTotal}>{current}/{goal}</Text>
+      <View style={styles.macroBarTrack}>
+        <View style={[styles.macroBarFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
 }
 
 export default function TrackerScreen() {
-  const base = useMemo(() => apiBase(), []);
+  const insets = useSafeAreaInsets();
+  const c = Colors.dark;
   const { session } = useAuth();
   const userId = session?.user.id;
 
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
   const [title, setTitle] = useState("");
   const [kcal, setKcal] = useState("");
-  const [note, setNote] = useState<string | null>(null);
+  const [protein, setProtein] = useState("");
+  const [carbs, setCarbs] = useState("");
+  const [fat, setFat] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
 
   const dayKey = todayKey();
-
   const mealsToday = byDay[dayKey] ?? [];
+  const targets = DEFAULT_TARGETS;
 
   const totals = useMemo(() => {
     return mealsToday.reduce(
@@ -54,31 +158,28 @@ export default function TrackerScreen() {
     );
   }, [mealsToday]);
 
+  const remaining = Math.max(0, targets.calories - totals.calories);
+
+  // Load journal
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("nutrition_journals")
         .select("by_day")
         .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
-      if (error) {
-        setLoadError("Couldn’t load your journal right now.");
-        setHydrated(true);
-        return;
-      }
       if (data?.by_day && typeof data.by_day === "object") {
         setByDay(data.by_day as ByDay);
       }
       setHydrated(true);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [userId]);
 
+  // Sync journal
   useEffect(() => {
     if (!userId || !hydrated) return;
     const t = setTimeout(() => {
@@ -87,160 +188,377 @@ export default function TrackerScreen() {
         .upsert(
           { user_id: userId, updated_at: new Date().toISOString(), by_day: byDay },
           { onConflict: "user_id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            setNote("Couldn’t sync right now. Your changes are saved on this device.");
-          }
-        });
+        );
     }, 600);
     return () => clearTimeout(t);
   }, [userId, hydrated, byDay]);
 
   const addMeal = useCallback(() => {
-    const n = Number(kcal);
-    if (!Number.isFinite(n) || n <= 0) {
-      setNote("Enter a positive calorie amount.");
-      return;
-    }
-    const label = title.trim() || "Quick entry";
+    const cal = Number(kcal) || 0;
+    const p = Number(protein) || 0;
+    const cb = Number(carbs) || 0;
+    const f = Number(fat) || 0;
+    if (cal <= 0) return;
+
     const meal: JournalMeal = {
       id: newMealId(),
       name: "Snack",
-      recipeTitle: label,
-      time: formatTimeLabel(),
-      calories: Math.round(n),
-      protein: 0,
-      carbs: 0,
-      fat: 0,
+      recipeTitle: title.trim() || "Quick entry",
+      time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+      calories: Math.round(cal),
+      protein: Math.round(p),
+      carbs: Math.round(cb),
+      fat: Math.round(f),
     };
-    setByDay((prev) => {
-      const day = prev[dayKey] ?? [];
-      return { ...prev, [dayKey]: [...day, meal] };
-    });
-    setKcal("");
+    setByDay((prev) => ({
+      ...prev,
+      [dayKey]: [...(prev[dayKey] ?? []), meal],
+    }));
     setTitle("");
-    setNote("Saved — syncing with your Platemate account.");
-  }, [dayKey, kcal, title]);
+    setKcal("");
+    setProtein("");
+    setCarbs("");
+    setFat("");
+    setAddOpen(false);
+  }, [dayKey, kcal, protein, carbs, fat, title]);
 
-  async function signOut() {
-    setNote(null);
-    await supabase.auth.signOut();
-  }
+  // Group meals by slot
+  const mealGroups = useMemo(() => {
+    const groups: Record<string, JournalMeal[]> = {};
+    for (const m of mealsToday) {
+      const slot = m.name || "Other";
+      if (!groups[slot]) groups[slot] = [];
+      groups[slot].push(m);
+    }
+    return groups;
+  }, [mealsToday]);
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <ThemedText type="title">Tracker</ThemedText>
-        <ThemedText style={styles.sub}>
-          Logged meals sync to your account — the same journal as the web Nutrition Tracker.
-        </ThemedText>
-
-        {base ? null : (
-          <ThemedText style={styles.warn}>
-            Food search isn’t available in this build yet.
-          </ThemedText>
-        )}
-
-        {loadError ? (
-          <ThemedText style={styles.warn}>Could not load journal: {loadError}</ThemedText>
-        ) : null}
-
-        <View style={styles.card}>
-          <ThemedText type="defaultSemiBold">Today ({dayKey})</ThemedText>
-          <ThemedText style={styles.muted}>
-            {totals.calories} kcal · {totals.protein}P · {totals.carbs}C · {totals.fat}F
-          </ThemedText>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>PLATEMATE</Text>
         </View>
 
-        <ThemedText type="subtitle">Quick log</ThemedText>
-        <TextInput
-          placeholder="Label (optional)"
-          value={title}
-          onChangeText={setTitle}
-          style={styles.input}
-        />
-        <TextInput
-          keyboardType="number-pad"
-          placeholder="Calories (kcal)"
-          value={kcal}
-          onChangeText={setKcal}
-          style={styles.input}
-        />
-        <Pressable style={styles.btn} onPress={addMeal}>
-          <ThemedText type="defaultSemiBold" style={styles.btnText}>
-            Add to today
-          </ThemedText>
-        </Pressable>
+        {/* Date nav */}
+        <View style={styles.dateNav}>
+          <Text style={styles.dateNavArrow}>‹</Text>
+          <Text style={styles.dateNavLabel}>Today</Text>
+          <Text style={styles.dateNavArrow}>›</Text>
+        </View>
 
-        {mealsToday.length > 0 ? (
-          <View style={styles.list}>
-            {mealsToday.map((m) => (
-              <View key={m.id} style={styles.row}>
-                <ThemedText type="defaultSemiBold">{m.recipeTitle}</ThemedText>
-                <ThemedText style={styles.muted}>
-                  {m.calories} kcal · {m.time}
-                </ThemedText>
+        {/* Calorie ring card */}
+        <View style={styles.card}>
+          <View style={styles.calorieRingRow}>
+            <ProgressRing
+              progress={targets.calories > 0 ? totals.calories / targets.calories : 0}
+              size={160}
+              strokeWidth={12}
+              color={Neon.purple}
+            >
+              <Text style={styles.calorieRingNumber}>{remaining}</Text>
+              <Text style={styles.calorieRingLabel}>REMAINING</Text>
+            </ProgressRing>
+
+            <View style={styles.calorieSidebar}>
+              <View style={styles.calorieSideItem}>
+                <Text style={[styles.calorieSideLabel, { color: Neon.orange }]}>GOAL</Text>
+                <Text style={styles.calorieSideValue}>{targets.calories}</Text>
               </View>
-            ))}
+              <View style={styles.calorieSideItem}>
+                <Text style={[styles.calorieSideLabel, { color: Neon.yellow }]}>FOOD</Text>
+                <Text style={styles.calorieSideValue}>{totals.calories}</Text>
+              </View>
+            </View>
           </View>
-        ) : (
-          <ThemedText style={styles.muted}>No meals logged yet today.</ThemedText>
+        </View>
+
+        {/* Macro rings */}
+        <View style={styles.card}>
+          <View style={styles.macroRingsRow}>
+            <MacroRing label="PROTEIN" current={totals.protein} goal={targets.protein} color={MacroColors.protein} />
+            <MacroRing label="CARBS" current={totals.carbs} goal={targets.carbs} color={MacroColors.carbs} />
+            <MacroRing label="FATS" current={totals.fat} goal={targets.fat} color={MacroColors.fat} />
+          </View>
+        </View>
+
+        {/* Calorie math */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Calories Remaining</Text>
+          <View style={styles.calorieMathRow}>
+            <View style={styles.calorieMathItem}>
+              <Text style={[styles.calorieMathNumber, { color: Neon.green }]}>{targets.calories}</Text>
+              <Text style={styles.calorieMathLabel}>Base</Text>
+            </View>
+            <Text style={styles.calorieMathOp}>−</Text>
+            <View style={styles.calorieMathItem}>
+              <Text style={[styles.calorieMathNumber, { color: Neon.yellow }]}>{totals.calories}</Text>
+              <Text style={styles.calorieMathLabel}>Food</Text>
+            </View>
+            <Text style={styles.calorieMathOp}>=</Text>
+            <View style={styles.calorieMathItem}>
+              <Text style={[styles.calorieMathNumber, { color: Neon.cyan }]}>{remaining}</Text>
+              <Text style={styles.calorieMathLabel}>Remaining</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Meal sections */}
+        {Object.entries(mealGroups).map(([slot, meals]) => {
+          const slotCals = meals.reduce((a, m) => a + m.calories, 0);
+          const slotP = meals.reduce((a, m) => a + m.protein, 0);
+          const slotC = meals.reduce((a, m) => a + m.carbs, 0);
+          const slotF = meals.reduce((a, m) => a + m.fat, 0);
+          return (
+            <View key={slot} style={styles.card}>
+              <View style={styles.mealSlotHeader}>
+                <Text style={styles.mealSlotName}>{slot}</Text>
+                <Text style={styles.mealSlotCals}>{slotCals}</Text>
+              </View>
+              <Text style={styles.mealSlotMacros}>
+                Carbs {slotC}g · Fat {slotF}g · Protein {slotP}g
+              </Text>
+              {meals.map((m) => (
+                <View key={m.id} style={styles.mealRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.mealName}>{m.recipeTitle}</Text>
+                    <Text style={styles.mealMeta}>Protein: {m.protein}g</Text>
+                  </View>
+                  <Text style={styles.mealCals}>{m.calories}</Text>
+                </View>
+              ))}
+              <Pressable style={styles.addFoodBtn} onPress={() => setAddOpen(true)}>
+                <Text style={styles.addFoodBtnText}>ADD FOOD</Text>
+              </Pressable>
+            </View>
+          );
+        })}
+
+        {mealsToday.length === 0 && (
+          <View style={styles.card}>
+            <Text style={styles.emptyText}>No meals logged yet today</Text>
+            <Pressable style={styles.addFoodBtn} onPress={() => setAddOpen(true)}>
+              <Text style={styles.addFoodBtnText}>ADD FOOD</Text>
+            </Pressable>
+          </View>
         )}
 
-        {note ? <ThemedText style={styles.note}>{note}</ThemedText> : null}
+        {/* Add food form */}
+        {addOpen && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Quick Log</Text>
+            <TextInput
+              placeholder="Food name"
+              placeholderTextColor="#64748b"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.input}
+            />
+            <View style={styles.inputRow}>
+              <TextInput
+                placeholder="Calories"
+                placeholderTextColor="#64748b"
+                keyboardType="number-pad"
+                value={kcal}
+                onChangeText={setKcal}
+                style={[styles.input, { flex: 1 }]}
+              />
+              <TextInput
+                placeholder="Protein"
+                placeholderTextColor="#64748b"
+                keyboardType="number-pad"
+                value={protein}
+                onChangeText={setProtein}
+                style={[styles.input, { flex: 1 }]}
+              />
+            </View>
+            <View style={styles.inputRow}>
+              <TextInput
+                placeholder="Carbs"
+                placeholderTextColor="#64748b"
+                keyboardType="number-pad"
+                value={carbs}
+                onChangeText={setCarbs}
+                style={[styles.input, { flex: 1 }]}
+              />
+              <TextInput
+                placeholder="Fat"
+                placeholderTextColor="#64748b"
+                keyboardType="number-pad"
+                value={fat}
+                onChangeText={setFat}
+                style={[styles.input, { flex: 1 }]}
+              />
+            </View>
+            <Pressable style={styles.submitBtn} onPress={addMeal}>
+              <Text style={styles.submitBtnText}>Add to Today</Text>
+            </Pressable>
+          </View>
+        )}
 
-        <Pressable style={styles.outline} onPress={() => void signOut()}>
-          <ThemedText type="defaultSemiBold">Sign out</ThemedText>
-        </Pressable>
+        {!addOpen && mealsToday.length > 0 && (
+          <Pressable style={styles.floatingAdd} onPress={() => setAddOpen(true)}>
+            <Text style={styles.floatingAddText}>+ Add Food</Text>
+          </Pressable>
+        )}
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 20, gap: 10, paddingBottom: 40 },
-  sub: { opacity: 0.85 },
-  warn: { color: "#b45309", marginTop: 4 },
-  ok: { opacity: 0.7, fontSize: 12 },
+  container: { flex: 1, backgroundColor: "#0a0a0f" },
+  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+
+  header: { alignItems: "center", paddingVertical: Spacing.md },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: Neon.purple,
+    letterSpacing: 3,
+  },
+
+  dateNav: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#16161e",
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+  },
+  dateNavArrow: { color: "#94a3b8", fontSize: 22, fontWeight: "600" },
+  dateNavLabel: { color: "#f8fafc", fontSize: 16, fontWeight: "600" },
+
   card: {
+    backgroundColor: "#16161e",
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 12,
-    padding: 12,
-    gap: 4,
-    marginVertical: 8,
+    borderColor: Neon.pink + "30",
+    padding: Spacing.xl,
+    gap: Spacing.md,
   },
-  muted: { opacity: 0.75, fontSize: 13 },
+  cardTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
+
+  // Calorie ring
+  calorieRingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  calorieRingNumber: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#f8fafc",
+    fontVariant: ["tabular-nums"],
+  },
+  calorieRingLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94a3b8",
+    letterSpacing: 1,
+  },
+  calorieSidebar: { gap: Spacing.xl },
+  calorieSideItem: { gap: 2 },
+  calorieSideLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
+  calorieSideValue: { fontSize: 22, fontWeight: "700", color: "#f8fafc", fontVariant: ["tabular-nums"] },
+
+  // Macro rings row
+  macroRingsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  macroRingContainer: { alignItems: "center", gap: Spacing.xs },
+  macroRingPct: { fontSize: 14, fontWeight: "700" },
+  macroRingLabel: { fontSize: 10, fontWeight: "700", color: "#94a3b8", letterSpacing: 1 },
+  macroRingRemaining: { fontSize: 12, color: "#64748b" },
+
+  // Calorie math
+  calorieMathRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+  },
+  calorieMathItem: { alignItems: "center" },
+  calorieMathNumber: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  calorieMathLabel: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+  calorieMathOp: { fontSize: 18, color: "#64748b", fontWeight: "600" },
+
+  // Meal sections
+  mealSlotHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  mealSlotName: { fontSize: 18, fontWeight: "700", color: "#f8fafc" },
+  mealSlotCals: { fontSize: 18, fontWeight: "700", color: "#f8fafc", fontVariant: ["tabular-nums"] },
+  mealSlotMacros: { fontSize: 12, color: "#94a3b8" },
+  mealRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "#1e1e2a",
+  },
+  mealName: { fontSize: 15, fontWeight: "500", color: "#f8fafc" },
+  mealMeta: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  mealCals: { fontSize: 16, fontWeight: "600", color: "#f8fafc", fontVariant: ["tabular-nums"] },
+
+  addFoodBtn: {
+    borderWidth: 1,
+    borderColor: Neon.purple + "60",
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+  },
+  addFoodBtnText: { color: Neon.purple, fontWeight: "700", letterSpacing: 1, fontSize: 13 },
+
+  emptyText: { color: "#64748b", textAlign: "center", fontSize: 14 },
+
+  // Add food form
   input: {
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: "#1e1e2a",
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    color: "#f8fafc",
+    fontSize: 15,
   },
-  btn: {
-    backgroundColor: "#7c3aed",
-    padding: 14,
-    borderRadius: 12,
+  inputRow: { flexDirection: "row", gap: Spacing.sm },
+  submitBtn: {
+    backgroundColor: Neon.purple,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
     alignItems: "center",
   },
-  btnText: { color: "#fff" },
-  list: { gap: 8, marginTop: 8 },
-  row: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
-    padding: 10,
-    gap: 4,
-  },
-  note: { marginTop: 8, opacity: 0.85 },
-  outline: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
+  submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+  floatingAdd: {
+    backgroundColor: Neon.purple,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
     alignItems: "center",
   },
+  floatingAddText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+  // Macro bars (for nutrients detail)
+  macroBarRow: {
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1e1e2a",
+  },
+  macroBarRemaining: { color: "#94a3b8", fontSize: 13, fontVariant: ["tabular-nums"] },
+  macroBarLabel: { color: "#f8fafc", fontSize: 15, fontWeight: "600", textAlign: "center" },
+  macroBarTotal: { color: "#94a3b8", fontSize: 13, fontVariant: ["tabular-nums"], textAlign: "right" },
+  macroBarTrack: {
+    height: 4,
+    backgroundColor: "#1e1e2a",
+    borderRadius: 2,
+    marginTop: Spacing.xs,
+    overflow: "hidden",
+  },
+  macroBarFill: { height: 4, borderRadius: 2 },
 });

@@ -13,15 +13,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
-import { Brand, Colors, Spacing, Radius } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Neon, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
-  const colors = Colors[colorScheme];
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -33,44 +30,38 @@ export default function LibraryScreen() {
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => (
       <Pressable
-        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+        style={styles.card}
         onPress={() => router.push(`/recipe/${item.id}`)}
       >
         <Image source={{ uri: item.image }} style={styles.cardImage} />
         <View style={styles.cardBody}>
-          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={[styles.macros, { color: colors.textSecondary }]}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.macros}>
             {item.calories} kcal · P: {item.protein}g · C: {item.carbs}g · F: {item.fat}g
           </Text>
         </View>
-        <Pressable
-          onPress={() => toggleSave(item.id)}
-          hitSlop={12}
-          style={styles.removeBtn}
-        >
-          <Text style={{ color: Brand.violet, fontSize: 14, fontWeight: "600" }}>Remove</Text>
+        <Pressable onPress={() => toggleSave(item.id)} hitSlop={12} style={styles.removeBtn}>
+          <Text style={styles.removeBtnText}>✕</Text>
         </Pressable>
       </Pressable>
     ),
-    [savedIds, colors, router, toggleSave],
+    [savedIds, router, toggleSave],
   );
 
   const isLoading = loading || savesLoading;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Library</Text>
-        <Text style={[styles.headerCount, { color: colors.textSecondary }]}>
-          {savedRecipes.length} saved
-        </Text>
+        <Text style={styles.headerTitle}>LIBRARY</Text>
+        <View style={styles.countBadge}>
+          <Text style={styles.countText}>{savedRecipes.length}</Text>
+        </View>
       </View>
 
       {isLoading && savedRecipes.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Brand.violet} />
+          <ActivityIndicator size="large" color={Neon.purple} />
         </View>
       ) : (
         <FlatList
@@ -79,18 +70,16 @@ export default function LibraryScreen() {
           renderItem={renderRecipe}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Brand.violet} />
+            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Neon.purple} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No saved recipes</Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              <Text style={styles.emptyIcon}>📚</Text>
+              <Text style={styles.emptyTitle}>No saved recipes</Text>
+              <Text style={styles.emptySubtext}>
                 Save recipes from Discover to build your library and generate meal plans.
               </Text>
-              <Pressable
-                style={styles.ctaBtn}
-                onPress={() => router.push("/(tabs)")}
-              >
+              <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)")}>
                 <Text style={styles.ctaBtnText}>Browse Recipes</Text>
               </Pressable>
             </View>
@@ -102,62 +91,74 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#0a0a0f" },
   header: {
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.md,
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
   },
-  headerTitle: { fontSize: 28, fontWeight: "700" },
-  headerCount: { fontSize: 14 },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: Neon.purple,
+    letterSpacing: 3,
+  },
+  countBadge: {
+    backgroundColor: Neon.pink + "30",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  countText: { color: Neon.pink, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
   list: {
     paddingHorizontal: Spacing.xl,
     paddingBottom: 100,
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   card: {
+    backgroundColor: "#16161e",
     borderRadius: Radius.md,
     borderWidth: 1,
+    borderColor: Neon.pink + "20",
     flexDirection: "row",
     alignItems: "center",
     overflow: "hidden",
   },
   cardImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#e2e8f0",
+    width: 72,
+    height: 72,
+    backgroundColor: "#1e1e2a",
   },
   cardBody: {
     flex: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
-  cardTitle: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
-  macros: { fontSize: 12, fontVariant: ["tabular-nums"] },
+  cardTitle: { fontSize: 15, fontWeight: "600", color: "#f8fafc", marginBottom: 2 },
+  macros: { fontSize: 11, color: "#94a3b8", fontVariant: ["tabular-nums"] },
   removeBtn: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  removeBtnText: { color: "#4a4a5a", fontSize: 16 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyContainer: {
     paddingTop: 80,
     alignItems: "center",
     gap: Spacing.sm,
     paddingHorizontal: Spacing.xl,
   },
-  emptyTitle: { fontSize: 18, fontWeight: "600" },
-  emptySubtext: { fontSize: 14, textAlign: "center", maxWidth: 280 },
+  emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
+  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#f8fafc" },
+  emptySubtext: { fontSize: 14, color: "#94a3b8", textAlign: "center", maxWidth: 280 },
   ctaBtn: {
     marginTop: Spacing.lg,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: Brand.violet,
+    backgroundColor: Neon.purple,
     borderRadius: Radius.md,
   },
   ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
