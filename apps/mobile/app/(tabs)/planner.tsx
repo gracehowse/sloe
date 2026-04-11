@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
-import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
+import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 
 type PlanMeal = {
   name: string;
   recipeTitle: string;
+  /** Stable navigation target; older saved plans may omit this. */
+  recipeId?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -40,17 +42,12 @@ export default function PlannerScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  const { recipes } = useDiscoverRecipes();
-  const { savedIds } = useSavedRecipes(userId);
+  const { recipes: discoverRecipes } = useDiscoverRecipes();
+  const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
 
   const [plan, setPlan] = useState<DayPlan[] | null>(null);
   const [generating, setGenerating] = useState(false);
   const [days, setDays] = useState<1 | 3 | 7>(1);
-
-  const savedRecipes = useMemo(
-    () => recipes.filter((r) => savedIds.has(r.id)),
-    [recipes, savedIds],
-  );
 
   // Load existing plan from DB
   useEffect(() => {
@@ -87,6 +84,7 @@ export default function PlannerScreen() {
           return {
             name: slot,
             recipeTitle: r.title,
+            recipeId: r.id,
             calories: r.calories,
             protein: r.protein,
             carbs: r.carbs,
@@ -173,9 +171,18 @@ export default function PlannerScreen() {
                 key={i}
                 style={styles.mealRow}
                 onPress={() => {
-                  // Find recipe ID and navigate to detail
-                  const r = recipes.find((x) => x.title === meal.recipeTitle);
-                  if (r) router.push(`/recipe/${r.id}`);
+                  const id =
+                    meal.recipeId ??
+                    savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ??
+                    discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
+                  if (id) {
+                    router.push(`/recipe/${id}`);
+                    return;
+                  }
+                  Alert.alert(
+                    "Recipe unavailable",
+                    "This planned meal no longer matches a recipe in your library. Generate a new plan from saved recipes.",
+                  );
                 }}
               >
                 <View style={{ flex: 1 }}>

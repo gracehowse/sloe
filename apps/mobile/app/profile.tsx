@@ -14,19 +14,11 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Neon, Spacing, Radius } from "@/constants/theme";
-import Svg, { Circle } from "react-native-svg";
 
-function MacroRing({ value, label, color }: { value: number; label: string; color: string }) {
+function TargetStat({ value, label, color }: { value: number; label: string; color: string }) {
   return (
-    <View style={styles.targetItem}>
-      <View style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
-        <Svg width={48} height={48} style={{ position: "absolute" }}>
-          <Circle cx={24} cy={24} r={20} stroke="#1e1e2a" strokeWidth={4} fill="none" />
-          <Circle cx={24} cy={24} r={20} stroke={color} strokeWidth={4} fill="none"
-            strokeDasharray={`${2*Math.PI*20}`} strokeDashoffset={0} strokeLinecap="round" />
-        </Svg>
-        <Text style={[styles.targetValue, { color }]}>{value}</Text>
-      </View>
+    <View style={[styles.targetTile, { borderColor: color + "55" }]}>
+      <Text style={[styles.targetValue, { color }]}>{value}</Text>
       <Text style={styles.targetLabel}>{label}</Text>
     </View>
   );
@@ -116,10 +108,10 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Daily Targets</Text>
           <View style={styles.targetsRow}>
-            <MacroRing value={Number(calories) || 0} label="kcal" color={Neon.purple} />
-            <MacroRing value={Number(protein) || 0} label="Protein" color={Neon.red} />
-            <MacroRing value={Number(carbs) || 0} label="Carbs" color={Neon.blue} />
-            <MacroRing value={Number(fat) || 0} label="Fat" color={Neon.yellow} />
+            <TargetStat value={Number(calories) || 0} label="kcal" color={Neon.purple} />
+            <TargetStat value={Number(protein) || 0} label="Protein" color={Neon.red} />
+            <TargetStat value={Number(carbs) || 0} label="Carbs" color={Neon.blue} />
+            <TargetStat value={Number(fat) || 0} label="Fat" color={Neon.yellow} />
           </View>
         </View>
 
@@ -202,10 +194,25 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
 
-  targetsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.md },
-  targetItem: { alignItems: "center", gap: Spacing.xs },
-  targetValue: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  targetLabel: { fontSize: 10, color: "#94a3b8", fontWeight: "600" },
+  targetsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  targetTile: {
+    width: "47%",
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    backgroundColor: "#1e1e2a",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    alignItems: "center",
+    gap: 4,
+  },
+  targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  targetLabel: { fontSize: 11, color: "#94a3b8", fontWeight: "600" },
 
   inputLabel: { fontSize: 12, color: "#94a3b8", fontWeight: "600", marginTop: Spacing.xs },
   input: {

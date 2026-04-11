@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import { Neon, Radius, Spacing } from "@/constants/theme";
 
 type AppNotifRow = {
   id: string;
@@ -21,7 +29,6 @@ type PublishNotifRow = {
   recipe_id: string;
   created_at: string;
   read_at: string | null;
-  recipes: { title: string } | { title: string }[] | null;
 };
 
 type InboxItem = {
@@ -48,6 +55,7 @@ function formatStamp(iso: string): string {
 }
 
 export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
@@ -64,26 +72,40 @@ export default function NotificationsScreen() {
   const loadInbox = useCallback(async () => {
     if (!userId) return;
     setError(null);
+
     const [appRes, pubRes] = await Promise.all([
       supabase
         .from("app_notifications")
         .select("id, kind, title, body, recipe_id, created_at, read_at")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(50),
       supabase
         .from("creator_publish_notifications")
-        .select("recipe_id, created_at, read_at, recipes(title)")
+        .select("recipe_id, created_at, read_at")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(25),
     ]);
 
-    if (appRes.error || pubRes.error) {
+    const appRows = (!appRes.error ? appRes.data : []) as AppNotifRow[];
+    const pubRows = (!pubRes.error ? pubRes.data : []) as PublishNotifRow[];
+
+    if (appRes.error && pubRes.error) {
       setError("Couldn’t load notifications right now.");
+      setItems([]);
       return;
     }
 
-    const appRows = (appRes.data ?? []) as AppNotifRow[];
-    const pubRows = (pubRes.data ?? []) as PublishNotifRow[];
+    const recipeIds = [...new Set(pubRows.map((r) => r.recipe_id))];
+    const titleById: Record<string, string> = {};
+    if (recipeIds.length > 0) {
+      const { data: recs } = await supabase.from("recipes").select("id, title").in("id", recipeIds);
+      for (const row of recs ?? []) {
+        const t = (row as { id: string; title: string | null }).title?.trim();
+        if (t) titleById[(row as { id: string }).id] = t;
+      }
+    }
 
     const fromApp: InboxItem[] = appRows.map((r) => ({
       id: r.id,
@@ -95,20 +117,15 @@ export default function NotificationsScreen() {
       readAt: r.read_at,
     }));
 
-    const fromPub: InboxItem[] = pubRows.map((r) => {
-      const rec = r.recipes;
-      const one = Array.isArray(rec) ? rec[0] ?? null : rec;
-      const title = one?.title?.trim() ? one.title.trim() : "New recipe";
-      return {
-        id: `publish:${r.recipe_id}`,
-        kind: "followed_recipe_published",
-        title,
-        body: "New from someone you follow",
-        recipeId: r.recipe_id,
-        createdAt: r.created_at,
-        readAt: r.read_at,
-      };
-    });
+    const fromPub: InboxItem[] = pubRows.map((r) => ({
+      id: `publish:${r.recipe_id}`,
+      kind: "followed_recipe_published",
+      title: titleById[r.recipe_id]?.trim() ? titleById[r.recipe_id]! : "New recipe",
+      body: "New from someone you follow",
+      recipeId: r.recipe_id,
+      createdAt: r.created_at,
+      readAt: r.read_at,
+    }));
 
     const merged = [...fromApp, ...fromPub]
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
@@ -221,10 +238,10 @@ export default function NotificationsScreen() {
         <View style={{ flexDirection: "row", gap: 10 }}>
           {!n.readAt ? <View style={styles.dot} /> : <View style={styles.dotSpacer} />}
           <View style={{ flex: 1 }}>
-            <ThemedText type="defaultSemiBold">{n.title}</ThemedText>
-            {n.body ? <ThemedText style={styles.body}>{n.body}</ThemedText> : null}
-            <ThemedText style={styles.stamp}>{formatStamp(n.createdAt)}</ThemedText>
-            {n.recipeId ? <ThemedText style={styles.hint}>Tap to open recipe</ThemedText> : null}
+            <Text style={styles.cardTitle}>{n.title}</Text>
+            {n.body ? <Text style={styles.body}>{n.body}</Text> : null}
+            <Text style={styles.stamp}>{formatStamp(n.createdAt)}</Text>
+            {n.recipeId ? <Text style={styles.hint}>Tap to open recipe</Text> : null}
           </View>
         </View>
       </Pressable>
@@ -233,32 +250,32 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <ThemedText type="title">Notifications</ThemedText>
-          <ThemedText style={styles.sub}>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.sub}>
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-          </ThemedText>
+          </Text>
         </View>
         <Pressable
           onPress={() => void markAllRead()}
           disabled={items.length === 0 || unreadCount === 0}
           style={[styles.btn, (items.length === 0 || unreadCount === 0) && styles.btnDisabled]}
         >
-          <ThemedText style={styles.btnText}>Mark all read</ThemedText>
+          <Text style={styles.btnText}>Mark all read</Text>
         </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={Neon.purple} />
         </View>
       ) : error ? (
         <View style={styles.center}>
-          <ThemedText style={styles.err}>{error}</ThemedText>
+          <Text style={styles.err}>{error}</Text>
           <Pressable onPress={() => void loadInbox()} style={styles.retry}>
-            <ThemedText type="defaultSemiBold">Try again</ThemedText>
+            <Text style={styles.retryText}>Try again</Text>
           </Pressable>
         </View>
       ) : (
@@ -266,42 +283,74 @@ export default function NotificationsScreen() {
           data={items}
           keyExtractor={(n) => n.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void onRefresh()}
+              tintColor={Neon.purple}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <ThemedText type="defaultSemiBold">No notifications yet</ThemedText>
-              <ThemedText style={styles.sub}>When something important happens, you’ll see it here.</ThemedText>
+              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.sub}>When something important happens, you’ll see it here.</Text>
             </View>
           }
         />
       )}
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sub: { opacity: 0.8, marginTop: 4 },
+  container: { flex: 1, backgroundColor: "#0a0a0f", paddingHorizontal: Spacing.xl, gap: Spacing.md },
+  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  title: { fontSize: 28, fontWeight: "800", color: "#f8fafc" },
+  sub: { color: "#94a3b8", marginTop: 4, fontSize: 14 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
-  err: { color: "#b91c1c" },
+  err: { color: "#f87171", textAlign: "center", fontSize: 15 },
   retry: {
     marginTop: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: Neon.purple + "80",
   },
-  btn: { backgroundColor: "#0f172a", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
+  retryText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+  btn: {
+    backgroundColor: "#16161e",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#1e1e2a",
+  },
   btnDisabled: { opacity: 0.4 },
-  btnText: { color: "#fff" },
-  empty: { padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#e2e8f0", gap: 6 },
-  card: { padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#e2e8f0", marginTop: 10 },
-  body: { opacity: 0.85, marginTop: 4 },
-  stamp: { opacity: 0.7, marginTop: 8, fontSize: 12 },
-  hint: { opacity: 0.65, marginTop: 6, fontSize: 12 },
-  dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: "#7c3aed", marginTop: 6 },
+  btnText: { color: "#f8fafc", fontSize: 13, fontWeight: "600" },
+  empty: {
+    padding: Spacing.xl,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Neon.pink + "30",
+    backgroundColor: "#16161e",
+    gap: 8,
+    marginTop: Spacing.md,
+  },
+  emptyTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
+  card: {
+    padding: Spacing.lg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Neon.pink + "30",
+    backgroundColor: "#16161e",
+    marginTop: Spacing.sm,
+  },
+  cardTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
+  body: { color: "#94a3b8", marginTop: 4, fontSize: 14 },
+  stamp: { color: "#64748b", marginTop: 8, fontSize: 12 },
+  hint: { color: "#64748b", marginTop: 6, fontSize: 12 },
+  dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Neon.purple, marginTop: 6 },
   dotSpacer: { width: 10, height: 10, marginTop: 6 },
 });

@@ -8,12 +8,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
 
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Colors, MacroColors, Neon, Spacing, Radius } from "@/constants/theme";
+import { MacroColors, Neon, Spacing, Radius } from "@/constants/theme";
 
 // Default targets — will come from profile later
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65 };
@@ -22,58 +21,37 @@ function todayKey(): string {
   return dateKeyFromDate(new Date());
 }
 
-/** Circular progress ring component */
-function ProgressRing({
-  progress,
-  size = 180,
-  strokeWidth = 14,
-  color,
-  bgColor = "#1e1e2a",
-  children,
+/** Calorie summary + bar (avoids SVG / New-Arch issues with circular strokes). */
+function CalorieSummary({
+  consumed,
+  goal,
+  remaining,
 }: {
-  progress: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-  bgColor?: string;
-  children?: React.ReactNode;
+  consumed: number;
+  goal: number;
+  remaining: number;
 }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - Math.min(1, Math.max(0, progress)));
-
+  const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
   return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      <Svg width={size} height={size} style={{ position: "absolute" }}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={bgColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={`${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
-        />
-      </Svg>
-      {children}
+    <View style={styles.calorieSummary}>
+      <View style={styles.calorieHero}>
+        <Text style={styles.calorieHeroNumber}>{remaining}</Text>
+        <Text style={styles.calorieHeroLabel}>kcal left</Text>
+      </View>
+      <View style={styles.calorieBarBlock}>
+        <View style={styles.calorieBarLabels}>
+          <Text style={styles.calorieBarMuted}>Food {consumed}</Text>
+          <Text style={styles.calorieBarMuted}>Goal {goal}</Text>
+        </View>
+        <View style={styles.calorieBarTrack}>
+          <View style={[styles.calorieBarFill, { width: `${pct * 100}%` }]} />
+        </View>
+      </View>
     </View>
   );
 }
 
-/** Small macro ring */
-function MacroRing({
+function MacroBarRow({
   label,
   current,
   goal,
@@ -83,43 +61,17 @@ function MacroRing({
   current: number;
   goal: number;
   color: string;
-}) {
-  const pct = goal > 0 ? current / goal : 0;
-  const remaining = Math.max(0, goal - current);
-  return (
-    <View style={styles.macroRingContainer}>
-      <ProgressRing progress={pct} size={64} strokeWidth={6} color={color}>
-        <Text style={[styles.macroRingPct, { color }]}>
-          {Math.min(100, Math.round(pct * 100))}%
-        </Text>
-      </ProgressRing>
-      <Text style={styles.macroRingLabel}>{label}</Text>
-      <Text style={styles.macroRingRemaining}>{remaining}g Left</Text>
-    </View>
-  );
-}
-
-/** Horizontal progress bar */
-function MacroBar({
-  label,
-  current,
-  goal,
-  color,
-  unit = "g",
-}: {
-  label: string;
-  current: number;
-  goal: number;
-  color: string;
-  unit?: string;
 }) {
   const pct = goal > 0 ? Math.min(1, current / goal) : 0;
   const remaining = Math.max(0, goal - current);
   return (
-    <View style={styles.macroBarRow}>
-      <Text style={styles.macroBarRemaining}>{remaining}{unit}</Text>
-      <Text style={styles.macroBarLabel}>{label}</Text>
-      <Text style={styles.macroBarTotal}>{current}/{goal}</Text>
+    <View style={styles.macroBarBlock}>
+      <View style={styles.macroBarTop}>
+        <Text style={[styles.macroBarTitle, { color }]}>{label}</Text>
+        <Text style={styles.macroBarNums}>
+          {current}g / {goal}g · {remaining}g left
+        </Text>
+      </View>
       <View style={styles.macroBarTrack}>
         <View style={[styles.macroBarFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
       </View>
@@ -129,7 +81,6 @@ function MacroBar({
 
 export default function TrackerScreen() {
   const insets = useSafeAreaInsets();
-  const c = Colors.dark;
   const { session } = useAuth();
   const userId = session?.user.id;
 
@@ -248,39 +199,16 @@ export default function TrackerScreen() {
           <Text style={styles.dateNavArrow}>›</Text>
         </View>
 
-        {/* Calorie ring card */}
+        {/* Calories */}
         <View style={styles.card}>
-          <View style={styles.calorieRingRow}>
-            <ProgressRing
-              progress={targets.calories > 0 ? totals.calories / targets.calories : 0}
-              size={160}
-              strokeWidth={12}
-              color={Neon.purple}
-            >
-              <Text style={styles.calorieRingNumber}>{remaining}</Text>
-              <Text style={styles.calorieRingLabel}>REMAINING</Text>
-            </ProgressRing>
-
-            <View style={styles.calorieSidebar}>
-              <View style={styles.calorieSideItem}>
-                <Text style={[styles.calorieSideLabel, { color: Neon.orange }]}>GOAL</Text>
-                <Text style={styles.calorieSideValue}>{targets.calories}</Text>
-              </View>
-              <View style={styles.calorieSideItem}>
-                <Text style={[styles.calorieSideLabel, { color: Neon.yellow }]}>FOOD</Text>
-                <Text style={styles.calorieSideValue}>{totals.calories}</Text>
-              </View>
-            </View>
-          </View>
+          <CalorieSummary consumed={totals.calories} goal={targets.calories} remaining={remaining} />
         </View>
 
-        {/* Macro rings */}
+        {/* Macros */}
         <View style={styles.card}>
-          <View style={styles.macroRingsRow}>
-            <MacroRing label="PROTEIN" current={totals.protein} goal={targets.protein} color={MacroColors.protein} />
-            <MacroRing label="CARBS" current={totals.carbs} goal={targets.carbs} color={MacroColors.carbs} />
-            <MacroRing label="FATS" current={totals.fat} goal={targets.fat} color={MacroColors.fat} />
-          </View>
+          <MacroBarRow label="PROTEIN" current={totals.protein} goal={targets.protein} color={MacroColors.protein} />
+          <MacroBarRow label="CARBS" current={totals.carbs} goal={targets.carbs} color={MacroColors.carbs} />
+          <MacroBarRow label="FATS" current={totals.fat} goal={targets.fat} color={MacroColors.fat} />
         </View>
 
         {/* Calorie math */}
@@ -441,39 +369,37 @@ const styles = StyleSheet.create({
   },
   cardTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
 
-  // Calorie ring
-  calorieRingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  calorieRingNumber: {
-    fontSize: 36,
+  calorieSummary: { gap: Spacing.lg },
+  calorieHero: { alignItems: "center" },
+  calorieHeroNumber: {
+    fontSize: 44,
     fontWeight: "800",
     color: "#f8fafc",
     fontVariant: ["tabular-nums"],
   },
-  calorieRingLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#94a3b8",
-    letterSpacing: 1,
+  calorieHeroLabel: { fontSize: 12, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, marginTop: 4 },
+  calorieBarBlock: { gap: Spacing.sm },
+  calorieBarLabels: { flexDirection: "row", justifyContent: "space-between" },
+  calorieBarMuted: { fontSize: 12, color: "#64748b", fontVariant: ["tabular-nums"] },
+  calorieBarTrack: {
+    height: 10,
+    backgroundColor: "#1e1e2a",
+    borderRadius: 5,
+    overflow: "hidden",
   },
-  calorieSidebar: { gap: Spacing.xl },
-  calorieSideItem: { gap: 2 },
-  calorieSideLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-  calorieSideValue: { fontSize: 22, fontWeight: "700", color: "#f8fafc", fontVariant: ["tabular-nums"] },
+  calorieBarFill: { height: 10, borderRadius: 5, backgroundColor: Neon.purple },
 
-  // Macro rings row
-  macroRingsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
+  macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
+  macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
+  macroBarTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 1 },
+  macroBarNums: { fontSize: 12, color: "#64748b", fontVariant: ["tabular-nums"] },
+  macroBarTrack: {
+    height: 8,
+    backgroundColor: "#1e1e2a",
+    borderRadius: 4,
+    overflow: "hidden",
   },
-  macroRingContainer: { alignItems: "center", gap: Spacing.xs },
-  macroRingPct: { fontSize: 14, fontWeight: "700" },
-  macroRingLabel: { fontSize: 10, fontWeight: "700", color: "#94a3b8", letterSpacing: 1 },
-  macroRingRemaining: { fontSize: 12, color: "#64748b" },
+  macroBarFill: { height: 8, borderRadius: 4 },
 
   // Calorie math
   calorieMathRow: {
@@ -543,22 +469,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   floatingAddText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  // Macro bars (for nutrients detail)
-  macroBarRow: {
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e1e2a",
-  },
-  macroBarRemaining: { color: "#94a3b8", fontSize: 13, fontVariant: ["tabular-nums"] },
-  macroBarLabel: { color: "#f8fafc", fontSize: 15, fontWeight: "600", textAlign: "center" },
-  macroBarTotal: { color: "#94a3b8", fontSize: 13, fontVariant: ["tabular-nums"], textAlign: "right" },
-  macroBarTrack: {
-    height: 4,
-    backgroundColor: "#1e1e2a",
-    borderRadius: 2,
-    marginTop: Spacing.xs,
-    overflow: "hidden",
-  },
-  macroBarFill: { height: 4, borderRadius: 2 },
 });

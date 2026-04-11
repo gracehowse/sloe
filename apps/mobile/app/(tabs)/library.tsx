@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
-import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
+import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { Neon, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
@@ -22,10 +22,16 @@ export default function LibraryScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  const { recipes, loading, refresh } = useDiscoverRecipes();
-  const { savedIds, toggleSave, loading: savesLoading } = useSavedRecipes(userId);
+  const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
+  const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
 
-  const savedRecipes = recipes.filter((r) => savedIds.has(r.id));
+  const toggleSave = useCallback(
+    async (recipeId: string) => {
+      await persistSaveToggle(recipeId);
+      await refresh();
+    },
+    [persistSaveToggle, refresh],
+  );
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => (
@@ -45,10 +51,10 @@ export default function LibraryScreen() {
         </Pressable>
       </Pressable>
     ),
-    [savedIds, router, toggleSave],
+    [router, toggleSave],
   );
 
-  const isLoading = loading || savesLoading;
+  const isLoading = loading;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -77,11 +83,16 @@ export default function LibraryScreen() {
               <Text style={styles.emptyIcon}>📚</Text>
               <Text style={styles.emptyTitle}>No saved recipes</Text>
               <Text style={styles.emptySubtext}>
-                Save recipes from Discover to build your library and generate meal plans.
+                Save recipes from Discover or import a link — everything you save shows up here for meal plans.
               </Text>
-              <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)")}>
-                <Text style={styles.ctaBtnText}>Browse Recipes</Text>
-              </Pressable>
+              <View style={styles.emptyActions}>
+                <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)")}>
+                  <Text style={styles.ctaBtnText}>Browse Discover</Text>
+                </Pressable>
+                <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
+                  <Text style={styles.ctaBtnSecondaryText}>Import a link</Text>
+                </Pressable>
+              </View>
             </View>
           }
         />
@@ -154,12 +165,22 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
   emptyTitle: { fontSize: 18, fontWeight: "600", color: "#f8fafc" },
   emptySubtext: { fontSize: 14, color: "#94a3b8", textAlign: "center", maxWidth: 280 },
+  emptyActions: { marginTop: Spacing.lg, gap: Spacing.sm, width: "100%", maxWidth: 280 },
   ctaBtn: {
-    marginTop: Spacing.lg,
     paddingHorizontal: 24,
     paddingVertical: 12,
     backgroundColor: Neon.purple,
     borderRadius: Radius.md,
+    alignItems: "center",
   },
   ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  ctaBtnSecondary: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Neon.purple + "80",
+    alignItems: "center",
+  },
+  ctaBtnSecondaryText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
 });

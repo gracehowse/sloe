@@ -1,3 +1,5 @@
+import { useFocusEffect } from "@react-navigation/native";
+import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { useCallback, useState } from "react";
 import {
   View,
@@ -13,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
+import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
@@ -26,6 +29,28 @@ export default function DiscoverScreen() {
   const { recipes, loading, refresh } = useDiscoverRecipes();
   const { savedIds, toggleSave } = useSavedRecipes(userId);
   const [search, setSearch] = useState("");
+
+  /**
+   * Instagram → Copy link or share often leaves the URL on the pasteboard; read on Discover focus.
+   * Runs even when signed out so we can open Import with ?url= and prompt sign-in there.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const t = setTimeout(async () => {
+        if (cancelled) return;
+        const text = await safeGetClipboardString();
+        if (cancelled || !text) return;
+        const url = consumeNewSocialRecipeUrlFromClipboard(text);
+        if (!url || cancelled) return;
+        router.replace({ pathname: "/import-shared", params: { url } });
+      }, 900);
+      return () => {
+        cancelled = true;
+        clearTimeout(t);
+      };
+    }, [router]),
+  );
 
   const filtered = search.trim()
     ? recipes.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()))
