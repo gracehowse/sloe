@@ -6,6 +6,9 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 
 const ITEMS = [
+  { label: "Shopping List", emoji: "🛒", route: "/shopping" },
+  { label: "Import Recipe", emoji: "📥", route: "/import-shared" },
+  { label: "Profile & Targets", emoji: "🎯", route: "/profile" },
   { label: "Barcode Scanner", emoji: "📷", route: "/(tabs)/barcode" },
   { label: "Notifications", emoji: "🔔", route: "/(tabs)/notifications" },
   { label: "Settings", emoji: "⚙️", route: "/(tabs)/settings" },
