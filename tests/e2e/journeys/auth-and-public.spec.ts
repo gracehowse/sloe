@@ -13,13 +13,13 @@ test.describe("Public auth journey", () => {
 
     await test.step("I expect the default mode to be create account", async () => {
       await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
-      await expect(page.getByText(/start with email/i)).toBeVisible();
+      await expect(page.getByText(/free to start/i)).toBeVisible();
     });
 
     await test.step("I tap Sign in and expect the sign-in heading", async () => {
       await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
-      await expect(page.getByRole("heading", { name: /^sign in$/i })).toBeVisible();
-      await expect(page.getByText(/use your email/i)).toBeVisible();
+      await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+      await expect(page.getByText(/sign in to continue/i)).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
