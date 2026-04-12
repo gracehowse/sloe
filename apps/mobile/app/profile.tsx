@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -14,17 +14,10 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Neon, Spacing, Radius } from "@/constants/theme";
-
-function TargetStat({ value, label, color }: { value: number; label: string; color: string }) {
-  return (
-    <View style={[styles.targetTile, { borderColor: color + "55" }]}>
-      <Text style={[styles.targetValue, { color }]}>{value}</Text>
-      <Text style={styles.targetLabel}>{label}</Text>
-    </View>
-  );
-}
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export default function ProfileScreen() {
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
@@ -40,13 +33,88 @@ export default function ProfileScreen() {
   const [fiber, setFiber] = useState("28");
   const [water, setWater] = useState("2000");
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: Spacing.md,
+    },
+    backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: Neon.purple, letterSpacing: 3 },
+
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Neon.pink + "30",
+      padding: Spacing.xl,
+      gap: Spacing.md,
+    },
+    cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+
+    targetsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm,
+    },
+    targetTile: {
+      width: "47%",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      backgroundColor: colors.inputBg,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.sm,
+      alignItems: "center",
+      gap: 4,
+    },
+    targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
+    targetLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
+
+    inputLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", marginTop: Spacing.xs },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: 12,
+      color: colors.text,
+      fontSize: 15,
+    },
+    inputGrid: { flexDirection: "row", gap: Spacing.md },
+    inputHalf: { flex: 1, gap: Spacing.xs },
+
+    saveBtn: {
+      backgroundColor: Neon.purple,
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      alignItems: "center",
+      marginTop: Spacing.sm,
+    },
+    saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  }), [colors]);
+
+  function TargetStat({ value, label, color }: { value: number; label: string; color: string }) {
+    return (
+      <View style={[styles.targetTile, { borderColor: color + "55" }]}>
+        <Text style={[styles.targetValue, { color }]}>{value}</Text>
+        <Text style={styles.targetLabel}>{label}</Text>
+      </View>
+    );
+  }
+
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml")
+        .select("display_name, target_calories, target_protein, target_carbs, target_fat")
         .eq("id", userId)
         .maybeSingle();
       if (!cancelled && data) {
@@ -55,8 +123,7 @@ export default function ProfileScreen() {
         if (data.target_protein) setProtein(String(data.target_protein));
         if (data.target_carbs) setCarbs(String(data.target_carbs));
         if (data.target_fat) setFat(String(data.target_fat));
-        if (data.target_fiber_g) setFiber(String(data.target_fiber_g));
-        if (data.target_water_ml) setWater(String(data.target_water_ml));
+        // target_fiber_g and target_water_ml columns don't exist yet
       }
       if (!cancelled) setLoading(false);
     })();
@@ -66,17 +133,19 @@ export default function ProfileScreen() {
   const save = async () => {
     if (!userId) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({
+    const profileData = {
+      id: userId,
       display_name: displayName.trim() || null,
       target_calories: Number(calories) || null,
       target_protein: Number(protein) || null,
       target_carbs: Number(carbs) || null,
       target_fat: Number(fat) || null,
-      target_fiber_g: Number(fiber) || null,
-      target_water_ml: Number(water) || null,
-    }).eq("id", userId);
+    };
+    // Use upsert so it works for both new and existing profiles
+    const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });
     setSaving(false);
     if (error) {
+      console.error("[Profile] save error:", JSON.stringify(error));
       Alert.alert("Error", "Couldn't save. Changes are kept locally.");
     } else {
       Alert.alert("Saved", "Your targets have been updated.");
@@ -124,40 +193,40 @@ export default function ProfileScreen() {
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="Your name"
-            placeholderTextColor="#4a4a5a"
+            placeholderTextColor={colors.tabIconDefault}
             style={styles.input}
           />
 
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Calories</Text>
-              <TextInput value={calories} onChangeText={setCalories} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={calories} onChangeText={setCalories} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Protein (g)</Text>
-              <TextInput value={protein} onChangeText={setProtein} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={protein} onChangeText={setProtein} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
           </View>
 
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Carbs (g)</Text>
-              <TextInput value={carbs} onChangeText={setCarbs} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={carbs} onChangeText={setCarbs} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Fat (g)</Text>
-              <TextInput value={fat} onChangeText={setFat} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={fat} onChangeText={setFat} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
           </View>
 
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Fiber (g)</Text>
-              <TextInput value={fiber} onChangeText={setFiber} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={fiber} onChangeText={setFiber} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
             <View style={styles.inputHalf}>
               <Text style={styles.inputLabel}>Water (ml)</Text>
-              <TextInput value={water} onChangeText={setWater} keyboardType="number-pad" style={styles.input} placeholderTextColor="#4a4a5a" />
+              <TextInput value={water} onChangeText={setWater} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
           </View>
 
@@ -169,69 +238,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: Spacing.md,
-  },
-  backBtn: { color: "#f8fafc", fontSize: 28, fontWeight: "600" },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: Neon.purple, letterSpacing: 3 },
-
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
-
-  targetsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-  },
-  targetTile: {
-    width: "47%",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    backgroundColor: "#1e1e2a",
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.sm,
-    alignItems: "center",
-    gap: 4,
-  },
-  targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  targetLabel: { fontSize: 11, color: "#94a3b8", fontWeight: "600" },
-
-  inputLabel: { fontSize: 12, color: "#94a3b8", fontWeight: "600", marginTop: Spacing.xs },
-  input: {
-    backgroundColor: "#1e1e2a",
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: 12,
-    color: "#f8fafc",
-    fontSize: 15,
-  },
-  inputGrid: { flexDirection: "row", gap: Spacing.md },
-  inputHalf: { flex: 1, gap: Spacing.xs },
-
-  saveBtn: {
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: Spacing.sm,
-  },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-});

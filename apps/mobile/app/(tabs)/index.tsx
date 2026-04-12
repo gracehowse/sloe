@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -25,6 +26,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const colors = useThemeColors();
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
   const { savedIds, toggleSave } = useSavedRecipes(userId);
@@ -55,6 +57,131 @@ export default function DiscoverScreen() {
   const filtered = search.trim()
     ? recipes.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()))
     : recipes;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        header: { alignItems: "center", paddingVertical: Spacing.md },
+        headerTitle: {
+          fontSize: 22,
+          fontWeight: "800",
+          color: Neon.purple,
+          letterSpacing: 3,
+        },
+        searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
+        searchInput: {
+          backgroundColor: colors.card,
+          paddingHorizontal: Spacing.lg,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.md,
+          fontSize: 15,
+          color: colors.text,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        list: {
+          paddingHorizontal: Spacing.xl,
+          paddingBottom: 100,
+          gap: Spacing.lg,
+        },
+        card: {
+          backgroundColor: colors.card,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Neon.pink + "30",
+          overflow: "hidden",
+        },
+        cardImage: {
+          width: "100%",
+          height: 190,
+          backgroundColor: colors.border,
+        },
+        calBadge: {
+          position: "absolute",
+          top: Spacing.md,
+          right: Spacing.md,
+          backgroundColor: "#000000bb",
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.xs,
+          borderRadius: Radius.sm,
+        },
+        calBadgeText: {
+          color: "#ffffff",
+          fontSize: 13,
+          fontWeight: "700",
+          fontVariant: ["tabular-nums"],
+        },
+        cardBody: { padding: Spacing.lg, gap: Spacing.sm },
+        cardTitle: {
+          fontSize: 17,
+          fontWeight: "600",
+          color: colors.text,
+        },
+        macroRow: { flexDirection: "row", gap: Spacing.sm },
+        macroChip: {
+          borderWidth: 1,
+          borderRadius: Radius.sm,
+          paddingHorizontal: Spacing.sm,
+          paddingVertical: 2,
+        },
+        macroChipText: {
+          fontSize: 11,
+          fontWeight: "600",
+          fontVariant: ["tabular-nums"],
+        },
+        cardFooter: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: Spacing.xs,
+        },
+        creatorRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          flex: 1,
+        },
+        avatar: {
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: colors.border,
+        },
+        creatorName: { fontSize: 13, color: colors.textSecondary, flex: 1 },
+        saveBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        saveBtnActive: {
+          backgroundColor: Neon.pink + "18",
+        },
+        loadingContainer: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          gap: Spacing.md,
+        },
+        loadingText: { fontSize: 14, color: colors.textSecondary },
+        emptyContainer: {
+          paddingTop: 80,
+          alignItems: "center",
+          gap: Spacing.sm,
+        },
+        emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
+        emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
+        emptySubtext: {
+          fontSize: 14,
+          color: colors.textSecondary,
+          textAlign: "center",
+          maxWidth: 260,
+        },
+      }),
+    [colors],
+  );
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
@@ -92,7 +219,6 @@ export default function DiscoverScreen() {
 
             <View style={styles.cardFooter}>
               <View style={styles.creatorRow}>
-                <Image source={{ uri: item.creatorImage }} style={styles.avatar} />
                 <Text style={styles.creatorName} numberOfLines={1}>
                   {item.creatorName}
                 </Text>
@@ -102,7 +228,7 @@ export default function DiscoverScreen() {
                 hitSlop={12}
                 style={[styles.saveBtn, saved && styles.saveBtnActive]}
               >
-                <Text style={{ color: saved ? Neon.pink : "#4a4a5a", fontSize: 20 }}>
+                <Text style={{ color: saved ? Neon.pink : colors.tabIconDefault, fontSize: 20 }}>
                   {saved ? "★" : "☆"}
                 </Text>
               </Pressable>
@@ -111,7 +237,7 @@ export default function DiscoverScreen() {
         </Pressable>
       );
     },
-    [savedIds, router, toggleSave],
+    [savedIds, router, toggleSave, styles, colors],
   );
 
   return (
@@ -127,7 +253,7 @@ export default function DiscoverScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Search recipes..."
-          placeholderTextColor="#4a4a5a"
+          placeholderTextColor={colors.tabIconDefault}
           style={styles.searchInput}
         />
       </View>
@@ -161,119 +287,3 @@ export default function DiscoverScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  header: { alignItems: "center", paddingVertical: Spacing.md },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Neon.purple,
-    letterSpacing: 3,
-  },
-  searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
-  searchInput: {
-    backgroundColor: "#16161e",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    fontSize: 15,
-    color: "#f8fafc",
-    borderWidth: 1,
-    borderColor: "#1e1e2a",
-  },
-  list: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 100,
-    gap: Spacing.lg,
-  },
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: "100%",
-    height: 190,
-    backgroundColor: "#1e1e2a",
-  },
-  calBadge: {
-    position: "absolute",
-    top: Spacing.md,
-    right: Spacing.md,
-    backgroundColor: "#000000cc",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.sm,
-  },
-  calBadgeText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  cardBody: { padding: Spacing.lg, gap: Spacing.sm },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#f8fafc",
-  },
-  macroRow: { flexDirection: "row", gap: Spacing.sm },
-  macroChip: {
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-  },
-  macroChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    fontVariant: ["tabular-nums"],
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: Spacing.xs,
-  },
-  creatorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    flex: 1,
-  },
-  avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#1e1e2a",
-  },
-  creatorName: { fontSize: 13, color: "#94a3b8", flex: 1 },
-  saveBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  saveBtnActive: {
-    backgroundColor: Neon.pink + "18",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  loadingText: { fontSize: 14, color: "#94a3b8" },
-  emptyContainer: {
-    paddingTop: 80,
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
-  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#f8fafc" },
-  emptySubtext: { fontSize: 14, color: "#94a3b8", textAlign: "center", maxWidth: 260 },
-});

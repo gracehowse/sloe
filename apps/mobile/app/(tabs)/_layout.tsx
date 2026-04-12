@@ -6,13 +6,15 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Neon } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export default function TabLayout() {
   const { session, loading } = useAuth();
+  const colors = useThemeColors();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0a0f' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={Neon.purple} />
       </View>
     );
@@ -26,10 +28,10 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Neon.pink,
-        tabBarInactiveTintColor: '#4a4a5a',
+        tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
-          backgroundColor: '#0a0a0f',
-          borderTopColor: '#1e1e2a',
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: 85,
           paddingBottom: 20,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Neon, Spacing, Radius } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 type ShoppingItem = {
   id: string;
@@ -24,6 +25,7 @@ type ShoppingItem = {
 };
 
 export default function ShoppingListScreen() {
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
@@ -65,6 +67,92 @@ export default function ShoppingListScreen() {
       return next;
     });
   }, [userId]);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: Spacing.md,
+    },
+    backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: Neon.purple,
+      letterSpacing: 3,
+    },
+
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Neon.pink + "30",
+      padding: Spacing.xl,
+      gap: Spacing.md,
+    },
+
+    progressRow: { flexDirection: "row", justifyContent: "space-between" },
+    progressLabel: { color: colors.text, fontWeight: "600", fontSize: 14 },
+    progressCount: { color: Neon.purple, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
+    progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
+    progressFill: { height: 6, backgroundColor: Neon.purple, borderRadius: 3 },
+
+    categoryTitle: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.textSecondary,
+      letterSpacing: 2,
+      textTransform: "uppercase",
+    },
+    itemRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: colors.tabIconDefault,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxChecked: { backgroundColor: Neon.purple, borderColor: Neon.purple },
+    checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    itemName: { fontSize: 14, color: colors.text },
+    itemChecked: { textDecorationLine: "line-through", color: colors.tabIconDefault },
+    itemFrom: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
+
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Neon.pink + "30",
+      padding: Spacing.xxxl,
+      alignItems: "center",
+      gap: Spacing.md,
+    },
+    emptyIcon: { fontSize: 40 },
+    emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+    emptyDesc: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    ctaBtn: {
+      backgroundColor: Neon.purple,
+      borderRadius: Radius.md,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.xxxl,
+      marginTop: Spacing.sm,
+    },
+    ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  }), [colors]);
 
   // Group by category
   const categories = [...new Set(items.map((i) => i.category))];
@@ -143,89 +231,3 @@ export default function ShoppingListScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
-
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: Spacing.md,
-  },
-  backBtn: { color: "#f8fafc", fontSize: 28, fontWeight: "600" },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Neon.purple,
-    letterSpacing: 3,
-  },
-
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-
-  progressRow: { flexDirection: "row", justifyContent: "space-between" },
-  progressLabel: { color: "#f8fafc", fontWeight: "600", fontSize: 14 },
-  progressCount: { color: Neon.purple, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
-  progressTrack: { height: 6, backgroundColor: "#1e1e2a", borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: 6, backgroundColor: Neon.purple, borderRadius: 3 },
-
-  categoryTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#94a3b8",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "#1e1e2a",
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#4a4a5a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: { backgroundColor: Neon.purple, borderColor: Neon.purple },
-  checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  itemName: { fontSize: 14, color: "#f8fafc" },
-  itemChecked: { textDecorationLine: "line-through", color: "#4a4a5a" },
-  itemFrom: { fontSize: 11, color: "#64748b", marginTop: 1 },
-
-  emptyCard: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xxxl,
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  emptyIcon: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#f8fafc" },
-  emptyDesc: { fontSize: 14, color: "#94a3b8", textAlign: "center", lineHeight: 20 },
-  ctaBtn: {
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xxxl,
-    marginTop: Spacing.sm,
-  },
-  ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});

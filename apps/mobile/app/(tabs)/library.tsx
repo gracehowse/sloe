@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Neon, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
@@ -21,6 +22,7 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const colors = useThemeColors();
 
   const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
@@ -32,6 +34,90 @@ export default function LibraryScreen() {
     },
     [persistSaveToggle, refresh],
   );
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: Neon.purple,
+      letterSpacing: 3,
+    },
+    countBadge: {
+      backgroundColor: Neon.pink + "30",
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+      borderRadius: Radius.sm,
+    },
+    countText: { color: Neon.pink, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    list: {
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: 100,
+      gap: Spacing.sm,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Neon.pink + "20",
+      flexDirection: "row",
+      alignItems: "center",
+      overflow: "hidden",
+    },
+    cardImage: {
+      width: 72,
+      height: 72,
+      backgroundColor: colors.border,
+    },
+    cardBody: {
+      flex: 1,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+    },
+    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 2 },
+    macros: { fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+    removeBtn: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+    },
+    removeBtnText: { color: colors.tabIconDefault, fontSize: 16 },
+    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+    emptyContainer: {
+      paddingTop: 80,
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+    },
+    emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
+    emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
+    emptySubtext: { fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 280 },
+    emptyActions: { marginTop: Spacing.lg, gap: Spacing.sm, width: "100%", maxWidth: 280 },
+    ctaBtn: {
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      backgroundColor: Neon.purple,
+      borderRadius: Radius.md,
+      alignItems: "center",
+    },
+    ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+    ctaBtnSecondary: {
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Neon.purple + "80",
+      alignItems: "center",
+    },
+    ctaBtnSecondaryText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+  }), [colors]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => (
@@ -51,7 +137,7 @@ export default function LibraryScreen() {
         </Pressable>
       </Pressable>
     ),
-    [router, toggleSave],
+    [router, toggleSave, styles],
   );
 
   const isLoading = loading;
@@ -100,87 +186,3 @@ export default function LibraryScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Neon.purple,
-    letterSpacing: 3,
-  },
-  countBadge: {
-    backgroundColor: Neon.pink + "30",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
-  },
-  countText: { color: Neon.pink, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  list: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 100,
-    gap: Spacing.sm,
-  },
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Neon.pink + "20",
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: 72,
-    height: 72,
-    backgroundColor: "#1e1e2a",
-  },
-  cardBody: {
-    flex: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  cardTitle: { fontSize: 15, fontWeight: "600", color: "#f8fafc", marginBottom: 2 },
-  macros: { fontSize: 11, color: "#94a3b8", fontVariant: ["tabular-nums"] },
-  removeBtn: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  removeBtnText: { color: "#4a4a5a", fontSize: 16 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyContainer: {
-    paddingTop: 80,
-    alignItems: "center",
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-  },
-  emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
-  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#f8fafc" },
-  emptySubtext: { fontSize: 14, color: "#94a3b8", textAlign: "center", maxWidth: 280 },
-  emptyActions: { marginTop: Spacing.lg, gap: Spacing.sm, width: "100%", maxWidth: 280 },
-  ctaBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    alignItems: "center",
-  },
-  ctaBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  ctaBtnSecondary: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Neon.purple + "80",
-    alignItems: "center",
-  },
-  ctaBtnSecondaryText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
-});

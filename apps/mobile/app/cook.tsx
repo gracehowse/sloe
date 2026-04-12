@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "@/lib/supabase";
 import { Neon, Spacing, Radius } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -39,6 +40,7 @@ function parseTimerFromStep(text: string): number | null {
 
 export default function CookModeScreen() {
   useKeepAwake();
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { recipeId, title, steps: stepsJson } = useLocalSearchParams<{
@@ -95,6 +97,125 @@ export default function CookModeScreen() {
       setTimerActive(true);
     }
   };
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md, padding: Spacing.xxl },
+    errorText: { color: colors.text, fontSize: 16 },
+    backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
+    backBtnText: { color: colors.text, fontWeight: "600" },
+
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerBack: { color: colors.textSecondary, fontSize: 20, fontWeight: "600" },
+    headerTitle: { color: colors.text, fontSize: 15, fontWeight: "600", flex: 1, textAlign: "center" },
+
+    stepContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: Spacing.xxl,
+      gap: Spacing.xl,
+    },
+
+    stepBadge: {
+      backgroundColor: Neon.purple + "20",
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
+    },
+    stepBadgeText: { color: Neon.purple, fontSize: 13, fontWeight: "700" },
+
+    progressRow: {
+      flexDirection: "row",
+      gap: 4,
+      width: "100%",
+    },
+    progressDot: {
+      flex: 1,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+    },
+    progressDotDone: { backgroundColor: Neon.purple },
+    progressDotActive: { backgroundColor: Neon.pink },
+
+    stepText: {
+      fontSize: 24,
+      fontWeight: "500",
+      color: colors.text,
+      textAlign: "center",
+      lineHeight: 34,
+    },
+
+    timerSection: { marginTop: Spacing.md },
+    timerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.lg },
+    timerDisplay: {
+      fontSize: 40,
+      fontWeight: "700",
+      color: Neon.purple,
+      fontVariant: ["tabular-nums"],
+      fontFamily: "Menlo",
+    },
+    timerCancelBtn: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    timerCancelText: { color: colors.textSecondary, fontWeight: "600" },
+    timerStartBtn: {
+      backgroundColor: Neon.purple + "20",
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.md,
+    },
+    timerStartText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+
+    navRow: {
+      flexDirection: "row",
+      gap: Spacing.md,
+      width: "100%",
+      marginTop: Spacing.xl,
+    },
+    navBtn: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    navBtnText: { color: colors.textSecondary, fontWeight: "600", fontSize: 16 },
+    nextBtn: {
+      flex: 2,
+      paddingVertical: 16,
+      borderRadius: Radius.md,
+      backgroundColor: Neon.purple,
+      alignItems: "center",
+    },
+    nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+    doneIcon: { fontSize: 48 },
+    doneTitle: { fontSize: 24, fontWeight: "700", color: colors.text },
+    doneSubtext: { fontSize: 14, color: colors.textSecondary },
+    doneBtn: {
+      marginTop: Spacing.lg,
+      backgroundColor: Neon.purple,
+      paddingHorizontal: Spacing.xxxl,
+      paddingVertical: 14,
+      borderRadius: Radius.md,
+    },
+    doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  }), [colors]);
 
   if (steps.length === 0) {
     return (
@@ -192,122 +313,3 @@ export default function CookModeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md, padding: Spacing.xxl },
-  errorText: { color: "#f8fafc", fontSize: 16 },
-  backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: "#1e1e2a" },
-  backBtnText: { color: "#f8fafc", fontWeight: "600" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e1e2a",
-  },
-  headerBack: { color: "#94a3b8", fontSize: 20, fontWeight: "600" },
-  headerTitle: { color: "#f8fafc", fontSize: 15, fontWeight: "600", flex: 1, textAlign: "center" },
-
-  stepContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: Spacing.xxl,
-    gap: Spacing.xl,
-  },
-
-  stepBadge: {
-    backgroundColor: Neon.purple + "20",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-  },
-  stepBadgeText: { color: Neon.purple, fontSize: 13, fontWeight: "700" },
-
-  progressRow: {
-    flexDirection: "row",
-    gap: 4,
-    width: "100%",
-  },
-  progressDot: {
-    flex: 1,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#1e1e2a",
-  },
-  progressDotDone: { backgroundColor: Neon.purple },
-  progressDotActive: { backgroundColor: Neon.pink },
-
-  stepText: {
-    fontSize: 24,
-    fontWeight: "500",
-    color: "#f8fafc",
-    textAlign: "center",
-    lineHeight: 34,
-  },
-
-  timerSection: { marginTop: Spacing.md },
-  timerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.lg },
-  timerDisplay: {
-    fontSize: 40,
-    fontWeight: "700",
-    color: Neon.purple,
-    fontVariant: ["tabular-nums"],
-    fontFamily: "Menlo",
-  },
-  timerCancelBtn: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#1e1e2a",
-  },
-  timerCancelText: { color: "#94a3b8", fontWeight: "600" },
-  timerStartBtn: {
-    backgroundColor: Neon.purple + "20",
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-  },
-  timerStartText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
-
-  navRow: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    width: "100%",
-    marginTop: Spacing.xl,
-  },
-  navBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#1e1e2a",
-    alignItems: "center",
-  },
-  navBtnText: { color: "#94a3b8", fontWeight: "600", fontSize: 16 },
-  nextBtn: {
-    flex: 2,
-    paddingVertical: 16,
-    borderRadius: Radius.md,
-    backgroundColor: Neon.purple,
-    alignItems: "center",
-  },
-  nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  doneIcon: { fontSize: 48 },
-  doneTitle: { fontSize: 24, fontWeight: "700", color: "#f8fafc" },
-  doneSubtext: { fontSize: 14, color: "#94a3b8" },
-  doneBtn: {
-    marginTop: Spacing.lg,
-    backgroundColor: Neon.purple,
-    paddingHorizontal: Spacing.xxxl,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-  },
-  doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-});

@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { dateKeyFromDate, newMealId, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { MacroColors, Neon, Spacing, Radius } from "@/constants/theme";
@@ -21,68 +22,11 @@ function todayKey(): string {
   return dateKeyFromDate(new Date());
 }
 
-/** Calorie summary + bar (avoids SVG / New-Arch issues with circular strokes). */
-function CalorieSummary({
-  consumed,
-  goal,
-  remaining,
-}: {
-  consumed: number;
-  goal: number;
-  remaining: number;
-}) {
-  const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
-  return (
-    <View style={styles.calorieSummary}>
-      <View style={styles.calorieHero}>
-        <Text style={styles.calorieHeroNumber}>{remaining}</Text>
-        <Text style={styles.calorieHeroLabel}>kcal left</Text>
-      </View>
-      <View style={styles.calorieBarBlock}>
-        <View style={styles.calorieBarLabels}>
-          <Text style={styles.calorieBarMuted}>Food {consumed}</Text>
-          <Text style={styles.calorieBarMuted}>Goal {goal}</Text>
-        </View>
-        <View style={styles.calorieBarTrack}>
-          <View style={[styles.calorieBarFill, { width: `${pct * 100}%` }]} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function MacroBarRow({
-  label,
-  current,
-  goal,
-  color,
-}: {
-  label: string;
-  current: number;
-  goal: number;
-  color: string;
-}) {
-  const pct = goal > 0 ? Math.min(1, current / goal) : 0;
-  const remaining = Math.max(0, goal - current);
-  return (
-    <View style={styles.macroBarBlock}>
-      <View style={styles.macroBarTop}>
-        <Text style={[styles.macroBarTitle, { color }]}>{label}</Text>
-        <Text style={styles.macroBarNums}>
-          {current}g / {goal}g · {remaining}g left
-        </Text>
-      </View>
-      <View style={styles.macroBarTrack}>
-        <View style={[styles.macroBarFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
-
 export default function TrackerScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
+  const colors = useThemeColors();
 
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
@@ -110,6 +54,146 @@ export default function TrackerScreen() {
   }, [mealsToday]);
 
   const remaining = Math.max(0, targets.calories - totals.calories);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+
+        header: { alignItems: "center", paddingVertical: Spacing.md },
+        headerTitle: {
+          fontSize: 22,
+          fontWeight: "800",
+          color: Neon.purple,
+          letterSpacing: 3,
+        },
+
+        dateNav: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: colors.card,
+          borderRadius: Radius.md,
+          paddingVertical: Spacing.md,
+          paddingHorizontal: Spacing.xl,
+        },
+        dateNavArrow: { color: colors.textSecondary, fontSize: 22, fontWeight: "600" },
+        dateNavLabel: { color: colors.text, fontSize: 16, fontWeight: "600" },
+
+        card: {
+          backgroundColor: colors.card,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Neon.pink + "30",
+          padding: Spacing.xl,
+          gap: Spacing.md,
+        },
+        cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
+
+        calorieSummary: { gap: Spacing.lg },
+        calorieHero: { alignItems: "center" },
+        calorieHeroNumber: {
+          fontSize: 44,
+          fontWeight: "800",
+          color: colors.text,
+          fontVariant: ["tabular-nums"],
+        },
+        calorieHeroLabel: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, letterSpacing: 1, marginTop: 4 },
+        calorieBarBlock: { gap: Spacing.sm },
+        calorieBarLabels: { flexDirection: "row", justifyContent: "space-between" },
+        calorieBarMuted: { fontSize: 12, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+        calorieBarTrack: {
+          height: 10,
+          backgroundColor: colors.border,
+          borderRadius: 5,
+          overflow: "hidden",
+        },
+        calorieBarFill: { height: 10, borderRadius: 5, backgroundColor: Neon.purple },
+
+        macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
+        macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
+        macroBarTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 1 },
+        macroBarNums: { fontSize: 12, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+        macroBarTrack: {
+          height: 8,
+          backgroundColor: colors.border,
+          borderRadius: 4,
+          overflow: "hidden",
+        },
+        macroBarFill: { height: 8, borderRadius: 4 },
+
+        // Calorie math
+        calorieMathRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: Spacing.md,
+        },
+        calorieMathItem: { alignItems: "center" },
+        calorieMathNumber: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
+        calorieMathLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+        calorieMathOp: { fontSize: 18, color: colors.textTertiary, fontWeight: "600" },
+
+        // Meal sections
+        mealSlotHeader: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        },
+        mealSlotName: { fontSize: 18, fontWeight: "700", color: colors.text },
+        mealSlotCals: { fontSize: 18, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] },
+        mealSlotMacros: { fontSize: 12, color: colors.textSecondary },
+        mealRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: Spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        mealName: { fontSize: 15, fontWeight: "500", color: colors.text },
+        mealMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+        mealCals: { fontSize: 16, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] },
+
+        addFoodBtn: {
+          borderWidth: 1,
+          borderColor: Neon.purple + "60",
+          borderRadius: Radius.md,
+          paddingVertical: Spacing.md,
+          alignItems: "center",
+        },
+        addFoodBtnText: { color: Neon.purple, fontWeight: "700", letterSpacing: 1, fontSize: 13 },
+
+        emptyText: { color: colors.textTertiary, textAlign: "center", fontSize: 14 },
+
+        // Add food form
+        input: {
+          backgroundColor: colors.inputBg,
+          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.lg,
+          paddingVertical: Spacing.md,
+          color: colors.text,
+          fontSize: 15,
+        },
+        inputRow: { flexDirection: "row", gap: Spacing.sm },
+        submitBtn: {
+          backgroundColor: Neon.purple,
+          borderRadius: Radius.md,
+          paddingVertical: 14,
+          alignItems: "center",
+        },
+        submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+        floatingAdd: {
+          backgroundColor: Neon.purple,
+          borderRadius: Radius.md,
+          paddingVertical: 14,
+          alignItems: "center",
+        },
+        floatingAddText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+      }),
+    [colors],
+  );
 
   // Load journal
   useEffect(() => {
@@ -201,14 +285,14 @@ export default function TrackerScreen() {
 
         {/* Calories */}
         <View style={styles.card}>
-          <CalorieSummary consumed={totals.calories} goal={targets.calories} remaining={remaining} />
+          <CalorieSummary consumed={totals.calories} goal={targets.calories} remaining={remaining} styles={styles} />
         </View>
 
         {/* Macros */}
         <View style={styles.card}>
-          <MacroBarRow label="PROTEIN" current={totals.protein} goal={targets.protein} color={MacroColors.protein} />
-          <MacroBarRow label="CARBS" current={totals.carbs} goal={targets.carbs} color={MacroColors.carbs} />
-          <MacroBarRow label="FATS" current={totals.fat} goal={targets.fat} color={MacroColors.fat} />
+          <MacroBarRow label="PROTEIN" current={totals.protein} goal={targets.protein} color={MacroColors.protein} styles={styles} />
+          <MacroBarRow label="CARBS" current={totals.carbs} goal={targets.carbs} color={MacroColors.carbs} styles={styles} />
+          <MacroBarRow label="FATS" current={totals.fat} goal={targets.fat} color={MacroColors.fat} styles={styles} />
         </View>
 
         {/* Calorie math */}
@@ -278,7 +362,7 @@ export default function TrackerScreen() {
             <Text style={styles.cardTitle}>Quick Log</Text>
             <TextInput
               placeholder="Food name"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={colors.textTertiary}
               value={title}
               onChangeText={setTitle}
               style={styles.input}
@@ -286,7 +370,7 @@ export default function TrackerScreen() {
             <View style={styles.inputRow}>
               <TextInput
                 placeholder="Calories"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textTertiary}
                 keyboardType="number-pad"
                 value={kcal}
                 onChangeText={setKcal}
@@ -294,7 +378,7 @@ export default function TrackerScreen() {
               />
               <TextInput
                 placeholder="Protein"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textTertiary}
                 keyboardType="number-pad"
                 value={protein}
                 onChangeText={setProtein}
@@ -304,7 +388,7 @@ export default function TrackerScreen() {
             <View style={styles.inputRow}>
               <TextInput
                 placeholder="Carbs"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textTertiary}
                 keyboardType="number-pad"
                 value={carbs}
                 onChangeText={setCarbs}
@@ -312,7 +396,7 @@ export default function TrackerScreen() {
               />
               <TextInput
                 placeholder="Fat"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textTertiary}
                 keyboardType="number-pad"
                 value={fat}
                 onChangeText={setFat}
@@ -335,138 +419,64 @@ export default function TrackerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+/** Calorie summary + bar (avoids SVG / New-Arch issues with circular strokes). */
+function CalorieSummary({
+  consumed,
+  goal,
+  remaining,
+  styles,
+}: {
+  consumed: number;
+  goal: number;
+  remaining: number;
+  styles: Record<string, any>;
+}) {
+  const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
+  return (
+    <View style={styles.calorieSummary}>
+      <View style={styles.calorieHero}>
+        <Text style={styles.calorieHeroNumber}>{remaining}</Text>
+        <Text style={styles.calorieHeroLabel}>kcal left</Text>
+      </View>
+      <View style={styles.calorieBarBlock}>
+        <View style={styles.calorieBarLabels}>
+          <Text style={styles.calorieBarMuted}>Food {consumed}</Text>
+          <Text style={styles.calorieBarMuted}>Goal {goal}</Text>
+        </View>
+        <View style={styles.calorieBarTrack}>
+          <View style={[styles.calorieBarFill, { width: `${pct * 100}%` }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
 
-  header: { alignItems: "center", paddingVertical: Spacing.md },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Neon.purple,
-    letterSpacing: 3,
-  },
-
-  dateNav: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#16161e",
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-  },
-  dateNavArrow: { color: "#94a3b8", fontSize: 22, fontWeight: "600" },
-  dateNavLabel: { color: "#f8fafc", fontSize: 16, fontWeight: "600" },
-
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  cardTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
-
-  calorieSummary: { gap: Spacing.lg },
-  calorieHero: { alignItems: "center" },
-  calorieHeroNumber: {
-    fontSize: 44,
-    fontWeight: "800",
-    color: "#f8fafc",
-    fontVariant: ["tabular-nums"],
-  },
-  calorieHeroLabel: { fontSize: 12, fontWeight: "600", color: "#94a3b8", letterSpacing: 1, marginTop: 4 },
-  calorieBarBlock: { gap: Spacing.sm },
-  calorieBarLabels: { flexDirection: "row", justifyContent: "space-between" },
-  calorieBarMuted: { fontSize: 12, color: "#64748b", fontVariant: ["tabular-nums"] },
-  calorieBarTrack: {
-    height: 10,
-    backgroundColor: "#1e1e2a",
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  calorieBarFill: { height: 10, borderRadius: 5, backgroundColor: Neon.purple },
-
-  macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
-  macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
-  macroBarTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 1 },
-  macroBarNums: { fontSize: 12, color: "#64748b", fontVariant: ["tabular-nums"] },
-  macroBarTrack: {
-    height: 8,
-    backgroundColor: "#1e1e2a",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  macroBarFill: { height: 8, borderRadius: 4 },
-
-  // Calorie math
-  calorieMathRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.md,
-  },
-  calorieMathItem: { alignItems: "center" },
-  calorieMathNumber: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  calorieMathLabel: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
-  calorieMathOp: { fontSize: 18, color: "#64748b", fontWeight: "600" },
-
-  // Meal sections
-  mealSlotHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  mealSlotName: { fontSize: 18, fontWeight: "700", color: "#f8fafc" },
-  mealSlotCals: { fontSize: 18, fontWeight: "700", color: "#f8fafc", fontVariant: ["tabular-nums"] },
-  mealSlotMacros: { fontSize: 12, color: "#94a3b8" },
-  mealRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#1e1e2a",
-  },
-  mealName: { fontSize: 15, fontWeight: "500", color: "#f8fafc" },
-  mealMeta: { fontSize: 12, color: "#64748b", marginTop: 2 },
-  mealCals: { fontSize: 16, fontWeight: "600", color: "#f8fafc", fontVariant: ["tabular-nums"] },
-
-  addFoodBtn: {
-    borderWidth: 1,
-    borderColor: Neon.purple + "60",
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-  },
-  addFoodBtnText: { color: Neon.purple, fontWeight: "700", letterSpacing: 1, fontSize: 13 },
-
-  emptyText: { color: "#64748b", textAlign: "center", fontSize: 14 },
-
-  // Add food form
-  input: {
-    backgroundColor: "#1e1e2a",
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    color: "#f8fafc",
-    fontSize: 15,
-  },
-  inputRow: { flexDirection: "row", gap: Spacing.sm },
-  submitBtn: {
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  floatingAdd: {
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  floatingAddText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-});
+function MacroBarRow({
+  label,
+  current,
+  goal,
+  color,
+  styles,
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  color: string;
+  styles: Record<string, any>;
+}) {
+  const pct = goal > 0 ? Math.min(1, current / goal) : 0;
+  const rem = Math.max(0, goal - current);
+  return (
+    <View style={styles.macroBarBlock}>
+      <View style={styles.macroBarTop}>
+        <Text style={[styles.macroBarTitle, { color }]}>{label}</Text>
+        <Text style={styles.macroBarNums}>
+          {current}g / {goal}g · {rem}g left
+        </Text>
+      </View>
+      <View style={styles.macroBarTrack}>
+        <View style={[styles.macroBarFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}

@@ -111,6 +111,19 @@ function scale(m: MacroBreakdown, factor: number): MacroBreakdown {
   };
 }
 
+/** Estimate grams per countable item based on name pattern. */
+function countableGrams(name: string): number {
+  const n = name.toLowerCase();
+  if (/egg/i.test(n)) return COUNT_WEIGHT_G.egg;
+  if (/carrot|onion|potato|tomato|lemon|lime|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange/i.test(n)) return COUNT_WEIGHT_G.medium;
+  if (/sausage/i.test(n)) return 50;
+  // Small items
+  if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|peanut/i.test(n)) return 5;
+  if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster|shallot/i.test(n)) return 15;
+  if (/salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill/i.test(n)) return 3;
+  return 80;
+}
+
 /**
  * Estimate total macros for one structured ingredient row.
  */
@@ -178,20 +191,9 @@ export function estimateLineMacros(input: {
   } else if (u === "leaf" || u === "leaves") {
     grams = amt * 0.35;
   } else if (u === "count" || u === "each" || u === "piece" || u === "pieces") {
-    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange|sausage/i.test(name)) {
-      const per = /egg/i.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
-      grams = amt * per;
-    } else {
-      grams = amt * 80;
-    }
+    grams = amt * countableGrams(name);
   } else if (!u && amt > 0) {
-    // e.g. "2 carrots" — amount is count, use per-piece heuristic for vegetables
-    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange|sausage/i.test(name)) {
-      const per = /egg/i.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
-      grams = amt * per;
-    } else {
-      grams = amt * 80;
-    }
+    grams = amt * countableGrams(name);
   } else {
     grams = amt * 50;
   }

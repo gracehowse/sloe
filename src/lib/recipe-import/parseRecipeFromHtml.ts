@@ -12,6 +12,27 @@ export interface ParsedRecipeDraft {
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   imageUrl: string | null;
+  /** Original author name from schema.org JSON-LD */
+  sourceName: string | null;
+  /** Per-serving nutrition from the website's JSON-LD (most accurate source) */
+  siteNutrition: {
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fat: number | null;
+    fiberG: number | null;
+    sugarG: number | null;
+    saturatedFatG: number | null;
+    sodiumMg: number | null;
+  } | null;
+  /** Calories per serving (populated by import route if siteNutrition unavailable) */
+  calories?: number;
+  /** Protein per serving */
+  protein?: number;
+  /** Carbs per serving */
+  carbs?: number;
+  /** Fat per serving */
+  fat?: number;
 }
 
 function parseIsoDurationToMinutes(iso: string | null | undefined): number | null {
@@ -131,6 +152,83 @@ function firstImageUrl(image: unknown): string | null {
   return null;
 }
 
+/** Parse "105 calories" or "6 grams fat" → numeric value. */
+function parseNutritionValue(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") return raw;
+  if (typeof raw !== "string") return null;
+  const m = raw.match(/([\d.]+)/);
+  if (!m) return null;
+  const n = parseFloat(m[1]!);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Extract NutritionInformation from schema.org Recipe JSON-LD. */
+function extractNutrition(nutrition: unknown): ParsedRecipeDraft["siteNutrition"] {
+  if (!nutrition || typeof nutrition !== "object") return null;
+  const n = nutrition as Record<string, unknown>;
+  const calories = parseNutritionValue(n.calories);
+  const protein = parseNutritionValue(n.proteinContent);
+  const carbs = parseNutritionValue(n.carbohydrateContent);
+  const fat = parseNutritionValue(n.fatContent);
+  // If no meaningful data, skip
+  if (calories == null && protein == null && carbs == null && fat == null) return null;
+  return {
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiberG: parseNutritionValue(n.fiberContent),
+    sugarG: parseNutritionValue(n.sugarContent),
+    saturatedFatG: parseNutritionValue(n.saturatedFatContent),
+    sodiumMg: (() => {
+      const v = parseNutritionValue(n.sodiumContent);
+      if (v == null) return null;
+      // Schema.org uses "milligram of sodium" but some sites use grams
+      const raw = String(n.sodiumContent ?? "").toLowerCase();
+      if (raw.includes("gram") && !raw.includes("milligram")) return Math.round(v * 1000);
+      return Math.round(v);
+    })(),
+  };
+}
+
+function extractAuthorName(author: unknown): string | null {
+  if (!author) return null;
+  if (typeof author === "string") return author.trim() || null;
+  if (Array.isArray(author)) {
+    for (const a of author) {
+      const n = extractAuthorName(a);
+      if (n) return n;
+    }
+    return null;
+  }
+  if (typeof author === "object" && author !== null) {
+    const o = author as Record<string, unknown>;
+    if (typeof o.name === "string" && o.name.trim()) return o.name.trim();
+  }
+  return null;
+}
+
+function extractPublisherName(publisher: unknown): string | null {
+  if (!publisher) return null;
+  if (typeof publisher === "string") return publisher.trim() || null;
+  if (typeof publisher === "object" && publisher !== null) {
+    const o = publisher as Record<string, unknown>;
+    if (typeof o.name === "string" && o.name.trim()) return o.name.trim();
+  }
+  return null;
+}
+
+/** Extract a human-readable site name from a URL (e.g. "bbcgoodfood.com" → "BBC Good Food"). */
+export function siteNameFromUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return host;
+  } catch {
+    return "External source";
+  }
+}
+
 export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
   const scripts = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
   for (const m of scripts) {
@@ -173,6 +271,8 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
       const prepTimeMin = parseIsoDurationToMinutes(r.prepTime as string | undefined);
       const cookTimeMin = parseIsoDurationToMinutes(r.cookTime as string | undefined);
       const imageUrl = firstImageUrl(r.image);
+      const sourceName = extractAuthorName(r.author) ?? extractPublisherName(r.publisher);
+      const siteNutrition = extractNutrition(r.nutrition);
 
       return {
         title,
@@ -183,6 +283,8 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
         prepTimeMin,
         cookTimeMin,
         imageUrl,
+        sourceName,
+        siteNutrition,
       };
     }
   }

@@ -18,7 +18,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
-import { Colors, Neon, Spacing, Radius } from "@/constants/theme";
+import { Neon, Spacing, Radius } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
 import {
@@ -36,6 +37,7 @@ function apiBase(): string {
 type ImportState = "idle" | "checking" | "importing" | "success" | "error";
 
 export default function ImportSharedScreen() {
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -91,6 +93,10 @@ export default function ImportSharedScreen() {
           setError(data.message ?? "Could not extract a recipe from this link.");
           return;
         }
+
+        console.log("[import] API response - calories:", data.recipe.calories,
+          "ingredientMacros:", data.recipe.ingredientMacros?.length,
+          "first:", JSON.stringify(data.recipe.ingredientMacros?.[0])?.substring(0, 100));
 
         const saved = await saveImportedRecipe(userId, data.recipe);
         if ("error" in saved) {
@@ -248,6 +254,181 @@ export default function ImportSharedScreen() {
     setState("error");
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    backHit: { paddingVertical: 6, paddingHorizontal: 6 },
+    backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
+    topTitle: {
+      color: Neon.purple,
+      fontSize: 13,
+      fontWeight: "800",
+      letterSpacing: 3,
+    },
+    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, paddingTop: Spacing.lg, gap: Spacing.lg },
+    scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: Spacing.md },
+
+    panelCard: {
+      alignSelf: "stretch",
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Neon.pink + "30",
+      padding: Spacing.xxxl,
+      alignItems: "center",
+      gap: Spacing.md,
+    },
+    brandCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: Neon.purple,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    brandLetter: { color: "#fff", fontSize: 24, fontWeight: "800" },
+    loaderGap: { marginVertical: Spacing.sm },
+    panelTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.text,
+      textAlign: "center",
+    },
+    panelSub: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 22,
+      maxWidth: 300,
+    },
+    errorIconCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: Neon.pink + "18",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    errorBody: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 22,
+      marginBottom: Spacing.sm,
+    },
+
+    successSheet: {
+      width: "100%",
+      maxWidth: 400,
+      alignSelf: "center",
+      backgroundColor: colors.card,
+      borderRadius: Radius.xl,
+      borderWidth: 1,
+      borderColor: Neon.green + "35",
+      paddingVertical: Spacing.xxxl,
+      paddingHorizontal: Spacing.xxl,
+      alignItems: "center",
+      gap: Spacing.md,
+      // subtle "sheet" depth
+      shadowColor: Neon.purple,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.15,
+      shadowRadius: 24,
+      elevation: 8,
+    },
+    successIconWrap: {
+      marginBottom: Spacing.xs,
+    },
+    successKicker: {
+      fontSize: 11,
+      fontWeight: "800",
+      color: Neon.green,
+      letterSpacing: 3,
+      marginTop: Spacing.xs,
+    },
+    successRecipeTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.text,
+      textAlign: "center",
+      lineHeight: 28,
+      paddingHorizontal: Spacing.sm,
+    },
+    libraryChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: Neon.purple + "22",
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: Neon.purple + "44",
+      marginTop: Spacing.xs,
+      marginBottom: Spacing.sm,
+    },
+    libraryChipText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#e9d5ff",
+    },
+
+    input: {
+      alignSelf: "stretch",
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: 14,
+      color: colors.text,
+      fontSize: 16,
+    },
+    primaryBtn: {
+      alignSelf: "stretch",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      backgroundColor: Neon.purple,
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      marginTop: Spacing.xs,
+    },
+    btnPressed: { opacity: 0.88 },
+    primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    btnIconRight: { marginLeft: 2 },
+    outlineBtn: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 14,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Neon.purple + "55",
+      marginTop: Spacing.xs,
+    },
+    outlineBtnPressed: { backgroundColor: Neon.purple + "12" },
+    outlineBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+
+    textLinkBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: Spacing.md,
+    },
+    textLinkLabel: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+  }), [colors]);
+
   return (
     <KeyboardAvoidingView
       style={[styles.root, { paddingTop: insets.top }]}
@@ -306,9 +487,10 @@ export default function ImportSharedScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
-              onPress={() => router.replace("/(tabs)/library")}
+              onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
             >
-              <Text style={styles.outlineBtnText}>Browse library</Text>
+              <Ionicons name="nutrition-outline" size={18} color={Neon.purple} style={{ marginRight: 6 }} />
+              <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
           </View>
         )}
@@ -328,7 +510,7 @@ export default function ImportSharedScreen() {
                 value={manualUrl}
                 onChangeText={setManualUrl}
                 placeholder="https://…"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textTertiary}
                 style={styles.input}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -355,7 +537,7 @@ export default function ImportSharedScreen() {
                 if (state === "error") setState("idle");
               }}
               placeholder="Paste recipe URL"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={colors.textTertiary}
               style={styles.input}
               autoCapitalize="none"
               autoCorrect={false}
@@ -385,7 +567,7 @@ export default function ImportSharedScreen() {
               value={manualUrl}
               onChangeText={setManualUrl}
               placeholder="https://…"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={colors.textTertiary}
               style={styles.input}
               autoCapitalize="none"
               autoCorrect={false}
@@ -404,180 +586,3 @@ export default function ImportSharedScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const c = Colors.dark;
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: c.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.border,
-  },
-  backHit: { paddingVertical: 6, paddingHorizontal: 6 },
-  backText: { color: c.text, fontSize: 17, fontWeight: "600" },
-  topTitle: {
-    color: Neon.purple,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 3,
-  },
-  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, paddingTop: Spacing.lg, gap: Spacing.lg },
-  scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: Spacing.md },
-
-  panelCard: {
-    alignSelf: "stretch",
-    backgroundColor: c.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xxxl,
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  brandCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Neon.purple,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  brandLetter: { color: "#fff", fontSize: 24, fontWeight: "800" },
-  loaderGap: { marginVertical: Spacing.sm },
-  panelTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: c.text,
-    textAlign: "center",
-  },
-  panelSub: {
-    fontSize: 14,
-    color: c.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: 300,
-  },
-  errorIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Neon.pink + "18",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  errorBody: {
-    fontSize: 14,
-    color: c.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: Spacing.sm,
-  },
-
-  successSheet: {
-    width: "100%",
-    maxWidth: 400,
-    alignSelf: "center",
-    backgroundColor: c.card,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Neon.green + "35",
-    paddingVertical: Spacing.xxxl,
-    paddingHorizontal: Spacing.xxl,
-    alignItems: "center",
-    gap: Spacing.md,
-    // subtle “sheet” depth
-    shadowColor: Neon.purple,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  successIconWrap: {
-    marginBottom: Spacing.xs,
-  },
-  successKicker: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Neon.green,
-    letterSpacing: 3,
-    marginTop: Spacing.xs,
-  },
-  successRecipeTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: c.text,
-    textAlign: "center",
-    lineHeight: 28,
-    paddingHorizontal: Spacing.sm,
-  },
-  libraryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: Neon.purple + "22",
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Neon.purple + "44",
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.sm,
-  },
-  libraryChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#e9d5ff",
-  },
-
-  input: {
-    alignSelf: "stretch",
-    backgroundColor: "#1e1e2a",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: c.border,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: 14,
-    color: c.text,
-    fontSize: 16,
-  },
-  primaryBtn: {
-    alignSelf: "stretch",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    marginTop: Spacing.xs,
-  },
-  btnPressed: { opacity: 0.88 },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  btnIconRight: { marginLeft: 2 },
-  outlineBtn: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Neon.purple + "55",
-    marginTop: Spacing.xs,
-  },
-  outlineBtnPressed: { backgroundColor: Neon.purple + "12" },
-  outlineBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
-
-  textLinkBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: Spacing.md,
-  },
-  textLinkLabel: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
-});

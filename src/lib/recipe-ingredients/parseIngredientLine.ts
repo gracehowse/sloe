@@ -39,6 +39,20 @@ const UNIT_PREFIXES: { re: RegExp; unit: string }[] = [
   { re: /^small\b/i, unit: "small" },
   { re: /^pinch(?:es)?\b/i, unit: "pinch" },
   { re: /^pack(?:et)?s?\b/i, unit: "pack" },
+  { re: /^drizzles?\b/i, unit: "drizzle" },
+  { re: /^dash(?:es)?\b/i, unit: "dash" },
+  { re: /^splash(?:es)?\b/i, unit: "splash" },
+  { re: /^handfuls?\b/i, unit: "handful" },
+  { re: /^bunch(?:es)?\b/i, unit: "bunch" },
+  { re: /^knobs?\b/i, unit: "knob" },
+  { re: /^heads?\b/i, unit: "head" },
+  { re: /^bulbs?\b/i, unit: "bulb" },
+  { re: /^fillets?\b/i, unit: "fillet" },
+  { re: /^breasts?\b/i, unit: "breast" },
+  { re: /^thighs?\b/i, unit: "thigh" },
+  { re: /^drumsticks?\b/i, unit: "drumstick" },
+  { re: /^wings?\b/i, unit: "wing" },
+  { re: /^jars?\b/i, unit: "jar" },
 ];
 
 function normalizeLeadingFractions(s: string): string {
@@ -271,10 +285,14 @@ function normalizeCountableUnit(raw: string): string {
 }
 
 function splitUnitAndName(amountStr: string, rest: string): { amount: string; unit: string; name: string } {
+  // Strip modifier words before the unit: "heaped tbsp", "level tsp", "rounded tbsp"
+  const modifierMatch = rest.match(/^(heaped|heaping|level|rounded|generous|scant)\s+(.+)$/i);
+  const stripped = modifierMatch ? modifierMatch[2] : rest;
+
   for (const { re, unit } of UNIT_PREFIXES) {
-    const m = rest.match(re);
+    const m = stripped.match(re);
     if (m) {
-      const after = rest.slice(m[0].length).trim().replace(/^of\s+/i, "");
+      const after = stripped.slice(m[0].length).trim().replace(/^of\s+/i, "");
       return { amount: amountStr, unit, name: after || rest };
     }
   }

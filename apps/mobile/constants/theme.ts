@@ -36,18 +36,20 @@ export const Brand = {
 /** Dark-first color system */
 export const Colors = {
   light: {
-    text: '#f8fafc',
-    textSecondary: '#94a3b8',
-    textTertiary: '#64748b',
-    background: '#0a0a0f',
-    backgroundSecondary: '#111118',
-    card: '#16161e',
-    cardBorder: Neon.pink + '40',
-    border: '#1e1e2a',
+    text: '#0f172a',
+    textSecondary: '#475569',
+    textTertiary: '#94a3b8',
+    background: '#ffffff',
+    backgroundSecondary: '#f8fafc',
+    card: '#ffffff',
+    cardBorder: '#e2e8f0',
+    border: '#e2e8f0',
     tint: Neon.violet,
-    icon: '#94a3b8',
-    tabIconDefault: '#4a4a5a',
-    tabIconSelected: Neon.pink,
+    icon: '#64748b',
+    tabIconDefault: '#94a3b8',
+    tabIconSelected: Neon.violet,
+    inputBg: '#f1f5f9',
+    overlay: '#00000088',
   },
   dark: {
     text: '#f8fafc',
@@ -62,6 +64,8 @@ export const Colors = {
     icon: '#94a3b8',
     tabIconDefault: '#4a4a5a',
     tabIconSelected: Neon.pink,
+    inputBg: '#1e1e2a',
+    overlay: '#000000aa',
   },
 };
 

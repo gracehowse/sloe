@@ -6,6 +6,7 @@ import {
   extractRecipeFromCaption,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 
 function isAllowedUrl(url: string): boolean {
   try {
@@ -166,6 +167,15 @@ export async function POST(req: Request) {
         );
       }
 
+      const servings = recipe.servings ?? 1;
+      const parsed = parseRawIngredients(recipe.ingredients);
+      let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
+      try {
+        nutrition = await verifyIngredients({ ingredients: parsed, servings });
+      } catch (e) {
+        console.error("[recipe-import] verifyIngredients failed:", e instanceof Error ? e.message : e);
+      }
+
       return NextResponse.json({
         ok: true,
         source: socialPlatform,
@@ -174,10 +184,31 @@ export async function POST(req: Request) {
           description: null,
           ingredients: recipe.ingredients,
           instructions: recipe.steps,
-          servings: recipe.servings,
+          servings,
           prepTimeMin: null,
           cookTimeMin: null,
           imageUrl: meta.imageUrl,
+          calories: nutrition?.perServing.calories ?? 0,
+          protein: nutrition?.perServing.protein ?? 0,
+          carbs: nutrition?.perServing.carbs ?? 0,
+          fat: nutrition?.perServing.fat ?? 0,
+          fiberG: nutrition?.perServing.fiberG ?? 0,
+          sugarG: nutrition?.perServing.sugarG ?? 0,
+          sodiumMg: nutrition?.perServing.sodiumMg ?? 0,
+          ingredientMacros: nutrition?.verified.map((v) => ({
+            name: v.input.name,
+            amount: v.resolved.amount,
+            unit: v.resolved.unit,
+            calories: v.macros?.calories ?? 0,
+            protein: v.macros?.protein ?? 0,
+            carbs: v.macros?.carbs ?? 0,
+            fat: v.macros?.fat ?? 0,
+            fiberG: v.macros?.fiberG ?? 0,
+            sugarG: v.macros?.sugarG ?? 0,
+            sodiumMg: v.macros?.sodiumMg ?? 0,
+            source: v.source,
+          })) ?? [],
+          primarySource: nutrition?.primarySource ?? "Unverified",
         },
       });
     }
@@ -213,6 +244,51 @@ export async function POST(req: Request) {
     // Some sites respond with 404/403 while still serving real HTML (geo, bot-mitigation, A/B).
     // If we can extract a Recipe JSON-LD anyway, treat as success.
     if (parsed) {
+      const ingList = Array.isArray(parsed.ingredients) ? parsed.ingredients.map(String) : [];
+      const srv = parsed.servings ?? 1;
+
+      // Use site-provided nutrition (JSON-LD) as initial values
+      if (parsed.siteNutrition) {
+        const sn = parsed.siteNutrition;
+        parsed.calories = sn.calories ?? 0;
+        parsed.protein = sn.protein ?? 0;
+        parsed.carbs = sn.carbs ?? 0;
+        parsed.fat = sn.fat ?? 0;
+        (parsed as any).fiberG = sn.fiberG ?? 0;
+        (parsed as any).sugarG = sn.sugarG ?? 0;
+        (parsed as any).sodiumMg = sn.sodiumMg ?? 0;
+        (parsed as any).primarySource = "Site";
+      }
+
+      if (ingList.length > 0) {
+        try {
+          const parsedIngs = parseRawIngredients(ingList);
+          const nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
+          parsed.calories = nutrition.perServing.calories;
+          parsed.protein = nutrition.perServing.protein;
+          parsed.carbs = nutrition.perServing.carbs;
+          parsed.fat = nutrition.perServing.fat;
+          (parsed as any).fiberG = nutrition.perServing.fiberG;
+          (parsed as any).sugarG = nutrition.perServing.sugarG;
+          (parsed as any).sodiumMg = nutrition.perServing.sodiumMg;
+          (parsed as any).ingredientMacros = nutrition.verified.map((v) => ({
+            name: v.input.name,
+            amount: v.resolved.amount,
+            unit: v.resolved.unit,
+            calories: v.macros?.calories ?? 0,
+            protein: v.macros?.protein ?? 0,
+            carbs: v.macros?.carbs ?? 0,
+            fat: v.macros?.fat ?? 0,
+            fiberG: v.macros?.fiberG ?? 0,
+            sugarG: v.macros?.sugarG ?? 0,
+            sodiumMg: v.macros?.sodiumMg ?? 0,
+            source: v.source,
+          }));
+          (parsed as any).primarySource = nutrition.primarySource;
+        } catch (e) {
+          console.error("[recipe-import] nutrition verification failed:", e instanceof Error ? e.message : e);
+        }
+      }
       return NextResponse.json({ ok: true, recipe: parsed });
     }
     if (!res.ok) {

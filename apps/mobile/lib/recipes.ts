@@ -15,7 +15,7 @@ export function useDiscoverRecipes() {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, meal_type, author:profiles(display_name, avatar_url)"
+        "id, title, image_url, servings, calories, protein, carbs, fat, is_verified, created_at, author_id, meal_type, source_url, source_name"
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -27,16 +27,17 @@ export function useDiscoverRecipes() {
         id: r.id,
         title: r.title ?? "Untitled",
         image: r.image_url ?? DEFAULT_IMAGE,
-        creatorName: r.author?.display_name ?? "Community",
-        creatorImage: r.author?.avatar_url ?? DEFAULT_AVATAR,
+        creatorName: r.source_name ?? "Community",
+        creatorImage: DEFAULT_AVATAR,
         servings: r.servings ?? 1,
         calories: r.calories ?? 0,
         protein: r.protein ?? 0,
         carbs: r.carbs ?? 0,
         fat: r.fat ?? 0,
-        fiberG: r.fiber_g ?? undefined,
+        fiberG: undefined,
         isVerified: r.is_verified ?? false,
         authorId: r.author_id,
+        sourceUrl: r.source_url ?? null,
         mealSlots: r.meal_type ? [r.meal_type] : undefined,
         feedSource: "community" as const,
       }));
@@ -128,7 +129,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
     const { data: rows, error: recErr } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, author:profiles(display_name, avatar_url)",
+        "id, title, image_url, servings, calories, protein, carbs, fat, is_verified, author_id, meal_type, source_url, source_name",
       )
       .in("id", ids);
 
@@ -144,16 +145,17 @@ export function useSavedLibraryRecipes(userId: string | null) {
           id: r.id,
           title: r.title ?? "Untitled",
           image: r.image_url ?? DEFAULT_IMAGE,
-          creatorName: r.author?.display_name ?? "You",
-          creatorImage: r.author?.avatar_url ?? DEFAULT_AVATAR,
+          creatorName: r.source_name ?? "You",
+          creatorImage: DEFAULT_AVATAR,
           servings: r.servings ?? 1,
           calories: r.calories ?? 0,
           protein: r.protein ?? 0,
           carbs: r.carbs ?? 0,
           fat: r.fat ?? 0,
-          fiberG: r.fiber_g ?? undefined,
+          fiberG: undefined,
           isVerified: r.is_verified ?? false,
           authorId: r.author_id,
+          sourceUrl: r.source_url ?? null,
           mealSlots: r.meal_type ? [r.meal_type] : undefined,
         };
         return [r.id as string, card] as const;
@@ -182,7 +184,7 @@ export async function fetchRecipeDetail(recipeId: string) {
   const [recipeRes, ingredientsRes] = await Promise.all([
     supabase
       .from("recipes")
-      .select("*, author:profiles(display_name, avatar_url)")
+      .select("*")
       .eq("id", recipeId)
       .maybeSingle(),
     supabase

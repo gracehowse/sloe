@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
+import { ThemeProvider as PlatemateThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
@@ -32,6 +33,11 @@ function ForwardSocialSharesToImport() {
         const u = urlFromDeepLink(t);
         if (u) {
           router.replace({ pathname: "/import-shared", params: { url: u } });
+        } else {
+          // Share-intent deep link (platemate://dataUrl=platemateShareKey) —
+          // redirect home so expo-router doesn't show "Unmatched Route".
+          // ForwardShareIntentToImport will pick up the data and navigate.
+          router.replace("/");
         }
         return;
       }
@@ -124,27 +130,36 @@ function ResumeClipboardToImport() {
   return null;
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function RootLayoutInner() {
+  const { resolved } = useTheme();
 
   return (
+    <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
+      <ForwardSocialSharesToImport />
+      <ForwardShareIntentToImport />
+      <ResumeClipboardToImport />
+      <Stack>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="shopping" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="import-shared" options={{ headerShown: false }} />
+        <Stack.Screen name="cook" options={{ headerShown: false }} />
+        <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <ForwardSocialSharesToImport />
-        <ForwardShareIntentToImport />
-        <ResumeClipboardToImport />
-        <Stack>
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe', headerBackTitle: 'Back' }} />
-          <Stack.Screen name="shopping" options={{ headerShown: false }} />
-          <Stack.Screen name="profile" options={{ headerShown: false }} />
-          <Stack.Screen name="import-shared" options={{ headerShown: false }} />
-          <Stack.Screen name="cook" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <PlatemateThemeProvider>
+        <RootLayoutInner />
+      </PlatemateThemeProvider>
     </AuthProvider>
   );
 }

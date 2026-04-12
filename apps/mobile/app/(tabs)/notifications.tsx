@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { Neon, Radius, Spacing } from "@/constants/theme";
 
@@ -59,6 +60,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
+  const colors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,6 +70,62 @@ export default function NotificationsScreen() {
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadCount = useMemo(() => items.filter((n) => !n.readAt).length, [items]);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: Spacing.xl, gap: Spacing.md },
+        header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+        title: { fontSize: 28, fontWeight: "800", color: colors.text },
+        sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
+        center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+        err: { color: "#f87171", textAlign: "center", fontSize: 15 },
+        retry: {
+          marginTop: 6,
+          paddingHorizontal: 20,
+          paddingVertical: 12,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: Neon.purple + "80",
+        },
+        retryText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+        btn: {
+          backgroundColor: colors.card,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        btnDisabled: { opacity: 0.4 },
+        btnText: { color: colors.text, fontSize: 13, fontWeight: "600" },
+        empty: {
+          padding: Spacing.xl,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Neon.pink + "30",
+          backgroundColor: colors.card,
+          gap: 8,
+          marginTop: Spacing.md,
+        },
+        emptyTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
+        card: {
+          padding: Spacing.lg,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Neon.pink + "30",
+          backgroundColor: colors.card,
+          marginTop: Spacing.sm,
+        },
+        cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
+        body: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
+        stamp: { color: colors.textTertiary, marginTop: 8, fontSize: 12 },
+        hint: { color: colors.textTertiary, marginTop: 6, fontSize: 12 },
+        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Neon.purple, marginTop: 6 },
+        dotSpacer: { width: 10, height: 10, marginTop: 6 },
+      }),
+    [colors],
+  );
 
   const loadInbox = useCallback(async () => {
     if (!userId) return;
@@ -92,7 +150,7 @@ export default function NotificationsScreen() {
     const pubRows = (!pubRes.error ? pubRes.data : []) as PublishNotifRow[];
 
     if (appRes.error && pubRes.error) {
-      setError("Couldn’t load notifications right now.");
+      setError("Couldn't load notifications right now.");
       setItems([]);
       return;
     }
@@ -246,7 +304,7 @@ export default function NotificationsScreen() {
         </View>
       </Pressable>
     ),
-    [onNotificationPress],
+    [onNotificationPress, styles],
   );
 
   return (
@@ -294,7 +352,7 @@ export default function NotificationsScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.sub}>When something important happens, you’ll see it here.</Text>
+              <Text style={styles.sub}>When something important happens, you'll see it here.</Text>
             </View>
           }
         />
@@ -302,55 +360,3 @@ export default function NotificationsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f", paddingHorizontal: Spacing.xl, gap: Spacing.md },
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  title: { fontSize: 28, fontWeight: "800", color: "#f8fafc" },
-  sub: { color: "#94a3b8", marginTop: 4, fontSize: 14 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
-  err: { color: "#f87171", textAlign: "center", fontSize: 15 },
-  retry: {
-    marginTop: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Neon.purple + "80",
-  },
-  retryText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
-  btn: {
-    backgroundColor: "#16161e",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#1e1e2a",
-  },
-  btnDisabled: { opacity: 0.4 },
-  btnText: { color: "#f8fafc", fontSize: 13, fontWeight: "600" },
-  empty: {
-    padding: Spacing.xl,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    backgroundColor: "#16161e",
-    gap: 8,
-    marginTop: Spacing.md,
-  },
-  emptyTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
-  card: {
-    padding: Spacing.lg,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    backgroundColor: "#16161e",
-    marginTop: Spacing.sm,
-  },
-  cardTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "700" },
-  body: { color: "#94a3b8", marginTop: 4, fontSize: 14 },
-  stamp: { color: "#64748b", marginTop: 8, fontSize: 12 },
-  hint: { color: "#64748b", marginTop: 6, fontSize: 12 },
-  dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Neon.purple, marginTop: 6 },
-  dotSpacer: { width: 10, height: 10, marginTop: 6 },
-});

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 
@@ -41,6 +42,7 @@ export default function PlannerScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const colors = useThemeColors();
 
   const { recipes: discoverRecipes } = useDiscoverRecipes();
   const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
@@ -48,6 +50,85 @@ export default function PlannerScreen() {
   const [plan, setPlan] = useState<DayPlan[] | null>(null);
   const [generating, setGenerating] = useState(false);
   const [days, setDays] = useState<1 | 3 | 7>(1);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+        headerTitle: {
+          fontSize: 22,
+          fontWeight: "800",
+          color: Neon.purple,
+          letterSpacing: 3,
+          textAlign: "center",
+          paddingVertical: Spacing.md,
+        },
+
+        card: {
+          backgroundColor: colors.card,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Neon.pink + "30",
+          padding: Spacing.xl,
+          gap: Spacing.md,
+        },
+        cardTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+        cardDesc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+
+        daysRow: { flexDirection: "row", gap: Spacing.sm },
+        dayBtn: {
+          flex: 1,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: "center",
+        },
+        dayBtnActive: { borderColor: Neon.purple, backgroundColor: Neon.purple + "15" },
+        dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
+        dayBtnTextActive: { color: Neon.purple },
+
+        generateBtn: {
+          backgroundColor: Neon.purple,
+          borderRadius: Radius.md,
+          paddingVertical: 16,
+          alignItems: "center",
+        },
+        generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+        dayHeader: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        },
+        dayTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+        dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+
+        mealRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: Spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        mealSlot: { fontSize: 11, fontWeight: "700", color: Neon.purple, letterSpacing: 1 },
+        mealTitle: { fontSize: 15, fontWeight: "500", color: colors.text, marginTop: 2 },
+        mealMacros: { fontSize: 11, color: colors.textTertiary, marginTop: 2, fontVariant: ["tabular-nums"] },
+        mealChevron: { color: colors.tabIconDefault, fontSize: 22, fontWeight: "600" },
+
+        actionsRow: { gap: Spacing.md },
+        regenBtn: {
+          borderWidth: 1,
+          borderColor: Neon.purple + "50",
+          borderRadius: Radius.md,
+          paddingVertical: 14,
+          alignItems: "center",
+        },
+        regenBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+      }),
+    [colors],
+  );
 
   // Load existing plan from DB
   useEffect(() => {
@@ -210,78 +291,3 @@ export default function PlannerScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Neon.purple,
-    letterSpacing: 3,
-    textAlign: "center",
-    paddingVertical: Spacing.md,
-  },
-
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "30",
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: "#f8fafc" },
-  cardDesc: { fontSize: 14, color: "#94a3b8", lineHeight: 20 },
-
-  daysRow: { flexDirection: "row", gap: Spacing.sm },
-  dayBtn: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#1e1e2a",
-    alignItems: "center",
-  },
-  dayBtnActive: { borderColor: Neon.purple, backgroundColor: Neon.purple + "15" },
-  dayBtnText: { color: "#64748b", fontWeight: "600", fontSize: 14 },
-  dayBtnTextActive: { color: Neon.purple },
-
-  generateBtn: {
-    backgroundColor: Neon.purple,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  dayHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dayTitle: { fontSize: 18, fontWeight: "700", color: "#f8fafc" },
-  dayTotals: { fontSize: 12, color: "#94a3b8", fontVariant: ["tabular-nums"] },
-
-  mealRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#1e1e2a",
-  },
-  mealSlot: { fontSize: 11, fontWeight: "700", color: Neon.purple, letterSpacing: 1 },
-  mealTitle: { fontSize: 15, fontWeight: "500", color: "#f8fafc", marginTop: 2 },
-  mealMacros: { fontSize: 11, color: "#64748b", marginTop: 2, fontVariant: ["tabular-nums"] },
-  mealChevron: { color: "#4a4a5a", fontSize: 22, fontWeight: "600" },
-
-  actionsRow: { gap: Spacing.md },
-  regenBtn: {
-    borderWidth: 1,
-    borderColor: Neon.purple + "50",
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  regenBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
-});

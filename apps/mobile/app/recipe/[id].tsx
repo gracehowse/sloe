@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,11 +12,13 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
 
@@ -30,8 +33,12 @@ type FullRecipe = {
   protein: number;
   carbs: number;
   fat: number;
-  fiber_g: number | null;
+  fiber_g: number;
+  sugar_g: number;
+  sodium_mg: number;
   meal_type: string | null;
+  source_url: string | null;
+  source_name: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
 };
 
@@ -43,9 +50,12 @@ type Ingredient = {
   protein: number;
   carbs: number;
   fat: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  sodium_mg?: number;
 };
 
-function MacroRing({ value, goal, color, label, size = 56 }: { value: number; goal: number; color: string; label: string; size?: number }) {
+function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelColor }: { value: number; goal: number; color: string; label: string; size?: number; ringBgColor: string; labelColor: string }) {
   const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
   const pct = goal > 0 ? Math.min(1, value / goal) : 0;
@@ -53,14 +63,14 @@ function MacroRing({ value, goal, color, label, size = 56 }: { value: number; go
     <View style={{ alignItems: "center", gap: 4 }}>
       <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
         <Svg width={size} height={size} style={{ position: "absolute" }}>
-          <Circle cx={size/2} cy={size/2} r={r} stroke="#1e1e2a" strokeWidth={5} fill="none" />
+          <Circle cx={size/2} cy={size/2} r={r} stroke={ringBgColor} strokeWidth={5} fill="none" />
           <Circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={5} fill="none"
             strokeDasharray={`${circ}`} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
             rotation="-90" origin={`${size/2},${size/2}`} />
         </Svg>
         <Text style={{ color, fontSize: 12, fontWeight: "700" }}>{value}g</Text>
       </View>
-      <Text style={{ color: "#94a3b8", fontSize: 10, fontWeight: "600" }}>{label}</Text>
+      <Text style={{ color: labelColor, fontSize: 10, fontWeight: "600" }}>{label}</Text>
     </View>
   );
 }
@@ -73,6 +83,8 @@ export default function RecipeDetailScreen() {
   const userId = session?.user?.id ?? null;
   const { savedIds, toggleSave } = useSavedRecipes(userId);
 
+  const colors = useThemeColors();
+
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
@@ -82,17 +94,23 @@ export default function RecipeDetailScreen() {
     if (!recipeId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
-      const [recipeRes, ingRes] = await Promise.all([
-        supabase
+      // Try with source columns; fall back without if they don't exist yet (migration pending).
+      let recipeRes = await supabase
+        .from("recipes")
+        .select("id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name")
+        .eq("id", recipeId)
+        .maybeSingle();
+      if (recipeRes.error?.code === "42703") {
+        recipeRes = await supabase
           .from("recipes")
-          .select("id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, meal_type, author:profiles(display_name, avatar_url)")
+          .select("id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, meal_type")
           .eq("id", recipeId)
-          .maybeSingle(),
-        supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat")
-          .eq("recipe_id", recipeId),
-      ]);
+          .maybeSingle();
+      }
+      const ingRes = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+        .eq("recipe_id", recipeId);
       if (cancelled) return;
       if (recipeRes.data) setRecipe(recipeRes.data as any);
       if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
@@ -102,10 +120,169 @@ export default function RecipeDetailScreen() {
   }, [recipeId]);
 
   const saved = savedIds.has(recipeId);
+
+  // Compute totals from actual ingredients so they always match what's displayed
+  const macros = useMemo(() => {
+    if (ingredients.length === 0 && recipe) {
+      return {
+        calories: recipe.calories,
+        protein: recipe.protein,
+        carbs: recipe.carbs,
+        fat: recipe.fat,
+        fiber_g: recipe.fiber_g ?? 0,
+        sugar_g: recipe.sugar_g ?? 0,
+        sodium_mg: recipe.sodium_mg ?? 0,
+      };
+    }
+    const sum = ingredients.reduce(
+      (acc, i) => ({
+        calories: acc.calories + (i.calories ?? 0),
+        protein: acc.protein + (i.protein ?? 0),
+        carbs: acc.carbs + (i.carbs ?? 0),
+        fat: acc.fat + (i.fat ?? 0),
+        fiber_g: acc.fiber_g + (i.fiber_g ?? 0),
+        sugar_g: acc.sugar_g + (i.sugar_g ?? 0),
+        sodium_mg: acc.sodium_mg + (i.sodium_mg ?? 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber_g: 0, sugar_g: 0, sodium_mg: 0 },
+    );
+    const srv = recipe?.servings ?? 1;
+    return {
+      calories: Math.round(sum.calories / srv),
+      protein: Math.round(sum.protein / srv),
+      carbs: Math.round(sum.carbs / srv),
+      fat: Math.round(sum.fat / srv),
+      fiber_g: Math.round((sum.fiber_g / srv) * 10) / 10,
+      sugar_g: Math.round((sum.sugar_g / srv) * 10) / 10,
+      sodium_mg: Math.round(sum.sodium_mg / srv),
+    };
+  }, [ingredients, recipe]);
+
+  // Clean up video thumbnail URLs (YouTube thumbnails have baked-in play buttons)
+  const heroImageUrl = useMemo(() => {
+    const raw = recipe?.image_url ?? DEFAULT_IMAGE;
+    // YouTube thumbnail: swap hqdefault/mqdefault for maxresdefault (no play button overlay)
+    if (raw.includes("img.youtube.com") || raw.includes("i.ytimg.com")) {
+      return raw
+        .replace(/\/(hqdefault|mqdefault|sddefault|default)\.(jpg|webp)/, "/maxresdefault.$2");
+    }
+    return raw;
+  }, [recipe?.image_url]);
+
   const instructionSteps = (recipe?.instructions ?? "")
     .split(/\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
+    errorText: { color: colors.text, fontSize: 16 },
+    backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
+    backBtnText: { color: colors.text, fontWeight: "600" },
+
+    hero: { width: "100%", height: 280, backgroundColor: colors.border },
+    headerBtn: {
+      position: "absolute",
+      top: Spacing.lg,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "#000000aa",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerBtnText: { color: "#ffffff", fontSize: 22, fontWeight: "600" },
+
+    body: { padding: Spacing.xl, gap: Spacing.lg },
+
+    title: { fontSize: 24, fontWeight: "700", color: colors.text },
+    authorName: { fontSize: 14, color: colors.textSecondary },
+    mealTypeBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: Neon.purple + "20",
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.sm,
+    },
+    mealTypeText: { color: Neon.purple, fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+
+    calorieHero: { alignItems: "center", paddingVertical: Spacing.lg },
+    calorieNumber: { fontSize: 48, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
+    calorieLabel: { fontSize: 14, color: colors.textSecondary, marginTop: -4 },
+
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Neon.pink + "25",
+      padding: Spacing.xl,
+      gap: Spacing.md,
+    },
+    cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+
+    macroRingsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.sm },
+    servings: { fontSize: 12, color: colors.textTertiary, textAlign: "center" },
+
+    descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+
+    ingredientRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: Spacing.sm,
+    },
+    ingredientDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Neon.purple, marginTop: 6 },
+    ingredientText: { fontSize: 14, color: colors.text },
+    ingredientAmount: { fontWeight: "600" },
+    ingMacroRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
+    ingMacro: { fontSize: 11, color: colors.textTertiary, fontWeight: "600", fontVariant: ["tabular-nums"] as any },
+
+    stepRow: { flexDirection: "row", gap: Spacing.md, paddingVertical: Spacing.sm },
+    stepNumber: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: Neon.purple,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    stepText: { flex: 1, fontSize: 14, color: colors.border, lineHeight: 20 },
+
+    sourceCard: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: Spacing.xl,
+      gap: Spacing.sm,
+    },
+    sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
+    sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
+    sourceLinkBtn: {
+      marginTop: Spacing.xs,
+      alignSelf: "flex-start",
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Neon.purple + "55",
+    },
+    sourceLinkText: { color: Neon.purple, fontSize: 14, fontWeight: "600" },
+
+    actionsRow: { gap: Spacing.md, paddingBottom: 40 },
+    actionBtn: {
+      flexDirection: "row",
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  }), [colors]);
 
   if (loading) {
     return (
@@ -135,17 +312,19 @@ export default function RecipeDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero image */}
         <View>
-          <Image source={{ uri: recipe.image_url ?? DEFAULT_IMAGE }} style={styles.hero} />
+          <Image source={{ uri: heroImageUrl }} style={styles.hero} />
           <Pressable style={[styles.headerBtn, { left: Spacing.lg }]} onPress={() => router.back()}>
-            <Text style={styles.headerBtnText}>‹</Text>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
           </Pressable>
           <Pressable
             style={[styles.headerBtn, { right: Spacing.lg }]}
             onPress={() => toggleSave(recipeId)}
           >
-            <Text style={[styles.headerBtnText, saved && { color: Neon.pink }]}>
-              {saved ? "★" : "☆"}
-            </Text>
+            <Ionicons
+              name={saved ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color={saved ? Neon.green : "#fff"}
+            />
           </Pressable>
         </View>
 
@@ -163,7 +342,7 @@ export default function RecipeDetailScreen() {
 
           {/* Calorie hero */}
           <View style={styles.calorieHero}>
-            <Text style={styles.calorieNumber}>{recipe.calories}</Text>
+            <Text style={styles.calorieNumber}>{macros.calories}</Text>
             <Text style={styles.calorieLabel}>calories</Text>
           </View>
 
@@ -171,12 +350,10 @@ export default function RecipeDetailScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Macronutrients</Text>
             <View style={styles.macroRingsRow}>
-              <MacroRing value={recipe.protein} goal={150} color={MacroColors.protein} label="Protein" />
-              <MacroRing value={recipe.carbs} goal={200} color={MacroColors.carbs} label="Carbs" />
-              <MacroRing value={recipe.fat} goal={65} color={MacroColors.fat} label="Fat" />
-              {recipe.fiber_g != null && recipe.fiber_g > 0 && (
-                <MacroRing value={recipe.fiber_g} goal={28} color={MacroColors.fiber} label="Fiber" />
-              )}
+              <MacroRing value={macros.protein} goal={150} color={MacroColors.protein} label="Protein" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.carbs} goal={200} color={MacroColors.carbs} label="Carbs" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.fat} goal={65} color={MacroColors.fat} label="Fat" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.fiber_g} goal={28} color={MacroColors.fiber} label="Fibre" ringBgColor={colors.border} labelColor={colors.textSecondary} />
             </View>
             <Text style={styles.servings}>Per serving · {recipe.servings} serving{recipe.servings !== 1 ? "s" : ""}</Text>
           </View>
@@ -191,17 +368,35 @@ export default function RecipeDetailScreen() {
           {/* Ingredients */}
           {ingredients.length > 0 && (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Ingredients</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.cardTitle}>Ingredients</Text>
+                <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
+                  <Text style={{ color: Neon.purple, fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                </Pressable>
+              </View>
               {ingredients.map((ing, i) => (
                 <View key={i} style={styles.ingredientRow}>
                   <View style={styles.ingredientDot} />
-                  <Text style={styles.ingredientText}>
-                    <Text style={styles.ingredientAmount}>
-                      {ing.amount != null ? `${ing.amount} ${ing.unit ?? ""} ` : ""}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ingredientText}>
+                      <Text style={styles.ingredientAmount}>
+                        {ing.amount != null ? `${ing.amount} ${ing.unit ?? ""} ` : ""}
+                      </Text>
+                      {ing.name}
                     </Text>
-                    {ing.name}
-                  </Text>
-                  <Text style={styles.ingredientCals}>{ing.calories} kcal</Text>
+                    <View style={styles.ingMacroRow}>
+                      <Text style={styles.ingMacro}>{ing.calories} kcal</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.protein }]}>P:{ing.protein}g</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.carbs }]}>C:{ing.carbs}g</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.fat }]}>F:{ing.fat}g</Text>
+                      {(ing.fiber_g ?? 0) > 0 && (
+                        <Text style={[styles.ingMacro, { color: MacroColors.fiber }]}>Fi:{ing.fiber_g}g</Text>
+                      )}
+                      {(ing.sugar_g ?? 0) > 0 && (
+                        <Text style={[styles.ingMacro, { color: MacroColors.sugar }]}>Su:{ing.sugar_g}g</Text>
+                      )}
+                    </View>
+                  </View>
                 </View>
               ))}
             </View>
@@ -222,13 +417,28 @@ export default function RecipeDetailScreen() {
             </View>
           )}
 
+          {/* Source attribution */}
+          {recipe.source_url && (
+            <View style={styles.sourceCard}>
+              <Text style={styles.sourceLabel}>SOURCE</Text>
+              <Text style={styles.sourceName}>{recipe.source_name ?? "Original recipe"}</Text>
+              <Pressable
+                style={styles.sourceLinkBtn}
+                onPress={() => Linking.openURL(recipe.source_url!)}
+              >
+                <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* Action buttons */}
           <View style={styles.actionsRow}>
             <Pressable
               style={[styles.actionBtn, { backgroundColor: Neon.purple }]}
               onPress={() => toggleSave(recipeId)}
             >
-              <Text style={styles.actionBtnText}>{saved ? "Saved ★" : "Save to Library"}</Text>
+              <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>{saved ? "Saved" : "Save to Library"}</Text>
             </Pressable>
           </View>
         </View>
@@ -237,88 +447,3 @@ export default function RecipeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
-  errorText: { color: "#f8fafc", fontSize: 16 },
-  backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: "#1e1e2a" },
-  backBtnText: { color: "#f8fafc", fontWeight: "600" },
-
-  hero: { width: "100%", height: 280, backgroundColor: "#1e1e2a" },
-  headerBtn: {
-    position: "absolute",
-    top: Spacing.lg,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#000000aa",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerBtnText: { color: "#f8fafc", fontSize: 22, fontWeight: "600" },
-
-  body: { padding: Spacing.xl, gap: Spacing.lg },
-
-  title: { fontSize: 24, fontWeight: "700", color: "#f8fafc" },
-  authorName: { fontSize: 14, color: "#94a3b8" },
-  mealTypeBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: Neon.purple + "20",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.sm,
-  },
-  mealTypeText: { color: Neon.purple, fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
-
-  calorieHero: { alignItems: "center", paddingVertical: Spacing.lg },
-  calorieNumber: { fontSize: 48, fontWeight: "800", color: "#f8fafc", fontVariant: ["tabular-nums"] },
-  calorieLabel: { fontSize: 14, color: "#94a3b8", marginTop: -4 },
-
-  card: {
-    backgroundColor: "#16161e",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Neon.pink + "25",
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
-
-  macroRingsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.sm },
-  servings: { fontSize: 12, color: "#64748b", textAlign: "center" },
-
-  descText: { fontSize: 14, color: "#94a3b8", lineHeight: 20 },
-
-  ingredientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e1e2a",
-    gap: Spacing.sm,
-  },
-  ingredientDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Neon.purple },
-  ingredientText: { flex: 1, fontSize: 14, color: "#f8fafc" },
-  ingredientAmount: { fontWeight: "600" },
-  ingredientCals: { fontSize: 12, color: "#64748b", fontVariant: ["tabular-nums"] },
-
-  stepRow: { flexDirection: "row", gap: Spacing.md, paddingVertical: Spacing.sm },
-  stepNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Neon.purple,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  stepText: { flex: 1, fontSize: 14, color: "#e2e8f0", lineHeight: 20 },
-
-  actionsRow: { gap: Spacing.md, paddingBottom: 40 },
-  actionBtn: {
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-});

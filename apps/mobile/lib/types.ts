@@ -19,6 +19,7 @@ export interface RecipeCard {
   isSaved?: boolean;
   isPublished?: boolean;
   authorId?: string;
+  sourceUrl?: string | null;
   mealSlots?: string[];
   feedSource?: "catalog" | "community";
 }

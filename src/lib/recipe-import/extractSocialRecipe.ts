@@ -31,49 +31,120 @@ export interface SocialPostMeta {
   title: string | null;
 }
 
+/** User-Agent strings to try — platforms serve meta tags to some crawlers but not others. */
+const UA_ATTEMPTS = [
+  // Chrome desktop (default)
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  // Facebook crawler — many platforms whitelist this for link previews
+  "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+  // WhatsApp link preview bot
+  "WhatsApp/2.23.20.0",
+  // Telegram link preview
+  "TelegramBot (like TwitterBot)",
+  // Discord embed bot
+  "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+];
+
+/**
+ * Try to extract caption/description from Instagram's embedded JSON data.
+ * Instagram embeds post data in <script type="application/ld+json"> or
+ * window.__additionalDataLoaded / window._sharedData structures.
+ */
+function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: string | null } | null {
+  // Try JSON-LD first (Instagram sometimes includes this)
+  const ldMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const m of ldMatches) {
+    try {
+      const data = JSON.parse(m[1]!) as Record<string, unknown>;
+      const desc = (data.articleBody ?? data.description ?? data.caption ?? "") as string;
+      const img = (data.image ?? data.thumbnailUrl ?? "") as string;
+      if (desc && desc.length > 20) {
+        return { caption: desc, imageUrl: typeof img === "string" ? img : null };
+      }
+    } catch { /* continue */ }
+  }
+
+  // Try extracting from inline script data (window._sharedData, etc.)
+  const scriptMatches = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+  for (const m of scriptMatches) {
+    const script = m[1] ?? "";
+    // Look for caption/edge_media_to_caption patterns in serialized JSON
+    const captionMatch = script.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (captionMatch?.[1] && captionMatch[1].length > 30) {
+      try {
+        const decoded = JSON.parse(`"${captionMatch[1]}"`);
+        const imgMatch = script.match(/"display_url"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        let imgUrl: string | null = null;
+        if (imgMatch?.[1]) {
+          try { imgUrl = JSON.parse(`"${imgMatch[1]}"`); } catch { /* ignore */ }
+        }
+        return { caption: decoded, imageUrl: imgUrl };
+      } catch { /* continue */ }
+    }
+  }
+  return null;
+}
+
 /**
  * Fetch social post metadata from Instagram/TikTok URL.
- * Extracts og:description and og:image from the server-rendered HTML.
+ * Tries multiple user agents and extraction strategies to maximize success.
  */
 export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta | null> {
   const platform = detectSocialPlatform(url);
   if (!platform) return null;
 
-  const res = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    },
-  });
+  for (const ua of UA_ATTEMPTS) {
+    let html: string;
+    try {
+      const res = await fetch(url, {
+        redirect: "follow",
+        headers: {
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "User-Agent": ua,
+        },
+      });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("text/html")) continue;
+      html = await res.text();
+    } catch {
+      continue;
+    }
 
-  const ct = res.headers.get("content-type") ?? "";
-  if (!ct.includes("text/html")) return null;
+    // Strategy 1: Standard meta tags
+    const caption =
+      extractMetaContent(html, "og:description") ||
+      extractMetaContent(html, "twitter:description") ||
+      extractMetaContent(html, "description") ||
+      "";
 
-  const html = await res.text();
+    const imageUrl =
+      extractMetaContent(html, "og:image") ||
+      extractMetaContent(html, "twitter:image") ||
+      null;
 
-  // Extract og:description / twitter:description (caption text lives here)
-  const caption =
-    extractMetaContent(html, "og:description") ||
-    extractMetaContent(html, "twitter:description") ||
-    extractMetaContent(html, "description") ||
-    "";
+    const title =
+      extractMetaContent(html, "og:title") ||
+      extractMetaContent(html, "twitter:title") ||
+      null;
 
-  const imageUrl =
-    extractMetaContent(html, "og:image") ||
-    extractMetaContent(html, "twitter:image") ||
-    null;
+    if (caption || title) {
+      return { platform, caption, imageUrl, title };
+    }
 
-  const title =
-    extractMetaContent(html, "og:title") ||
-    extractMetaContent(html, "twitter:title") ||
-    null;
+    // Strategy 2: Embedded JSON data in the page
+    const embedded = extractFromEmbeddedJson(html);
+    if (embedded) {
+      return {
+        platform,
+        caption: embedded.caption,
+        imageUrl: embedded.imageUrl,
+        title: null,
+      };
+    }
+  }
 
-  if (!caption && !title) return null;
-
-  return { platform, caption, imageUrl, title };
+  return null;
 }
 
 function extractMetaContent(html: string, property: string): string | null {
@@ -160,7 +231,7 @@ Rules:
     ],
   };
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  let res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${openaiKey}`,
@@ -168,6 +239,23 @@ Rules:
     },
     body: JSON.stringify(body),
   });
+
+  // If the image URL is invalid/expired (common with Instagram CDN URLs),
+  // OpenAI returns 400. Retry without the image.
+  if (!res.ok && imageUrl) {
+    const textOnlyBody = {
+      ...body,
+      messages: [{ role: "user", content: prompt }],
+    };
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(textOnlyBody),
+    });
+  }
 
   if (!res.ok) {
     throw new Error(`OpenAI API error: ${res.status}`);

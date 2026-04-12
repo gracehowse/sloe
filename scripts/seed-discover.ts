@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
-import { parseRecipeFromHtml } from "@/lib/recipe-import/parseRecipeFromHtml";
+import { parseRecipeFromHtml, siteNameFromUrl } from "@/lib/recipe-import/parseRecipeFromHtml";
 import { parseIngredientLine } from "@/lib/recipe-ingredients/parseIngredientLine";
 
 type Parsed = NonNullable<ReturnType<typeof parseRecipeFromHtml>>;
@@ -33,11 +33,8 @@ function required(name: string): string {
 }
 
 function readUrls(): string[] {
-  // Dynamic import so this can run in Node without TS path gymnastics.
-  const fs = require("node:fs") as typeof import("node:fs");
-  const path = require("node:path") as typeof import("node:path");
-  const file = path.join(process.cwd(), "scripts", "seed-recipe-urls.txt");
-  const txt = fs.readFileSync(file, "utf8");
+  const file = `${process.cwd()}/scripts/seed-recipe-urls.txt`;
+  const txt = readFileSync(file, "utf8");
   return txt
     .split("\n")
     .map((l: string) => l.trim())
@@ -116,6 +113,8 @@ async function main() {
       description: parsed.description,
       instructions: parsed.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"),
       image_url: parsed.imageUrl,
+      source_url: url,
+      source_name: parsed.sourceName ?? siteNameFromUrl(url),
       servings,
       prep_time_min: parsed.prepTimeMin,
       cook_time_min: parsed.cookTimeMin,
@@ -123,16 +122,10 @@ async function main() {
       dietary: [],
       published: true,
       is_verified: verify.ok,
-      verified_source: verify.ok ? String(verify.primarySource ?? "auto") : null,
-      verified_at: verify.ok ? new Date().toISOString() : null,
-      verified_confidence: null,
       calories: verify.ok ? Math.round(Number(verify.perServing.calories) || 0) : 0,
       protein: verify.ok ? Math.round(Number(verify.perServing.protein) || 0) : 0,
       carbs: verify.ok ? Math.round(Number(verify.perServing.carbs) || 0) : 0,
       fat: verify.ok ? Math.round(Number(verify.perServing.fat) || 0) : 0,
-      fiber_g: verify.ok ? Number(verify.perServing.fiberG) || 0 : 0,
-      sugar_g: verify.ok ? Number(verify.perServing.sugarG) || 0 : 0,
-      sodium_mg: verify.ok ? Number(verify.perServing.sodiumMg) || 0 : 0,
     };
 
     const { data: recipeRow, error: rErr } = await sb.from("recipes").insert(recipeInsert).select("id").single();
@@ -154,11 +147,6 @@ async function main() {
         protein: v ? Number(v.protein) : 0,
         carbs: v ? Number(v.carbs) : 0,
         fat: v ? Number(v.fat) : 0,
-        fiber_g: v ? Number(v.fiberG) : 0,
-        sugar_g: v ? Number(v.sugarG) : 0,
-        sodium_mg: v ? Number(v.sodiumMg) : 0,
-        is_verified: Boolean(v),
-        confidence: verify.ok ? Number(verify.verified[idx]?.confidence ?? 0) : 0,
       };
     });
 

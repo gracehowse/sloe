@@ -30,11 +30,28 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "not_found", message: "Food not found." }, { status: 404 });
     }
     const macrosPer100g = fdcFoodMacrosPer100g(food);
+
+    // Extract portion measures (e.g. "1 medium", "1 cup, sliced") with gram weights
+    const portions = (food.foodPortions ?? [])
+      .filter((p) => p.gramWeight && p.gramWeight > 0)
+      .map((p) => {
+        const unit = p.measureUnit?.name ?? p.measureUnit?.abbreviation ?? "";
+        const modifier = p.modifier ?? "";
+        const desc = p.portionDescription
+          ?? [p.amount ?? 1, unit, modifier].filter(Boolean).join(" ").trim();
+        return {
+          label: desc || `${p.gramWeight}g`,
+          gramWeight: p.gramWeight!,
+          amount: p.amount ?? 1,
+        };
+      });
+
     return NextResponse.json({
       ok: true,
       fdcId,
       description: food.description,
       macrosPer100g,
+      portions,
     });
   } catch (e) {
     return NextResponse.json(

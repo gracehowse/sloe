@@ -17,6 +17,22 @@ const COUNT_WEIGHT_G: Record<string, number> = {
   small: 80,
   pinch: 0.3,
   egg: 50,
+  drizzle: 8,
+  dash: 2,
+  splash: 10,
+  handful: 30,
+  bunch: 60,
+  knob: 15,
+  head: 200,
+  bulb: 60,
+  stick: 30,
+  fillet: 170,
+  breast: 200,
+  thigh: 120,
+  drumstick: 90,
+  wing: 40,
+  can: 400,
+  jar: 250,
 };
 
 const ML_PER_TBSP = 14.7868;
@@ -54,10 +70,34 @@ export function measureToGrams(input: MeasureInput): number {
   if (u === "tin") return amt * (/tomato|plum|chopped|passata|marzano|diced/.test(name) ? 400 : 220);
   if (u === "pack") return amt * (/basil|herb|lettuce|salad|rocket|arugula|spinach/.test(name) ? 35 : 120);
 
+  // Lookup unit in the COUNT_WEIGHT_G table (handles drizzle, dash, handful, etc.)
+  if (COUNT_WEIGHT_G[u] != null) return amt * COUNT_WEIGHT_G[u];
+
   if (u === "count" || u === "" || u === "each") {
-    if (/carrot|onion|potato|tomato|lemon|lime|egg|pepper|apple|banana/.test(name)) {
+    // Check if the name itself contains a quantity word (e.g. "drizzle of honey")
+    for (const [word, g] of Object.entries(COUNT_WEIGHT_G)) {
+      if (name.includes(word)) return amt * g;
+    }
+    // Medium-sized whole produce
+    if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|pepper|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
       const per = /egg/.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
       return amt * per;
+    }
+    // Small items (individual pieces weigh a few grams)
+    if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|shallot|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|macadamia|peanut/.test(name)) {
+      return amt * 5;
+    }
+    // Medium-small items
+    if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) {
+      return amt * 15;
+    }
+    // Herbs and spices are light
+    if (/salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill|tarragon|sage/.test(name)) {
+      return amt * 3;
+    }
+    // Sausages, biscuits etc
+    if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) {
+      return amt * 50;
     }
     return amt * 80;
   }

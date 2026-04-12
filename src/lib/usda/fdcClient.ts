@@ -22,11 +22,21 @@ export type FdcNutrient = {
   amount?: number;
 };
 
+export type FdcFoodPortion = {
+  id?: number;
+  amount?: number;
+  gramWeight?: number;
+  modifier?: string;
+  measureUnit?: { name?: string; abbreviation?: string };
+  portionDescription?: string;
+};
+
 export type FdcFood = {
   fdcId: number;
   description: string;
   dataType?: string;
   foodNutrients?: FdcNutrient[];
+  foodPortions?: FdcFoodPortion[];
 };
 
 const API_BASE = "https://api.nal.usda.gov/fdc/v1";
@@ -41,10 +51,18 @@ export function fdcConfigFromEnv(): FdcConfig {
   return { apiKey: requiredEnv("USDA_FDC_API_KEY") };
 }
 
-export async function fdcFoodsSearch(cfg: FdcConfig, query: string): Promise<FdcFoodSearchHit[]> {
+export async function fdcFoodsSearch(
+  cfg: FdcConfig,
+  query: string,
+  opts?: { dataType?: string[] },
+): Promise<FdcFoodSearchHit[]> {
   const url = new URL(`${API_BASE}/foods/search`);
   url.searchParams.set("api_key", cfg.apiKey);
-  // Use POST to avoid edge-case 400s with long/unusual query strings.
+
+  const body: Record<string, unknown> = { query, pageSize: 25 };
+  if (opts?.dataType?.length) {
+    body.dataType = opts.dataType;
+  }
 
   const res = await fetch(url.toString(), {
     method: "POST",
@@ -53,7 +71,7 @@ export async function fdcFoodsSearch(cfg: FdcConfig, query: string): Promise<Fdc
       "Content-Type": "application/json",
       "User-Agent": "PlatemateNutritionVerifier/1.0",
     },
-    body: JSON.stringify({ query, pageSize: 10 }),
+    body: JSON.stringify(body),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -97,6 +115,7 @@ export async function fdcFoodGet(cfg: FdcConfig, fdcId: number): Promise<FdcFood
     description: f.description,
     dataType: typeof f.dataType === "string" ? f.dataType : undefined,
     foodNutrients: Array.isArray(f.foodNutrients) ? (f.foodNutrients as FdcNutrient[]) : undefined,
+    foodPortions: Array.isArray((f as any).foodPortions) ? ((f as any).foodPortions as FdcFoodPortion[]) : undefined,
   };
 }
 
