@@ -21,6 +21,8 @@
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
     "smoke:production": "node --import tsx scripts/production-smoke.ts",
     "mobile:dev": "npm run start --prefix apps/mobile",
+    "mobile:prebuild": "npm run prebuild --prefix apps/mobile",
+    "mobile:ios": "npm run ios --prefix apps/mobile",
     "mobile:ios:prebuild": "npm run ios:prebuild --prefix apps/mobile",
     "mobile:ios:xcode": "npm run ios:xcode --prefix apps/mobile"
   },
