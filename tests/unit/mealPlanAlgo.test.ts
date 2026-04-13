@@ -3,7 +3,7 @@
  * Covers slot filtering, portion scaling, variety, and macro targeting.
  */
 import { describe, it, expect } from "vitest";
-import { generateSmartPlan, type SimpleRecipe } from "../../apps/mobile/lib/mealPlanAlgo";
+import { generateSmartPlan, type SimpleRecipe } from "../../src/lib/nutrition/mealPlanAlgo";
 
 const breakfast: SimpleRecipe = { id: "b1", title: "Oats", calories: 350, protein: 20, carbs: 50, fat: 8, mealType: ["breakfast"] };
 const lunch: SimpleRecipe = { id: "l1", title: "Salad", calories: 400, protein: 30, carbs: 35, fat: 15, mealType: ["lunch"] };
