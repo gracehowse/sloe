@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
+import { getPlatemateWebBase } from "@/lib/platemateWeb";
 
 type MenuItem = { label: string; icon: keyof typeof Ionicons.glyphMap; route: string };
 
@@ -41,6 +42,18 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     ],
   },
 ];
+
+function openLegalPath(path: "/privacy" | "/terms") {
+  const base = getPlatemateWebBase();
+  if (!base) {
+    Alert.alert("Unavailable", "Web URL is not configured in app settings.");
+    return;
+  }
+  const url = `${base}${path}`;
+  void Linking.openURL(url).catch(() => {
+    Alert.alert("Could not open link", url);
+  });
+}
 
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
@@ -158,6 +171,20 @@ export default function MoreScreen() {
           </View>
         </View>
       ))}
+
+      <Text style={styles.sectionTitle}>Legal</Text>
+      <View style={styles.list}>
+        <Pressable style={[styles.row, styles.rowFirst]} onPress={() => openLegalPath("/privacy")}>
+          <Ionicons name="document-text-outline" size={20} color={Neon.purple} />
+          <Text style={styles.rowLabel}>Privacy policy</Text>
+          <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
+        </Pressable>
+        <Pressable style={[styles.row, styles.rowLast]} onPress={() => openLegalPath("/terms")}>
+          <Ionicons name="reader-outline" size={20} color={Neon.purple} />
+          <Text style={styles.rowLabel}>Terms of use</Text>
+          <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
+        </Pressable>
+      </View>
 
       <Pressable
         style={styles.signOutBtn}

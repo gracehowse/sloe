@@ -35,6 +35,36 @@ export default function PrivacyPage() {
             To provide the service (logging, meal planning, barcode and recipe features), improve reliability, and
             comply with law. We do not sell your personal data.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">AI, voice, and images</h2>
+          <p>
+            If you use optional features, we send the minimum content needed to operate them to our servers and, where
+            described below, to model providers:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Photo meal logging:</strong> images you upload are processed to suggest food items and nutrition
+              estimates. This processing may use third-party AI (e.g. OpenAI vision models).
+            </li>
+            <li>
+              <strong>Voice / text meal logging:</strong> text you submit (typed or transcribed) is processed to parse
+              foods and estimates and may use third-party AI (e.g. OpenAI). On the web, browser-based speech recognition
+              (Web Speech API) may run on your device or via your browser/OS vendor before text reaches us; review your
+              browser and OS privacy settings if you use that path.
+            </li>
+            <li>
+              <strong>Recipe and social import:</strong> URLs or shared links you provide may be fetched or parsed to
+              extract recipe content. Images from imports are treated like other uploads when you choose image-based
+              flows.
+            </li>
+          </ul>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Subprocessors and infrastructure</h2>
+          <p>
+            Depending on how Platemate is deployed, data may be processed by service providers such as hosting,
+            database, authentication, payments, analytics, error monitoring, and AI inference. Examples include
+            Supabase (auth/database), Stripe (billing), PostHog or similar (product analytics, if enabled), Sentry or
+            similar (errors, if enabled), and OpenAI (optional AI features). The exact list for your deployment should be
+            confirmed with the operator of that environment.
+          </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your choices</h2>
           <p>
             You can export locally stored data from Settings (Download your data) and sign out at any time. For

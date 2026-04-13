@@ -125,6 +125,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "extra": {
+      "platemateWebUrl": "https://platemate-api.vercel.app",
       "platemateApiUrl": "https://platemate-api.vercel.app",
       "supabaseUrl": "https://fnfgxsignmuepshbebrl.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4"

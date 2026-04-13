@@ -11,6 +11,13 @@ export function createSupabaseAnonClient(): SupabaseClient {
   return createClient(supabasePublicUrl(), publicAnonKey);
 }
 
+/** Service role client for server-only reads after the caller has verified `userId` (e.g. from JWT). */
+export function createSupabaseServiceRoleClient(): SupabaseClient | null {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!key) return null;
+  return createClient(supabasePublicUrl(), key, { auth: { persistSession: false } });
+}
+
 /** Validate a Supabase JWT from `Authorization: Bearer …` and return the user id. */
 export async function getUserIdFromAuthHeader(authHeader: string | null): Promise<string | null> {
   const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
@@ -57,10 +64,24 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
 
 export type UserTier = "free" | "base" | "pro";
 
-/** Look up user tier from profiles table. Returns "free" if not found. */
+/**
+ * Look up user tier from profiles. Uses the service role key so RLS does not hide the row
+ * (call only after `userId` is verified via `getUserIdFromRequest` / JWT).
+ * Without `SUPABASE_SERVICE_ROLE_KEY`, returns `"free"` (log in development).
+ */
 export async function getUserTier(userId: string): Promise<UserTier> {
-  const supabase = createSupabaseAnonClient();
-  const { data } = await supabase.from("profiles").select("user_tier").eq("id", userId).maybeSingle();
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[getUserTier] SUPABASE_SERVICE_ROLE_KEY unset; defaulting tier to free");
+    }
+    return "free";
+  }
+  const { data, error } = await sb.from("profiles").select("user_tier").eq("id", userId).maybeSingle();
+  if (error) {
+    console.warn("[getUserTier] profiles read failed:", error.message);
+    return "free";
+  }
   const tier = data?.user_tier as string | undefined;
   if (tier === "pro" || tier === "base") return tier;
   return "free";

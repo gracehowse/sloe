@@ -202,6 +202,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         body: formData,
       });
       const data = await resp.json();
+      if (resp.status === 403 && data.error === "upgrade_required") {
+        toast.error(data.message ?? "Photo meal logging requires a paid plan.");
+        return;
+      }
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
         toast.error(data.message ?? "Could not identify food items. Try a clearer photo.");
         return;
@@ -235,6 +239,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         body: JSON.stringify({ transcript: transcript.trim() }),
       });
       const data = await resp.json();
+      if (resp.status === 403 && data.error === "upgrade_required") {
+        toast.error(data.message ?? "Voice meal logging requires a paid plan.");
+        return;
+      }
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
         toast.error(data.message ?? "Could not parse your description. Try again.");
         return;
@@ -486,6 +494,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             ) : null}
             <button
               type="button"
+              aria-label="Previous day"
               onClick={() => setSelectedDateKey((k) => shiftDateKey(k, -1))}
               className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
@@ -500,6 +509,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             </button>
             <button
               type="button"
+              aria-label="Next day"
               onClick={() => setSelectedDateKey((k) => shiftDateKey(k, 1))}
               className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
@@ -519,7 +529,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             >
               Export CSV
             </button>
-            <label className="inline-flex items-center gap-1 rounded-lg border border-violet-300 dark:border-violet-700 px-3 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+            <label
+              aria-label="Upload a meal photo for AI nutrition estimate"
+              title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
+              className="inline-flex items-center gap-1 rounded-lg border border-violet-300 dark:border-violet-700 px-3 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+            >
               <Camera className="h-4 w-4" />
               <span className="hidden sm:inline">Photo</span>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
@@ -1096,7 +1110,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     <Plus className="h-5 w-5" />
                     {mealPlan && mealPlan.length > 0 ? "Add custom meal" : "Log your first meal"}
                   </button>
-                  <label className="inline-flex items-center gap-2 rounded-xl border border-violet-300 dark:border-violet-700 px-5 py-3 font-semibold text-violet-600 dark:text-violet-400 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+                  <label
+                    aria-label="Upload a meal photo for AI nutrition estimate"
+                    title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
+                    className="inline-flex items-center gap-2 rounded-xl border border-violet-300 dark:border-violet-700 px-5 py-3 font-semibold text-violet-600 dark:text-violet-400 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                  >
                     <Camera className="h-5 w-5" />
                     Photo log
                     <input
@@ -1110,6 +1128,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                   <button
                     type="button"
                     onClick={handleVoiceLog}
+                    title="Voice and typed descriptions may be processed with AI on our servers."
                     className="inline-flex items-center gap-2 rounded-xl border border-violet-300 dark:border-violet-700 px-5 py-3 font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
                   >
                     <Mic className="h-5 w-5" />
@@ -1583,8 +1602,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-slate-900 dark:text-white">Voice Log</DialogTitle>
-            <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Describe what you ate and we'll estimate the nutrition.
+            <DialogDescription className="text-slate-600 dark:text-slate-400 space-y-2">
+              <span className="block">
+                Describe what you ate and we&apos;ll estimate the nutrition. Text is processed on our servers and may be
+                sent to an AI provider (e.g. OpenAI). Browser speech recognition, if you use it elsewhere, may be
+                handled by your device or browser before text reaches us.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">

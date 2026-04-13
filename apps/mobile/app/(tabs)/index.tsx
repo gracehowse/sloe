@@ -28,6 +28,7 @@ import MacroRingSmall from "@/components/charts/MacroRingSmall";
 import { distributeMealBudget } from "@/lib/mealBudget";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
+import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -385,6 +386,15 @@ export default function TrackerScreen() {
         body: JSON.stringify({ transcript }),
       });
       const data = await resp.json();
+      if (resp.status === 403 || data.error === "upgrade_required") {
+        Alert.alert(
+          "Upgrade required",
+          typeof data.message === "string" && data.message
+            ? data.message
+            : "Voice meal logging is available on Base or Pro. Upgrade in the web app to continue.",
+        );
+        return;
+      }
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
         Alert.alert("Could not parse", data.message ?? "Try describing your meal differently.");
         return;
@@ -548,34 +558,81 @@ export default function TrackerScreen() {
 
   const loadJournal = useCallback(async () => {
     if (!userId) return;
+
+    const loadLegacyByDay = async (): Promise<ByDay | null> => {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("nutrition_journals")
+        .select("by_day")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (legacyError || !legacyData?.by_day || typeof legacyData.by_day !== "object") return null;
+      const raw = legacyData.by_day as Record<string, unknown>;
+      const out: ByDay = {};
+      for (const [dayKey, meals] of Object.entries(raw)) {
+        if (!Array.isArray(meals)) continue;
+        out[dayKey] = meals.map((m: Record<string, unknown>) => ({
+          id: typeof m.id === "string" ? m.id : newMealId(),
+          name: String(m.name ?? ""),
+          recipeTitle: String(m.recipeTitle ?? m.recipe_title ?? ""),
+          time: String(m.time ?? m.time_label ?? ""),
+          calories: Number(m.calories) || 0,
+          protein: Number(m.protein) || 0,
+          carbs: Number(m.carbs) || 0,
+          fat: Number(m.fat) || 0,
+          fiberG: m.fiberG != null ? Number(m.fiberG) : m.fiber_g != null ? Number(m.fiber_g) : undefined,
+          waterMl: m.waterMl != null ? Number(m.waterMl) : m.water_ml != null ? Number(m.water_ml) : undefined,
+          portionMultiplier:
+            m.portionMultiplier != null
+              ? Number(m.portionMultiplier)
+              : m.portion_multiplier != null
+                ? Number(m.portion_multiplier)
+                : undefined,
+        }));
+      }
+      return out;
+    };
+
     const { data: rows, error } = await supabase
       .from("nutrition_entries")
       .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier")
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
+    let loaded: ByDay = {};
+
     if (error) {
-      console.error("[tracker] load failed:", error.message);
+      const msg = error.message ?? "";
+      if (looksLikeMissingTableError(msg)) {
+        const legacy = await loadLegacyByDay();
+        setByDay(legacy ?? {});
+      } else {
+        console.error("[tracker] load failed:", msg);
+        setByDay({});
+      }
+    } else {
+      for (const r of rows ?? []) {
+        const k = r.date_key as string;
+        if (!loaded[k]) loaded[k] = [];
+        loaded[k].push({
+          id: r.id as string,
+          name: (r.name as string) ?? "",
+          recipeTitle: (r.recipe_title as string) ?? "",
+          time: (r.time_label as string) ?? "",
+          calories: (r.calories as number) ?? 0,
+          protein: (r.protein as number) ?? 0,
+          carbs: (r.carbs as number) ?? 0,
+          fat: (r.fat as number) ?? 0,
+          fiberG: (r.fiber_g as number) ?? undefined,
+          waterMl: (r.water_ml as number) ?? undefined,
+          portionMultiplier: (r.portion_multiplier as number) ?? undefined,
+        });
+      }
+      if (Object.keys(loaded).length === 0) {
+        const legacy = await loadLegacyByDay();
+        if (legacy && Object.keys(legacy).length > 0) loaded = legacy;
+      }
+      setByDay(loaded);
     }
-    const loaded: ByDay = {};
-    for (const r of (rows ?? [])) {
-      const k = r.date_key as string;
-      if (!loaded[k]) loaded[k] = [];
-      loaded[k].push({
-        id: r.id as string,
-        name: (r.name as string) ?? "",
-        recipeTitle: (r.recipe_title as string) ?? "",
-        time: (r.time_label as string) ?? "",
-        calories: (r.calories as number) ?? 0,
-        protein: (r.protein as number) ?? 0,
-        carbs: (r.carbs as number) ?? 0,
-        fat: (r.fat as number) ?? 0,
-        fiberG: (r.fiber_g as number) ?? undefined,
-        waterMl: (r.water_ml as number) ?? undefined,
-        portionMultiplier: (r.portion_multiplier as number) ?? undefined,
-      });
-    }
-    setByDay(loaded);
     setHydrated(true);
 
     // Load today's planned meals
