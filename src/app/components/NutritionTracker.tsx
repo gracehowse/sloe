@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   TrendingUp,
@@ -11,6 +11,7 @@ import {
   Search,
   Camera,
   Mic,
+  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
@@ -26,6 +27,12 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 import { Button } from "./ui/button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
@@ -184,6 +191,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [quickSelected, setQuickSelected] = useState<UsdaFoodDetails | null>(null);
   const [quickGrams, setQuickGrams] = useState(100);
   const [quickMealSlot, setQuickMealSlot] = useState("Lunch");
+  const headerPhotoInputRef = useRef<HTMLInputElement>(null);
   /** Recipe log: scale catalog/saved recipe macros (1 = solo, 2 = shared dinner, etc.). */
   const [recipePortionMultiplier, setRecipePortionMultiplier] = useState(1);
 
@@ -524,36 +532,47 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               <Plus className="h-4 w-4" />
               Add food
             </button>
-            {/* Overflow: Photo, Voice, Export */}
-            <div className="relative group">
-              <button
-                type="button"
-                className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                aria-label="More actions"
-              >
-                ···
-              </button>
-              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 min-w-[160px] py-1">
-                <label
-                  aria-label="Upload a meal photo for AI nutrition estimate"
-                  title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+            <input
+              ref={headerPhotoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
+              onChange={handlePhotoUpload}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  aria-label="More actions: photo, voice, export"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[10rem]">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    headerPhotoInputRef.current?.click();
+                  }}
                 >
                   <Camera className="h-4 w-4" />
                   Photo (AI)
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleVoiceLog}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleVoiceLog();
+                  }}
                 >
                   <Mic className="h-4 w-4" />
                   Voice (AI)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
                     const csv = buildNutritionCsvForDay(
                       selectedDateKey,
                       mealsForSelectedDate,
@@ -561,12 +580,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     );
                     downloadCsvFile(`platemate-${selectedDateKey}.csv`, csv);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
                 >
                   Export CSV
-                </button>
-              </div>
-            </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -1017,7 +1035,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                           <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{meal.time}</span>
                         </div>
                         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                          P {Math.round(meal.protein)}g · C {Math.round(meal.carbs)}g · F {Math.round(meal.fat)}g{meal.fiberG != null && meal.fiberG > 0 ? ` · Fb ${Math.round(meal.fiberG)}g` : ""}
+                          P {Math.round(meal.protein)}g · C {Math.round(meal.carbs)}g · F {Math.round(meal.fat)}g
+                          {meal.fiberG != null && meal.fiberG > 0 ? ` · Fb ${Math.round(meal.fiberG)}g` : ""}
+                          {meal.waterMl != null && meal.waterMl > 0 ? ` · ${formatWaterLine(meal.waterMl)}` : ""}
                         </p>
                       </div>
                       <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900 dark:text-white">{Math.round(meal.calories)}</span>
@@ -1029,16 +1049,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      <div className="hidden">
-                      </div>
-                      {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
-                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">
-                          {meal.fiberG != null && meal.fiberG > 0 ? <span>Fiber: {Math.round(meal.fiberG)}g</span> : null}
-                          {meal.waterMl != null && meal.waterMl > 0 ? (
-                            <span>Water: {formatWaterLine(meal.waterMl)}</span>
-                          ) : null}
-                        </div>
-                      ) : null}
                     </div>
                   );
                 })}

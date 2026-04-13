@@ -76,21 +76,22 @@ export default function BarcodeScreen() {
     }
     setLogging(true);
     const dateKey = dateKeyFromDate(new Date());
-    const meal = {
-      id: newMealId(),
+    const mealId = newMealId();
+    const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const { error: dbErr } = await supabase.from("nutrition_entries").insert({
+      id: mealId,
+      user_id: userId,
+      date_key: dateKey,
       name: "Snack",
-      recipeTitle: product.name,
-      time: new Date().toISOString(),
-      calories: scaled.calories,
+      recipe_title: product.name,
+      time_label: timeLabel,
+      calories: Math.min(32767, Math.round(scaled.calories)),
       protein: scaled.protein,
       carbs: scaled.carbs,
       fat: scaled.fat,
-      fiberG: scaled.fiberG ?? 0,
-    };
-    const { error: dbErr } = await supabase.from("nutrition_entries").upsert(
-      { user_id: userId, date: dateKey, meal_name: meal.name, meal_id: meal.id, data: meal },
-      { onConflict: "user_id,date,meal_id" },
-    );
+      fiber_g: scaled.fiberG ?? null,
+      portion_multiplier: 1,
+    });
     setLogging(false);
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);
