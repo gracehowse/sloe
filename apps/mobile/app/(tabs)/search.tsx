@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
 import Constants from "expo-constants";
+import { authedFetch } from "@/lib/authedFetch";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -28,7 +29,7 @@ export default function SearchScreen() {
     setErr(null);
     try {
       const url = `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}`;
-      const res = await fetch(url);
+      const res = await authedFetch(url);
       const data = (await res.json()) as { hits?: Hit[]; ok?: boolean };
       if (!res.ok) {
         setErr("Search failed.");

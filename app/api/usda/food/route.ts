@@ -3,8 +3,14 @@ import { fdcConfigFromEnv, fdcFoodGet } from "@/lib/usda/fdcClient";
 import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
 export async function GET(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   const rl = await rateLimit({ keyPrefix: "api:usda-food", limit: 60, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(

@@ -7,6 +7,7 @@ import {
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
 /** Block private/reserved IP ranges to prevent SSRF attacks. */
 function isPrivateHost(hostname: string): boolean {
@@ -127,6 +128,11 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
 }
 
 export async function POST(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   const rl = await rateLimit({ keyPrefix: "api:recipe-import", limit: 20, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { authedFetch } from "@/lib/authedFetch";
 import {
   View,
   Text,
@@ -80,7 +81,7 @@ export default function ImportSharedScreen() {
       setSavedRecipeId(null);
 
       try {
-        const res = await fetch(`${base}/api/recipe-import`, {
+        const res = await authedFetch(`${base}/api/recipe-import`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: trimmed }),

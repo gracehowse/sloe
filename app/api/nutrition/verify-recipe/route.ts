@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, type IngredientOverride } from "@/lib/nutrition/verifyIngredients";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
 type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
@@ -10,6 +11,11 @@ type VerifyRequest = {
 };
 
 export async function POST(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   const rl = await rateLimit({ keyPrefix: "api:verify-recipe", limit: 10, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(

@@ -20,3 +20,37 @@ export async function getUserIdFromAuthHeader(authHeader: string | null): Promis
   if (error || !data.user?.id) return null;
   return data.user.id;
 }
+
+/**
+ * Extract user ID from a Request — tries Authorization header first (mobile),
+ * then Supabase session cookies (web). Returns null if unauthenticated.
+ */
+export async function getUserIdFromRequest(req: Request): Promise<string | null> {
+  // 1. Try Authorization: Bearer <token> (mobile app sends this)
+  const fromHeader = await getUserIdFromAuthHeader(req.headers.get("authorization"));
+  if (fromHeader) return fromHeader;
+
+  // 2. Try Supabase session cookies (web app — middleware refreshes these)
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const accessTokenMatch = cookieHeader.match(/sb-[^-]+-auth-token[^=]*=([^;]+)/);
+  if (accessTokenMatch) {
+    try {
+      // The cookie value may be a JSON-encoded array where [0] is the access token
+      const raw = decodeURIComponent(accessTokenMatch[1]);
+      let token: string | null = null;
+      try {
+        const parsed = JSON.parse(raw);
+        token = Array.isArray(parsed) ? parsed[0] : typeof parsed === "string" ? parsed : null;
+      } catch {
+        token = raw;
+      }
+      if (token) {
+        return getUserIdFromAuthHeader(`Bearer ${token}`);
+      }
+    } catch {
+      // Cookie parse failed — fall through
+    }
+  }
+
+  return null;
+}

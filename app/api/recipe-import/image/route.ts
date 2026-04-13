@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,11 @@ const MAX_BYTES = 6 * 1024 * 1024;
  * Returns structured JSON for the recipe import UI.
  */
 export async function POST(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   const limited = await rateLimit({ keyPrefix: "recipe_import_image", limit: 15, windowMs: 60_000 });
   if (!limited.ok) {
     return NextResponse.json(

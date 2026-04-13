@@ -6,6 +6,14 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+// Mock auth to return a valid user for non-auth tests
+vi.mock("@/lib/supabase/serverAnonClient", () => ({
+  getUserIdFromRequest: async () => "test-user-id",
+  getUserIdFromAuthHeader: async () => "test-user-id",
+  createSupabaseAnonClient: () => ({}),
+  supabasePublicUrl: () => "https://example.supabase.co",
+}));
+
 import { POST } from "../../app/api/nutrition/verify-recipe/route";
 
 describe("POST /api/nutrition/verify-recipe", () => {

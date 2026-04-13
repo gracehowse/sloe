@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { supabase } from "./supabase";
+import { authedFetch } from "./authedFetch";
 
 type Extra = { platemateApiUrl?: string };
 function apiBase(): string {
@@ -224,7 +225,7 @@ export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 15000);
-    const res = await fetch(
+    const res = await authedFetch(
       `${base}/api/usda/search?q=${encodeURIComponent(query.trim())}`,
       { signal: ac.signal },
     );
@@ -464,7 +465,7 @@ export async function getFoodMacros(
   if (!base) return null;
 
   try {
-    const res = await fetch(`${base}/api/usda/food?fdcId=${fdcId}`);
+    const res = await authedFetch(`${base}/api/usda/food?fdcId=${fdcId}`);
     const json = await res.json();
     if (!json.ok) return null;
     const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
