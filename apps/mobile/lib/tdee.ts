@@ -116,28 +116,34 @@ export function calculateMacros(
   let fatPct: number;
   let fiberG: number;
 
+  // Protein is calculated as g/kg body weight (ISSN position stand), then
+  // converted to a calorie percentage. This ensures the gram amount stays
+  // meaningful regardless of calorie budget (a 1200-cal cut still gets
+  // adequate protein, not just 25% of a small number).
   switch (strategy) {
     case "high_protein":
-      // ~1.6g/kg protein, rest split between carbs/fat
-      proteinPct = Math.min(0.40, (weightKg * 1.6 * 4) / calories);
-      fatPct = 0.30;
-      fiberG = Math.round(calories / 70); // ~17g per 1200 cal
+      // 2.2 g/kg — upper end of ISSN 1.6–2.2 range for muscle building
+      proteinPct = Math.min(0.45, (weightKg * 2.2 * 4) / calories);
+      fatPct = 0.25;
+      fiberG = Math.round(calories / 70);
       break;
     case "high_satisfaction":
-      // Higher protein + fiber for satiety
-      proteinPct = 0.30;
+      // 1.8 g/kg — satiety-focused (Leidy 2015), higher fiber
+      proteinPct = Math.min(0.40, (weightKg * 1.8 * 4) / calories);
       fatPct = 0.30;
-      fiberG = Math.round(calories / 50); // ~24g per 1200 cal
+      fiberG = Math.round(calories / 45); // ~27g per 1200 cal
       break;
     case "low_carb":
-      proteinPct = 0.30;
+      // 1.8 g/kg protein, 45% fat — reduces carbs to ~25% (Volek/Phinney)
+      proteinPct = Math.min(0.35, (weightKg * 1.8 * 4) / calories);
       fatPct = 0.45;
       fiberG = Math.round(calories / 80);
       break;
     default: // balanced
-      proteinPct = 0.25;
-      fatPct = 0.30;
-      fiberG = Math.round(calories / 60);
+      // 1.6 g/kg — ISSN minimum for active individuals
+      proteinPct = Math.min(0.35, (weightKg * 1.6 * 4) / calories);
+      fatPct = 0.25;
+      fiberG = Math.round(calories / 55);
   }
 
   const protein = Math.round((calories * proteinPct) / 4);
@@ -200,8 +206,8 @@ export const PACE_LABELS: Record<PlanPace, { title: string; desc: string }> = {
 };
 
 export const STRATEGY_LABELS: Record<NutritionStrategy, { title: string; desc: string; emoji: string }> = {
-  balanced: { title: "Balanced", desc: "A well-rounded approach to nutrition", emoji: "⚖️" },
-  high_protein: { title: "High Protein", desc: "Build or maintain muscle mass", emoji: "💪" },
-  high_satisfaction: { title: "High Satisfaction", desc: "Stay fuller for longer with protein + fibre", emoji: "⭐" },
-  low_carb: { title: "Low Carb", desc: "Reduce carbohydrates, increase healthy fats", emoji: "🥑" },
+  balanced: { title: "Balanced", desc: "1.6 g/kg protein — well-rounded nutrition", emoji: "⚖️" },
+  high_protein: { title: "High Protein", desc: "2.2 g/kg protein — build or maintain muscle", emoji: "💪" },
+  high_satisfaction: { title: "High Satisfaction", desc: "1.8 g/kg protein + higher fibre for satiety", emoji: "⭐" },
+  low_carb: { title: "Low Carb", desc: "1.8 g/kg protein, 45% fat — reduce carbs", emoji: "🥑" },
 };

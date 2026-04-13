@@ -23,16 +23,27 @@ describe("calculateBmrMifflinStJeor", () => {
 describe("calculateMacroTargets", () => {
   const typicalFemale = { sex: "female" as const, age: 30, heightCm: 165, weightKg: 65, activityLevel: "moderate" as const, goal: "maintain" as const };
 
-  it("returns exact values for typical female, moderate, health goal", () => {
+  it("returns exact values for typical female, moderate, maintain goal", () => {
     const t = calculateMacroTargets(typicalFemale);
     // BMR=1370.25, TDEE=1370.25*1.55=2123.89, cal=round(2123.89)=2124
     expect(t.calories).toBe(2124);
-    expect(t.protein).toBe(143); // round(65*2.2)
+    expect(t.protein).toBe(104); // round(65*1.6) — ISSN minimum for active
     expect(t.fat).toBe(59); // round(2124*0.25/9)
-    // carbs = round((2124 - 143*4 - 59*9)/4) = round((2124-572-531)/4) = 255
-    expect(t.carbs).toBe(255);
+    // carbs = round((2124 - 104*4 - 59*9)/4) = round((2124-416-531)/4) = 294
+    expect(t.carbs).toBe(294);
     expect(t.fiber).toBe(30); // round(14*2124/1000) = 30
     expect(t.waterMl).toBe(2145); // round(65*33)
+  });
+
+  it("cut goal gives higher protein per kg than maintain (preserve muscle)", () => {
+    const maintain = calculateMacroTargets(typicalFemale);
+    const cut = calculateMacroTargets({ ...typicalFemale, goal: "cut" });
+    expect(cut.protein).toBeGreaterThan(maintain.protein); // 2.0 vs 1.6 g/kg
+  });
+
+  it("bulk goal gives highest protein per kg", () => {
+    const bulk = calculateMacroTargets({ ...typicalFemale, goal: "bulk" });
+    expect(bulk.protein).toBe(143); // round(65*2.2)
   });
 
   it("cut goal reduces calories by 15%", () => {

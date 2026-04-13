@@ -39,11 +39,10 @@ export function calculateMacroTargets(input: {
   const tdee = bmr * activityMultipliers[input.activityLevel];
   const calories = Math.round(tdee * (1 + goalAdjustments[input.goal]));
 
-  // Simple defaults aligned to the existing prototype:
-  // - protein: ~2.2g/kg
-  // - fat: 25% calories
-  // - carbs: remainder
-  const protein = Math.max(0, Math.round(input.weightKg * 2.2));
+  // Protein: weight-based targets per ISSN guidelines (g/kg body weight).
+  // cut: 2.0g/kg (preserve muscle in deficit), maintain: 1.6g/kg, bulk: 2.2g/kg.
+  const proteinPerKg: Record<Goal, number> = { cut: 2.0, maintain: 1.6, bulk: 2.2 };
+  const protein = Math.max(0, Math.round(input.weightKg * proteinPerKg[input.goal]));
   const fat = Math.max(0, Math.round((calories * 0.25) / 9));
   const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
 
