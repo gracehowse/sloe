@@ -316,6 +316,16 @@ export default function TrackerScreen() {
       const data = await resp.json();
       setPhotoAnalyzing(false);
 
+      if (resp.status === 403 && data.error === "upgrade_required") {
+        Alert.alert(
+          "Upgrade required",
+          typeof data.message === "string" && data.message
+            ? data.message
+            : "Photo meal logging is available on Base or Pro. Upgrade in the web app to continue.",
+        );
+        return;
+      }
+
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
         Alert.alert("Could not identify", data.message ?? "Try a clearer photo with better lighting.");
         return;
@@ -386,7 +396,7 @@ export default function TrackerScreen() {
         body: JSON.stringify({ transcript }),
       });
       const data = await resp.json();
-      if (resp.status === 403 || data.error === "upgrade_required") {
+      if (resp.status === 403 && data.error === "upgrade_required") {
         Alert.alert(
           "Upgrade required",
           typeof data.message === "string" && data.message
