@@ -114,7 +114,7 @@ export default function ProfileScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, target_calories, target_protein, target_carbs, target_fat")
+        .select("display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml")
         .eq("id", userId)
         .maybeSingle();
       if (!cancelled && data) {
@@ -123,7 +123,8 @@ export default function ProfileScreen() {
         if (data.target_protein) setProtein(String(data.target_protein));
         if (data.target_carbs) setCarbs(String(data.target_carbs));
         if (data.target_fat) setFat(String(data.target_fat));
-        // target_fiber_g and target_water_ml columns don't exist yet
+        if (data.target_fiber_g) setFiber(String(data.target_fiber_g));
+        if (data.target_water_ml) setWater(String(data.target_water_ml));
       }
       if (!cancelled) setLoading(false);
     })();
@@ -140,6 +141,8 @@ export default function ProfileScreen() {
       target_protein: Number(protein) || null,
       target_carbs: Number(carbs) || null,
       target_fat: Number(fat) || null,
+      target_fiber_g: Number(fiber) || null,
+      target_water_ml: Number(water) || null,
     };
     // Use upsert so it works for both new and existing profiles
     const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });
