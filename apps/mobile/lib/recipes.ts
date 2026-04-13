@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { supabase } from "./supabase";
 import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
@@ -62,10 +63,27 @@ export function useDiscoverRecipes() {
   return { recipes, loading, refresh };
 }
 
+/** Free-tier save limit — must match web (src/context/appData/constants.ts). */
+const FREE_SAVE_LIMIT = 10;
+
 /** Fetch user's saved recipe IDs. */
 export function useSavedRecipes(userId: string | null) {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+
+  // Load user tier once
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("user_tier")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.user_tier) setUserTier(data.user_tier as "free" | "base" | "pro");
+      });
+  }, [userId]);
 
   const refresh = useCallback(async () => {
     if (!userId) { setSavedIds(new Set()); setLoading(false); return; }
@@ -92,6 +110,15 @@ export function useSavedRecipes(userId: string | null) {
 
     setSavedIds((prev) => {
       const isSaved = prev.has(recipeId);
+
+      // Enforce free-tier save limit (matches web FREE_SAVE_LIMIT).
+      if (!isSaved && userTier === "free" && prev.size >= FREE_SAVE_LIMIT) {
+        Alert.alert(
+          "Save limit reached",
+          `Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes. Upgrade to save more.`,
+        );
+        return prev; // no change
+      }
       const next = new Set(prev);
       if (isSaved) next.delete(recipeId);
       else next.add(recipeId);
@@ -116,7 +143,7 @@ export function useSavedRecipes(userId: string | null) {
 
       return next;
     });
-  }, [userId]);
+  }, [userId, userTier]);
 
   return { savedIds, loading, refresh, toggleSave, isSaved: (id: string) => savedIds.has(id) };
 }
