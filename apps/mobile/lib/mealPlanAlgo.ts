@@ -45,7 +45,7 @@ export type DayPlan = {
   totals: { calories: number; protein: number; carbs: number; fat: number };
 };
 
-export const ALL_MEAL_SLOTS = ["Breakfast", "Lunch", "Snack", "Dinner"] as const;
+export const ALL_MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
 
 function mulberry32(seed: number): () => number {
   return () => {
@@ -219,7 +219,7 @@ export function generateSmartPlan(input: {
         day: d,
         meals: slots.map((name) => ({
           name,
-          recipeTitle: "Save more recipes for better plans",
+          recipeTitle: "Save recipes to build a macro-aware plan",
           calories: 0, protein: 0, carbs: 0, fat: 0,
           isPlaceholder: true,
         })),

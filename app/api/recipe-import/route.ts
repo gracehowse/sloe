@@ -8,10 +8,30 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 
+/** Block private/reserved IP ranges to prevent SSRF attacks. */
+function isPrivateHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  // Localhost
+  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1") return true;
+  // IPv4 private ranges
+  if (/^10\./.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
+  if (/^192\.168\./.test(h)) return true;
+  // Link-local
+  if (/^169\.254\./.test(h)) return true;
+  // IPv6 private
+  if (h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("fc")) return true;
+  // Metadata endpoints (cloud providers)
+  if (h === "metadata.google.internal" || h === "169.254.169.254") return true;
+  return false;
+}
+
 function isAllowedUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:";
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    if (isPrivateHost(u.hostname)) return false;
+    return true;
   } catch {
     return false;
   }
@@ -218,12 +238,17 @@ export async function POST(req: Request) {
     if (isPinterestUrl(trimmed)) {
       try {
         const outbound = await resolvePinterestOutboundUrl(trimmed);
-        if (outbound) {
+        if (outbound && isAllowedUrl(outbound)) {
           effectiveUrl = outbound;
         }
       } catch {
         // If Pinterest resolution fails, fall back to the original URL and let the normal importer handle it.
       }
+    }
+
+    // Re-validate resolved URL (may have changed via redirect)
+    if (!isAllowedUrl(effectiveUrl)) {
+      return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
     }
 
     const res = await fetch(effectiveUrl, {

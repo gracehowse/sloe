@@ -405,21 +405,24 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           >
             For you
           </button>
-          <button
-            type="button"
-            disabled={followGraphLoading}
-            onClick={() => setFeedScope("following")}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
-              feedScope === "following"
-                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {followGraphLoading ? "Following…" : "Following"}
-          </button>
+          {communityFeedCount > 0 && (
+            <button
+              type="button"
+              disabled={followGraphLoading}
+              onClick={() => setFeedScope("following")}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                feedScope === "following"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {followGraphLoading ? "Following\u2026" : "Following"}
+            </button>
+          )}
         </div>
 
         {feedScope === "forYou" &&
+        communityFeedCount > 0 &&
         !followGraphLoading &&
         newFromFollowsCount > 0 &&
         !dismissNewFromFollows ? (

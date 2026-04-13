@@ -31,15 +31,12 @@ export function computeLoggingStreak(
   if (todayMeals.length === 0) {
     d.setDate(d.getDate() - 1);
   }
-  for (let i = 0; i < 400; i++) {
+  for (;;) {
     const key = dateKeyFromDate(d);
     const meals = nutritionByDay[key] ?? [];
-    if (meals.length > 0) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-    } else {
-      break;
-    }
+    if (meals.length === 0) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
   }
   return streak;
 }

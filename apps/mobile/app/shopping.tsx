@@ -42,16 +42,40 @@ export default function ShoppingListScreen() {
     if (!userId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("shopping_lists")
-        .select("items")
+      // Try relational table first
+      const { data: rows, error: relErr } = await supabase
+        .from("shopping_items")
+        .select("id, name, amount, unit, category, checked, source")
         .eq("user_id", userId)
-        .maybeSingle();
-      if (!cancelled) {
-        if (data?.items && Array.isArray(data.items)) {
-          setItems(data.items as ShoppingItem[]);
-        }
+        .order("created_at", { ascending: true });
+
+      if (!cancelled && rows && rows.length > 0 && !relErr) {
+        setItems(rows.map((r) => ({
+          id: r.id as string,
+          name: (r.name as string) ?? "",
+          amount: (r.amount as string) ?? "",
+          unit: (r.unit as string) ?? "",
+          category: (r.category as string) ?? "Other",
+          checked: (r.checked as boolean) ?? false,
+          from: (r.source as string) ?? "",
+        })));
         setLoading(false);
+        return;
+      }
+
+      // Fall back to legacy JSONB
+      if (!cancelled) {
+        const { data } = await supabase
+          .from("shopping_lists")
+          .select("items")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!cancelled) {
+          if (data?.items && Array.isArray(data.items)) {
+            setItems(data.items as ShoppingItem[]);
+          }
+          setLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -62,11 +86,18 @@ export default function ShoppingListScreen() {
       const next = prev.map((i) =>
         i.id === itemId ? { ...i, checked: !i.checked } : i,
       );
-      // Persist
       if (userId) {
-        void supabase
-          .from("shopping_lists")
-          .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+        const target = next.find((x) => x.id === itemId);
+        if (target) {
+          void supabase.from("shopping_items").update({ checked: target.checked }).eq("id", itemId)
+            .then(({ error }) => {
+              if (error) {
+                void supabase
+                  .from("shopping_lists")
+                  .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+              }
+            });
+        }
       }
       return next;
     });
@@ -76,9 +107,14 @@ export default function ShoppingListScreen() {
     setItems((prev) => {
       const next = prev.filter((i) => i.id !== itemId);
       if (userId) {
-        void supabase
-          .from("shopping_lists")
-          .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+        void supabase.from("shopping_items").delete().eq("id", itemId)
+          .then(({ error }) => {
+            if (error) {
+              void supabase
+                .from("shopping_lists")
+                .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            }
+          });
       }
       return next;
     });
@@ -93,9 +129,14 @@ export default function ShoppingListScreen() {
         onPress: () => {
           setItems([]);
           if (userId) {
-            void supabase
-              .from("shopping_lists")
-              .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            void supabase.from("shopping_items").delete().eq("user_id", userId)
+              .then(({ error }) => {
+                if (error) {
+                  void supabase
+                    .from("shopping_lists")
+                    .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                }
+              });
           }
         },
       },
@@ -105,10 +146,16 @@ export default function ShoppingListScreen() {
   const clearChecked = useCallback(() => {
     setItems((prev) => {
       const next = prev.filter((i) => !i.checked);
-      if (userId) {
-        void supabase
-          .from("shopping_lists")
-          .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      const removedIds = prev.filter((i) => i.checked).map((i) => i.id);
+      if (userId && removedIds.length > 0) {
+        void supabase.from("shopping_items").delete().in("id", removedIds)
+          .then(({ error }) => {
+            if (error) {
+              void supabase
+                .from("shopping_lists")
+                .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            }
+          });
       }
       return next;
     });

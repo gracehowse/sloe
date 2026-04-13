@@ -23,7 +23,7 @@ const LOCAL_CLEAR_KEYS = [
   "platemate-recent-foods-v1",
 ];
 
-export const Settings = memo(function Settings({ userTier: _userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
+export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
   const { signOut, profileDisplayName, redeemPromoCode, notificationPrefs, setNotificationPrefs } = useAppData();
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -45,7 +45,12 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
   const [dietary, setDietary] = useState<string[]>(["vegetarian"]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");
 
-  // Pricing / tiers are intentionally hidden for now (all features unlocked).
+  const tierLabels: Record<string, { name: string; color: string }> = {
+    free: { name: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+    base: { name: "Base", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+    pro: { name: "Pro", color: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300" },
+  };
+  const currentTier = tierLabels[userTier] ?? tierLabels.free;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -60,7 +65,31 @@ export const Settings = memo(function Settings({ userTier: _userTier, authEmail,
         <p className="text-slate-600 dark:text-slate-400">Manage your account and preferences</p>
       </div>
 
-      {/* Features are temporarily all unlocked; pricing is hidden for now. */}
+      {/* Current plan */}
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <h3 className="text-slate-900 dark:text-white">Your plan</h3>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentTier.color}`}>
+              {currentTier.name}
+            </span>
+            {authEmail && (
+              <span className="text-sm text-slate-500 dark:text-slate-400">{authEmail}</span>
+            )}
+          </div>
+          {userTier !== "pro" && (
+            <Link
+              href="/pricing"
+              className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+            >
+              View plans
+            </Link>
+          )}
+        </div>
+      </div>
 
       {/* Promo code (e.g. testing / partner access) */}
       <div

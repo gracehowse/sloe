@@ -108,7 +108,15 @@ async function rateLimitUpstash(key: string, ip: string, limiter: Ratelimit): Pr
  */
 export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult> {
   const h = await headers();
-  const ip = getIpFromHeaders(h) ?? "unknown";
+  const ip = getIpFromHeaders(h);
+  if (!ip) {
+    // No identifiable IP — cannot meaningfully rate limit. On Vercel, x-forwarded-for is
+    // always present, so this path should only be reached in local dev.
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[rateLimit] no IP detected for ${opts.keyPrefix}, skipping rate limit`);
+    }
+    return { ok: true, remaining: opts.limit, resetAtMs: Date.now() + opts.windowMs };
+  }
   const key = `${opts.keyPrefix}:${ip}`;
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {

@@ -47,7 +47,10 @@ const PACE_DAILY_DEFICIT: Record<PlanPace, number> = {
  * Female: 10w + 6.25h − 5a − 161
  */
 export function calculateBMR(sex: Sex, weightKg: number, heightCm: number, age: number): number {
-  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  const w = Math.max(30, Math.min(weightKg, 350));   // 30–350 kg
+  const h = Math.max(100, Math.min(heightCm, 250));  // 100–250 cm
+  const a = Math.max(13, Math.min(age, 100));         // 13–100 years
+  const base = 10 * w + 6.25 * h - 5 * a;
   return sex === "male" ? base + 5 : base - 161;
 }
 
@@ -65,12 +68,13 @@ export function calculateTDEE(
 
 /** Calculate daily calorie budget for a given plan pace. No clamping — returns the real number. */
 export function calculateBudget(tdee: number, pace: PlanPace, goalType: string): number {
-  if (goalType === "gain" || goalType === "strength") {
+  if (goalType === "gain" || goalType === "strength" || goalType === "bulk") {
     return Math.round(tdee + PACE_DAILY_DEFICIT[pace] * 0.5);
   }
   if (goalType === "maintain" || goalType === "health") {
     return tdee;
   }
+  // "cut", "lose", or any unrecognized goal → deficit (safe default)
   return Math.round(tdee - PACE_DAILY_DEFICIT[pace]);
 }
 
@@ -104,6 +108,9 @@ export function calculateMacros(
   strategy: NutritionStrategy,
   weightKg: number,
 ): { protein: number; carbs: number; fat: number; fiber: number } {
+  if (!Number.isFinite(calories) || calories <= 0) {
+    return { protein: 0, carbs: 0, fat: 0, fiber: 15 };
+  }
   let proteinPct: number;
   let fatPct: number;
   let fiberG: number;
@@ -132,10 +139,10 @@ export function calculateMacros(
       fiberG = Math.round(calories / 60);
   }
 
-  const carbsPct = 1 - proteinPct - fatPct;
   const protein = Math.round((calories * proteinPct) / 4);
   const fat = Math.round((calories * fatPct) / 9);
-  const carbs = Math.round((calories * carbsPct) / 4);
+  // Derive carbs from remaining calories so macros always reconcile to budget
+  const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
 
   return { protein, carbs, fat, fiber: Math.max(15, fiberG) };
 }

@@ -53,9 +53,31 @@ async function applyTierForSubscription(sub: Stripe.Subscription): Promise<void>
 }
 
 /**
+ * In-memory deduplication cache for webhook events within a server instance lifecycle.
+ * Stripe may deliver the same event multiple times for reliability.
+ * All tier update operations are idempotent (set tier = X, not tier += 1),
+ * so duplicates are safe but wasteful. This cache prevents redundant DB writes.
+ */
+const processedEventIds = new Set<string>();
+const MAX_CACHED_EVENTS = 1000;
+
+/** @internal — exposed for tests only */
+export function _clearProcessedEventsForTesting(): void {
+  processedEventIds.clear();
+}
+
+/**
  * Core Stripe webhook business logic (testable without HTTP).
  */
 export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
+  // Skip already-processed events (deduplication)
+  if (processedEventIds.has(event.id)) return;
+  processedEventIds.add(event.id);
+  // Prevent unbounded memory growth
+  if (processedEventIds.size > MAX_CACHED_EVENTS) {
+    const first = processedEventIds.values().next().value;
+    if (first) processedEventIds.delete(first);
+  }
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;

@@ -90,6 +90,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
   } = useAppData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<DayPlan[] | null>(() => mealPlan);
+  const [loggedMealKeys, setLoggedMealKeys] = useState<Set<string>>(new Set());
   const [targetCalories, setTargetCalories] = useState(nutritionTargets.calories);
   const [targetProtein, setTargetProtein] = useState(nutritionTargets.protein);
   const [targetCarbs, setTargetCarbs] = useState(nutritionTargets.carbs);
@@ -108,6 +109,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       return;
     }
     setIsGenerating(true);
+    setLoggedMealKeys(new Set()); // Reset logged tracking for new plan
     setTimeout(async () => {
       try {
         await generateMealPlan({
@@ -221,6 +223,13 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
     const meal = dp?.meals[mealIndex];
     if (!meal || meal.isPlaceholder) return;
+
+    const mealKey = `${day}-${mealIndex}`;
+    if (loggedMealKeys.has(mealKey)) {
+      toast.message("Already logged this meal today.");
+      return;
+    }
+    setLoggedMealKeys((prev) => new Set(prev).add(mealKey));
 
     const d = new Date();
     d.setDate(d.getDate() + (day - 1));
@@ -616,11 +625,18 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
               <h3 className="text-slate-900 dark:text-white">Plan Duration</h3>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {[1, 3, 7].map((days) => (
+              {[1, 3, 7].map((days) => {
+                const locked = isFree && days > 1;
+                return (
                 <button
                   key={days}
                   type="button"
+                  disabled={locked}
                   onClick={() => {
+                    if (locked) {
+                      onUpgrade?.();
+                      return;
+                    }
                     setPlanDays(days as 1 | 3 | 7);
                   }}
                   className={[
@@ -647,8 +663,10 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                       ].join(" ")}
                     />
                   </div>
+                  {locked && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10 dark:bg-slate-900/30 rounded-xl"><span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Base</span></div>}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 

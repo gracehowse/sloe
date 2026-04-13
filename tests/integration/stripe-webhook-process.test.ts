@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Stripe from "stripe";
-import { processStripeWebhookEvent } from "@/lib/stripe/webhookProcess";
+import { processStripeWebhookEvent, _clearProcessedEventsForTesting } from "@/lib/stripe/webhookProcess";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 
@@ -15,6 +15,7 @@ describe("processStripeWebhookEvent", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    _clearProcessedEventsForTesting();
     process.env.STRIPE_PRICE_BASE_MONTHLY = "price_base_test";
     process.env.STRIPE_PRICE_PRO_MONTHLY = "price_pro_test";
   });

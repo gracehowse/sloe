@@ -56,8 +56,9 @@ export function fdcFoodMacrosPer100g(food: FdcFood): VerifiedMacros {
   const fat = findAmount(food, (n) => n.includes("total lipid") || n === "fat");
   const carbs = findAmount(food, (n) => n.includes("carbohydrate") || n === "carbohydrates");
   const fiber = findAmount(food, (n) => n.includes("fiber"));
-  const sugar = findAmount(food, (n) => n.includes("sugars"));
-  const sodium = findAmount(food, (n) => n === "sodium, na" || n.startsWith("sodium"));
+  const sugar = findAmount(food, (n) => n.includes("sugars, total") || n === "sugars") ??
+    findAmount(food, (n) => n.includes("sugars"));
+  const sodium = findAmount(food, (n) => n === "sodium, na" || n === "sodium");
 
   // Energy is usually kcal in FDC ("KCAL"). If it’s kJ, convert.
   let kcal = energy ? energy.amount : 0;

@@ -40,7 +40,7 @@ const STAPLES: Record<string, Staple> = {
   pepper: { per100g: { calories: 251, protein: 10, carbs: 64, fat: 3.3, fiberG: 25.3 } },
   tomato: { per100g: { calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiberG: 1.2 } },
   potato: { per100g: { calories: 77, protein: 2, carbs: 17, fat: 0.1, fiberG: 2.2 } },
-  milk: { per100g: { calories: 42, protein: 3.4, carbs: 5, fat: 1, fiberG: 0 } },
+  milk: { per100g: { calories: 42, protein: 3.4, carbs: 5, fat: 1, fiberG: 0 }, gPerMl: 1.03 },
   cream: { per100g: { calories: 340, protein: 2.8, carbs: 2.8, fat: 36, fiberG: 0 } },
   egg: { per100g: { calories: 143, protein: 13, carbs: 1.1, fat: 9.5, fiberG: 0 } },
   cheese: { per100g: { calories: 350, protein: 23, carbs: 1, fat: 28, fiberG: 0 } },
@@ -85,6 +85,72 @@ const STAPLES: Record<string, Staple> = {
   oats: { per100g: { calories: 389, protein: 17, carbs: 66, fat: 7, fiberG: 10.6 } },
   lentil: { per100g: { calories: 116, protein: 9, carbs: 20, fat: 0.4, fiberG: 7.9 } },
   chickpea: { per100g: { calories: 164, protein: 8.9, carbs: 27, fat: 2.6, fiberG: 7.6 } },
+  // ── Nuts & seeds ─────────────────────────────────────────────
+  almond: { per100g: { calories: 579, protein: 21, carbs: 22, fat: 50, fiberG: 12.5 } },
+  walnut: { per100g: { calories: 654, protein: 15, carbs: 14, fat: 65, fiberG: 6.7 } },
+  cashew: { per100g: { calories: 553, protein: 18, carbs: 30, fat: 44, fiberG: 3.3 } },
+  "peanut butter": { per100g: { calories: 588, protein: 25, carbs: 20, fat: 50, fiberG: 6 } },
+  peanut: { per100g: { calories: 567, protein: 26, carbs: 16, fat: 49, fiberG: 8.5 } },
+  "sesame seed": { per100g: { calories: 573, protein: 18, carbs: 23, fat: 50, fiberG: 11.8 } },
+  "chia seed": { per100g: { calories: 486, protein: 17, carbs: 42, fat: 31, fiberG: 34.4 } },
+  "flax seed": { per100g: { calories: 534, protein: 18, carbs: 29, fat: 42, fiberG: 27.3 } },
+  "sunflower seed": { per100g: { calories: 584, protein: 21, carbs: 20, fat: 51, fiberG: 8.6 } },
+  "pine nut": { per100g: { calories: 673, protein: 14, carbs: 13, fat: 68, fiberG: 3.7 } },
+  coconut: { per100g: { calories: 354, protein: 3.3, carbs: 15, fat: 33, fiberG: 9 } },
+  "coconut milk": { per100g: { calories: 230, protein: 2.3, carbs: 6, fat: 24, fiberG: 2.2 }, gPerMl: 1.0 },
+  "coconut oil": { per100g: { calories: 862, protein: 0, carbs: 0, fat: 100, fiberG: 0 }, gPerMl: 0.92 },
+  // ── Grains & legumes ─────────────────────────────────────────
+  quinoa: { per100g: { calories: 120, protein: 4.4, carbs: 21, fat: 1.9, fiberG: 2.8 } },
+  couscous: { per100g: { calories: 112, protein: 3.8, carbs: 23, fat: 0.2, fiberG: 1.4 } },
+  "black bean": { per100g: { calories: 132, protein: 8.9, carbs: 24, fat: 0.5, fiberG: 8.7 } },
+  "kidney bean": { per100g: { calories: 127, protein: 8.7, carbs: 23, fat: 0.5, fiberG: 6.4 } },
+  bread: { per100g: { calories: 265, protein: 9, carbs: 49, fat: 3.2, fiberG: 2.7 } },
+  tortilla: { per100g: { calories: 312, protein: 8, carbs: 52, fat: 8, fiberG: 3.4 } },
+  noodle: { per100g: { calories: 138, protein: 4.5, carbs: 25, fat: 2.1, fiberG: 1.2 } },
+  polenta: { per100g: { calories: 85, protein: 2, carbs: 18, fat: 0.5, fiberG: 1.4 } },
+  // ── Dairy & alternatives ─────────────────────────────────────
+  "cream cheese": { per100g: { calories: 342, protein: 6, carbs: 4, fat: 34, fiberG: 0 } },
+  mozzarella: { per100g: { calories: 280, protein: 28, carbs: 3.1, fat: 17, fiberG: 0 } },
+  parmesan: { per100g: { calories: 431, protein: 38, carbs: 4, fat: 29, fiberG: 0 } },
+  "sour cream": { per100g: { calories: 193, protein: 2.1, carbs: 4.6, fat: 20, fiberG: 0 } },
+  "greek yogurt": { per100g: { calories: 97, protein: 9, carbs: 3.6, fat: 5, fiberG: 0 } },
+  ricotta: { per100g: { calories: 174, protein: 11, carbs: 3, fat: 13, fiberG: 0 } },
+  feta: { per100g: { calories: 264, protein: 14, carbs: 4, fat: 21, fiberG: 0 } },
+  // ── Vegetables ───────────────────────────────────────────────
+  kale: { per100g: { calories: 35, protein: 2.9, carbs: 4.4, fat: 1.5, fiberG: 4.1 } },
+  cauliflower: { per100g: { calories: 25, protein: 1.9, carbs: 5, fat: 0.3, fiberG: 2 } },
+  asparagus: { per100g: { calories: 20, protein: 2.2, carbs: 3.9, fat: 0.1, fiberG: 2.1 } },
+  "green bean": { per100g: { calories: 31, protein: 1.8, carbs: 7, fat: 0.1, fiberG: 3.4 } },
+  pea: { per100g: { calories: 81, protein: 5.4, carbs: 14, fat: 0.4, fiberG: 5.1 } },
+  corn: { per100g: { calories: 86, protein: 3.3, carbs: 19, fat: 1.2, fiberG: 2.7 } },
+  cabbage: { per100g: { calories: 25, protein: 1.3, carbs: 6, fat: 0.1, fiberG: 2.5 } },
+  beetroot: { per100g: { calories: 43, protein: 1.6, carbs: 10, fat: 0.2, fiberG: 2.8 } },
+  lettuce: { per100g: { calories: 15, protein: 1.4, carbs: 2.9, fat: 0.2, fiberG: 1.3 } },
+  aubergine: { per100g: { calories: 25, protein: 1, carbs: 6, fat: 0.2, fiberG: 3 } },
+  eggplant: { per100g: { calories: 25, protein: 1, carbs: 6, fat: 0.2, fiberG: 3 } },
+  leek: { per100g: { calories: 61, protein: 1.5, carbs: 14, fat: 0.3, fiberG: 1.8 } },
+  ginger: { per100g: { calories: 80, protein: 1.8, carbs: 18, fat: 0.8, fiberG: 2 } },
+  // ── Fruits ───────────────────────────────────────────────────
+  strawberry: { per100g: { calories: 32, protein: 0.7, carbs: 8, fat: 0.3, fiberG: 2 } },
+  blueberry: { per100g: { calories: 57, protein: 0.7, carbs: 14, fat: 0.3, fiberG: 2.4 } },
+  raspberry: { per100g: { calories: 52, protein: 1.2, carbs: 12, fat: 0.7, fiberG: 6.5 } },
+  mango: { per100g: { calories: 60, protein: 0.8, carbs: 15, fat: 0.4, fiberG: 1.6 } },
+  orange: { per100g: { calories: 47, protein: 0.9, carbs: 12, fat: 0.1, fiberG: 2.4 } },
+  pineapple: { per100g: { calories: 50, protein: 0.5, carbs: 13, fat: 0.1, fiberG: 1.4 } },
+  grape: { per100g: { calories: 69, protein: 0.7, carbs: 18, fat: 0.2, fiberG: 0.9 } },
+  peach: { per100g: { calories: 39, protein: 0.9, carbs: 10, fat: 0.3, fiberG: 1.5 } },
+  // ── Condiments & sauces ──────────────────────────────────────
+  vinegar: { per100g: { calories: 18, protein: 0, carbs: 0.6, fat: 0, fiberG: 0 }, gPerMl: 1.01 },
+  mayonnaise: { per100g: { calories: 680, protein: 1, carbs: 1, fat: 75, fiberG: 0 } },
+  ketchup: { per100g: { calories: 112, protein: 1.7, carbs: 26, fat: 0.3, fiberG: 0.3 } },
+  mustard: { per100g: { calories: 60, protein: 4, carbs: 6, fat: 3, fiberG: 3 } },
+  tahini: { per100g: { calories: 595, protein: 17, carbs: 21, fat: 54, fiberG: 9 } },
+  "maple syrup": { per100g: { calories: 260, protein: 0, carbs: 67, fat: 0, fiberG: 0 }, gPerMl: 1.33 },
+  // ── Seafood ──────────────────────────────────────────────────
+  mackerel: { per100g: { calories: 205, protein: 19, carbs: 0, fat: 14, fiberG: 0 } },
+  sardine: { per100g: { calories: 208, protein: 25, carbs: 0, fat: 11, fiberG: 0 } },
+  haddock: { per100g: { calories: 90, protein: 20, carbs: 0, fat: 0.6, fiberG: 0 } },
+  squid: { per100g: { calories: 92, protein: 16, carbs: 3, fat: 1.4, fiberG: 0 } },
   default: { per100g: { calories: 150, protein: 5, carbs: 15, fat: 6, fiberG: 2 } },
 };
 
@@ -245,7 +311,10 @@ export function estimateLineMacros(input: {
   } else if (!u && amt > 0) {
     grams = amt * countableGrams(name);
   } else {
-    grams = amt * 50;
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[estimateLineMacros] unknown unit "${u}" for "${name}", using 80g default`);
+    }
+    grams = amt * 80;
   }
 
   if (grams <= 0) grams = 30;

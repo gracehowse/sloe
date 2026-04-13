@@ -51,6 +51,22 @@ export default function PlannerScreen() {
   const [plan, setPlan] = useState<DayPlan[] | null>(null);
   const [generating, setGenerating] = useState(false);
   const [days, setDays] = useState<1 | 3 | 7>(1);
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+
+  // Load user tier
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("user_tier")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.user_tier) setUserTier(data.user_tier as "free" | "base" | "pro");
+      });
+  }, [userId]);
+
+  const isFree = userTier === "free";
   const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
 
@@ -192,18 +208,71 @@ export default function PlannerScreen() {
     [colors],
   );
 
-  // Load existing plan from DB
+  // Load existing plan from DB — try relational first, fall back to legacy JSONB
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("meal_plans")
-        .select("plan")
+      // Try relational tables
+      const { data: dayRows, error: dayErr } = await supabase
+        .from("meal_plan_days")
+        .select("id, day")
         .eq("user_id", userId)
-        .maybeSingle();
-      if (!cancelled && data?.plan && Array.isArray(data.plan)) {
-        setPlan(data.plan as DayPlan[]);
+        .eq("slot_id", "default")
+        .order("day", { ascending: true });
+
+      if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
+        const dayIds = dayRows.map((d: { id: string }) => d.id);
+        const { data: mealRows } = await supabase
+          .from("meal_plan_meals")
+          .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
+          .in("plan_day_id", dayIds)
+          .order("slot_index", { ascending: true });
+
+        if (!cancelled && mealRows) {
+          const mealsByDay = new Map<string, typeof mealRows>();
+          for (const m of mealRows) {
+            const arr = mealsByDay.get(m.plan_day_id as string) ?? [];
+            arr.push(m);
+            mealsByDay.set(m.plan_day_id as string, arr);
+          }
+          const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
+            const meals = (mealsByDay.get(d.id) ?? []).map((m) => ({
+              name: (m.name as string) ?? "",
+              recipeTitle: (m.recipe_title as string) ?? "",
+              calories: (m.calories as number) ?? 0,
+              protein: (m.protein as number) ?? 0,
+              carbs: (m.carbs as number) ?? 0,
+              fat: (m.fat as number) ?? 0,
+              portionMultiplier: (m.portion_multiplier as number) ?? 1,
+              isPlaceholder: (m.is_placeholder as boolean) || undefined,
+            }));
+            const totals = meals.reduce(
+              (acc, ml) => ml.isPlaceholder ? acc : ({
+                calories: acc.calories + ml.calories,
+                protein: acc.protein + ml.protein,
+                carbs: acc.carbs + ml.carbs,
+                fat: acc.fat + ml.fat,
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
+            return { day: d.day, meals, totals };
+          });
+          setPlan(plans);
+          return;
+        }
+      }
+
+      // Fall back to legacy JSONB
+      if (!cancelled) {
+        const { data } = await supabase
+          .from("meal_plans")
+          .select("plan")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!cancelled && data?.plan && Array.isArray(data.plan)) {
+          setPlan(data.plan as DayPlan[]);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -266,11 +335,48 @@ export default function PlannerScreen() {
       setPlanTargets({ calories: profileCals, protein: profilePro, carbs: profileCarbs, fat: profileFat });
       setGenerating(false);
 
-      // Persist
+      // Persist — relational tables with legacy fallback
       if (userId) {
-        void supabase
-          .from("meal_plans")
-          .upsert({ user_id: userId, plan: newPlan, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+        (async () => {
+          // Delete existing then re-insert
+          const { error: delErr } = await supabase
+            .from("meal_plan_days")
+            .delete()
+            .eq("user_id", userId)
+            .eq("slot_id", "default");
+
+          if (delErr) {
+            // Fall back to legacy JSONB
+            void supabase
+              .from("meal_plans")
+              .upsert({ user_id: userId, plan: newPlan, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            return;
+          }
+
+          for (const dp of newPlan) {
+            const { data: dayRow } = await supabase
+              .from("meal_plan_days")
+              .insert({ user_id: userId, slot_id: "default", day: dp.day })
+              .select("id")
+              .single();
+            if (!dayRow) continue;
+            const mealInserts = dp.meals.map((m, idx) => ({
+              plan_day_id: dayRow.id,
+              slot_index: idx,
+              name: m.name,
+              recipe_title: m.recipeTitle,
+              calories: m.calories,
+              protein: m.protein,
+              carbs: m.carbs,
+              fat: m.fat,
+              portion_multiplier: m.portionMultiplier ?? 1,
+              is_placeholder: m.isPlaceholder ?? false,
+            }));
+            if (mealInserts.length > 0) {
+              await supabase.from("meal_plan_meals").insert(mealInserts);
+            }
+          }
+        })();
       }
     }
   }, [savedRecipes, days, userId, enabledSlots]);
@@ -290,17 +396,26 @@ export default function PlannerScreen() {
             </Text>
 
             <View style={styles.daysRow}>
-              {([1, 3, 7] as const).map((d) => (
-                <Pressable
-                  key={d}
-                  style={[styles.dayBtn, days === d && styles.dayBtnActive]}
-                  onPress={() => setDays(d)}
-                >
-                  <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
-                    {d} day{d > 1 ? "s" : ""}
-                  </Text>
-                </Pressable>
-              ))}
+              {([1, 3, 7] as const).map((d) => {
+                const locked = isFree && d > 1;
+                return (
+                  <Pressable
+                    key={d}
+                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (locked) {
+                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.");
+                        return;
+                      }
+                      setDays(d);
+                    }}
+                  >
+                    <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                      {d} day{d > 1 ? "s" : ""}{locked ? " 🔒" : ""}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             {/* Meal slot toggles */}
@@ -410,31 +525,45 @@ export default function PlannerScreen() {
                   onPress={(e) => {
                     e.stopPropagation?.();
                     const dk = dateKeyFromDate(new Date());
-                    // Write directly to nutrition journal
+                    // Write to relational nutrition_entries table
+                    const entryId = `plan_${Date.now()}_${i}`;
                     supabase
-                      .from("nutrition_journals")
-                      .select("by_day")
-                      .eq("user_id", userId!)
-                      .maybeSingle()
-                      .then(({ data }) => {
-                        const byDay = (data?.by_day ?? {}) as Record<string, any[]>;
-                        const entry = {
-                          id: `plan_${Date.now()}_${i}`,
-                          name: meal.name,
-                          recipeTitle: meal.recipeTitle,
-                          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                          calories: meal.calories,
-                          protein: meal.protein,
-                          carbs: meal.carbs,
-                          fat: meal.fat,
-                        };
-                        const updated = { ...byDay, [dk]: [...(byDay[dk] ?? []), entry] };
-                        supabase
-                          .from("nutrition_journals")
-                          .upsert({ user_id: userId, by_day: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
-                          .then(() => {
-                            Alert.alert("Logged", `${meal.recipeTitle} added to today's ${meal.name}.`);
-                          });
+                      .from("nutrition_entries")
+                      .insert({
+                        id: entryId,
+                        user_id: userId,
+                        date_key: dk,
+                        name: meal.name,
+                        recipe_title: meal.recipeTitle,
+                        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                        calories: meal.calories,
+                        protein: meal.protein,
+                        carbs: meal.carbs,
+                        fat: meal.fat,
+                        portion_multiplier: meal.portionMultiplier ?? 1,
+                      })
+                      .then(({ error }) => {
+                        if (error) {
+                          // Fall back to legacy JSONB
+                          supabase
+                            .from("nutrition_journals")
+                            .select("by_day")
+                            .eq("user_id", userId!)
+                            .maybeSingle()
+                            .then(({ data }) => {
+                              const prevByDay = (data?.by_day ?? {}) as Record<string, any[]>;
+                              const entry = {
+                                id: entryId, name: meal.name, recipeTitle: meal.recipeTitle,
+                                time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                                calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat,
+                              };
+                              const updated = { ...prevByDay, [dk]: [...(prevByDay[dk] ?? []), entry] };
+                              void supabase
+                                .from("nutrition_journals")
+                                .upsert({ user_id: userId, by_day: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                            });
+                        }
+                        Alert.alert("Logged", `${meal.recipeTitle} added to today's ${meal.name}.`);
                       });
                   }}
                   style={{ paddingHorizontal: 8, paddingVertical: 12 }}
@@ -537,9 +666,26 @@ export default function PlannerScreen() {
                   // Sort by category
                   items.sort((a, b) => a.category.localeCompare(b.category));
 
-                  await supabase
-                    .from("shopping_lists")
-                    .upsert({ user_id: userId, items, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                  // Try relational table, fall back to legacy
+                  const inserts = items.map((item) => ({
+                    id: item.id,
+                    user_id: userId,
+                    name: item.name,
+                    amount: item.amount,
+                    unit: item.unit,
+                    category: item.category,
+                    checked: item.checked,
+                    source: item.from,
+                  }));
+                  // Clear existing then insert
+                  const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId!);
+                  if (delErr) {
+                    await supabase
+                      .from("shopping_lists")
+                      .upsert({ user_id: userId, items, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                  } else if (inserts.length > 0) {
+                    await supabase.from("shopping_items").insert(inserts);
+                  }
 
                   setGenerating(false);
                   router.push("/shopping");

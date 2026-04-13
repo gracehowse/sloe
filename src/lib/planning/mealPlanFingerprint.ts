@@ -15,7 +15,7 @@ export function fingerprintMealPlanForShopping(mealPlan: DayPlan[] | null): stri
       const ph = m.isPlaceholder ? "1" : "0";
       const title = (m.recipeTitle ?? "").trim();
       const p = effectivePortionMultiplier(m.portionMultiplier);
-      parts.push(`${dp.day}:${i}:${ph}:${title}:${p}`);
+      parts.push(`${dp.day}:${i}:${ph}:${title}:${p.toFixed(1)}`);
     }
   }
   return parts.join("|");

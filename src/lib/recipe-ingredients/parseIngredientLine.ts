@@ -103,6 +103,12 @@ function tryTrailingFraction(s: string): { amount: string; unit: string; name: s
  * Parse a single ingredient line into structured fields.
  */
 export function parseIngredientLine(raw: string): { amount: string; unit: string; name: string } {
+  const result = parseIngredientLineInner(raw);
+  // Always strip parenthetical weight info from the final name
+  return { ...result, name: stripParentheticalWeight(result.name) };
+}
+
+function parseIngredientLineInner(raw: string): { amount: string; unit: string; name: string } {
   let s = normalizeLeadingFractions(raw);
   s = s.trim().replace(/\s+/g, " ");
   if (!s) {
@@ -243,7 +249,14 @@ function isCountableWholeItem(name: string): boolean {
 
 /** Remove leading "tins/cans of" style noise left after weight parsing */
 function stripPackagingPrefix(name: string): string {
-  return name.replace(/^(?:tins?|cans?|jars?)\s+(?:of\s+)?/i, "").trim() || name;
+  const stripped = name.replace(/^(?:tins?|cans?|jars?)\s+(?:of\s+)?/i, "").trim() || name;
+  return stripParentheticalWeight(stripped);
+}
+
+/** Strip parenthetical weight/volume info: "tomatoes (14 oz)" → "tomatoes" */
+function stripParentheticalWeight(name: string): string {
+  // Matches patterns like (14 oz), (400g), (1.5 kg), (28 fl oz), (14.5-oz), (400 ml)
+  return name.replace(/\s*\(\s*[\d.,]+\s*-?\s*(?:oz|g|kg|ml|l|lb|fl\s*oz|ounce|gram|liter|litre)s?\s*\)/gi, "").trim() || name;
 }
 
 /** "basil picked ¾" (no comma before fraction) */

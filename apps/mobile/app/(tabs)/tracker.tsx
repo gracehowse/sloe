@@ -328,41 +328,102 @@ export default function TrackerScreen() {
     [colors],
   );
 
-  // Load journal
+  // Load journal — try relational table first, fall back to legacy JSONB
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("nutrition_journals")
-        .select("by_day")
+      // Try new relational table
+      const { data: rows, error: relErr } = await supabase
+        .from("nutrition_entries")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier")
         .eq("user_id", userId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) {
-        console.error("[tracker] journal load failed:", error.message);
-        // Still hydrate so UI isn't stuck loading — user can log new meals
-      } else if (data?.by_day && typeof data.by_day === "object") {
-        setByDay(data.by_day as ByDay);
+        .order("created_at", { ascending: true });
+
+      if (!cancelled && rows && rows.length > 0 && !relErr) {
+        const loaded: ByDay = {};
+        for (const r of rows) {
+          const k = r.date_key as string;
+          if (!loaded[k]) loaded[k] = [];
+          loaded[k].push({
+            id: r.id as string,
+            name: (r.name as string) ?? "",
+            recipeTitle: (r.recipe_title as string) ?? "",
+            time: (r.time_label as string) ?? "",
+            calories: (r.calories as number) ?? 0,
+            protein: (r.protein as number) ?? 0,
+            carbs: (r.carbs as number) ?? 0,
+            fat: (r.fat as number) ?? 0,
+            fiberG: (r.fiber_g as number) ?? undefined,
+            waterMl: (r.water_ml as number) ?? undefined,
+            portionMultiplier: (r.portion_multiplier as number) ?? undefined,
+          });
+        }
+        setByDay(loaded);
+        setHydrated(true);
+        return;
       }
-      setHydrated(true);
+
+      // Fall back to legacy JSONB table
+      if (!cancelled) {
+        const { data, error } = await supabase
+          .from("nutrition_journals")
+          .select("by_day")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) {
+          console.error("[tracker] journal load failed:", error.message);
+        } else if (data?.by_day && typeof data.by_day === "object") {
+          setByDay(data.by_day as ByDay);
+        }
+        setHydrated(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [userId]);
 
-  // Sync journal
+  // Sync journal — write to relational table, fall back to legacy JSONB
   useEffect(() => {
     if (!userId || !hydrated) return;
     const t = setTimeout(() => {
-      void supabase
-        .from("nutrition_journals")
-        .upsert(
-          { user_id: userId, updated_at: new Date().toISOString(), by_day: byDay },
-          { onConflict: "user_id" },
-        );
+      // Try relational table (insert any new meals from the current day)
+      const dk = dateKeyFromDate(selectedDate);
+      const todayMeals = byDay[dk] ?? [];
+      if (todayMeals.length > 0) {
+        const rows = todayMeals.map((m) => ({
+          id: m.id,
+          user_id: userId,
+          date_key: dk,
+          name: m.name,
+          recipe_title: m.recipeTitle,
+          time_label: m.time,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          fiber_g: m.fiberG ?? null,
+          water_ml: m.waterMl ?? null,
+          portion_multiplier: m.portionMultiplier ?? 1,
+        }));
+        void supabase
+          .from("nutrition_entries")
+          .upsert(rows, { onConflict: "id" })
+          .then(({ error }) => {
+            if (error) {
+              // Fall back to legacy JSONB
+              void supabase
+                .from("nutrition_journals")
+                .upsert(
+                  { user_id: userId, updated_at: new Date().toISOString(), by_day: byDay },
+                  { onConflict: "user_id" },
+                );
+            }
+          });
+      }
     }, 600);
     return () => clearTimeout(t);
-  }, [userId, hydrated, byDay]);
+  }, [userId, hydrated, byDay, selectedDate]);
 
   const addMeal = useCallback(() => {
     const cal = Number(kcal) || 0;

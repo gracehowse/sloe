@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generatePlanFromLibrary } from "../../src/lib/planning/generateMealPlan.ts";
+import { generatePlanFromLibrary, mealPlannerSlotsFromMealType, recipeFitsMealSlot } from "../../src/lib/planning/generateMealPlan.ts";
 import type { RecipeCard } from "../../src/types/recipe.ts";
 
 function recipe(
@@ -77,5 +77,73 @@ describe("generatePlanFromLibrary", () => {
       expect(byName["Snack"]).not.toBe("Overnight Oats");
       expect(byName["Snack"]).not.toBe("Grilled Salmon");
     }
+  });
+
+  it("returns placeholder meals for empty recipe pool", () => {
+    const plan = generatePlanFromLibrary({ savedRecipes: [], targets, days: 1 });
+    expect(plan).toHaveLength(1);
+    expect(plan[0].meals.every((m) => m.isPlaceholder)).toBe(true);
+  });
+
+  it("clamps days to 1-7 range", () => {
+    const oats = recipe({ id: "o", title: "Oats", calories: 400, protein: 30, carbs: 50, fat: 8, mealSlots: ["Breakfast"] });
+    expect(generatePlanFromLibrary({ savedRecipes: [oats], targets, days: 0 })).toHaveLength(1);
+    expect(generatePlanFromLibrary({ savedRecipes: [oats], targets, days: 99 })).toHaveLength(7);
+  });
+});
+
+describe("mealPlannerSlotsFromMealType", () => {
+  it("maps single string to slot array", () => {
+    expect(mealPlannerSlotsFromMealType("breakfast")).toEqual(["Breakfast"]);
+    expect(mealPlannerSlotsFromMealType("dinner")).toEqual(["Dinner"]);
+  });
+
+  it("maps string array to slot array", () => {
+    const result = mealPlannerSlotsFromMealType(["lunch", "dinner"]);
+    expect(result).toContain("Lunch");
+    expect(result).toContain("Dinner");
+    expect(result).toHaveLength(2);
+  });
+
+  it("returns undefined for null/empty", () => {
+    expect(mealPlannerSlotsFromMealType(null)).toBeUndefined();
+    expect(mealPlannerSlotsFromMealType(undefined)).toBeUndefined();
+    expect(mealPlannerSlotsFromMealType("")).toBeUndefined();
+    expect(mealPlannerSlotsFromMealType([])).toBeUndefined();
+  });
+
+  it("handles case-insensitive input", () => {
+    expect(mealPlannerSlotsFromMealType("BREAKFAST")).toEqual(["Breakfast"]);
+    expect(mealPlannerSlotsFromMealType("Dinner")).toEqual(["Dinner"]);
+  });
+
+  it("filters out unknown tags", () => {
+    expect(mealPlannerSlotsFromMealType("brunch")).toBeUndefined();
+    expect(mealPlannerSlotsFromMealType(["dinner", "brunch"])).toEqual(["Dinner"]);
+  });
+});
+
+describe("recipeFitsMealSlot", () => {
+  it("untagged recipe fits any slot", () => {
+    const r = recipe({ id: "x", title: "X", calories: 100, protein: 10, carbs: 10, fat: 5 });
+    expect(recipeFitsMealSlot(r, "Breakfast")).toBe(true);
+    expect(recipeFitsMealSlot(r, "Dinner")).toBe(true);
+  });
+
+  it("tagged recipe fits matching slot", () => {
+    const r = recipe({ id: "x", title: "X", calories: 100, protein: 10, carbs: 10, fat: 5, mealSlots: ["Breakfast"] });
+    expect(recipeFitsMealSlot(r, "Breakfast")).toBe(true);
+  });
+
+  it("tagged recipe does NOT fit non-matching slot", () => {
+    const r = recipe({ id: "x", title: "X", calories: 100, protein: 10, carbs: 10, fat: 5, mealSlots: ["Breakfast"] });
+    expect(recipeFitsMealSlot(r, "Dinner")).toBe(false);
+  });
+
+  it("multi-tagged recipe fits both slots", () => {
+    const r = recipe({ id: "x", title: "X", calories: 100, protein: 10, carbs: 10, fat: 5, mealSlots: ["Lunch", "Dinner"] });
+    expect(recipeFitsMealSlot(r, "Lunch")).toBe(true);
+    expect(recipeFitsMealSlot(r, "Dinner")).toBe(true);
+    expect(recipeFitsMealSlot(r, "Breakfast")).toBe(false);
   });
 });

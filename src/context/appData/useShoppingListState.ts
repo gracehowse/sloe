@@ -6,6 +6,28 @@ import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFaile
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 
+type ShoppingItemRow = {
+  id: string;
+  name: string;
+  amount: string;
+  unit: string;
+  category: string;
+  checked: boolean;
+  source: string;
+};
+
+function rowToShoppingItem(row: ShoppingItemRow): ShoppingItem {
+  return {
+    id: row.id,
+    name: row.name,
+    amount: row.amount,
+    unit: row.unit,
+    category: row.category,
+    checked: row.checked,
+    from: row.source,
+  };
+}
+
 export function useShoppingListState(opts: { authedUserId: string | null; initialItems: ShoppingItem[] }) {
   const { authedUserId, initialItems } = opts;
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => initialItems);
@@ -14,8 +36,11 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
 
   const tryEnableDbShopping = useCallback(async () => {
     if (!authedUserId) return false;
-    const { error } = await supabase.from("shopping_lists").select("user_id").limit(1);
+    const { error } = await supabase.from("shopping_items").select("id").limit(1);
     if (error) {
+      // Fall back to legacy table
+      const { error: legacyError } = await supabase.from("shopping_lists").select("user_id").limit(1);
+      if (!legacyError) { setDbShoppingEnabled(true); return true; }
       return false;
     }
     setDbShoppingEnabled(true);
@@ -24,83 +49,86 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
 
   useRetryEnableDbTable(authedUserId, dbShoppingEnabled, tryEnableDbShopping);
 
+  // Load from DB on mount
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
     (async () => {
       if (!dbShoppingEnabled) return;
+
       const { data, error } = await supabase
-        .from("shopping_lists")
-        .select("items")
+        .from("shopping_items")
+        .select("id, name, amount, unit, category, checked, source")
         .eq("user_id", authedUserId)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
+
       if (cancelled) return;
+
       if (error) {
         if (looksLikeMissingTableError(error.message ?? "")) {
-          setDbShoppingEnabled(false);
-          if (!dbShoppingWarned) {
-            setDbShoppingWarned(true);
-            toast.warning(syncDisabledBecauseSchemaMessage("Shopping list"));
+          // Fall back to legacy JSONB table
+          const { data: legacyData, error: legacyError } = await supabase
+            .from("shopping_lists").select("items").eq("user_id", authedUserId).maybeSingle();
+          if (!cancelled && !legacyError && Array.isArray(legacyData?.items)) {
+            setShoppingItems(legacyData.items as ShoppingItem[]);
           }
+          return;
+        }
+        if (!dbShoppingWarned) {
+          setDbShoppingWarned(true);
+          toast.warning(syncDisabledBecauseSchemaMessage("Shopping list"));
         }
         return;
       }
-      if (Array.isArray(data?.items)) {
-        setShoppingItems(data.items as ShoppingItem[]);
+
+      if (data && data.length > 0) {
+        setShoppingItems((data as ShoppingItemRow[]).map(rowToShoppingItem));
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [authedUserId, dbShoppingEnabled, dbShoppingWarned]);
 
-  useEffect(() => {
-    if (!authedUserId || !dbShoppingEnabled) return;
-    const t = setTimeout(() => {
-      supabase
-        .from("shopping_lists")
-        .upsert(
-          { user_id: authedUserId, updated_at: new Date().toISOString(), items: shoppingItems },
-          { onConflict: "user_id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (looksLikeMissingTableError(msg)) {
-              setDbShoppingEnabled(false);
-              if (!dbShoppingWarned) {
-                setDbShoppingWarned(true);
-                toast.warning(syncDisabledBecauseSchemaMessage("Shopping list"));
-              }
-              return;
-            }
-            toast.error(syncFailedRetryMessage("shopping list", msg));
-          }
-        });
-    }, 600);
-    return () => clearTimeout(t);
-  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, shoppingItems]);
-
   const toggleShoppingChecked = useCallback((itemId: string) => {
-    setShoppingItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, checked: !item.checked } : item)),
-    );
-  }, []);
+    setShoppingItems((prev) => {
+      const updated = prev.map((item) => (item.id === itemId ? { ...item, checked: !item.checked } : item));
+      const target = updated.find((i) => i.id === itemId);
+      if (authedUserId && dbShoppingEnabled && target) {
+        supabase.from("shopping_items").update({ checked: target.checked }).eq("id", itemId).then(() => {});
+      }
+      return updated;
+    });
+  }, [authedUserId, dbShoppingEnabled]);
 
   const removeShoppingItem = useCallback((itemId: string) => {
     setShoppingItems((prev) => prev.filter((item) => item.id !== itemId));
-  }, []);
+    if (authedUserId && dbShoppingEnabled) {
+      supabase.from("shopping_items").delete().eq("id", itemId).then(() => {});
+    }
+  }, [authedUserId, dbShoppingEnabled]);
 
   const addShoppingItem = useCallback(
     (item: Omit<ShoppingItem, "id" | "checked"> & { checked?: boolean }) => {
-      const row: ShoppingItem = {
-        ...item,
-        id: newId("shop"),
-        checked: item.checked ?? false,
-      };
+      const row: ShoppingItem = { ...item, id: newId("shop"), checked: item.checked ?? false };
       setShoppingItems((prev) => [...prev, row]);
+
+      if (authedUserId && dbShoppingEnabled) {
+        supabase.from("shopping_items").insert({
+          id: row.id,
+          user_id: authedUserId,
+          name: row.name,
+          amount: row.amount,
+          unit: row.unit,
+          category: row.category,
+          checked: row.checked,
+          source: row.from,
+        }).then(({ error }) => {
+          if (error && !looksLikeMissingTableError(error.message ?? "")) {
+            toast.error(syncFailedRetryMessage("shopping list", error.message ?? ""));
+          }
+        });
+      }
     },
-    [],
+    [authedUserId, dbShoppingEnabled],
   );
 
   return {

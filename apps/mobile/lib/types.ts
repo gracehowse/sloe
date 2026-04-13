@@ -2,6 +2,17 @@
 
 export type UserTier = "free" | "base" | "pro";
 
+export type LibraryEntryKind = "saved" | "created" | "imported";
+
+export type PlannerMealSlot = "Breakfast" | "Lunch" | "Dinner" | "Snack";
+
+export const PLANNER_MEAL_SLOT_LABELS: readonly PlannerMealSlot[] = [
+  "Breakfast",
+  "Lunch",
+  "Dinner",
+  "Snack",
+] as const;
+
 export interface RecipeCard {
   id: string;
   title: string;
@@ -14,13 +25,18 @@ export interface RecipeCard {
   carbs: number;
   fat: number;
   fiberG?: number;
-  isVerified?: boolean;
-  savedCount?: number;
-  isSaved?: boolean;
+  sugarG?: number;
+  sodiumMg?: number;
+  isVerified: boolean;
+  savedCount: number;
+  isSaved: boolean;
   isPublished?: boolean;
-  authorId?: string;
+  authorId?: string | null;
+  creatorId?: string | null;
+  creatorCalories?: number;
+  feedCreatedAt?: string;
   sourceUrl?: string | null;
-  mealSlots?: string[];
+  mealSlots?: readonly PlannerMealSlot[] | string[];
   feedSource?: "catalog" | "community";
 }
 
@@ -32,8 +48,10 @@ export interface IngredientRow {
   protein: number;
   carbs: number;
   fat: number;
-  isVerified?: boolean;
-  source?: string;
+  sugarG?: number;
+  sodiumMg?: number;
+  isVerified: boolean;
+  source: string;
 }
 
 export interface LoggedMeal {
@@ -59,6 +77,7 @@ export interface DayPlanMeal {
   fat: number;
   portionMultiplier?: number;
   isPlaceholder?: boolean;
+  recipeId?: string;
 }
 
 export interface DayPlan {

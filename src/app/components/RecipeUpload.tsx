@@ -346,8 +346,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
   useEffect(() => () => stopScanner(), [stopScanner]);
 
-  // userTier/onUpgrade reserved for tier-gating; all features unlocked for now
-  const isCreator = true;
+  const isCreator = userTier === "base" || userTier === "pro";
 
   const resetForm = () => {
     setRecipeId(null);

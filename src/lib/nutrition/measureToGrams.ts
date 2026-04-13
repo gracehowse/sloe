@@ -113,17 +113,23 @@ export function measureToGrams(input: MeasureInput): number {
     if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) {
       return amt * 15;
     }
-    // Herbs and spices are light
-    if (/salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill|tarragon|sage/.test(name)) {
-      return amt * 3;
-    }
-    // Sausages, biscuits etc
+    // Sausages, biscuits etc (check BEFORE herbs — "sausage" contains "sage")
     if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) {
       return amt * 50;
+    }
+    // Herbs and spices are light (use \b to avoid matching "sage" inside "sausage")
+    if (/\b(?:salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill|tarragon|sage)\b/.test(name)) {
+      return amt * 3;
+    }
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[measureToGrams] no unit match for count item "${name}", using 80g default`);
     }
     return amt * 80;
   }
 
-  return amt * 50;
+  if (process.env.NODE_ENV === "development") {
+    console.warn(`[measureToGrams] unknown unit "${u}" for "${name}", using 80g default`);
+  }
+  return amt * 80;
 }
 

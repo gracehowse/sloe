@@ -301,12 +301,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const tryEnableDbMealPlans = useCallback(async () => {
     if (!authedUserId) return false;
-    const { error } = await supabase.from("meal_plans").select("user_id").limit(1);
-    if (error) {
-      return false;
-    }
-    setDbMealPlanEnabled(true);
-    return true;
+    // Try relational table first, fall back to legacy
+    const { error } = await supabase.from("meal_plan_days").select("id").limit(1);
+    if (!error) { setDbMealPlanEnabled(true); return true; }
+    const { error: legacyErr } = await supabase.from("meal_plans").select("user_id").limit(1);
+    if (!legacyErr) { setDbMealPlanEnabled(true); return true; }
+    return false;
   }, [authedUserId]);
 
   useRetryEnableDbTable(authedUserId, dbSavesEnabled, tryEnableDbSaves);
@@ -464,12 +464,56 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, tier, alreadyRedeemed: Boolean(payload.already_redeemed) };
   }, [authedUserId]);
 
-  // Load persisted meal plan from Supabase (nutrition + shopping load in domain hooks).
+  // Load persisted meal plan from Supabase (tries relational table, falls back to legacy JSONB).
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
     (async () => {
-      if (dbMealPlanEnabled) {
+      if (!dbMealPlanEnabled) return;
+
+      // Try relational tables first
+      const { data: dayRows, error: dayErr } = await supabase
+        .from("meal_plan_days")
+        .select("id, day, slot_id")
+        .eq("user_id", authedUserId)
+        .eq("slot_id", "default")
+        .order("day", { ascending: true });
+
+      if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
+        const dayIds = dayRows.map((d: { id: string }) => d.id);
+        const { data: mealRows } = await supabase
+          .from("meal_plan_meals")
+          .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
+          .in("plan_day_id", dayIds)
+          .order("slot_index", { ascending: true });
+
+        if (!cancelled && mealRows) {
+          const mealsByDay = new Map<string, typeof mealRows>();
+          for (const m of mealRows) {
+            const arr = mealsByDay.get(m.plan_day_id) ?? [];
+            arr.push(m);
+            mealsByDay.set(m.plan_day_id, arr);
+          }
+          const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
+            const meals = (mealsByDay.get(d.id) ?? []).map((m): import("../types/recipe.ts").DayPlanMeal => ({
+              name: m.name, recipeTitle: m.recipe_title,
+              calories: m.calories, protein: m.protein, carbs: m.carbs, fat: m.fat,
+              portionMultiplier: m.portion_multiplier, isPlaceholder: m.is_placeholder || undefined,
+            }));
+            const totals = meals.reduce((acc, m) => m.isPlaceholder ? acc : ({
+              calories: acc.calories + m.calories, protein: acc.protein + m.protein,
+              carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat,
+            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+            return { day: d.day, meals, totals };
+          });
+          const slotId = activeMealPlanSlotIdRef.current;
+          setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: plans } : s)));
+          return;
+        }
+      }
+
+      // Fall back to legacy JSONB table
+      if (!cancelled) {
         const { data, error } = await supabase
           .from("meal_plans")
           .select("plan")
@@ -849,33 +893,63 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, [authedUserId, dbSavesEnabled, dbSavesWarned]);
 
-  // Persist meal plan to Supabase (debounced), fallback remains local.
+  // Persist meal plan to Supabase relational tables (debounced).
   useEffect(() => {
-    if (!authedUserId || !dbMealPlanEnabled) return;
-    const t = setTimeout(() => {
-      supabase
-        .from("meal_plans")
-        .upsert({ user_id: authedUserId, updated_at: new Date().toISOString(), plan: mealPlan }, { onConflict: "user_id" })
-        .then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (looksLikeMissingTableError(msg)) {
-              setDbMealPlanEnabled(false);
-              if (!dbMealPlanWarned) {
-                setDbMealPlanWarned(true);
-                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
+    if (!authedUserId || !dbMealPlanEnabled || !mealPlan) return;
+    const t = setTimeout(async () => {
+      // Delete existing plan days (cascade deletes meals), then re-insert
+      const { error: delErr } = await supabase
+        .from("meal_plan_days")
+        .delete()
+        .eq("user_id", authedUserId)
+        .eq("slot_id", "default");
+
+      if (delErr && looksLikeMissingTableError(delErr.message ?? "")) {
+        // Fall back to legacy JSONB table
+        supabase
+          .from("meal_plans")
+          .upsert({ user_id: authedUserId, updated_at: new Date().toISOString(), plan: mealPlan }, { onConflict: "user_id" })
+          .then(({ error }) => {
+            if (error) {
+              const msg = error.message ?? "";
+              if (looksLikeMissingTableError(msg)) {
+                setDbMealPlanEnabled(false);
+                if (!dbMealPlanWarned) {
+                  setDbMealPlanWarned(true);
+                  toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
+                }
               }
-              return;
             }
-            if (msg.toLowerCase().includes("violates foreign key constraint")) {
-              toast.error(
-                "Meal plan couldn’t sync—your account session may be out of date. Sign out and sign back in. Your plan is still on this device.",
-              );
-              return;
-            }
-            toast.error(syncFailedRetryMessage("meal plan", msg));
-          }
-        });
+          });
+        return;
+      }
+
+      for (const dp of mealPlan) {
+        const { data: dayRow, error: dayErr } = await supabase
+          .from("meal_plan_days")
+          .insert({ user_id: authedUserId, slot_id: "default", day: dp.day })
+          .select("id")
+          .single();
+
+        if (dayErr || !dayRow) continue;
+
+        const mealInserts = dp.meals.map((m, idx) => ({
+          plan_day_id: dayRow.id,
+          slot_index: idx,
+          name: m.name,
+          recipe_title: m.recipeTitle,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          portion_multiplier: m.portionMultiplier ?? 1,
+          is_placeholder: m.isPlaceholder ?? false,
+        }));
+
+        if (mealInserts.length > 0) {
+          await supabase.from("meal_plan_meals").insert(mealInserts);
+        }
+      }
     }, 600);
     return () => clearTimeout(t);
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
@@ -903,6 +977,42 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     },
     [selectedDateKey],
   );
+
+  // Sync water & activity burn data to Supabase (debounced)
+  useEffect(() => {
+    if (!authedUserId) return;
+    const t = setTimeout(() => {
+      void supabase
+        .from("profiles")
+        .update({
+          extra_water_by_day: extraWaterByDay,
+          activity_burn_by_day: activityBurnByDay,
+        })
+        .eq("id", authedUserId);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [authedUserId, extraWaterByDay, activityBurnByDay]);
+
+  // Load water & activity burn from Supabase on mount
+  useEffect(() => {
+    if (!authedUserId) return;
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("extra_water_by_day, activity_burn_by_day")
+      .eq("id", authedUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data?.extra_water_by_day && typeof data.extra_water_by_day === "object") {
+          setExtraWaterByDay(data.extra_water_by_day as Record<string, number>);
+        }
+        if (data?.activity_burn_by_day && typeof data.activity_burn_by_day === "object") {
+          setActivityBurnByDay(data.activity_burn_by_day as Record<string, number>);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [authedUserId]);
 
   usePersistLocalAppSnapshot({
     savedRecipeIds,

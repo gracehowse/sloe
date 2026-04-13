@@ -87,6 +87,7 @@ type WeightUnit = "kg" | "lb" | "st";
 type HeightUnit = "cm" | "ft";
 
 type OnboardingData = {
+  displayName: string;
   goalType: "lose" | "health" | "strength";
   sex: Sex;
   age: string;
@@ -118,6 +119,7 @@ type OnboardingData = {
 };
 
 const INITIAL_DATA: OnboardingData = {
+  displayName: "",
   goalType: "lose",
   sex: "female",
   age: "",
@@ -221,6 +223,7 @@ export default function OnboardingScreen() {
     try {
       await supabase.from("profiles").upsert({
         id: userId,
+        display_name: data.displayName.trim() || null,
         sex: data.sex,
         age,
         height_cm: heightCm,
@@ -417,6 +420,10 @@ export default function OnboardingScreen() {
           <View style={styles.stepContent}>
             <Text style={styles.heading}>Tell us about yourself</Text>
             <Text style={styles.subheading}>We'll use this to calculate your personal calorie budget.</Text>
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput style={styles.input} value={data.displayName} onChangeText={(t) => update("displayName", t)} placeholder="Optional" placeholderTextColor={colors.textTertiary} autoCapitalize="words" />
+            </View>
             <View style={styles.sexRow}>
               <Pressable style={[styles.sexBtn, data.sex === "female" && styles.sexBtnActive]} onPress={() => update("sex", "female")}>
                 <Text style={styles.sexBtnText}>Female</Text>
