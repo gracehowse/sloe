@@ -24,7 +24,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `verify-production-env.ts` | Check all required env vars are set | `npm run verify:production-env` |
+| `verify-production-env.ts` | Check Stripe / Supabase production vars (warns; exits 1 only with `VERIFY_STRICT=1` when Stripe is misconfigured) | `npm run verify:production-env` — on `main` CI sets `VERIFY_STRICT=1` |
 | `production-smoke.ts` | HTTP smoke test against production URL | `npm run smoke:production` |
 
 ## Approved Recipe Sources

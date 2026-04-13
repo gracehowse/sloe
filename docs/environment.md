@@ -15,7 +15,7 @@ Without these, auth and data sync will not work.
 
 | Variable | Purpose |
 |----------|---------|
-| `SUPABASE_SERVICE_ROLE_KEY` | Stripe webhook profile updates, privileged server ops (keep secret) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Tier-gated APIs (`profiles.user_tier`), Stripe webhook profile updates, other privileged server ops (keep secret) |
 | `STRIPE_SECRET_KEY` | Checkout session creation |
 | `STRIPE_WEBHOOK_SECRET` | Verify Stripe webhook signatures |
 | `STRIPE_PRICE_BASE_MONTHLY` | Stripe Price ID for Base tier |
@@ -34,7 +34,7 @@ If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 
 | Variable | Purpose |
 |----------|---------|
-| `FATSECRET_CLIENT_ID` / `FATSECRET_CLIENT_SECRET` | FatSecret for `/api/nutrition/verify-recipe` |
+| `FATSECRET_CONSUMER_KEY` / `FATSECRET_CONSUMER_SECRET` | FatSecret Platform API for `/api/nutrition/verify-recipe` (OAuth consumer pair from [FatSecret](https://platform.fatsecret.com)) |
 | USDA FDC env (see `serverEnv.ts`) | USDA FoodData Central |
 | `OPENAI_API_KEY` | Recipe import from image (`/api/recipe-import/image`) |
 
@@ -43,7 +43,8 @@ If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 | Variable | Purpose |
 |----------|---------|
 | `NEXT_PUBLIC_POSTHOG_KEY` | PostHog product analytics (client) |
-| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | Error reporting |
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry for **browser** errors (public DSN) |
+| `SENTRY_DSN` | Sentry for **server** / Node (secret DSN; can match the same project as the public DSN) |
 
 ## Playwright / E2E (CI or local)
 

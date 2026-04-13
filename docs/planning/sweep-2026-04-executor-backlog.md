@@ -7,6 +7,8 @@
 
 ## 1. Top 5 actions (execution order)
 
+**Status:** items 1–5 shipped in `main` (2026-04); see commit history for `getUserTier`, mobile journal, privacy, legal links, voice paywall + web tracker polish.
+
 | # | Title | Severity | Owner | Why now |
 |---|--------|----------|-------|---------|
 | 1 | Fix `getUserTier` under RLS | P0 | executor (+ security-reviewer review) | Paid users incorrectly get free-tier API limits (`photo-log`, `voice-log`, etc.). |
@@ -33,16 +35,16 @@
 | ID | Title | Problem | Goal | Effort | Deps | Platforms | Validation | Owner | Review |
 |----|--------|---------|------|--------|------|-----------|------------|-------|--------|
 | T5 | Voice upgrade UX (mobile) | 403 `upgrade_required` surfaced as parse failure. | Branch on `error` / status; title “Upgrade required”, body from API `message`. | S | — | mobile | Free user: clear paywall path copy. | executor | customer-lens |
-| T6 | In-product AI disclosure | Photo/voice UI lacks third-party / transfer disclosure. | Short pre-action copy + link to privacy. | S | T3 | web (+ mobile if mirrored) | Copy present before first use in session. | executor | legal-reviewer |
+| T6 | In-product AI disclosure | Photo/voice UI lacks third-party / transfer disclosure. | Short pre-action copy + link to privacy. | S | T3 | web (+ mobile if mirrored) | **Web done:** tooltips / dialog copy on `NutritionTracker` photo + voice. Mobile mirror optional. | executor | legal-reviewer |
 | T7 | Adaptive TDEE persistence | `computeAdaptiveTDEE` tested but nothing writes `profiles.adaptive_*`. | Job or post-save hook persists when confidence rules pass. | M | T1 if tier affects feature | both | DB column updates after N days of data. | executor | nutrition-engine |
-| T8 | Dedupe `classifyMealType` | Two copies: `apps/mobile/lib` vs `src/lib/recipe-import`. | Single implementation in `src`; mobile re-export. | S | — | both | Grep shows one logic tree. | executor | code-quality |
-| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | Failing mobile TS fails PR. | executor | release-gate |
+| T8 | Dedupe `classifyMealType` | Two copies: `apps/mobile/lib` vs `src/lib/recipe-import`. | Single implementation in `src`; mobile re-export. | S | — | both | **Done:** `apps/mobile/lib/classifyMealType.ts` re-exports `src/lib/recipe-import/classifyMealType.ts`; `metro.config.js` watches monorepo root. | executor | code-quality |
+| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | **Partial:** job `mobile` runs `npm ci` + grep guard on classify re-export. Full `expo lint` / `tsc` blocked until mobile debt cleared. | executor | release-gate |
 | T10 | FAB sheet a11y | Absolute `Pressable` stack vs `Modal`; FAB no label. | `Modal` or RN sheet + `accessibilityLabel` / focus. | M | — | mobile | Manual a11y pass / Android back. | executor | ui-product-designer |
-| T11 | Web date nav `aria-label` | ← → buttons unlabeled. | `aria-label="Previous day"` / `Next day`. | S | — | web | axe or screen reader. | executor | qa-lead |
-| T12 | `VERIFY_STRICT` on release | `verify:production-env` always exits 0 in CI. | Enable `VERIFY_STRICT=1` on `main` or release workflow only. | S | — | CI | Missing Stripe vars fail when strict. | executor | release-gate |
+| T11 | Web date nav `aria-label` | ← → buttons unlabeled. | `aria-label="Previous day"` / `Next day`. | S | — | web | **Done** on `NutritionTracker`. | executor | qa-lead |
+| T12 | `VERIFY_STRICT` on release | `verify:production-env` always exits 0 in CI. | Enable `VERIFY_STRICT=1` on `main` or release workflow only. | S | — | CI | **Done:** `VERIFY_STRICT=1` when `github.event_name == push` and `ref == refs/heads/main`. | executor | release-gate |
 | T13 | Fasting cross-platform | Fasting UI mobile-only; onboarding may capture intent. | Minimal web surface or honest “use mobile” copy. | L | product call | both | Decision recorded; UX matches. | planner → executor | journey-architect |
 | T14 | Brand token pass | Violet / purple / pink / rose drift. | Single accent system in theme + App shell. | M | — | both | Design token doc + visual QA. | executor | ui-product-designer |
-| T15 | Docs: FatSecret + Sentry | `docs/environment.md` wrong FatSecret names; `.env.example` missing `NEXT_PUBLIC_SENTRY_DSN`. | Align names; document both DSNs. | S | — | docs | Contributor can configure from docs alone. | executor | docs-keeper |
+| T15 | Docs: FatSecret + Sentry | `docs/environment.md` wrong FatSecret names; `.env.example` missing `NEXT_PUBLIC_SENTRY_DSN`. | Align names; document both DSNs. | S | — | docs | **Done:** FatSecret consumer keys; `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_DSN` in docs and `.env.example`. | executor | docs-keeper |
 
 ### P2 — Hygiene
 

@@ -16,6 +16,8 @@ jobs:
       # Baked into the Next client bundle at build; set repo secrets for real Supabase auth in E2E.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Fail the env checklist on pushes to main when Stripe is half-configured (see scripts/verify-production-env.ts).
+      VERIFY_STRICT: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,3 +45,20 @@ jobs:
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
           npm run test:e2e
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Install mobile deps
+        run: npm ci
+      - name: Shared classifyMealType re-export path
+        run: grep -q 'from "../../../src/lib/recipe-import/classifyMealType"' lib/classifyMealType.ts
