@@ -19,7 +19,12 @@ export default function TermsPage() {
           <p>
             Platemate is provided “as is” for personal nutrition and recipe planning. Nutrition estimates, barcode data,
             and third-party recipe imports may be incomplete or inaccurate. Always verify critical dietary or medical
-            decisions with a professional.
+            decisions with a professional. Optional AI-assisted features (for example photo or voice meal logging) rely
+            on third-party models; see the{" "}
+            <Link href="/privacy" className="text-violet-600 dark:text-violet-400 hover:underline">
+              Privacy policy
+            </Link>{" "}
+            for how that processing works.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>

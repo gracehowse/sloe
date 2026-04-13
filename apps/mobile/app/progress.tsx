@@ -15,6 +15,7 @@ import { MacroColors, Neon, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
+import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 
 import TrendLine from "@/components/charts/TrendLine";
 import MiniBarChart from "@/components/charts/MiniBarChart";
@@ -167,7 +168,10 @@ export default function ProgressScreen() {
   const persist = useCallback(
     async (patch: Record<string, unknown>) => {
       if (!userId) return;
-      await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      if (!error && "weight_kg_by_day" in patch) {
+        void refreshAdaptiveTdeeForUser(supabase, userId);
+      }
     },
     [userId],
   );

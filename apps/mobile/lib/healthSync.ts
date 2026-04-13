@@ -14,6 +14,7 @@
 
 import { Platform } from "react-native";
 import { supabase } from "./supabase";
+import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
 
 const ENABLED = process.env.EXPO_PUBLIC_HEALTH_SYNC_ENABLED === "true";
 
@@ -139,14 +140,17 @@ export async function syncHealthData(userId: string): Promise<{
       }
 
       if (JSON.stringify(weightByDay) !== JSON.stringify(existingWeight)) {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({
             weight_kg_by_day: weightByDay,
             weight_kg: weightByDay[dateKey(new Date())] ?? profile?.weight_kg_by_day?.[dateKey(new Date())],
           })
           .eq("id", userId);
-        weightUpdated = true;
+        if (!error) {
+          void refreshAdaptiveTdeeForUser(supabase, userId);
+          weightUpdated = true;
+        }
       }
     } catch {
       // Weight sync failed silently

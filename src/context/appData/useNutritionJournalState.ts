@@ -7,6 +7,7 @@ import { track } from "../../lib/analytics/track.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
+import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -151,7 +152,9 @@ export function useNutritionJournalState(opts: {
               return;
             }
             toast.error(syncFailedRetryMessage("nutrition log", msg));
+            return;
           }
+          void refreshAdaptiveTdeeForUser(supabase, authedUserId);
         });
     }
 
@@ -180,7 +183,9 @@ export function useNutritionJournalState(opts: {
         supabase.from("nutrition_entries").delete().eq("id", mealId).then(({ error }) => {
           if (error && !looksLikeMissingTableError(error.message ?? "")) {
             toast.error(syncFailedRetryMessage("nutrition log", error.message ?? ""));
+            return;
           }
+          if (!error) void refreshAdaptiveTdeeForUser(supabase, authedUserId);
         });
       }
     },

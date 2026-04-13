@@ -562,6 +562,9 @@ export type Database = {
         Row: {
           activity_burn_by_day: Json | null
           activity_level: string | null
+          adaptive_tdee: number | null
+          adaptive_tdee_confidence: string | null
+          adaptive_tdee_updated_at: string | null
           age: number | null
           avatar_url: string | null
           body_fat_pct: number | null
@@ -602,6 +605,9 @@ export type Database = {
         Insert: {
           activity_burn_by_day?: Json | null
           activity_level?: string | null
+          adaptive_tdee?: number | null
+          adaptive_tdee_confidence?: string | null
+          adaptive_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           body_fat_pct?: number | null
@@ -642,6 +648,9 @@ export type Database = {
         Update: {
           activity_burn_by_day?: Json | null
           activity_level?: string | null
+          adaptive_tdee?: number | null
+          adaptive_tdee_confidence?: string | null
+          adaptive_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           body_fat_pct?: number | null

@@ -14,6 +14,7 @@ import {
   Bar,
 } from "recharts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
+import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, type PlanPace } from "../../lib/nutrition/tdee.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -151,6 +152,9 @@ export function ProgressDashboard() {
       if (!authedUserId) return;
       const { error } = await supabase.from("profiles").update(patch).eq("id", authedUserId);
       if (error) console.error("[progress] save failed", error.message);
+      else if ("weight_kg_by_day" in patch) {
+        void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+      }
     },
     [authedUserId],
   );

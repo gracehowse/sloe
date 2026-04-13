@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +30,7 @@ import { distributeMealBudget } from "@/lib/mealBudget";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
+import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -698,6 +700,7 @@ export default function TrackerScreen() {
           .upsert(rows, { onConflict: "id" })
           .then(({ error }) => {
             if (error) console.error("[tracker] sync failed:", error.message);
+            else void refreshAdaptiveTdeeForUser(supabase, userId);
           });
       }
     }, 600);
@@ -1258,6 +1261,9 @@ export default function TrackerScreen() {
       {viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen && (
         <Pressable
           onPress={() => setFabSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Log food"
+          accessibilityHint="Opens a menu to add meals"
           style={{
             position: "absolute",
             right: Spacing.xl,
@@ -1275,22 +1281,25 @@ export default function TrackerScreen() {
             elevation: 6,
           }}
         >
-          <Ionicons name="add" size={28} color="#fff" />
+          <Ionicons name="add" size={28} color="#fff" accessibilityElementsHidden importantForAccessibility="no" />
         </Pressable>
       )}
 
-      {/* Bottom sheet for logging options */}
-      {fabSheetOpen && (
-        <Pressable
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }}
-          onPress={() => setFabSheetOpen(false)}
-        >
+      <Modal
+        visible={fabSheetOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFabSheetOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+            onPress={() => setFabSheetOpen(false)}
+          />
+          <View
             style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
               backgroundColor: colors.card,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
@@ -1298,10 +1307,12 @@ export default function TrackerScreen() {
               paddingBottom: insets.bottom + Spacing.xl,
               paddingHorizontal: Spacing.xl,
             }}
-            onPress={(e) => e.stopPropagation()}
           >
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.lg }}>Log Food</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>Log Food</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.lg, lineHeight: 16 }}>
+              Photo and voice send data to our servers and may use AI (see Privacy policy in More).
+            </Text>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
               {[
@@ -1314,6 +1325,8 @@ export default function TrackerScreen() {
               ].map((item) => (
                 <Pressable
                   key={item.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
                   onPress={item.onPress}
                   style={{
                     width: "30%",
@@ -1323,14 +1336,14 @@ export default function TrackerScreen() {
                     backgroundColor: colors.inputBg,
                   }}
                 >
-                  <Ionicons name={item.icon} size={24} color={Neon.purple} />
+                  <Ionicons name={item.icon} size={24} color={Neon.purple} accessibilityElementsHidden importantForAccessibility="no" />
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginTop: 6 }}>{item.label}</Text>
                 </Pressable>
               ))}
             </View>
-          </Pressable>
-        </Pressable>
-      )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Photo analyzing overlay */}
       {photoAnalyzing && (
@@ -1368,6 +1381,9 @@ export default function TrackerScreen() {
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>Voice Log</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.xs }}>
               Describe what you ate (e.g. "2 scrambled eggs and toast with butter")
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.xs, lineHeight: 15 }}>
+              Text is sent to our servers and may be processed with AI. See Privacy policy in More.
             </Text>
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.lg }}>
               {VOICE_LOG_NATIVE_BUILD_HINT}
