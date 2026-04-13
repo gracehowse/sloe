@@ -38,7 +38,7 @@
 | T6 | In-product AI disclosure | Photo/voice UI lacks third-party / transfer disclosure. | Short pre-action copy + link to privacy. | S | T3 | web (+ mobile if mirrored) | **Web + mobile:** tracker sheet + voice modal copy points to Privacy (More). | executor | legal-reviewer |
 | T7 | Adaptive TDEE persistence | `computeAdaptiveTDEE` tested but nothing writes `profiles.adaptive_*`. | Job or post-save hook persists when confidence rules pass. | M | T1 if tier affects feature | both | **Done:** `refreshAdaptiveTdeeForUser` after web journal insert/delete + mobile `nutrition_entries` upsert; 6h throttle; medium/high only. Types synced. | executor | nutrition-engine |
 | T8 | Dedupe `classifyMealType` | Two copies: `apps/mobile/lib` vs `src/lib/recipe-import`. | Single implementation in `src`; mobile re-export. | S | — | both | **Done:** `apps/mobile/lib/classifyMealType.ts` re-exports `src/lib/recipe-import/classifyMealType.ts`; `metro.config.js` watches monorepo root. | executor | code-quality |
-| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | **Partial:** job `mobile` runs `npm ci` + grep guard on classify re-export. Full `expo lint` / `tsc` blocked until mobile debt cleared. | executor | release-gate |
+| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | **Lint done:** `npm run lint` in CI (0 errors; warnings remain). **`tsc --noEmit`** still deferred (separate type debt). | executor | release-gate |
 | T10 | FAB sheet a11y | Absolute `Pressable` stack vs `Modal`; FAB no label. | `Modal` or RN sheet + `accessibilityLabel` / focus. | M | — | mobile | **Done:** `Modal` + FAB / action `accessibilityLabel`; Android `onRequestClose`. | executor | ui-product-designer |
 | T11 | Web date nav `aria-label` | ← → buttons unlabeled. | `aria-label="Previous day"` / `Next day`. | S | — | web | **Done** on `NutritionTracker`. | executor | qa-lead |
 | T12 | `VERIFY_STRICT` on release | `verify:production-env` always exits 0 in CI. | Enable `VERIFY_STRICT=1` on `main` or release workflow only. | S | — | CI | **Done:** `VERIFY_STRICT=1` when `github.event_name == push` and `ref == refs/heads/main`. | executor | release-gate |
@@ -76,7 +76,7 @@ T3 (privacy)   → T4 (mobile links)  } T4 can start after T3 draft
 
 - Recipe `/recipe/[id]` auth-gated in middleware: intentional for SEO/share or change?
 - RevenueCat empty offerings: env-only vs product fallback copy?
-- Fasting on web: ship stub vs mobile-only forever (**T13**).
+- Fasting on web: **resolved for MVP** — mobile-only timer; see `docs/decisions/2026-04-fasting-web-scope.md` (revisit if web parity is prioritized).
 
 ---
 

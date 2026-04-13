@@ -60,6 +60,8 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
       - name: Install mobile deps
         run: npm ci
+      - name: Mobile ESLint (errors fail; warnings allowed)
+        run: npm run lint
       - name: Shared classifyMealType re-export path
         run: grep -q 'from "../../../src/lib/recipe-import/classifyMealType"' lib/classifyMealType.ts
       - name: Shared refreshAdaptiveTdee re-export path

@@ -352,7 +352,9 @@ export default function NotificationsScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.sub}>When something important happens, you'll see it here.</Text>
+              <Text style={styles.sub}>
+                {"When something important happens, you'll see it here."}
+              </Text>
             </View>
           }
         />

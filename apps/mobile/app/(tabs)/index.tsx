@@ -1380,7 +1380,7 @@ export default function TrackerScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>Voice Log</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.xs }}>
-              Describe what you ate (e.g. "2 scrambled eggs and toast with butter")
+              {"Describe what you ate (e.g. \"2 scrambled eggs and toast with butter\")"}
             </Text>
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.xs, lineHeight: 15 }}>
               Text is sent to our servers and may be processed with AI. See Privacy policy in More.

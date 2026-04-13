@@ -524,8 +524,8 @@ export default function OnboardingScreen() {
       case "goal":
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.heading}>What's your main goal?</Text>
-            <Text style={styles.subheading}>We'll tailor your calorie and macro targets to match.</Text>
+            <Text style={styles.heading}>{"What's your main goal?"}</Text>
+            <Text style={styles.subheading}>{"We'll tailor your calorie and macro targets to match."}</Text>
             <View style={{ gap: Spacing.md }}>
               <OptionButton label="Lose weight" desc="Create a calorie deficit to reach your target" active={data.goalType === "lose"} onPress={() => { update("goalType", "lose"); goNext(); }} />
               <OptionButton label="Eat healthier" desc="Balanced nutrition without a specific weight goal" active={data.goalType === "health"} onPress={() => { update("goalType", "health"); goNext(); }} />
@@ -547,7 +547,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContent}>
             <Text style={styles.heading}>Tell us about yourself</Text>
-            <Text style={styles.subheading}>We'll use this to calculate your personal calorie budget.</Text>
+            <Text style={styles.subheading}>{"We'll use this to calculate your personal calorie budget."}</Text>
             <View style={styles.inputRow}>
               <Text style={styles.inputLabel}>Name</Text>
               <TextInput style={styles.input} value={data.displayName} onChangeText={(t) => update("displayName", t)} placeholder="Optional" placeholderTextColor={colors.textTertiary} autoCapitalize="words" />
@@ -770,7 +770,9 @@ export default function OnboardingScreen() {
           <View style={styles.stepContent}>
             <Text style={styles.heading}>Add a calorie schedule?</Text>
             <Text style={styles.subheading}>
-              Many people find it easier to have higher calorie days on weekends. We'll redistribute your weekly total so you don't go over.
+              {
+                "Many people find it easier to have higher calorie days on weekends. We'll redistribute your weekly total so you don't go over."
+              }
             </Text>
             <View style={{ gap: Spacing.md }}>
               <OptionButton label="Same every day" desc={`${budget} calories each day`} active={data.calorieSchedule === "even"} onPress={() => { update("calorieSchedule", "even"); goNext(); }} />
@@ -799,7 +801,11 @@ export default function OnboardingScreen() {
           <View style={[styles.stepContent, { alignItems: "center" }]}>
             {data.goalType === "lose" && projectedDate ? (
               <>
-                <Text style={styles.heading}>You'll reach {formatWeight(goalWeightKg, data.weightUnit)} on</Text>
+                <Text style={styles.heading}>
+                  {"You'll reach "}
+                  {formatWeight(goalWeightKg, data.weightUnit)}
+                  {" on"}
+                </Text>
                 <Text style={styles.projDate}>
                   {projectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                 </Text>
@@ -820,7 +826,7 @@ export default function OnboardingScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={80} color={Neon.green} />
-                <Text style={styles.heading}>You're all set!</Text>
+                <Text style={styles.heading}>{"You're all set!"}</Text>
               </>
             )}
             <View style={{ width: "100%", gap: Spacing.md }}>
@@ -855,9 +861,11 @@ export default function OnboardingScreen() {
         return (
           <View style={[styles.stepContent, { alignItems: "center" }]}>
             <Ionicons name="sparkles" size={60} color={Neon.green} />
-            <Text style={styles.heading}>You're all set up</Text>
+            <Text style={styles.heading}>{"You're all set up"}</Text>
             <Text style={styles.subheading}>
-              Platemate is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets.
+              {
+                "Platemate is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."
+              }
             </Text>
           </View>
         );

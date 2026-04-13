@@ -400,7 +400,7 @@ export default function VerifyScreen() {
                     {amountStr ? `${amountStr}, ` : ""}{ing.calories} calories
                   </Text>
                   {ing.matchedName && ing.matchedName !== ing.name && (
-                    <Text style={styles.ingOriginal}>"{decodeEntities(ing.name)}"</Text>
+                    <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
                 </View>
                 <Text style={styles.ingCals}>{ing.calories}</Text>

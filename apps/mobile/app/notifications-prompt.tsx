@@ -71,8 +71,9 @@ export default function NotificationsPromptScreen() {
 
       <Text style={styles.heading}>Stay on top of your meals</Text>
       <Text style={styles.stat}>
-        We'll send you a gentle nudge to log meals, remind you about your meal plan,
-        and let you know when new recipes match your targets.
+        {
+          "We'll send you a gentle nudge to log meals, remind you about your meal plan, and let you know when new recipes match your targets."
+        }
       </Text>
 
       <Pressable style={styles.enableBtn} onPress={() => void onEnable()}>
