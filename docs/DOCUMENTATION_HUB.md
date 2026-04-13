@@ -3,6 +3,8 @@
 This is the single source of truth for the product.
 
 ## Sections
+- `planning/` Sequenced backlogs (e.g. orchestrator-full-sweep → executor)
+- `decisions/` Product and release verdicts / decision log
 - `product/` Feature and behaviour documentation
 - `user/` End-user guides
 - `journeys/` End-to-end user journeys
