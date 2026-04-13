@@ -125,15 +125,23 @@ export function measureToGrams(input: MeasureInput): number {
     if (/\b(?:salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill|tarragon|sage)\b/.test(name)) {
       return amt * 3;
     }
+    // Liquid condiments / sauces — default to ~15ml (1 tbsp) per "count"
+    if (/sauce|syrup|vinegar|extract|essence|paste|purée|puree|concentrate|dressing|glaze|marinade/.test(name)) {
+      return amt * 15;
+    }
+    // Grains, pulses, dried goods — a "serving" is roughly 75g dry
+    if (/rice|pasta|noodle|couscous|quinoa|bulgur|oat|lentil|bean|chickpea|pea.*dried/.test(name)) {
+      return amt * 75;
+    }
+    // Catch-all: 80g is a reasonable middle-ground for an unrecognised medium food item
     if (process.env.NODE_ENV === "development") {
       console.warn(`[measureToGrams] no unit match for count item "${name}", using 80g default`);
     }
     return amt * 80;
   }
 
-  if (process.env.NODE_ENV === "development") {
-    console.warn(`[measureToGrams] unknown unit "${u}" for "${name}", using 80g default`);
-  }
-  return amt * 80;
+  // Unrecognised unit — fall back to name-based heuristics (same as unit="" path).
+  // This handles cases like unit="whole" or unit="piece" that aren't in the table.
+  return measureToGrams({ ...input, unit: "" });
 }
 
