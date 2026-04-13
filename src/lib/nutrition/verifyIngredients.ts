@@ -601,7 +601,15 @@ export async function verifyIngredients(opts: {
       matchedName: resolved.name,
       confidence: 0.3,
       source: "Estimated",
-      macros: { ...estimated, sugarG: 0, sodiumMg: 0 },
+      macros: {
+        calories: estimated.calories,
+        protein: estimated.protein,
+        carbs: estimated.carbs,
+        fat: estimated.fat,
+        fiberG: estimated.fiberG,
+        sugarG: estimated.sugarG,
+        sodiumMg: estimated.sodiumMg,
+      },
     });
   }
 

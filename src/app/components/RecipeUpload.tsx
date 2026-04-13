@@ -610,7 +610,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     const nonEmpty = rows.filter((r) => r.name.trim().length > 0);
     if (nonEmpty.length === 0) return null;
     const lineMacros = rows.map((i) =>
-      i.name.trim() ? estimateLineMacros(i) : { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
+      i.name.trim() ? estimateLineMacros(i) : { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
     );
     const total = sumMacros(lineMacros);
     const s = Math.max(1, Math.round(servings) || 1);
