@@ -342,20 +342,19 @@ export async function verifyIngredients(opts: {
   const usdaCfg = wantUsda && hasUsdaConfig() ? fdcConfigFromEnv() : null;
   const fatsecretCfg = wantFatSecret && hasFatSecretConfig() ? fatSecretConfigFromEnv() : null;
 
-  const verified: VerifiedIngredient[] = [];
+  const CONCURRENCY = 4;
 
-  for (let idx = 0; idx < ingredients.length; idx++) {
+  async function verifyOne(idx: number): Promise<VerifiedIngredient> {
     const raw = ingredients[idx]!;
     const resolved = resolveLine(raw);
     const query = resolved.name;
 
     if (!query) {
-      verified.push({
+      return {
         input: raw, resolved,
         fatSecretFoodId: null, matchedName: null,
         confidence: 0, source: "Unverified", macros: null,
-      });
-      continue;
+      };
     }
 
     const amt = Number.parseFloat(resolved.amount) || 1;
@@ -371,38 +370,35 @@ export async function verifyIngredients(opts: {
           gramsToUse = off.product.servingSizeG * (Number.parseFloat(resolved.amount) || 1);
         }
         const factor = gramsToUse / 100;
-        verified.push({
+        return {
           input: raw, resolved,
           fatSecretFoodId: override.barcode,
           matchedName: override.description ?? off.product.name,
           confidence: 1, source: "OFF",
           macros: scaleMacros({ ...off.product, sugarG: off.product.sugarG ?? 0, sodiumMg: off.product.sodiumMg ?? 0 }, factor),
-        });
-        continue;
+        };
       }
     }
 
     // 2. USDA override or search
     if (usdaCfg) {
-      let usdaFound = false;
       try {
         const usdaOverride = overrides.find((o) => o && o.index === idx && typeof o.fdcId === "number" && !o.barcode);
         if (usdaOverride) {
           const food = await fdcFoodGet(usdaCfg, usdaOverride.fdcId as number);
           if (food?.foodNutrients?.length) {
             const per100g = fdcFoodMacrosPer100g(food);
-            verified.push({
+            return {
               input: raw, resolved,
               fatSecretFoodId: String(usdaOverride.fdcId),
               matchedName: usdaOverride.description ?? food.description,
               confidence: 1, source: "USDA",
               macros: scaleMacros(per100g, grams / 100),
-            });
-            usdaFound = true;
+            };
           }
         }
 
-        if (!usdaFound) {
+        {
           let searchName = applyNameAliases(query);
           // Add context from the unit — "1 tin chickpeas" should search "chickpeas canned"
           const unitLower = resolved.unit.toLowerCase();
@@ -483,15 +479,13 @@ export async function verifyIngredients(opts: {
                 }
               }
 
-              verified.push({
+              return {
                 input: raw, resolved,
                 fatSecretFoodId: String(hit.fdcId),
                 matchedName: hit.description,
                 confidence: Math.min(0.95, conf + 0.1), source: "USDA",
                 macros: scaleMacros(per100g, effectiveGrams / 100),
-              });
-              usdaFound = true;
-              break;
+              };
             } catch {
               continue;
             }
@@ -500,12 +494,10 @@ export async function verifyIngredients(opts: {
       } catch (e) {
         console.error("[verifyIngredients] USDA lookup failed for", query, ":", e instanceof Error ? e.message : e);
       }
-      if (usdaFound) continue;
     }
 
     // 3. Open Food Facts search (worldwide — good for UK/EU products and local names)
     {
-      let offFound = false;
       try {
         const offHits = await searchOffProducts(query, { pageSize: 5 });
         if (offHits.length > 0) {
@@ -524,25 +516,22 @@ export async function verifyIngredients(opts: {
               sugarG: best.hit.sugarG,
               sodiumMg: best.hit.sodiumMg,
             };
-            verified.push({
+            return {
               input: raw, resolved,
               fatSecretFoodId: best.hit.code,
               matchedName: [best.hit.brand, best.hit.name].filter(Boolean).join(" · "),
               confidence: Math.min(0.85, best.conf), source: "OFF",
               macros: scaleMacros(per100g, grams / 100),
-            });
-            offFound = true;
+            };
           }
         }
       } catch (e) {
         console.error("[verifyIngredients] OFF search failed for", query, ":", e instanceof Error ? e.message : e);
       }
-      if (offFound) continue;
     }
 
     // 4. FatSecret search
     if (fatsecretCfg) {
-      let fsFound = false;
       try {
         const results = await fatSecretFoodSearch(fatsecretCfg, query);
         const best = results[0] ?? null;
@@ -564,7 +553,7 @@ export async function verifyIngredients(opts: {
                 sugarG: perServing.sugarG / servingG,
                 sodiumMg: perServing.sodiumMg / servingG,
               };
-              verified.push({
+              return {
                 input: raw, resolved,
                 fatSecretFoodId: best.food_id,
                 matchedName: best.food_name,
@@ -578,15 +567,13 @@ export async function verifyIngredients(opts: {
                   sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
                   sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
                 },
-              });
-              fsFound = true;
+              };
             }
           }
         }
       } catch (e) {
         console.error("[verifyIngredients] FatSecret lookup failed for", query, ":", e instanceof Error ? e.message : e);
       }
-      if (fsFound) continue;
     }
 
     // 4. Local estimation fallback
@@ -595,7 +582,7 @@ export async function verifyIngredients(opts: {
       amount: resolved.amount || "1",
       unit: resolved.unit || "",
     });
-    verified.push({
+    return {
       input: raw, resolved,
       fatSecretFoodId: null,
       matchedName: resolved.name,
@@ -610,7 +597,16 @@ export async function verifyIngredients(opts: {
         sugarG: estimated.sugarG,
         sodiumMg: estimated.sodiumMg,
       },
-    });
+    };
+  }
+
+  // Run ingredient verification concurrently with bounded parallelism
+  const verified: VerifiedIngredient[] = [];
+  const indices = ingredients.map((_, i) => i);
+  for (let i = 0; i < indices.length; i += CONCURRENCY) {
+    const batch = indices.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(verifyOne));
+    verified.push(...results);
   }
 
   // Totals

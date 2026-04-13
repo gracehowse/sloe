@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredServiceRoleResponse, ServerEnv } from "@/lib/server/serverEnv";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
 type Body = {
   barcode: string;
@@ -9,7 +10,6 @@ type Body = {
   source: "OpenFoodFacts" | "Community";
   externalId?: string | null;
   foodId?: string | null;
-  createdBy?: string | null;
 };
 
 function serverSupabase() {
@@ -21,6 +21,11 @@ function serverSupabase() {
 export async function POST(req: Request) {
   const misconfigured = misconfiguredServiceRoleResponse();
   if (misconfigured) return misconfigured;
+
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
 
   const rl = await rateLimit({ keyPrefix: "api:barcode-mapping", limit: 30, windowMs: 60_000 });
   if (!rl.ok) {
@@ -48,8 +53,15 @@ export async function POST(req: Request) {
 
   const sb = serverSupabase();
 
-  // Create or reuse a canonical food row
-  let foodId = typeof b.foodId === "string" && b.foodId ? b.foodId : null;
+  let foodId: string | null = null;
+  if (typeof b.foodId === "string" && b.foodId) {
+    const { data: existing } = await sb
+      .from("foods")
+      .select("id")
+      .eq("id", b.foodId)
+      .maybeSingle();
+    if (existing) foodId = existing.id as string;
+  }
   if (!foodId) {
     const { data: foodRow, error: foodErr } = await sb
       .from("foods")
@@ -62,7 +74,6 @@ export async function POST(req: Request) {
     foodId = foodRow.id as string;
   }
 
-  const createdBy = typeof b.createdBy === "string" ? b.createdBy : null;
   const externalId = typeof b.externalId === "string" ? b.externalId : null;
 
   // Ensure a food_sources row exists when we have a source external id.
@@ -90,7 +101,7 @@ export async function POST(req: Request) {
       source,
       external_id: externalId,
       display_name: displayName,
-      created_by: createdBy,
+      created_by: userId,
       is_verified: false,
     },
     { onConflict: "barcode" },

@@ -8,6 +8,14 @@ import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/
 import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
+import {
+  calculateBMR,
+  calculateTDEE,
+  calculateBudget,
+  calculateMacros,
+  type PlanPace,
+  type NutritionStrategy,
+} from "../../lib/nutrition/tdee.ts";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -38,17 +46,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
   const [activityAdjustPref, setActivityAdjustPref] = useState(preferActivityAdjustedCalories);
 
-  // User stats
-  const [age, setAge] = useState(28);
-  const [weight, setWeight] = useState(75);
-  const [height, setHeight] = useState(178);
-  const [sex, setSex] = useState<"male" | "female">("male");
+  const [age, setAge] = useState<number | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const [sex, setSex] = useState<"male" | "female" | "unspecified">("female");
   const [activityLevel, setActivityLevel] = useState<"sedentary" | "light" | "moderate" | "active" | "very_active">("moderate");
   const [goal, setGoal] = useState<"cut" | "maintain" | "bulk">("maintain");
+  const [planPace, setPlanPace] = useState<PlanPace>("steady");
+  const [nutritionStrategy, setNutritionStrategy] = useState<NutritionStrategy>("balanced");
   const [measurementSystem, setMeasurementSystem] = useState<"metric" | "imperial">("metric");
-  const [heightFt, setHeightFt] = useState("5");
-  const [heightIn, setHeightIn] = useState("10");
-  const [weightLb, setWeightLb] = useState("165");
+  const [heightFt, setHeightFt] = useState("");
+  const [heightIn, setHeightIn] = useState("");
+  const [weightLb, setWeightLb] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -58,17 +67,19 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal, measurement_system")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
 
-      if (profile.age) setAge(profile.age as number);
-      if (profile.weight_kg) setWeight(profile.weight_kg as number);
-      if (profile.height_cm) setHeight(profile.height_cm as number);
-      if (profile.sex) setSex((profile.sex as "male" | "female") ?? "male");
+      setAge(profile.age as number | null);
+      setWeight(profile.weight_kg as number | null);
+      setHeight(profile.height_cm as number | null);
+      if (profile.sex) setSex(profile.sex as "male" | "female" | "unspecified");
       if (profile.activity_level) setActivityLevel(profile.activity_level as typeof activityLevel);
       if (profile.goal) setGoal(profile.goal as typeof goal);
+      if (profile.plan_pace) setPlanPace(profile.plan_pace as PlanPace);
+      if (profile.nutrition_strategy) setNutritionStrategy(profile.nutrition_strategy as NutritionStrategy);
       if (profile.measurement_system === "imperial" || profile.measurement_system === "metric") {
         setMeasurementSystem(profile.measurement_system);
       }
@@ -83,57 +94,38 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
   }, [preferActivityAdjustedCalories]);
 
   useEffect(() => {
-    const { feet, inches } = cmToFeetInches(height);
-    setHeightFt(String(feet));
-    setHeightIn(String(inches));
-    setWeightLb(kgToLb(weight).toFixed(1));
+    if (height != null) {
+      const { feet, inches } = cmToFeetInches(height);
+      setHeightFt(String(feet));
+      setHeightIn(String(inches));
+    }
+    if (weight != null) {
+      setWeightLb(kgToLb(weight).toFixed(1));
+    }
   }, [measurementSystem, height, weight]);
 
-  // Calculate BMR using Mifflin-St Jeor
-  const calculateBMR = () => {
-    if (sex === "male") {
-      return 10 * weight + 6.25 * height - 5 * age + 5;
-    } else {
-      return 10 * weight + 6.25 * height - 5 * age - 161;
-    }
-  };
+  const hasBodyStats = age != null && weight != null && height != null;
 
-  // Activity multipliers
-  const activityMultipliers = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very_active: 1.9,
-  };
-
-  // Goal adjustments
-  const goalAdjustments: Record<string, number> = {
-    cut: -0.15,
-    maintain: 0,
-    bulk: 0.1,
-  };
-
-  const bmr = calculateBMR();
-  const tdee = bmr * activityMultipliers[activityLevel];
-  const targetCalories = Math.round(tdee * (1 + goalAdjustments[goal]));
-  const proteinPerKg: Record<string, number> = { cut: 2.0, maintain: 1.6, bulk: 2.2 };
-  const targetProtein = Math.round(weight * (proteinPerKg[goal] ?? 1.6));
-  const targetFat = Math.round(targetCalories * 0.25 / 9); // 25% of calories from fat
-  const targetCarbs = Math.round((targetCalories - targetProtein * 4 - targetFat * 9) / 4);
-  const targetFiber = Math.max(14, Math.min(45, Math.round((14 * targetCalories) / 1000)));
-  const targetWaterMl = Math.min(4500, Math.max(1500, Math.round(weight * 33)));
+  const computedTargets = useMemo(() => {
+    if (!hasBodyStats) return null;
+    const bmr = calculateBMR(sex, weight, height, age);
+    const tdee = calculateTDEE(sex, weight, height, age, activityLevel);
+    const calories = calculateBudget(tdee, planPace, goal);
+    const macros = calculateMacros(calories, nutritionStrategy, weight);
+    const waterMl = Math.min(4500, Math.max(1500, Math.round(weight * 33)));
+    return { bmr, tdee, calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat, fiber: macros.fiber, waterMl };
+  }, [hasBodyStats, sex, weight, height, age, activityLevel, planPace, goal, nutritionStrategy]);
 
   const displayTargets = normalizeMacroTargets(
     nutritionTargets?.calories && nutritionTargets?.protein
       ? nutritionTargets
-      : {
-          calories: targetCalories,
-          protein: targetProtein,
-          carbs: targetCarbs,
-          fat: targetFat,
-          fiber: targetFiber,
-          waterMl: targetWaterMl,
+      : computedTargets ?? {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+          waterMl: 0,
         },
   );
 
@@ -295,8 +287,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Age</label>
                 <input
                   type="number"
-                  value={age}
-                  onChange={(e) => setAge(parseInt(e.target.value, 10))}
+                  value={age ?? ""}
+                  placeholder="e.g. 28"
+                  onChange={(e) => setAge(e.target.value ? parseInt(e.target.value, 10) : null)}
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 />
               </div>
@@ -304,11 +297,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                 <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Sex</label>
                 <select
                   value={sex}
-                  onChange={(e) => setSex(e.target.value as "male" | "female")}
+                  onChange={(e) => setSex(e.target.value as "male" | "female" | "unspecified")}
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
+                  <option value="unspecified">Prefer not to say</option>
                 </select>
               </div>
               {measurementSystem === "metric" ? (
@@ -318,8 +312,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     <input
                       type="number"
                       step="0.1"
-                      value={weight}
-                      onChange={(e) => setWeight(Number(e.target.value))}
+                      value={weight ?? ""}
+                      placeholder="e.g. 65"
+                      onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : null)}
                       className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                     />
                   </div>
@@ -327,8 +322,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (cm)</label>
                     <input
                       type="number"
-                      value={height}
-                      onChange={(e) => setHeight(Number(e.target.value))}
+                      value={height ?? ""}
+                      placeholder="e.g. 170"
+                      onChange={(e) => setHeight(e.target.value ? Number(e.target.value) : null)}
                       className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                     />
                   </div>
@@ -443,7 +439,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
               <p>
-                BMR: {Math.round(bmr)} kcal · TDEE: {Math.round(tdee)} kcal
+                BMR: {computedTargets ? Math.round(computedTargets.bmr) : "—"} kcal · TDEE: {computedTargets ? Math.round(computedTargets.tdee) : "—"} kcal
               </p>
               <p className="mt-1">Using Mifflin-St Jeor equation with activity multipliers</p>
             </div>

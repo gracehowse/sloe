@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -21,6 +22,10 @@ import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import {
+  DIETARY_PREFERENCE_ENTRIES,
+  normaliseDietaryFromProfile,
+} from "../../../src/constants/dietaryPreferences.ts";
 import {
   calculateTDEE,
   calculateBudget,
@@ -57,10 +62,6 @@ type StepId =
   | "dietary"
   | "calorie_schedule"
   | "fasting"
-  | "motivation"
-  | "success_vision"
-  | "obstacles"
-  | "feeling"
   | "projection"
   | "summary";
 
@@ -74,10 +75,6 @@ const STEP_ORDER: StepId[] = [
   "dietary",
   "calorie_schedule",
   "fasting",
-  "motivation",
-  "success_vision",
-  "obstacles",
-  "feeling",
   "projection",
   "summary",
 ];
@@ -112,10 +109,6 @@ type OnboardingData = {
   highDays: string[];
   fastingEnabled: boolean;
   fastingWindow: string;
-  motivation: string;
-  successVision: string[];
-  obstacles: string[];
-  feeling: string;
 };
 
 const INITIAL_DATA: OnboardingData = {
@@ -144,11 +137,109 @@ const INITIAL_DATA: OnboardingData = {
   highDays: [],
   fastingEnabled: false,
   fastingWindow: "",
-  motivation: "",
-  successVision: [],
-  obstacles: [],
-  feeling: "",
 };
+
+function formatWeight(kg: number, unit: WeightUnit): string {
+  if (unit === "lb") return `${Math.round(kgToLb(kg) * 10) / 10} lb`;
+  if (unit === "st") {
+    const s = kgToStLb(kg);
+    return `${s.st} st ${s.lb} lb`;
+  }
+  return `${Math.round(kg * 10) / 10} kg`;
+}
+
+function formatWeeklyRate(kgPerWeek: number, unit: WeightUnit): string {
+  if (unit === "lb") return `${Math.round(kgToLb(kgPerWeek) * 10) / 10} lb`;
+  if (unit === "st") return `${Math.round(kgToLb(kgPerWeek) * 10) / 10} lb`;
+  return `${kgPerWeek} kg`;
+}
+
+const PLAN_PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
+const STRATEGIES: NutritionStrategy[] = ["balanced", "high_protein", "high_satisfaction", "low_carb"];
+const ACTIVITIES: ActivityLevel[] = ["sedentary", "light", "moderate", "active", "very_active"];
+
+type ProfileHydrationRow = {
+  display_name: string | null;
+  sex: string | null;
+  age: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  goal_weight_kg: number | null;
+  activity_level: string | null;
+  goal: string | null;
+  dietary: unknown;
+  plan_pace: string | null;
+  nutrition_strategy: string | null;
+  calorie_schedule: string | null;
+  high_days: unknown;
+  fasting_enabled: boolean | null;
+  fasting_window: string | null;
+  measurement_system: string | null;
+};
+
+function mergeProfileIntoOnboarding(prev: OnboardingData, row: ProfileHydrationRow): OnboardingData {
+  const next = { ...prev };
+  if (row.display_name) next.displayName = row.display_name;
+  if (row.sex === "male" || row.sex === "female" || row.sex === "unspecified") next.sex = row.sex;
+  if (row.age != null && row.age > 0) next.age = String(row.age);
+  if (row.height_cm != null && Number(row.height_cm) > 0) {
+    const h = Number(row.height_cm);
+    next.heightCm = String(Math.round(h * 10) / 10);
+    const { ft, inches } = cmToFtIn(h);
+    next.heightFt = String(ft);
+    next.heightIn = String(inches);
+  }
+  if (row.weight_kg != null && Number(row.weight_kg) > 0) {
+    const wk = Number(row.weight_kg);
+    next.weightKg = String(Math.round(wk * 10) / 10);
+    next.weightLb = kgToLb(wk).toFixed(1);
+    const stlb = kgToStLb(wk);
+    next.weightSt = String(stlb.st);
+    next.weightStLb = String(stlb.lb);
+  }
+  if (row.goal_weight_kg != null && Number(row.goal_weight_kg) > 0) {
+    const gk = Number(row.goal_weight_kg);
+    next.goalWeightKg = String(Math.round(gk * 10) / 10);
+    next.goalWeightLb = kgToLb(gk).toFixed(1);
+    const gst = kgToStLb(gk);
+    next.goalWeightSt = String(gst.st);
+    next.goalWeightStLb = String(gst.lb);
+  }
+  if (row.activity_level && ACTIVITIES.includes(row.activity_level as ActivityLevel)) {
+    next.activity = row.activity_level as ActivityLevel;
+  }
+  if (row.goal === "cut") next.goalType = "lose";
+  else if (row.goal === "bulk") next.goalType = "strength";
+  else if (row.goal === "maintain") next.goalType = "health";
+  const d = normaliseDietaryFromProfile(row.dietary);
+  if (d.length > 0) next.dietary = d;
+  if (row.plan_pace && PLAN_PACES.includes(row.plan_pace as PlanPace)) {
+    next.planPace = row.plan_pace as PlanPace;
+  }
+  if (row.nutrition_strategy && STRATEGIES.includes(row.nutrition_strategy as NutritionStrategy)) {
+    next.strategy = row.nutrition_strategy as NutritionStrategy;
+  }
+  if (row.calorie_schedule === "even" || row.calorie_schedule === "flexible") {
+    next.calorieSchedule = row.calorie_schedule;
+  }
+  if (Array.isArray(row.high_days)) {
+    next.highDays = row.high_days.filter((x): x is string => typeof x === "string");
+  }
+  if (typeof row.fasting_enabled === "boolean") {
+    next.fastingEnabled = row.fasting_enabled;
+  }
+  if (row.fasting_window != null && row.fasting_window !== "") {
+    next.fastingWindow = row.fasting_window;
+  }
+  if (row.measurement_system === "imperial") {
+    next.weightUnit = "lb";
+    next.heightUnit = "ft";
+  } else if (row.measurement_system === "metric") {
+    next.weightUnit = "kg";
+    next.heightUnit = "cm";
+  }
+  return next;
+}
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -161,6 +252,27 @@ export default function OnboardingScreen() {
   const [data, setData] = useState<OnboardingData>(INITIAL_DATA);
   const [saving, setSaving] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const hydrateSeq = useRef(0);
+
+  useEffect(() => {
+    if (!userId) return;
+    const id = ++hydrateSeq.current;
+    let cancelled = false;
+    void (async () => {
+      const { data: row, error } = await supabase
+        .from("profiles")
+        .select(
+          "display_name, sex, age, height_cm, weight_kg, goal_weight_kg, activity_level, goal, dietary, plan_pace, nutrition_strategy, calorie_schedule, high_days, fasting_enabled, fasting_window, measurement_system",
+        )
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled || error || !row || hydrateSeq.current !== id) return;
+      setData((prev) => mergeProfileIntoOnboarding(prev, row as ProfileHydrationRow));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const currentStepId = STEP_ORDER[step];
   const progress = (step + 1) / STEP_ORDER.length;
@@ -187,7 +299,7 @@ export default function OnboardingScreen() {
   const weeks = data.goalType === "lose" ? weeksToGoal(weightKg, goalWeightKg, data.planPace) : 0;
   const projectedDate = weeks > 0 ? goalDate(weeks) : null;
 
-  const animateTransition = useCallback((direction: 1 | -1) => {
+  const animateTransition = useCallback((_direction: 1 | -1) => {
     Animated.sequence([
       Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -210,18 +322,27 @@ export default function OnboardingScreen() {
   }, [step, animateTransition]);
 
   const skip = useCallback(async () => {
-    // Mark onboarding as completed even if skipped, so they don't see it again
     if (userId) {
-      await supabase.from("profiles").upsert({ id: userId, onboarding_completed: true }, { onConflict: "id" });
+      const defaultBudget = calculateBudget(calculateTDEE("female", 70, 165, 28, "moderate"), "steady", "lose");
+      const defaultMacros = calculateMacros(defaultBudget, "balanced", 70);
+      await supabase.from("profiles").upsert({
+        id: userId,
+        target_calories: defaultBudget,
+        target_protein: defaultMacros.protein,
+        target_carbs: defaultMacros.carbs,
+        target_fat: defaultMacros.fat,
+        target_fiber_g: defaultMacros.fiber,
+        onboarding_completed: true,
+      }, { onConflict: "id" });
     }
-    router.replace("/(tabs)");
+    router.replace("/paywall");
   }, [router, userId]);
 
   const saveAndFinish = useCallback(async () => {
-    if (!userId) { router.replace("/(tabs)"); return; }
+    if (!userId) { router.replace("/paywall"); return; }
     setSaving(true);
     try {
-      await supabase.from("profiles").upsert({
+      const { error } = await supabase.from("profiles").upsert({
         id: userId,
         display_name: data.displayName.trim() || null,
         sex: data.sex,
@@ -242,11 +363,18 @@ export default function OnboardingScreen() {
         target_protein: macros.protein,
         target_carbs: macros.carbs,
         target_fat: macros.fat,
-        target_fiber: macros.fiber,
+        target_fiber_g: macros.fiber,
+        target_water_ml: Math.min(4500, Math.max(1500, Math.round(weightKg * 33))),
+        measurement_system: data.weightUnit === "lb" ? "imperial" : data.weightUnit === "st" ? "imperial" : "metric",
+        user_tier: "free",
         onboarding_completed: true,
       }, { onConflict: "id" });
+      if (error) throw error;
     } catch (e) {
       console.error("[onboarding] save failed:", e);
+      setSaving(false);
+      Alert.alert("Save failed", "We couldn't save your profile. Check your connection and try again.");
+      return;
     }
     setSaving(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -257,7 +385,7 @@ export default function OnboardingScreen() {
     setData((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const toggleArrayItem = useCallback((key: "successVision" | "obstacles" | "highDays" | "dietary", item: string) => {
+  const toggleArrayItem = useCallback((key: keyof Pick<OnboardingData, "highDays" | "dietary">, item: string) => {
     setData((prev) => {
       const arr = prev[key] as string[];
       return { ...prev, [key]: arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item] };
@@ -424,12 +552,17 @@ export default function OnboardingScreen() {
               <Text style={styles.inputLabel}>Name</Text>
               <TextInput style={styles.input} value={data.displayName} onChangeText={(t) => update("displayName", t)} placeholder="Optional" placeholderTextColor={colors.textTertiary} autoCapitalize="words" />
             </View>
+            <Text style={[styles.inputLabel, { width: "100%", marginBottom: 4 }]}>Biological sex</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 8 }}>Used for BMR calculation only</Text>
             <View style={styles.sexRow}>
               <Pressable style={[styles.sexBtn, data.sex === "female" && styles.sexBtnActive]} onPress={() => update("sex", "female")}>
                 <Text style={styles.sexBtnText}>Female</Text>
               </Pressable>
               <Pressable style={[styles.sexBtn, data.sex === "male" && styles.sexBtnActive]} onPress={() => update("sex", "male")}>
                 <Text style={styles.sexBtnText}>Male</Text>
+              </Pressable>
+              <Pressable style={[styles.sexBtn, data.sex === "unspecified" && styles.sexBtnActive]} onPress={() => update("sex", "unspecified")}>
+                <Text style={[styles.sexBtnText, { fontSize: 12 }]}>Prefer not{"\n"}to say</Text>
               </Pressable>
             </View>
             <View style={styles.inputRow}>
@@ -548,7 +681,7 @@ export default function OnboardingScreen() {
                         <>
                           <View style={styles.planStat}>
                             <Ionicons name="trending-down-outline" size={16} color={colors.textSecondary} />
-                            <Text style={styles.planStatText}>Lose {opt.weeklyKg} kg per week</Text>
+                            <Text style={styles.planStatText}>Lose {formatWeeklyRate(opt.weeklyKg, data.weightUnit)} per week</Text>
                           </View>
                           {opt.goalDate && (
                             <View style={styles.planStat}>
@@ -581,7 +714,7 @@ export default function OnboardingScreen() {
             <Text style={styles.budgetNumber}>{budget.toLocaleString()}</Text>
             <Text style={styles.budgetLabel}>calories per day</Text>
             {data.goalType === "lose" && (
-              <Text style={styles.subheading}>{PACE_LABELS[data.planPace].title} pace — {planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg} kg per week</Text>
+              <Text style={styles.subheading}>{PACE_LABELS[data.planPace].title} pace — {formatWeeklyRate(planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg ?? 0, data.weightUnit)} per week</Text>
             )}
             <Text style={[styles.subheading, { marginTop: Spacing.lg }]}>
               Platemate will use this to find recipes and build meal plans that fit your target. You can adjust it anytime in settings.
@@ -619,22 +752,13 @@ export default function OnboardingScreen() {
             <Text style={styles.heading}>Any dietary preferences?</Text>
             <Text style={styles.subheading}>Select all that apply. This helps us suggest better recipes.</Text>
             <View style={styles.chipWrap}>
-              {[
-                "Vegetarian",
-                "Vegan",
-                "Pescatarian",
-                "Gluten-free",
-                "Dairy-free",
-                "Nut-free",
-                "Halal",
-                "Kosher",
-              ].map((opt) => (
+              {DIETARY_PREFERENCE_ENTRIES.map((opt) => (
                 <Pressable
-                  key={opt}
-                  style={[styles.chip, data.dietary.includes(opt.toLowerCase()) && styles.chipActive]}
-                  onPress={() => toggleArrayItem("dietary" as any, opt.toLowerCase())}
+                  key={opt.id}
+                  style={[styles.chip, data.dietary.includes(opt.id) && styles.chipActive]}
+                  onPress={() => toggleArrayItem("dietary", opt.id)}
                 >
-                  <Text style={styles.chipText}>{opt}</Text>
+                  <Text style={styles.chipText}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -670,105 +794,25 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case "motivation":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.heading}>What brought you to Platemate?</Text>
-            <View style={{ gap: Spacing.sm }}>
-              {[
-                "I want to eat better without the guesswork",
-                "I'm looking for recipe ideas that fit my macros",
-                "I want to understand what's in my food",
-                "I need help planning meals for the week",
-                "I'm tracking nutrition and want accurate data",
-              ].map((opt) => (
-                <OptionButton key={opt} label={opt} active={data.motivation === opt} onPress={() => { update("motivation", opt); goNext(); }} />
-              ))}
-            </View>
-          </View>
-        );
-
-      case "success_vision":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.heading}>What does eating well mean to you?</Text>
-            <Text style={styles.subheading}>Select all that apply.</Text>
-            <View style={styles.chipWrap}>
-              {[
-                "Hitting my protein target consistently",
-                "Knowing exactly what's in my meals",
-                "Cooking more and eating out less",
-                "Having a plan instead of winging it",
-                "Finding new recipes I actually enjoy",
-                "Feeling in control of my nutrition",
-              ].map((opt) => (
-                <Pressable key={opt} style={[styles.chip, data.successVision.includes(opt) && styles.chipActive]} onPress={() => toggleArrayItem("successVision", opt)}>
-                  <Text style={styles.chipText}>{opt}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        );
-
-      case "obstacles":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.heading}>What makes eating well hard?</Text>
-            <Text style={styles.subheading}>Select all that apply.</Text>
-            <View style={styles.chipWrap}>
-              {[
-                "I don't have time to plan meals",
-                "I never know what to cook",
-                "Nutrition info is confusing or unreliable",
-                "Healthy food feels boring or repetitive",
-                "I end up ordering takeaway instead",
-                "Recipes never match my calorie goals",
-              ].map((opt) => (
-                <Pressable key={opt} style={[styles.chip, data.obstacles.includes(opt) && styles.chipActive]} onPress={() => toggleArrayItem("obstacles", opt)}>
-                  <Text style={styles.chipText}>{opt}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        );
-
-      case "feeling":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.heading}>How do you feel about tracking what you eat?</Text>
-            <View style={{ gap: Spacing.sm }}>
-              {[
-                "I'm keen — I like knowing the numbers",
-                "I'll try it if it's quick and easy",
-                "I'd rather just follow a plan",
-                "I've tried before but it felt like a chore",
-                "I'm new to this — show me the ropes",
-              ].map((opt) => (
-                <OptionButton key={opt} label={opt} active={data.feeling === opt} onPress={() => { update("feeling", opt); goNext(); }} />
-              ))}
-            </View>
-          </View>
-        );
-
       case "projection":
         return (
           <View style={[styles.stepContent, { alignItems: "center" }]}>
             {data.goalType === "lose" && projectedDate ? (
               <>
-                <Text style={styles.heading}>You'll reach {goalWeightKg} kg on</Text>
+                <Text style={styles.heading}>You'll reach {formatWeight(goalWeightKg, data.weightUnit)} on</Text>
                 <Text style={styles.projDate}>
                   {projectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                 </Text>
                 <View style={{ width: "100%", marginVertical: Spacing.lg }}>
                   <View style={styles.weightRow}>
                     <View style={[styles.weightBadge, { backgroundColor: Neon.green }]}>
-                      <Text style={styles.weightBadgeText}>{weightKg} kg</Text>
+                      <Text style={styles.weightBadgeText}>{formatWeight(weightKg, data.weightUnit)}</Text>
                     </View>
                     <View style={{ flex: 1, height: 3, backgroundColor: Neon.green + "30", marginHorizontal: Spacing.md, borderRadius: 2 }}>
                       <View style={{ height: 3, width: "100%", backgroundColor: Neon.green, borderRadius: 2 }} />
                     </View>
                     <View style={[styles.weightBadge, { backgroundColor: Neon.purple }]}>
-                      <Text style={styles.weightBadgeText}>{goalWeightKg} kg</Text>
+                      <Text style={styles.weightBadgeText}>{formatWeight(goalWeightKg, data.weightUnit)}</Text>
                     </View>
                   </View>
                 </View>
@@ -784,7 +828,7 @@ export default function OnboardingScreen() {
                 <View style={styles.summaryIcon}><Ionicons name="flame" size={20} color={Neon.green} /></View>
                 <View>
                   <Text style={styles.summaryLabel}>Budget: {budget.toLocaleString()} calories</Text>
-                  {data.goalType === "lose" && <Text style={styles.summarySub}>Lose {planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg} kg per week</Text>}
+                  {data.goalType === "lose" && <Text style={styles.summarySub}>Lose {formatWeeklyRate(planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg ?? 0, data.weightUnit)} per week</Text>}
                 </View>
               </View>
               <View style={styles.summaryRow}>
@@ -824,17 +868,21 @@ export default function OnboardingScreen() {
   };
 
   // Steps that auto-advance on selection (no Continue button needed)
-  const autoAdvanceSteps: StepId[] = ["goal", "activity", "motivation", "feeling"];
-  const multiSelectSteps: StepId[] = ["success_vision", "obstacles", "dietary"];
+  const autoAdvanceSteps: StepId[] = ["goal", "activity"];
+  const multiSelectSteps: StepId[] = ["dietary"];
   const needsContinue = !autoAdvanceSteps.includes(currentStepId) || multiSelectSteps.includes(currentStepId);
   const isLastStep = currentStepId === "summary";
 
   // Validate current step
   const canContinue = (() => {
     switch (currentStepId) {
-      case "basic_info": return data.age && data.heightCm && data.weightKg && (data.goalType !== "lose" || data.goalWeightKg);
-      case "success_vision": return data.successVision.length > 0;
-      case "obstacles": return data.obstacles.length > 0;
+      case "basic_info": {
+        const hasAge = parseInt(data.age) > 0;
+        const hasHeight = heightCm > 50;
+        const hasWeight = weightKg > 10;
+        const hasGoalWeight = data.goalType !== "lose" || goalWeightKg > 10;
+        return hasAge && hasHeight && hasWeight && hasGoalWeight;
+      }
       default: return true;
     }
   })();

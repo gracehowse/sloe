@@ -1,6 +1,6 @@
 import type { UserTier } from "./recipe.ts";
 
-export type Sex = "male" | "female";
+export type Sex = "male" | "female" | "unspecified";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
 /** Must match the DB check constraint: `goal in ('cut','maintain','bulk')`. */
 export type Goal = "cut" | "maintain" | "bulk";

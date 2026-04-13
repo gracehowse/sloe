@@ -161,17 +161,44 @@ export default function ShoppingListScreen() {
     });
   }, [userId]);
 
-  const shareToReminders = useCallback(() => {
-    // Build a text list and share via system share sheet (works with Apple Reminders)
-    const text = items
-      .filter((i) => !i.checked)
-      .map((i) => `${i.amount} ${i.unit} ${i.name}`.trim())
-      .join("\n");
-    void Share.share({
-      message: text,
-      title: "Shopping List",
-    });
+  const buildListText = useCallback(() => {
+    const grouped = new Map<string, ShoppingItem[]>();
+    for (const item of items.filter((i) => !i.checked)) {
+      const cat = item.category || "Other";
+      if (!grouped.has(cat)) grouped.set(cat, []);
+      grouped.get(cat)!.push(item);
+    }
+    const lines: string[] = ["🛒 Shopping List\n"];
+    for (const [cat, catItems] of grouped) {
+      lines.push(`📌 ${cat}`);
+      for (const i of catItems) {
+        lines.push(`  ☐ ${i.amount} ${i.unit} ${i.name}`.trim());
+      }
+      lines.push("");
+    }
+    return lines.join("\n").trim();
   }, [items]);
+
+  const exportList = useCallback(() => {
+    const text = buildListText();
+    Alert.alert("Export shopping list", undefined, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Copy to clipboard",
+        onPress: () => {
+          void import("expo-clipboard").then(({ setStringAsync }) =>
+            setStringAsync(text),
+          );
+        },
+      },
+      {
+        text: "Share",
+        onPress: () => {
+          void Share.share({ message: text, title: "Shopping List" });
+        },
+      },
+    ]);
+  }, [buildListText]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -196,7 +223,7 @@ export default function ShoppingListScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.pink + "30",
+      borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
     },
@@ -241,7 +268,7 @@ export default function ShoppingListScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.pink + "30",
+      borderColor: colors.border,
       padding: Spacing.xxxl,
       alignItems: "center",
       gap: Spacing.md,
@@ -275,7 +302,7 @@ export default function ShoppingListScreen() {
           <Text style={styles.headerTitle}>SHOPPING LIST</Text>
           {items.length > 0 ? (
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
-              <Pressable hitSlop={12} onPress={shareToReminders}>
+              <Pressable hitSlop={12} onPress={exportList}>
                 <Ionicons name="share-outline" size={22} color={colors.text} />
               </Pressable>
               <Pressable hitSlop={12} onPress={clearAll}>

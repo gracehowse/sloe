@@ -3,14 +3,14 @@
  * Uses Mifflin-St Jeor equation — considered the most accurate for general population.
  */
 
-export type Sex = "male" | "female";
+export type Sex = "male" | "female" | "unspecified";
 
 export type ActivityLevel =
-  | "sedentary"      // Little/no exercise, desk job
-  | "light"          // Light exercise 1-3 days/week
-  | "moderate"       // Moderate exercise 3-5 days/week
-  | "active"         // Hard exercise 6-7 days/week
-  | "very_active";   // Very hard exercise, physical job
+  | "sedentary" // Little/no exercise, desk job
+  | "light" // Light exercise 1-3 days/week
+  | "moderate" // Moderate exercise 3-5 days/week
+  | "active" // Hard exercise 6-7 days/week
+  | "very_active"; // Very hard exercise, physical job
 
 export type PlanPace = "relaxed" | "steady" | "accelerated" | "vigorous";
 
@@ -34,10 +34,10 @@ const PACE_WEEKLY_KG: Record<PlanPace, number> = {
 
 /** Daily calorie deficit per pace (7700 kcal ≈ 1kg fat) */
 const PACE_DAILY_DEFICIT: Record<PlanPace, number> = {
-  relaxed: 275,    // ~0.25 kg/week
-  steady: 550,     // ~0.5 kg/week
+  relaxed: 275, // ~0.25 kg/week
+  steady: 550, // ~0.5 kg/week
   accelerated: 825, // ~0.75 kg/week
-  vigorous: 1100,  // ~1 kg/week
+  vigorous: 1100, // ~1 kg/week
 };
 
 /**
@@ -47,11 +47,14 @@ const PACE_DAILY_DEFICIT: Record<PlanPace, number> = {
  * Female: 10w + 6.25h − 5a − 161
  */
 export function calculateBMR(sex: Sex, weightKg: number, heightCm: number, age: number): number {
-  const w = Math.max(30, Math.min(weightKg, 350));   // 30–350 kg
-  const h = Math.max(100, Math.min(heightCm, 250));  // 100–250 cm
-  const a = Math.max(13, Math.min(age, 100));         // 13–100 years
+  const w = Math.max(30, Math.min(weightKg, 350)); // 30–350 kg
+  const h = Math.max(100, Math.min(heightCm, 250)); // 100–250 cm
+  const a = Math.max(13, Math.min(age, 100)); // 13–100 years
   const base = 10 * w + 6.25 * h - 5 * a;
-  return sex === "male" ? base + 5 : base - 161;
+  if (sex === "male") return base + 5;
+  if (sex === "female") return base - 161;
+  // "unspecified" — midpoint of male and female estimates
+  return Math.round((base + 5 + (base - 161)) / 2);
 }
 
 /** TDEE = BMR × activity multiplier */
@@ -66,23 +69,24 @@ export function calculateTDEE(
   return Math.round(bmr * ACTIVITY_MULTIPLIERS[activity]);
 }
 
-/** Calculate daily calorie budget for a given plan pace. No clamping — returns the real number. */
+/** Calculate daily calorie budget for a given plan pace. No clamping — returns the real number.
+ *  Accepts both DB values (cut/maintain/bulk) and onboarding UI labels (lose/health/strength). */
 export function calculateBudget(tdee: number, pace: PlanPace, goalType: string): number {
-  if (goalType === "bulk" || goalType === "gain") {
+  if (goalType === "bulk" || goalType === "strength" || goalType === "gain") {
     return Math.round(tdee + PACE_DAILY_DEFICIT[pace] * 0.5);
   }
-  if (goalType === "maintain") {
+  if (goalType === "maintain" || goalType === "health") {
     return tdee;
   }
-  // "cut" or any unrecognized goal → deficit (safe default)
+  // "cut", "lose", or any unrecognized goal → deficit (safe default)
   return Math.round(tdee - PACE_DAILY_DEFICIT[pace]);
 }
 
 /** Safety level for a calorie budget */
 export function budgetSafety(budget: number, sex: Sex): "safe" | "caution" | "warning" {
   // NHS/medical guidance: minimum ~1200 for women, ~1500 for men
-  const hardFloor = sex === "male" ? 1500 : 1200;
-  const cautionFloor = sex === "male" ? 1800 : 1400;
+  const hardFloor = sex === "male" ? 1500 : sex === "female" ? 1200 : 1350;
+  const cautionFloor = sex === "male" ? 1800 : sex === "female" ? 1400 : 1600;
   if (budget < hardFloor) return "warning";
   if (budget < cautionFloor) return "caution";
   return "safe";
@@ -115,28 +119,34 @@ export function calculateMacros(
   let fatPct: number;
   let fiberG: number;
 
+  // Protein is calculated as g/kg body weight (ISSN position stand), then
+  // converted to a calorie percentage. This ensures the gram amount stays
+  // meaningful regardless of calorie budget (a 1200-cal cut still gets
+  // adequate protein, not just 25% of a small number).
   switch (strategy) {
     case "high_protein":
-      // ~1.6g/kg protein, rest split between carbs/fat
-      proteinPct = Math.min(0.40, (weightKg * 1.6 * 4) / calories);
-      fatPct = 0.30;
-      fiberG = Math.round(calories / 70); // ~17g per 1200 cal
+      // 2.2 g/kg — upper end of ISSN 1.6–2.2 range for muscle building
+      proteinPct = Math.min(0.45, (weightKg * 2.2 * 4) / calories);
+      fatPct = 0.25;
+      fiberG = Math.round(calories / 70);
       break;
     case "high_satisfaction":
-      // Higher protein + fiber for satiety
-      proteinPct = 0.30;
-      fatPct = 0.30;
-      fiberG = Math.round(calories / 50); // ~24g per 1200 cal
+      // 1.8 g/kg — satiety-focused (Leidy 2015), higher fiber
+      proteinPct = Math.min(0.4, (weightKg * 1.8 * 4) / calories);
+      fatPct = 0.3;
+      fiberG = Math.round(calories / 45); // ~27g per 1200 cal
       break;
     case "low_carb":
-      proteinPct = 0.30;
+      // 1.8 g/kg protein, 45% fat — reduces carbs to ~25% (Volek/Phinney)
+      proteinPct = Math.min(0.35, (weightKg * 1.8 * 4) / calories);
       fatPct = 0.45;
       fiberG = Math.round(calories / 80);
       break;
     default: // balanced
-      proteinPct = 0.25;
-      fatPct = 0.30;
-      fiberG = Math.round(calories / 60);
+      // 1.6 g/kg — ISSN minimum for active individuals
+      proteinPct = Math.min(0.35, (weightKg * 1.6 * 4) / calories);
+      fatPct = 0.25;
+      fiberG = Math.round(calories / 55);
   }
 
   const protein = Math.round((calories * proteinPct) / 4);
@@ -152,7 +162,7 @@ export function planOptions(tdee: number, currentKg: number, goalKg: number, goa
   const paces: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
   return paces.map((pace) => {
     const budget = calculateBudget(tdee, pace, goalType);
-    const weeks = goalType === "cut" ? weeksToGoal(currentKg, goalKg, pace) : 0;
+    const weeks = goalType === "cut" || goalType === "lose" ? weeksToGoal(currentKg, goalKg, pace) : 0;
     const safety = budgetSafety(budget, sex);
     return {
       pace,
@@ -166,22 +176,30 @@ export function planOptions(tdee: number, currentKg: number, goalKg: number, goa
 }
 
 /** Unit conversion helpers */
-export function kgToLb(kg: number): number { return kg * 2.20462; }
-export function lbToKg(lb: number): number { return lb / 2.20462; }
+export function kgToLb(kg: number): number {
+  return kg * 2.20462;
+}
+export function lbToKg(lb: number): number {
+  return lb / 2.20462;
+}
 export function kgToStLb(kg: number): { st: number; lb: number } {
   const totalLb = kgToLb(kg);
   const st = Math.floor(totalLb / 14);
   const lb = Math.round((totalLb - st * 14) * 10) / 10;
   return { st, lb };
 }
-export function stLbToKg(st: number, lb: number): number { return lbToKg(st * 14 + lb); }
+export function stLbToKg(st: number, lb: number): number {
+  return lbToKg(st * 14 + lb);
+}
 export function cmToFtIn(cm: number): { ft: number; inches: number } {
   const totalIn = cm / 2.54;
   const ft = Math.floor(totalIn / 12);
   const inches = Math.round((totalIn - ft * 12) * 10) / 10;
   return { ft, inches };
 }
-export function ftInToCm(ft: number, inches: number): number { return (ft * 12 + inches) * 2.54; }
+export function ftInToCm(ft: number, inches: number): number {
+  return (ft * 12 + inches) * 2.54;
+}
 
 export const ACTIVITY_LABELS: Record<ActivityLevel, { title: string; desc: string }> = {
   sedentary: { title: "Sedentary", desc: "Little or no exercise, desk job" },
@@ -199,8 +217,41 @@ export const PACE_LABELS: Record<PlanPace, { title: string; desc: string }> = {
 };
 
 export const STRATEGY_LABELS: Record<NutritionStrategy, { title: string; desc: string; emoji: string }> = {
-  balanced: { title: "Balanced", desc: "A well-rounded approach to nutrition", emoji: "⚖️" },
-  high_protein: { title: "High Protein", desc: "Build or maintain muscle mass", emoji: "💪" },
-  high_satisfaction: { title: "High Satisfaction", desc: "Stay fuller for longer with protein + fibre", emoji: "⭐" },
-  low_carb: { title: "Low Carb", desc: "Reduce carbohydrates, increase healthy fats", emoji: "🥑" },
+  balanced: { title: "Balanced", desc: "1.6 g/kg protein — well-rounded nutrition", emoji: "⚖️" },
+  high_protein: { title: "High Protein", desc: "2.2 g/kg protein — build or maintain muscle", emoji: "💪" },
+  high_satisfaction: { title: "High Satisfaction", desc: "1.8 g/kg protein + higher fibre for satiety", emoji: "⭐" },
+  low_carb: { title: "Low Carb", desc: "1.8 g/kg protein, 45% fat — reduce carbs", emoji: "🥑" },
 };
+
+/**
+ * Returns adaptive TDEE if available with sufficient confidence, else the
+ * static Mifflin-St Jeor estimate. Use this as the single source of truth
+ * for calorie budgets across web and mobile.
+ */
+export function getEffectiveTDEE(profile: {
+  adaptive_tdee?: number | null;
+  adaptive_tdee_confidence?: string | null;
+  sex: Sex;
+  weight_kg: number;
+  height_cm: number;
+  age: number;
+  activity_level: ActivityLevel;
+}): { tdee: number; isAdaptive: boolean } {
+  if (
+    profile.adaptive_tdee != null &&
+    profile.adaptive_tdee > 0 &&
+    (profile.adaptive_tdee_confidence === "medium" || profile.adaptive_tdee_confidence === "high")
+  ) {
+    return { tdee: profile.adaptive_tdee, isAdaptive: true };
+  }
+  return {
+    tdee: calculateTDEE(
+      profile.sex,
+      profile.weight_kg,
+      profile.height_cm,
+      profile.age,
+      profile.activity_level,
+    ),
+    isAdaptive: false,
+  };
+}

@@ -40,6 +40,9 @@ export async function POST(req: Request) {
   if (ingredients.length === 0) {
     return NextResponse.json({ ok: false, error: "no_ingredients" }, { status: 400 });
   }
+  if (ingredients.length > 60) {
+    return NextResponse.json({ ok: false, error: "too_many_ingredients", max: 60 }, { status: 400 });
+  }
 
   try {
     const result = await verifyIngredients({ ingredients, servings, provider, overrides });

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -65,7 +66,7 @@ export default function SettingsScreen() {
         card: {
           borderRadius: Radius.lg,
           borderWidth: 1,
-          borderColor: Neon.pink + "30",
+          borderColor: colors.border,
           backgroundColor: colors.card,
           overflow: "hidden",
         },
@@ -250,6 +251,35 @@ export default function SettingsScreen() {
               />
             </View>
             {saving ? <Text style={styles.saving}>Saving…</Text> : null}
+
+            <Text style={styles.sectionTitle}>Data</Text>
+            <View style={styles.card}>
+              <Pressable
+                style={[styles.row, styles.rowLast]}
+                onPress={async () => {
+                  if (!userId) return;
+                  try {
+                    const { data: entries } = await supabase
+                      .from("nutrition_entries")
+                      .select("*")
+                      .eq("user_id", userId)
+                      .order("created_at", { ascending: true });
+                    const { data: profile } = await supabase
+                      .from("profiles")
+                      .select("*")
+                      .eq("id", userId)
+                      .maybeSingle();
+                    const payload = JSON.stringify({ profile, entries }, null, 2);
+                    await Share.share({ message: payload, title: "PlateMate Data Export" });
+                  } catch (e) {
+                    Alert.alert("Export failed", e instanceof Error ? e.message : "Unknown error");
+                  }
+                }}
+              >
+                <Text style={styles.rowLabel}>Export my data (JSON)</Text>
+                <Text style={{ color: Neon.purple, fontWeight: "600", fontSize: 14 }}>Export</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </ScrollView>

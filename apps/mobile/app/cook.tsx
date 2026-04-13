@@ -145,7 +145,7 @@ export default function CookModeScreen() {
       backgroundColor: colors.border,
     },
     progressDotDone: { backgroundColor: Neon.purple },
-    progressDotActive: { backgroundColor: Neon.pink },
+    progressDotActive: { backgroundColor: Neon.purple },
 
     stepText: {
       fontSize: 24,

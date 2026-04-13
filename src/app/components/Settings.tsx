@@ -1,11 +1,16 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Settings as SettingsIcon, User, Bell, Shield, Sparkles, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
+import {
+  DIETARY_PREFERENCE_ENTRIES,
+  normaliseDietaryFromProfile,
+} from "../../constants/dietaryPreferences.ts";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportPlatemateLocalData.ts";
 
 interface SettingsProps {
@@ -42,8 +47,45 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const notifications = notificationPrefs;
   const setNotifications = setNotificationPrefs;
 
-  const [dietary, setDietary] = useState<string[]>(["vegetarian"]);
+  const [dietary, setDietary] = useState<string[]>([]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid || cancelled) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("dietary, measurement_system")
+        .eq("id", uid)
+        .maybeSingle();
+      if (!profile || cancelled) return;
+      if (profile.dietary) setDietary(normaliseDietaryFromProfile(profile.dietary));
+      if (profile.measurement_system === "metric" || profile.measurement_system === "imperial") {
+        setMeasurementSystem(profile.measurement_system);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const savePref = useCallback(async (updates: Record<string, unknown>) => {
+    const { data: session } = await supabase.auth.getSession();
+    const uid = session.session?.user.id;
+    if (!uid) return;
+    const { error } = await supabase.from("profiles").update(updates).eq("id", uid);
+    if (error) toast.error("Failed to save preference");
+  }, []);
+
+  const handleChangePassword = useCallback(async () => {
+    if (!authEmail) { toast.error("No email on this account"); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Password reset email sent — check your inbox.");
+  }, [authEmail]);
 
   const tierLabels: Record<string, { name: string; color: string }> = {
     free: { name: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
@@ -176,6 +218,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div className="flex gap-3">
             <button
               type="button"
+              onClick={() => void handleChangePassword()}
               className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all text-sm font-medium"
             >
               Change Password
@@ -202,7 +245,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Measurement System</label>
             <div className="flex gap-3">
               <button
-                onClick={() => setMeasurementSystem("metric")}
+                onClick={() => { setMeasurementSystem("metric"); void savePref({ measurement_system: "metric" }); }}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                   measurementSystem === "metric"
                     ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
@@ -212,7 +255,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 Metric (g, kg, ml)
               </button>
               <button
-                onClick={() => setMeasurementSystem("imperial")}
+                onClick={() => { setMeasurementSystem("imperial"); void savePref({ measurement_system: "imperial" }); }}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                   measurementSystem === "imperial"
                     ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
@@ -226,17 +269,21 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div>
             <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
-              {["vegetarian", "vegan", "gluten-free", "dairy-free", "keto", "paleo"].map((diet) => (
+              {DIETARY_PREFERENCE_ENTRIES.map((diet) => (
                 <button
-                  key={diet}
-                  onClick={() => setDietary(prev => prev.includes(diet) ? prev.filter(d => d !== diet) : [...prev, diet])}
+                  key={diet.id}
+                  onClick={() => {
+                    const next = dietary.includes(diet.id) ? dietary.filter(d => d !== diet.id) : [...dietary, diet.id];
+                    setDietary(next);
+                    void savePref({ dietary: next.length > 0 ? next : null });
+                  }}
                   className={`px-4 py-2 rounded-lg border-2 transition-all capitalize ${
-                    dietary.includes(diet)
+                    dietary.includes(diet.id)
                       ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
                       : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700 text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  {diet}
+                  {diet.label}
                 </button>
               ))}
             </div>

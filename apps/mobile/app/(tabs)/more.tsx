@@ -1,21 +1,45 @@
 import { useMemo } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 
-const ITEMS = [
-  { label: "Create Recipe", emoji: "✏️", route: "/create-recipe" },
-  { label: "Shopping List", emoji: "🛒", route: "/shopping" },
-  { label: "Import from link", emoji: "📥", route: "/import-shared" },
-  { label: "Profile & Targets", emoji: "🎯", route: "/profile" },
-  { label: "Barcode Scanner", emoji: "📷", route: "/(tabs)/barcode" },
-  { label: "Notifications", emoji: "🔔", route: "/(tabs)/notifications" },
-  { label: "Settings", emoji: "⚙️", route: "/(tabs)/settings" },
-  { label: "About nutrition data", emoji: "ℹ️", route: "/nutrition-sources" },
+type MenuItem = { label: string; icon: keyof typeof Ionicons.glyphMap; route: string };
+
+const SECTIONS: { title: string; items: MenuItem[] }[] = [
+  {
+    title: "Create",
+    items: [
+      { label: "Create Recipe", icon: "create-outline", route: "/create-recipe" },
+      { label: "Import from link", icon: "link-outline", route: "/import-shared" },
+    ],
+  },
+  {
+    title: "Health",
+    items: [
+      { label: "Fasting Timer", icon: "timer-outline", route: "/fasting" },
+      { label: "Health Sync", icon: "heart-outline", route: "/health-sync" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { label: "Profile & Targets", icon: "person-outline", route: "/profile" },
+      { label: "Shopping List", icon: "cart-outline", route: "/shopping" },
+      { label: "Notifications", icon: "notifications-outline", route: "/(tabs)/notifications" },
+      { label: "Settings", icon: "settings-outline", route: "/(tabs)/settings" },
+    ],
+  },
+  {
+    title: "About",
+    items: [
+      { label: "Nutrition Data Sources", icon: "information-circle-outline", route: "/nutrition-sources" },
+    ],
+  },
 ];
 
 export default function MoreScreen() {
@@ -30,18 +54,17 @@ export default function MoreScreen() {
         container: { flex: 1, backgroundColor: colors.background },
         header: { alignItems: "center", paddingVertical: Spacing.md },
         headerTitle: {
-          fontSize: 22,
-          fontWeight: "800",
-          color: Neon.purple,
-          letterSpacing: 3,
+          fontSize: 20,
+          fontWeight: "700",
+          color: colors.text,
         },
         userCard: {
           marginHorizontal: Spacing.xl,
-          marginBottom: Spacing.xl,
+          marginBottom: Spacing.lg,
           backgroundColor: colors.card,
           borderRadius: Radius.lg,
           borderWidth: 1,
-          borderColor: Neon.pink + "30",
+          borderColor: colors.border,
           padding: Spacing.xl,
           flexDirection: "row",
           alignItems: "center",
@@ -57,24 +80,33 @@ export default function MoreScreen() {
         },
         userAvatarText: { color: "#fff", fontSize: 20, fontWeight: "700" },
         userEmail: { color: colors.textSecondary, fontSize: 14, flex: 1 },
+        sectionTitle: {
+          fontSize: 12,
+          fontWeight: "600",
+          color: colors.textSecondary,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          paddingHorizontal: Spacing.xl,
+          marginTop: Spacing.lg,
+          marginBottom: Spacing.xs,
+        },
         list: {
           paddingHorizontal: Spacing.xl,
-          gap: Spacing.sm,
+          gap: 1,
         },
         row: {
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.md,
-          paddingVertical: Spacing.lg,
+          paddingVertical: 14,
           paddingHorizontal: Spacing.lg,
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
           borderWidth: 1,
           borderColor: colors.border,
         },
-        rowEmoji: { fontSize: 20 },
-        rowLabel: { flex: 1, fontSize: 16, fontWeight: "500", color: colors.text },
-        rowChevron: { color: colors.tabIconDefault, fontSize: 22, fontWeight: "600" },
+        rowFirst: { borderTopLeftRadius: Radius.md, borderTopRightRadius: Radius.md },
+        rowLast: { borderBottomLeftRadius: Radius.md, borderBottomRightRadius: Radius.md },
+        rowLabel: { flex: 1, fontSize: 15, fontWeight: "500", color: colors.text },
         signOutBtn: {
           marginHorizontal: Spacing.xl,
           marginTop: Spacing.xxxl,
@@ -90,12 +122,11 @@ export default function MoreScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>MORE</Text>
+        <Text style={styles.headerTitle}>More</Text>
       </View>
 
-      {/* User info */}
       <View style={styles.userCard}>
         <View style={styles.userAvatar}>
           <Text style={styles.userAvatarText}>
@@ -105,19 +136,28 @@ export default function MoreScreen() {
         <Text style={styles.userEmail}>{session?.user?.email ?? "Not signed in"}</Text>
       </View>
 
-      <View style={styles.list}>
-        {ITEMS.map((item) => (
-          <Pressable
-            key={item.label}
-            style={styles.row}
-            onPress={() => router.push(item.route as any)}
-          >
-            <Text style={styles.rowEmoji}>{item.emoji}</Text>
-            <Text style={styles.rowLabel}>{item.label}</Text>
-            <Text style={styles.rowChevron}>›</Text>
-          </Pressable>
-        ))}
-      </View>
+      {SECTIONS.map((section) => (
+        <View key={section.title}>
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <View style={styles.list}>
+            {section.items.map((item, i) => (
+              <Pressable
+                key={item.label}
+                style={[
+                  styles.row,
+                  i === 0 && styles.rowFirst,
+                  i === section.items.length - 1 && styles.rowLast,
+                ]}
+                onPress={() => router.push(item.route as any)}
+              >
+                <Ionicons name={item.icon} size={20} color={Neon.purple} />
+                <Text style={styles.rowLabel}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ))}
 
       <Pressable
         style={styles.signOutBtn}
@@ -125,6 +165,6 @@ export default function MoreScreen() {
       >
         <Text style={styles.signOutText}>Sign Out</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }

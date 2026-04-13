@@ -66,11 +66,12 @@
 │   ├── pricing/            # Subscription tiers
 │   └── recipe/             # Recipe pages
 ├── src/
+│   ├── constants/          # Cross-platform constants (e.g. dietary preference ids)
 │   ├── app/components/     # Web UI components
 │   ├── context/            # React contexts (auth, app data)
 │   ├── data/               # Static data (recipe catalog)
 │   ├── lib/                # Shared business logic
-│   │   ├── nutrition/      # Macro estimation, verification, USDA normalisation
+│   │   ├── nutrition/      # Macro estimation, verification, TDEE (`tdee.ts`), USDA normalisation
 │   │   ├── recipe-import/  # HTML parsing, social import, meal classification
 │   │   ├── recipe-ingredients/ # Ingredient line parsing
 │   │   ├── planning/       # Meal plan generation
@@ -154,6 +155,10 @@ Bare "pepper" in a recipe (e.g., "salt and pepper") is the spice black pepper (2
 3. **Macros** (`estimateIngredientMacros` STAPLES): `"red pepper"`, `"green pepper"`, etc. resolve to bell pepper profile; bare `"pepper"` resolves to black pepper
 
 Tests in `tests/unit/pepperDisambiguation.test.ts`.
+
+### Public recipe page (SEO)
+
+The marketing-facing route `app/recipe/[id]/page.tsx` loads published recipes from Supabase (or static catalog) for JSON-LD and guest-readable content. It selects `fiber_g`, `sugar_g`, and `sodium_mg` on `recipes` and `recipe_ingredients`, and shows recipe-level cards plus per-ingredient micro lines when values are present (> 0). Logged-in recipe editing uses `RecipeDetail` in the app shell.
 
 ### Meal Planning
 ```

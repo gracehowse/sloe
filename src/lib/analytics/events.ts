@@ -19,6 +19,7 @@ export const AnalyticsEvents = {
   pricing_page_viewed: "pricing_page_viewed",
   recipe_page_viewed: "recipe_page_viewed",
   onboarding_completed: "onboarding_completed",
+  first_run_checklist_completed: "first_run_checklist_completed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

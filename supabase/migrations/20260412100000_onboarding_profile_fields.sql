@@ -8,7 +8,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS fasting_enabled boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS fasting_window text,
   ADD COLUMN IF NOT EXISTS onboarding_completed boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS target_fiber integer DEFAULT 25,
+  ADD COLUMN IF NOT EXISTS target_fiber_g integer DEFAULT 25,
   ADD COLUMN IF NOT EXISTS dob date;
 
 -- Allow decimal weight/height

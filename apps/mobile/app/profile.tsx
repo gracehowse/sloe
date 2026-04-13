@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import {
+  DIETARY_PREFERENCE_ENTRIES,
+  normaliseDietaryFromProfile,
+  type DietaryPreferenceId,
+} from "../../../src/constants/dietaryPreferences";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -32,6 +38,13 @@ export default function ProfileScreen() {
   const [fat, setFat] = useState("65");
   const [fiber, setFiber] = useState("28");
   const [water, setWater] = useState("2000");
+  const [dietary, setDietary] = useState<DietaryPreferenceId[]>([]);
+
+  const toggleDietary = useCallback((id: DietaryPreferenceId) => {
+    setDietary((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -51,7 +64,7 @@ export default function ProfileScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.pink + "30",
+      borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
     },
@@ -97,6 +110,24 @@ export default function ProfileScreen() {
       marginTop: Spacing.sm,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+    dietaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+    dietaryChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
+    },
+    dietaryChipActive: {
+      borderColor: Neon.green + "80",
+      backgroundColor: Neon.green + "15",
+    },
+    dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
   }), [colors]);
 
   function TargetStat({ value, label, color }: { value: number; label: string; color: string }) {
@@ -114,7 +145,7 @@ export default function ProfileScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml")
+        .select("display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary")
         .eq("id", userId)
         .maybeSingle();
       if (!cancelled && data) {
@@ -125,6 +156,7 @@ export default function ProfileScreen() {
         if (data.target_fat) setFat(String(data.target_fat));
         if (data.target_fiber_g) setFiber(String(data.target_fiber_g));
         if (data.target_water_ml) setWater(String(data.target_water_ml));
+        if (data.dietary) setDietary(normaliseDietaryFromProfile(data.dietary));
       }
       if (!cancelled) setLoading(false);
     })();
@@ -143,6 +175,7 @@ export default function ProfileScreen() {
       target_fat: Number(fat) || null,
       target_fiber_g: Number(fiber) || null,
       target_water_ml: Number(water) || null,
+      dietary: dietary.length > 0 ? dietary : null,
     };
     // Use upsert so it works for both new and existing profiles
     const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });
@@ -236,6 +269,32 @@ export default function ProfileScreen() {
           <Pressable style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
             <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Save Targets"}</Text>
           </Pressable>
+        </View>
+
+        {/* Dietary Preferences */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Dietary Preferences</Text>
+          <View style={styles.dietaryGrid}>
+            {DIETARY_PREFERENCE_ENTRIES.map((pref) => {
+              const active = dietary.includes(pref.id);
+              return (
+                <Pressable
+                  key={pref.id}
+                  style={[styles.dietaryChip, active && styles.dietaryChipActive]}
+                  onPress={() => toggleDietary(pref.id)}
+                >
+                  <Ionicons
+                    name={active ? "checkmark-circle" : "ellipse-outline"}
+                    size={18}
+                    color={active ? Neon.green : colors.textTertiary}
+                  />
+                  <Text style={[styles.dietaryLabel, active && { color: colors.text }]}>
+                    {pref.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </ScrollView>
     </View>

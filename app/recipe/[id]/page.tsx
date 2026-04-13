@@ -28,6 +28,8 @@ interface RecipeRow {
   carbs: number;
   fat: number;
   fiber_g: number | null;
+  sugar_g: number | null;
+  sodium_mg: number | null;
   author: { display_name: string | null } | null;
 }
 
@@ -39,9 +41,9 @@ interface IngredientRow {
   protein: number;
   carbs: number;
   fat: number;
-  fiber_g: number;
-  sugar_g: number;
-  sodium_mg: number;
+  fiber_g: number | null;
+  sugar_g: number | null;
+  sodium_mg: number | null;
 }
 
 async function fetchRecipe(id: string) {
@@ -60,6 +62,8 @@ async function fetchRecipe(id: string) {
         carbs: catalogRecipe.carbs,
         fat: catalogRecipe.fat,
         fiberG: catalogRecipe.fiberG ?? null,
+        sugarG: null,
+        sodiumMg: null,
         authorName: catalogRecipe.creatorName,
       },
       ingredients: getIngredientsForRecipe(id).map((i) => ({
@@ -70,6 +74,9 @@ async function fetchRecipe(id: string) {
         protein: i.protein,
         carbs: i.carbs,
         fat: i.fat,
+        fiberG: undefined,
+        sugarG: undefined,
+        sodiumMg: undefined,
       })),
       instructions: getInstructionsForRecipe(id),
     };
@@ -80,7 +87,7 @@ async function fetchRecipe(id: string) {
   const { data: row } = await sb
     .from("recipes")
     .select(
-      "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, author:profiles!author_id(display_name)",
+      "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, author:profiles!author_id(display_name)",
     )
     .eq("id", id)
     .eq("published", true)
@@ -111,6 +118,8 @@ async function fetchRecipe(id: string) {
       carbs: row.carbs,
       fat: row.fat,
       fiberG: row.fiber_g,
+      sugarG: row.sugar_g,
+      sodiumMg: row.sodium_mg,
       authorName: row.author?.display_name ?? "Community",
     },
     ingredients: (ingredientRows ?? []).map((i) => ({
@@ -121,6 +130,9 @@ async function fetchRecipe(id: string) {
       protein: i.protein,
       carbs: i.carbs,
       fat: i.fat,
+      fiberG: i.fiber_g,
+      sugarG: i.sugar_g,
+      sodiumMg: i.sodium_mg,
     })),
     instructions: instructionSteps,
   };
@@ -153,6 +165,22 @@ export default async function RecipePage({ params }: Props) {
 
   const { recipe, ingredients, instructions } = data;
 
+  const macroCards = [
+    { label: "Calories", value: `${Math.round(recipe.calories)}`, unit: "kcal" },
+    { label: "Protein", value: `${Math.round(recipe.protein)}`, unit: "g" },
+    { label: "Carbs", value: `${Math.round(recipe.carbs)}`, unit: "g" },
+    { label: "Fat", value: `${Math.round(recipe.fat)}`, unit: "g" },
+    ...(recipe.fiberG != null && recipe.fiberG > 0
+      ? [{ label: "Fibre", value: `${Math.round(recipe.fiberG)}`, unit: "g" as const }]
+      : []),
+    ...(recipe.sugarG != null && recipe.sugarG > 0
+      ? [{ label: "Sugar", value: `${recipe.sugarG}`, unit: "g" as const }]
+      : []),
+    ...(recipe.sodiumMg != null && recipe.sodiumMg > 0
+      ? [{ label: "Sodium", value: `${recipe.sodiumMg}`, unit: "mg" as const }]
+      : []),
+  ];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Recipe",
@@ -167,6 +195,8 @@ export default async function RecipePage({ params }: Props) {
       carbohydrateContent: `${recipe.carbs} g`,
       fatContent: `${recipe.fat} g`,
       ...(recipe.fiberG ? { fiberContent: `${recipe.fiberG} g` } : {}),
+      ...(recipe.sugarG != null && recipe.sugarG > 0 ? { sugarContent: `${recipe.sugarG} g` } : {}),
+      ...(recipe.sodiumMg != null && recipe.sodiumMg > 0 ? { sodiumContent: `${recipe.sodiumMg} mg` } : {}),
     },
     recipeIngredient: ingredients.map((i) => [i.amount, i.unit, i.name].filter(Boolean).join(" ")),
     recipeInstructions: instructions.map((step, idx) => ({
@@ -181,7 +211,7 @@ export default async function RecipePage({ params }: Props) {
       <PageViewTracker event={AnalyticsEvents.recipe_page_viewed} properties={{ recipeId: recipe.id, title: recipe.title }} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       {/* Nav bar */}
@@ -222,14 +252,8 @@ export default async function RecipePage({ params }: Props) {
         )}
 
         {/* Macro cards */}
-        <div className={`grid gap-3 mb-8 ${recipe.fiberG ? "grid-cols-5" : "grid-cols-4"}`}>
-          {[
-            { label: "Calories", value: `${recipe.calories}`, unit: "kcal" },
-            { label: "Protein", value: `${recipe.protein}`, unit: "g" },
-            { label: "Carbs", value: `${recipe.carbs}`, unit: "g" },
-            { label: "Fat", value: `${recipe.fat}`, unit: "g" },
-            ...(recipe.fiberG ? [{ label: "Fibre", value: `${recipe.fiberG}`, unit: "g" }] : []),
-          ].map((m) => (
+        <div className="grid gap-3 mb-8 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+          {macroCards.map((m) => (
             <div
               key={m.label}
               className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm"
@@ -248,14 +272,25 @@ export default async function RecipePage({ params }: Props) {
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 mb-6 shadow-sm">
             <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Ingredients</h2>
             <ul className="space-y-2">
-              {ingredients.map((ing, idx) => (
-                <li key={idx} className="flex items-baseline gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0 mt-1.5" />
-                  <span>
-                    <span className="font-medium">{ing.amount} {ing.unit}</span> {ing.name}
-                  </span>
-                </li>
-              ))}
+              {ingredients.map((ing, idx) => {
+                const microBits: string[] = [];
+                if ((ing.fiberG ?? 0) > 0) microBits.push(`Fibre ${ing.fiberG}g`);
+                if ((ing.sugarG ?? 0) > 0) microBits.push(`Sugar ${ing.sugarG}g`);
+                if ((ing.sodiumMg ?? 0) > 0) microBits.push(`Sodium ${ing.sodiumMg}mg`);
+                return (
+                  <li key={idx} className="flex items-baseline gap-2 text-slate-700 dark:text-slate-300">
+                    <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0 mt-1.5" />
+                    <span>
+                      <span className="font-medium">{ing.amount} {ing.unit}</span> {ing.name}
+                      {microBits.length > 0 && (
+                        <span className="block text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                          {microBits.join(" · ")}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

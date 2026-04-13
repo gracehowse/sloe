@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -15,6 +17,14 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { decode } from "base64-arraybuffer";
+
+let ImagePicker: typeof import("expo-image-picker") | null = null;
+try {
+  ImagePicker = require("expo-image-picker") as typeof import("expo-image-picker");
+} catch {
+  // Native module not available (Expo Go) — image picker will be disabled
+}
 
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -47,13 +57,15 @@ export default function CreateRecipeScreen() {
   const userId = session?.user?.id;
 
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [servings, setServings] = useState("1");
   const [instructions, setInstructions] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [saving, setSaving] = useState(false);
   const [mealTags, setMealTags] = useState<string[]>([]);
+  const [publish, setPublish] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
-  // Food search for adding ingredients
   const [searchOpen, setSearchOpen] = useState(false);
 
   const totals = useMemo(() => {
@@ -100,6 +112,52 @@ export default function CreateRecipeScreen() {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
+  const pickImage = useCallback(async () => {
+    if (!ImagePicker) {
+      Alert.alert("Image picker unavailable", "Image upload requires a development build. It is not supported in Expo Go.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  }, []);
+
+  async function uploadImage(recipeId: string): Promise<string | null> {
+    if (!imageUri) return null;
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1] ?? "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const ext = imageUri.split(".").pop()?.toLowerCase() ?? "jpg";
+      const path = `recipes/${recipeId}.${ext}`;
+      const { error } = await supabase.storage
+        .from("recipe-images")
+        .upload(path, decode(base64), { contentType: `image/${ext}`, upsert: true });
+      if (error) return null;
+
+      const { data } = supabase.storage.from("recipe-images").getPublicUrl(path);
+      return data.publicUrl;
+    } catch {
+      return null;
+    }
+  }
+
   const onSave = useCallback(async () => {
     if (!userId) { Alert.alert("Sign in", "You need to be signed in to create a recipe."); return; }
     if (!title.trim()) { Alert.alert("Missing title", "Give your recipe a name."); return; }
@@ -112,9 +170,10 @@ export default function CreateRecipeScreen() {
         .insert({
           author_id: userId,
           title: title.trim(),
+          description: description.trim() || null,
           instructions: instructions.trim() || null,
           servings: srv,
-          published: false,
+          published: publish,
           meal_type: mealTags.length > 0 ? mealTags : null,
           calories: perServing.calories,
           protein: perServing.protein,
@@ -131,6 +190,12 @@ export default function CreateRecipeScreen() {
       }
 
       const recipeId = (row as { id: string }).id;
+
+      const imgUrl = await uploadImage(recipeId);
+      if (imgUrl) {
+        await supabase.from("recipes").update({ image_url: imgUrl }).eq("id", recipeId);
+      }
+
       const ingRows = ingredients.map((ing) => ({
         recipe_id: recipeId,
         name: ing.name,
@@ -146,8 +211,6 @@ export default function CreateRecipeScreen() {
       }));
 
       await supabase.from("recipe_ingredients").insert(ingRows);
-
-      // Auto-save to library
       await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -156,7 +219,7 @@ export default function CreateRecipeScreen() {
       Alert.alert("Error", "Something went wrong.");
     }
     setSaving(false);
-  }, [userId, title, instructions, srv, ingredients, perServing, mealTags, router]);
+  }, [userId, title, description, instructions, srv, ingredients, perServing, mealTags, publish, imageUri, router]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -220,6 +283,20 @@ export default function CreateRecipeScreen() {
       borderRadius: Radius.md, paddingVertical: 16,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+    imagePicker: { alignItems: "center" },
+    imagePreview: { width: "100%", height: 200, borderRadius: Radius.lg },
+    imagePlaceholder: {
+      width: "100%", height: 160, borderRadius: Radius.lg,
+      borderWidth: 1.5, borderColor: colors.border, borderStyle: "dashed" as const,
+      justifyContent: "center", alignItems: "center",
+      backgroundColor: colors.card,
+    },
+    publishRow: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.md,
+      backgroundColor: colors.card, borderRadius: Radius.md,
+      padding: Spacing.lg, borderWidth: 1, borderColor: colors.border,
+    },
   }), [colors]);
 
   return (
@@ -236,10 +313,34 @@ export default function CreateRecipeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* Image */}
+        <Pressable onPress={() => void pickImage()} style={styles.imagePicker}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="camera-outline" size={28} color={colors.textTertiary} />
+              <Text style={[styles.label, { marginTop: Spacing.xs }]}>Add photo</Text>
+            </View>
+          )}
+        </Pressable>
+
         {/* Title */}
         <View style={{ gap: Spacing.sm }}>
           <Text style={styles.label}>Recipe name</Text>
           <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Chicken stir-fry" placeholderTextColor={colors.textTertiary} />
+        </View>
+
+        {/* Description */}
+        <View style={{ gap: Spacing.sm }}>
+          <Text style={styles.label}>Description (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="A short description of your recipe"
+            placeholderTextColor={colors.textTertiary}
+          />
         </View>
 
         {/* Servings */}
@@ -307,6 +408,22 @@ export default function CreateRecipeScreen() {
             placeholder="Step 1: ...\nStep 2: ..."
             placeholderTextColor={colors.textTertiary}
             multiline
+          />
+        </View>
+
+        {/* Publish toggle */}
+        <View style={styles.publishRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.label, { marginBottom: 2 }]}>Publish to community</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              Others can discover and save your recipe
+            </Text>
+          </View>
+          <Switch
+            value={publish}
+            onValueChange={setPublish}
+            trackColor={{ false: colors.border, true: Neon.green + "80" }}
+            thumbColor={publish ? Neon.green : colors.textTertiary}
           />
         </View>
       </ScrollView>

@@ -70,7 +70,7 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
             strokeDasharray={`${circ}`} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
             rotation="-90" origin={`${size/2},${size/2}`} />
         </Svg>
-        <Text style={{ color, fontSize: 12, fontWeight: "700" }}>{value}g</Text>
+        <Text style={{ color, fontSize: 12, fontWeight: "700" }}>{Math.round(value)}g</Text>
       </View>
       <Text style={{ color: labelColor, fontSize: 10, fontWeight: "600" }}>{label}</Text>
     </View>
@@ -92,6 +92,112 @@ export default function RecipeDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [reverifying, setReverifying] = useState(false);
+  const [cookMode, setCookMode] = useState(false);
+  const [cookStep, setCookStep] = useState(0);
+  const [userTargets, setUserTargets] = useState({ protein: 150, carbs: 200, fat: 65, fiber: 28 });
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("target_protein, target_carbs, target_fat, target_fiber_g")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setUserTargets({
+          protein: (data.target_protein as number) ?? 150,
+          carbs: (data.target_carbs as number) ?? 200,
+          fat: (data.target_fat as number) ?? 65,
+          fiber: (data.target_fiber_g as number) ?? 28,
+        });
+      });
+  }, [userId]);
+
+  const reverifyNutrition = async () => {
+    if (!recipe || ingredients.length === 0 || !session?.access_token) return;
+    setReverifying(true);
+    try {
+      const apiBase = __DEV__ ? "http://localhost:3000" : process.env.EXPO_PUBLIC_API_URL ?? "";
+      const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          ingredients: ingredients.map((ing) => ({
+            name: ing.name,
+            amount: String(ing.amount ?? ""),
+            unit: ing.unit ?? "",
+          })),
+          servings: recipe.servings ?? 1,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok || !json.ingredientRows) {
+        Alert.alert("Verification failed", json.message ?? "Could not verify ingredients.");
+        return;
+      }
+      const rows = json.ingredientRows as Array<{
+        name: string; grams: number; calories: number; protein: number; carbs: number; fat: number;
+        fiber?: number; sugar?: number; sodium?: number; source: string; confidence: number;
+      }>;
+      const perServing = json.perServing as { calories: number; protein: number; carbs: number; fat: number; fiber?: number; sugar?: number; sodium?: number };
+
+      const { data: dbIngs } = await supabase
+        .from("recipe_ingredients")
+        .select("id, name")
+        .eq("recipe_id", recipeId)
+        .order("created_at", { ascending: true });
+
+      if (dbIngs) {
+        for (let i = 0; i < Math.min(rows.length, dbIngs.length); i++) {
+          const r = rows[i];
+          await supabase.from("recipe_ingredients").update({
+            calories: Math.round(r.calories),
+            protein: Math.round(r.protein),
+            carbs: Math.round(r.carbs),
+            fat: Math.round(r.fat),
+            fiber_g: r.fiber != null ? Math.round(r.fiber * 10) / 10 : 0,
+            sugar_g: r.sugar != null ? Math.round(r.sugar * 10) / 10 : 0,
+            sodium_mg: r.sodium != null ? Math.round(r.sodium) : 0,
+            source: r.source,
+            confidence: r.confidence,
+          }).eq("id", dbIngs[i].id);
+        }
+      }
+
+      await supabase.from("recipes").update({
+        calories: Math.round(perServing.calories),
+        protein: Math.round(perServing.protein),
+        carbs: Math.round(perServing.carbs),
+        fat: Math.round(perServing.fat),
+        fiber_g: perServing.fiber != null ? Math.round(perServing.fiber * 10) / 10 : 0,
+        sugar_g: perServing.sugar != null ? Math.round(perServing.sugar * 10) / 10 : 0,
+        sodium_mg: perServing.sodium != null ? Math.round(perServing.sodium) : 0,
+        is_verified: true,
+        verified_at: new Date().toISOString(),
+        verified_confidence: json.overallConfidence ?? null,
+        verified_source: "re-verified",
+      }).eq("id", recipeId);
+
+      // Reload
+      const ingRes = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+        .eq("recipe_id", recipeId);
+      if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
+      setRecipe((prev) => prev ? { ...prev, calories: Math.round(perServing.calories), protein: Math.round(perServing.protein), carbs: Math.round(perServing.carbs), fat: Math.round(perServing.fat) } : prev);
+
+      Alert.alert("Re-verified", `Nutrition updated for ${ingredients.length} ingredients.`);
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Verification failed");
+    } finally {
+      setReverifying(false);
+    }
+  };
 
   useEffect(() => {
     if (!recipeId) { setLoading(false); return; }
@@ -238,7 +344,7 @@ export default function RecipeDetailScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.pink + "25",
+      borderColor: colors.border,
       padding: Spacing.xl,
       gap: Spacing.md,
     },
@@ -366,7 +472,7 @@ export default function RecipeDetailScreen() {
 
           {/* Calorie hero */}
           <View style={styles.calorieHero}>
-            <Text style={styles.calorieNumber}>{macros.calories}</Text>
+            <Text style={styles.calorieNumber}>{Math.round(macros.calories)}</Text>
             <Text style={styles.calorieLabel}>calories</Text>
           </View>
 
@@ -374,15 +480,15 @@ export default function RecipeDetailScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Macronutrients</Text>
             <View style={styles.macroRingsRow}>
-              <MacroRing value={macros.protein} goal={150} color={MacroColors.protein} label="Protein" ringBgColor={colors.border} labelColor={colors.textSecondary} />
-              <MacroRing value={macros.carbs} goal={200} color={MacroColors.carbs} label="Carbs" ringBgColor={colors.border} labelColor={colors.textSecondary} />
-              <MacroRing value={macros.fat} goal={65} color={MacroColors.fat} label="Fat" ringBgColor={colors.border} labelColor={colors.textSecondary} />
-              <MacroRing value={macros.fiber_g} goal={28} color={MacroColors.fiber} label="Fibre" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.protein} goal={userTargets.protein} color={MacroColors.protein} label="Protein" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.carbs} goal={userTargets.carbs} color={MacroColors.carbs} label="Carbs" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.fat} goal={userTargets.fat} color={MacroColors.fat} label="Fat" ringBgColor={colors.border} labelColor={colors.textSecondary} />
+              <MacroRing value={macros.fiber_g} goal={userTargets.fiber} color={MacroColors.fiber} label="Fibre" ringBgColor={colors.border} labelColor={colors.textSecondary} />
             </View>
             <Text style={styles.servings}>Per serving · {recipe.servings} serving{recipe.servings !== 1 ? "s" : ""}</Text>
             {recipe.servings > 1 && (
               <Text style={styles.totalLine}>
-                Whole recipe: {totalMacros.calories} kcal · {totalMacros.protein}g protein · {totalMacros.carbs}g carbs · {totalMacros.fat}g fat
+                Whole recipe: {Math.round(totalMacros.calories)} kcal · {Math.round(totalMacros.protein)}g protein · {Math.round(totalMacros.carbs)}g carbs · {Math.round(totalMacros.fat)}g fat
               </Text>
             )}
           </View>
@@ -408,9 +514,16 @@ export default function RecipeDetailScreen() {
             <View style={styles.card}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={styles.cardTitle}>Ingredients</Text>
-                <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
-                  <Text style={{ color: Neon.purple, fontSize: 13, fontWeight: "600" }}>Edit</Text>
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                  <Pressable disabled={reverifying} onPress={() => void reverifyNutrition()}>
+                    <Text style={{ color: Neon.green, fontSize: 13, fontWeight: "600", opacity: reverifying ? 0.5 : 1 }}>
+                      {reverifying ? "Verifying…" : "Re-verify"}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
+                    <Text style={{ color: Neon.purple, fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                  </Pressable>
+                </View>
               </View>
               {ingredients.map((ing, i) => (
                 <View key={i} style={styles.ingredientRow}>
@@ -423,10 +536,10 @@ export default function RecipeDetailScreen() {
                       {decodeEntities(ing.name)}
                     </Text>
                     <View style={styles.ingMacroRow}>
-                      <Text style={styles.ingMacro}>{ing.calories} kcal</Text>
-                      <Text style={[styles.ingMacro, { color: MacroColors.protein }]}>P:{ing.protein}g</Text>
-                      <Text style={[styles.ingMacro, { color: MacroColors.carbs }]}>C:{ing.carbs}g</Text>
-                      <Text style={[styles.ingMacro, { color: MacroColors.fat }]}>F:{ing.fat}g</Text>
+                      <Text style={styles.ingMacro}>{Math.round(ing.calories)} kcal</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.protein }]}>P:{Math.round(ing.protein)}g</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.carbs }]}>C:{Math.round(ing.carbs)}g</Text>
+                      <Text style={[styles.ingMacro, { color: MacroColors.fat }]}>F:{Math.round(ing.fat)}g</Text>
                       {(ing.fiber_g ?? 0) > 0 && (
                         <Text style={[styles.ingMacro, { color: MacroColors.fiber }]}>Fi:{ing.fiber_g}g</Text>
                       )}
@@ -438,6 +551,17 @@ export default function RecipeDetailScreen() {
                 </View>
               ))}
             </View>
+          )}
+
+          {/* Cook mode button */}
+          {instructionSteps.length > 0 && (
+            <Pressable
+              style={{ backgroundColor: Neon.green, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+              onPress={() => { setCookStep(0); setCookMode(true); }}
+            >
+              <Ionicons name="flame" size={18} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Start Cooking</Text>
+            </Pressable>
           )}
 
           {/* Instructions */}
@@ -506,6 +630,50 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Cook Mode Overlay */}
+      {cookMode && instructionSteps.length > 0 && (
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
+          <View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: Neon.purple, letterSpacing: 2 }}>COOK MODE</Text>
+              <Pressable onPress={() => setCookMode(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
+              Step {cookStep + 1} of {instructionSteps.length}
+            </Text>
+            <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
+              {instructionSteps[cookStep]?.replace(/^\d+[\.\)\-]\s*/, "")}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: Spacing.md }}>
+            <Pressable
+              style={{ flex: 1, backgroundColor: cookStep > 0 ? colors.card : colors.border, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
+              onPress={() => setCookStep((s) => Math.max(0, s - 1))}
+              disabled={cookStep === 0}
+            >
+              <Text style={{ fontWeight: "700", color: cookStep > 0 ? colors.text : colors.textTertiary }}>Previous</Text>
+            </Pressable>
+            {cookStep < instructionSteps.length - 1 ? (
+              <Pressable
+                style={{ flex: 1, backgroundColor: Neon.purple, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                onPress={() => setCookStep((s) => s + 1)}
+              >
+                <Text style={{ fontWeight: "700", color: "#fff" }}>Next</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={{ flex: 1, backgroundColor: Neon.green, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                onPress={() => setCookMode(false)}
+              >
+                <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }

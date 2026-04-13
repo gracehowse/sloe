@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -52,12 +53,12 @@ export default function LibraryScreen() {
       letterSpacing: 3,
     },
     countBadge: {
-      backgroundColor: Neon.pink + "30",
+      backgroundColor: Neon.purple + "15",
       paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
       borderRadius: Radius.sm,
     },
-    countText: { color: Neon.pink, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    countText: { color: Neon.purple, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
     list: {
       paddingHorizontal: Spacing.xl,
       paddingBottom: 100,
@@ -67,7 +68,7 @@ export default function LibraryScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: Neon.pink + "20",
+      borderColor: colors.border,
       flexDirection: "row",
       alignItems: "center",
       overflow: "hidden",
@@ -88,7 +89,6 @@ export default function LibraryScreen() {
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
     },
-    removeBtnText: { color: colors.tabIconDefault, fontSize: 16 },
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
     emptyContainer: {
       paddingTop: 80,
@@ -96,7 +96,6 @@ export default function LibraryScreen() {
       gap: Spacing.sm,
       paddingHorizontal: Spacing.xl,
     },
-    emptyIcon: { fontSize: 40, marginBottom: Spacing.sm },
     emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
     emptySubtext: { fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 280 },
     emptyActions: { marginTop: Spacing.lg, gap: Spacing.sm, width: "100%", maxWidth: 280 },
@@ -129,11 +128,11 @@ export default function LibraryScreen() {
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <Text style={styles.macros}>
-            {item.calories} kcal · P: {item.protein}g · C: {item.carbs}g · F: {item.fat}g
+            {Math.round(item.calories)} kcal · P: {Math.round(item.protein)}g · C: {Math.round(item.carbs)}g · F: {Math.round(item.fat)}g
           </Text>
         </View>
         <Pressable onPress={() => toggleSave(item.id)} hitSlop={12} style={styles.removeBtn}>
-          <Text style={styles.removeBtnText}>✕</Text>
+          <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
         </Pressable>
       </Pressable>
     ),
@@ -166,13 +165,13 @@ export default function LibraryScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📚</Text>
+              <Ionicons name="book-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
               <Text style={styles.emptyTitle}>No saved recipes</Text>
               <Text style={styles.emptySubtext}>
                 Save recipes from Discover or import a link — everything you save shows up here for meal plans.
               </Text>
               <View style={styles.emptyActions}>
-                <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)")}>
+                <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/discover")}>
                   <Text style={styles.ctaBtnText}>Browse Discover</Text>
                 </Pressable>
                 <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>

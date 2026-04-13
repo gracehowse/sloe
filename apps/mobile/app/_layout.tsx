@@ -9,11 +9,17 @@ import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
+import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as PlatemateThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
+import { initErrorTracking } from '@/lib/errorTracking';
+import { configurePurchases } from '@/lib/purchases';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
 import { extractUrlFromShareText, urlFromDeepLink } from '@/lib/resolveImportUrl';
+
+initErrorTracking();
+configurePurchases();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -144,10 +150,10 @@ function RootLayoutInner() {
         <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe', headerBackTitle: 'Back' }} />
         <Stack.Screen name="shopping" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="progress" options={{ title: "Progress", headerBackTitle: "Back" }} />
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
@@ -157,9 +163,11 @@ function RootLayoutInner() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <PlatemateThemeProvider>
-        <RootLayoutInner />
-      </PlatemateThemeProvider>
+      <AnalyticsProvider>
+        <PlatemateThemeProvider>
+          <RootLayoutInner />
+        </PlatemateThemeProvider>
+      </AnalyticsProvider>
     </AuthProvider>
   );
 }

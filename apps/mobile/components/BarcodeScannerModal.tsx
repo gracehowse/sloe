@@ -194,7 +194,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
 
               {error && (
                 <View style={styles.centered}>
-                  <Ionicons name="alert-circle" size={32} color={Neon.pink} />
+                  <Ionicons name="alert-circle" size={32} color={Neon.red} />
                   <Text style={styles.errorText}>{error}</Text>
                   <Pressable style={styles.retryBtn} onPress={onReset}>
                     <Text style={styles.retryBtnText}>Scan again</Text>

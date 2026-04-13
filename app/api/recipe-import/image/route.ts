@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
-import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,11 @@ export async function POST(req: Request) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const tier = await getUserTier(userId);
+  if (tier === "free") {
+    return NextResponse.json({ ok: false, error: "pro_required", message: "Image import is a Pro feature." }, { status: 403 });
   }
 
   const limited = await rateLimit({ keyPrefix: "recipe_import_image", limit: 15, windowMs: 60_000 });
@@ -123,11 +129,28 @@ Rules:
     : [];
   const steps = Array.isArray(parsed.steps) ? parsed.steps.map((s) => String(s).trim()).filter(Boolean) : [];
 
+  let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
+  if (ingredients.length > 0) {
+    try {
+      const parsedIngs = parseRawIngredients(ingredients);
+      nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: 1 });
+    } catch (e) {
+      console.error("[recipe-import/image] verifyIngredients failed:", e instanceof Error ? e.message : e);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     title: parsed.title ?? null,
     ingredients,
     steps,
     notes: parsed.notes ?? null,
+    nutrition: nutrition
+      ? {
+          perServing: nutrition.perServing,
+          ingredientRows: nutrition.ingredientRows,
+          overallConfidence: nutrition.overallConfidence,
+        }
+      : null,
   });
 }

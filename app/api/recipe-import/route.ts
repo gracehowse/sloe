@@ -257,17 +257,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
     }
 
-    const res = await fetch(effectiveUrl, {
-      signal: ac.signal,
-      headers: {
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        // Some publishers block non-browser UAs. Use a mainstream UA to maximize compatibility.
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      },
-      redirect: "follow",
-    });
+    const fetchHeaders = {
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    };
+    // Follow redirects manually to re-validate each hop against the SSRF allowlist
+    let currentUrl = effectiveUrl;
+    let res: Response | undefined;
+    for (let hop = 0; hop < 5; hop++) {
+      res = await fetch(currentUrl, {
+        signal: ac.signal,
+        headers: fetchHeaders,
+        redirect: "manual",
+      });
+      const location = res.headers.get("location");
+      if (res.status >= 300 && res.status < 400 && location) {
+        const resolved = new URL(location, currentUrl).href;
+        if (!isAllowedUrl(resolved)) {
+          return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
+        }
+        currentUrl = resolved;
+        continue;
+      }
+      break;
+    }
+    if (!res) {
+      return NextResponse.json({ ok: false, error: "Failed to fetch URL." }, { status: 502 });
+    }
     const contentType = res.headers.get("content-type") ?? "";
     const isHtml = contentType.toLowerCase().includes("text/html");
     const html = isHtml ? await res.text() : "";

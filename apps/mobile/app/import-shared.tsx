@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
 import {
+  Alert,
   View,
   Text,
   ActivityIndicator,
@@ -30,6 +31,9 @@ import {
   urlFromDeepLink,
   urlFromRouterParams,
 } from "@/lib/resolveImportUrl";
+
+let ImagePicker: typeof import("expo-image-picker") | null = null;
+try { ImagePicker = require("expo-image-picker"); } catch { /* native build only */ }
 
 type Extra = { platemateApiUrl?: string };
 function apiBase(): string {
@@ -123,6 +127,79 @@ export default function ImportSharedScreen() {
     },
     [base, userId],
   );
+
+  const runImageImport = useCallback(async () => {
+    if (!ImagePicker) {
+      Alert.alert("Not available", "Image import requires a native build (not Expo Go).");
+      return;
+    }
+    if (!base || !userId) {
+      setState("error");
+      setError(!base ? "API not configured." : "Sign in to import.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      base64: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setState("importing");
+    setError(null);
+    try {
+      const asset = result.assets[0];
+      const form = new FormData();
+      form.append("image", {
+        uri: asset.uri,
+        name: asset.fileName ?? "photo.jpg",
+        type: asset.mimeType ?? "image/jpeg",
+      } as any);
+
+      const res = await authedFetch(`${base}/api/recipe-import/image`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json() as {
+        ok?: boolean;
+        title?: string | null;
+        ingredients?: string[];
+        steps?: string[];
+        notes?: string | null;
+        nutrition?: { perServing?: any } | null;
+        error?: string;
+        message?: string;
+      };
+      if (!data.ok || !data.ingredients?.length) {
+        setState("error");
+        setError(data.message ?? data.error ?? "Could not extract a recipe from this image.");
+        return;
+      }
+
+      const recipe: ApiImportedRecipe = {
+        title: data.title ?? "Photo Import",
+        ingredients: data.ingredients,
+        steps: data.steps ?? [],
+        servings: 1,
+        calories: data.nutrition?.perServing?.calories ?? null,
+        protein: data.nutrition?.perServing?.protein ?? null,
+        carbs: data.nutrition?.perServing?.carbs ?? null,
+        fat: data.nutrition?.perServing?.fat ?? null,
+      };
+      const autoTags = classifyMealType({
+        title: recipe.title ?? "",
+        ingredients: data.ingredients,
+        caloriesPerServing: recipe.calories,
+      });
+      setMealTags(autoTags);
+      setPendingRecipe(recipe);
+      setTitle(recipe.title ?? "Photo Import");
+      setState("review");
+    } catch {
+      setState("error");
+      setError("Network error during image import.");
+    }
+  }, [base, userId]);
 
   const confirmSave = useCallback(async () => {
     if (!pendingRecipe || !userId) return;
@@ -303,7 +380,7 @@ export default function ImportSharedScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.pink + "30",
+      borderColor: colors.border,
       padding: Spacing.xxxl,
       alignItems: "center",
       gap: Spacing.md,
@@ -335,7 +412,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Neon.pink + "18",
+      backgroundColor: Neon.purple + "18",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -581,7 +658,7 @@ export default function ImportSharedScreen() {
         {state === "error" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="alert-circle" size={44} color={Neon.pink} />
+              <Ionicons name="alert-circle" size={44} color={Neon.red} />
             </View>
             <Text style={styles.panelTitle}>Couldn’t import</Text>
             <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
@@ -635,6 +712,12 @@ export default function ImportSharedScreen() {
               <Ionicons name="clipboard-outline" size={18} color={Neon.purple} />
               <Text style={styles.textLinkLabel}>Use clipboard</Text>
             </Pressable>
+            {ImagePicker && (
+              <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
+                <Ionicons name="camera-outline" size={18} color={Neon.purple} />
+                <Text style={styles.textLinkLabel}>Import from photo</Text>
+              </Pressable>
+            )}
           </View>
         )}
       </ScrollView>

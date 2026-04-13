@@ -54,3 +54,14 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
 
   return null;
 }
+
+export type UserTier = "free" | "base" | "pro";
+
+/** Look up user tier from profiles table. Returns "free" if not found. */
+export async function getUserTier(userId: string): Promise<UserTier> {
+  const supabase = createSupabaseAnonClient();
+  const { data } = await supabase.from("profiles").select("user_tier").eq("id", userId).maybeSingle();
+  const tier = data?.user_tier as string | undefined;
+  if (tier === "pro" || tier === "base") return tier;
+  return "free";
+}

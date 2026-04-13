@@ -15,28 +15,28 @@ interface FirstRunChecklistProps {
 
 const STEPS = [
   {
-    id: "save",
-    icon: BookMarked,
-    label: "Pick recipes for your week",
-    description: "Save recipes you want to cook — we'll build your plan from these",
-    cta: "Browse Recipes",
-    view: "discover",
+    id: "log",
+    icon: Target,
+    label: "Start with your dashboard",
+    description: "Log food and water on the Tracker — that’s the daily home base; recipes and planning are extras when you want them",
+    cta: "Open Tracker",
+    view: "tracker",
   },
   {
     id: "plan",
     icon: Calendar,
-    label: "Get a plan that hits your targets",
-    description: "One tap generates a week of meals matched to your macros",
+    label: "Plan meals when you’re ready",
+    description: "Generate a week that lines up with your calorie and macro targets",
     cta: "Open Planner",
     view: "planner",
   },
   {
-    id: "log",
-    icon: Target,
-    label: "See how your day stacks up",
-    description: "Log what you eat and watch your progress toward your goals",
-    cta: "Open Tracker",
-    view: "tracker",
+    id: "save",
+    icon: BookMarked,
+    label: "Save recipes to cook later",
+    description: "Build a library from the feed or imports — optional once logging feels easy",
+    cta: "Browse recipes",
+    view: "discover",
   },
 ] as const;
 
@@ -51,7 +51,9 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
     () => ({
       save: savedRecipesForLibrary.length >= 3,
       plan: mealPlan !== null && mealPlan.length > 0,
-      log: Object.keys(nutritionByDay).length > 0,
+      log: Object.values(nutritionByDay).some((meals) =>
+        meals.some((m) => typeof m.id === "string" && !m.id.startsWith("seed-")),
+      ),
     }),
     [savedRecipesForLibrary.length, mealPlan, nutritionByDay],
   );
@@ -63,8 +65,8 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
   useEffect(() => {
     if (allDone) {
       localStorage.setItem(DISMISSED_KEY, "1");
-      track(AnalyticsEvents.onboarding_completed);
-      toast.success("You're all set! Your core loop is active: plan, cook, track.", { duration: 5000 });
+      track(AnalyticsEvents.first_run_checklist_completed);
+      toast.success("You're all set! Keep logging on the Tracker; add recipes and plans whenever you like.", { duration: 5000 });
     }
   }, [allDone]);
 

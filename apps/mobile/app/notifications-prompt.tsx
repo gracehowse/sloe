@@ -19,11 +19,11 @@ export default function NotificationsPromptScreen() {
     } catch {
       // module not available in this build or permission denied
     }
-    router.replace("/(tabs)");
+    router.replace("/(tabs)/discover");
   }
 
   function onSkip() {
-    router.replace("/(tabs)");
+    router.replace("/(tabs)/discover");
   }
 
   const styles = useMemo(() => StyleSheet.create({

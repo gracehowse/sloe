@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,9 +11,19 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import type { PurchasesPackage } from "react-native-purchases";
 
 import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import {
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  isProEntitled,
+  syncTierToSupabase,
+} from "@/lib/purchases";
+import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase";
 
 const TIMELINE = [
   { icon: "checkmark-circle" as const, color: Neon.green, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
@@ -25,15 +36,59 @@ export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id;
   const [purchasing, setPurchasing] = useState(false);
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    void getOfferings().then(setPackages);
+  }, []);
+
+  const annualPkg = packages.find(
+    (p) => p.packageType === "ANNUAL" || p.identifier === "$rc_annual",
+  );
 
   async function onStartTrial() {
+    const pkg = annualPkg ?? packages[0];
+    if (!pkg) {
+      Alert.alert(
+        "Subscriptions unavailable",
+        "We couldn't load pricing. You can try again later from Settings.",
+        [{ text: "Continue", onPress: () => router.replace("/notifications-prompt") }],
+      );
+      return;
+    }
     setPurchasing(true);
-    // TODO: Integrate RevenueCat or StoreKit for real IAP
-    // For now, simulate and continue
-    await new Promise((r) => setTimeout(r, 800));
-    setPurchasing(false);
-    router.replace("/notifications-prompt");
+    try {
+      const { success, customerInfo } = await purchasePackage(pkg);
+      if (success && customerInfo) {
+        if (userId) void syncTierToSupabase(customerInfo, supabase, userId);
+        router.replace("/notifications-prompt");
+      }
+    } catch {
+      Alert.alert("Purchase failed", "Please try again later.");
+    } finally {
+      setPurchasing(false);
+    }
+  }
+
+  async function onRestore() {
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      if (userId) void syncTierToSupabase(info, supabase, userId);
+      if (isProEntitled(info)) {
+        router.replace("/notifications-prompt");
+      } else {
+        Alert.alert("No active subscription found");
+      }
+    } catch {
+      Alert.alert("Restore failed", "Please try again later.");
+    } finally {
+      setRestoring(false);
+    }
   }
 
   function onContinueFree() {
@@ -128,7 +183,9 @@ export default function PaywallScreen() {
         </View>
 
         <Text style={styles.priceText}>
-          7 days free, then £29.99 per year (£2.50/mo).{"\n"}Cancel anytime. No charge today.
+          {annualPkg
+            ? `7 days free, then ${annualPkg.product.priceString} per year. Cancel anytime. No charge today.`
+            : "7 days free trial. Cancel anytime. No charge today."}
         </Text>
 
         <Pressable
@@ -145,6 +202,18 @@ export default function PaywallScreen() {
 
         <Pressable style={styles.freeBtn} onPress={onContinueFree}>
           <Text style={styles.freeBtnText}>Continue for free</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.freeBtn}
+          onPress={() => void onRestore()}
+          disabled={restoring}
+        >
+          {restoring ? (
+            <ActivityIndicator size="small" color={colors.textTertiary} />
+          ) : (
+            <Text style={styles.freeBtnText}>Restore purchase</Text>
+          )}
         </Pressable>
 
         <View style={styles.securedRow}>

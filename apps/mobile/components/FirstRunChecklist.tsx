@@ -38,8 +38,6 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
     }
   }, [allDone, dismissed]);
 
-  if (dismissed) return null;
-
   const doneCount = steps.filter((s) => s.done).length;
 
   const styles = useMemo(() => StyleSheet.create({
@@ -57,6 +55,8 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
     stepText: { fontSize: 14, color: colors.text, flex: 1 },
     stepDone: { textDecorationLine: "line-through" as const, color: colors.textTertiary },
   }), [colors, doneCount]);
+
+  if (dismissed) return null;
 
   return (
     <View style={styles.card}>

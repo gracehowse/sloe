@@ -39,6 +39,10 @@ const NutritionTracker = dynamic(
   () => import("./components/NutritionTracker.tsx").then((m) => ({ default: m.NutritionTracker })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading tracker..." /> },
 );
+const ProgressDashboard = dynamic(
+  () => import("./components/ProgressDashboard.tsx").then((m) => ({ default: m.ProgressDashboard })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading progress..." /> },
+);
 const ShoppingList = dynamic(
   () => import("./components/ShoppingList.tsx").then((m) => ({ default: m.ShoppingList })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading shopping list..." /> },
@@ -66,6 +70,7 @@ type View =
   | "planner"
   | "profile"
   | "tracker"
+  | "progress"
   | "shopping"
   | "settings"
   | "notifications"
@@ -100,6 +105,7 @@ export default function App() {
       "planner",
       "profile",
       "tracker",
+      "progress",
       "shopping",
       "settings",
       "notifications",
@@ -116,6 +122,13 @@ export default function App() {
     }
   }, [normalizedViewParam, currentView]);
 
+  useEffect(() => {
+    if (searchParams.get("view")) return;
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("view", "tracker");
+    router.replace(`/?${p.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
   const navigateToView = useCallback(
     (view: View) => {
       setCurrentView(view);
@@ -129,8 +142,14 @@ export default function App() {
   );
 
   const clearRecipeQuery = useCallback(() => {
-    router.replace("/", { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("recipe");
+    params.delete("cook");
+    params.delete("portions");
+    if (!params.get("view")) params.set("view", "tracker");
+    const q = params.toString();
+    router.replace(q ? `/?${q}` : "/?view=tracker", { scroll: false });
+  }, [router, searchParams]);
 
   const openRecipeById = useCallback(
     (recipeId: string, opts?: { cook?: boolean }) => {
@@ -174,8 +193,9 @@ export default function App() {
     void refreshProfileBasics().then(() => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("checkout");
+      if (!params.get("view")) params.set("view", "tracker");
       const q = params.toString();
-      router.replace(q ? `/?${q}` : "/", { scroll: false });
+      router.replace(q ? `/?${q}` : "/?view=tracker", { scroll: false });
     });
   }, [searchParams, router, refreshProfileBasics]);
 
@@ -252,7 +272,9 @@ export default function App() {
           </>
         );
       case "tracker":
-        return <NutritionTracker userTier={userTier} />;
+        return <NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} />;
+      case "progress":
+        return <ProgressDashboard />;
       case "shopping":
         return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} />;
       case "create":
@@ -339,10 +361,11 @@ export default function App() {
           <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Core</p>
             {([
+              { view: "tracker" as const, icon: Target, label: "Tracker", badge: 0 },
+              { view: "progress" as const, icon: Sparkles, label: "Progress", badge: 0 },
               { view: "discover" as const, icon: Home, label: "Discover", badge: 0 },
               { view: "library" as const, icon: BookMarked, label: "Library", badge: 0 },
               { view: "planner" as const, icon: Calendar, label: "Planner", badge: 0 },
-              { view: "tracker" as const, icon: Target, label: "Tracker", badge: 0 },
               { view: "shopping" as const, icon: ShoppingCart, label: "Shopping", badge: shoppingUncheckedCount },
             ]).map(({ view, icon: Icon, label, badge }) => (
               <button
@@ -421,7 +444,31 @@ export default function App() {
 
       {/* Bottom tabs (mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-4xl mx-auto px-1 py-1.5 grid grid-cols-6 gap-0.5">
+        <div className="max-w-4xl mx-auto px-1 py-1.5 grid grid-cols-7 gap-0.5">
+          <button
+            type="button"
+            onClick={() => navigateToView("tracker")}
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
+              currentView === "tracker"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Target className="w-5 h-5" />
+            Track
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToView("progress")}
+            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
+              currentView === "progress"
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
+            }`}
+          >
+            <Sparkles className="w-5 h-5" />
+            Progress
+          </button>
           <button
             type="button"
             onClick={() => navigateToView("discover")}
@@ -457,18 +504,6 @@ export default function App() {
           >
             <Calendar className="w-5 h-5" />
             Plan
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateToView("tracker")}
-            className={`rounded-lg px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-tight font-medium ${
-              currentView === "tracker"
-                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40"
-                : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-900/40"
-            }`}
-          >
-            <Target className="w-5 h-5" />
-            Track
           </button>
           <button
             type="button"

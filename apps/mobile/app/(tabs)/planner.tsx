@@ -14,7 +14,7 @@ import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { Ionicons } from "@expo/vector-icons";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
@@ -147,9 +147,14 @@ export default function PlannerScreen() {
           backgroundColor: colors.card,
           borderRadius: Radius.lg,
           borderWidth: 1,
-          borderColor: Neon.pink + "30",
+          borderColor: colors.border,
           padding: Spacing.xl,
           gap: Spacing.md,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
         },
         cardTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
         cardDesc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
@@ -464,7 +469,7 @@ export default function PlannerScreen() {
           <View key={dp.day} style={styles.card}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>Day {dp.day}</Text>
-              <Text style={styles.dayTotals}>{dp.totals.calories} kcal</Text>
+              <Text style={styles.dayTotals}>{Math.round(dp.totals.calories)} kcal</Text>
             </View>
             {planTargets && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
@@ -516,18 +521,17 @@ export default function PlannerScreen() {
                     {meal.portionMultiplier && meal.portionMultiplier !== 1 ? ` (${meal.portionMultiplier}x)` : ""}
                   </Text>
                   <Text style={styles.mealMacros}>
-                    {meal.calories} kcal · P {meal.protein}g · C {meal.carbs}g · F {meal.fat}g
+                    {Math.round(meal.calories)} kcal · P {Math.round(meal.protein)}g · C {Math.round(meal.carbs)}g · F {Math.round(meal.fat)}g
                   </Text>
                 </View>
                 {/* Log to tracker */}
                 <Pressable
                   hitSlop={8}
-                  onPress={(e) => {
+                  onPress={async (e) => {
                     e.stopPropagation?.();
                     const dk = dateKeyFromDate(new Date());
-                    // Write to relational nutrition_entries table
-                    const entryId = `plan_${Date.now()}_${i}`;
-                    supabase
+                    const entryId = newMealId();
+                    const { error } = await supabase
                       .from("nutrition_entries")
                       .insert({
                         id: entryId,
@@ -541,34 +545,17 @@ export default function PlannerScreen() {
                         carbs: meal.carbs,
                         fat: meal.fat,
                         portion_multiplier: meal.portionMultiplier ?? 1,
-                      })
-                      .then(({ error }) => {
-                        if (error) {
-                          // Fall back to legacy JSONB
-                          supabase
-                            .from("nutrition_journals")
-                            .select("by_day")
-                            .eq("user_id", userId!)
-                            .maybeSingle()
-                            .then(({ data }) => {
-                              const prevByDay = (data?.by_day ?? {}) as Record<string, any[]>;
-                              const entry = {
-                                id: entryId, name: meal.name, recipeTitle: meal.recipeTitle,
-                                time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                                calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat,
-                              };
-                              const updated = { ...prevByDay, [dk]: [...(prevByDay[dk] ?? []), entry] };
-                              void supabase
-                                .from("nutrition_journals")
-                                .upsert({ user_id: userId, by_day: updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                            });
-                        }
-                        Alert.alert("Logged", `${meal.recipeTitle} added to today's ${meal.name}.`);
                       });
+                    if (error) {
+                      console.error("[planner] log entry failed:", error.message);
+                      Alert.alert("Log failed", "Could not save to tracker. " + error.message);
+                    } else {
+                      Alert.alert("Logged", `${meal.recipeTitle} added to today's tracker.`);
+                    }
                   }}
                   style={{ paddingHorizontal: 8, paddingVertical: 12 }}
                 >
-                  <Ionicons name="add-circle-outline" size={22} color={Neon.purple} />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: Neon.purple }}>Log{"\n"}today</Text>
                 </Pressable>
                 <Text style={styles.mealChevron}>›</Text>
               </Pressable>
