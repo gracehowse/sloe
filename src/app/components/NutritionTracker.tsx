@@ -228,6 +228,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           protein: Math.round(item.protein),
           carbs: Math.round(item.carbs),
           fat: Math.round(item.fat),
+          source: "AI photo",
         });
       }
       toast.success(`Logged ${data.items.length} item${data.items.length > 1 ? "s" : ""} (${data.totalCalories} kcal)`);
@@ -265,6 +266,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           protein: Math.round(item.protein),
           carbs: Math.round(item.carbs),
           fat: Math.round(item.fat),
+          source: "AI voice",
         });
       }
       toast.success(`Logged ${data.items.length} item${data.items.length > 1 ? "s" : ""} (${data.totalCalories} kcal) from voice`);
@@ -412,6 +414,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         protein: Math.max(0, Math.round(manualProtein)),
         carbs: Math.max(0, Math.round(manualCarbs)),
         fat: Math.max(0, Math.round(manualFat)),
+        source: "Manual",
         ...(manualFiber > 0 ? { fiberG: Math.max(0, Math.round(manualFiber)) } : {}),
         ...(manualWater > 0 ? { waterMl: Math.max(0, Math.round(manualWater)) } : {}),
       });
@@ -441,6 +444,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         protein: Math.max(0, Math.round(m.protein * mult)),
         carbs: Math.max(0, Math.round(m.carbs * mult)),
         fat: Math.max(0, Math.round(m.fat * mult)),
+        source: "USDA FoodData Central",
         ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
       });
       setAddOpen(false);
@@ -468,6 +472,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       protein: scaledMacro(recipe.protein, p),
       carbs: scaledMacro(recipe.carbs, p),
       fat: scaledMacro(recipe.fat, p),
+      source: "Recipe",
       ...(fiberFromRecipe != null && fiberFromRecipe > 0 ? { fiberG: fiberFromRecipe } : {}),
       ...(p !== 1 ? { portionMultiplier: p } : {}),
     });
@@ -803,6 +808,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                   protein: Math.max(0, Math.round(m.protein * mult)),
                   carbs: Math.max(0, Math.round(m.carbs * mult)),
                   fat: Math.max(0, Math.round(m.fat * mult)),
+                  source: "USDA FoodData Central",
                   ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
                 });
                 pushRecentFood(quickSelected.description);
@@ -1026,7 +1032,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
-                          <NutritionSourceBadge source={(meal as any).source} />
+                          <NutritionSourceBadge source={meal.source} />
                           {loggedPortion !== 1 && (
                             <span className="shrink-0 rounded bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                               {portionLabel}
@@ -1076,6 +1082,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                             protein: meal.protein,
                             carbs: meal.carbs,
                             fat: meal.fat,
+                            source: "Meal plan",
                           });
                           toast.success(`Logged ${meal.recipeTitle}`);
                         }}
@@ -1491,6 +1498,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                         protein: 0,
                         carbs: 0,
                         fat: 0,
+                        source: "Manual",
                       });
                       setBarcodeOpen(false);
                     }}
@@ -1533,6 +1541,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     protein: p.protein,
                     carbs: p.carbs,
                     fat: p.fat,
+                    source: "Open Food Facts",
                     ...(p.fiberG > 0 ? { fiberG: p.fiberG } : {}),
                   });
                   setBarcodeValue("");

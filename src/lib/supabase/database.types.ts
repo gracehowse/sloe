@@ -502,6 +502,7 @@ export type Database = {
           portion_multiplier: number | null
           protein: number
           recipe_title: string
+          source: string | null
           time_label: string
           user_id: string
           water_ml: number | null
@@ -518,6 +519,7 @@ export type Database = {
           portion_multiplier?: number | null
           protein?: number
           recipe_title?: string
+          source?: string | null
           time_label?: string
           user_id: string
           water_ml?: number | null
@@ -534,6 +536,7 @@ export type Database = {
           portion_multiplier?: number | null
           protein?: number
           recipe_title?: string
+          source?: string | null
           time_label?: string
           user_id?: string
           water_ml?: number | null

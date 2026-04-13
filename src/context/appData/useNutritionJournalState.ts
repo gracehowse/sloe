@@ -22,6 +22,7 @@ type NutritionEntryRow = {
   fiber_g: number | null;
   water_ml: number | null;
   portion_multiplier: number | null;
+  source: string | null;
 };
 
 function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
@@ -78,7 +79,7 @@ export function useNutritionJournalState(opts: {
       // Try new relational table first
       const { data, error } = await supabase
         .from("nutrition_entries")
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source")
         .eq("user_id", authedUserId)
         .order("created_at", { ascending: true });
 
@@ -143,6 +144,7 @@ export function useNutritionJournalState(opts: {
           fiber_g: meal.fiberG ?? null,
           water_ml: meal.waterMl ?? null,
           portion_multiplier: meal.portionMultiplier ?? 1,
+          source: meal.source ?? null,
         })
         .then(({ error }) => {
           if (error) {

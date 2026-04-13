@@ -91,6 +91,7 @@ export default function BarcodeScreen() {
       fat: scaled.fat,
       fiber_g: scaled.fiberG ?? null,
       portion_multiplier: 1,
+      source: "Open Food Facts",
     });
     setLogging(false);
     if (dbErr) {

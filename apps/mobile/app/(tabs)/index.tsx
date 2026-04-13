@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { dateKeyFromDate, newMealId, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
@@ -32,6 +33,7 @@ import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import NutritionSourceBadge from "@/components/NutritionSourceBadge";
+import NetInfo from "@react-native-community/netinfo";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -78,6 +80,19 @@ export default function TrackerScreen() {
   const [voiceInputOpen, setVoiceInputOpen] = useState(false);
   const [voiceInputText, setVoiceInputText] = useState("");
   const [fastingTick, setFastingTick] = useState(Date.now());
+  const [isOffline, setIsOffline] = useState(false);
+  const [targetCelebration, setTargetCelebration] = useState(false);
+  const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const unsub = NetInfo.addEventListener((state) => {
+      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
+    });
+    void NetInfo.fetch().then((state) => {
+      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!activeFastStart) return;
@@ -253,6 +268,40 @@ export default function TrackerScreen() {
     };
   }, [mealsToday]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (viewMode !== "day" || !isToday) return;
+    const goalsOk = targets.calories > 0 && targets.protein > 0;
+    const hit =
+      goalsOk &&
+      totals.calories >= targets.calories &&
+      totals.protein >= targets.protein;
+
+    const map = targetHitPrevByDayRef.current;
+    const prev = map[dayKey];
+    if (prev === undefined) {
+      map[dayKey] = hit;
+      return;
+    }
+    if (!prev && hit) {
+      setTargetCelebration(true);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const t = setTimeout(() => setTargetCelebration(false), 2500);
+      map[dayKey] = hit;
+      return () => clearTimeout(t);
+    }
+    map[dayKey] = hit;
+  }, [
+    hydrated,
+    viewMode,
+    isToday,
+    dayKey,
+    targets.calories,
+    targets.protein,
+    totals.calories,
+    totals.protein,
+  ]);
+
   const remaining = targets.calories - totals.calories;
 
   const fiberToday = useMemo(
@@ -354,6 +403,7 @@ export default function TrackerScreen() {
                 protein: Math.round(item.protein),
                 carbs: Math.round(item.carbs),
                 fat: Math.round(item.fat),
+                source: "AI photo",
               }));
               setByDay((prev) => ({
                 ...prev,
@@ -432,6 +482,7 @@ export default function TrackerScreen() {
                 protein: Math.round(item.protein),
                 carbs: Math.round(item.carbs),
                 fat: Math.round(item.fat),
+                source: "AI voice",
               }));
               setByDay((prev) => ({
                 ...prev,
@@ -567,6 +618,19 @@ export default function TrackerScreen() {
         },
         submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
+        offlineBanner: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          backgroundColor: colors.card,
+          borderRadius: Radius.md,
+          paddingVertical: Spacing.md,
+          paddingHorizontal: Spacing.lg,
+          borderWidth: 1,
+          borderColor: Neon.purple + "40",
+        },
+        offlineBannerText: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.text },
+
       }),
     [colors],
   );
@@ -602,6 +666,7 @@ export default function TrackerScreen() {
               : m.portion_multiplier != null
                 ? Number(m.portion_multiplier)
                 : undefined,
+          source: m.source != null && String(m.source).trim() !== "" ? String(m.source) : undefined,
         }));
       }
       return out;
@@ -609,7 +674,7 @@ export default function TrackerScreen() {
 
     const { data: rows, error } = await supabase
       .from("nutrition_entries")
-      .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier")
+      .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source")
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
@@ -642,6 +707,7 @@ export default function TrackerScreen() {
           fiberG: (r.fiber_g as number) ?? undefined,
           waterMl: (r.water_ml as number) ?? undefined,
           portionMultiplier: (r.portion_multiplier as number) ?? undefined,
+          source: (r.source as string) ?? undefined,
         });
       }
       if (Object.keys(loaded).length === 0) {
@@ -699,6 +765,7 @@ export default function TrackerScreen() {
           fiber_g: m.fiberG ?? null,
           water_ml: m.waterMl ?? null,
           portion_multiplier: m.portionMultiplier ?? 1,
+          source: m.source ?? null,
         }));
         void supabase
           .from("nutrition_entries")
@@ -728,6 +795,7 @@ export default function TrackerScreen() {
       protein: Math.round(p),
       carbs: Math.round(cb),
       fat: Math.round(f),
+      source: "Manual",
     };
     setByDay((prev) => ({
       ...prev,
@@ -801,7 +869,7 @@ export default function TrackerScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, position: "relative" }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -812,6 +880,13 @@ export default function TrackerScreen() {
             <Text style={{ color: Neon.purple, fontWeight: "700", fontSize: 14 }}>Progress →</Text>
           </Pressable>
         </View>
+
+        {isOffline && (
+          <View style={styles.offlineBanner} accessibilityRole="alert">
+            <Ionicons name="cloud-offline-outline" size={18} color={Neon.purple} />
+            <Text style={styles.offlineBannerText}>{"You're offline. Changes sync when you reconnect."}</Text>
+          </View>
+        )}
 
         {/* Error banner */}
         {loadError && (
@@ -1160,7 +1235,7 @@ export default function TrackerScreen() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       <Text style={styles.mealName}>{m.recipeTitle}</Text>
-                      <NutritionSourceBadge source={(m as any).source} />
+                      <NutritionSourceBadge source={m.source} />
                     </View>
                     <Text style={styles.mealMeta}>P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fat)}g</Text>
                   </View>
@@ -1219,6 +1294,7 @@ export default function TrackerScreen() {
                       carbs: pm.carbs ?? 0,
                       fat: pm.fat ?? 0,
                       portion_multiplier: 1,
+                      source: "Meal plan",
                     });
                     if (error) {
                       Alert.alert("Log failed", error.message);
@@ -1429,6 +1505,30 @@ export default function TrackerScreen() {
         </View>
       </Modal>
 
+      {targetCelebration && (
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 50 }}
+        >
+          <View
+            style={{
+              backgroundColor: Neon.purple + "E8",
+              paddingHorizontal: Spacing.xxl,
+              paddingVertical: Spacing.lg,
+              borderRadius: Radius.lg,
+              maxWidth: "88%",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800", color: "#fff", textAlign: "center" }}>
+              Goals hit!
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#fff", textAlign: "center", marginTop: 4, opacity: 0.95 }}>
+              Calories and protein targets met for today
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Photo analyzing overlay */}
       {photoAnalyzing && (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
@@ -1528,6 +1628,7 @@ export default function TrackerScreen() {
             protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
             carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
             fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
+            source: "USDA FoodData Central",
           };
           setByDay((prev) => ({
             ...prev,
@@ -1557,6 +1658,7 @@ export default function TrackerScreen() {
             protein: product.protein,
             carbs: product.carbs,
             fat: product.fat,
+            source: "Open Food Facts",
           };
           setByDay((prev) => ({
             ...prev,
@@ -1608,6 +1710,7 @@ export default function TrackerScreen() {
                     protein: m.protein,
                     carbs: m.carbs,
                     fat: m.fat,
+                    ...(m.source ? { source: m.source } : {}),
                   };
                   setByDay((prev) => ({
                     ...prev,

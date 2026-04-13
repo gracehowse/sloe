@@ -85,6 +85,8 @@ export interface LoggedMeal {
   fiberG?: number;
   /** Optional water logged with this entry (ml). */
   waterMl?: number;
+  /** Optional provenance for confidence badges (USDA, Open Food Facts, AI photo, etc.). */
+  source?: string | null;
 }
 
 export interface DayPlanMeal {

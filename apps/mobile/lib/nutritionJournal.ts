@@ -11,6 +11,8 @@ export type JournalMeal = {
   portionMultiplier?: number;
   fiberG?: number;
   waterMl?: number;
+  /** Provenance for nutrition confidence UI (matches web `LoggedMeal.source`). */
+  source?: string | null;
 };
 
 export type ByDay = Record<string, JournalMeal[]>;
