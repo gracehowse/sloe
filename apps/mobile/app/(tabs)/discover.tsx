@@ -86,9 +86,9 @@ export default function DiscoverScreen() {
         header: { alignItems: "center", paddingVertical: Spacing.md },
         headerTitle: {
           fontSize: 22,
-          fontWeight: "800",
+          fontWeight: "700",
           color: Neon.purple,
-          letterSpacing: 3,
+          letterSpacing: 0,
         },
         searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
         searchInput: {
@@ -270,7 +270,7 @@ export default function DiscoverScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>DISCOVER</Text>
+        <Text style={styles.headerTitle}>Discover</Text>
       </View>
 
       {/* Search */}

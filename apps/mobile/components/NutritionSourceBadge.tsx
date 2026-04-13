@@ -1,0 +1,50 @@
+import { useMemo } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { Neon, Radius } from "@/constants/theme";
+
+type SourceTier = "verified" | "estimated" | "manual";
+
+function classifySource(source?: string | null): SourceTier {
+  if (!source) return "manual";
+  const s = source.toLowerCase();
+  if (s.includes("usda") || s.includes("fdc") || s.includes("openfoodfacts") || s.includes("off")) return "verified";
+  if (s.includes("ai") || s.includes("photo") || s.includes("voice") || s.includes("import") || s.includes("openai")) return "estimated";
+  return "manual";
+}
+
+const CONFIG: Record<SourceTier, { label: string; abbr: string; color: string }> = {
+  verified: { label: "Verified", abbr: "✓", color: Neon.green },
+  estimated: { label: "Estimated", abbr: "~", color: Neon.yellow },
+  manual: { label: "Manual", abbr: "✎", color: "#94a3b8" },
+};
+
+export default function NutritionSourceBadge({ source, compact = true }: { source?: string | null; compact?: boolean }) {
+  const tier = classifySource(source);
+  const cfg = CONFIG[tier];
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        badge: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 3,
+          borderRadius: Radius.sm,
+          paddingHorizontal: 4,
+          paddingVertical: 1,
+          backgroundColor: cfg.color + "18",
+        },
+        abbr: { fontSize: 10, fontWeight: "700", color: cfg.color },
+        label: { fontSize: 9, fontWeight: "600", color: cfg.color },
+      }),
+    [cfg.color],
+  );
+
+  return (
+    <View style={styles.badge} accessibilityLabel={`${cfg.label} nutrition data`}>
+      <Text style={styles.abbr}>{cfg.abbr}</Text>
+      {!compact && <Text style={styles.label}>{cfg.label}</Text>}
+    </View>
+  );
+}
+
+export { classifySource, type SourceTier };

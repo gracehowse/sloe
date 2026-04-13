@@ -31,6 +31,7 @@ import { computeLoggingStreak } from "@/lib/trackerStats";
 import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
+import NutritionSourceBadge from "@/components/NutritionSourceBadge";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -51,6 +52,8 @@ export default function TrackerScreen() {
 
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [collapsedSlots, setCollapsedSlots] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [kcal, setKcal] = useState("");
   const [protein, setProtein] = useState("");
@@ -619,9 +622,11 @@ export default function TrackerScreen() {
         setByDay(legacy ?? {});
       } else {
         console.error("[tracker] load failed:", msg);
+        setLoadError("Could not load your journal.");
         setByDay({});
       }
     } else {
+      setLoadError(null);
       for (const r of rows ?? []) {
         const k = r.date_key as string;
         if (!loaded[k]) loaded[k] = [];
@@ -768,18 +773,58 @@ export default function TrackerScreen() {
     return groups;
   }, [mealsToday]);
 
+  const toggleSlotCollapse = useCallback((slot: string) => {
+    setCollapsedSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot);
+      else next.add(slot);
+      return next;
+    });
+  }, []);
+
+  if (!hydrated && !loadError) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.scroll}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View style={{ width: 80, height: 20, backgroundColor: colors.border, borderRadius: Radius.sm }} />
+            <View style={{ width: 72, height: 16, backgroundColor: colors.border, borderRadius: Radius.sm }} />
+          </View>
+          <View style={{ height: 160, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+          <View style={{ height: 80, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={{ height: 64, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text }}>
             {isToday ? "Today" : formatDateLabel(selectedDate)}
           </Text>
           <Pressable onPress={() => router.push("/progress")} hitSlop={8}>
             <Text style={{ color: Neon.purple, fontWeight: "700", fontSize: 14 }}>Progress →</Text>
           </Pressable>
         </View>
+
+        {/* Error banner */}
+        {loadError && (
+          <Pressable
+            onPress={() => { setLoadError(null); void loadJournal(); }}
+            style={{ backgroundColor: Neon.red + "15", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+          >
+            <Ionicons name="alert-circle" size={18} color={Neon.red} />
+            <Text style={{ flex: 1, fontSize: 13, color: Neon.red, fontWeight: "600" }}>
+              Could not load journal. Tap to retry.
+            </Text>
+          </Pressable>
+        )}
 
         {/* Day/Week toggle */}
         <View style={{ flexDirection: "row", backgroundColor: colors.card, borderRadius: Radius.md, padding: 3 }}>
@@ -1012,43 +1057,42 @@ export default function TrackerScreen() {
               </View>
             </View>
 
-            {/* Water card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Water</Text>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {extraWaterToday.toLocaleString()} / {waterGoalMl.toLocaleString()} ml
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: Spacing.md }}>
-                {[200, 250, 500].map((ml) => (
-                  <Pressable
-                    key={ml}
-                    onPress={() => addWaterMl(ml)}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: Radius.md,
-                      backgroundColor: Neon.purple + "28",
-                      borderWidth: 1,
-                      borderColor: Neon.purple + "55",
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800", color: Neon.purple, fontSize: 13 }}>+{ml} ml</Text>
-                  </Pressable>
-                ))}
+            {/* Water + Steps compact row */}
+            <View style={{ flexDirection: "row", gap: Spacing.md }}>
+              <View style={[styles.card, { flex: 1, padding: Spacing.md }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                  <Ionicons name="water" size={16} color={Neon.cyan} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>Water</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginTop: Spacing.xs }}>
+                  {extraWaterToday.toLocaleString()} ml
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>of {waterGoalMl.toLocaleString()}</Text>
+                <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>
+                  {[250, 500].map((ml) => (
+                    <Pressable
+                      key={ml}
+                      onPress={() => addWaterMl(ml)}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, backgroundColor: Neon.cyan + "18" }}
+                      accessibilityLabel={`Add ${ml} ml water`}
+                    >
+                      <Text style={{ fontWeight: "700", color: Neon.cyan, fontSize: 12 }}>+{ml}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </View>
-
-            {/* Steps card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Steps</Text>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {stepsTodayCount.toLocaleString()} / {dailyStepsGoal.toLocaleString()}
-              </Text>
-              <View style={{ height: 6, backgroundColor: colors.border, borderRadius: 3, marginTop: Spacing.sm, overflow: "hidden" }}>
-                <View style={{ height: 6, borderRadius: 3, backgroundColor: Neon.purple, width: `${Math.min(100, (stepsTodayCount / Math.max(1, dailyStepsGoal)) * 100)}%` }} />
-              </View>
-              <Pressable onPress={() => router.push("/progress")} style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}>
-                <Text style={{ color: Neon.purple, fontWeight: "700", fontSize: 13 }}>Log steps & weigh-in →</Text>
+              <Pressable style={[styles.card, { flex: 1, padding: Spacing.md }]} onPress={() => router.push("/progress")} accessibilityLabel="View steps and weigh-in">
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                  <Ionicons name="footsteps" size={16} color={Neon.green} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>Steps</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginTop: Spacing.xs }}>
+                  {stepsTodayCount.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>of {dailyStepsGoal.toLocaleString()}</Text>
+                <View style={{ height: 4, backgroundColor: colors.border, borderRadius: 2, marginTop: Spacing.sm, overflow: "hidden" }}>
+                  <View style={{ height: 4, borderRadius: 2, backgroundColor: Neon.green, width: `${Math.min(100, (stepsTodayCount / Math.max(1, dailyStepsGoal)) * 100)}%` }} />
+                </View>
               </Pressable>
             </View>
           </>
@@ -1079,7 +1123,7 @@ export default function TrackerScreen() {
           </View>
         )}
 
-        {/* Meal sections (day view only) — show all slots */}
+        {/* Meal sections (day view only) — collapsible slots */}
         {viewMode === "day" && MEAL_SLOTS.map((slot) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
@@ -1087,25 +1131,37 @@ export default function TrackerScreen() {
           const slotC = Math.round(meals.reduce((a, m) => a + m.carbs, 0));
           const slotF = Math.round(meals.reduce((a, m) => a + m.fat, 0));
           const budget = mealBudgets.find((b) => b.slot === slot);
+          const isCollapsed = collapsedSlots.has(slot) && meals.length > 0;
           return (
-            <View key={slot} style={styles.card}>
-              <View style={styles.mealSlotHeader}>
-                <Text style={styles.mealSlotName}>{slot}</Text>
+            <View key={slot} style={[styles.card, meals.length === 0 ? { padding: Spacing.md } : undefined]}>
+              <Pressable
+                style={styles.mealSlotHeader}
+                onPress={() => meals.length > 0 && toggleSlotCollapse(slot)}
+                accessibilityLabel={`${slot}${slotCals > 0 ? `, ${slotCals} calories` : ""}`}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+                  {meals.length > 0 && (
+                    <Ionicons name={isCollapsed ? "chevron-forward" : "chevron-down"} size={14} color={colors.textTertiary} />
+                  )}
+                  <Text style={styles.mealSlotName}>{slot}</Text>
+                </View>
                 {slotCals > 0 && <Text style={styles.mealSlotCals}>{slotCals}</Text>}
-              </View>
-              {slotCals > 0 ? (
-                <Text style={styles.mealSlotMacros}>
-                  P {slotP}g · C {slotC}g · F {slotF}g
-                </Text>
-              ) : budget && budget.calories > 0 ? (
+              </Pressable>
+              {!isCollapsed && slotCals > 0 && (
+                <Text style={styles.mealSlotMacros}>P {slotP}g · C {slotC}g · F {slotF}g</Text>
+              )}
+              {!isCollapsed && slotCals === 0 && budget && budget.calories > 0 && (
                 <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: "italic" }}>
-                  {budget.calories} calories suggested · {budget.fiber}g fibre
+                  {budget.calories} kcal suggested
                 </Text>
-              ) : null}
-              {meals.map((m) => (
+              )}
+              {!isCollapsed && meals.map((m) => (
                 <View key={m.id} style={[styles.mealRow, { gap: Spacing.sm }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.mealName}>{m.recipeTitle}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={styles.mealName}>{m.recipeTitle}</Text>
+                      <NutritionSourceBadge source={(m as any).source} />
+                    </View>
                     <Text style={styles.mealMeta}>P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fat)}g</Text>
                   </View>
                   <Text style={styles.mealCals}>{Math.round(m.calories)}</Text>
@@ -1118,14 +1174,17 @@ export default function TrackerScreen() {
                     }}
                     hitSlop={8}
                     style={{ padding: 4 }}
+                    accessibilityLabel={`Delete ${m.recipeTitle}`}
                   >
                     <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
                   </Pressable>
                 </View>
               ))}
-              <Pressable style={styles.addFoodBtn} onPress={() => { setActiveMealSlot(slot); setFabSheetOpen(true); }}>
-                <Text style={styles.addFoodBtnText}>+ Add Food</Text>
-              </Pressable>
+              {!isCollapsed && (
+                <Pressable style={styles.addFoodBtn} onPress={() => { setActiveMealSlot(slot); setFabSheetOpen(true); }}>
+                  <Text style={styles.addFoodBtnText}>+ Add Food</Text>
+                </Pressable>
+              )}
             </View>
           );
         })}
@@ -1314,13 +1373,38 @@ export default function TrackerScreen() {
               Photo and voice send data to our servers and may use AI (see Privacy policy in More).
             </Text>
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
+            {/* Primary actions */}
+            <View style={{ flexDirection: "row", gap: Spacing.md }}>
               {[
-                { icon: "add-circle-outline" as const, label: "Quick Add", onPress: () => { setFabSheetOpen(false); setAddOpen(true); } },
                 { icon: "search" as const, label: "Search", onPress: () => { setFabSheetOpen(false); setSearchOpen(true); } },
                 { icon: "barcode-outline" as const, label: "Scan", onPress: () => { setFabSheetOpen(false); setBarcodeOpen(true); } },
-                { icon: "camera-outline" as const, label: "Photo", onPress: () => { setFabSheetOpen(false); handlePhotoLog(); } },
-                { icon: "mic-outline" as const, label: "Voice", onPress: () => { setFabSheetOpen(false); handleVoiceLog(); } },
+                { icon: "add-circle-outline" as const, label: "Quick Add", onPress: () => { setFabSheetOpen(false); setAddOpen(true); } },
+              ].map((item) => (
+                <Pressable
+                  key={item.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  onPress={item.onPress}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    paddingVertical: Spacing.lg,
+                    borderRadius: Radius.md,
+                    backgroundColor: Neon.purple + "15",
+                    borderWidth: 1,
+                    borderColor: Neon.purple + "30",
+                  }}
+                >
+                  <Ionicons name={item.icon} size={24} color={Neon.purple} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: Neon.purple, marginTop: 6 }}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {/* Secondary actions */}
+            <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
+              {[
+                { icon: "camera-outline" as const, label: "Photo (AI)", onPress: () => { setFabSheetOpen(false); handlePhotoLog(); } },
+                { icon: "mic-outline" as const, label: "Voice (AI)", onPress: () => { setFabSheetOpen(false); handleVoiceLog(); } },
                 { icon: "time-outline" as const, label: "Previous", onPress: () => { setFabSheetOpen(false); setShowPrevious(true); } },
               ].map((item) => (
                 <Pressable
@@ -1329,15 +1413,15 @@ export default function TrackerScreen() {
                   accessibilityLabel={item.label}
                   onPress={item.onPress}
                   style={{
-                    width: "30%",
+                    flex: 1,
                     alignItems: "center",
                     paddingVertical: Spacing.md,
                     borderRadius: Radius.md,
                     backgroundColor: colors.inputBg,
                   }}
                 >
-                  <Ionicons name={item.icon} size={24} color={Neon.purple} accessibilityElementsHidden importantForAccessibility="no" />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginTop: 6 }}>{item.label}</Text>
+                  <Ionicons name={item.icon} size={20} color={colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary, marginTop: 4 }}>{item.label}</Text>
                 </Pressable>
               ))}
             </View>

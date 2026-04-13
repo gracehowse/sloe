@@ -136,9 +136,9 @@ export default function PlannerScreen() {
         scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
         headerTitle: {
           fontSize: 22,
-          fontWeight: "800",
+          fontWeight: "700",
           color: Neon.purple,
-          letterSpacing: 3,
+          letterSpacing: 0,
           textAlign: "center",
           paddingVertical: Spacing.md,
         },
@@ -389,7 +389,7 @@ export default function PlannerScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Text style={styles.headerTitle}>MEAL PLANNER</Text>
+        <Text style={styles.headerTitle}>Meal Planner</Text>
 
         {/* Generate controls */}
         {!plan && (

@@ -1,11 +1,13 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  Alert,
   View,
   Text,
   FlatList,
   Image,
   Pressable,
   StyleSheet,
+  TextInput,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
@@ -15,8 +17,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
+
+type SortKey = "recent" | "calories" | "protein";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  recent: "Recent",
+  calories: "Calories",
+  protein: "Protein",
+};
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
@@ -28,10 +38,47 @@ export default function LibraryScreen() {
   const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
 
-  const toggleSave = useCallback(
-    async (recipeId: string) => {
-      await persistSaveToggle(recipeId);
-      await refresh();
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("recent");
+
+  const cycleSort = useCallback(() => {
+    setSortKey((prev) => {
+      const keys: SortKey[] = ["recent", "calories", "protein"];
+      return keys[(keys.indexOf(prev) + 1) % keys.length];
+    });
+  }, []);
+
+  const filtered = useMemo(() => {
+    let list = savedRecipes;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((r) => r.title.toLowerCase().includes(q));
+    }
+    if (sortKey === "calories") {
+      list = [...list].sort((a, b) => b.calories - a.calories);
+    } else if (sortKey === "protein") {
+      list = [...list].sort((a, b) => b.protein - a.protein);
+    }
+    return list;
+  }, [savedRecipes, search, sortKey]);
+
+  const confirmRemove = useCallback(
+    (item: RecipeCard) => {
+      Alert.alert(
+        "Remove from library?",
+        `"${item.title}" will be removed from your saved recipes.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              await persistSaveToggle(item.id);
+              await refresh();
+            },
+          },
+        ],
+      );
     },
     [persistSaveToggle, refresh],
   );
@@ -40,17 +87,17 @@ export default function LibraryScreen() {
     container: { flex: 1, backgroundColor: colors.background },
     header: {
       paddingHorizontal: Spacing.xl,
-      paddingVertical: Spacing.md,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.xs,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-      gap: Spacing.sm,
+      justifyContent: "space-between",
     },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
     headerTitle: {
       fontSize: 22,
-      fontWeight: "800",
+      fontWeight: "700",
       color: Neon.purple,
-      letterSpacing: 3,
     },
     countBadge: {
       backgroundColor: Neon.purple + "15",
@@ -59,6 +106,29 @@ export default function LibraryScreen() {
       borderRadius: Radius.sm,
     },
     countText: { color: Neon.purple, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    sortBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
+    searchInput: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.text,
+    },
     list: {
       paddingHorizontal: Spacing.xl,
       paddingBottom: 100,
@@ -74,20 +144,28 @@ export default function LibraryScreen() {
       overflow: "hidden",
     },
     cardImage: {
-      width: 72,
-      height: 72,
+      width: 96,
+      height: 96,
       backgroundColor: colors.border,
     },
     cardBody: {
       flex: 1,
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
+      gap: 4,
     },
-    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 2 },
-    macros: { fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
+    macroRow: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap" },
+    macroChip: {
+      borderWidth: 1,
+      borderRadius: Radius.sm,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    macroChipText: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
     removeBtn: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.lg,
     },
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
     emptyContainer: {
@@ -123,20 +201,37 @@ export default function LibraryScreen() {
       <Pressable
         style={styles.card}
         onPress={() => router.push(`/recipe/${item.id}`)}
+        accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories`}
       >
         <Image source={{ uri: item.image }} style={styles.cardImage} />
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.macros}>
-            {Math.round(item.calories)} kcal · P: {Math.round(item.protein)}g · C: {Math.round(item.carbs)}g · F: {Math.round(item.fat)}g
-          </Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.macroRow}>
+            <View style={[styles.macroChip, { borderColor: MacroColors.calories + "60" }]}>
+              <Text style={[styles.macroChipText, { color: MacroColors.calories }]}>{Math.round(item.calories)} kcal</Text>
+            </View>
+            <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
+              <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {Math.round(item.protein)}g</Text>
+            </View>
+            <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
+              <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {Math.round(item.carbs)}g</Text>
+            </View>
+            <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
+              <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {Math.round(item.fat)}g</Text>
+            </View>
+          </View>
         </View>
-        <Pressable onPress={() => toggleSave(item.id)} hitSlop={12} style={styles.removeBtn}>
-          <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+        <Pressable
+          onPress={() => confirmRemove(item)}
+          hitSlop={12}
+          style={styles.removeBtn}
+          accessibilityLabel={`Remove ${item.title} from library`}
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
         </Pressable>
       </Pressable>
     ),
-    [router, toggleSave, styles],
+    [router, confirmRemove, styles, colors],
   );
 
   const isLoading = loading;
@@ -144,10 +239,27 @@ export default function LibraryScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>LIBRARY</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{savedRecipes.length}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Library</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{savedRecipes.length}</Text>
+          </View>
         </View>
+        <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
+          <Ionicons name="swap-vertical" size={14} color={colors.textSecondary} />
+          <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.searchRow}>
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search your recipes…"
+          placeholderTextColor={colors.textTertiary}
+          style={styles.searchInput}
+          accessibilityLabel="Search saved recipes"
+        />
       </View>
 
       {isLoading && savedRecipes.length === 0 ? (
@@ -156,7 +268,7 @@ export default function LibraryScreen() {
         </View>
       ) : (
         <FlatList
-          data={savedRecipes}
+          data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
           contentContainerStyle={styles.list}
@@ -164,21 +276,28 @@ export default function LibraryScreen() {
             <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Neon.purple} />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="book-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
-              <Text style={styles.emptyTitle}>No saved recipes</Text>
-              <Text style={styles.emptySubtext}>
-                Save recipes from Discover or import a link — everything you save shows up here for meal plans.
-              </Text>
-              <View style={styles.emptyActions}>
-                <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/discover")}>
-                  <Text style={styles.ctaBtnText}>Browse Discover</Text>
-                </Pressable>
-                <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
-                  <Text style={styles.ctaBtnSecondaryText}>Import a link</Text>
-                </Pressable>
+            search.trim() ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                <Text style={styles.emptyTitle}>No results for &ldquo;{search.trim()}&rdquo;</Text>
               </View>
-            </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="book-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                <Text style={styles.emptyTitle}>No saved recipes</Text>
+                <Text style={styles.emptySubtext}>
+                  Save recipes from Discover or paste a recipe URL — everything you save shows up here for meal plans.
+                </Text>
+                <View style={styles.emptyActions}>
+                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/discover")}>
+                    <Text style={styles.ctaBtnText}>Browse Discover</Text>
+                  </Pressable>
+                  <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
+                    <Text style={styles.ctaBtnSecondaryText}>Paste a recipe URL</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )
           }
         />
       )}

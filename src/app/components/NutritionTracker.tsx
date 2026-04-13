@@ -36,6 +36,7 @@ import {
   computeWeekLoggedDays,
 } from "../../lib/nutrition/trackerStats.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
+import NutritionSourceBadge from "../../components/NutritionSourceBadge.tsx";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
@@ -517,43 +518,55 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             </button>
             <button
               type="button"
-              onClick={() => {
-                const csv = buildNutritionCsvForDay(
-                  selectedDateKey,
-                  mealsForSelectedDate,
-                  extraWaterMlForSelectedDay,
-                );
-                downloadCsvFile(`platemate-${selectedDateKey}.csv`, csv);
-              }}
-              className="rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Export CSV
-            </button>
-            <label
-              aria-label="Upload a meal photo for AI nutrition estimate"
-              title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
-              className="inline-flex items-center gap-1 rounded-lg border border-violet-300 dark:border-violet-700 px-3 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-            >
-              <Camera className="h-4 w-4" />
-              <span className="hidden sm:inline">Photo</span>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-            </label>
-            <button
-              type="button"
-              onClick={handleVoiceLog}
-              className="inline-flex items-center gap-1 rounded-lg border border-violet-300 dark:border-violet-700 px-3 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-            >
-              <Mic className="h-4 w-4" />
-              <span className="hidden sm:inline">Voice</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setAddOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-pm hover:shadow-md hover:shadow-violet-500/20"
             >
               <Plus className="h-4 w-4" />
               Add food
             </button>
+            {/* Overflow: Photo, Voice, Export */}
+            <div className="relative group">
+              <button
+                type="button"
+                className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-pm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                aria-label="More actions"
+              >
+                ···
+              </button>
+              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 min-w-[160px] py-1">
+                <label
+                  aria-label="Upload a meal photo for AI nutrition estimate"
+                  title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <Camera className="h-4 w-4" />
+                  Photo (AI)
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleVoiceLog}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
+                >
+                  <Mic className="h-4 w-4" />
+                  Voice (AI)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = buildNutritionCsvForDay(
+                      selectedDateKey,
+                      mealsForSelectedDate,
+                      extraWaterMlForSelectedDay,
+                    );
+                    downloadCsvFile(`platemate-${selectedDateKey}.csv`, csv);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
+                >
+                  Export CSV
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -990,62 +1003,33 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                   return (
                     <div
                       key={meal.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50 transition-pm hover:border-violet-300/80 dark:hover:border-violet-700/80"
+                      className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/50 transition-pm hover:border-violet-300/80 dark:hover:border-violet-700/80"
                     >
-                      <div className="mb-3 flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="mb-1 flex flex-wrap items-center gap-2">
-                            {loggedPortion !== 1 ? (
-                              <span className="inline-block rounded-md bg-slate-200/90 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                                {portionLabel} portions
-                              </span>
-                            ) : null}
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{meal.time}</span>
-                          </div>
-                          <h4 className="text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-white">{meal.recipeTitle}</h4>
+                          <NutritionSourceBadge source={(meal as any).source} />
+                          {loggedPortion !== 1 && (
+                            <span className="shrink-0 rounded bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                              {portionLabel}
+                            </span>
+                          )}
+                          <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{meal.time}</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeLoggedMeal(meal.id)}
-                          className="shrink-0 text-slate-400 transition-pm hover:text-red-500"
-                          aria-label={`Remove ${meal.recipeTitle}`}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                          P {Math.round(meal.protein)}g · C {Math.round(meal.carbs)}g · F {Math.round(meal.fat)}g{meal.fiberG != null && meal.fiberG > 0 ? ` · Fb ${Math.round(meal.fiberG)}g` : ""}
+                        </p>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                        <div>
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            Cal
-                          </p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{Math.round(meal.calories)}</p>
-                        </div>
-                        <div>
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            P
-                          </p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{Math.round(meal.protein)}g</p>
-                        </div>
-                        <div>
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            C
-                          </p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{Math.round(meal.carbs)}g</p>
-                        </div>
-                        <div>
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            F
-                          </p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{Math.round(meal.fat)}g</p>
-                        </div>
-                        <div>
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            Fiber
-                          </p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">
-                            {meal.fiberG != null && meal.fiberG > 0 ? `${Math.round(meal.fiberG)}g` : "—"}
-                          </p>
-                        </div>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900 dark:text-white">{Math.round(meal.calories)}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeLoggedMeal(meal.id)}
+                        className="shrink-0 text-slate-400 transition-pm hover:text-red-500"
+                        aria-label={`Remove ${meal.recipeTitle}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="hidden">
                       </div>
                       {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">
@@ -1556,44 +1540,34 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </DialogContent>
       </Dialog>
 
-      {/* Insights (from your log — same calorie target as Profile for fit %) */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">Logging streak</p>
+      {/* Insights strip */}
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+          <TrendingUp className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
+              {streakDays > 0 ? `${streakDays}d` : "—"}
+            </p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">Streak</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">
-            {streakDays > 0 ? `${streakDays} ${streakDays === 1 ? "day" : "days"}` : "—"}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-            Consecutive days (today or yesterday through past) with at least one meal logged.
-          </p>
         </div>
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">7-day calorie fit</p>
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+          <Target className="w-5 h-5 shrink-0 text-violet-600 dark:text-violet-400" />
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
+              {goalFit != null ? `${goalFit}%` : "—"}
+            </p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">7-day fit</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">
-            {goalFit != null ? `${goalFit}%` : "—"}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-            Average closeness to your calorie target ({nutritionTargets.calories} kcal) on days you logged food. Activity
-            adjustments are not applied per day here yet.
-          </p>
         </div>
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Award className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-            <p className="text-sm text-slate-600 dark:text-slate-400">This week (Mon–Sun)</p>
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+          <Award className="w-5 h-5 shrink-0 text-orange-600 dark:text-orange-400" />
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
+              {weekLogged.logged}/{weekLogged.total}
+            </p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">This week</p>
           </div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">
-            {weekLogged.logged}/{weekLogged.total} days
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-            Days in the current calendar week with at least one meal logged.
-          </p>
         </div>
       </div>
 
