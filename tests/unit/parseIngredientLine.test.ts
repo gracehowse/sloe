@@ -93,12 +93,33 @@ describe("parseIngredientLine", () => {
     expect(parseIngredientLine("1/2 cup butter")).toMatchObject({ amount: "0.5", unit: "cup", name: "butter" });
   });
 
-  it("strips 'a' / 'an' prefix (no numeric amount = no unit match)", () => {
-    // "a pinch of salt" → strips "a" → "pinch of salt" → no numeric amount at start
-    // so it returns as plain name. Use "1 pinch salt" for unit-matched parsing.
+  it("'a pinch of salt' → amount 1, unit pinch, name salt", () => {
     const result = parseIngredientLine("a pinch of salt");
-    expect(result.name).toBe("pinch of salt");
-    // With explicit amount, unit is matched correctly
+    expect(result).toMatchObject({ amount: "1", unit: "pinch", name: "salt" });
+  });
+
+  it("'a dash of soy sauce' → amount 1, unit dash", () => {
+    const result = parseIngredientLine("a dash of soy sauce");
+    expect(result).toMatchObject({ amount: "1", unit: "dash", name: "soy sauce" });
+  });
+
+  it("'a handful of spinach' → amount 1, unit handful", () => {
+    const result = parseIngredientLine("a handful of spinach");
+    expect(result).toMatchObject({ amount: "1", unit: "handful", name: "spinach" });
+  });
+
+  it("'a splash of olive oil' → amount 1, unit splash", () => {
+    const result = parseIngredientLine("a splash of olive oil");
+    expect(result).toMatchObject({ amount: "1", unit: "splash", name: "olive oil" });
+  });
+
+  it("'a chicken breast' → amount 1, unit breast, name chicken", () => {
+    const result = parseIngredientLine("a chicken breast");
+    // "breast" is a recognised embedded countable unit
+    expect(result).toMatchObject({ amount: "1", unit: "breast", name: "chicken" });
+  });
+
+  it("'1 pinch salt' still works with explicit amount", () => {
     const withAmt = parseIngredientLine("1 pinch salt");
     expect(withAmt.unit).toBe("pinch");
     expect(withAmt.name).toBe("salt");

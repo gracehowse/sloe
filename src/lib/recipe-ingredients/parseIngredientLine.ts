@@ -115,7 +115,15 @@ function parseIngredientLineInner(raw: string): { amount: string; unit: string; 
     return { amount: "", unit: "", name: "" };
   }
 
+  const hadLeadingArticle = /^(a|an)\s+/i.test(s);
   s = s.replace(/^(a|an)\s+/i, "");
+
+  // "a pinch of salt" → after stripping "a", try to parse "pinch of salt" as "1 pinch of salt".
+  // This ensures unit-led phrases like "a dash of", "a handful of", "a pinch of" get amount=1.
+  if (hadLeadingArticle) {
+    const asOne = splitUnitAndName("1", s);
+    if (asOne.unit) return asOne;
+  }
 
   // 2 x 400g tins plum tomatoes → 800 g + name (no space after "g" before "tins" is common in UK recipes)
   const multiPack = s.match(
