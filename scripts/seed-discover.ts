@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import { parseRecipeFromHtml, siteNameFromUrl } from "@/lib/recipe-import/parseRecipeFromHtml";
 import { parseIngredientLine } from "@/lib/recipe-ingredients/parseIngredientLine";
+import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 
 type Parsed = NonNullable<ReturnType<typeof parseRecipeFromHtml>>;
 
@@ -85,13 +86,33 @@ async function main() {
   if (urls.length === 0) throw new Error("No URLs found in scripts/seed-recipe-urls.txt");
 
   for (const url of urls) {
+    // Skip if already seeded (check by source_url)
+    const { data: existing } = await sb.from("recipes").select("id").eq("source_url", url).limit(1);
+    if (existing && existing.length > 0) {
+      console.info(`  - already seeded, skipping: ${url}`);
+      continue;
+    }
+
     // eslint-disable-next-line no-console
     console.info(`Seeding: ${url}`);
-    const html = await fetchHtml(url);
+    let html: string;
+    try {
+      html = await fetchHtml(url);
+    } catch (e) {
+      console.warn(`  - fetch failed, skipping: ${url} (${e instanceof Error ? e.message : e})`);
+      continue;
+    }
     const parsed = parseRecipeFromHtml(html);
     if (!parsed) {
-      // eslint-disable-next-line no-console
       console.warn(`  - skipped (no Recipe JSON-LD): ${url}`);
+      continue;
+    }
+    if (!parsed.ingredients || parsed.ingredients.length < 2) {
+      console.warn(`  - skipped (no/too few ingredients: ${parsed.ingredients?.length ?? 0}): ${url}`);
+      continue;
+    }
+    if (!parsed.instructions || parsed.instructions.length === 0) {
+      console.warn(`  - skipped (no instructions): ${url}`);
       continue;
     }
 
@@ -118,7 +139,11 @@ async function main() {
       servings,
       prep_time_min: parsed.prepTimeMin,
       cook_time_min: parsed.cookTimeMin,
-      meal_type: null,
+      meal_type: classifyMealType({
+        title: parsed.title,
+        ingredients: parsed.ingredients,
+        caloriesPerServing: verify.ok ? Math.round(Number(verify.perServing.calories) || 0) : undefined,
+      }),
       dietary: [],
       published: true,
       is_verified: verify.ok,

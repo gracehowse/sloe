@@ -16,3 +16,7 @@ tsconfig.tsbuildinfo
 ~$*.docx
 Platemate_Product_Audit.docx
 
+.vercel
+
+# Expo local
+.expo/

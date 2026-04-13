@@ -33,6 +33,9 @@ const COUNT_WEIGHT_G: Record<string, number> = {
   wing: 40,
   can: 400,
   jar: 250,
+  chop: 150,
+  steak: 225,
+  leg: 250,
 };
 
 const ML_PER_TBSP = 14.7868;
@@ -47,7 +50,7 @@ export function measureToGrams(input: MeasureInput): number {
 
   if (u === "tbsp") return amt * ML_PER_TBSP * gPerMl;
   if (u === "tsp") return amt * ML_PER_TSP * gPerMl;
-  if (u === "cup") return amt * ML_PER_CUP_US * (input.gPerMl ?? 0.55);
+  if (u === "cup" || u === "mug") return amt * ML_PER_CUP_US * (input.gPerMl ?? 0.55);
 
   if (u === "g") return amt;
   if (u === "kg") return amt * 1000;
@@ -60,14 +63,25 @@ export function measureToGrams(input: MeasureInput): number {
   if (u === "clove") return amt * COUNT_WEIGHT_G.clove;
   if (u === "sprig") return amt * COUNT_WEIGHT_G.sprig;
   if (u === "rasher") return amt * COUNT_WEIGHT_G.rasher;
-  if (u === "slice") return amt * COUNT_WEIGHT_G.slice;
+  if (u === "slice") {
+    // Deli/cured meats: thin slices ~10g; bread: ~30g; cheese: ~20g; default: 25g
+    if (/prosciutto|parma|serrano|bresaola|salami|chorizo|coppa|pancetta|mortadella|ham.*cur|cur.*ham|deli/i.test(name)) return amt * 10;
+    if (/bread|toast/i.test(name)) return amt * 30;
+    if (/cheese/i.test(name)) return amt * 20;
+    return amt * COUNT_WEIGHT_G.slice;
+  }
   if (u === "stalk") return amt * COUNT_WEIGHT_G.stalk;
   if (u === "medium") return amt * COUNT_WEIGHT_G.medium;
   if (u === "large") return amt * COUNT_WEIGHT_G.large;
   if (u === "small") return amt * COUNT_WEIGHT_G.small;
   if (u === "pinch") return amt * COUNT_WEIGHT_G.pinch;
   if (u === "leaf") return amt * 0.35;
-  if (u === "tin") return amt * (/tomato|plum|chopped|passata|marzano|diced/.test(name) ? 400 : 220);
+  if (u === "tin" || u === "can") {
+    // Tinned tomatoes: 400g whole can. Beans/chickpeas: ~240g drained. Other: 220g default.
+    if (/tomato|plum|chopped|passata|marzano|diced/.test(name)) return amt * 400;
+    if (/bean|chickpea|lentil|kidney|cannellini|butter bean|lima|black bean|pinto/.test(name)) return amt * 240;
+    return amt * 220;
+  }
   if (u === "pack") return amt * (/basil|herb|lettuce|salad|rocket|arugula|spinach/.test(name) ? 35 : 120);
 
   // Lookup unit in the COUNT_WEIGHT_G table (handles drizzle, dash, handful, etc.)
@@ -78,6 +92,14 @@ export function measureToGrams(input: MeasureInput): number {
     for (const [word, g] of Object.entries(COUNT_WEIGHT_G)) {
       if (name.includes(word)) return amt * g;
     }
+    // Meat cuts — use realistic per-piece weights
+    if (/chicken breast/.test(name)) return amt * 200;
+    if (/chicken thigh/.test(name)) return amt * 120;
+    if (/drumstick/.test(name)) return amt * 90;
+    if (/(?:chicken|turkey) wing/.test(name)) return amt * 40;
+    if (/fillet|filet/.test(name)) return amt * 170;
+    if (/steak/.test(name)) return amt * 225;
+    if (/chop/.test(name)) return amt * 150;
     // Medium-sized whole produce
     if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|pepper|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
       const per = /egg/.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;

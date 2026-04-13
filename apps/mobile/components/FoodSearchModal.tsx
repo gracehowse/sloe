@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Image,
   Modal,
   Pressable,
   ScrollView,
-  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -19,8 +19,7 @@ import {
   searchFoods,
   getFoodMacros,
   scaleMacros,
-  type FoodSearchResult,
-  type OffSearchResult,
+  type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
 
@@ -28,6 +27,7 @@ import {
 const STANDARD_UNITS: FoodPortion[] = [
   { label: "g", gramWeight: 1, amount: 1 },
   { label: "oz", gramWeight: 28.35, amount: 1 },
+  { label: "lb", gramWeight: 453.59, amount: 1 },
   { label: "tbsp", gramWeight: 14.79, amount: 1 },
   { label: "tsp", gramWeight: 4.93, amount: 1 },
   { label: "cup", gramWeight: 236.59, amount: 1 },
@@ -37,7 +37,6 @@ const STANDARD_UNITS: FoodPortion[] = [
 type SelectedFood = {
   name: string;
   source: "USDA" | "OFF";
-  /** per 100g */
   macrosPer100g: {
     calories: number;
     protein: number;
@@ -48,9 +47,7 @@ type SelectedFood = {
     sodiumMg: number;
   };
   portions: FoodPortion[];
-  /** The portion the user chose */
   chosenPortion: FoodPortion;
-  /** User-entered quantity (e.g. 2 for "2 medium", 15 for "15 g") */
   quantity: number;
   fdcId?: number;
   barcode?: string;
@@ -59,25 +56,23 @@ type SelectedFood = {
 type Props = {
   visible: boolean;
   initialQuery: string;
+  /** Original recipe amount (e.g. 2 for "2 chicken breasts") */
+  initialAmount?: number | null;
+  /** Original recipe unit (e.g. "lb", "cup", "g") */
+  initialUnit?: string | null;
+  /** Original ingredient description shown as context (e.g. "1 lb chicken breast") */
+  originalDescription?: string | null;
   onSelect: (result: SelectedFood) => void;
   onClose: () => void;
 };
 
-type SectionData =
-  | { type: "usda"; item: FoodSearchResult }
-  | { type: "off"; item: OffSearchResult };
-
 function buildPortionList(apiPortions: FoodPortion[]): FoodPortion[] {
-  // Combine standard units + API-specific portions (like "1 medium", "1 large")
-  // Deduplicate by label
   const seen = new Set<string>();
   const result: FoodPortion[] = [];
-  // Standard units first
   for (const u of STANDARD_UNITS) {
     seen.add(u.label.toLowerCase());
     result.push(u);
   }
-  // API portions (skip if label matches a standard unit)
   for (const p of apiPortions) {
     const key = p.label.toLowerCase().trim();
     if (!seen.has(key) && key !== "100 g") {
@@ -88,19 +83,98 @@ function buildPortionList(apiPortions: FoodPortion[]): FoodPortion[] {
   return result;
 }
 
+/** Find the best matching portion for the original recipe unit, returning portion + quantity */
+function resolveInitialPortion(
+  portions: FoodPortion[],
+  amount: number | null | undefined,
+  unit: string | null | undefined,
+): { portion: FoodPortion; quantity: number } {
+  const amt = amount != null && amount > 0 ? amount : 1;
+  const u = (unit ?? "").trim().toLowerCase();
+
+  if (!u) {
+    // No unit — default to grams with the amount
+    const gPortion = portions.find((p) => p.label === "g");
+    return { portion: gPortion ?? portions[0], quantity: amt > 10 ? amt : 100 };
+  }
+
+  // Map common unit names to portion labels
+  const UNIT_TO_LABEL: Record<string, string[]> = {
+    g: ["g"],
+    gram: ["g"], grams: ["g"],
+    oz: ["oz"],
+    ounce: ["oz"], ounces: ["oz"],
+    lb: ["lb"],
+    pound: ["lb"], pounds: ["lb"],
+    cup: ["cup"], cups: ["cup"],
+    tbsp: ["tbsp"], tablespoon: ["tbsp"], tablespoons: ["tbsp"],
+    tsp: ["tsp"], teaspoon: ["tsp"], teaspoons: ["tsp"],
+    ml: ["ml"],
+    "fl oz": ["fl oz"],
+    kg: ["g"], // convert kg → g with multiplied amount
+  };
+
+  const labels = UNIT_TO_LABEL[u];
+  if (labels) {
+    for (const label of labels) {
+      const match = portions.find((p) => p.label.toLowerCase() === label);
+      if (match) {
+        const qty = u === "kg" ? amt * 1000 : amt;
+        return { portion: match, quantity: qty };
+      }
+    }
+  }
+
+  // Try matching portion labels directly (handles USDA-specific portions like "1 RACC")
+  const directMatch = portions.find((p) => p.label.toLowerCase() === u);
+  if (directMatch) {
+    return { portion: directMatch, quantity: amt };
+  }
+
+  // Fallback: convert to grams using known weights
+  const UNIT_GRAMS: Record<string, number> = {
+    lb: 453.6, pound: 453.6, pounds: 453.6,
+    oz: 28.35, ounce: 28.35, ounces: 28.35,
+    kg: 1000,
+    cup: 236.59, cups: 236.59,
+    tbsp: 14.79, tablespoon: 14.79,
+    tsp: 4.93, teaspoon: 4.93,
+    ml: 1,
+    "fl oz": 29.57,
+    breast: 200, thigh: 120, drumstick: 90, wing: 40, fillet: 170,
+    chop: 150, steak: 225, leg: 250,
+    medium: 110, large: 180, small: 80,
+    slice: 25, rasher: 28, clove: 4,
+    tin: 400, can: 400,
+  };
+
+  const gPerUnit = UNIT_GRAMS[u];
+  if (gPerUnit) {
+    const gPortion = portions.find((p) => p.label === "g");
+    if (gPortion) {
+      return { portion: gPortion, quantity: Math.round(amt * gPerUnit) };
+    }
+  }
+
+  // Last resort: use first portion with the amount
+  return { portion: portions[0], quantity: amt };
+}
+
 export default function FoodSearchModal({
   visible,
   initialQuery,
+  initialAmount,
+  initialUnit,
+  originalDescription,
   onSelect,
   onClose,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const [query, setQuery] = useState(initialQuery);
-  const [usdaResults, setUsdaResults] = useState<FoodSearchResult[]>([]);
-  const [offResults, setOffResults] = useState<OffSearchResult[]>([]);
+  const [results, setResults] = useState<UnifiedSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
     source: "USDA" | "OFF";
@@ -108,109 +182,127 @@ export default function FoodSearchModal({
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
-    /** Raw text in the servings input (allows typing "1/2", ".5", etc.) */
     quantityText: string;
     fdcId?: number;
     barcode?: string;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backfillRef = useRef(0);
+
+  /** Fetch full macros for USDA results that are missing inline nutrients */
+  const backfillMissingMacros = useCallback((items: UnifiedSearchResult[]) => {
+    const id = ++backfillRef.current;
+    const missing = items
+      .filter((r) => r._source === "USDA" && r._fdcId && !r.macrosPer100g && !(r.calsPer100g && r.calsPer100g > 0))
+      .slice(0, 2); // Limit to avoid burning USDA API quota
+    if (missing.length === 0) return;
+
+    for (const item of missing) {
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+      Promise.race([getFoodMacros(item._fdcId!), timeout])
+        .then((detail) => {
+          if (!detail || backfillRef.current !== id) return;
+          setResults((prev) =>
+            prev.map((r) =>
+              r.key === item.key
+                ? {
+                    ...r,
+                    macrosPer100g: detail.macrosPer100g,
+                    calsPer100g: detail.macrosPer100g.calories,
+                  }
+                : r,
+            ),
+          );
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (visible) {
       setQuery(initialQuery);
-      setUsdaResults([]);
-      setOffResults([]);
+      setResults([]);
       setPreview(null);
+      backfillRef.current++;
       if (initialQuery.trim()) {
         setLoading(true);
-        searchFoods(initialQuery).then((r) => {
-          setUsdaResults(r.usda);
-          setOffResults(r.off);
+        searchFoods(initialQuery, (partial) => setResults(partial)).then((r) => {
+          setResults(r);
           setLoading(false);
+          backfillMissingMacros(r);
         });
       }
     }
-  }, [visible, initialQuery]);
+  }, [visible, initialQuery, backfillMissingMacros]);
 
   const onChangeText = useCallback((text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    backfillRef.current++;
     const q = text.trim();
     if (!q) {
-      setUsdaResults([]);
-      setOffResults([]);
+      setResults([]);
       return;
     }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      const r = await searchFoods(q);
-      setUsdaResults(r.usda);
-      setOffResults(r.off);
+      const r = await searchFoods(q, (partial) => setResults(partial));
+      setResults(r);
       setLoading(false);
+      backfillMissingMacros(r);
     }, 400);
-  }, []);
+  }, [backfillMissingMacros]);
 
-  const onPickUsda = useCallback(
-    async (item: FoodSearchResult) => {
-      const key = `usda-${item.fdcId}`;
-      setLoadingId(key);
-      const result = await getFoodMacros(item.fdcId);
-      setLoadingId(null);
-      if (!result) return;
-      const allPortions = buildPortionList(result.portions);
-      const defaultPortion = allPortions[0]; // "g"
-      setPreview({
-        name: item.description,
-        source: "USDA",
-        macrosPer100g: result.macrosPer100g,
-        portions: allPortions,
-        chosenPortion: defaultPortion,
-        quantity: 100,
-        quantityText: "100",
-        fdcId: item.fdcId,
-      });
+  const onPickResult = useCallback(
+    async (item: UnifiedSearchResult) => {
+      setLoadingKey(item.key);
+
+      if (item._source === "USDA" && item._fdcId) {
+        const result = await getFoodMacros(item._fdcId);
+        setLoadingKey(null);
+        if (!result) return;
+        const allPortions = buildPortionList(result.portions);
+        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "USDA",
+          macrosPer100g: result.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+          fdcId: item._fdcId,
+        });
+      } else if (item._source === "OFF" && item.macrosPer100g) {
+        setLoadingKey(null);
+        const allPortions = buildPortionList([]);
+        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "OFF",
+          macrosPer100g: item.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+          barcode: item._offCode,
+        });
+      } else {
+        setLoadingKey(null);
+      }
     },
-    [],
+    [initialAmount, initialUnit],
   );
 
-  const onPickOff = useCallback(
-    (item: OffSearchResult) => {
-      const allPortions = buildPortionList([]);
-      const defaultPortion = allPortions[0]; // "g"
-      setPreview({
-        name: [item.brand, item.name].filter(Boolean).join(" · "),
-        source: "OFF",
-        macrosPer100g: {
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          fiberG: item.fiberG,
-          sugarG: item.sugarG,
-          sodiumMg: item.sodiumMg,
-        },
-        portions: allPortions,
-        chosenPortion: defaultPortion,
-        quantity: 100,
-        quantityText: "100",
-        barcode: item.code,
-      });
-    },
-    [],
-  );
-
-  /** Parse fraction/decimal text to a number */
   const parseQuantityText = useCallback((text: string): number => {
     const t = text.trim();
     if (!t) return 0;
-    // Fraction: "1/2", "3/4"
     const fracMatch = t.match(/^(\d+)\s*\/\s*(\d+)$/);
     if (fracMatch) {
       const num = parseInt(fracMatch[1], 10);
       const den = parseInt(fracMatch[2], 10);
       if (den > 0) return num / den;
     }
-    // Mixed: "1 1/2"
     const mixedMatch = t.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
     if (mixedMatch) {
       const whole = parseInt(mixedMatch[1], 10);
@@ -243,7 +335,6 @@ export default function FoodSearchModal({
     }
   }, [preview, onSelect]);
 
-  // Compute scaled macros for the current preview selection
   const previewMacros = useMemo(() => {
     if (!preview) return null;
     const grams = preview.chosenPortion.gramWeight * preview.quantity;
@@ -255,70 +346,58 @@ export default function FoodSearchModal({
     return Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
   }, [preview]);
 
-  const sections = [
-    ...(offResults.length > 0
-      ? [{ title: "Products & Brands", data: offResults.map((item) => ({ type: "off" as const, item })) }]
-      : []),
-    ...(usdaResults.length > 0
-      ? [{ title: "Whole Foods (USDA)", data: usdaResults.map((item) => ({ type: "usda" as const, item })) }]
-      : []),
-  ];
-
   const renderItem = useCallback(
-    ({ item: entry }: { item: SectionData }) => {
-      if (entry.type === "off") {
-        const item = entry.item;
-        return (
-          <Pressable style={styles.resultRow} onPress={() => onPickOff(item)}>
-            {item.imageUrl && (
-              <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.resultName} numberOfLines={2}>
-                {item.brand ? `${item.brand} · ` : ""}{item.name}
-              </Text>
-              <View style={styles.macroPreview}>
-                <Text style={styles.macroPreviewText}>{item.calories} kcal</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{item.protein}g</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{item.carbs}g</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{item.fat}g</Text>
-              </View>
-              <Text style={styles.per100g}>per 100g</Text>
-            </View>
-            <View style={styles.sourceBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={Neon.green} />
-            </View>
-          </Pressable>
-        );
-      }
+    ({ item }: { item: UnifiedSearchResult }) => {
+      const isLoading = loadingKey === item.key;
+      const hasMacros = item.macrosPer100g && item.macrosPer100g.calories > 0;
+      const cals = item.calsPer100g ?? item.macrosPer100g?.calories;
 
-      const item = entry.item;
-      const isLoading = loadingId === `usda-${item.fdcId}`;
       return (
         <Pressable
           style={styles.resultRow}
-          onPress={() => onPickUsda(item)}
+          onPress={() => onPickResult(item)}
           disabled={isLoading}
         >
+          {item.imageUrl && (
+            <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
+          )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.resultName} numberOfLines={2}>
-              {item.description}
-            </Text>
-            {item.dataType && (
-              <Text style={styles.resultType}>{item.dataType}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {item.verified && (
+                <Ionicons name="checkmark-circle" size={14} color={Neon.green} />
+              )}
+              <Text style={styles.resultName} numberOfLines={2}>
+                {item.name}
+              </Text>
+            </View>
+            {hasMacros ? (
+              <View style={styles.macroPreview}>
+                <Text style={styles.macroPreviewText}>{item.macrosPer100g!.calories} kcal</Text>
+                <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{item.macrosPer100g!.protein}g</Text>
+                <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{item.macrosPer100g!.carbs}g</Text>
+                <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{item.macrosPer100g!.fat}g</Text>
+              </View>
+            ) : cals != null && cals > 0 ? (
+              <Text style={styles.macroPreviewText}>{cals} kcal</Text>
+            ) : (
+              <Text style={styles.per100g}>Tap for nutrition info</Text>
+            )}
+            {(hasMacros || (cals != null && cals > 0)) && (
+              <Text style={styles.per100g}>per 100g</Text>
             )}
           </View>
+          {cals != null && cals > 0 && !isLoading && (
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{cals}</Text>
+          )}
           {isLoading ? (
             <ActivityIndicator size="small" color={Neon.purple} />
           ) : (
-            <View style={[styles.sourceBadge, { borderColor: Neon.blue + "50" }]}>
-              <Text style={[styles.sourceBadgeText, { color: Neon.blue }]}>USDA</Text>
-            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
           )}
         </Pressable>
       );
     },
-    [loadingId, onPickUsda, onPickOff],
+    [loadingKey, onPickResult, colors],
   );
 
   const styles = useMemo(() => StyleSheet.create({
@@ -351,17 +430,6 @@ export default function FoodSearchModal({
     centered: { alignItems: "center", paddingTop: 60, gap: Spacing.md },
     hint: { color: colors.textSecondary, fontSize: 14 },
     list: { paddingHorizontal: Spacing.xl, paddingBottom: 40 },
-    sectionHeader: {
-      paddingTop: Spacing.xl,
-      paddingBottom: Spacing.sm,
-    },
-    sectionHeaderText: {
-      fontSize: 12,
-      fontWeight: "800",
-      color: colors.textTertiary,
-      letterSpacing: 1.5,
-      textTransform: "uppercase",
-    },
     resultRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -377,7 +445,6 @@ export default function FoodSearchModal({
       backgroundColor: colors.card,
     },
     resultName: { fontSize: 14, color: colors.text, fontWeight: "500" },
-    resultType: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
     macroPreview: {
       flexDirection: "row",
       gap: Spacing.sm,
@@ -385,14 +452,6 @@ export default function FoodSearchModal({
     },
     macroPreviewText: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
     per100g: { fontSize: 10, color: colors.textTertiary, marginTop: 2 },
-    sourceBadge: {
-      borderWidth: 1,
-      borderColor: Neon.green + "50",
-      borderRadius: Radius.sm,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    sourceBadgeText: { fontSize: 10, fontWeight: "700", color: Neon.green },
     emptyText: {
       color: colors.textSecondary,
       fontSize: 14,
@@ -416,7 +475,7 @@ export default function FoodSearchModal({
           <TextInput
             value={query}
             onChangeText={onChangeText}
-            placeholder="Search products & whole foods..."
+            placeholder="Search foods..."
             placeholderTextColor={colors.textTertiary}
             style={styles.searchInput}
             autoFocus
@@ -426,7 +485,7 @@ export default function FoodSearchModal({
           />
         </View>
 
-        {/* Preview card — shown when user taps a food before confirming */}
+        {/* Preview card */}
         {preview && previewMacros && (
           <ScrollView
             style={{ flex: 1 }}
@@ -440,7 +499,13 @@ export default function FoodSearchModal({
             }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{preview.name}</Text>
 
-              {/* Serving size — unit selector (horizontal scroll) */}
+              {originalDescription ? (
+                <Text style={{ fontSize: 13, fontStyle: "italic", color: colors.textSecondary }}>
+                  Recipe calls for: {originalDescription}
+                </Text>
+              ) : null}
+
+              {/* Serving size */}
               <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>
                 SERVING SIZE
               </Text>
@@ -458,7 +523,6 @@ export default function FoodSearchModal({
                       onPress={() => {
                         setPreview((prev) => {
                           if (!prev) return prev;
-                          // When switching to "g", default to 100; for other units default to 1
                           const defaultQty = p.label === "g" || p.label === "ml" ? 100 : 1;
                           return { ...prev, chosenPortion: p, quantity: defaultQty, quantityText: String(defaultQty) };
                         });
@@ -484,7 +548,7 @@ export default function FoodSearchModal({
                 })}
               </ScrollView>
 
-              {/* Number of servings — free-form input with +/- */}
+              {/* Number of servings */}
               <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>
                 NUMBER OF SERVINGS
               </Text>
@@ -533,7 +597,7 @@ export default function FoodSearchModal({
                 </Text>
               </View>
 
-              {/* Scaled nutrition */}
+              {/* Nutrition */}
               <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.xs }}>
                 NUTRITION
               </Text>
@@ -572,28 +636,20 @@ export default function FoodSearchModal({
           </ScrollView>
         )}
 
-        {loading && usdaResults.length === 0 && offResults.length === 0 && !preview && (
+        {loading && results.length === 0 && !preview && (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={Neon.purple} />
-            <Text style={styles.hint}>Searching USDA + Open Food Facts...</Text>
+            <Text style={styles.hint}>Searching...</Text>
           </View>
         )}
 
-        {!preview ? (
-          <SectionList
-            sections={sections}
-            keyExtractor={(item, index) =>
-              item.type === "off" ? `off-${item.item.code}-${index}` : `usda-${item.item.fdcId}`
-            }
+        {!preview && (
+          <FlatList
+            data={results}
+            keyExtractor={(item) => item.key}
             renderItem={renderItem}
-            renderSectionHeader={({ section }) => (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              </View>
-            )}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
-            stickySectionHeadersEnabled={false}
             ListEmptyComponent={
               !loading && query.trim() ? (
                 <Text style={styles.emptyText}>
@@ -602,7 +658,7 @@ export default function FoodSearchModal({
               ) : null
             }
           />
-        ) : null}
+        )}
       </View>
     </Modal>
   );

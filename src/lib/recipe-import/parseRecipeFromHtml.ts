@@ -3,6 +3,24 @@
  * Best-effort: many sites omit or misstructure fields.
  */
 
+/** Decode common HTML entities that leak through JSON-LD text fields. */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&ndash;/gi, "\u2013")
+    .replace(/&mdash;/gi, "\u2014")
+    .replace(/&frac12;/gi, "\u00BD")
+    .replace(/&frac14;/gi, "\u00BC")
+    .replace(/&frac34;/gi, "\u00BE")
+    .replace(/&deg;/gi, "\u00B0");
+}
+
 export interface ParsedRecipeDraft {
   title: string;
   description: string | null;
@@ -52,8 +70,25 @@ function asStringArrayRecipeYield(yieldVal: unknown): number | null {
     return Math.max(1, Math.round(yieldVal));
   }
   if (typeof yieldVal === "string") {
-    const n = Number.parseFloat(yieldVal.replace(/[^\d.]/g, ""));
-    if (Number.isFinite(n) && n > 0) return Math.max(1, Math.round(n));
+    // Handle ranges like "4-6" or "4 to 6" — take the first number
+    const rangeMatch = yieldVal.match(/(\d+)\s*[-–—]\s*(\d+)/);
+    if (rangeMatch) {
+      const lo = Number.parseInt(rangeMatch[1], 10);
+      if (Number.isFinite(lo) && lo > 0) return Math.max(1, lo);
+    }
+    // Extract first numeric value from strings like "4 servings", "Serves 4"
+    const numMatch = yieldVal.match(/(\d+(?:\.\d+)?)/);
+    if (numMatch) {
+      const n = Number.parseFloat(numMatch[1]);
+      if (Number.isFinite(n) && n > 0) return Math.max(1, Math.round(n));
+    }
+  }
+  // Many sites use recipeYield: ["4"] or ["4 servings"] or ["4", "4 servings"]
+  if (Array.isArray(yieldVal)) {
+    for (const item of yieldVal) {
+      const result = asStringArrayRecipeYield(item);
+      if (result != null) return result;
+    }
   }
   return null;
 }
@@ -61,15 +96,28 @@ function asStringArrayRecipeYield(yieldVal: unknown): number | null {
 function normalizeIngredientText(raw: unknown): string | null {
   if (raw == null) return null;
   if (typeof raw === "string") {
-    const t = raw.trim();
+    const t = decodeHtmlEntities(raw).trim();
     return t.length ? t : null;
+  }
+  // Some sites wrap ingredients in arrays: ["1 cup flour"]
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const result = normalizeIngredientText(item);
+      if (result) return result;
+    }
+    return null;
   }
   if (typeof raw === "object" && raw !== null) {
     const o = raw as Record<string, unknown>;
-    const text = o.text;
-    if (typeof text === "string" && text.trim()) return text.trim();
-    const name = o.name;
-    if (typeof name === "string" && name.trim()) return name.trim();
+    for (const prop of ["text", "name"]) {
+      const val = o[prop];
+      if (typeof val === "string" && val.trim()) return decodeHtmlEntities(val).trim();
+      // Handle array-valued text/name: { text: ["1 cup flour"] }
+      if (Array.isArray(val) && val.length > 0) {
+        const first = normalizeIngredientText(val[0]);
+        if (first) return first;
+      }
+    }
   }
   return null;
 }
@@ -77,7 +125,7 @@ function normalizeIngredientText(raw: unknown): string | null {
 function collectInstructionStrings(raw: unknown): string[] {
   if (raw == null) return [];
   if (typeof raw === "string") {
-    return raw
+    return decodeHtmlEntities(raw)
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);
@@ -86,13 +134,13 @@ function collectInstructionStrings(raw: unknown): string[] {
     const out: string[] = [];
     for (const item of raw) {
       if (typeof item === "string") {
-        const t = item.trim();
+        const t = decodeHtmlEntities(item).trim();
         if (t) out.push(t);
       } else if (typeof item === "object" && item !== null) {
         const o = item as Record<string, unknown>;
         if (String(o["@type"] ?? "").toLowerCase() === "howtostep") {
           const t = o.text;
-          if (typeof t === "string" && t.trim()) out.push(t.trim());
+          if (typeof t === "string" && t.trim()) out.push(decodeHtmlEntities(t).trim());
         } else if (Array.isArray(o.itemListElement)) {
           out.push(...collectInstructionStrings(o.itemListElement));
         }
@@ -243,12 +291,12 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
     const recipes = extractRecipeObjects(data);
     for (const r of recipes) {
       const name = r.name;
-      const title = typeof name === "string" && name.trim() ? name.trim() : null;
+      const title = typeof name === "string" && name.trim() ? decodeHtmlEntities(name).trim() : null;
       if (!title) continue;
 
       const desc = r.description;
       const description =
-        typeof desc === "string" && desc.trim() ? desc.trim().replace(/\s+/g, " ") : null;
+        typeof desc === "string" && desc.trim() ? decodeHtmlEntities(desc).trim().replace(/\s+/g, " ") : null;
 
       const ingRaw = r.recipeIngredient;
       const ingredients: string[] = [];

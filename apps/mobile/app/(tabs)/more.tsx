@@ -8,12 +8,14 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 
 const ITEMS = [
+  { label: "Create Recipe", emoji: "✏️", route: "/create-recipe" },
   { label: "Shopping List", emoji: "🛒", route: "/shopping" },
   { label: "Import from link", emoji: "📥", route: "/import-shared" },
   { label: "Profile & Targets", emoji: "🎯", route: "/profile" },
   { label: "Barcode Scanner", emoji: "📷", route: "/(tabs)/barcode" },
   { label: "Notifications", emoji: "🔔", route: "/(tabs)/notifications" },
   { label: "Settings", emoji: "⚙️", route: "/(tabs)/settings" },
+  { label: "About nutrition data", emoji: "ℹ️", route: "/nutrition-sources" },
 ];
 
 export default function MoreScreen() {

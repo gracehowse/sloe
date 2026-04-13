@@ -4,6 +4,7 @@
  */
 
 export type ProfileGateRow = {
+  onboarding_completed: boolean | null;
   target_calories: number | null;
   target_protein: number | null;
   target_carbs: number | null;
@@ -18,6 +19,9 @@ export type ProfileGateRow = {
 
 export function isProfileRowComplete(profile: ProfileGateRow): boolean {
   if (!profile) return false;
+  // Fast path: if onboarding was explicitly completed (mobile flow sets this)
+  if (profile.onboarding_completed) return true;
+  // Legacy check: all required fields present (web flow before onboarding_completed existed)
   return Boolean(
     profile.target_calories &&
       profile.target_protein &&

@@ -1,17 +1,33 @@
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { lookupBarcode, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { Neon } from "@/constants/theme";
 
 export default function BarcodeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [product, setProduct] = useState<BarcodeProduct | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const onBarcode = useCallback((e: { data: string }) => {
+  const onBarcode = useCallback(async (e: { data: string }) => {
+    if (loading || last === e.data) return;
     setLast(e.data);
-  }, []);
+    setLoading(true);
+    setError(null);
+    setProduct(null);
+    const result = await lookupBarcode(e.data);
+    setLoading(false);
+    if (result) {
+      setProduct(result);
+    } else {
+      setError("Product not found. Try another barcode.");
+    }
+  }, [loading, last]);
 
   if (!permission) {
     return (
@@ -43,14 +59,27 @@ export default function BarcodeScreen() {
       />
       <View style={styles.overlay}>
         <ThemedText type="subtitle" style={styles.overlayTitle}>
-          Barcode
+          Barcode Scanner
         </ThemedText>
-        <ThemedText style={styles.hint}>Point at a product barcode. Result is shown below.</ThemedText>
-        {last ? (
-          <ThemedText selectable style={styles.code}>
-            {last}
-          </ThemedText>
-        ) : (
+        <ThemedText style={styles.hint}>Point at a product barcode</ThemedText>
+        {loading && <ActivityIndicator size="small" color={Neon.purple} />}
+        {product && (
+          <View style={{ gap: 4, alignItems: "center" }}>
+            <ThemedText style={{ fontWeight: "700", fontSize: 16, textAlign: "center" }}>{product.name}</ThemedText>
+            <ThemedText style={styles.dim}>
+              {product.calories} kcal · P:{product.protein}g · C:{product.carbs}g · F:{product.fat}g
+            </ThemedText>
+            <ThemedText style={[styles.dim, { fontSize: 11 }]}>per 100g</ThemedText>
+            <Pressable
+              style={[styles.btn, { marginTop: 8 }]}
+              onPress={() => { setLast(null); setProduct(null); setError(null); }}
+            >
+              <ThemedText style={styles.btnText}>Scan another</ThemedText>
+            </Pressable>
+          </View>
+        )}
+        {error && <ThemedText style={{ color: "#f87171" }}>{error}</ThemedText>}
+        {!loading && !product && !error && !last && (
           <ThemedText style={styles.dim}>No scan yet</ThemedText>
         )}
       </View>

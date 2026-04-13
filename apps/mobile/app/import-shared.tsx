@@ -22,6 +22,8 @@ import { Neon, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
+import { classifyMealType } from "@/lib/classifyMealType";
+import MealTypePicker from "@/components/MealTypePicker";
 import {
   extractUrlFromShareText,
   urlFromDeepLink,
@@ -34,7 +36,7 @@ function apiBase(): string {
   return (extra?.platemateApiUrl ?? "").replace(/\/$/, "");
 }
 
-type ImportState = "idle" | "checking" | "importing" | "success" | "error";
+type ImportState = "idle" | "checking" | "importing" | "review" | "saving" | "success" | "error";
 
 export default function ImportSharedScreen() {
   const colors = useThemeColors();
@@ -49,6 +51,8 @@ export default function ImportSharedScreen() {
   const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualUrl, setManualUrl] = useState("");
+  const [pendingRecipe, setPendingRecipe] = useState<ApiImportedRecipe | null>(null);
+  const [mealTags, setMealTags] = useState<string[]>([]);
   const base = apiBase();
   const runImportRef = useRef<(url: string) => Promise<void>>(async () => {});
   /** Same URL can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
@@ -98,17 +102,19 @@ export default function ImportSharedScreen() {
           "ingredientMacros:", data.recipe.ingredientMacros?.length,
           "first:", JSON.stringify(data.recipe.ingredientMacros?.[0])?.substring(0, 100));
 
-        const saved = await saveImportedRecipe(userId, data.recipe);
-        if ("error" in saved) {
-          setState("error");
-          setError(saved.error);
-          return;
-        }
-
+        // Auto-classify meal type as default, let user edit
+        const ingredients = Array.isArray(data.recipe.ingredients)
+          ? data.recipe.ingredients.map(String)
+          : [];
+        const autoTags = classifyMealType({
+          title: data.recipe.title ?? "",
+          ingredients,
+          caloriesPerServing: data.recipe.calories ?? null,
+        });
+        setMealTags(autoTags);
+        setPendingRecipe(data.recipe);
         setTitle((data.recipe.title ?? "Imported recipe").trim() || "Imported recipe");
-        setSavedRecipeId(saved.recipeId);
-        setState("success");
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setState("review");
       } catch {
         setState("error");
         setError("Network error. Check your connection.");
@@ -116,6 +122,21 @@ export default function ImportSharedScreen() {
     },
     [base, userId],
   );
+
+  const confirmSave = useCallback(async () => {
+    if (!pendingRecipe || !userId) return;
+    setState("saving");
+    const recipeWithTags = { ...pendingRecipe, mealType: mealTags };
+    const saved = await saveImportedRecipe(userId, recipeWithTags);
+    if ("error" in saved) {
+      setState("error");
+      setError(saved.error);
+      return;
+    }
+    setSavedRecipeId(saved.recipeId);
+    setState("success");
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [pendingRecipe, userId, mealTags]);
 
   runImportRef.current = runImport;
 
@@ -462,6 +483,39 @@ export default function ImportSharedScreen() {
             <Text style={styles.panelSub}>
               Instagram, TikTok, or any recipe page — we’ll save it to your library.
             </Text>
+          </View>
+        )}
+
+        {(state === "review" || state === "saving") && pendingRecipe && (
+          <View style={styles.panelCard}>
+            <Ionicons name="restaurant-outline" size={36} color={Neon.purple} />
+            <Text style={styles.panelTitle}>{title ?? "Imported recipe"}</Text>
+            {pendingRecipe.calories != null && (
+              <Text style={styles.panelSub}>
+                {pendingRecipe.calories} kcal · {pendingRecipe.protein ?? 0}g protein · {pendingRecipe.servings ?? 1} serving{(pendingRecipe.servings ?? 1) !== 1 ? "s" : ""}
+              </Text>
+            )}
+
+            <MealTypePicker
+              selected={mealTags}
+              onChange={setMealTags}
+              label="MEAL TYPE"
+            />
+
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed, state === "saving" && { opacity: 0.6 }]}
+              onPress={confirmSave}
+              disabled={state === "saving"}
+            >
+              {state === "saving" ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="bookmark" size={18} color="#fff" />
+                  <Text style={styles.primaryBtnText}>Save to Library</Text>
+                </>
+              )}
+            </Pressable>
           </View>
         )}
 

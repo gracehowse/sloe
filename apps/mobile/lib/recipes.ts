@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -15,12 +16,12 @@ export function useDiscoverRecipes() {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, is_verified, created_at, author_id, meal_type, source_url, source_name"
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, meal_type, source_url, source_name"
       )
       .eq("published", true)
       .not("author_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(200);
 
     if (!error && data) {
       const mapped: RecipeCard[] = data.map((r: any) => ({
@@ -34,14 +35,22 @@ export function useDiscoverRecipes() {
         protein: r.protein ?? 0,
         carbs: r.carbs ?? 0,
         fat: r.fat ?? 0,
-        fiberG: undefined,
+        fiberG: r.fiber_g ?? 0,
         isVerified: r.is_verified ?? false,
         authorId: r.author_id,
         sourceUrl: r.source_url ?? null,
-        mealSlots: r.meal_type ? [r.meal_type] : undefined,
+        mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
         feedSource: "community" as const,
       }));
       setRecipes(mapped);
+      void cacheDiscoverRecipes(mapped); // Cache for offline
+    } else if (error) {
+      // Network failure — try offline cache
+      console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
+      const cached = await getCachedDiscoverRecipes();
+      if (cached && Array.isArray(cached)) {
+        setRecipes(cached as RecipeCard[]);
+      }
     }
     setLoading(false);
   }, []);
@@ -76,22 +85,38 @@ export function useSavedRecipes(userId: string | null) {
   }, [refresh]);
 
   const toggleSave = useCallback(async (recipeId: string) => {
-    if (!userId) return;
-    const isSaved = savedIds.has(recipeId);
+    if (!userId) {
+      console.warn("[toggleSave] no userId — user not logged in");
+      return;
+    }
 
     setSavedIds((prev) => {
+      const isSaved = prev.has(recipeId);
       const next = new Set(prev);
       if (isSaved) next.delete(recipeId);
       else next.add(recipeId);
+
+      // Fire DB operation in background (using current isSaved, not stale closure)
+      (async () => {
+        const { error } = isSaved
+          ? await supabase.from("saves").delete().eq("user_id", userId).eq("recipe_id", recipeId)
+          : await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
+
+        if (error) {
+          console.error("[toggleSave] failed:", error.message, "| userId:", userId, "| recipeId:", recipeId);
+          // Roll back
+          setSavedIds((curr) => {
+            const rollback = new Set(curr);
+            if (isSaved) rollback.add(recipeId);
+            else rollback.delete(recipeId);
+            return rollback;
+          });
+        }
+      })();
+
       return next;
     });
-
-    if (isSaved) {
-      await supabase.from("saves").delete().eq("user_id", userId).eq("recipe_id", recipeId);
-    } else {
-      await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
-    }
-  }, [userId, savedIds]);
+  }, [userId]);
 
   return { savedIds, loading, refresh, toggleSave, isSaved: (id: string) => savedIds.has(id) };
 }
@@ -129,7 +154,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
     const { data: rows, error: recErr } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, is_verified, author_id, meal_type, source_url, source_name",
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name",
       )
       .in("id", ids);
 
@@ -152,11 +177,11 @@ export function useSavedLibraryRecipes(userId: string | null) {
           protein: r.protein ?? 0,
           carbs: r.carbs ?? 0,
           fat: r.fat ?? 0,
-          fiberG: undefined,
+          fiberG: r.fiber_g ?? 0,
           isVerified: r.is_verified ?? false,
           authorId: r.author_id,
           sourceUrl: r.source_url ?? null,
-          mealSlots: r.meal_type ? [r.meal_type] : undefined,
+          mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
         };
         return [r.id as string, card] as const;
       }),

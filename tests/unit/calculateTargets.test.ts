@@ -9,7 +9,7 @@ describe("calculateMacroTargets", () => {
       heightCm: 165,
       weightKg: 65,
       activityLevel: "moderate",
-      goal: "maintain",
+      goal: "health",
     });
 
     expect(targets.calories).toBeGreaterThan(1200);

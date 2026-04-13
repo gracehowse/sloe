@@ -52,16 +52,11 @@ export type FoodSearchResult = {
   fdcId: number;
   description: string;
   dataType?: string;
-  /** per 100g macros */
-  macrosPer100g?: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiberG: number;
-    sugarG: number;
-    sodiumMg: number;
-  };
+  /** Inline macros from search (per 100g, may be partial) */
+  calories?: number;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
 };
 
 export type BarcodeProduct = {
@@ -92,6 +87,17 @@ export function parseIngredientForSearch(raw: string): {
 } {
   let text = raw.trim();
   let amount = 1;
+
+  // Extract ingredient hints from parenthetical notes like "(we used almond milk)"
+  const parenHint = text.match(/\(\s*(?:we (?:used|like|prefer)|such as|e\.?g\.?|like|preferably|ideally)\s+(.+?)\s*\)/i);
+  if (parenHint) {
+    // Replace the vague name + parens with the actual ingredient
+    text = text.replace(/^[^(]*\(/, "").replace(/\)\s*$/, "");
+    text = parenHint[1]!;
+  } else {
+    // Strip generic parenthetical notes
+    text = text.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  }
 
   // Strip leading fractions: "½", "1/2", "1 1/2", "0.5"
   for (const [frac, val] of Object.entries(FRAC_MAP)) {
@@ -216,17 +222,26 @@ export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
   if (!base || !query.trim()) return [];
 
   try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 15000);
     const res = await fetch(
       `${base}/api/usda/search?q=${encodeURIComponent(query.trim())}`,
+      { signal: ac.signal },
     );
+    clearTimeout(t);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return json.hits.map((h: any) => ({
       fdcId: h.fdcId,
       description: h.description ?? "Unknown",
       dataType: h.dataType ?? "",
+      calories: h.calories,
+      protein: h.protein,
+      fat: h.fat,
+      carbs: h.carbs,
     }));
-  } catch {
+  } catch (e) {
+    console.error("[searchUsda] failed:", e instanceof Error ? e.message : e);
     return [];
   }
 }
@@ -250,10 +265,28 @@ export type OffSearchResult = {
 export async function searchOpenFoodFacts(query: string): Promise<OffSearchResult[]> {
   if (!query.trim()) return [];
   try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12000);
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=15&fields=code,product_name,brands,nutriments,image_small_url`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url`,
+      {
+        signal: ac.signal,
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "PlatemateApp/1.0",
+        },
+      },
     );
-    const data = await res.json();
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const text = await res.text();
+    let data: { products?: unknown[] };
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.warn("[searchOFF] non-JSON response:", text.slice(0, 200));
+      return [];
+    }
     if (!Array.isArray(data.products)) return [];
     return data.products
       .filter((p: any) => p.product_name && p.nutriments)
@@ -273,21 +306,154 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
           imageUrl: p.image_small_url ?? null,
         };
       });
-  } catch {
+  } catch (e) {
+    console.error("[searchOFF] failed:", e instanceof Error ? e.message : e);
     return [];
   }
 }
 
-/** Search all sources in parallel. */
-export async function searchFoods(query: string): Promise<{
-  usda: FoodSearchResult[];
-  off: OffSearchResult[];
-}> {
-  const [usda, off] = await Promise.all([
-    searchUsda(query),
-    searchOpenFoodFacts(query),
-  ]);
-  return { usda, off };
+/** Unified search result — source-agnostic */
+export type UnifiedSearchResult = {
+  key: string;
+  name: string;
+  subtitle?: string;
+  /** per 100g macros (available immediately for OFF; fetched on tap for USDA) */
+  macrosPer100g?: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
+  /** Quick calorie display (per 100g) */
+  calsPer100g?: number;
+  imageUrl?: string | null;
+  /** Trusted source (USDA Foundation/SR Legacy/Survey) */
+  verified?: boolean;
+  /** Internal: source type for fetching full data on tap */
+  _source: "USDA" | "OFF";
+  _fdcId?: number;
+  _offCode?: string;
+};
+
+/** Simple word-overlap relevance score for ranking */
+function searchRelevance(query: string, name: string): number {
+  const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const n = name.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (!q || !n) return 0;
+  if (q === n) return 1;
+  const qTokens = q.split(" ").filter(Boolean);
+  const nTokens = new Set(n.split(" ").filter(Boolean));
+  let hits = 0;
+  for (const t of qTokens) if (nTokens.has(t)) hits++;
+  const recall = hits / Math.max(1, qTokens.length);
+  // Shorter names that match well = more relevant
+  const brevity = Math.min(1, 4 / Math.max(1, nTokens.size));
+  return recall * 0.7 + recall * brevity * 0.3;
+}
+
+/** Search all sources in parallel, return unified ranked list. */
+export async function searchFoods(
+  query: string,
+  onPartial?: (results: UnifiedSearchResult[]) => void,
+): Promise<UnifiedSearchResult[]> {
+  // Run both searches in parallel; deliver partial results as each resolves
+  const usdaP = searchUsda(query);
+  const offP = searchOpenFoodFacts(query);
+
+  let usda: FoodSearchResult[] = [];
+  let off: OffSearchResult[] = [];
+
+  // If a callback is provided, deliver whichever source responds first
+  if (onPartial) {
+    const first = await Promise.race([
+      offP.then((r) => { off = r; return "off" as const; }),
+      usdaP.then((r) => { usda = r; return "usda" as const; }),
+    ]);
+    onPartial(mergeResults(query, usda, off));
+    // Now wait for the other
+    if (first === "off") usda = await usdaP;
+    else off = await offP;
+  } else {
+    [usda, off] = await Promise.all([usdaP, offP]);
+  }
+
+  return mergeResults(query, usda, off);
+}
+
+/** Convert ALL CAPS or all-lowercase to Title Case */
+function titleCase(s: string): string {
+  // Only transform if mostly uppercase or all lowercase
+  const upper = s.replace(/[^A-Z]/g, "").length;
+  const lower = s.replace(/[^a-z]/g, "").length;
+  if (upper > lower * 2 || (lower > 0 && upper === 0 && s === s.toLowerCase())) {
+    return s.toLowerCase().replace(/(?:^|\s|[-/])\w/g, (c) => c.toUpperCase());
+  }
+  return s;
+}
+
+function mergeResults(
+  query: string,
+  usda: FoodSearchResult[],
+  off: OffSearchResult[],
+): UnifiedSearchResult[] {
+  const results: (UnifiedSearchResult & { _relevance: number })[] = [];
+
+  for (const item of usda) {
+    const isVerified = /foundation|sr legacy|survey/i.test(item.dataType ?? "");
+    const hasCals = (item.calories ?? 0) > 0 || (item.protein ?? 0) > 0 || (item.fat ?? 0) > 0 || (item.carbs ?? 0) > 0;
+    results.push({
+      key: `usda-${item.fdcId}`,
+      name: titleCase(item.description),
+      calsPer100g: item.calories,
+      macrosPer100g: hasCals ? {
+        calories: item.calories ?? 0,
+        protein: item.protein ?? 0,
+        carbs: item.carbs ?? 0,
+        fat: item.fat ?? 0,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+      } : undefined,
+      verified: isVerified,
+      _source: "USDA",
+      _fdcId: item.fdcId,
+      _relevance: searchRelevance(query, item.description),
+    });
+  }
+
+  for (const item of off) {
+    const brand = titleCase(item.brand);
+    const name = titleCase(item.name);
+    const displayName = [brand, name].filter(Boolean).join(" · ");
+    results.push({
+      key: `off-${item.code}`,
+      name: displayName,
+      calsPer100g: item.calories,
+      macrosPer100g: {
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiberG: item.fiberG,
+        sugarG: item.sugarG,
+        sodiumMg: item.sodiumMg,
+      },
+      imageUrl: item.imageUrl,
+      _source: "OFF",
+      _offCode: item.code,
+      _relevance: searchRelevance(query, displayName),
+    });
+  }
+
+  results.sort((a, b) => b._relevance - a._relevance);
+
+  // Deduplicate — skip items with same normalized name
+  const seen = new Set<string>();
+  const deduped: UnifiedSearchResult[] = [];
+  for (const r of results) {
+    const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    deduped.push(r);
+    if (deduped.length >= 20) break;
+  }
+
+  return deduped;
 }
 
 /** Get full macros for a specific USDA food (per 100g) plus available portions. */
@@ -303,7 +469,8 @@ export async function getFoodMacros(
     if (!json.ok) return null;
     const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
     return { macrosPer100g: json.macrosPer100g, portions };
-  } catch {
+  } catch (e) {
+    console.error("[getFoodMacros] failed for fdcId", fdcId, ":", e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -338,7 +505,8 @@ export async function lookupBarcode(
       fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
       servingSizeG: n.serving_quantity ?? null,
     };
-  } catch {
+  } catch (e) {
+    console.error("[lookupBarcode] failed:", e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -366,31 +534,8 @@ export async function saveVerifiedIngredients(
   ingredients: VerifiableIngredient[],
   servings: number,
 ): Promise<{ ok: true } | { error: string }> {
-  // Update each dirty ingredient
-  for (const ing of ingredients) {
-    if (!ing.isDirty) continue;
-    const { error } = await supabase
-      .from("recipe_ingredients")
-      .update({
-        name: ing.name,
-        amount: ing.amount,
-        unit: ing.unit,
-        calories: Math.round(ing.calories),
-        protein: Math.round(ing.protein),
-        carbs: Math.round(ing.carbs),
-        fat: Math.round(ing.fat),
-        fiber_g: Math.round(ing.fiberG * 10) / 10,
-        sugar_g: Math.round(ing.sugarG * 10) / 10,
-        sodium_mg: Math.round(ing.sodiumMg),
-        is_verified: true,
-        source: ing.source,
-      })
-      .eq("id", ing.id);
-
-    if (error) return { error: `Failed to update ${ing.name}: ${error.message}` };
-  }
-
-  // Compute recipe totals (per serving)
+  // 1. Compute and save recipe totals FIRST — ensures recipe-level macros always
+  //    reflect the user's intent even if per-ingredient updates partially fail.
   const totals = ingredients.reduce(
     (acc, i) => ({
       calories: acc.calories + i.calories,
@@ -429,5 +574,34 @@ export async function saveVerifiedIngredients(
     .eq("id", recipeId);
 
   if (recipeErr) return { error: recipeErr.message };
+
+  // 2. Update individual ingredients — collect errors instead of aborting on first failure
+  const errors: string[] = [];
+  for (const ing of ingredients) {
+    if (!ing.isDirty) continue;
+    const { error } = await supabase
+      .from("recipe_ingredients")
+      .update({
+        name: ing.matchedName ?? ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+        calories: Math.round(ing.calories),
+        protein: Math.round(ing.protein),
+        carbs: Math.round(ing.carbs),
+        fat: Math.round(ing.fat),
+        fiber_g: Math.round(ing.fiberG * 10) / 10,
+        sugar_g: Math.round(ing.sugarG * 10) / 10,
+        sodium_mg: Math.round(ing.sodiumMg),
+        is_verified: true,
+        source: ing.source,
+      })
+      .eq("id", ing.id);
+
+    if (error) errors.push(`${ing.matchedName ?? ing.name}: ${error.message}`);
+  }
+
+  if (errors.length > 0) {
+    return { error: `Recipe totals saved but some ingredients failed: ${errors.join("; ")}` };
+  }
   return { ok: true };
 }

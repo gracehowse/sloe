@@ -19,6 +19,7 @@ const UNIT_PREFIXES: { re: RegExp; unit: string }[] = [
   { re: /^fluid\s+ounces?\b/i, unit: "fl oz" },
   { re: /^fl\.?\s*oz\.?\b/i, unit: "fl oz" },
   { re: /^cups?\b\.?/i, unit: "cup" },
+  { re: /^mugs?\b\.?/i, unit: "cup" },
   { re: /^(?:milliliters?|ml)\b\.?/i, unit: "ml" },
   { re: /^(?:liters?|litres?)\b\.?/i, unit: "l" },
   { re: /^(?:kilograms?|kg)\b\.?/i, unit: "kg" },
@@ -53,6 +54,9 @@ const UNIT_PREFIXES: { re: RegExp; unit: string }[] = [
   { re: /^drumsticks?\b/i, unit: "drumstick" },
   { re: /^wings?\b/i, unit: "wing" },
   { re: /^jars?\b/i, unit: "jar" },
+  { re: /^chops?\b/i, unit: "chop" },
+  { re: /^steaks?\b/i, unit: "steak" },
+  { re: /^legs?\b/i, unit: "leg" },
 ];
 
 function normalizeLeadingFractions(s: string): string {
@@ -218,21 +222,21 @@ function isCountableWholeItem(name: string): boolean {
   const n = name.toLowerCase().replace(/,.*$/, "").trim();
   const COUNTABLE_ITEMS = [
     // Vegetables
-    /\bpepper\b/, /\bonion\b/, /\bcarrot\b/, /\bpotato\b/, /\btomato\b/,
-    /\bcourgette\b/, /\bzucchini\b/, /\baubergine\b/, /\beggplant\b/,
-    /\bcucumber\b/, /\bavocado\b/, /\bsweet potato\b/, /\bbeetroot\b/,
-    /\bturnip\b/, /\bparsnip\b/, /\bleek\b/, /\bfennel\b/, /\bceleriac\b/,
-    /\bcauliflower\b/, /\bbroccoli\b/, /\bcabbage\b/, /\blettuce\b/,
-    /\bcorn\b/, /\bsquash\b/, /\bpumpkin\b/,
+    /\bpeppers?\b/, /\bonions?\b/, /\bcarrots?\b/, /\bpotato(?:es)?\b/, /\btomato(?:es)?\b/,
+    /\bcourgettes?\b/, /\bzucchinis?\b/, /\baubergines?\b/, /\beggplants?\b/,
+    /\bcucumbers?\b/, /\bavocados?\b/, /\bsweet potato(?:es)?\b/, /\bbeetroots?\b/,
+    /\bturnips?\b/, /\bparsnips?\b/, /\bleeks?\b/, /\bfennels?\b/, /\bceleriac\b/,
+    /\bcauliflowers?\b/, /\bbroccoli\b/, /\bcabbages?\b/, /\blettuces?\b/,
+    /\bcorn\b/, /\bsquash(?:es)?\b/, /\bpumpkins?\b/,
     // Fruits
-    /\blemon\b/, /\blime\b/, /\bapple\b/, /\bpear\b/, /\borange\b/,
-    /\bbanana\b/, /\bmango\b/, /\bpeach\b/, /\bnectarine\b/, /\bplum\b/,
-    /\bpomegranate\b/, /\bgrapefruit\b/, /\bkiwi\b/,
-    // Proteins
-    /\begg\b/, /\bchicken breast\b/, /\bchicken thigh\b/, /\bsausage\b/,
-    /\bfillet\b/, /\bsteak\b/,
+    /\blemons?\b/, /\blimes?\b/, /\bapples?\b/, /\bpears?\b/, /\boranges?\b/,
+    /\bbananas?\b/, /\bmangos?\b/, /\bpeach(?:es)?\b/, /\bnectarines?\b/, /\bplums?\b/,
+    /\bpomegranates?\b/, /\bgrapefruits?\b/, /\bkiwis?\b/,
+    // Proteins (NOT eggs — they use countableGrams at 50g, not "medium" 110g)
+    /\bchicken breasts?\b/, /\bchicken thighs?\b/, /\bsausages?\b/,
+    /\bfillets?\b/, /\bsteaks?\b/, /\bchops?\b/, /\bpork chops?\b/, /\blamb chops?\b/,
     // Baked
-    /\bbread roll\b/, /\bpitta\b/, /\btortilla\b/, /\bwrap\b/, /\bbagel\b/,
+    /\bbread rolls?\b/, /\bpittas?\b/, /\btortillas?\b/, /\bwraps?\b/, /\bbagels?\b/,
   ];
   return COUNTABLE_ITEMS.some((pat) => pat.test(n));
 }
@@ -281,6 +285,7 @@ function trySuffixWeight(s: string): { amount: string; unit: string; name: strin
 function normalizeCountableUnit(raw: string): string {
   const u = raw.toLowerCase().replace(/s$/i, "");
   if (u === "stick") return "stalk";
+  if (u === "drumstick") return "drumstick";
   return u;
 }
 
@@ -301,7 +306,7 @@ function splitUnitAndName(amountStr: string, rest: string): { amount: string; un
    * (unit follows the food word; optional prep after). Prefix-only patterns miss these.
    */
   const embedded = rest.match(
-    /^(.+?)\s+(cloves?|sticks?|stalks?|sprigs?|rashers?|slices?)\b(?:\s+(.+))?$/i,
+    /^(.+?)\s+(cloves?|sticks?|stalks?|sprigs?|rashers?|slices?|breasts?|thighs?|drumsticks?|wings?|fillets?|chops?|steaks?|legs?)\b(?:[,\s]+(.+))?$/i,
   );
   if (embedded) {
     const canonical = normalizeCountableUnit(embedded[2]);

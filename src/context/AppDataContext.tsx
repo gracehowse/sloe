@@ -517,9 +517,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .eq("published", true)
       .not("author_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(200);
 
     if (error) {
+      console.error("[refreshDiscoverRecipes] failed:", error.message);
       return;
     }
 

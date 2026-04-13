@@ -108,10 +108,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
   };
 
   // Goal adjustments
-  const goalAdjustments = {
-    cut: -0.15,
-    maintain: 0,
-    bulk: 0.1,
+  const goalAdjustments: Record<string, number> = {
+    lose: -0.15,
+    health: 0,
+    strength: 0.1,
   };
 
   const bmr = calculateBMR();
@@ -420,9 +420,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Goal</label>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: "cut", label: "Cut", desc: "-15%" },
-                  { value: "maintain", label: "Maintain", desc: "0%" },
-                  { value: "bulk", label: "Bulk", desc: "+10%" },
+                  { value: "cut", label: "Lose weight", desc: "Deficit" },
+                  { value: "maintain", label: "Eat healthier", desc: "Maintain" },
+                  { value: "bulk", label: "Build muscle", desc: "Surplus" },
                 ].map((goalOption) => (
                   <button
                     key={goalOption.value}

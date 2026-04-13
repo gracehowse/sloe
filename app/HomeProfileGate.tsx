@@ -48,7 +48,7 @@ export function useHomeProfileGate(): {
       const { data: profile, error } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, age, height_cm, weight_kg, sex, activity_level, goal",
+          "onboarding_completed, target_calories, target_protein, target_carbs, target_fat, age, height_cm, weight_kg, sex, activity_level, goal",
         )
         .eq("id", uid)
         .maybeSingle();

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Linking,
   Pressable,
@@ -17,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
+import { decodeEntities } from "@/lib/decodeEntities";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -76,7 +78,8 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
 }
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, portion } = useLocalSearchParams<{ id: string; portion?: string }>();
+  const portionMultiplier = portion ? parseFloat(portion) : 1;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
@@ -122,9 +125,9 @@ export default function RecipeDetailScreen() {
   const saved = savedIds.has(recipeId);
 
   // Compute totals from actual ingredients so they always match what's displayed
-  const macros = useMemo(() => {
+  const { macros, totalMacros } = useMemo(() => {
     if (ingredients.length === 0 && recipe) {
-      return {
+      const perServing = {
         calories: recipe.calories,
         protein: recipe.protein,
         carbs: recipe.carbs,
@@ -132,6 +135,17 @@ export default function RecipeDetailScreen() {
         fiber_g: recipe.fiber_g ?? 0,
         sugar_g: recipe.sugar_g ?? 0,
         sodium_mg: recipe.sodium_mg ?? 0,
+      };
+      const srv = recipe.servings ?? 1;
+      return {
+        macros: perServing,
+        totalMacros: {
+          calories: perServing.calories * srv,
+          protein: perServing.protein * srv,
+          carbs: perServing.carbs * srv,
+          fat: perServing.fat * srv,
+          fiber_g: Math.round(perServing.fiber_g * srv * 10) / 10,
+        },
       };
     }
     const sum = ingredients.reduce(
@@ -148,13 +162,22 @@ export default function RecipeDetailScreen() {
     );
     const srv = recipe?.servings ?? 1;
     return {
-      calories: Math.round(sum.calories / srv),
-      protein: Math.round(sum.protein / srv),
-      carbs: Math.round(sum.carbs / srv),
-      fat: Math.round(sum.fat / srv),
-      fiber_g: Math.round((sum.fiber_g / srv) * 10) / 10,
-      sugar_g: Math.round((sum.sugar_g / srv) * 10) / 10,
-      sodium_mg: Math.round(sum.sodium_mg / srv),
+      macros: {
+        calories: Math.round(sum.calories / srv),
+        protein: Math.round(sum.protein / srv),
+        carbs: Math.round(sum.carbs / srv),
+        fat: Math.round(sum.fat / srv),
+        fiber_g: Math.round((sum.fiber_g / srv) * 10) / 10,
+        sugar_g: Math.round((sum.sugar_g / srv) * 10) / 10,
+        sodium_mg: Math.round(sum.sodium_mg / srv),
+      },
+      totalMacros: {
+        calories: Math.round(sum.calories),
+        protein: Math.round(sum.protein),
+        carbs: Math.round(sum.carbs),
+        fat: Math.round(sum.fat),
+        fiber_g: Math.round(sum.fiber_g * 10) / 10,
+      },
     };
   }, [ingredients, recipe]);
 
@@ -223,6 +246,7 @@ export default function RecipeDetailScreen() {
 
     macroRingsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.sm },
     servings: { fontSize: 12, color: colors.textTertiary, textAlign: "center" },
+    totalLine: { fontSize: 11, color: colors.textTertiary, textAlign: "center", marginTop: 4, fontStyle: "italic" },
 
     descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
@@ -250,7 +274,7 @@ export default function RecipeDetailScreen() {
       alignItems: "center",
     },
     stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-    stepText: { flex: 1, fontSize: 14, color: colors.border, lineHeight: 20 },
+    stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
 
     sourceCard: {
       backgroundColor: colors.card,
@@ -330,7 +354,7 @@ export default function RecipeDetailScreen() {
 
         <View style={styles.body}>
           {/* Title + meta */}
-          <Text style={styles.title}>{recipe.title}</Text>
+          <Text style={styles.title}>{decodeEntities(recipe.title)}</Text>
           {recipe.author?.display_name && (
             <Text style={styles.authorName}>by {recipe.author.display_name}</Text>
           )}
@@ -356,12 +380,26 @@ export default function RecipeDetailScreen() {
               <MacroRing value={macros.fiber_g} goal={28} color={MacroColors.fiber} label="Fibre" ringBgColor={colors.border} labelColor={colors.textSecondary} />
             </View>
             <Text style={styles.servings}>Per serving · {recipe.servings} serving{recipe.servings !== 1 ? "s" : ""}</Text>
+            {recipe.servings > 1 && (
+              <Text style={styles.totalLine}>
+                Whole recipe: {totalMacros.calories} kcal · {totalMacros.protein}g protein · {totalMacros.carbs}g carbs · {totalMacros.fat}g fat
+              </Text>
+            )}
           </View>
 
           {/* Description */}
           {recipe.description && (
             <View style={styles.card}>
-              <Text style={styles.descText}>{recipe.description}</Text>
+              <Text style={styles.descText}>{decodeEntities(recipe.description)}</Text>
+            </View>
+          )}
+
+          {/* Portion adjustment banner */}
+          {portionMultiplier !== 1 && (
+            <View style={{ backgroundColor: Neon.purple + "15", borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Neon.purple + "30" }}>
+              <Text style={{ color: Neon.purple, fontWeight: "700", fontSize: 14, textAlign: "center" }}>
+                Planned portion: {portionMultiplier}x — quantities below are adjusted
+              </Text>
             </View>
           )}
 
@@ -380,9 +418,9 @@ export default function RecipeDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.ingredientText}>
                       <Text style={styles.ingredientAmount}>
-                        {ing.amount != null ? `${ing.amount} ${ing.unit ?? ""} ` : ""}
+                        {ing.amount != null ? `${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""} ` : ""}
                       </Text>
-                      {ing.name}
+                      {decodeEntities(ing.name)}
                     </Text>
                     <View style={styles.ingMacroRow}>
                       <Text style={styles.ingMacro}>{ing.calories} kcal</Text>
@@ -440,6 +478,31 @@ export default function RecipeDetailScreen() {
               <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.actionBtnText}>{saved ? "Saved" : "Save to Library"}</Text>
             </Pressable>
+            {/* Publish button — only if user is the author and recipe is private */}
+            {recipe && (recipe as any).author_id === userId && !(recipe as any).published && (
+              <Pressable
+                style={[styles.actionBtn, { backgroundColor: Neon.green }]}
+                onPress={() => {
+                  Alert.alert(
+                    "Publish recipe?",
+                    "This will make your recipe visible to the Platemate community.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Publish",
+                        onPress: async () => {
+                          await supabase.from("recipes").update({ published: true }).eq("id", recipeId);
+                          Alert.alert("Published!", "Your recipe is now live on Discover.");
+                        },
+                      },
+                    ],
+                  );
+                }}
+              >
+                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.actionBtnText}>Publish</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </ScrollView>

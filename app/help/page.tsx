@@ -34,6 +34,25 @@ export default function HelpPage() {
             we improve the core experience.
           </p>
 
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition data sources</h2>
+          <p>
+            Platemate combines multiple trusted databases to provide accurate nutrition information worldwide:
+          </p>
+          <ul>
+            <li>
+              <strong><a href="https://fdc.nal.usda.gov" target="_blank" rel="noopener">USDA FoodData Central</a></strong> — Laboratory-tested nutrition data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey datasets.
+            </li>
+            <li>
+              <strong><a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a></strong> — A free, open-source database of food products from around the world. Strong coverage across the UK, EU, US, and Australia.
+            </li>
+            <li>
+              <strong><a href="https://platform.fatsecret.com" target="_blank" rel="noopener">FatSecret Platform API</a></strong> — A comprehensive food and nutrition database with detailed serving-size information for branded and generic foods.
+            </li>
+          </ul>
+          <p>
+            Nutrition values are estimates and may vary by brand, preparation method, and portion size. Always refer to product packaging for the most accurate information. You can verify and correct individual ingredients on any recipe.
+          </p>
+
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Sponsored content</h2>
           <p>If something is sponsored or affiliate, it will be clearly disclosed.</p>
 

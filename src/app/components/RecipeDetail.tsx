@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, CookingPot } from "lucide-react";
+import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, CookingPot, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
@@ -8,6 +8,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
+import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +56,7 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
     carbs: row.carbs,
     fat: row.fat,
     isVerified: row.is_verified,
-    source: "Manual",
+    source: row.source ?? "Manual",
   };
 }
 
@@ -94,7 +95,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     fat: number;
   } | null>(null);
   const [dbIngredients, setDbIngredients] = useState<IngredientRow[]>([]);
+  const [dbIngredientIds, setDbIngredientIds] = useState<string[]>([]);
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
+  const [verifySearchOpen, setVerifySearchOpen] = useState(false);
+  const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
 
   const [followCreatorId, setFollowCreatorId] = useState<string | null>(null);
   const [recipeAuthorId, setRecipeAuthorId] = useState<string | null>(null);
@@ -362,8 +366,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       if (cancelled) return;
       if (!ingError && ingRows?.length) {
         setDbIngredients(ingRows.map((r) => mapDbIngredientToRow(r as DbIngredientRow)));
+        setDbIngredientIds(ingRows.map((r: any) => r.id));
       } else {
         setDbIngredients([]);
+        setDbIngredientIds([]);
       }
       setDbLoading(false);
     })();
@@ -718,7 +724,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 </div>
               ) : (
                 ingredients.map((ingredient, index) => (
-                  <div key={index} className="px-6 py-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <div key={index} className="px-6 py-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
                     <div className="flex-1">
                       <p className="font-medium text-slate-900 dark:text-white">{ingredient.name}</p>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -727,10 +733,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           : ingredient.unit}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/30 rounded-full">
-                          <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
-                          <span className="text-xs font-medium text-green-700 dark:text-green-400">{ingredient.source}</span>
-                        </div>
+                        {ingredient.isVerified ? (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/30 rounded-full">
+                            <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Verified</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/30 rounded-full">
+                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Estimated</span>
+                          </div>
+                        )}
+                        {dbIngredientIds[index] && (
+                          <button
+                            onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Search className="w-3 h-3" /> Fix match
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="text-right ml-4">
@@ -782,6 +803,68 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           )}
         </div>
       </div>
+
+      {/* Food search dialog for ingredient verification */}
+      <FoodSearch
+        open={verifySearchOpen}
+        onClose={() => { setVerifySearchOpen(false); setVerifyIndex(null); }}
+        initialQuery={verifyIndex != null ? ingredients[verifyIndex]?.name ?? "" : ""}
+        initialAmount={verifyIndex != null ? dbIngredients[verifyIndex]?.amount : null}
+        initialUnit={verifyIndex != null ? dbIngredients[verifyIndex]?.unit : null}
+        originalDescription={verifyIndex != null ? [
+          dbIngredients[verifyIndex]?.amount,
+          dbIngredients[verifyIndex]?.unit,
+          ingredients[verifyIndex]?.name,
+        ].filter(Boolean).join(" ") : null}
+        onSelect={async (selection: FoodSearchSelection) => {
+          if (verifyIndex == null) return;
+          const ingId = dbIngredientIds[verifyIndex];
+          if (!ingId) return;
+
+          const grams = selection.chosenPortion.gramWeight * selection.quantity;
+          const f = grams / 100;
+          const macros = {
+            calories: Math.round(selection.macrosPer100g.calories * f),
+            protein: Math.round(selection.macrosPer100g.protein * f * 10) / 10,
+            carbs: Math.round(selection.macrosPer100g.carbs * f * 10) / 10,
+            fat: Math.round(selection.macrosPer100g.fat * f * 10) / 10,
+          };
+
+          const { error } = await supabase
+            .from("recipe_ingredients")
+            .update({
+              name: selection.name,
+              amount: selection.quantity,
+              unit: selection.chosenPortion.label,
+              calories: macros.calories,
+              protein: macros.protein,
+              carbs: macros.carbs,
+              fat: macros.fat,
+              fiber_g: Math.round(selection.macrosPer100g.fiberG * f * 10) / 10,
+              sugar_g: Math.round(selection.macrosPer100g.sugarG * f * 10) / 10,
+              sodium_mg: Math.round(selection.macrosPer100g.sodiumMg * f),
+              is_verified: true,
+              source: selection.source,
+            })
+            .eq("id", ingId);
+
+          if (error) {
+            toast.error("Failed to update ingredient");
+            return;
+          }
+
+          // Update local state
+          setDbIngredients((prev) =>
+            prev.map((ing, i) =>
+              i === verifyIndex
+                ? { ...ing, name: selection.name, amount: String(selection.quantity), unit: selection.chosenPortion.label, ...macros, isVerified: true, source: selection.source }
+                : ing,
+            ),
+          );
+          toast.success(`Updated to ${selection.name}`);
+          setVerifyIndex(null);
+        }}
+      />
     </div>
   );
 }

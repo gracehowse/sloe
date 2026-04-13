@@ -264,13 +264,17 @@ export async function POST(req: Request) {
         try {
           const parsedIngs = parseRawIngredients(ingList);
           const nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
-          parsed.calories = nutrition.perServing.calories;
-          parsed.protein = nutrition.perServing.protein;
-          parsed.carbs = nutrition.perServing.carbs;
-          parsed.fat = nutrition.perServing.fat;
-          (parsed as any).fiberG = nutrition.perServing.fiberG;
-          (parsed as any).sugarG = nutrition.perServing.sugarG;
-          (parsed as any).sodiumMg = nutrition.perServing.sodiumMg;
+          // Only overwrite recipe-level macros if the site didn't provide them
+          // (site nutrition is typically from a dietitian and more trustworthy)
+          if (!parsed.siteNutrition) {
+            parsed.calories = nutrition.perServing.calories;
+            parsed.protein = nutrition.perServing.protein;
+            parsed.carbs = nutrition.perServing.carbs;
+            parsed.fat = nutrition.perServing.fat;
+            (parsed as any).fiberG = nutrition.perServing.fiberG;
+            (parsed as any).sugarG = nutrition.perServing.sugarG;
+            (parsed as any).sodiumMg = nutrition.perServing.sodiumMg;
+          }
           (parsed as any).ingredientMacros = nutrition.verified.map((v) => ({
             name: v.input.name,
             amount: v.resolved.amount,

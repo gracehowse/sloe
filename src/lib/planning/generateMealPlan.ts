@@ -29,17 +29,26 @@ export const PLAN_MEAL_SLOTS = PLANNER_MEAL_SLOT_LABELS;
 
 export type { PlannerMealSlot };
 
-/** Map creator `meal_type` (recipe upload) to planner slots. */
-export function mealPlannerSlotsFromMealType(raw: string | null | undefined): PlannerMealSlot[] | undefined {
-  const v = (raw ?? "").toLowerCase().trim();
-  if (!v) return undefined;
-  const map: Record<string, PlannerMealSlot[]> = {
-    breakfast: ["Breakfast"],
-    lunch: ["Lunch", "Dinner"],
-    dinner: ["Dinner", "Lunch"],
-    snack: ["Snack"],
+/** Map creator `meal_type` (recipe upload) to planner slots. Handles both single string and array. */
+export function mealPlannerSlotsFromMealType(raw: string | string[] | null | undefined): PlannerMealSlot[] | undefined {
+  const tags: string[] = Array.isArray(raw)
+    ? raw.map((t) => t.toLowerCase().trim()).filter(Boolean)
+    : raw
+      ? [raw.toLowerCase().trim()]
+      : [];
+  if (tags.length === 0) return undefined;
+  const slotMap: Record<string, PlannerMealSlot> = {
+    breakfast: "Breakfast",
+    lunch: "Lunch",
+    dinner: "Dinner",
+    snack: "Snack",
   };
-  return map[v];
+  const slots = new Set<PlannerMealSlot>();
+  for (const t of tags) {
+    const slot = slotMap[t];
+    if (slot) slots.add(slot);
+  }
+  return slots.size > 0 ? Array.from(slots) : undefined;
 }
 
 /** Recipe fits a planner slot when tagged, or when untagged (legacy). */

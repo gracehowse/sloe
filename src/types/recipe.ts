@@ -54,7 +54,7 @@ export interface IngredientRow {
   sugarG?: number;
   sodiumMg?: number;
   isVerified: boolean;
-  source: "FatSecret" | "Open Food Facts" | "Nutritionix" | "USDA" | "Manual" | "Estimated";
+  source: string;
 }
 
 export interface ShoppingItem {

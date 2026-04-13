@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { classifyMealType } from "./classifyMealType";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -18,6 +19,7 @@ export type ApiImportedRecipe = {
   sugarG?: number | null;
   sodiumMg?: number | null;
   primarySource?: string | null;
+  mealType?: string[] | null;
   sourceUrl?: string | null;
   sourceName?: string | null;
   ingredientMacros?: {
@@ -79,6 +81,11 @@ export async function saveImportedRecipe(
       prep_time_min: recipe.prepTimeMin ?? null,
       cook_time_min: recipe.cookTimeMin ?? null,
       published: false,
+      meal_type: recipe.mealType ?? classifyMealType({
+        title,
+        ingredients,
+        caloriesPerServing: recipe.calories ?? undefined,
+      }),
       calories: Math.round(recipe.calories ?? 0),
       protein: Math.round(recipe.protein ?? 0),
       carbs: Math.round(recipe.carbs ?? 0),
@@ -121,7 +128,10 @@ export async function saveImportedRecipe(
 
     const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
     if (ingErr) {
-      // Recipe is still usable; ingredients can be edited later on web.
+      // Ingredient insert failed — delete the orphaned recipe to prevent inconsistent data
+      console.error("[saveImport] ingredient insert failed, rolling back recipe:", ingErr.message);
+      await supabase.from("recipes").delete().eq("id", recipeId);
+      return { error: `Failed to save ingredients: ${ingErr.message}` };
     }
   }
 

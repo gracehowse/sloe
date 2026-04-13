@@ -18,6 +18,8 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
+import { Ionicons } from "@expo/vector-icons";
+import { decodeEntities } from "@/lib/decodeEntities";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
@@ -201,7 +203,7 @@ export default function DiscoverScreen() {
 
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>
-              {item.title}
+              {decodeEntities(item.title)}
             </Text>
 
             {/* Macro chips */}
@@ -215,6 +217,11 @@ export default function DiscoverScreen() {
               <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
                 <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {item.fat}g</Text>
               </View>
+              {(item.fiberG ?? 0) > 0 && (
+                <View style={[styles.macroChip, { borderColor: MacroColors.fiber + "60" }]}>
+                  <Text style={[styles.macroChipText, { color: MacroColors.fiber }]}>Fb {item.fiberG}g</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.cardFooter}>
@@ -228,9 +235,11 @@ export default function DiscoverScreen() {
                 hitSlop={12}
                 style={[styles.saveBtn, saved && styles.saveBtnActive]}
               >
-                <Text style={{ color: saved ? Neon.pink : colors.tabIconDefault, fontSize: 20 }}>
-                  {saved ? "★" : "☆"}
-                </Text>
+                <Ionicons
+                  name={saved ? "bookmark" : "bookmark-outline"}
+                  size={20}
+                  color={saved ? Neon.pink : colors.tabIconDefault}
+                />
               </Pressable>
             </View>
           </View>
@@ -275,10 +284,10 @@ export default function DiscoverScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🍽️</Text>
-              <Text style={styles.emptyTitle}>No recipes yet</Text>
+              <Text style={styles.emptyIcon}>{search.trim() ? "🔍" : "🍽️"}</Text>
+              <Text style={styles.emptyTitle}>{search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}</Text>
               <Text style={styles.emptySubtext}>
-                Pull down to refresh, or check your connection.
+                {search.trim() ? "Try a different search term." : "Pull down to refresh, or check your connection."}
               </Text>
             </View>
           }

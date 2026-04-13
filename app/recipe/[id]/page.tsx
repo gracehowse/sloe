@@ -39,6 +39,9 @@ interface IngredientRow {
   protein: number;
   carbs: number;
   fat: number;
+  fiber_g: number;
+  sugar_g: number;
+  sodium_mg: number;
 }
 
 async function fetchRecipe(id: string) {
@@ -87,7 +90,7 @@ async function fetchRecipe(id: string) {
 
   const { data: ingredientRows } = await sb
     .from("recipe_ingredients")
-    .select("name, amount, unit, calories, protein, carbs, fat")
+    .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
     .eq("recipe_id", id)
     .returns<IngredientRow[]>();
 
@@ -163,6 +166,7 @@ export default async function RecipePage({ params }: Props) {
       proteinContent: `${recipe.protein} g`,
       carbohydrateContent: `${recipe.carbs} g`,
       fatContent: `${recipe.fat} g`,
+      ...(recipe.fiberG ? { fiberContent: `${recipe.fiberG} g` } : {}),
     },
     recipeIngredient: ingredients.map((i) => [i.amount, i.unit, i.name].filter(Boolean).join(" ")),
     recipeInstructions: instructions.map((step, idx) => ({
@@ -218,12 +222,13 @@ export default async function RecipePage({ params }: Props) {
         )}
 
         {/* Macro cards */}
-        <div className="grid grid-cols-4 gap-3 mb-8">
+        <div className={`grid gap-3 mb-8 ${recipe.fiberG ? "grid-cols-5" : "grid-cols-4"}`}>
           {[
             { label: "Calories", value: `${recipe.calories}`, unit: "kcal" },
             { label: "Protein", value: `${recipe.protein}`, unit: "g" },
             { label: "Carbs", value: `${recipe.carbs}`, unit: "g" },
             { label: "Fat", value: `${recipe.fat}`, unit: "g" },
+            ...(recipe.fiberG ? [{ label: "Fibre", value: `${recipe.fiberG}`, unit: "g" }] : []),
           ].map((m) => (
             <div
               key={m.label}

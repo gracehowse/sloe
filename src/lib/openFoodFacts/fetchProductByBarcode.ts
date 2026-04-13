@@ -6,6 +6,8 @@ export interface OffProductMacros {
   carbs: number;
   fat: number;
   fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
   servingLabel: string;
   /** If OFF provides a serving size like "50 g", parse to grams. */
   servingSizeG?: number;
@@ -68,6 +70,8 @@ export async function fetchProductByBarcode(code: string): Promise<
     const carbs = Math.round(n.carbohydrates_100g ?? n.carbohydrates ?? 0);
     const fat = Math.round(n.fat_100g ?? n.fat ?? 0);
     const fiberG = Math.round(n.fiber_100g ?? n.fiber ?? 0);
+    const sugarG = Math.round((n["sugars_100g"] ?? n.sugars ?? 0) * 10) / 10;
+    const sodiumMg = Math.round((n.sodium_100g ?? n.sodium ?? 0) * 1000);
     const servingSizeG = parseServingSizeToGrams(p.serving_size);
     return {
       ok: true,
@@ -78,6 +82,8 @@ export async function fetchProductByBarcode(code: string): Promise<
         carbs,
         fat,
         fiberG,
+        sugarG,
+        sodiumMg,
         servingLabel: servingSizeG ? `per 100g (serving: ${p.serving_size})` : "per 100g (approximate)",
         servingSizeG: servingSizeG ?? undefined,
       },

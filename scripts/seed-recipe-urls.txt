@@ -1,96 +1,110 @@
-# One recipe URL per line (schema.org Recipe JSON-LD). Probed HTTP 200 on 2026-04-08.
-# Run with dev server up: npm run dev && npm run seed:discover
-# Set PLATEMATE_SEED_AUTHOR_ID=<your profiles.id> so rows show in Discover (published + author required).
-https://www.bbcgoodfood.com/recipes/classic-spaghetti-bolognese
-https://www.bbcgoodfood.com/recipes/chicken-fajitas
-https://www.bbcgoodfood.com/recipes/chicken-tikka-masala
-https://www.bbcgoodfood.com/recipes/beef-wellington
-https://www.bbcgoodfood.com/recipes/easy-chicken-curry
-https://www.bbcgoodfood.com/recipes/shepherds-pie
-https://www.bbcgoodfood.com/recipes/lasagne
-https://www.bbcgoodfood.com/recipes/roast-chicken
-https://www.bbcgoodfood.com/recipes/banana-bread
-https://www.bbcgoodfood.com/recipes/easy-pancakes
-https://www.bbcgoodfood.com/recipes/slow-cooker-chicken-curry
-https://www.bbcgoodfood.com/recipes/thai-green-curry
-https://www.bbcgoodfood.com/recipes/pad-thai
-https://www.bbcgoodfood.com/recipes/greek-salad
-https://www.bbcgoodfood.com/recipes/tomato-soup
-https://www.bbcgoodfood.com/recipes/chicken-noodle-soup
-https://www.bbcgoodfood.com/recipes/salmon-en-croute
-https://www.bbcgoodfood.com/recipes/moussaka
-https://www.bbcgoodfood.com/recipes/veggie-chilli
-https://www.bbcgoodfood.com/recipes/mushroom-risotto
-https://www.bbcgoodfood.com/recipes/scones
-https://www.bbcgoodfood.com/recipes/lemon-drizzle-cake
-https://www.bbcgoodfood.com/recipes/carrot-cake
-https://www.bbcgoodfood.com/recipes/eton-mess
-https://www.bbcgoodfood.com/recipes/chicken-katsu-curry
-https://www.bbcgoodfood.com/recipes/beef-bourguignon
-https://www.bbcgoodfood.com/recipes/coq-au-vin
-https://www.bbcgoodfood.com/recipes/pulled-pork
-https://www.bbcgoodfood.com/recipes/fish-tacos
-https://www.bbcgoodfood.com/recipes/yorkshire-puddings
-https://www.bbcgoodfood.com/recipes/eggs-benedict
-https://www.bbcgoodfood.com/recipes/french-onion-soup
-https://www.bbcgoodfood.com/recipes/beef-stroganoff
-https://www.bbcgoodfood.com/recipes/chicken-stroganoff
-https://www.bbcgoodfood.com/recipes/cottage-pie
-https://www.bbcgoodfood.com/recipes/fish-chips
-https://www.bbcgoodfood.com/recipes/overnight-oats
-https://www.bbcgoodfood.com/recipes/protein-overnight-oats
-https://www.bbcgoodfood.com/recipes/chocolate-chip-cookies
-https://www.bbcgoodfood.com/recipes/apple-pie
-https://www.bbcgoodfood.com/recipes/rhubarb-crumble
-https://www.bbcgoodfood.com/recipes/cauliflower-cheese
-https://www.bbcgoodfood.com/recipes/beef-curry
-https://www.bbcgoodfood.com/recipes/leek-potato-soup
-https://www.bbcgoodfood.com/recipes/fruit-salad
-https://www.bbcgoodfood.com/recipes/sponge-cake
-https://www.bbcgoodfood.com/recipes/coffee-cake
-https://www.bbcgoodfood.com/recipes/lemon-meringue-pie
-https://www.bbcgoodfood.com/recipes/apple-strudel
-https://www.bbcgoodfood.com/recipes/egg-fried-rice
+# Platemate recipe seed — curated for high-quality images.
+# Run: PLATEMATE_SEED_AUTHOR_ID=<id> npx tsx scripts/seed-discover.ts
+# Requires dev server running on localhost:3000
+#
+# Approved sources (consistently great photography):
+# - Fit Foodie Finds (fitfoodiefinds.com)
+# - Downshiftology / Lisa Bryan (downshiftology.com)
+# - Minimalist Baker (minimalistbaker.com)
+# - Pinch of Yum (pinchofyum.com)
+# - Half Baked Harvest (halfbakedharvest.com)
 
-# High-protein / fitness-focused
-https://www.bbcgoodfood.com/recipes/high-protein-chicken-burrito-bowl
-https://www.bbcgoodfood.com/recipes/turkey-meatballs
-https://www.bbcgoodfood.com/recipes/chicken-caesar-salad
-https://www.bbcgoodfood.com/recipes/prawn-stir-fry
-https://www.bbcgoodfood.com/recipes/teriyaki-salmon
-https://www.bbcgoodfood.com/recipes/grilled-chicken-salad
-https://www.bbcgoodfood.com/recipes/tuna-pasta-bake
-https://www.bbcgoodfood.com/recipes/chicken-stir-fry
+# ── Fit Foodie Finds ───────────────────────────────────────────
+https://fitfoodiefinds.com/healthy-ground-turkey-stir-fry/
+https://fitfoodiefinds.com/sheet-pan-chicken-and-vegetables/
+https://fitfoodiefinds.com/protein-overnight-oats/
+https://fitfoodiefinds.com/healthy-chicken-fried-rice/
+https://fitfoodiefinds.com/baked-salmon-and-vegetables/
+https://fitfoodiefinds.com/healthy-turkey-meatballs/
+https://fitfoodiefinds.com/chicken-meal-prep-bowls/
+https://fitfoodiefinds.com/high-protein-pasta/
+https://fitfoodiefinds.com/greek-chicken-bowl/
+https://fitfoodiefinds.com/healthy-banana-oat-pancakes/
+https://fitfoodiefinds.com/healthy-chicken-salad/
+https://fitfoodiefinds.com/one-pot-chicken-burrito-bowl/
+https://fitfoodiefinds.com/air-fryer-chicken-breast/
+https://fitfoodiefinds.com/sheet-pan-teriyaki-chicken/
+https://fitfoodiefinds.com/healthy-taco-soup/
+https://fitfoodiefinds.com/easy-chicken-stir-fry/
+https://fitfoodiefinds.com/peanut-butter-overnight-oats/
+https://fitfoodiefinds.com/ground-turkey-sweet-potato-skillet/
+https://fitfoodiefinds.com/slow-cooker-chicken-tortilla-soup/
+https://fitfoodiefinds.com/healthy-egg-muffins/
 
-# Breakfast
-https://www.bbcgoodfood.com/recipes/fluffy-american-pancakes
-https://www.bbcgoodfood.com/recipes/banana-pancakes
-https://www.bbcgoodfood.com/recipes/perfect-scrambled-eggs
-https://www.bbcgoodfood.com/recipes/shakshuka
-https://www.bbcgoodfood.com/recipes/avocado-toast
-https://www.bbcgoodfood.com/recipes/granola
-https://www.bbcgoodfood.com/recipes/porridge
+# ── Downshiftology (Lisa Bryan) ────────────────────────────────
+https://downshiftology.com/recipes/chicken-stir-fry/
+https://downshiftology.com/recipes/sheet-pan-salmon/
+https://downshiftology.com/recipes/ground-turkey-stir-fry/
+https://downshiftology.com/recipes/chicken-lettuce-wraps/
+https://downshiftology.com/recipes/greek-chicken-bowls/
+https://downshiftology.com/recipes/chicken-fried-rice/
+https://downshiftology.com/recipes/thai-chicken-curry/
+https://downshiftology.com/recipes/chicken-fajitas/
+https://downshiftology.com/recipes/healthy-chicken-salad/
+https://downshiftology.com/recipes/lemon-herb-chicken/
+https://downshiftology.com/recipes/mediterranean-chicken/
+https://downshiftology.com/recipes/cauliflower-fried-rice/
+https://downshiftology.com/recipes/chicken-zoodle-soup/
+https://downshiftology.com/recipes/chicken-burrito-bowl/
+https://downshiftology.com/recipes/stuffed-bell-peppers/
+https://downshiftology.com/recipes/shrimp-stir-fry/
+https://downshiftology.com/recipes/egg-muffins/
+https://downshiftology.com/recipes/baked-chicken-breast/
+https://downshiftology.com/recipes/sweet-potato-hash/
+https://downshiftology.com/recipes/turkey-meatballs/
 
-# Vegetarian
-https://www.bbcgoodfood.com/recipes/vegetable-lasagne
-https://www.bbcgoodfood.com/recipes/vegetable-curry
-https://www.bbcgoodfood.com/recipes/bean-chilli
-https://www.bbcgoodfood.com/recipes/halloumi-salad
-https://www.bbcgoodfood.com/recipes/falafel
-https://www.bbcgoodfood.com/recipes/sweet-potato-curry
-https://www.bbcgoodfood.com/recipes/lentil-soup
-https://www.bbcgoodfood.com/recipes/veggie-stir-fry
-https://www.bbcgoodfood.com/recipes/spinach-ricotta-cannelloni
+# ── Minimalist Baker ───────────────────────────────────────────
+https://minimalistbaker.com/easy-tofu-scramble/
+https://minimalistbaker.com/1-pot-golden-curry-lentil-soup/
+https://minimalistbaker.com/crispy-baked-falafel/
+https://minimalistbaker.com/easy-vegan-fried-rice/
+https://minimalistbaker.com/simple-coconut-curry/
+https://minimalistbaker.com/best-vegan-pad-thai/
+https://minimalistbaker.com/1-bowl-banana-oat-pancakes/
+https://minimalistbaker.com/easy-cauliflower-rice-stir-fry/
+https://minimalistbaker.com/easy-vegan-chili/
+https://minimalistbaker.com/best-vegan-mac-and-cheese/
+https://minimalistbaker.com/easy-chickpea-curry/
+https://minimalistbaker.com/the-best-vegan-lentil-soup/
+https://minimalistbaker.com/1-pot-red-lentil-chili/
+https://minimalistbaker.com/easy-almond-butter-stir-fry/
+https://minimalistbaker.com/thai-quinoa-bowl/
+https://minimalistbaker.com/sweet-potato-black-bean-burger/
+https://minimalistbaker.com/easy-grilled-veggie-burgers/
+https://minimalistbaker.com/best-vegan-golden-milk/
+https://minimalistbaker.com/easy-baked-falafel-salad/
+https://minimalistbaker.com/creamy-vegan-garlic-pasta/
 
-# Quick / under 30 min
-https://www.bbcgoodfood.com/recipes/quesadillas
-https://www.bbcgoodfood.com/recipes/carbonara
-https://www.bbcgoodfood.com/recipes/omelette
-https://www.bbcgoodfood.com/recipes/pesto-pasta
-https://www.bbcgoodfood.com/recipes/steak-chips
+# ── Pinch of Yum ──────────────────────────────────────────────
+https://pinchofyum.com/creamy-chicken-wild-rice-soup
+https://pinchofyum.com/the-best-detox-crockpot-lentil-soup
+https://pinchofyum.com/spicy-peanut-tofu-bowls
+https://pinchofyum.com/sticky-sesame-cauliflower
+https://pinchofyum.com/mushroom-stroganoff
+https://pinchofyum.com/easy-homemade-ramen
+https://pinchofyum.com/instant-pot-chicken-wild-rice-soup
+https://pinchofyum.com/cashew-chicken
+https://pinchofyum.com/mediterranean-baked-sweet-potatoes
+https://pinchofyum.com/cauliflower-walnut-taco-meat
+https://pinchofyum.com/healthy-chicken-wild-rice-soup
+https://pinchofyum.com/thai-chicken-meatballs
+https://pinchofyum.com/one-pot-mac-and-cheese
+https://pinchofyum.com/baked-chicken-meatballs
+https://pinchofyum.com/lemon-chicken-orzo-soup
 
-# Snacks
-https://www.bbcgoodfood.com/recipes/hummus
-https://www.bbcgoodfood.com/recipes/energy-balls
-https://www.bbcgoodfood.com/recipes/smoothie-bowl
-https://www.bbcgoodfood.com/recipes/protein-balls
+# ── Half Baked Harvest ─────────────────────────────────────────
+https://www.halfbakedharvest.com/creamy-lemon-chicken/
+https://www.halfbakedharvest.com/better-than-takeout-kung-pao-chicken/
+https://www.halfbakedharvest.com/one-pot-creamy-tuscan-tortellini-soup/
+https://www.halfbakedharvest.com/garlic-butter-salmon/
+https://www.halfbakedharvest.com/thai-peanut-chicken-noodles/
+https://www.halfbakedharvest.com/crispy-sesame-chicken/
+https://www.halfbakedharvest.com/honey-garlic-butter-shrimp/
+https://www.halfbakedharvest.com/sheet-pan-lemon-herb-chicken/
+https://www.halfbakedharvest.com/one-pot-chicken-alfredo/
+https://www.halfbakedharvest.com/tuscan-chicken-pasta/
+https://www.halfbakedharvest.com/mediterranean-chicken-bowls/
+https://www.halfbakedharvest.com/chicken-tikka-masala/
+https://www.halfbakedharvest.com/crispy-lemon-chicken/
+https://www.halfbakedharvest.com/garlic-herb-butter-roasted-chicken/
+https://www.halfbakedharvest.com/broccoli-cheddar-soup/

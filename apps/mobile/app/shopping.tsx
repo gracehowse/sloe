@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
+  Alert,
   View,
   Text,
   ScrollView,
   Pressable,
+  Share,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import * as Linking from "expo-linking";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -67,6 +71,60 @@ export default function ShoppingListScreen() {
       return next;
     });
   }, [userId]);
+
+  const removeItem = useCallback((itemId: string) => {
+    setItems((prev) => {
+      const next = prev.filter((i) => i.id !== itemId);
+      if (userId) {
+        void supabase
+          .from("shopping_lists")
+          .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      }
+      return next;
+    });
+  }, [userId]);
+
+  const clearAll = useCallback(() => {
+    Alert.alert("Clear shopping list", "Remove all items?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear All",
+        style: "destructive",
+        onPress: () => {
+          setItems([]);
+          if (userId) {
+            void supabase
+              .from("shopping_lists")
+              .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+          }
+        },
+      },
+    ]);
+  }, [userId]);
+
+  const clearChecked = useCallback(() => {
+    setItems((prev) => {
+      const next = prev.filter((i) => !i.checked);
+      if (userId) {
+        void supabase
+          .from("shopping_lists")
+          .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      }
+      return next;
+    });
+  }, [userId]);
+
+  const shareToReminders = useCallback(() => {
+    // Build a text list and share via system share sheet (works with Apple Reminders)
+    const text = items
+      .filter((i) => !i.checked)
+      .map((i) => `${i.amount} ${i.unit} ${i.name}`.trim())
+      .join("\n");
+    void Share.share({
+      message: text,
+      title: "Shopping List",
+    });
+  }, [items]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -168,7 +226,18 @@ export default function ShoppingListScreen() {
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
           <Text style={styles.headerTitle}>SHOPPING LIST</Text>
-          <View style={{ width: 28 }} />
+          {items.length > 0 ? (
+            <View style={{ flexDirection: "row", gap: Spacing.md }}>
+              <Pressable hitSlop={12} onPress={shareToReminders}>
+                <Ionicons name="share-outline" size={22} color={colors.text} />
+              </Pressable>
+              <Pressable hitSlop={12} onPress={clearAll}>
+                <Ionicons name="trash-outline" size={22} color={Neon.red} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ width: 28 }} />
+          )}
         </View>
 
         {loading ? (
@@ -199,6 +268,18 @@ export default function ShoppingListScreen() {
               </View>
             </View>
 
+            {/* Clear checked button */}
+            {checkedCount > 0 && (
+              <Pressable
+                onPress={clearChecked}
+                style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
+              >
+                <Text style={{ color: Neon.purple, fontWeight: "600", fontSize: 14 }}>
+                  Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
+                </Text>
+              </Pressable>
+            )}
+
             {/* Items by category */}
             {categories.map((cat) => {
               const catItems = items.filter((i) => i.category === cat);
@@ -210,6 +291,12 @@ export default function ShoppingListScreen() {
                       key={item.id}
                       style={styles.itemRow}
                       onPress={() => toggleItem(item.id)}
+                      onLongPress={() => {
+                        Alert.alert("Remove item", `Delete "${item.name}"?`, [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Remove", style: "destructive", onPress: () => removeItem(item.id) },
+                        ]);
+                      }}
                     >
                       <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
                         {item.checked && <Text style={styles.checkmark}>✓</Text>}

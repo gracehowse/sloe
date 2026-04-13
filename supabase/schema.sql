@@ -26,7 +26,18 @@ create table if not exists public.profiles (
   target_fat int,
   target_fiber_g int,
   target_water_ml int,
-  prefer_activity_adjusted_calories boolean not null default false
+  prefer_activity_adjusted_calories boolean not null default false,
+  -- onboarding fields (added via migration 20260412100000)
+  goal_weight_kg numeric,
+  plan_pace text default 'steady',
+  nutrition_strategy text default 'balanced',
+  calorie_schedule text default 'even',
+  high_days jsonb,
+  fasting_enabled boolean default false,
+  fasting_window text,
+  onboarding_completed boolean default false,
+  dietary_restrictions jsonb,
+  notification_prefs jsonb
 );
 
 alter table public.profiles enable row level security;

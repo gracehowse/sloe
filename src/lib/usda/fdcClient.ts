@@ -8,6 +8,11 @@ export type FdcFoodSearchHit = {
   dataType?: string;
   brandName?: string;
   score?: number;
+  /** Inline macros extracted from search results (per 100g) */
+  calories?: number;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
 };
 
 export type FdcNutrient = {
@@ -59,7 +64,7 @@ export async function fdcFoodsSearch(
   const url = new URL(`${API_BASE}/foods/search`);
   url.searchParams.set("api_key", cfg.apiKey);
 
-  const body: Record<string, unknown> = { query, pageSize: 25 };
+  const body: Record<string, unknown> = { query, pageSize: 10 };
   if (opts?.dataType?.length) {
     body.dataType = opts.dataType;
   }
@@ -84,13 +89,50 @@ export async function fdcFoodsSearch(
   return foods
     .map((f) => f as Partial<FdcFoodSearchHit>)
     .filter((f): f is FdcFoodSearchHit => typeof f.fdcId === "number" && typeof f.description === "string")
-    .map((f) => ({
-      fdcId: f.fdcId,
-      description: f.description,
-      dataType: typeof f.dataType === "string" ? f.dataType : undefined,
-      brandName: typeof f.brandName === "string" ? f.brandName : undefined,
-      score: typeof f.score === "number" ? f.score : undefined,
-    }));
+    .map((f) => {
+      // Extract inline nutrients from search results (per 100g).
+      // Match by nutrientNumber (stable across data types) OR nutrientName (fallback).
+      // Numbers: 1008/208 = Energy(kcal), 2047/2048 = Energy(kJ), 203 = Protein, 204 = Fat, 205 = Carbs
+      const nutrients = (f as any).foodNutrients as {
+        nutrientName?: string; value?: number; unitName?: string;
+        nutrientNumber?: string | number; nutrientId?: number;
+      }[] | undefined;
+      let calories: number | undefined;
+      let protein: number | undefined;
+      let fat: number | undefined;
+      let carbs: number | undefined;
+      if (Array.isArray(nutrients)) {
+        for (const n of nutrients) {
+          const name = (n.nutrientName ?? "").toLowerCase();
+          const val = n.value ?? 0;
+          const unit = (n.unitName ?? "").toLowerCase();
+          const num = String(n.nutrientNumber ?? n.nutrientId ?? "");
+
+          if (num === "1008" || num === "208" || (name === "energy" && unit === "kcal")) {
+            calories = Math.round(val);
+          } else if ((num === "2047" || num === "2048" || (name === "energy" && unit === "kj")) && calories == null) {
+            calories = Math.round(val / 4.184);
+          } else if (num === "203" || name === "protein") {
+            protein = Math.round(val * 10) / 10;
+          } else if (num === "204" || name.includes("total lipid") || name === "fat") {
+            fat = Math.round(val * 10) / 10;
+          } else if (num === "205" || name.includes("carbohydrate")) {
+            carbs = Math.round(val * 10) / 10;
+          }
+        }
+      }
+      return {
+        fdcId: f.fdcId,
+        description: f.description,
+        dataType: typeof f.dataType === "string" ? f.dataType : undefined,
+        brandName: typeof f.brandName === "string" ? f.brandName : undefined,
+        score: typeof f.score === "number" ? f.score : undefined,
+        calories,
+        protein,
+        fat,
+        carbs,
+      };
+    });
 }
 
 export async function fdcFoodGet(cfg: FdcConfig, fdcId: number): Promise<FdcFood | null> {

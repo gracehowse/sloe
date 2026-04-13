@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
+import { decodeEntities } from "@/lib/decodeEntities";
 import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -380,7 +381,7 @@ export default function VerifyScreen() {
         {ingredients.map((ing, i) => {
           const expanded = expandedIndex === i;
           const needsReview = !ing.isVerified || ing.confidence < 0.5;
-          const displayName = ing.matchedName ?? ing.name;
+          const displayName = decodeEntities(ing.matchedName ?? ing.name);
           const amountStr = ing.amount != null ? `${ing.amount}${ing.unit ? ` ${ing.unit}` : ""}` : "";
 
           return (
@@ -399,7 +400,7 @@ export default function VerifyScreen() {
                     {amountStr ? `${amountStr}, ` : ""}{ing.calories} calories
                   </Text>
                   {ing.matchedName && ing.matchedName !== ing.name && (
-                    <Text style={styles.ingOriginal}>"{ing.name}"</Text>
+                    <Text style={styles.ingOriginal}>"{decodeEntities(ing.name)}"</Text>
                   )}
                 </View>
                 <Text style={styles.ingCals}>{ing.calories}</Text>
@@ -558,6 +559,13 @@ export default function VerifyScreen() {
       <FoodSearchModal
         visible={searchIndex != null}
         initialQuery={searchIndex != null ? parseIngredientForSearch(ingredients[searchIndex]?.name ?? "").searchTerm : ""}
+        initialAmount={searchIndex != null ? ingredients[searchIndex]?.amount : null}
+        initialUnit={searchIndex != null ? ingredients[searchIndex]?.unit : null}
+        originalDescription={searchIndex != null ? [
+          ingredients[searchIndex]?.amount,
+          ingredients[searchIndex]?.unit,
+          ingredients[searchIndex]?.name,
+        ].filter(Boolean).join(" ") : null}
         onSelect={onFoodSelected}
         onClose={() => setSearchIndex(null)}
       />

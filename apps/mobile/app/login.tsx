@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as AppleAuthentication from "expo-apple-authentication";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
@@ -16,6 +18,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
@@ -23,11 +26,11 @@ export default function LoginScreen() {
     if (!session) { setOnboardingChecked(false); return; }
     supabase
       .from("profiles")
-      .select("target_calories")
+      .select("onboarding_completed")
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => {
-        setNeedsOnboarding(!data?.target_calories);
+        setNeedsOnboarding(!data?.onboarding_completed);
         setOnboardingChecked(true);
       });
   }, [session]);
@@ -95,6 +98,23 @@ export default function LoginScreen() {
       textAlign: "center",
       marginTop: Spacing.sm,
     },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: Spacing.md,
+    },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+    dividerText: { paddingHorizontal: Spacing.md, color: colors.textTertiary, fontSize: 12 },
+    appleBtn: {
+      backgroundColor: "#000",
+      paddingVertical: 16,
+      borderRadius: Radius.md,
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: Spacing.sm,
+    },
+    appleBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
   }), [colors]);
 
   if (!hasSupabaseConfig()) {
@@ -113,21 +133,69 @@ export default function LoginScreen() {
   }
 
   if (session && onboardingChecked) {
-    return <Redirect href={needsOnboarding ? "/profile" : "/(tabs)"} />;
+    return <Redirect href={needsOnboarding ? "/onboarding" : "/(tabs)"} />;
   }
   if (session && !onboardingChecked) {
     return null;
   }
 
-  async function onSignIn() {
+  async function onSubmit() {
+    setMessage(null);
+    if (!email.trim() || !password) {
+      setMessage("Enter your email and password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+        if (error) setMessage(error.message);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) {
+          // If user doesn't exist, suggest sign up
+          if (error.message.includes("Invalid login")) {
+            setMessage("No account found. Tap 'Create account' below to sign up.");
+          } else {
+            setMessage(error.message);
+          }
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onAppleSignIn() {
     setMessage(null);
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        setMessage("Apple Sign-In failed — no identity token received.");
+        setBusy(false);
+        return;
+      }
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
       });
       if (error) setMessage(error.message);
+    } catch (e: any) {
+      if (e?.code !== "ERR_REQUEST_CANCELED") {
+        setMessage("Apple Sign-In failed. Try email instead.");
+      }
     } finally {
       setBusy(false);
     }
@@ -166,17 +234,64 @@ export default function LoginScreen() {
 
         <Pressable
           style={[styles.btn, busy && styles.btnDisabled]}
-          onPress={() => void onSignIn()}
+          onPress={() => void onSubmit()}
           disabled={busy}
         >
-          <Text style={styles.btnText}>{busy ? "Signing in..." : "Sign In"}</Text>
+          <Text style={styles.btnText}>{busy ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Create Account" : "Sign In")}</Text>
         </Pressable>
 
         {message ? <Text style={styles.errorText}>{message}</Text> : null}
 
-        <Text style={styles.hint}>
-          Use the same email and password as the web app.
-        </Text>
+        <Pressable onPress={() => { setIsSignUp((v) => !v); setMessage(null); }}>
+          <Text style={styles.hint}>
+            {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Create one"}
+          </Text>
+        </Pressable>
+
+        {!isSignUp && (
+          <Pressable onPress={async () => {
+            if (!email.trim()) { setMessage("Enter your email first, then tap Forgot password."); return; }
+            setBusy(true);
+            const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+            setBusy(false);
+            if (error) { setMessage(error.message); return; }
+            setMessage("Password reset email sent. Check your inbox.");
+          }}>
+            <Text style={[styles.hint, { marginTop: 0 }]}>Forgot password?</Text>
+          </Pressable>
+        )}
+
+        {!isSignUp && (
+          <Pressable onPress={async () => {
+            if (!email.trim()) { setMessage("Enter your email to receive a magic link."); return; }
+            setBusy(true);
+            const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+            setBusy(false);
+            if (error) { setMessage(error.message); return; }
+            setMessage("Magic link sent! Check your email inbox.");
+          }}>
+            <Text style={[styles.hint, { color: Neon.purple }]}>Sign in with magic link</Text>
+          </Pressable>
+        )}
+
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Apple Sign-In */}
+        {Platform.OS === "ios" && (
+          <Pressable
+            style={[styles.appleBtn, busy && styles.btnDisabled]}
+            onPress={() => void onAppleSignIn()}
+            disabled={busy}
+          >
+            <Ionicons name="logo-apple" size={20} color="#fff" />
+            <Text style={styles.appleBtnText}>Continue with Apple</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );

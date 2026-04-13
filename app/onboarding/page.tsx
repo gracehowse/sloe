@@ -30,9 +30,9 @@ const ACTIVITY_LEVELS: Array<{ value: ActivityLevel; label: string; desc: string
 ];
 
 const GOALS: Array<{ value: Goal; label: string; desc: string }> = [
-  { value: "cut", label: "Cut", desc: "Fat loss (−15%)" },
-  { value: "maintain", label: "Maintain", desc: "Maintain (0%)" },
-  { value: "bulk", label: "Build", desc: "Lean gain (+10%)" },
+  { value: "lose", label: "Lose weight", desc: "Create a calorie deficit" },
+  { value: "health", label: "Eat healthier", desc: "Balanced nutrition" },
+  { value: "strength", label: "Build muscle", desc: "Higher protein targets" },
 ];
 
 const DIETARY_OPTIONS = [
@@ -69,7 +69,9 @@ export default function OnboardingPage() {
   const [heightIn, setHeightIn] = useState("7");
   const [weightLb, setWeightLb] = useState("143");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("moderate");
-  const [goal, setGoal] = useState<Goal>("maintain");
+  const [goal, setGoal] = useState<Goal>("health");
+  const [planPace, setPlanPace] = useState<"relaxed" | "steady" | "accelerated" | "vigorous">("steady");
+  const [nutritionStrategy, setNutritionStrategy] = useState<"balanced" | "high_protein" | "high_satisfaction" | "low_carb">("balanced");
   const [dietary, setDietary] = useState<string[]>([]);
   const [measurementSystem, setMeasurementSystem] = useState<"metric" | "imperial">("metric");
 
@@ -218,6 +220,8 @@ export default function OnboardingPage() {
           weight_kg: profile.weightKg,
           activity_level: profile.activityLevel,
           goal: profile.goal,
+          plan_pace: planPace,
+          nutrition_strategy: nutritionStrategy,
           dietary: profile.dietary,
           measurement_system: profile.measurementSystem,
           target_calories: targets.calories,
@@ -227,6 +231,7 @@ export default function OnboardingPage() {
           target_fiber_g: targets.fiber,
           target_water_ml: targets.waterMl,
           prefer_activity_adjusted_calories: preferActivityAdjustedCalories,
+          onboarding_completed: true,
         },
         { onConflict: "id" },
       );
