@@ -1,6 +1,11 @@
 /**
  * Smart meal planning algorithm.
  * Configurable slots, macro-aware scoring, portion scaling, and day variety.
+ *
+ * SYNC NOTE: The web uses an identical algorithm in src/lib/planning/generateMealPlan.ts.
+ * Changes to scoring, weights, or multiplier logic must be applied to both files.
+ * The two files use different recipe types (SimpleRecipe vs RecipeCard) but
+ * identical algorithmic logic.
  */
 
 export type SimpleRecipe = {
