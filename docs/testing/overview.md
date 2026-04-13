@@ -12,7 +12,7 @@
 
 ## Test Coverage
 
-### Unit Tests (23 files, 318 tests)
+### Unit Tests (26 files, 359 tests)
 
 | File | Tests | Covers |
 |------|-------|--------|
@@ -20,6 +20,9 @@
 | `classifyMealType.test.ts` | 22 | Meal type auto-classification |
 | `confidenceGating.test.ts` | 16 | Confidence thresholds for USDA/OFF/FatSecret match acceptance |
 | `pepperDisambiguation.test.ts` | 15 | Pepper spice vs vegetable disambiguation across parsing, weight, macros |
+| `measureToGramsCategories.test.ts` | 15 | Sauce/condiment defaults, grain defaults, cup densities, unknown unit fallback |
+| `fatsecretServing.test.ts` | 11 | FatSecret serving mass parsing, description fallback, metric preference |
+| `mealPlanSmartFeatures.test.ts` | 8 | Slot weighting, portion scaling, configurable slots, seeded randomness, variety |
 | `estimateIngredientMacros.test.ts` | 22 | Local macro estimation fallback |
 | `exportNutritionCsv.test.ts` | 6 | CSV export formatting |
 | `generateMealPlan.test.ts` | 29 | Meal plan algorithm output validity |
