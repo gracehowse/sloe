@@ -208,6 +208,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       }
       for (const item of data.items) {
         addLoggedMeal({
+          name: mealSlot,
           recipeTitle: item.name,
           time: mealSlot,
           calories: Math.round(item.calories),
@@ -240,6 +241,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       }
       for (const item of data.items) {
         addLoggedMeal({
+          name: mealSlot,
           recipeTitle: item.name,
           time: mealSlot,
           calories: Math.round(item.calories),

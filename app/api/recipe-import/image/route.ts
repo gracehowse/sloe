@@ -148,8 +148,17 @@ Rules:
     nutrition: nutrition
       ? {
           perServing: nutrition.perServing,
-          ingredientRows: nutrition.ingredientRows,
-          overallConfidence: nutrition.overallConfidence,
+          ingredientRows: nutrition.verified.map((v) => ({
+            name: v.resolved.name,
+            amount: v.resolved.amount,
+            unit: v.resolved.unit,
+            confidence: v.confidence,
+            source: v.source,
+            macros: v.macros,
+          })),
+          overallConfidence: nutrition.verified.length > 0
+            ? nutrition.verified.reduce((sum, v) => sum + v.confidence, 0) / nutrition.verified.length
+            : 0,
         }
       : null,
   });
