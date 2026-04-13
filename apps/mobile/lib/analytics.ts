@@ -25,15 +25,17 @@ export function getPostHogClient(): PostHog | null {
   return client;
 }
 
+type CaptureProps = NonNullable<Parameters<PostHog["capture"]>[1]>;
+
 export function track(
   event: AnalyticsEventName,
   props?: Record<string, unknown>,
 ): void {
-  getPostHogClient()?.capture(event, props);
+  getPostHogClient()?.capture(event, props as CaptureProps);
 }
 
 export function identify(userId: string, traits?: Record<string, unknown>): void {
-  getPostHogClient()?.identify(userId, traits);
+  getPostHogClient()?.identify(userId, traits as CaptureProps);
 }
 
 export function reset(): void {

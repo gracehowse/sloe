@@ -179,7 +179,7 @@ export default function ImportSharedScreen() {
       const recipe: ApiImportedRecipe = {
         title: data.title ?? "Photo Import",
         ingredients: data.ingredients,
-        steps: data.steps ?? [],
+        instructions: data.steps?.length ? data.steps : undefined,
         servings: 1,
         calories: data.nutrition?.perServing?.calories ?? null,
         protein: data.nutrition?.perServing?.protein ?? null,

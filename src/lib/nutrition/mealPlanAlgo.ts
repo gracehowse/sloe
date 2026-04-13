@@ -15,7 +15,8 @@ export type SimpleRecipe = {
   protein: number;
   carbs: number;
   fat: number;
-  mealType?: string | string[] | null;
+  /** Slot tags from DB/UI; readonly tuples (e.g. mobile `PlannerMealSlot[]`) are accepted. */
+  mealType?: string | readonly string[] | string[] | null;
 };
 
 export type PlannerTargets = {
@@ -64,8 +65,8 @@ function mulberry32(seed: number): () => number {
 function recipeFitsSlot(recipe: SimpleRecipe, slot: string): boolean {
   const raw = recipe.mealType;
   const tags: string[] = Array.isArray(raw)
-    ? raw.map((t) => t.toLowerCase().trim())
-    : raw
+    ? raw.map((t) => String(t).toLowerCase().trim())
+    : typeof raw === "string"
       ? [raw.toLowerCase().trim()]
       : [];
   if (tags.length === 0) return true;

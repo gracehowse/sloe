@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
+import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -50,7 +51,7 @@ export default function BarcodeScreen() {
 
   return (
     <View style={styles.fill}>
-      <CameraView
+      <BarcodeCameraView
         style={styles.camera}
         facing="back"
         barcodeScannerEnabled

@@ -1,4 +1,4 @@
-import type { LoggedMeal } from "@/types/recipe";
+import type { LoggedMeal } from "../../types/recipe";
 
 export function dateKeyFromDate(d: Date): string {
   const y = d.getFullYear();

@@ -7,7 +7,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
+import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Neon, Spacing, Radius } from "@/constants/theme";
@@ -174,7 +175,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
         ) : (
           <>
             <View style={styles.cameraWrap}>
-              <CameraView
+              <BarcodeCameraView
                 style={styles.camera}
                 facing="back"
                 barcodeScannerEnabled={!scanned}

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { computeAdaptiveTDEE } from "./adaptiveTdee.ts";
+import { computeAdaptiveTDEE } from "./adaptiveTdee";
 
 const THROTTLE_MS = 6 * 60 * 60 * 1000;
 

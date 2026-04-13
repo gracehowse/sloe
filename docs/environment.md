@@ -30,6 +30,8 @@ Without these, auth and data sync will not work.
 
 If unset, rate limits fall back to in-memory (weak on serverless cold starts).
 
+**Production:** Set both Upstash variables on Vercel (production **and** preview if you want consistent limits across preview deployments). Without them, each serverless instance uses its own in-memory counter, so abuse protection is weaker under load or across regions. Confirm in the Vercel project dashboard that the REST URL matches your Upstash database and that the token is not expired.
+
 ## Optional: nutrition / import APIs
 
 | Variable | Purpose |

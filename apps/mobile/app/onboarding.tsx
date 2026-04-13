@@ -25,7 +25,7 @@ import { supabase } from "@/lib/supabase";
 import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
-} from "../../../src/constants/dietaryPreferences.ts";
+} from "../../../src/constants/dietaryPreferences";
 import {
   calculateTDEE,
   calculateBudget,

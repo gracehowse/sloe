@@ -5,6 +5,7 @@ import Purchases, {
 } from "react-native-purchases";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const API_KEY_IOS =
   Constants.expoConfig?.extra?.revenuecatAppleKey ??
@@ -82,13 +83,12 @@ export function resolvedTier(info: CustomerInfo): "free" | "base" | "pro" {
  */
 export async function syncTierToSupabase(
   info: CustomerInfo,
-  supabase: { from: (t: string) => { update: (d: Record<string, unknown>) => { eq: (col: string, val: string) => Promise<{ error: unknown }> } } },
+  supabase: SupabaseClient,
   userId: string,
 ): Promise<void> {
   const tier = resolvedTier(info);
-  try {
-    await supabase.from("profiles").update({ user_tier: tier }).eq("id", userId);
-  } catch {
-    // Non-critical — will retry on next app launch
+  const { error } = await supabase.from("profiles").update({ user_tier: tier }).eq("id", userId);
+  if (error && __DEV__) {
+    console.warn("[syncTierToSupabase]", error.message);
   }
 }

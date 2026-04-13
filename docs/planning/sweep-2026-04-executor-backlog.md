@@ -38,19 +38,19 @@
 | T6 | In-product AI disclosure | Photo/voice UI lacks third-party / transfer disclosure. | Short pre-action copy + link to privacy. | S | T3 | web (+ mobile if mirrored) | **Web + mobile:** tracker sheet + voice modal copy points to Privacy (More). | executor | legal-reviewer |
 | T7 | Adaptive TDEE persistence | `computeAdaptiveTDEE` tested but nothing writes `profiles.adaptive_*`. | Job or post-save hook persists when confidence rules pass. | M | T1 if tier affects feature | both | **Done:** `refreshAdaptiveTdeeForUser` after web journal insert/delete + mobile `nutrition_entries` upsert; 6h throttle; medium/high only. Types synced. | executor | nutrition-engine |
 | T8 | Dedupe `classifyMealType` | Two copies: `apps/mobile/lib` vs `src/lib/recipe-import`. | Single implementation in `src`; mobile re-export. | S | — | both | **Done:** `apps/mobile/lib/classifyMealType.ts` re-exports `src/lib/recipe-import/classifyMealType.ts`; `metro.config.js` watches monorepo root. | executor | code-quality |
-| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | **Lint done:** `npm run lint` in CI (0 errors; warnings remain). **`tsc --noEmit`** still deferred (separate type debt). | executor | release-gate |
+| T9 | CI: mobile | No lint/tsc for `apps/mobile` in CI. | Add job step: `npm ci` in `apps/mobile` + `expo lint` or `tsc --noEmit` if configured. | M | — | CI | **Done:** `npm run lint` + `npm run typecheck` (`tsc --noEmit`) in CI after mobile install. | executor | release-gate |
 | T10 | FAB sheet a11y | Absolute `Pressable` stack vs `Modal`; FAB no label. | `Modal` or RN sheet + `accessibilityLabel` / focus. | M | — | mobile | **Done:** `Modal` + FAB / action `accessibilityLabel`; Android `onRequestClose`. | executor | ui-product-designer |
 | T11 | Web date nav `aria-label` | ← → buttons unlabeled. | `aria-label="Previous day"` / `Next day`. | S | — | web | **Done** on `NutritionTracker`. | executor | qa-lead |
 | T12 | `VERIFY_STRICT` on release | `verify:production-env` always exits 0 in CI. | Enable `VERIFY_STRICT=1` on `main` or release workflow only. | S | — | CI | **Done:** `VERIFY_STRICT=1` when `github.event_name == push` and `ref == refs/heads/main`. | executor | release-gate |
 | T13 | Fasting cross-platform | Fasting UI mobile-only; onboarding may capture intent. | Minimal web surface or honest “use mobile” copy. | L | product call | both | **Done (MVP):** Help → fasting section + decision log `docs/decisions/2026-04-fasting-web-scope.md` (mobile-only timer). | planner → executor | journey-architect |
-| T14 | Brand token pass | Violet / purple / pink / rose drift. | Single accent system in theme + App shell. | M | — | both | **Partial:** `apps/mobile/constants/theme.ts` header documents violet/purple as primary + web parity note; full token doc / visual QA still optional. | executor | ui-product-designer |
+| T14 | Brand token pass | Violet / purple / pink / rose drift. | Single accent system in theme + App shell. | M | — | both | **Done:** `docs/ux/brand-tokens.md` (roles + code pointers); mobile theme header links to it. | executor | ui-product-designer |
 | T15 | Docs: FatSecret + Sentry | `docs/environment.md` wrong FatSecret names; `.env.example` missing `NEXT_PUBLIC_SENTRY_DSN`. | Align names; document both DSNs. | S | — | docs | **Done:** FatSecret consumer keys; `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_DSN` in docs and `.env.example`. | executor | docs-keeper |
 
 ### P2 — Hygiene
 
-- Subscription narrative doc + in-app copy (Stripe vs IAP): **product-lead** brief → **executor**.
-- Rate limit / Upstash production confirmation: **ops** + **security-reviewer**.
-- `pnpm.overrides` vs npm: **docs-keeper** + single package-manager story.
+- Subscription narrative doc + in-app copy (Stripe vs IAP): **Done** — `docs/product/subscriptions-stripe-and-iap.md` (web Stripe vs mobile IAP; Supabase tier as shared truth).
+- Rate limit / Upstash production confirmation: **Done** — production/preview note in `docs/environment.md` (Upstash section).
+- Package manager story: **Done** — `docs/operations/package-manager.md` (npm + lockfiles as source of truth).
 
 ---
 
@@ -74,8 +74,8 @@ T3 (privacy)   → T4 (mobile links)  } T4 can start after T3 draft
 
 ## 5. Open decisions (need product-lead before build)
 
-- Recipe `/recipe/[id]` auth-gated in middleware: intentional for SEO/share or change?
-- RevenueCat empty offerings: env-only vs product fallback copy?
+- Recipe `/recipe/[id]` auth-gated in middleware: **documented default** — keep auth-gated until SEO/share is prioritized; see `docs/decisions/2026-04-recipe-routes-auth-middleware.md`.
+- RevenueCat empty offerings: **documented** — env required for real IAP; paywall shows user-visible fallback when packages are empty; see `docs/decisions/2026-04-revenuecat-offerings-empty.md`.
 - Fasting on web: **resolved for MVP** — mobile-only timer; see `docs/decisions/2026-04-fasting-web-scope.md` (revisit if web parity is prioritized).
 
 ---

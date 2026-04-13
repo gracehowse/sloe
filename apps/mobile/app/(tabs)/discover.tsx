@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
@@ -307,7 +307,7 @@ export default function DiscoverScreen() {
                   hasLoggedMeal={hasLoggedMeal}
                   onGoDiscover={handleChecklistDiscover}
                   onGoPlanner={() => router.push("/(tabs)/planner")}
-                  onGoTracker={() => router.push("/(tabs)/index")}
+                  onGoTracker={() => router.push("/(tabs)/index" as Href)}
                 />
               </View>
             ) : null

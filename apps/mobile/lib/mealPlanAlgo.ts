@@ -2,8 +2,8 @@ export {
   generateSmartPlan,
   ALL_MEAL_SLOTS,
   type SimpleRecipe,
-  type MealPlanConfig,
   type PlannerTargets,
-  type PlannedDay,
-  type PlannedMeal,
+  type PlannerSlotConfig,
+  type DayPlan,
+  type PlanMeal,
 } from "../../../src/lib/nutrition/mealPlanAlgo";

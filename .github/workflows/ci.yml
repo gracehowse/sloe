@@ -62,6 +62,8 @@ jobs:
         run: npm ci
       - name: Mobile ESLint (errors fail; warnings allowed)
         run: npm run lint
+      - name: Mobile TypeScript
+        run: npm run typecheck
       - name: Shared classifyMealType re-export path
         run: grep -q 'from "../../../src/lib/recipe-import/classifyMealType"' lib/classifyMealType.ts
       - name: Shared refreshAdaptiveTdee re-export path
