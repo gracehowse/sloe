@@ -113,6 +113,24 @@ Some state is stored **only** in the browser's `localStorage` (`platemate-app-v1
 
 > **Why not sync named slots?** Meal plan slots contain full `DayPlan[]` arrays. Syncing every slot would mean writing large JSON blobs on every change. The active plan already syncs; additional slots are a convenience feature for local experimentation.
 
+## Generated TypeScript Types
+
+`src/lib/supabase/database.types.ts` and `apps/mobile/lib/database.types.ts` contain auto-generated types from the remote Supabase schema (`npx supabase gen types typescript --project-id <id>`). These are **not yet wired into the client** — the generated types are missing several tables that exist in migrations but haven't been applied to the remote DB:
+
+| Missing from generated types | Exists in |
+|------------------------------|-----------|
+| `author_follows` | Migration `20260408180000` |
+| `recipe_plan_add_events` | Migration `20260408180000` |
+| `creator_publish_notifications` | Migration `20260409140000` |
+| `meal_plan_days`, `meal_plan_meals` | Migration `20260413100000` |
+| `nutrition_entries` | Migration `20260413100000` |
+| `shopping_items` | Migration `20260413100000` |
+| `foods`, `food_sources`, `barcode_mappings` | Migration `20260408170000` |
+| `food_reports` | Migration `20260408170000` |
+| `profiles.target_fiber_g`, `profiles.target_water_ml` | Migration `20260412100000` |
+
+**To wire up**: apply all pending migrations to the remote DB, regenerate types, then add `<Database>` generic to `createBrowserClient` and `createClient` calls.
+
 ## Related Documents
 - [Technical Architecture](../technical/architecture.md)
 - [API Reference](../api/endpoints.md)
