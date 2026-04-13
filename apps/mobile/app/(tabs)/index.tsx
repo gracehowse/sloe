@@ -83,6 +83,8 @@ export default function TrackerScreen() {
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
+  /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
+  const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
@@ -278,17 +280,24 @@ export default function TrackerScreen() {
       totals.protein >= targets.protein;
 
     const map = targetHitPrevByDayRef.current;
+    const celebrated = targetsCelebratedForDayRef.current;
     const prev = map[dayKey];
     if (prev === undefined) {
       map[dayKey] = hit;
+      if (hit) celebrated[dayKey] = true;
       return;
     }
     if (!prev && hit) {
-      setTargetCelebration(true);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const t = setTimeout(() => setTargetCelebration(false), 2500);
+      if (!celebrated[dayKey]) {
+        setTargetCelebration(true);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        celebrated[dayKey] = true;
+        const t = setTimeout(() => setTargetCelebration(false), 2500);
+        map[dayKey] = hit;
+        return () => clearTimeout(t);
+      }
       map[dayKey] = hit;
-      return () => clearTimeout(t);
+      return;
     }
     map[dayKey] = hit;
   }, [

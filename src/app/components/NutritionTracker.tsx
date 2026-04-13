@@ -12,6 +12,7 @@ import {
   Camera,
   Mic,
   MoreHorizontal,
+  WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
@@ -198,6 +199,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [photoUploading, setPhotoUploading] = useState(false);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [voiceText, setVoiceText] = useState("");
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== "undefined" ? navigator.onLine : true,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sync = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    sync();
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -482,6 +498,17 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   return (
     <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
+      {!isOnline ? (
+        <div
+          role="alert"
+          className="mb-4 flex items-start gap-3 rounded-xl border border-violet-200 bg-violet-50/90 px-4 py-3 dark:border-violet-800 dark:bg-violet-950/40"
+        >
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {"You're offline. Logging and sync will resume when the connection is back."}
+          </p>
+        </div>
+      ) : null}
       {/* Dense day header — date, nav, primary add */}
       <div className="sticky top-0 z-20 -mx-1 mb-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-b from-white/95 to-white/80 pb-3 backdrop-blur-md dark:from-slate-950/95 dark:to-slate-950/80 px-1 pt-1">
         <div className="flex flex-wrap items-center justify-between gap-3">
