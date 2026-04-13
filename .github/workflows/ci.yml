@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
 
+# Cancel older runs when a new commit lands (avoids zombie jobs stuck on E2E, etc.)
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
