@@ -19,6 +19,13 @@ export default function HelpPage() {
             activity for that day.
           </p>
 
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Intermittent fasting timer</h2>
+          <p>
+            The fasting timer (start and end fasts, window presets, synced history) lives in the{" "}
+            <strong>Platemate mobile app</strong> under More → Fasting. This website does not include that screen yet; your
+            progress still syncs to your account if you use mobile.
+          </p>
+
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data quality</h2>
           <p>
             We aim to keep food and recipe info consistent and easy to trust. If you ever notice something off, treat it

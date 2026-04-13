@@ -57,6 +57,8 @@ describe("generateSmartPlan", () => {
       recipes: [breakfast, lunch, dinner1, dinner2, snack],
       targets,
       days: 3,
+      // Fixed seed — Date.now() can rarely pick the same optimal set for consecutive days (flaky CI).
+      seed: 0,
     });
     expect(plan.length).toBe(3);
     // With recency penalty of 40, at least one meal should differ between day 1 and day 2

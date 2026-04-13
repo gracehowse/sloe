@@ -1,5 +1,9 @@
 import { Platform } from 'react-native';
 
+/**
+ * Platemate brand accents (mobile). Primary actions: `Neon.violet` / `Neon.purple` (aligned with web Tailwind
+ * violet–indigo accents in the Next app). Use `Brand.gradient` for hero / marketing-style highlights only.
+ */
 /** Neon accent colors */
 export const Neon = {
   pink: '#ff2d78',
