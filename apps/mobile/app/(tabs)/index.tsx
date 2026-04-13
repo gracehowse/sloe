@@ -27,6 +27,7 @@ import DayStrip from "@/components/charts/DayStrip";
 import MacroRingSmall from "@/components/charts/MacroRingSmall";
 import { distributeMealBudget } from "@/lib/mealBudget";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -1298,8 +1299,11 @@ export default function TrackerScreen() {
           >
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>Voice Log</Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.lg }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.xs }}>
               Describe what you ate (e.g. "2 scrambled eggs and toast with butter")
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.lg }}>
+              {VOICE_LOG_NATIVE_BUILD_HINT}
             </Text>
             <TextInput
               style={{

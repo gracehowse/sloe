@@ -4,6 +4,7 @@ ALTER TABLE public.recipes ALTER COLUMN is_verified SET DEFAULT false;
 -- Tighten SELECT policy: anonymous/public users only see published recipes.
 -- Authors can always see their own (published or draft).
 DROP POLICY IF EXISTS "recipes_select_public" ON public.recipes;
+DROP POLICY IF EXISTS "recipes_select_published_or_own" ON public.recipes;
 CREATE POLICY "recipes_select_published_or_own" ON public.recipes FOR SELECT
   USING (published = true OR auth.uid() = author_id);
 

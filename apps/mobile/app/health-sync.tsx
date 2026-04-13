@@ -118,9 +118,12 @@ export default function HealthSyncScreen() {
       </View>
 
       {!available && (
-        <View style={[styles.card, { borderColor: Neon.orange + "40" }]}>
+        <View style={[styles.card, { borderColor: Neon.orange + "40", gap: Spacing.sm }]}>
           <Text style={{ fontSize: 14, color: Neon.orange, fontWeight: "600" }}>
-            Health sync requires a native build (EAS Build). It is not available in Expo Go.
+            Health sync needs a dev or production build — not Expo Go.
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+            Configure EAS for this app, run a development build for iOS or Android, install it on a real device, then open this screen again to grant Health permissions.
           </Text>
         </View>
       )}

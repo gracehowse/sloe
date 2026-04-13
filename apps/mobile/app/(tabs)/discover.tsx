@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   View,
@@ -37,6 +37,14 @@ export default function DiscoverScreen() {
   const { savedIds, toggleSave } = useSavedRecipes(userId);
   const { hasPlan, hasLoggedMeal, refresh: refreshChecklist } = useChecklistSignals(userId);
   const [search, setSearch] = useState("");
+  const listRef = useRef<FlatList<RecipeCard>>(null);
+  const searchInputRef = useRef<TextInput>(null);
+
+  const handleChecklistDiscover = useCallback(() => {
+    setSearch("");
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  }, []);
 
   /**
    * Instagram → Copy link or share often leaves the URL on the pasteboard; read on Discover focus.
@@ -268,6 +276,7 @@ export default function DiscoverScreen() {
       {/* Search */}
       <View style={styles.searchRow}>
         <TextInput
+          ref={searchInputRef}
           value={search}
           onChangeText={setSearch}
           placeholder="Search recipes..."
@@ -284,6 +293,7 @@ export default function DiscoverScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
@@ -295,7 +305,7 @@ export default function DiscoverScreen() {
                   savedCount={savedIds.size}
                   hasPlan={hasPlan}
                   hasLoggedMeal={hasLoggedMeal}
-                  onGoDiscover={() => {}}
+                  onGoDiscover={handleChecklistDiscover}
                   onGoPlanner={() => router.push("/(tabs)/planner")}
                   onGoTracker={() => router.push("/(tabs)/index")}
                 />

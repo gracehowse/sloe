@@ -9,6 +9,10 @@
  *   Then create a dev build (EAS Build).
  */
 
+/** Shown under the voice-log sheet when users type instead of dictating. */
+export const VOICE_LOG_NATIVE_BUILD_HINT =
+  "Expo Go: type here. For spoken dictation, use a dev build with expo-speech-recognition (EAS).";
+
 import { Platform } from "react-native";
 
 type SpeechModule = {
