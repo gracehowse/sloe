@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Code changed. Remember to update tests, docs, and check web/mobile parity.'"
+          }
+        ]
+      }
+    ]
+  }
+}

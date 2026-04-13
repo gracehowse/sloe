@@ -23,3 +23,23 @@ This is one product across web and mobile.
 - Strong state handling
 - Clear user journeys
 - No accidental divergence between platforms
+
+## Required workflow
+For any meaningful feature, fix, or change:
+1. Audit affected area
+2. Plan change
+3. Implement
+4. Check web/mobile parity
+5. Update tests
+6. Update documentation
+7. Re-audit or run release gate if appropriate
+
+## Nutrition-specific rules
+For ingredient matching:
+- parse ingredient
+- detect count vs weight vs household measure
+- infer sensible edible weight where safe
+- generate multiple candidate matches
+- validate nutrition plausibility
+- reject low-confidence matches
+- only ask for clarification when uncertainty materially affects nutrition

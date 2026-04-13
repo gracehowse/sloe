@@ -255,6 +255,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>(
     () => initial.extraWaterByDay ?? {},
   );
+  /** Guard: skip debounced write-back until the initial Supabase fetch resolves. */
+  const waterActivityLoadedRef = useRef(false);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
   const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
@@ -978,9 +980,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [selectedDateKey],
   );
 
-  // Sync water & activity burn data to Supabase (debounced)
+  // Sync water & activity burn data to Supabase (debounced).
+  // Skipped until the initial Supabase load resolves to avoid overwriting
+  // server data with stale localStorage values on a new device.
   useEffect(() => {
-    if (!authedUserId) return;
+    if (!authedUserId || !waterActivityLoadedRef.current) return;
     const t = setTimeout(() => {
       void supabase
         .from("profiles")
@@ -993,7 +997,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [authedUserId, extraWaterByDay, activityBurnByDay]);
 
-  // Load water & activity burn from Supabase on mount
+  // Load water & activity burn from Supabase on mount.
+  // Sets waterActivityLoadedRef so the debounced write-back only starts after
+  // server state is known (prevents stale localStorage from clobbering Supabase).
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
@@ -1010,6 +1016,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (data?.activity_burn_by_day && typeof data.activity_burn_by_day === "object") {
           setActivityBurnByDay(data.activity_burn_by_day as Record<string, number>);
         }
+        waterActivityLoadedRef.current = true;
       });
     return () => { cancelled = true; };
   }, [authedUserId]);

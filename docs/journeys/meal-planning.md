@@ -59,6 +59,9 @@ Each day shows:
   → Navigates to /shopping
 ```
 
+## Named Plan Slots
+Users can create, rename, and switch between multiple named plans (e.g. "This week", "Cut phase", "Bulk phase"). The active plan syncs to Supabase; **all other named slots live only in localStorage**. Switching devices or clearing browser data loses inactive slots. See [Data Schema — Client-only Data](../data/schema.md#client-only-data-localstorage) for details.
+
 ## Edge Cases
 - No saved recipes → alert with instructions to save from Discover
 - < 4 recipes → some slots may repeat; recency penalty minimises this

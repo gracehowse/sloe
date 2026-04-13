@@ -101,6 +101,17 @@ promo_codes ──< promo_redemptions ──── auth.users
 | `20260411200000` | Apr 11 | Ingredient micro-nutrients |
 | `20260412100000` | Apr 12 | Onboarding profile fields |
 | `20260412200000` | Apr 12 | meal_type text → text[] array |
+| `20260413200000` | Apr 13 | Profile `extra_water_by_day` + `activity_burn_by_day` JSONB |
+
+## Client-only Data (localStorage)
+
+Some state is stored **only** in the browser's `localStorage` (`platemate-app-v1` key) and is **not** synced to Supabase. This data will be lost when the user switches devices or clears browser storage.
+
+| Data | Key in snapshot | Cross-device? | Notes |
+|------|----------------|---------------|-------|
+| Named meal plan slots | `mealPlanSlots`, `activeMealPlanSlotId` | No | Only the **active** plan is synced to `meal_plans`. Other named slots and the slot index are local-only. |
+
+> **Why not sync named slots?** Meal plan slots contain full `DayPlan[]` arrays. Syncing every slot would mean writing large JSON blobs on every change. The active plan already syncs; additional slots are a convenience feature for local experimentation.
 
 ## Related Documents
 - [Technical Architecture](../technical/architecture.md)
