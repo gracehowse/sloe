@@ -926,17 +926,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      for (const dp of mealPlan) {
-        const { data: dayRow, error: dayErr } = await supabase
-          .from("meal_plan_days")
-          .insert({ user_id: authedUserId, slot_id: "default", day: dp.day })
-          .select("id")
-          .single();
+      // Bulk insert all days in one call to minimise partial-failure window.
+      const dayRows = mealPlan.map((dp) => ({
+        user_id: authedUserId,
+        slot_id: "default",
+        day: dp.day,
+      }));
+      const { data: insertedDays, error: dayInsertErr } = await supabase
+        .from("meal_plan_days")
+        .insert(dayRows)
+        .select("id, day");
 
-        if (dayErr || !dayRow) continue;
+      if (dayInsertErr || !insertedDays?.length) {
+        console.error("[mealPlan] bulk day insert failed:", dayInsertErr?.message);
+        return; // Don't insert orphan meals
+      }
 
-        const mealInserts = dp.meals.map((m, idx) => ({
-          plan_day_id: dayRow.id,
+      // Map day index → inserted row ID
+      const dayIdByDay = new Map(insertedDays.map((r) => [r.day as number, r.id as string]));
+
+      // Bulk insert all meals in one call
+      const allMealRows = mealPlan.flatMap((dp) => {
+        const dayId = dayIdByDay.get(dp.day);
+        if (!dayId) return [];
+        return dp.meals.map((m, idx) => ({
+          plan_day_id: dayId,
           slot_index: idx,
           name: m.name,
           recipe_title: m.recipeTitle,
@@ -947,9 +961,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           portion_multiplier: m.portionMultiplier ?? 1,
           is_placeholder: m.isPlaceholder ?? false,
         }));
+      });
 
-        if (mealInserts.length > 0) {
-          await supabase.from("meal_plan_meals").insert(mealInserts);
+      if (allMealRows.length > 0) {
+        const { error: mealErr } = await supabase.from("meal_plan_meals").insert(allMealRows);
+        if (mealErr) {
+          console.error("[mealPlan] bulk meal insert failed:", mealErr.message);
         }
       }
     }, 600);
