@@ -12,20 +12,33 @@
 
 ## Test Coverage
 
-### Unit Tests (10 files, 38 tests)
+### Unit Tests (23 files, 318 tests)
 
 | File | Tests | Covers |
 |------|-------|--------|
-| `calculateTargets.test.ts` | 1 | TDEE → macro target calculation |
-| `generateMealPlan.test.ts` | 1 | Meal plan algorithm output validity |
-| `imperial.test.ts` | 3 | kg↔lb, cm↔in conversion |
-| `parseIngredientLine.test.ts` | 8 | Ingredient text parsing (fractions, units, ranges) |
+| `calculateTargets.test.ts` | 10 | TDEE → macro target calculation |
+| `classifyMealType.test.ts` | 22 | Meal type auto-classification |
+| `confidenceGating.test.ts` | 16 | Confidence thresholds for USDA/OFF/FatSecret match acceptance |
+| `pepperDisambiguation.test.ts` | 15 | Pepper spice vs vegetable disambiguation across parsing, weight, macros |
+| `estimateIngredientMacros.test.ts` | 22 | Local macro estimation fallback |
+| `exportNutritionCsv.test.ts` | 6 | CSV export formatting |
+| `generateMealPlan.test.ts` | 29 | Meal plan algorithm output validity |
+| `imperial.test.ts` | 10 | kg↔lb, cm↔in conversion |
+| `measureToGrams.test.ts` | 38 | Count-to-weight normalisation |
+| `mealPlanAlgo.test.ts` | 9 | Mobile meal plan algorithm |
+| `mealPlanFingerprint.test.ts` | 6 | Plan fingerprint for shopping list sync |
+| `parseIngredientLine.test.ts` | 42 | Ingredient text parsing (fractions, units, ranges) |
+| `parseRecipeFromHtml.test.ts` | 17 | Recipe HTML/JSON-LD extraction |
 | `persistence.test.ts` | 4 | localStorage snapshot read/write |
-| `portionMultiplier.test.ts` | 3 | Portion scaling and day totals |
+| `portionMultiplier.test.ts` | 10 | Portion scaling and day totals |
+| `rateLimitFallback.test.ts` | 9 | In-memory rate limiter |
 | `shoppingDisplayGroups.test.ts` | 5 | Shopping item category grouping |
+| `shoppingListGeneration.test.ts` | 10 | Shopping list generation from plan |
 | `smartSuggestions.test.ts` | 2 | Recipe suggestion scoring |
 | `stripeTier.test.ts` | 3 | Stripe price ID → tier mapping |
-| `trackerStats.test.ts` | 3 | Daily macro aggregation |
+| `tdee.test.ts` | 11 | TDEE calculation |
+| `trackerStats.test.ts` | 15 | Daily macro aggregation, streaks, fiber/water hits |
+| `usdaNormalize.test.ts` | 5 | USDA nutrient extraction and kJ→kcal conversion |
 
 ### Integration Tests (2 files)
 
@@ -49,6 +62,7 @@
 |------|--------|------|
 | AppDataContext (central state) | No tests | High — most complex logic |
 | Recipe import pipeline | No happy-path test | Medium — requires API keys |
+| Verification pipeline (end-to-end) | Unit tests for confidence gating only | Medium — full pipeline requires API mocks |
 | RecipeDetail component | No tests | Medium |
 | Mobile screens | No tests | Medium |
 | Offline cache | No tests | Low |

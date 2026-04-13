@@ -122,15 +122,38 @@ Ingredient list + servings
       2. Normalise query (strip prep words, extract paren hints)
       3. Search USDA FDC (Foundation/SR Legacy first, then Branded)
       4. Rank by confidenceForMatch() (recall + precision + first-word bonus)
-      5. Fetch top candidate's full food data
-      6. Use USDA food portions for gram weight when available
-      7. Fall back to OFF text search if no USDA match
-      8. Fall back to FatSecret if no OFF match
-      9. Fall back to local estimation (60+ staples with fiber)
+      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.25) — fall through
+      6. Fetch top candidate's full food data
+      7. Use USDA food portions for gram weight when available
+      8. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.4)
+      9. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.25)
+      10. Fall back to local estimation (60+ staples with fiber)
     → Sum per-ingredient macros for recipe total
     → Divide by servings for per-serving values
   ← Return verified[], totals, perServing, sourceCounts
 ```
+
+#### Confidence Policy
+
+All external nutrition sources must meet a minimum confidence threshold before their match is accepted. Matches below the threshold are silently skipped — the pipeline falls through to the next source or to local estimation.
+
+| Source | Threshold | Rationale |
+|--------|-----------|-----------|
+| USDA FDC | `MIN_MATCH_CONFIDENCE` (0.25) | Foundation/SR Legacy names are standardised; low scores indicate genuine mismatch |
+| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.40) | Product names contain brand/variant noise that inflates false positives |
+| FatSecret | `MIN_MATCH_CONFIDENCE` (0.25) | Similar to USDA — standardised food names |
+
+Constants are exported from `src/lib/nutrition/verifyIngredients.ts`. Tests in `tests/unit/confidenceGating.test.ts`.
+
+#### Pepper Disambiguation
+
+Bare "pepper" in a recipe (e.g., "salt and pepper") is the spice black pepper (251 kcal/100g, ~3g per use). Colour-qualified peppers ("red pepper", "green pepper", "bell pepper") are vegetables (~31 kcal/100g, ~110g each). This distinction is enforced at three layers:
+
+1. **Parsing** (`parseIngredientLine`): only colour-qualified peppers are treated as countable whole items (assigned `unit: "medium"`)
+2. **Weight** (`measureToGrams`, `countableGrams`): colour-qualified peppers → 110g; bare "pepper" → 3g (spice)
+3. **Macros** (`estimateIngredientMacros` STAPLES): `"red pepper"`, `"green pepper"`, etc. resolve to bell pepper profile; bare `"pepper"` resolves to black pepper
+
+Tests in `tests/unit/pepperDisambiguation.test.ts`.
 
 ### Meal Planning
 ```

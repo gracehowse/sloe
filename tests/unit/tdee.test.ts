@@ -156,9 +156,9 @@ describe("calculateBudget edge cases", () => {
     expect(budget).toBeGreaterThan(2000);
   });
 
-  it("bulk with old 'strength' alias still works", () => {
-    const budget = calculateBudget(2000, "steady", "strength");
-    expect(budget).toBeGreaterThan(2000);
+  it("unrecognized goal falls through to deficit (safe default)", () => {
+    const budget = calculateBudget(2000, "steady", "nonsense");
+    expect(budget).toBeLessThan(2000);
   });
 });
 

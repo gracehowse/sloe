@@ -63,6 +63,7 @@ User logs food throughout the day, tracks progress against their calorie and mac
 
 ### Deleting Food
 Long-press any logged entry → confirmation dialog → removes from journal.
+Both web and mobile issue a `DELETE` against `nutrition_entries` so the removal persists across sessions and devices.
 
 ### Date Navigation
 - `‹` and `›` arrows to move between days
@@ -101,9 +102,11 @@ Long-press any logged entry → confirmation dialog → removes from journal.
 - Weekly average calculated from days with logged food only
 
 ## Data Storage
-- Stored in `nutrition_journals` table as JSON blob keyed by date (`YYYY-MM-DD`)
-- Each entry: `{ id, name (slot), recipeTitle, time, calories, protein, carbs, fat }`
-- Debounced sync to Supabase (600ms delay)
+- Primary: `nutrition_entries` relational table (one row per logged meal)
+- Fallback: `nutrition_journals` legacy JSON blob keyed by date (`YYYY-MM-DD`)
+- Each entry: `{ id, name (slot), recipeTitle, time, calories, protein, carbs, fat, fiberG, waterMl, portionMultiplier }`
+- Additions: debounced upsert to Supabase (600ms delay)
+- Deletions: immediate `DELETE` by entry ID on both web and mobile
 
 ## Related Documents
 - [Journey: Meal Planning](meal-planning.md)

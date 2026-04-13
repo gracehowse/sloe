@@ -66,9 +66,10 @@ export function calculateTDEE(
   return Math.round(bmr * ACTIVITY_MULTIPLIERS[activity]);
 }
 
-/** Calculate daily calorie budget for a given plan pace. No clamping — returns the real number. */
+/** Calculate daily calorie budget for a given plan pace. No clamping — returns the real number.
+ *  Accepts both DB values (cut/maintain/bulk) and onboarding UI labels (lose/health/strength). */
 export function calculateBudget(tdee: number, pace: PlanPace, goalType: string): number {
-  if (goalType === "gain" || goalType === "strength" || goalType === "bulk") {
+  if (goalType === "bulk" || goalType === "strength" || goalType === "gain") {
     return Math.round(tdee + PACE_DAILY_DEFICIT[pace] * 0.5);
   }
   if (goalType === "maintain" || goalType === "health") {
@@ -152,7 +153,7 @@ export function planOptions(tdee: number, currentKg: number, goalKg: number, goa
   const paces: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
   return paces.map((pace) => {
     const budget = calculateBudget(tdee, pace, goalType);
-    const weeks = goalType === "lose" ? weeksToGoal(currentKg, goalKg, pace) : 0;
+    const weeks = (goalType === "cut" || goalType === "lose") ? weeksToGoal(currentKg, goalKg, pace) : 0;
     const safety = budgetSafety(budget, sex);
     return {
       pace,

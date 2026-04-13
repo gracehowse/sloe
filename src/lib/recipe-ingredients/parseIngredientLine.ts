@@ -228,7 +228,10 @@ function isCountableWholeItem(name: string): boolean {
   const n = name.toLowerCase().replace(/,.*$/, "").trim();
   const COUNTABLE_ITEMS = [
     // Vegetables
-    /\bpeppers?\b/, /\bonions?\b/, /\bcarrots?\b/, /\bpotato(?:es)?\b/, /\btomato(?:es)?\b/,
+    // Peppers: only colour/type-qualified peppers are countable produce.
+    // Bare "pepper" is a spice — should NOT get "medium" unit.
+    /\b(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?\b/,
+    /\bonions?\b/, /\bcarrots?\b/, /\bpotato(?:es)?\b/, /\btomato(?:es)?\b/,
     /\bcourgettes?\b/, /\bzucchinis?\b/, /\baubergines?\b/, /\beggplants?\b/,
     /\bcucumbers?\b/, /\bavocados?\b/, /\bsweet potato(?:es)?\b/, /\bbeetroots?\b/,
     /\bturnips?\b/, /\bparsnips?\b/, /\bleeks?\b/, /\bfennels?\b/, /\bceleriac\b/,

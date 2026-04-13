@@ -38,7 +38,7 @@ type FullRecipe = {
   fiber_g: number;
   sugar_g: number;
   sodium_mg: number;
-  meal_type: string | null;
+  meal_type: string[] | null;
   source_url: string | null;
   source_name: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
@@ -358,9 +358,9 @@ export default function RecipeDetailScreen() {
           {recipe.author?.display_name && (
             <Text style={styles.authorName}>by {recipe.author.display_name}</Text>
           )}
-          {recipe.meal_type && (
+          {recipe.meal_type && recipe.meal_type.length > 0 && (
             <View style={styles.mealTypeBadge}>
-              <Text style={styles.mealTypeText}>{recipe.meal_type}</Text>
+              <Text style={styles.mealTypeText}>{recipe.meal_type.join(", ")}</Text>
             </View>
           )}
 

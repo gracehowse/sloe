@@ -30,9 +30,9 @@ const ACTIVITY_LEVELS: Array<{ value: ActivityLevel; label: string; desc: string
 ];
 
 const GOALS: Array<{ value: Goal; label: string; desc: string }> = [
-  { value: "lose", label: "Lose weight", desc: "Create a calorie deficit" },
-  { value: "health", label: "Eat healthier", desc: "Balanced nutrition" },
-  { value: "strength", label: "Build muscle", desc: "Higher protein targets" },
+  { value: "cut", label: "Lose weight", desc: "Create a calorie deficit" },
+  { value: "maintain", label: "Eat healthier", desc: "Balanced nutrition" },
+  { value: "bulk", label: "Build muscle", desc: "Higher protein targets" },
 ];
 
 const DIETARY_OPTIONS = [
@@ -69,7 +69,7 @@ export default function OnboardingPage() {
   const [heightIn, setHeightIn] = useState("7");
   const [weightLb, setWeightLb] = useState("143");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("moderate");
-  const [goal, setGoal] = useState<Goal>("health");
+  const [goal, setGoal] = useState<Goal>("maintain");
   const [planPace, setPlanPace] = useState<"relaxed" | "steady" | "accelerated" | "vigorous">("steady");
   const [nutritionStrategy, setNutritionStrategy] = useState<"balanced" | "high_protein" | "high_satisfaction" | "low_carb">("balanced");
   const [dietary, setDietary] = useState<string[]>([]);

@@ -2,7 +2,8 @@ import type { UserTier } from "./recipe.ts";
 
 export type Sex = "male" | "female";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
-export type Goal = "lose" | "health" | "strength";
+/** Must match the DB check constraint: `goal in ('cut','maintain','bulk')`. */
+export type Goal = "cut" | "maintain" | "bulk";
 
 export interface MacroTargets {
   calories: number;

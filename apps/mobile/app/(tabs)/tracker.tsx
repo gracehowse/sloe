@@ -459,7 +459,21 @@ export default function TrackerScreen() {
       ...prev,
       [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
     }));
-  }, [dayKey]);
+
+    // Persist deletion to Supabase (relational table).
+    // Without this, the meal reappears on next app launch.
+    if (userId) {
+      void supabase
+        .from("nutrition_entries")
+        .delete()
+        .eq("id", mealId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("[tracker] delete meal failed:", error.message);
+          }
+        });
+    }
+  }, [dayKey, userId]);
 
   // Group meals by slot
   const mealGroups = useMemo(() => {

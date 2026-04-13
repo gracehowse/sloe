@@ -517,7 +517,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       setServings((row.servings as number) ?? 1);
       setPrepTime((row.prep_time_min as number) ?? 15);
       setCookTime((row.cook_time_min as number) ?? 30);
-      setMealType((row.meal_type as string) ?? "lunch");
+      const mt = row.meal_type;
+      setMealType(Array.isArray(mt) ? (mt[0] as string) ?? "lunch" : (mt as string) ?? "lunch");
       const d = row.dietary;
       setDietary(Array.isArray(d) ? (d as string[]) : []);
       const img = row.image_url as string | null;
@@ -791,7 +792,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             servings: s,
             prep_time_min: prepTime,
             cook_time_min: cookTime,
-            meal_type: mealType,
+            meal_type: [mealType],
             dietary,
             published: effectivePublished,
             is_verified: verifiedOk,

@@ -591,7 +591,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       feedCreatedAt: row.created_at as string,
       authorId: (row.author_id as string | null) ?? null,
       creatorId: (row.creator_id as string | null) ?? null,
-      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string | null }).meal_type),
+      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
     }));
 
     setUploadedRecipes(mapped);
@@ -633,7 +633,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       feedCreatedAt: row.created_at as string,
       authorId: (row.author_id as string | null) ?? null,
       creatorId: (row.creator_id as string | null) ?? null,
-      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string | null }).meal_type),
+      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
       isPublished: Boolean((row as { published?: boolean | null }).published),
     }));
     setMyLibraryRecipes(mapped);

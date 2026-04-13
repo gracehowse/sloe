@@ -43,7 +43,7 @@ The `recipes` table stores **per-serving** values (calories, protein, carbs, fat
 `meal_plans`, `nutrition_journals`, `shopping_lists` each store the entire user's data in a single JSON column. **This is explicitly Phase 0** and will need row-per-entry tables before scale.
 
 ### meal_type as text array
-`recipes.meal_type` is `text[]` (PostgreSQL array), not a single string. A recipe can be tagged with multiple meal types, e.g. `{lunch,dinner}`.
+`recipes.meal_type` is `text[]` (PostgreSQL array), not a single string. A recipe can be tagged with multiple meal types, e.g. `{lunch,dinner}`. Both `schema.sql` and all TypeScript casts reflect this as `string[]`. The `mealPlannerSlotsFromMealType()` function in `generateMealPlan.ts` handles both `string` and `string[]` defensively for backward compatibility.
 
 ### Two creator models
 - `creators` — external verified creator accounts (influencers, brands)

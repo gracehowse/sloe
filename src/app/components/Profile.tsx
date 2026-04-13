@@ -109,9 +109,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
   // Goal adjustments
   const goalAdjustments: Record<string, number> = {
-    lose: -0.15,
-    health: 0,
-    strength: 0.1,
+    cut: -0.15,
+    maintain: 0,
+    bulk: 0.1,
   };
 
   const bmr = calculateBMR();

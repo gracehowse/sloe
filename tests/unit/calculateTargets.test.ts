@@ -21,7 +21,7 @@ describe("calculateBmrMifflinStJeor", () => {
 });
 
 describe("calculateMacroTargets", () => {
-  const typicalFemale = { sex: "female" as const, age: 30, heightCm: 165, weightKg: 65, activityLevel: "moderate" as const, goal: "health" as const };
+  const typicalFemale = { sex: "female" as const, age: 30, heightCm: 165, weightKg: 65, activityLevel: "moderate" as const, goal: "maintain" as const };
 
   it("returns exact values for typical female, moderate, health goal", () => {
     const t = calculateMacroTargets(typicalFemale);
@@ -35,14 +35,14 @@ describe("calculateMacroTargets", () => {
     expect(t.waterMl).toBe(2145); // round(65*33)
   });
 
-  it("lose goal reduces calories by 15%", () => {
-    const t = calculateMacroTargets({ ...typicalFemale, goal: "lose" });
+  it("cut goal reduces calories by 15%", () => {
+    const t = calculateMacroTargets({ ...typicalFemale, goal: "cut" });
     const tdee = 1370.25 * 1.55;
     expect(t.calories).toBe(Math.round(tdee * 0.85));
   });
 
-  it("strength goal increases calories by 10%", () => {
-    const t = calculateMacroTargets({ ...typicalFemale, goal: "strength" });
+  it("bulk goal increases calories by 10%", () => {
+    const t = calculateMacroTargets({ ...typicalFemale, goal: "bulk" });
     const tdee = 1370.25 * 1.55;
     expect(t.calories).toBe(Math.round(tdee * 1.1));
   });
@@ -55,9 +55,9 @@ describe("calculateMacroTargets", () => {
   });
 
   it("fiber is clamped between 14 and 45", () => {
-    const low = calculateMacroTargets({ ...typicalFemale, activityLevel: "sedentary", goal: "lose", weightKg: 45 });
+    const low = calculateMacroTargets({ ...typicalFemale, activityLevel: "sedentary", goal: "cut", weightKg: 45 });
     expect(low.fiber).toBeGreaterThanOrEqual(14);
-    const high = calculateMacroTargets({ ...typicalFemale, activityLevel: "very_active", goal: "strength", weightKg: 120 });
+    const high = calculateMacroTargets({ ...typicalFemale, activityLevel: "very_active", goal: "bulk", weightKg: 120 });
     expect(high.fiber).toBeLessThanOrEqual(45);
   });
 

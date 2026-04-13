@@ -37,6 +37,13 @@ const STAPLES: Record<string, Staple> = {
   flour: { per100g: { calories: 364, protein: 10, carbs: 76, fat: 1, fiberG: 2.7 } },
   sugar: { per100g: { calories: 387, protein: 0, carbs: 100, fat: 0, fiberG: 0 } },
   salt: { per100g: { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 } },
+  "black pepper": { per100g: { calories: 251, protein: 10, carbs: 64, fat: 3.3, fiberG: 25.3 } },
+  "white pepper": { per100g: { calories: 296, protein: 10.4, carbs: 68, fat: 2.1, fiberG: 26.2 } },
+  "red pepper": { per100g: { calories: 31, protein: 1, carbs: 6, fat: 0.3, fiberG: 2.1 } },
+  "green pepper": { per100g: { calories: 20, protein: 0.9, carbs: 4.6, fat: 0.2, fiberG: 1.7 } },
+  "yellow pepper": { per100g: { calories: 27, protein: 1, carbs: 6.3, fat: 0.2, fiberG: 0.9 } },
+  "orange pepper": { per100g: { calories: 31, protein: 1, carbs: 6, fat: 0.3, fiberG: 2.1 } },
+  "sweet pepper": { per100g: { calories: 31, protein: 1, carbs: 6, fat: 0.3, fiberG: 2.1 } },
   pepper: { per100g: { calories: 251, protein: 10, carbs: 64, fat: 3.3, fiberG: 25.3 } },
   tomato: { per100g: { calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiberG: 1.2 } },
   potato: { per100g: { calories: 77, protein: 2, carbs: 17, fat: 0.1, fiberG: 2.2 } },
@@ -215,7 +222,9 @@ function countableGrams(name: string): number {
   if (/fillet|filet/i.test(n)) return 170;
   if (/steak/i.test(n)) return 225;
   if (/chop/i.test(n)) return 150;
-  if (/carrot|onion|potato|tomato|lemon|lime|pepper|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange/i.test(n)) return COUNT_WEIGHT_G.medium;
+  // Peppers: colour-qualified → vegetable (110g); bare "pepper" → spice (3g, handled below)
+  if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/i.test(n)) return COUNT_WEIGHT_G.medium;
+  if (/carrot|onion|potato|tomato|lemon|lime|apple|banana|courgette|zucchini|aubergine|eggplant|cucumber|avocado|beetroot|turnip|parsnip|leek|mango|peach|pear|orange/i.test(n)) return COUNT_WEIGHT_G.medium;
   if (/sausage/i.test(n)) return 50;
   // Small items
   if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|peanut/i.test(n)) return 5;

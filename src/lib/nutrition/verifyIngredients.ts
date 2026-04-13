@@ -45,6 +45,18 @@ export type IngredientOverride = {
   description?: string;
 };
 
+/**
+ * Minimum confidence score required to accept a match from any external source.
+ * Matches below this threshold are skipped — the pipeline falls through to the
+ * next source or to the local estimation fallback.
+ * See: CLAUDE.md → "reject low-confidence matches".
+ */
+export const MIN_MATCH_CONFIDENCE = 0.25;
+
+/** Minimum confidence for Open Food Facts (higher because OFF product names are
+ *  noisier and often include brand/variant text that inflates false positives). */
+export const MIN_OFF_CONFIDENCE = 0.4;
+
 function resolveLine(i: { name: string; amount: string; unit: string }) {
   const trimmed = { name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim() };
   if (!trimmed.amount) {
@@ -80,7 +92,7 @@ function stem(word: string): string {
   return word;
 }
 
-function confidenceForMatch(query: string, candidateName: string): number {
+export function confidenceForMatch(query: string, candidateName: string): number {
   const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
   const c = candidateName.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
   if (!q || !c) return 0;
@@ -450,6 +462,7 @@ export async function verifyIngredients(opts: {
             })
             .slice(0, 5);
           for (const { hit, conf } of ranked) {
+            if (conf < MIN_MATCH_CONFIDENCE) break; // sorted desc — no better hits after this
             try {
               const food = await fdcFoodGet(usdaCfg, hit.fdcId);
               if (!food?.foodNutrients?.length) continue;
@@ -501,7 +514,7 @@ export async function verifyIngredients(opts: {
             .map((h) => ({ hit: h, conf: confidenceForMatch(query, [h.brand, h.name].filter(Boolean).join(" ")) }))
             .sort((a, b) => b.conf - a.conf);
           const best = scored[0];
-          if (best && best.conf >= 0.3) {
+          if (best && best.conf >= MIN_OFF_CONFIDENCE) {
             const per100g = {
               calories: best.hit.calories,
               protein: best.hit.protein,
@@ -535,37 +548,39 @@ export async function verifyIngredients(opts: {
         const best = results[0] ?? null;
         if (best) {
           const conf = confidenceForMatch(query, best.food_name);
-          const food = await fatSecretFoodGet(fatsecretCfg, best.food_id);
-          const servingNode = food?.servings?.serving;
-          if (food && servingNode) {
-            const serving = pickBestServing(servingNode);
-            const perServing = normalizeServingToMacros(serving);
-            const servingG = servingMassGrams(serving) ?? 100;
-            const perGram = {
-              calories: perServing.calories / servingG,
-              protein: perServing.protein / servingG,
-              carbs: perServing.carbs / servingG,
-              fat: perServing.fat / servingG,
-              fiberG: perServing.fiberG / servingG,
-              sugarG: perServing.sugarG / servingG,
-              sodiumMg: perServing.sodiumMg / servingG,
-            };
-            verified.push({
-              input: raw, resolved,
-              fatSecretFoodId: best.food_id,
-              matchedName: best.food_name,
-              confidence: conf, source: "FatSecret",
-              macros: {
-                calories: Math.max(0, Math.round(perGram.calories * grams)),
-                protein: Math.max(0, Math.round(perGram.protein * grams * 10) / 10),
-                carbs: Math.max(0, Math.round(perGram.carbs * grams * 10) / 10),
-                fat: Math.max(0, Math.round(perGram.fat * grams * 10) / 10),
-                fiberG: Math.max(0, Math.round(perGram.fiberG * grams * 10) / 10),
-                sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
-                sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
-              },
-            });
-            fsFound = true;
+          if (conf >= MIN_MATCH_CONFIDENCE) {
+            const food = await fatSecretFoodGet(fatsecretCfg, best.food_id);
+            const servingNode = food?.servings?.serving;
+            if (food && servingNode) {
+              const serving = pickBestServing(servingNode);
+              const perServing = normalizeServingToMacros(serving);
+              const servingG = servingMassGrams(serving) ?? 100;
+              const perGram = {
+                calories: perServing.calories / servingG,
+                protein: perServing.protein / servingG,
+                carbs: perServing.carbs / servingG,
+                fat: perServing.fat / servingG,
+                fiberG: perServing.fiberG / servingG,
+                sugarG: perServing.sugarG / servingG,
+                sodiumMg: perServing.sodiumMg / servingG,
+              };
+              verified.push({
+                input: raw, resolved,
+                fatSecretFoodId: best.food_id,
+                matchedName: best.food_name,
+                confidence: conf, source: "FatSecret",
+                macros: {
+                  calories: Math.max(0, Math.round(perGram.calories * grams)),
+                  protein: Math.max(0, Math.round(perGram.protein * grams * 10) / 10),
+                  carbs: Math.max(0, Math.round(perGram.carbs * grams * 10) / 10),
+                  fat: Math.max(0, Math.round(perGram.fat * grams * 10) / 10),
+                  fiberG: Math.max(0, Math.round(perGram.fiberG * grams * 10) / 10),
+                  sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
+                  sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
+                },
+              });
+              fsFound = true;
+            }
           }
         }
       } catch (e) {

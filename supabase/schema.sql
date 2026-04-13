@@ -128,7 +128,7 @@ create table if not exists public.recipes (
   servings int not null default 1,
   prep_time_min int,
   cook_time_min int,
-  meal_type text,
+  meal_type text[],
   dietary jsonb,
   published boolean not null default false,
   is_verified boolean not null default true,

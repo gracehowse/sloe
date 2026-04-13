@@ -101,7 +101,11 @@ export function measureToGrams(input: MeasureInput): number {
     if (/steak/.test(name)) return amt * 225;
     if (/chop/.test(name)) return amt * 150;
     // Medium-sized whole produce
-    if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|pepper|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
+    // Peppers: colour-qualified → vegetable (110g); bare "pepper" → spice (3g, handled below)
+    if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) {
+      return amt * COUNT_WEIGHT_G.medium;
+    }
+    if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
       const per = /egg/.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
       return amt * per;
     }
