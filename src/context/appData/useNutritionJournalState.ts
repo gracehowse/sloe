@@ -26,6 +26,7 @@ type NutritionEntryRow = {
 };
 
 function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
+  const src = row.source;
   return {
     id: row.id,
     name: row.name,
@@ -38,6 +39,7 @@ function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
     fiberG: row.fiber_g ?? undefined,
     waterMl: row.water_ml ?? undefined,
     portionMultiplier: row.portion_multiplier ?? undefined,
+    ...(typeof src === "string" && src.trim() !== "" ? { source: src.trim() } : {}),
   };
 }
 

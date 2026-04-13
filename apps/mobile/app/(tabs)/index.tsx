@@ -33,7 +33,7 @@ import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import NutritionSourceBadge from "@/components/NutritionSourceBadge";
-import NetInfo from "@react-native-community/netinfo";
+import { subscribeOffline } from "@/lib/subscribeOffline";
 
 const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
 
@@ -86,15 +86,7 @@ export default function TrackerScreen() {
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const unsub = NetInfo.addEventListener((state) => {
-      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
-    });
-    void NetInfo.fetch().then((state) => {
-      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
-    });
-    return () => unsub();
-  }, []);
+  useEffect(() => subscribeOffline(setIsOffline), []);
 
   useEffect(() => {
     if (!activeFastStart) return;

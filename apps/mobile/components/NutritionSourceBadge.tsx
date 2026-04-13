@@ -5,8 +5,9 @@ import { Neon, Radius } from "@/constants/theme";
 type SourceTier = "verified" | "estimated" | "manual";
 
 function classifySource(source?: string | null): SourceTier {
-  if (!source) return "manual";
-  const s = source.toLowerCase();
+  if (source == null || typeof source !== "string") return "manual";
+  const s = source.trim().toLowerCase();
+  if (!s) return "manual";
   if (s.includes("usda") || s.includes("fdc") || s.includes("openfoodfacts") || s.includes("off")) return "verified";
   if (s.includes("ai") || s.includes("photo") || s.includes("voice") || s.includes("import") || s.includes("openai") || s.includes("recipe")) return "estimated";
   return "manual";
