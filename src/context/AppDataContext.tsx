@@ -1162,7 +1162,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return true;
     },
-    [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned],
+    [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned, uploadedRecipes, myLibraryRecipes],
   );
 
   const ensureRecipeInLibraryWithKind = useCallback(

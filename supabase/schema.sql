@@ -37,7 +37,12 @@ create table if not exists public.profiles (
   fasting_window text,
   onboarding_completed boolean default false,
   dietary_restrictions jsonb,
-  notification_prefs jsonb
+  notification_prefs jsonb,
+  -- progress / wellness (migration 20260414100000)
+  weight_kg_by_day jsonb not null default '{}'::jsonb,
+  steps_by_day jsonb not null default '{}'::jsonb,
+  daily_steps_goal int not null default 10000,
+  body_fat_pct numeric
 );
 
 alter table public.profiles enable row level security;
@@ -368,6 +373,17 @@ begin
     create policy "food_reports_insert_own"
     on public.food_reports for insert
     with check (auth.uid() = reporter_id);
+  end if;
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'food_reports'
+      and policyname = 'food_reports_select_own'
+  ) then
+    create policy "food_reports_select_own"
+    on public.food_reports for select
+    using (auth.uid() = reporter_id);
   end if;
 end $$;
 
@@ -872,6 +888,16 @@ begin
     create policy "recipe_plan_add_events_insert_own"
     on public.recipe_plan_add_events for insert
     with check (auth.uid() = user_id);
+  end if;
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recipe_plan_add_events'
+      and policyname = 'recipe_plan_add_events_select_own'
+  ) then
+    create policy "recipe_plan_add_events_select_own"
+    on public.recipe_plan_add_events for select
+    using (auth.uid() = user_id);
   end if;
 end $$;
 

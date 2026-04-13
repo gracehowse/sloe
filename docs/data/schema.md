@@ -102,6 +102,7 @@ promo_codes ──< promo_redemptions ──── auth.users
 | `20260412100000` | Apr 12 | Onboarding profile fields |
 | `20260412200000` | Apr 12 | meal_type text → text[] array |
 | `20260413200000` | Apr 13 | Profile `extra_water_by_day` + `activity_burn_by_day` JSONB |
+| `20260414200000` | Apr 14 | SELECT policies for `food_reports` + `recipe_plan_add_events` |
 
 ## Client-only Data (localStorage)
 
