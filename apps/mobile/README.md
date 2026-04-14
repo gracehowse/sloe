@@ -10,12 +10,38 @@ npm install
 npx expo start
 ```
 
-Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu. For a one-shot iOS run (starts Metro and installs/launches):
+Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu.
+
+### Physical iPhone (USB)
+
+1. Plug in the phone, unlock it, tap **Trust** if asked.
+2. In Xcode (after `npx expo prebuild` at least once): **Signing & Capabilities** → pick your **Team** so the dev build installs.
+3. From **`apps/mobile`**:
+
+   ```bash
+   npm run ios:device
+   ```
+
+   From the **repo root**:
+
+   ```bash
+   npm run mobile:ios:device
+   ```
+
+   That runs `expo run:ios --device`, builds, installs, and starts Metro.
+
+4. On the phone: **Settings → Platemate → Local Network → On** so Metro on your Mac is reachable. If it still won’t load JS, start Metro with a tunnel:
+
+   ```bash
+   npm run start:tunnel
+   ```
+
+   Then open the app again (or re-run `ios:device`).
+
+### Simulator (one command)
 
 ```bash
 npx expo run:ios
-# Physical device:
-npx expo run:ios --device
 ```
 
 ## “No script URL provided” / `unsanitizedScriptURLString = (null)`
