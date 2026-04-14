@@ -123,15 +123,17 @@ Ingredient list + servings
       2. Normalise query (strip prep words, extract paren hints)
       3. Search USDA FDC (Foundation/SR Legacy first, then Branded)
       4. Rank by confidenceForMatch() (recall + precision + first-word bonus)
-      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.25) — fall through
-      6. Fetch top candidate's full food data
-      7. Use USDA food portions for gram weight when available
-      8. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.4)
-      9. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.25)
-      10. Fall back to local estimation (60+ staples with fiber)
+      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.42) — fall through
+      6. Skip candidates with preparationStateMismatch (e.g. grilled vs raw-only FDC row)
+      7. Fetch top candidate's full food data
+      8. Reject scaled macros failing scaledMacrosPlausible (Atwater sanity)
+      9. Use USDA food portions for gram weight when available
+      10. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.52)
+      11. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.42)
+      12. Fall back to local estimation (60+ staples with fiber)
     → Sum per-ingredient macros for recipe total
     → Divide by servings for per-serving values
-  ← Return verified[], totals, perServing, sourceCounts
+  ← Return verified[], totals, perServing, sourceCounts, minIngredientConfidence, avgIngredientConfidence
 ```
 
 #### Confidence Policy
@@ -140,9 +142,9 @@ All external nutrition sources must meet a minimum confidence threshold before t
 
 | Source | Threshold | Rationale |
 |--------|-----------|-----------|
-| USDA FDC | `MIN_MATCH_CONFIDENCE` (0.25) | Foundation/SR Legacy names are standardised; low scores indicate genuine mismatch |
-| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.40) | Product names contain brand/variant noise that inflates false positives |
-| FatSecret | `MIN_MATCH_CONFIDENCE` (0.25) | Similar to USDA — standardised food names |
+| USDA FDC | `MIN_MATCH_CONFIDENCE` (0.42) | Stricter overlap bar; weak token matches fall through to OFF / estimate |
+| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.52) | Product names contain brand/variant noise that inflates false positives |
+| FatSecret | `MIN_MATCH_CONFIDENCE` (0.42) | Same name-overlap bar as USDA |
 
 Constants are exported from `src/lib/nutrition/verifyIngredients.ts`. Tests in `tests/unit/confidenceGating.test.ts`.
 

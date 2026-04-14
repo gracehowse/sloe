@@ -25,7 +25,7 @@ describe("verifyIngredients OFF (mocked search)", () => {
     searchOffProducts.mockResolvedValue([
       {
         code: "1234567890123",
-        name: "Olive oil extra virgin",
+        name: "Olive oil",
         brand: "",
         calories: 884,
         protein: 0,

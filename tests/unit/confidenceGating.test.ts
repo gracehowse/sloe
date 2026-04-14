@@ -10,6 +10,8 @@ import {
   confidenceForMatch,
   MIN_MATCH_CONFIDENCE,
   MIN_OFF_CONFIDENCE,
+  preparationStateMismatch,
+  scaledMacrosPlausible,
 } from "@/lib/nutrition/verifyIngredients";
 
 describe("confidenceForMatch", () => {
@@ -91,12 +93,12 @@ describe("confidenceForMatch", () => {
 });
 
 describe("threshold constants", () => {
-  it("MIN_MATCH_CONFIDENCE is 0.25", () => {
-    expect(MIN_MATCH_CONFIDENCE).toBe(0.25);
+  it("MIN_MATCH_CONFIDENCE is 0.42", () => {
+    expect(MIN_MATCH_CONFIDENCE).toBe(0.42);
   });
 
-  it("MIN_OFF_CONFIDENCE is 0.4", () => {
-    expect(MIN_OFF_CONFIDENCE).toBe(0.4);
+  it("MIN_OFF_CONFIDENCE is 0.52", () => {
+    expect(MIN_OFF_CONFIDENCE).toBe(0.52);
   });
 
   it("thresholds are reasonable (0 < threshold < 1)", () => {
@@ -104,5 +106,49 @@ describe("threshold constants", () => {
     expect(MIN_MATCH_CONFIDENCE).toBeLessThan(1);
     expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(0);
     expect(MIN_OFF_CONFIDENCE).toBeLessThan(1);
+  });
+});
+
+describe("scaledMacrosPlausible", () => {
+  it("accepts consistent chicken-scale macros", () => {
+    expect(
+      scaledMacrosPlausible({
+        calories: 120,
+        protein: 23,
+        carbs: 0,
+        fat: 2.6,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 45,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects impossible calorie vs macro split", () => {
+    expect(
+      scaledMacrosPlausible({
+        calories: 500,
+        protein: 5,
+        carbs: 5,
+        fat: 5,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("preparationStateMismatch", () => {
+  it("flags grilled query vs raw-only FDC description", () => {
+    expect(preparationStateMismatch("grilled chicken breast", "Chicken, breast, meat only, raw")).toBe(true);
+  });
+
+  it("allows plain chicken breast vs raw FDC row", () => {
+    expect(preparationStateMismatch("chicken breast", "Chicken, breast, meat only, raw")).toBe(false);
+  });
+
+  it("flags raw query vs cooked-only description", () => {
+    expect(preparationStateMismatch("raw chicken", "Chicken, breast, meat only, cooked, roasted")).toBe(true);
   });
 });

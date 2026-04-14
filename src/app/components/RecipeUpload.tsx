@@ -183,6 +183,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     totals: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
     perServing: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
     avgConfidence: number;
+    minConfidence: number;
     primarySource?: string;
   } | null>(null);
   const [lineOverrides, setLineOverrides] = useState<
@@ -654,6 +655,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             totals: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
             perServing: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
             primarySource?: string;
+            minIngredientConfidence?: number;
+            avgIngredientConfidence?: number;
           }
         | { ok?: false; message?: string; error?: string };
       if (!("ok" in data) || !data.ok) {
@@ -661,15 +664,29 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         return;
       }
       const avgConfidence =
-        data.verified.length > 0
-          ? Math.round(
-              (data.verified.reduce((acc, v) => acc + (Number.isFinite(v.confidence) ? v.confidence : 0), 0) /
-                data.verified.length) *
-                100,
-            ) / 100
-          : 0;
+        typeof data.avgIngredientConfidence === "number" && Number.isFinite(data.avgIngredientConfidence)
+          ? Math.round(data.avgIngredientConfidence * 100) / 100
+          : data.verified.length > 0
+            ? Math.round(
+                (data.verified.reduce((acc, v) => acc + (Number.isFinite(v.confidence) ? v.confidence : 0), 0) /
+                  data.verified.length) *
+                  100,
+              ) / 100
+            : 0;
+      const minConfidence =
+        typeof data.minIngredientConfidence === "number" && Number.isFinite(data.minIngredientConfidence)
+          ? data.minIngredientConfidence
+          : data.verified.length > 0
+            ? Math.min(...data.verified.map((v) => (Number.isFinite(v.confidence) ? v.confidence : 1)))
+            : 0;
       setVerifiedLines(data.verified);
-      setVerifiedTotals({ totals: data.totals, perServing: data.perServing, avgConfidence, primarySource: data.primarySource });
+      setVerifiedTotals({
+        totals: data.totals,
+        perServing: data.perServing,
+        avgConfidence,
+        minConfidence,
+        primarySource: data.primarySource,
+      });
       if (!opts?.silent) {
         toast.success(`Best-available nutrition calculated (${data.primarySource ?? provider})`, {
           description: `${data.perServing.calories} kcal · ${data.perServing.protein}P · ${data.perServing.carbs}C · ${data.perServing.fat}F per serving`,
@@ -797,7 +814,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             published: effectivePublished,
             is_verified: verifiedOk,
             verified_source: verifiedOk ? "FatSecret" : null,
-            verified_confidence: verifiedOk ? verifiedTotals.avgConfidence : null,
+            verified_confidence: verifiedOk ? verifiedTotals.minConfidence : null,
             verified_at: verifiedOk ? new Date().toISOString() : null,
             calories: chosenPerServing.calories,
             protein: chosenPerServing.protein,
@@ -1486,7 +1503,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   </div>
                   <p className="text-xs text-emerald-800/85 dark:text-emerald-400/85 mb-4">
               {verifiedTotals
-                ? `Auto-matched ingredients. Avg confidence: ${Math.round(verifiedTotals.avgConfidence * 100)}%`
+                ? `Auto-matched ingredients. Lowest line: ${Math.round(verifiedTotals.minConfidence * 100)}% · avg ${Math.round(verifiedTotals.avgConfidence * 100)}%`
                 : "Totals use the same estimates as save (including weight parsed from the name when amount is empty)."}
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-sm">

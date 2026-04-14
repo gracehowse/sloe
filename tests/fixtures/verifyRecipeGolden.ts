@@ -71,6 +71,8 @@ export function assertVerifyResultShape(r: VerifyResult): void {
   });
   expect(typeof r.primarySource).toBe("string");
   expect(r.sourceCounts).toEqual(expect.any(Object));
+  expect(typeof r.minIngredientConfidence).toBe("number");
+  expect(typeof r.avgIngredientConfidence).toBe("number");
 }
 
 export function expectPerServingMatchesTotals(r: VerifyResult, servings: number): void {
