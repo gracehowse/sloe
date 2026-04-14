@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Neon, Radius } from "@/constants/theme";
+import { Accent, Radius } from "@/constants/theme";
 
 type SourceTier = "verified" | "estimated" | "manual";
 
@@ -14,8 +14,8 @@ function classifySource(source?: string | null): SourceTier {
 }
 
 const CONFIG: Record<SourceTier, { label: string; abbr: string; color: string }> = {
-  verified: { label: "Verified", abbr: "✓", color: Neon.green },
-  estimated: { label: "Estimated", abbr: "~", color: Neon.yellow },
+  verified: { label: "Verified", abbr: "✓", color: Accent.success },
+  estimated: { label: "Estimated", abbr: "~", color: Accent.warning },
   manual: { label: "Manual", abbr: "✎", color: "#94a3b8" },
 };
 

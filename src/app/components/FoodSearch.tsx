@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search, Check, ChevronRight, Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog.tsx";
 import { Input } from "./ui/input.tsx";
 
@@ -373,7 +374,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
         {/* Search input */}
         <div className="px-6 pb-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Icons.search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => onChangeQuery(e.target.value)}
@@ -388,21 +389,21 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           {preview && scaled ? (
             <div className="space-y-4">
-              <button onClick={() => setPreview(null)} className="text-sm text-violet-600 hover:underline flex items-center gap-1">
-                <ChevronRight className="h-3 w-3 rotate-180" /> Back to results
+              <button onClick={() => setPreview(null)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Icons.forward className="h-3 w-3 rotate-180" /> Back to results
               </button>
 
-              <h3 className="font-semibold text-slate-900 dark:text-white">{preview.name}</h3>
+              <h3 className="font-semibold text-foreground">{preview.name}</h3>
 
               {originalDescription && (
-                <p className="text-sm italic text-slate-500 dark:text-slate-400 -mt-1">
+                <p className="text-sm italic text-muted-foreground -mt-1">
                   Recipe calls for: {originalDescription}
                 </p>
               )}
 
               {/* Serving size */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Serving size</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Serving size</p>
                 <div className="flex flex-wrap gap-1.5">
                   {preview.portions.map((p, i) => (
                     <button
@@ -414,12 +415,12 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                       })}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         preview.chosenPortion.label === p.label
-                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                          ? "border-success bg-success/15 text-success"
+                          : "border-border text-muted-foreground hover:border-border/80"
                       }`}
                     >
                       {p.label}
-                      {p.gramWeight !== 1 && <span className="block text-[10px] text-slate-400">{p.gramWeight}g</span>}
+                      {p.gramWeight !== 1 && <span className="block text-[10px] text-muted-foreground">{p.gramWeight}g</span>}
                     </button>
                   ))}
                 </div>
@@ -427,7 +428,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
 
               {/* Quantity */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Number of servings</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Number of servings</p>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setPreview((p) => {
@@ -435,7 +436,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                       const step = p.chosenPortion.label === "g" || p.chosenPortion.label === "ml" ? 5 : 0.25;
                       return { ...p, quantity: Math.max(0, Math.round((p.quantity - step) * 100) / 100) };
                     })}
-                    className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:bg-slate-50"
+                    className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted/60"
                   >
                     -
                   </button>
@@ -446,7 +447,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                       const num = parseFloat(e.target.value);
                       if (!isNaN(num) && num >= 0) setPreview((p) => p ? { ...p, quantity: num } : p);
                     }}
-                    className="w-20 text-center font-semibold border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 bg-transparent text-slate-900 dark:text-white"
+                    className="w-20 text-center font-semibold border border-border rounded-lg py-1.5 bg-transparent text-foreground"
                   />
                   <button
                     onClick={() => setPreview((p) => {
@@ -454,17 +455,17 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                       const step = p.chosenPortion.label === "g" || p.chosenPortion.label === "ml" ? 5 : 0.25;
                       return { ...p, quantity: Math.round((p.quantity + step) * 100) / 100 };
                     })}
-                    className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:bg-slate-50"
+                    className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted/60"
                   >
                     +
                   </button>
-                  <span className="text-sm text-slate-400">= {totalGrams}g</span>
+                  <span className="text-sm text-muted-foreground">= {totalGrams}g</span>
                 </div>
               </div>
 
               {/* Nutrition */}
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Nutrition</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Nutrition</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {[
                     ["Calories", `${scaled.calories} kcal`],
@@ -474,9 +475,9 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                     ...(scaled.fiberG > 0 ? [["Fibre", `${scaled.fiberG}g`]] : []),
                     ...(scaled.sugarG > 0 ? [["Sugar", `${scaled.sugarG}g`]] : []),
                   ].map(([label, val]) => (
-                    <div key={label} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-slate-500">{label}</span>
-                      <span className="font-medium text-slate-900 dark:text-white">{val}</span>
+                    <div key={label} className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium text-foreground">{val}</span>
                     </div>
                   ))}
                 </div>
@@ -484,9 +485,9 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
 
               <button
                 onClick={onConfirm}
-                className="w-full py-3 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
               >
-                <Check className="h-4 w-4" />
+                <Icons.check className="h-4 w-4" />
                 Use this
               </button>
             </div>
@@ -494,46 +495,46 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
             <>
               {loading && results.length === 0 && (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               )}
 
               {results.length > 0 && (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="divide-y divide-border">
                   {results.map((item) => (
                     <button
                       key={item.key}
                       onClick={() => onPickResult(item)}
                       disabled={loadingKey === item.key}
-                      className="w-full flex items-center gap-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-lg px-2 -mx-2"
+                      className="w-full flex items-center gap-3 py-3 text-left hover:bg-muted/60 transition-colors rounded-lg px-2 -mx-2"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          {item.verified && <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
-                          <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{item.name}</span>
+                          {item.verified && <Icons.check className="h-3.5 w-3.5 text-success shrink-0" />}
+                          <span className="text-sm font-medium text-foreground truncate">{item.name}</span>
                         </div>
                         {item.macrosPer100g && (
-                          <div className="flex gap-2 mt-0.5 text-[11px] text-slate-500">
+                          <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
                             <span>{item.macrosPer100g.calories} kcal</span>
-                            <span className="text-red-400">P:{item.macrosPer100g.protein}g</span>
-                            <span className="text-blue-400">C:{item.macrosPer100g.carbs}g</span>
-                            <span className="text-yellow-500">F:{item.macrosPer100g.fat}g</span>
+                            <span className="text-destructive">P:{item.macrosPer100g.protein}g</span>
+                            <span className="text-primary">C:{item.macrosPer100g.carbs}g</span>
+                            <span className="text-warning">F:{item.macrosPer100g.fat}g</span>
                           </div>
                         )}
                         {!item.macrosPer100g && item.calsPer100g != null && item.calsPer100g > 0 && (
-                          <span className="text-[11px] text-slate-500">{item.calsPer100g} kcal per 100g</span>
+                          <span className="text-[11px] text-muted-foreground">{item.calsPer100g} kcal per 100g</span>
                         )}
                         {!item.macrosPer100g && !(item.calsPer100g != null && item.calsPer100g > 0) && (
-                          <span className="text-xs text-slate-400">Tap for nutrition info</span>
+                          <span className="text-xs text-muted-foreground">Tap for nutrition info</span>
                         )}
                       </div>
                       {item.calsPer100g != null && item.calsPer100g > 0 && loadingKey !== item.key && (
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">{item.calsPer100g}</span>
+                        <span className="text-sm font-bold text-foreground tabular-nums">{item.calsPer100g}</span>
                       )}
                       {loadingKey === item.key ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       ) : (
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <Icons.forward className="h-4 w-4 text-muted-foreground" />
                       )}
                     </button>
                   ))}
@@ -541,7 +542,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
               )}
 
               {!loading && query.trim() && results.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-8">
+                <p className="text-sm text-muted-foreground text-center py-8">
                   No results for &quot;{query}&quot;. Try a simpler term.
                 </p>
               )}

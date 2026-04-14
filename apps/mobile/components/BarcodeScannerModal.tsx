@@ -11,7 +11,7 @@ import { useCameraPermissions } from "expo-camera";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, type BarcodeProduct } from "@/lib/verifyRecipe";
 
@@ -83,7 +83,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     centered: { alignItems: "center", justifyContent: "center", flex: 1, gap: Spacing.md, padding: Spacing.xl },
     permText: { color: colors.textSecondary, fontSize: 16, textAlign: "center" },
     permBtn: {
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xxl,
       paddingVertical: 14,
@@ -98,7 +98,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       width: "80%",
       height: "50%",
       borderWidth: 2,
-      borderColor: Neon.purple + "80",
+      borderColor: Accent.primary + "80",
       borderRadius: Radius.lg,
     },
     resultArea: { minHeight: 200, padding: Spacing.xl },
@@ -106,17 +106,17 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     errorText: { color: colors.textSecondary, fontSize: 14, textAlign: "center" },
     retryBtn: {
       borderWidth: 1,
-      borderColor: Neon.purple + "55",
+      borderColor: Accent.primary + "55",
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
     },
-    retryBtnText: { color: Neon.purple, fontWeight: "600" },
+    retryBtnText: { color: Accent.primary, fontWeight: "600" },
     productCard: {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Neon.green + "40",
+      borderColor: Accent.success + "40",
       padding: Spacing.xl,
       gap: Spacing.sm,
     },
@@ -131,7 +131,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      backgroundColor: Neon.green,
+      backgroundColor: Accent.success,
       borderRadius: Radius.md,
       paddingVertical: 14,
     },
@@ -188,14 +188,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
             <View style={styles.resultArea}>
               {loading && (
                 <View style={styles.centered}>
-                  <ActivityIndicator size="large" color={Neon.purple} />
+                  <ActivityIndicator size="large" color={Accent.primary} />
                   <Text style={styles.lookupText}>Looking up product...</Text>
                 </View>
               )}
 
               {error && (
                 <View style={styles.centered}>
-                  <Ionicons name="alert-circle" size={32} color={Neon.red} />
+                  <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
                   <Text style={styles.errorText}>{error}</Text>
                   <Pressable style={styles.retryBtn} onPress={onReset}>
                     <Text style={styles.retryBtnText}>Scan again</Text>

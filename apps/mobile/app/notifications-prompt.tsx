@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export default function NotificationsPromptScreen() {
@@ -34,14 +34,14 @@ export default function NotificationsPromptScreen() {
     },
     badge: {
       width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Neon.green + "15",
+      backgroundColor: Accent.success + "15",
       justifyContent: "center", alignItems: "center",
       marginBottom: Spacing.xl,
     },
     notifBadge: {
       position: "absolute", top: 0, right: 0,
       width: 28, height: 28, borderRadius: 14,
-      backgroundColor: Neon.red, justifyContent: "center", alignItems: "center",
+      backgroundColor: Accent.destructive, justifyContent: "center", alignItems: "center",
     },
     notifBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
     heading: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center", lineHeight: 30 },
@@ -51,7 +51,7 @@ export default function NotificationsPromptScreen() {
     },
     statBold: { fontWeight: "700", color: colors.text },
     enableBtn: {
-      backgroundColor: Neon.green, borderRadius: Radius.md,
+      backgroundColor: Accent.success, borderRadius: Radius.md,
       paddingVertical: 18, alignItems: "center", alignSelf: "stretch",
       marginTop: Spacing.xxxl,
     },
@@ -63,7 +63,7 @@ export default function NotificationsPromptScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.badge}>
-        <Ionicons name="notifications" size={48} color={Neon.green} />
+        <Ionicons name="notifications" size={48} color={Accent.success} />
         <View style={styles.notifBadge}>
           <Text style={styles.notifBadgeText}>1</Text>
         </View>

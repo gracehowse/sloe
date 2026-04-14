@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export default function LoginScreen() {
@@ -56,11 +56,11 @@ export default function LoginScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: Spacing.lg,
-      shadowColor: Neon.purple,
+      shadowColor: Accent.primary,
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.5,
       shadowRadius: 20,
@@ -69,7 +69,7 @@ export default function LoginScreen() {
     title: {
       fontSize: 26,
       fontWeight: "800",
-      color: Neon.purple,
+      color: Accent.primary,
       letterSpacing: 4,
     },
     tagline: {
@@ -89,7 +89,7 @@ export default function LoginScreen() {
       fontSize: 16,
     },
     btn: {
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       paddingVertical: 16,
       borderRadius: Radius.md,
       alignItems: "center",
@@ -97,7 +97,7 @@ export default function LoginScreen() {
     },
     btnDisabled: { opacity: 0.6 },
     btnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
-    errorText: { color: Neon.red, fontSize: 13, textAlign: "center" },
+    errorText: { color: Accent.destructive, fontSize: 13, textAlign: "center" },
     hint: {
       color: colors.tabIconDefault,
       fontSize: 13,
@@ -276,7 +276,7 @@ export default function LoginScreen() {
             if (error) { setMessage(error.message); return; }
             setMessage("Magic link sent! Check your email inbox.");
           }}>
-            <Text style={[styles.hint, { color: Neon.purple }]}>Sign in with magic link</Text>
+            <Text style={[styles.hint, { color: Accent.primary }]}>Sign in with magic link</Text>
           </Pressable>
         )}
 

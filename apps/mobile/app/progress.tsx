@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { MacroColors, Neon, Radius, Spacing } from "@/constants/theme";
+import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -314,7 +314,7 @@ export default function ProgressScreen() {
         headerTitle: {
           fontSize: 22,
           fontWeight: "800",
-          color: Neon.purple,
+          color: Accent.primary,
           letterSpacing: 3,
         },
         card: {
@@ -369,7 +369,7 @@ export default function ProgressScreen() {
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
         btn: {
-          backgroundColor: Neon.purple,
+          backgroundColor: Accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 12,
           alignItems: "center",
@@ -384,7 +384,7 @@ export default function ProgressScreen() {
         journeyFill: {
           height: 12,
           borderRadius: 6,
-          backgroundColor: Neon.purple,
+          backgroundColor: Accent.primary,
         },
       }),
     [colors],
@@ -442,7 +442,7 @@ export default function ProgressScreen() {
                 </View>
                 <View style={styles.stat}>
                   <Text
-                    style={[styles.statValue, { color: Neon.green }]}
+                    style={[styles.statValue, { color: Accent.success }]}
                   >
                     {goalWeightKg != null ? fmtW(goalWeightKg) : "—"}
                   </Text>
@@ -461,10 +461,10 @@ export default function ProgressScreen() {
                         : Math.round(goalWeightKg * 10) / 10
                       : undefined
                   }
-                  color={Neon.purple}
+                  color={Accent.primary}
                   labelColor={colors.textTertiary}
                   trackColor={colors.border}
-                  goalColor={Neon.green}
+                  goalColor={Accent.success}
                 />
               )}
 
@@ -537,7 +537,7 @@ export default function ProgressScreen() {
                         }
                         size={20}
                         color={
-                          journey.pct >= m ? Neon.green : colors.textTertiary
+                          journey.pct >= m ? Accent.success : colors.textTertiary
                         }
                       />
                       <Text
@@ -560,7 +560,7 @@ export default function ProgressScreen() {
                       style={{
                         fontSize: 14,
                         fontWeight: "700",
-                        color: Neon.purple,
+                        color: Accent.primary,
                         textAlign: "center",
                         marginTop: Spacing.sm,
                       }}
@@ -583,7 +583,7 @@ export default function ProgressScreen() {
                 </View>
                 <View style={styles.stat}>
                   <Text
-                    style={[styles.statValue, { color: Neon.green }]}
+                    style={[styles.statValue, { color: Accent.success }]}
                   >
                     {dailyStepsGoal.toLocaleString()}
                   </Text>
@@ -595,10 +595,10 @@ export default function ProgressScreen() {
                 <MiniBarChart
                   data={stepsData}
                   goalLine={dailyStepsGoal}
-                  color={Neon.green}
+                  color={Accent.success}
                   trackColor={colors.border}
                   labelColor={colors.textTertiary}
-                  goalColor={Neon.green}
+                  goalColor={Accent.success}
                 />
               )}
 

@@ -16,7 +16,7 @@ import { useRouter, type Href } from "expo-router";
 
 import { lookupBarcode, scaleMacros, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Neon, Spacing, Radius, Colors } from "@/constants/theme";
+import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
@@ -122,7 +122,7 @@ export default function BarcodeScreen() {
           width: "80%",
           height: "30%",
           borderWidth: 2,
-          borderColor: Neon.violet + "80",
+          borderColor: Accent.primary + "80",
           borderRadius: Radius.lg,
         },
         overlay: {
@@ -142,7 +142,7 @@ export default function BarcodeScreen() {
         permIcon: { marginBottom: Spacing.sm },
         permText: { color: colors.textSecondary, fontSize: 16, textAlign: "center", maxWidth: 280 },
         permBtn: {
-          backgroundColor: Neon.violet,
+          backgroundColor: Accent.primary,
           paddingHorizontal: Spacing.xxl,
           paddingVertical: 14,
           borderRadius: Radius.md,
@@ -180,7 +180,7 @@ export default function BarcodeScreen() {
           alignItems: "center",
           justifyContent: "center",
           gap: Spacing.sm,
-          backgroundColor: Neon.green,
+          backgroundColor: Accent.success,
           borderRadius: Radius.md,
           paddingVertical: 14,
         },
@@ -199,13 +199,13 @@ export default function BarcodeScreen() {
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
           borderWidth: 1,
-          borderColor: Neon.violet + "55",
+          borderColor: Accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.sm,
         },
-        retryBtnText: { color: Neon.violet, fontWeight: "600" },
+        retryBtnText: { color: Accent.primary, fontWeight: "600" },
       }),
     [colors, insets.bottom],
   );
@@ -213,7 +213,7 @@ export default function BarcodeScreen() {
   if (!permission) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Neon.violet} />
+        <ActivityIndicator size="large" color={Accent.primary} />
         <Text style={styles.permText}>Checking camera permission…</Text>
       </View>
     );
@@ -248,7 +248,7 @@ export default function BarcodeScreen() {
       <View style={styles.overlay}>
         {loading && (
           <>
-            <ActivityIndicator size="small" color={Neon.violet} />
+            <ActivityIndicator size="small" color={Accent.primary} />
             <Text style={styles.hint}>Looking up product…</Text>
           </>
         )}
@@ -310,7 +310,7 @@ export default function BarcodeScreen() {
 
         {error && (
           <>
-            <Ionicons name="alert-circle" size={32} color={Neon.red} style={styles.errorIcon} />
+            <Ionicons name="alert-circle" size={32} color={Accent.destructive} style={styles.errorIcon} />
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={resetScan} accessibilityLabel="Try scanning again">
               <Text style={styles.retryBtnText}>Try again</Text>

@@ -3,7 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const SOURCES = [
@@ -46,7 +46,7 @@ export default function NutritionSourcesScreen() {
           borderBottomColor: colors.border,
         },
         backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-        topTitle: { color: Neon.purple, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+        topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
         scroll: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 60 },
         heading: { fontSize: 22, fontWeight: "700", color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
@@ -60,7 +60,7 @@ export default function NutritionSourcesScreen() {
         },
         sourceName: { fontSize: 16, fontWeight: "700", color: colors.text },
         sourceDesc: { fontSize: 13, lineHeight: 20, color: colors.textSecondary },
-        sourceLink: { fontSize: 13, color: Neon.purple, fontWeight: "600", marginTop: Spacing.xs },
+        sourceLink: { fontSize: 13, color: Accent.primary, fontWeight: "600", marginTop: Spacing.xs },
         disclaimer: {
           fontSize: 12,
           lineHeight: 18,
@@ -95,7 +95,7 @@ export default function NutritionSourcesScreen() {
             <Text style={styles.sourceDesc}>{s.description}</Text>
             <Pressable onPress={() => Linking.openURL(s.url)}>
               <Text style={styles.sourceLink}>
-                {s.url.replace("https://", "")} <Ionicons name="open-outline" size={12} color={Neon.purple} />
+                {s.url.replace("https://", "")} <Ionicons name="open-outline" size={12} color={Accent.primary} />
               </Text>
             </Pressable>
           </View>

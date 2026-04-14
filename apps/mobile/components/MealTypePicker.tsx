@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const MEAL_OPTIONS = [
@@ -43,8 +43,8 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
               style={[
                 styles.chip,
                 {
-                  borderColor: active ? Neon.purple : colors.border,
-                  backgroundColor: active ? Neon.purple + "15" : "transparent",
+                  borderColor: active ? Accent.primary : colors.border,
+                  backgroundColor: active ? Accent.primary + "15" : "transparent",
                 },
               ]}
             >
@@ -53,7 +53,7 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
                 style={{
                   fontSize: 13,
                   fontWeight: active ? "700" : "500",
-                  color: active ? Neon.purple : colors.text,
+                  color: active ? Accent.primary : colors.text,
                 }}
               >
                 {opt.label}

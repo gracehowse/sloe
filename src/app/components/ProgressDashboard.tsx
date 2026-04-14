@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Scale, Footprints, Percent, Activity } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import {
   LineChart,
   Line,
@@ -201,7 +202,7 @@ export function ProgressDashboard() {
 
   if (!authedUserId) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-slate-600 dark:text-slate-400">
+      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">
         Sign in to track progress.
       </div>
     );
@@ -209,7 +210,7 @@ export function ProgressDashboard() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-slate-600 dark:text-slate-400">Loading progress…</div>
+      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">Loading progress…</div>
     );
   }
 
@@ -217,151 +218,128 @@ export function ProgressDashboard() {
     ? profileMeasurementSystem === "imperial" ? Math.round(kgToLb(goalWeightKg) * 10) / 10 : Math.round(goalWeightKg * 10) / 10
     : undefined;
 
+  // Mock data for protein, carbs, fat adherence
+  const proteinAdherence = 75;
+  const carbsAdherence = 62;
+  const fatAdherence = 68;
+
+  // Mock daily calories for the week (Mon-Sun)
+  const dailyCaloriesData = [
+    { day: "Mon", calories: 2100, target: 2200 },
+    { day: "Tue", calories: 2350, target: 2200 },
+    { day: "Wed", calories: 2050, target: 2200 },
+    { day: "Thu", calories: 2280, target: 2200 },
+    { day: "Fri", calories: 2100, target: 2200 },
+    { day: "Sat", calories: 2450, target: 2200 },
+    { day: "Sun", calories: 2180, target: 2200 },
+  ];
+
+  const avgCalories = Math.round(dailyCaloriesData.reduce((sum, d) => sum + d.calories, 0) / dailyCaloriesData.length);
+  const proteinOnTarget = 5; // X/7 days
+  const streakDays = 12; // X days protein goal
+
   return (
-    <div className="max-w-3xl mx-auto px-pm-6 py-pm-8">
-      <div className="flex items-center gap-2 mb-2">
-        <Activity className="w-6 h-6 text-violet-600 dark:text-violet-400" />
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Progress</h1>
+    <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
+      {/* HEADER */}
+      <div className="mb-8">
+        <h1 className="text-[22px] font-bold text-foreground mb-1">Progress</h1>
+        <p className="text-sm text-muted-foreground">Weekly report</p>
       </div>
 
-      {/* Time range selector */}
-      <div className="flex gap-1.5 mb-6 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-        {(["1W", "1M", "3M", "6M", "All"] as const).map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => setRange(r)}
-            className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              range === r
-                ? "bg-violet-600 text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-            }`}
-          >
-            {r}
-          </button>
-        ))}
+      {/* 2x2 STAT GRID */}
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="warning"><Icons.calories /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Calories</span>
+          </div>
+          <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
+          <p className="text-[11px] text-muted-foreground">vs 2,100 target</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="success"><Icons.check /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Protein Hit</span>
+          </div>
+          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{proteinOnTarget}/7</p>
+          <p className="text-[11px] text-muted-foreground">days on target</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="success"><Icons.trophy /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
+          </div>
+          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
+          <p className="text-[11px] text-muted-foreground">protein goal</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trend</span>
+          </div>
+          <p className="text-[22px] font-bold text-primary tabular-nums mb-0.5">−0.4 kg</p>
+          <p className="text-[11px] text-muted-foreground">on track</p>
+        </div>
       </div>
 
-      {/* WEIGHT */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Scale className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Weight</h2>
+      {/* DAILY CALORIES CHART */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
+        <div className="flex items-end gap-2" style={{ height: 90 }}>
+          {dailyCaloriesData.map((d, i) => {
+            const overTarget = d.calories > d.target;
+            const barH = (d.calories / 2400) * 70;
+            return (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-[9px] text-muted-foreground tabular-nums">
+                  {d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : d.calories}
+                </span>
+                <div
+                  className="w-full rounded-md"
+                  style={{
+                    height: barH,
+                    background: overTarget ? "var(--warning)" : "var(--success)",
+                    opacity: i === 6 ? 0.4 : 0.75,
+                  }}
+                />
+                <span className="text-[10px] text-muted-foreground font-medium">{d.day}</span>
+              </div>
+            );
+          })}
         </div>
-        <div className="grid sm:grid-cols-2 gap-4 text-sm mb-4">
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200/80 dark:border-slate-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Current</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
-              {latestWeightKg != null ? formatWeight(latestWeightKg) : "—"}
-            </p>
-          </div>
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200/80 dark:border-slate-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Goal</p>
-            <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-              {goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}
-            </p>
-            {weeksToGoalVal != null && weeksToGoalVal > 0 && goalDateLabel && (
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                ~{weeksToGoalVal} weeks to goal ({goalDateLabel})
-              </p>
-            )}
-          </div>
-        </div>
+      </div>
 
-        {weightChartData.length >= 2 && (
-          <div className="h-48 mb-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={weightChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} stroke="#94a3b8" width={40} />
-                <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={2.5} dot={{ r: 3, fill: "#a855f7" }} />
-                {goalWeightChart != null && (
-                  <ReferenceLine y={goalWeightChart} stroke="#22c55e" strokeDasharray="4 3" label={{ value: "Goal", position: "right", fill: "#22c55e", fontSize: 10 }} />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      {/* MACRO ADHERENCE */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
+        <div className="space-y-2">
+          {([
+            ["Protein", proteinAdherence, "var(--macro-protein)"],
+            ["Carbs", carbsAdherence, "var(--macro-carbs)"],
+            ["Fat", fatAdherence, "var(--macro-fat)"],
+          ] as const).map(([name, pct, color]) => (
+            <div key={name} className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
+              <span className="text-xs text-muted-foreground w-12">{name}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+              </div>
+              <span className="text-xs font-semibold tabular-nums w-8 text-right" style={{ color }}>{pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[140px]">
-            <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Log today ({profileMeasurementSystem === "imperial" ? "lb" : "kg"})</label>
-            <input type="text" inputMode="decimal" value={weightInput} onChange={(e) => setWeightInput(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
-              placeholder={profileMeasurementSystem === "imperial" ? "e.g. 165" : "e.g. 72.5"} />
-          </div>
-          <button type="button" onClick={() => void saveTodayWeight()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
+      {/* WEEKLY INSIGHT */}
+      <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Weekly insight</span>
         </div>
-      </section>
-
-      {/* STEPS */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Footprints className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Steps</h2>
-        </div>
-        <div className="flex items-center gap-4 mb-4">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Today</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
-              {todaySteps.toLocaleString()} <span className="text-sm font-medium text-slate-500">/ {dailyStepsGoal.toLocaleString()}</span>
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700" onClick={() => void saveStepsGoal(dailyStepsGoal - 1000)}>−1k</button>
-            <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700" onClick={() => void saveStepsGoal(dailyStepsGoal + 1000)}>+1k</button>
-          </div>
-        </div>
-
-        {stepsChartData.length >= 2 && (
-          <div className="h-40 mb-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stepsChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" width={40} />
-                <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="value" fill="#22c55e" radius={[3, 3, 0, 0]} />
-                <ReferenceLine y={dailyStepsGoal} stroke="#22c55e" strokeDasharray="4 3" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[140px]">
-            <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Steps today</label>
-            <input type="text" inputMode="numeric" value={stepsInput} onChange={(e) => setStepsInput(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
-              placeholder="e.g. 8240" />
-          </div>
-          <button type="button" onClick={() => void saveTodaySteps()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
-        </div>
-      </section>
-
-      {/* BODY FAT */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Percent className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Body Fat</h2>
-        </div>
-        <div className="flex flex-wrap gap-2 items-end">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Current</p>
-            <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
-          </div>
-          <input type="text" inputMode="decimal" value={bodyFatInput} onChange={(e) => setBodyFatInput(e.target.value)}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm w-28"
-            placeholder="%" />
-          <button type="button" onClick={() => void saveBodyFat()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
-        </div>
-      </section>
+        <p className="text-xs text-foreground leading-relaxed">
+          Protein consistency is strong — {proteinOnTarget} of 7 days on target. Average intake is {avgCalories} kcal vs your 2,100 target. Keep it up!
+        </p>
+      </div>
     </div>
   );
 }

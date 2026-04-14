@@ -3,45 +3,20 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Alert, Linking } from "r
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getPlatemateWebBase } from "@/lib/platemateWeb";
 
-type MenuItem = { label: string; icon: keyof typeof Ionicons.glyphMap; route: string };
-
-const SECTIONS: { title: string; items: MenuItem[] }[] = [
-  {
-    title: "Create",
-    items: [
-      { label: "Create Recipe", icon: "create-outline", route: "/create-recipe" },
-      { label: "Import from link", icon: "link-outline", route: "/import-shared" },
-    ],
-  },
-  {
-    title: "Health",
-    items: [
-      { label: "Fasting Timer", icon: "timer-outline", route: "/fasting" },
-      { label: "Health Sync", icon: "heart-outline", route: "/health-sync" },
-    ],
-  },
-  {
-    title: "Account",
-    items: [
-      { label: "Profile & Targets", icon: "person-outline", route: "/profile" },
-      { label: "Shopping List", icon: "cart-outline", route: "/shopping" },
-      { label: "Notifications", icon: "notifications-outline", route: "/(tabs)/notifications" },
-      { label: "Settings", icon: "settings-outline", route: "/(tabs)/settings" },
-    ],
-  },
-  {
-    title: "About",
-    items: [
-      { label: "Nutrition Data Sources", icon: "information-circle-outline", route: "/nutrition-sources" },
-    ],
-  },
-];
+/* ── Icon Box ── */
+function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 3.8, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
+      {children}
+    </View>
+  );
+}
 
 function openLegalPath(path: "/privacy" | "/terms") {
   const base = getPlatemateWebBase();
@@ -55,142 +30,107 @@ function openLegalPath(path: "/privacy" | "/terms") {
   });
 }
 
-export default function MoreScreen() {
+/* ── Settings Row ── */
+function SettingsRow({ icon, iconColor, label, sub, onPress }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  label: string;
+  sub: string;
+  onPress?: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <Pressable onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 13, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+      <IconBox color={iconColor}>
+        <Ionicons name={icon} size={14} color={iconColor} />
+      </IconBox>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }}>{label}</Text>
+        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{sub}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+    </Pressable>
+  );
+}
+
+export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
   const colors = useThemeColors();
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1, backgroundColor: colors.background },
-        header: { alignItems: "center", paddingVertical: Spacing.md },
-        headerTitle: {
-          fontSize: 20,
-          fontWeight: "700",
-          color: colors.text,
-        },
-        userCard: {
-          marginHorizontal: Spacing.xl,
-          marginBottom: Spacing.lg,
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: Spacing.xl,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: Spacing.lg,
-        },
-        userAvatar: {
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: Neon.purple,
-          justifyContent: "center",
-          alignItems: "center",
-        },
-        userAvatarText: { color: "#fff", fontSize: 20, fontWeight: "700" },
-        userEmail: { color: colors.textSecondary, fontSize: 14, flex: 1 },
-        sectionTitle: {
-          fontSize: 12,
-          fontWeight: "600",
-          color: colors.textSecondary,
-          letterSpacing: 0.5,
-          textTransform: "uppercase",
-          paddingHorizontal: Spacing.xl,
-          marginTop: Spacing.lg,
-          marginBottom: Spacing.xs,
-        },
-        list: {
-          paddingHorizontal: Spacing.xl,
-          gap: 1,
-        },
-        row: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: Spacing.md,
-          paddingVertical: 14,
-          paddingHorizontal: Spacing.lg,
-          backgroundColor: colors.card,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        rowFirst: { borderTopLeftRadius: Radius.md, borderTopRightRadius: Radius.md },
-        rowLast: { borderBottomLeftRadius: Radius.md, borderBottomRightRadius: Radius.md },
-        rowLabel: { flex: 1, fontSize: 15, fontWeight: "500", color: colors.text },
-        signOutBtn: {
-          marginHorizontal: Spacing.xl,
-          marginTop: Spacing.xxxl,
-          paddingVertical: Spacing.lg,
-          borderRadius: Radius.md,
-          borderWidth: 1,
-          borderColor: Neon.red + "40",
-          alignItems: "center",
-        },
-        signOutText: { color: Neon.red, fontWeight: "600", fontSize: 15 },
-      }),
-    [colors],
-  );
+  const t = {
+    accent: Accent.primary,
+    green: Accent.success,
+    amber: Accent.warning,
+    red: Accent.destructive,
+  };
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>More</Text>
-      </View>
-
-      <View style={styles.userCard}>
-        <View style={styles.userAvatar}>
-          <Text style={styles.userAvatarText}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+    >
+      {/* Avatar + Name */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.accent + "10", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", color: t.accent }}>
             {(session?.user?.email?.[0] ?? "P").toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.userEmail}>{session?.user?.email ?? "Not signed in"}</Text>
-      </View>
-
-      {SECTIONS.map((section) => (
-        <View key={section.title}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <View style={styles.list}>
-            {section.items.map((item, i) => (
-              <Pressable
-                key={item.label}
-                style={[
-                  styles.row,
-                  i === 0 && styles.rowFirst,
-                  i === section.items.length - 1 && styles.rowLast,
-                ]}
-                onPress={() => router.push(item.route as any)}
-              >
-                <Ionicons name={item.icon} size={20} color={Neon.purple} />
-                <Text style={styles.rowLabel}>{item.label}</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-              </Pressable>
-            ))}
-          </View>
+        <View>
+          <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
+            {session?.user?.user_metadata?.display_name ?? session?.user?.email?.split("@")[0] ?? "Your Profile"}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.textTertiary }}>Pro · Joined recently</Text>
         </View>
-      ))}
-
-      <Text style={styles.sectionTitle}>Legal</Text>
-      <View style={styles.list}>
-        <Pressable style={[styles.row, styles.rowFirst]} onPress={() => openLegalPath("/privacy")}>
-          <Ionicons name="document-text-outline" size={20} color={Neon.purple} />
-          <Text style={styles.rowLabel}>Privacy policy</Text>
-          <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
-        </Pressable>
-        <Pressable style={[styles.row, styles.rowLast]} onPress={() => openLegalPath("/terms")}>
-          <Ionicons name="reader-outline" size={20} color={Neon.purple} />
-          <Text style={styles.rowLabel}>Terms of use</Text>
-          <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
-        </Pressable>
       </View>
 
+      {/* 3 Stat Pills */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        {([
+          ["42", "Recipes", t.accent],
+          ["12", "Published", t.green],
+          ["238", "Followers", t.amber],
+        ] as const).map(([v, l, c]) => (
+          <View key={l} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{l}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Settings Section */}
+      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Settings</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="flame-outline" iconColor={t.accent} label="Daily Targets" sub="2,100 kcal · 150P / 250C / 65F" onPress={() => router.push("/profile" as any)} />
+        <SettingsRow icon="restaurant-outline" iconColor={t.accent} label="Preferences" sub="No restrictions" onPress={() => router.push("/(tabs)/settings" as any)} />
+        <SettingsRow icon="link-outline" iconColor={t.accent} label="Connected" sub="Apple Health, Instagram" />
+        <SettingsRow icon="time-outline" iconColor={t.accent} label="Notifications" sub="Daily reminder at 7 PM" onPress={() => router.push("/(tabs)/notifications" as any)} />
+        <SettingsRow icon="download-outline" iconColor={t.accent} label="Export Data" sub="CSV download" />
+      </View>
+
+      {/* Creator Tools */}
+      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Creator Tools</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="create-outline" iconColor={t.green} label="Published Recipes" sub="12 recipes · 891 total makes" onPress={() => router.push("/create-recipe" as any)} />
+        <SettingsRow icon="bar-chart-outline" iconColor={t.green} label="Analytics" sub="Views, saves, engagement" />
+        <SettingsRow icon="add-circle-outline" iconColor={t.green} label="Publish New" sub="Share with the community" onPress={() => router.push("/create-recipe" as any)} />
+      </View>
+
+      {/* Legal */}
+      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Legal</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="document-text-outline" iconColor={t.accent} label="Privacy Policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
+        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
+      </View>
+
+      {/* Sign Out */}
       <Pressable
-        style={styles.signOutBtn}
         onPress={() => void supabase.auth.signOut()}
+        style={{ paddingVertical: 16, borderRadius: 14, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 16 }}
       >
-        <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={{ color: t.red, fontWeight: "600", fontSize: 15 }}>Sign Out</Text>
       </Pressable>
     </ScrollView>
   );

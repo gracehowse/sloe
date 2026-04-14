@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Plus, X, ChefHat, Camera, AlertCircle, Pencil, Globe, BookPlus } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -79,14 +80,14 @@ function MacroWheel(props: {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-lg font-extrabold text-emerald-950 dark:text-emerald-50 leading-none">{Math.round(props.calories)}</div>
-          <div className="text-[10px] font-semibold tracking-wide text-emerald-800/80 dark:text-emerald-300/80 uppercase">
+          <div className="text-lg font-extrabold text-success/90 leading-none">{Math.round(props.calories)}</div>
+          <div className="text-[10px] font-semibold tracking-wide text-success/70 uppercase">
             kcal
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-emerald-900/90 dark:text-emerald-200/90">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-success/80">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#7c3aed" }} />
@@ -110,7 +111,7 @@ function MacroWheel(props: {
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-300/70 dark:bg-emerald-700/50" />
+            <span className="h-2 w-2 rounded-full bg-success/70" />
             Fiber
           </span>
           <span className="font-semibold tabular-nums">{Math.round((props.fiberG ?? 0) * 10) / 10}g</span>
@@ -895,14 +896,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       <div className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl">
+            <div className="p-2 bg-primary rounded-xl">
               {mode === "import" ? (
-                <BookPlus className="w-5 h-5 text-white" />
+                <Icons.import className="w-5 h-5 text-white" />
               ) : (
-                <ChefHat className="w-5 h-5 text-white" />
+                <Icons.chef className="w-5 h-5 text-white" />
               )}
             </div>
-            <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+            <h1 className="text-foreground">
               {mode === "import" ? "Import recipe" : "Create recipe"}
             </h1>
           </div>
@@ -911,7 +912,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <button
                 type="button"
                 onClick={onSwitchToImport}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
               >
                 Import instead
               </button>
@@ -920,7 +921,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <button
                 type="button"
                 onClick={onSwitchToCreate}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
               >
                 Create instead
               </button>
@@ -928,13 +929,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
             >
               Clear form
             </button>
           </div>
         </div>
-        <p className="text-slate-600 dark:text-slate-400">
+        <p className="text-muted-foreground">
           {mode === "import"
             ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don’t publish them as your own work."
             : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it’s your content. Scanning a cookbook page you bought belongs under Import, not here."}
@@ -942,8 +943,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {mode === "create" && onSwitchToImport ? (
-        <div className="backdrop-blur-xl bg-violet-50/80 dark:bg-violet-950/20 border border-violet-200/60 dark:border-violet-800/50 rounded-2xl p-5 mb-6 text-sm text-slate-700 dark:text-slate-300">
-          <p className="font-medium text-slate-900 dark:text-white mb-1">Not your original recipe?</p>
+        <div className="backdrop-blur-xl bg-primary/10 border border-primary/30 rounded-2xl p-5 mb-6 text-sm text-foreground">
+          <p className="font-medium text-foreground mb-1">Not your original recipe?</p>
           <p className="mb-3">
             Use Import for URLs, cookbook scans, or anything you didn’t write yourself—so your library stays honest and
             imports aren’t offered as your creations.
@@ -951,18 +952,18 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           <button
             type="button"
             onClick={onSwitchToImport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:opacity-90"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90"
           >
-            <BookPlus className="w-4 h-4" />
+            <Icons.import className="w-4 h-4" />
             Open Import recipe
           </button>
         </div>
       ) : null}
 
       {mode === "create" && recipeId && !loadedPublished ? (
-        <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-6 mb-6 shadow-lg">
-          <h3 className="text-slate-900 dark:text-white mb-1">Ready to share?</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <div className="backdrop-blur-xl bg-card/70 border border-border/60 rounded-2xl p-6 mb-6 shadow-lg">
+          <h3 className="text-foreground mb-1">Ready to share?</h3>
+          <p className="text-sm text-muted-foreground mb-4">
             When you go public, other people can discover and save this recipe. Only publish if it’s your original work.
           </p>
           <GoPublicDialog
@@ -973,42 +974,93 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         </div>
       ) : null}
 
-      {/* Import from URL (import flow only — create flow uses the callout above) */}
+      {/* Import from URL (import flow only — matches mobile prototype) */}
       {mode === "import" ? (
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <Globe className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            <h3 className="text-slate-900 dark:text-white">Import from URL</h3>
+        <div className="space-y-4 mb-6">
+          {/* Source Grid — matches mobile "Import from" 2x2 grid */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Import from</p>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { icon: Icons.star, label: "TikTok" },
+                { icon: Icons.instagram, label: "Instagram" },
+                { icon: Icons.youtube, label: "YouTube" },
+                { icon: Icons.web, label: "Website" },
+              ].map((source) => (
+                <button
+                  key={source.label}
+                  type="button"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-muted/60 transition-colors"
+                >
+                  <IconBox tone="primary" size="md">
+                    <source.icon className="w-4 h-4" />
+                  </IconBox>
+                  <span className="text-[10px] font-medium text-muted-foreground">{source.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-            We parse public recipe pages that expose schema.org Recipe data. You review and edit, then save to your
-            library only.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="url"
-              value={importUrl}
-              onChange={(e) => setImportUrl(e.target.value)}
-              placeholder="https://example.com/recipe"
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-            />
-            <button
-              type="button"
-              disabled={importBusy}
-              onClick={() => void runImportFromUrl()}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold disabled:opacity-50"
-            >
-              {importBusy ? "Importing…" : "Import"}
-            </button>
+
+          {/* URL input */}
+          <div className="bg-card border border-border rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Icons.web className="w-5 h-5 text-primary" />
+              <h3 className="text-foreground text-sm font-semibold">Paste a recipe link</h3>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                placeholder="https://example.com/recipe"
+                className="flex-1 px-4 py-3 rounded-xl border border-border bg-muted/40 text-foreground text-sm"
+              />
+              <button
+                type="button"
+                disabled={importBusy}
+                onClick={() => void runImportFromUrl()}
+                className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {importBusy ? "Importing…" : "Import"}
+              </button>
+            </div>
+            {importHint ? <p className="text-xs text-destructive mt-2">{importHint}</p> : null}
+
+            {/* 3-step extraction animation — shown during import */}
+            {importBusy && (
+              <div className="mt-4 space-y-2">
+                {[
+                  { label: "Fetching recipe page…", done: true },
+                  { label: "Analyzing ingredients…", done: false },
+                  { label: "Calculating nutrition…", done: false },
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      step.done ? "bg-success text-white" : "bg-muted text-muted-foreground animate-pulse"
+                    }`}>
+                      {step.done ? "✓" : i + 1}
+                    </span>
+                    <span className={`text-xs ${step.done ? "text-success font-medium" : "text-muted-foreground"}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {importHint ? <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">{importHint}</p> : null}
+
+          {/* Recent Imports placeholder */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
+            <p className="text-xs text-muted-foreground">No recent imports</p>
+          </div>
         </div>
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
-        <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Recipe photo</label>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+        <label className="block mb-3 text-sm font-medium text-foreground">Recipe photo</label>
+        <p className="text-xs text-muted-foreground mb-3">
           {mode === "import"
             ? "Paste a screenshot or choose a file. If “Extract from image” is available, it can pull text from a cookbook or card photo—review, then save as an imported library copy."
             : "Paste a screenshot or choose a file. If “Extract from image” is available, it can digitize your own handwritten or typed recipe."}
@@ -1023,7 +1075,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               applyImageFile(f);
             }
           }}
-          className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-violet-400 dark:hover:border-violet-600 transition-all bg-slate-50 dark:bg-slate-800/50"
+          className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary transition-all bg-muted/40"
         >
           {coverImageUrl ? (
             <img
@@ -1033,14 +1085,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             />
           ) : (
             <>
-              <Camera className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600 dark:text-slate-400 mb-2">Paste screenshot, or choose a file</p>
+              <Icons.camera className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">Paste screenshot, or choose a file</p>
             </>
           )}
           <input
             type="file"
             accept="image/*"
-            className="block mx-auto text-sm text-slate-600 dark:text-slate-400"
+            className="block mx-auto text-sm text-muted-foreground"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) applyImageFile(f);
@@ -1050,7 +1102,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             type="button"
             disabled={ocrBusy}
             onClick={() => void runOcrFromImage()}
-            className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium hover:opacity-90 disabled:opacity-40"
+            className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
           >
             {ocrBusy ? "Extracting…" : "Extract from image"}
           </button>
@@ -1058,78 +1110,78 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Basic Info */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-slate-900 dark:text-white mb-6">Basic Information</h3>
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+        <h3 className="text-foreground mb-6">Basic Information</h3>
         <div className="space-y-4">
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Recipe Title</label>
+            <label className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., High-Protein Chicken & Rice Bowl"
-              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+            <label className="block mb-2 text-sm font-medium text-foreground">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your recipe..."
               rows={3}
-              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Servings</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Servings</label>
               <input
                 type="number"
                 value={servings}
                 onChange={(e) => setServings(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Prep (min)</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
               <input
                 type="number"
                 value={prepTime}
                 onChange={(e) => setPrepTime(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Cook (min)</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
               <input
                 type="number"
                 value={cookTime}
                 onChange={(e) => setCookTime(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Meal Type</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Meal Type</label>
               <select
                 value={mealType}
                 onChange={(e) => setMealType(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="breakfast">Breakfast</option>
                 <option value="lunch">Lunch</option>
                 <option value="dinner">Dinner</option>
                 <option value="snack">Snack</option>
               </select>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+              <p className="text-xs text-muted-foreground mt-1.5">
                 Helps the meal planner place this recipe in the right slot. Lunch and dinner recipes can be swapped
                 between those two; breakfast and snack stay separate unless you pick a recipe tagged for both.
               </p>
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Dietary Tags</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Dietary Tags</label>
               <div className="flex flex-wrap gap-2">
                 {["vegetarian", "vegan", "gluten-free", "keto"].map((tag) => (
                   <button
@@ -1137,8 +1189,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     onClick={() => setDietary(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-all capitalize ${
                       dietary.includes(tag)
-                        ? "bg-violet-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        ? "bg-primary text-white"
+                        : "bg-muted text-foreground hover:hover:bg-muted"
                     }`}
                   >
                     {tag}
@@ -1151,44 +1203,44 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Ingredients */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
-          <h3 className="text-slate-900 dark:text-white">Ingredients</h3>
+          <h3 className="text-foreground">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={splitAllIngredientLines}
-              className="px-4 py-2 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-800 dark:text-violet-200 text-sm font-medium hover:bg-violet-50 dark:hover:bg-violet-950/40"
+              className="px-4 py-2 rounded-lg border border-primary/30 text-primary text-sm font-medium hover:bg-primary/10"
             >
               Re-split lines
             </button>
             <button
               type="button"
               onClick={addIngredient}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all flex items-center gap-2 text-sm font-medium"
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:hover:bg-primary/90 transition-all flex items-center gap-2 text-sm font-medium"
             >
-              <Plus className="w-4 h-4" />
+              <Icons.add className="w-4 h-4" />
               Add Ingredient
             </button>
           </div>
         </div>
-        <div className="bg-violet-50 dark:bg-violet-950/20 rounded-xl p-4 mb-6 border border-violet-200 dark:border-violet-800">
+        <div className="bg-primary/10 rounded-xl p-4 mb-6 border border-primary/30">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-violet-600 dark:text-violet-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-violet-800 dark:text-violet-300">
+            <Icons.alert className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-primary">
               Nutrition is <span className="font-medium">estimated live</span> below from names, amounts, and units (same
               logic as save). Use <span className="font-medium">Re-split lines</span> after import to fix{" "}
-              <code className="text-xs bg-violet-100 dark:bg-violet-900/50 px-1 rounded">500g…</code>,{" "}
-              <code className="text-xs bg-violet-100 dark:bg-violet-900/50 px-1 rounded">2×400g tins</code>, or trailing
+              <code className="text-xs bg-primary/10 px-1 rounded">500g…</code>,{" "}
+              <code className="text-xs bg-primary/10 px-1 rounded">2×400g tins</code>, or trailing
               fractions. Not lab-verified.
             </p>
           </div>
         </div>
 
         {matchPickerIdx != null ? (
-          <div className="mb-6 rounded-2xl border border-slate-200/70 dark:border-slate-800/60 bg-white/60 dark:bg-slate-950/20 p-4">
+          <div className="mb-6 rounded-2xl border border-border bg-card/60 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Change match</h4>
+              <h4 className="text-sm font-semibold text-foreground">Change match</h4>
               <button
                 type="button"
                 onClick={() => {
@@ -1196,14 +1248,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   setMatchHits(null);
                   setBarcodeResult(null);
                 }}
-                className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:underline"
+                className="text-xs font-semibold text-muted-foreground hover:underline"
               >
                 Close
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">USDA search</p>
+                <p className="text-xs font-semibold text-foreground mb-2">USDA search</p>
                 <div className="relative">
                   <input
                     autoFocus
@@ -1211,30 +1263,30 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     onChange={(e) => setMatchQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") void runUsdaSearch(); }}
                     placeholder="Search foods (e.g. red pepper, chicken breast)"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white pr-16"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground pr-16"
                   />
                   {matchLoading && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-5 h-5 border-2 border-slate-300 border-t-violet-600 rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-muted border-t-primary rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Results update as you type</p>
+                <p className="text-xs text-muted-foreground mt-1">Results update as you type</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Barcode (Open Food Facts)</p>
+                <p className="text-xs font-semibold text-foreground mb-2">Barcode (Open Food Facts)</p>
                 <div className="flex gap-2">
                   <input
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
                     placeholder="Scan / paste barcode"
-                    className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="flex-1 px-4 py-3 rounded-xl border border-border bg-card text-foreground"
                   />
                   <button
                     type="button"
                     disabled={barcodeLoading}
                     onClick={() => void runBarcodeLookup()}
-                    className="px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                    className="px-4 py-3 rounded-xl bg-foreground text-background text-sm font-semibold disabled:opacity-50"
                   >
                     {barcodeLoading ? "…" : "Lookup"}
                   </button>
@@ -1246,14 +1298,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                       setScannerOpen(true);
                       setTimeout(() => void startScanner(), 0);
                     }}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="px-3 py-2 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-muted/60"
                   >
                     Scan with camera
                   </button>
-                  {scannerError ? <span className="text-xs text-amber-700 dark:text-amber-300">{scannerError}</span> : null}
+                  {scannerError ? <span className="text-xs text-destructive">{scannerError}</span> : null}
                 </div>
                 {scannerOpen ? (
-                  <div className="mt-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-black/80 p-3">
+                  <div className="mt-3 rounded-xl border border-border bg-black/80 p-3">
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <p className="text-xs font-semibold text-white/90">Point camera at barcode</p>
                       <button
@@ -1271,10 +1323,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   </div>
                 ) : null}
                 {barcodeResult ? (
-                  <div className="mt-2 rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/20 p-3 flex items-center justify-between gap-3">
+                  <div className="mt-2 rounded-xl border border-border bg-card/40 p-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{barcodeResult.name}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{barcodeResult.servingLabel}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{barcodeResult.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{barcodeResult.servingLabel}</p>
                     </div>
                     <button
                       type="button"
@@ -1303,7 +1355,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                         setMatchHits(null);
                         setBarcodeResult(null);
                       }}
-                      className="px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                      className="px-3 py-2 rounded-lg text-xs font-semibold bg-success text-white hover:bg-success/90"
                     >
                       Use
                     </button>
@@ -1312,12 +1364,12 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               </div>
             </div>
             {matchHits ? (
-              <ul className="mt-3 max-h-56 overflow-y-auto divide-y divide-slate-200/60 dark:divide-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/20">
+              <ul className="mt-3 max-h-56 overflow-y-auto divide-y divide-border rounded-xl border border-border bg-card/50">
                 {matchHits.slice(0, 10).map((h) => (
                   <li key={h.fdcId} className="p-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{h.description}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">{h.description}</p>
+                      <p className="text-xs text-muted-foreground truncate">
                         {h.dataType ?? "Food"}
                         {h.brandName ? ` · ${h.brandName}` : ""}
                       </p>
@@ -1334,7 +1386,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                         setMatchHits(null);
                         setBarcodeResult(null);
                       }}
-                      className="px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                      className="px-3 py-2 rounded-lg text-xs font-semibold bg-success text-white hover:bg-success/90"
                     >
                       Use
                     </button>
@@ -1349,14 +1401,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           {ingredients.map((ingredient) => (
             <div
               key={ingredient.id}
-              className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(18rem,1fr)_auto] sm:items-center sm:gap-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3 bg-white/40 dark:bg-slate-900/20"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(18rem,1fr)_auto] sm:items-center sm:gap-3 rounded-xl border border-border p-3 bg-card/40"
             >
               <input
                 type="text"
                 value={ingredient.name}
                 onChange={(e) => updateIngredient(ingredient.id, "name", e.target.value)}
                 placeholder="Ingredient name"
-                className="w-full min-w-0 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full min-w-0 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <div className="flex flex-wrap items-center justify-start gap-2">
                 <input
@@ -1364,12 +1416,12 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   value={ingredient.amount}
                   onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
                   placeholder="Amount"
-                  className="w-24 sm:w-28 px-3 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="w-24 sm:w-28 px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <select
                   value={ingredient.unit}
                   onChange={(e) => updateIngredient(ingredient.id, "unit", e.target.value)}
-                  className="min-w-[10rem] sm:min-w-[11rem] flex-1 sm:flex-initial px-3 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="min-w-[10rem] sm:min-w-[11rem] flex-1 sm:flex-initial px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="">Each / none</option>
                   <option value="count">Count (each)</option>
@@ -1397,7 +1449,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 </select>
                 {ingredient.name.trim() ? (
                   <span
-                    className="text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-400 whitespace-nowrap px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50"
+                    className="text-xs font-medium tabular-nums text-success whitespace-nowrap px-2 py-1 rounded-lg bg-success/10 border border-success/30"
                     title={verifiedTotals ? "Verified (USDA/FatSecret) when available" : "Estimated from name, amount, and unit"}
                   >
                     {(() => {
@@ -1421,25 +1473,41 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     const r = resolveStructuredIngredient(ingredient);
                     openMatchPicker(idx, r.name || ingredient.name);
                   }}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="px-3 py-2 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-muted/60"
                 >
                   Change match
                 </button>
                 <button
                   type="button"
                   onClick={() => removeIngredient(ingredient.id)}
-                  className="p-3 text-slate-400 hover:text-red-500 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="p-3 text-muted-foreground hover:text-destructive transition-colors rounded-xl hover:bg-muted"
                   aria-label="Remove ingredient"
                 >
-                  <X className="w-5 h-5" />
+                  <Icons.close className="w-5 h-5" />
                 </button>
               </div>
             </div>
           ))}
         </div>
 
+        {/* "How this fits your day" card — matches mobile review state */}
         {nutritionPreview ? (
-          <div className="mt-6 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/80 dark:bg-emerald-950/30 p-5">
+          <div className="mt-6 rounded-2xl border border-success/30 bg-success/5 p-4 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <IconBox tone="success" size="sm">
+                <Icons.success className="w-3.5 h-3.5" />
+              </IconBox>
+              <span className="text-sm font-semibold text-success">How this fits your day</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This recipe provides {Math.round(nutritionPreview.perServing.calories)} kcal per serving —
+              about {Math.round((nutritionPreview.perServing.calories / 2100) * 100)}% of a 2,100 kcal daily target.
+            </p>
+          </div>
+        ) : null}
+
+        {nutritionPreview ? (
+          <div className="mt-2 rounded-2xl border border-success/30 bg-success/10 p-5">
             {/**
              * Display rounding only (don’t change stored values).
              * Whole-dish totals can be fractional due to summed per-line floats.
@@ -1494,43 +1562,43 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               return (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-              <h4 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+              <h4 className="text-sm font-semibold text-success">
                 {verifiedTotals ? `Best available (${verifiedTotals.primarySource ?? "Verified"})` : "Estimated (heuristics)"}
               </h4>
               {verifying ? (
-                <span className="text-xs font-semibold text-emerald-800/80 dark:text-emerald-300/80">Updating…</span>
+                <span className="text-xs font-semibold text-success/70">Updating…</span>
               ) : null}
                   </div>
-                  <p className="text-xs text-emerald-800/85 dark:text-emerald-400/85 mb-4">
+                  <p className="text-xs text-success/75 mb-4">
               {verifiedTotals
                 ? `Auto-matched ingredients. Lowest line: ${Math.round(verifiedTotals.minConfidence * 100)}% · avg ${Math.round(verifiedTotals.avgConfidence * 100)}%`
                 : "Totals use the same estimates as save (including weight parsed from the name when amount is empty)."}
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-sm">
               <div>
-                <p className="text-emerald-700/90 dark:text-emerald-300/90">Whole dish</p>
-                <p className="text-lg font-bold text-emerald-950 dark:text-emerald-50">
+                <p className="text-success/80">Whole dish</p>
+                <p className="text-lg font-bold text-success/90">
                   {displayTotals.calories} kcal
                 </p>
-                <p className="text-xs text-emerald-800/80 dark:text-emerald-400/90">
+                <p className="text-xs text-success/70">
                   P {displayTotals.protein} · C {displayTotals.carbs} · F {displayTotals.fat}
                 </p>
                 {verifiedTotals ? (
-                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/90 mt-1">
+                  <p className="text-[11px] text-success/70 mt-1">
                     Fiber {displayTotals.fiberG}g · Sugar {displayTotals.sugarG}g · Sodium {displayTotals.sodiumMg}mg
                   </p>
                 ) : null}
               </div>
               <div>
                 <p className="text-emerald-700/90 dark:text-emerald-300/90">Per serving ({Math.max(1, servings)})</p>
-                <p className="text-lg font-bold text-emerald-950 dark:text-emerald-50">
+                <p className="text-lg font-bold text-success/90">
                   {displayPerServing.calories} kcal
                 </p>
-                <p className="text-xs text-emerald-800/80 dark:text-emerald-400/90">
+                <p className="text-xs text-success/70">
                   P {displayPerServing.protein} · C {displayPerServing.carbs} · F {displayPerServing.fat}
                 </p>
                 {verifiedTotals ? (
-                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/90 mt-1">
+                  <p className="text-[11px] text-success/70 mt-1">
                     Fiber {displayPerServing.fiberG}g · Sugar {displayPerServing.sugarG}g · Sodium{" "}
                     {displayPerServing.sodiumMg}mg
                   </p>
@@ -1538,7 +1606,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               </div>
                   </div>
 
-            <div className="mt-4 rounded-xl border border-emerald-200/70 dark:border-emerald-800/60 bg-white/60 dark:bg-slate-950/20 p-4">
+            <div className="mt-4 rounded-xl border border-success/30 bg-card/60 p-4">
               <div className="flex items-baseline justify-between gap-3 mb-3">
                 <p className="text-xs font-semibold tracking-wide text-emerald-900 dark:text-emerald-100 uppercase">
                   {verifiedTotals ? "Macro wheel (verified)" : "Macro wheel (estimated)"}
@@ -1555,7 +1623,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             </div>
 
                   {verifiedTotals ? (
-                    <div className="mt-4 rounded-xl border border-emerald-200/70 dark:border-emerald-800/60 bg-white/60 dark:bg-slate-950/20 p-4">
+                    <div className="mt-4 rounded-xl border border-success/30 bg-card/60 p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-xs font-semibold tracking-wide text-emerald-900 dark:text-emerald-100 uppercase">
                     Nutrition label
@@ -1563,7 +1631,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80">Per serving</p>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-lg border border-emerald-200/60 dark:border-emerald-800/50 p-3">
+                  <div className="rounded-lg border border-success/30 p-3">
                     <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80">Per serving</p>
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayPerServing.calories} kcal
@@ -1595,7 +1663,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-lg border border-emerald-200/60 dark:border-emerald-800/50 p-3">
+                  <div className="rounded-lg border border-success/30 p-3">
                     <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80">Whole dish</p>
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayTotals.calories} kcal
@@ -1634,7 +1702,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <summary className="cursor-pointer font-medium mb-2">
                 {verifiedTotals ? "Per-ingredient (verified where matched)" : "Per-ingredient estimates"}
               </summary>
-              <ul className="space-y-1 border-t border-emerald-200/60 dark:border-emerald-800/50 pt-2 max-h-40 overflow-y-auto">
+              <ul className="space-y-1 border-t border-success/30 pt-2 max-h-40 overflow-y-auto">
                 {verifiedTotals && verifiedLines
                   ? verifiedLines.map((v, i) => {
                       const row = nutritionPreview.lines[i]?.row;
@@ -1673,28 +1741,28 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             })()}
           </div>
         ) : (
-          <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-6 text-sm text-muted-foreground">
             Add at least one ingredient name to see estimated calories and macros.
           </p>
         )}
       </div>
 
       {/* Instructions */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
-        <h3 className="text-slate-900 dark:text-white mb-4">Cooking Instructions</h3>
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+        <h3 className="text-foreground mb-4">Cooking Instructions</h3>
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           placeholder="1. First step...&#10;2. Second step...&#10;3. Third step..."
           rows={10}
-          className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+          className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
 
       {/* Actions */}
       {mode === "import" ? (
         <div className="space-y-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Publishing isn’t available on this screen—imported copies are for your account only. To share original work
             with the community, use Create recipe.
           </p>
@@ -1702,21 +1770,21 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             type="button"
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-4 bg-primary text-white rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
           </button>
         </div>
       ) : (
         <div className="space-y-4">
-          <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50/80 dark:bg-slate-900/40">
+          <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-border p-4 bg-muted/40">
             <input
               type="checkbox"
-              className="mt-1 rounded border-slate-300"
+              className="mt-1 rounded border-border"
               checked={attestOriginalWork}
               onChange={(e) => setAttestOriginalWork(e.target.checked)}
             />
-            <span className="text-sm text-slate-700 dark:text-slate-300">
+            <span className="text-sm text-foreground">
               I created this recipe and I have the right to share it publicly (required to publish).
             </span>
           </label>
@@ -1725,7 +1793,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               type="button"
               disabled={saving !== null}
               onClick={() => void saveRecipe(false)}
-              className="flex-1 px-6 py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 border-2 border-border rounded-xl hover:bg-muted/60 transition-all text-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving === "draft" ? "Saving…" : "Save as draft"}
             </button>
@@ -1733,9 +1801,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               type="button"
               disabled={saving !== null}
               onClick={() => void saveRecipe(true)}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 bg-primary text-white rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Upload className="w-5 h-5" />
+              <Icons.upload className="w-5 h-5" />
               {saving === "publish" ? "Publishing…" : "Publish recipe"}
             </button>
           </div>

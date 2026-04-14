@@ -15,7 +15,7 @@ import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Neon, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 
 type NotificationPrefs = {
   newRecipes: boolean;
@@ -106,8 +106,8 @@ export default function SettingsScreen() {
           backgroundColor: colors.card,
         },
         segmentBtnActive: {
-          backgroundColor: Neon.purple + "20",
-          borderColor: Neon.purple,
+          backgroundColor: Accent.primary + "20",
+          borderColor: Accent.primary,
         },
         segmentBtnText: {
           fontSize: 14,
@@ -115,7 +115,7 @@ export default function SettingsScreen() {
           color: colors.textSecondary,
         },
         segmentBtnTextActive: {
-          color: Neon.purple,
+          color: Accent.primary,
         },
       }),
     [colors],
@@ -209,7 +209,7 @@ export default function SettingsScreen() {
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color={Neon.purple} />
+            <ActivityIndicator size="large" color={Accent.primary} />
           </View>
         ) : (
           <>
@@ -277,7 +277,7 @@ export default function SettingsScreen() {
                 }}
               >
                 <Text style={styles.rowLabel}>Export my data (JSON)</Text>
-                <Text style={{ color: Neon.purple, fontWeight: "600", fontSize: 14 }}>Export</Text>
+                <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>Export</Text>
               </Pressable>
             </View>
           </>
@@ -303,7 +303,7 @@ function Row(props: {
         value={props.value}
         onValueChange={() => props.onToggle()}
         disabled={props.disabled}
-        trackColor={{ false: props.colors.border, true: Neon.purple + "99" }}
+        trackColor={{ false: props.colors.border, true: Accent.primary + "99" }}
         thumbColor={props.value ? props.colors.text : props.colors.textTertiary}
         ios_backgroundColor={props.colors.border}
       />

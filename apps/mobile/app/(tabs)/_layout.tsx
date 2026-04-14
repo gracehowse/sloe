@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Neon } from '@/constants/theme';
+import { Accent } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +36,7 @@ export default function TabLayout() {
   if (loading || (session && !onboardingChecked)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={Neon.purple} />
+        <ActivityIndicator size="large" color={Accent.primary} />
       </View>
     );
   }
@@ -52,7 +52,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Neon.purple,
+        tabBarActiveTintColor: Accent.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
           backgroundColor: colors.background,
@@ -63,49 +63,50 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: '600',
         },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
-      {/* Tab order: Discover → Library → Track (center) → Plan. `index` route is Track so `/` opens it. */}
+      {/* Tab order matches prototype: Today → Discover → Plan → Progress → Profile */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Today',
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="house.fill" color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="magnifyingglass" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: 'Library',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="bookmark.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Track',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="safari.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="planner"
         options={{
           title: 'Plan',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="calendar" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: 'Progress',
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="chart.bar.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="line.3.horizontal" color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="person.fill" color={color} />,
         }}
       />
-      {/* Hidden tabs */}
+      {/* Hidden tabs — accessed via navigation, not tab bar */}
+      <Tabs.Screen name="library" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />

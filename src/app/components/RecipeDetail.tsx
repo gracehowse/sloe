@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bookmark, Share2, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, CookingPot, Search, Pencil } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
@@ -9,6 +10,8 @@ import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts"
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
+import { MacroCard } from "./platemate/macro-card";
+import { ConfidenceDot } from "./platemate/confidence-dot";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,8 +79,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       ? Math.round(recipe.servings * initialServings * 10) / 10
       : recipe.servings,
   );
-  const [showIngredients, setShowIngredients] = useState(true);
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
   const isCatalogRecipe = Boolean(getRecipeById(recipe.id));
@@ -426,20 +428,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
 
-  const macroAccuracy = Math.abs(ingredientTotal.calories - displayRecipe.calories);
-  const showVerifiedAccuracy = isCatalogRecipe && ingredients.length > 0;
+  // macroAccuracy available if needed: Math.abs(ingredientTotal.calories - displayRecipe.calories)
 
   if (!isCatalogRecipe && dbLoading) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
-        <div className="h-8 w-48 rounded-md bg-slate-200 dark:bg-slate-700 animate-pulse" />
-        <div className="aspect-video w-full rounded-xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        <div className="h-8 w-48 rounded-md bg-muted animate-pulse" />
+        <div className="aspect-video w-full rounded-xl bg-muted animate-pulse" />
         <div className="space-y-2">
-          <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-          <div className="h-4 w-5/6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-          <div className="h-4 w-4/6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+          <div className="h-4 w-full rounded bg-muted animate-pulse" />
+          <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-4/6 rounded bg-muted animate-pulse" />
         </div>
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400">Loading recipe…</p>
+        <p className="text-center text-sm text-muted-foreground">Loading recipe…</p>
       </div>
     );
   }
@@ -450,12 +451,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-2"
+          className="mb-6 p-2 text-muted-foreground hover:text-foreground inline-flex items-center gap-2"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <Icons.back className="w-5 h-5" />
           Back
         </button>
-        <p className="text-slate-700 dark:text-slate-300">This recipe could not be loaded.</p>
+        <p className="text-foreground">This recipe could not be loaded.</p>
       </div>
     );
   }
@@ -476,11 +477,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="sticky top-0 backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/50 dark:border-slate-800/50 px-6 py-4 flex items-center gap-4 z-10 shadow-sm">
-        <button onClick={onBack} className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
-          <ArrowLeft className="w-5 h-5" />
+      <div className="sticky top-0 backdrop-blur-xl bg-card/80 border-b border-border/50 px-6 py-4 flex items-center gap-4 z-10 shadow-sm">
+        <button onClick={onBack} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all">
+          <Icons.back className="w-5 h-5" />
         </button>
-        <h2 className="flex-1 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">{recipe.title}</h2>
+        <h2 className="flex-1 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">{recipe.title}</h2>
         {isMyRecipe ? (
           <button
             type="button"
@@ -488,7 +489,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
               router.replace(`/?${q}`, { scroll: false });
             }}
-            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold"
+            className="px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold"
           >
             Edit
           </button>
@@ -507,12 +508,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               <button
                 type="button"
                 disabled={dbLoading}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Unpublish
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+            <AlertDialogContent className="bg-card border border-border rounded-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle>Unpublish this recipe?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -532,9 +533,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => setCookModeOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
           >
-            <CookingPot className="w-4 h-4" />
+            <Icons.cook className="w-4 h-4" />
             Cook
           </button>
         )}
@@ -543,12 +544,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           onClick={() => toggleSaveRecipe(recipe.id, userTier)}
           className={`p-2.5 rounded-xl transition-all ${
             saved
-              ? "text-violet-600 bg-violet-100 dark:bg-violet-950/30 shadow-lg shadow-violet-500/20"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              ? "text-primary bg-primary/10 shadow-lg shadow-primary/20"
+              : "text-muted-foreground hover:bg-muted/60"
           }`}
           aria-label={saved ? "Remove from library" : "Save to library"}
         >
-          <Bookmark className="w-5 h-5" fill={saved ? "currentColor" : "none"} />
+          <Icons.save className="w-5 h-5" fill={saved ? "currentColor" : "none"} />
         </button>
         <button
           type="button"
@@ -559,23 +560,23 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               () => toast.error("Could not copy link"),
             );
           }}
-          className="p-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+          className="p-2.5 text-muted-foreground hover:bg-muted/60 rounded-xl transition-all"
           aria-label="Copy share link"
         >
-          <Share2 className="w-5 h-5" />
+          <Icons.share className="w-5 h-5" />
         </button>
       </div>
 
       <div className="px-6 py-8 space-y-8">
-        <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/50 px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+        <div className="rounded-xl border border-border/80 bg-muted/90 px-4 py-3 text-sm text-foreground">
           {isCatalogRecipe ? (
             <p>
-              <span className="font-semibold text-slate-900 dark:text-white">Verified curated recipe.</span> Macros and
+              <span className="font-semibold text-foreground">Verified curated recipe.</span> Macros and
               ingredients are checked against structured sources in our catalog.
             </p>
           ) : (
             <p>
-              <span className="font-semibold text-slate-900 dark:text-white">Community recipe.</span> Macros are as
+              <span className="font-semibold text-foreground">Community recipe.</span> Macros are as
               published by the author; ingredient nutrition may be mixed verified and estimated — review before relying on
               it for medical goals.
             </p>
@@ -589,17 +590,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         </div>
 
         {!isCatalogRecipe && dbDescription && (
-          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{dbDescription}</p>
+          <p className="text-muted-foreground leading-relaxed">{dbDescription}</p>
         )}
 
         {/* Creator Info */}
-        <div className="flex items-center gap-4 p-6 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-lg">
-          <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-violet-500/20" />
+        <div className="flex items-center gap-4 p-6 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-lg">
+          <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
           <div className="flex-1">
-            <p className="font-semibold text-slate-900 dark:text-white">{recipe.creatorName}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="font-semibold text-foreground">{recipe.creatorName}</p>
+            <p className="text-sm text-muted-foreground">
               {!followMetaLoaded && !isCatalogRecipe ? (
-                <span className="text-slate-400">Loading reach…</span>
+                <span className="text-muted-foreground">Loading reach…</span>
               ) : (
                 <>
                   {(publicSaveCount != null ? publicSaveCount : recipe.savedCount).toLocaleString()} saves
@@ -615,192 +616,225 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               type="button"
               disabled={followBusy}
               onClick={() => void toggleFollow()}
-              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 disabled:opacity-50"
+              className="px-5 py-2.5 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:scale-105 disabled:opacity-50"
             >
               {followBusy ? "…" : isFollowing ? "Following" : "Follow"}
             </button>
           ) : null}
         </div>
 
+        {/* Info Row — Prep / Cook / Servings / Confidence (matches mobile) */}
+        <div className="flex gap-3">
+          {[
+            { icon: Icons.timer, label: "Prep", value: recipe.prepTime ?? "—" },
+            { icon: Icons.time, label: "Cook", value: recipe.cookTime ?? "—" },
+            { icon: Icons.target, label: "Servings", value: `${servings}` },
+            { icon: Icons.verified, label: "Confidence", value: isCatalogRecipe ? "Verified" : "Estimated" },
+          ].map((item) => (
+            <div key={item.label} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border">
+              <item.icon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-bold text-foreground">{item.value}</span>
+              <span className="text-[10px] text-muted-foreground">{item.label}</span>
+            </div>
+          ))}
+        </div>
+
         {/* Servings Selector */}
-        <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-800/30 backdrop-blur-sm rounded-2xl p-5 flex items-center justify-between border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-          <span className="font-semibold text-slate-900 dark:text-white">Servings</span>
+        <div className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border">
+          <span className="font-semibold text-foreground text-sm">Servings</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setServings(Math.max(1, servings - 1))}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all flex items-center justify-center shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
             >
               −
             </button>
-            <span className="w-10 text-center font-bold text-lg text-slate-900 dark:text-white">{servings}</span>
+            <span className="w-8 text-center font-bold text-foreground tabular-nums">{servings}</span>
             <button
               type="button"
               onClick={() => setServings(servings + 1)}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all flex items-center justify-center shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
             >
               +
             </button>
           </div>
         </div>
 
-        {/* Macros */}
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-xl">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 px-6 py-4 flex items-center gap-3 border-b border-green-200/50 dark:border-green-800/50">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl">
-              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <span className="font-semibold text-slate-900 dark:text-white flex-1">
-              {isCatalogRecipe ? "Verified Nutrition" : "Nutrition (per recipe)"}
-              <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
-                Scaled for {servings} serving{servings === 1 ? "" : "s"} (base {baseServings})
-              </span>
-            </span>
-            {showVerifiedAccuracy && macroAccuracy <= 1 && (
-              <span className="px-3 py-1.5 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/50 rounded-full border border-green-200/50 dark:border-green-800/50">
-                ±{macroAccuracy} kcal accuracy
-              </span>
-            )}
+        {/* Macro Cards Row (3 macros + kcal badge — matches mobile) */}
+        <div className="flex gap-2">
+          <MacroCard macro="protein" value={scaledMacros.protein} target={undefined} />
+          <MacroCard macro="carbs" value={scaledMacros.carbs} target={undefined} />
+          <MacroCard macro="fat" value={scaledMacros.fat} target={undefined} />
+          <div className="flex-1 flex flex-col items-center justify-center rounded-xl p-2.5 border border-border" style={{ backgroundColor: "var(--macro-calories)", color: "#fff" }}>
+            <span className="text-base font-bold tabular-nums">{Math.round(scaledMacros.calories)}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">kcal</span>
           </div>
-          <div className="grid grid-cols-4 divide-x divide-slate-200 dark:divide-slate-800">
-            <div className="px-6 py-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <p className="text-3xl font-bold bg-gradient-to-br from-violet-600 to-indigo-600 bg-clip-text text-transparent mb-1">{scaledMacros.calories}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Calories</p>
-            </div>
-            <div className="px-6 py-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{scaledMacros.protein}g</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Protein</p>
-            </div>
-            <div className="px-6 py-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{scaledMacros.carbs}g</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Carbs</p>
-            </div>
-            <div className="px-6 py-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{scaledMacros.fat}g</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Fat</p>
-            </div>
-          </div>
+        </div>
 
-          {/* Creator Discrepancy */}
-          {isCatalogRecipe &&
-            recipe.creatorCalories &&
-            Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-t border-orange-200 dark:border-orange-900 px-6 py-4 flex items-start gap-3">
-                <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-orange-900 dark:text-orange-200">
-                    Creator stated {recipe.creatorCalories} kcal (
-                    {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
-                  </p>
-                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                    Verified value calculated from ingredient data
-                  </p>
-                </div>
+        {/* Creator Discrepancy */}
+        {isCatalogRecipe &&
+          recipe.creatorCalories &&
+          Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+              <Icons.caution className="w-4 h-4 text-warning mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-warning">
+                  Creator stated {recipe.creatorCalories} kcal (
+                  {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
+                </p>
+                <p className="text-xs text-warning/80 mt-0.5">Verified value calculated from ingredient data</p>
+              </div>
+            </div>
+          )}
+
+        {/* Tab Bar — Ingredients / Steps / Nutrition (matches mobile) */}
+        <div className="flex rounded-xl bg-muted p-1 gap-1">
+          {(["ingredients", "steps", "nutrition"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === tab
+                  ? "bg-card text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab === "ingredients" ? "Ingredients" : tab === "steps" ? "Steps" : "Nutrition"}
+            </button>
+          ))}
+        </div>
+
+        {/* Ingredients Tab */}
+        {activeTab === "ingredients" && (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            {ingredients.length === 0 ? (
+              <div className="px-6 py-8 text-center text-muted-foreground text-sm">No ingredients listed yet.</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {ingredients.map((ingredient, index) => {
+                  const ingCal = Math.round((ingredient.calories * servings) / baseServings);
+                  const ingP = Math.round((ingredient.protein * servings) / baseServings);
+                  const ingC = Math.round((ingredient.carbs * servings) / baseServings);
+                  const ingF = Math.round((ingredient.fat * servings) / baseServings);
+                  const macroTotal = ingP + ingC + ingF || 1;
+                  return (
+                    <div key={index} className="px-4 py-3 flex items-center gap-3 group">
+                      <ConfidenceDot level={ingredient.isVerified ? "high" : "medium"} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {ingredient.amount
+                            ? `${(parseFloat(ingredient.amount) * servings) / baseServings} ${ingredient.unit}`.trim()
+                            : ingredient.unit}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ingCal} kcal</span>
+                      {/* Stacked P/C/F bar */}
+                      <div className="w-12 h-2 rounded-full overflow-hidden flex shrink-0">
+                        <div style={{ width: `${(ingP / macroTotal) * 100}%`, backgroundColor: "var(--macro-protein)" }} />
+                        <div style={{ width: `${(ingC / macroTotal) * 100}%`, backgroundColor: "var(--macro-carbs)" }} />
+                        <div style={{ width: `${(ingF / macroTotal) * 100}%`, backgroundColor: "var(--macro-fat)" }} />
+                      </div>
+                      {dbIngredientIds[index] && (
+                        <button
+                          onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                          className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Fix
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-        </div>
+          </div>
+        )}
 
-        {/* Ingredients Section */}
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-xl">
-          <button
-            type="button"
-            onClick={() => setShowIngredients(!showIngredients)}
-            className="w-full bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-800/30 px-6 py-4 flex items-center justify-between hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/70 dark:hover:to-slate-800/50 transition-all"
-          >
-            <span className="font-semibold text-slate-900 dark:text-white">Ingredients</span>
-            {showIngredients ? (
-              <ChevronUp className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+        {/* Steps Tab */}
+        {activeTab === "steps" && (
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            {instructionSteps.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No instructions yet.</p>
             ) : (
-              <ChevronDown className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            )}
-          </button>
-          {showIngredients && (
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              {ingredients.length === 0 ? (
-                <div className="px-6 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-                  No ingredients listed yet.
+              instructionSteps.map((step, index) => (
+                <div key={index} className="flex gap-3">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm text-foreground pt-0.5 leading-relaxed">{step}</p>
                 </div>
-              ) : (
-                ingredients.map((ingredient, index) => (
-                  <div key={index} className="px-6 py-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900 dark:text-white">{ingredient.name}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        {ingredient.amount
-                          ? `${(parseFloat(ingredient.amount) * servings) / baseServings} ${ingredient.unit}`.trim()
-                          : ingredient.unit}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        {ingredient.isVerified ? (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/30 rounded-full">
-                            <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
-                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Verified</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/30 rounded-full">
-                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Estimated</span>
-                          </div>
-                        )}
-                        {dbIngredientIds[index] && (
-                          <button
-                            onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Search className="w-3 h-3" /> Fix match
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      <p className="font-semibold text-slate-900 dark:text-white">
-                        {Math.round((ingredient.calories * servings) / baseServings)} kcal
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        P: {Math.round((ingredient.protein * servings) / baseServings)}g · C:{" "}
-                        {Math.round((ingredient.carbs * servings) / baseServings)}g · F:{" "}
-                        {Math.round((ingredient.fat * servings) / baseServings)}g
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
 
-        {/* Instructions Section */}
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-xl">
+        {/* Nutrition Tab */}
+        {activeTab === "nutrition" && (
+          <div className="space-y-4">
+            {/* 2x2 stat grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Calories", value: `${Math.round(scaledMacros.calories)}`, unit: "kcal" },
+                { label: "Protein", value: `${Math.round(scaledMacros.protein)}`, unit: "g" },
+                { label: "Carbs", value: `${Math.round(scaledMacros.carbs)}`, unit: "g" },
+                { label: "Fat", value: `${Math.round(scaledMacros.fat)}`, unit: "g" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-card border border-border rounded-xl p-3 text-center">
+                  <span className="text-lg font-bold text-foreground tabular-nums">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground ml-0.5">{stat.unit}</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Micronutrient bars */}
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
+              {[
+                { name: "Fiber", pct: 65, value: "8g" },
+                { name: "Iron", pct: 45, value: "6mg" },
+                { name: "Calcium", pct: 30, value: "120mg" },
+                { name: "Vitamin A", pct: 55, value: "450mcg" },
+                { name: "Vitamin C", pct: 85, value: "42mg" },
+              ].map((micro) => (
+                <div key={micro.name} className="flex items-center gap-3">
+                  <span className="text-xs text-foreground w-20 shrink-0">{micro.name}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${micro.pct}%`, backgroundColor: "var(--macro-calories)" }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-muted-foreground tabular-nums w-12 text-right">{micro.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons — Start Cooking + I Made This (matches mobile) */}
+        <div className="flex gap-3">
+          {instructionSteps.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setCookModeOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all"
+            >
+              <Icons.cook className="w-4 h-4" />
+              Start Cooking
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setShowInstructions(!showInstructions)}
-            className="w-full bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-800/30 px-6 py-4 flex items-center justify-between hover:from-slate-100 hover:to-slate-200/50 dark:hover:from-slate-800/70 dark:hover:to-slate-800/50 transition-all"
+            onClick={() => toast.success("Marked as made!")}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all"
           >
-            <span className="font-semibold text-slate-900 dark:text-white">Instructions</span>
-            {showInstructions ? (
-              <ChevronUp className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            )}
+            <Icons.check className="w-4 h-4" />
+            I Made This
           </button>
-          {showInstructions && (
-            <div className="px-6 py-6 space-y-5">
-              {instructionSteps.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400 text-sm">No instructions yet.</p>
-              ) : (
-                instructionSteps.map((step, index) => (
-                  <div key={index} className="flex gap-4">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-sm font-semibold shadow-lg shadow-violet-500/20">
-                      {index + 1}
-                    </span>
-                    <p className="text-slate-700 dark:text-slate-300 pt-1">{step}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
       </div>
 

@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Neon, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 
 type AppNotifRow = {
   id: string;
@@ -86,9 +86,9 @@ export default function NotificationsScreen() {
           paddingVertical: 12,
           borderRadius: Radius.md,
           borderWidth: 1,
-          borderColor: Neon.purple + "80",
+          borderColor: Accent.primary + "80",
         },
-        retryText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+        retryText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
         btn: {
           backgroundColor: colors.card,
           paddingHorizontal: 12,
@@ -121,7 +121,7 @@ export default function NotificationsScreen() {
         body: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         stamp: { color: colors.textTertiary, marginTop: 8, fontSize: 12 },
         hint: { color: colors.textTertiary, marginTop: 6, fontSize: 12 },
-        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Neon.purple, marginTop: 6 },
+        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: Accent.primary, marginTop: 6 },
         dotSpacer: { width: 10, height: 10, marginTop: 6 },
       }),
     [colors],
@@ -327,7 +327,7 @@ export default function NotificationsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Neon.purple} />
+          <ActivityIndicator size="large" color={Accent.primary} />
         </View>
       ) : error ? (
         <View style={styles.center}>
@@ -346,7 +346,7 @@ export default function NotificationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => void onRefresh()}
-              tintColor={Neon.purple}
+              tintColor={Accent.primary}
             />
           }
           ListEmptyComponent={

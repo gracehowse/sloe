@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
 type SortKey = "recent" | "calories" | "protein";
@@ -97,15 +97,15 @@ export default function LibraryScreen() {
     headerTitle: {
       fontSize: 22,
       fontWeight: "700",
-      color: Neon.purple,
+      color: Accent.primary,
     },
     countBadge: {
-      backgroundColor: Neon.purple + "15",
+      backgroundColor: Accent.primary + "15",
       paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
       borderRadius: Radius.sm,
     },
-    countText: { color: Neon.purple, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+    countText: { color: Accent.primary, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
     sortBtn: {
       flexDirection: "row",
       alignItems: "center",
@@ -180,7 +180,7 @@ export default function LibraryScreen() {
     ctaBtn: {
       paddingHorizontal: 24,
       paddingVertical: 12,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       alignItems: "center",
     },
@@ -190,10 +190,10 @@ export default function LibraryScreen() {
       paddingVertical: 12,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: Neon.purple + "80",
+      borderColor: Accent.primary + "80",
       alignItems: "center",
     },
-    ctaBtnSecondaryText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+    ctaBtnSecondaryText: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
   }), [colors]);
 
   const renderRecipe = useCallback(
@@ -264,7 +264,7 @@ export default function LibraryScreen() {
 
       {isLoading && savedRecipes.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Neon.purple} />
+          <ActivityIndicator size="large" color={Accent.primary} />
         </View>
       ) : (
         <FlatList
@@ -273,7 +273,7 @@ export default function LibraryScreen() {
           renderItem={renderRecipe}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Neon.purple} />
+            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Accent.primary} />
           }
           ListEmptyComponent={
             search.trim() ? (

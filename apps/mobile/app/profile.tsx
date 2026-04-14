@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   DIETARY_PREFERENCE_ENTRIES,
@@ -58,7 +58,7 @@ export default function ProfileScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: Neon.purple, letterSpacing: 3 },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: Accent.primary, letterSpacing: 3 },
 
     card: {
       backgroundColor: colors.card,
@@ -103,7 +103,7 @@ export default function ProfileScreen() {
     inputHalf: { flex: 1, gap: Spacing.xs },
 
     saveBtn: {
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       paddingVertical: 16,
       alignItems: "center",
@@ -124,8 +124,8 @@ export default function ProfileScreen() {
       backgroundColor: colors.inputBg,
     },
     dietaryChipActive: {
-      borderColor: Neon.green + "80",
-      backgroundColor: Neon.green + "15",
+      borderColor: Accent.success + "80",
+      backgroundColor: Accent.success + "15",
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
   }), [colors]);
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Neon.purple} />
+          <ActivityIndicator size="large" color={Accent.primary} />
         </View>
       </View>
     );
@@ -213,10 +213,10 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Daily Targets</Text>
           <View style={styles.targetsRow}>
-            <TargetStat value={Number(calories) || 0} label="kcal" color={Neon.purple} />
-            <TargetStat value={Number(protein) || 0} label="Protein" color={Neon.red} />
-            <TargetStat value={Number(carbs) || 0} label="Carbs" color={Neon.blue} />
-            <TargetStat value={Number(fat) || 0} label="Fat" color={Neon.yellow} />
+            <TargetStat value={Number(calories) || 0} label="kcal" color={Accent.primary} />
+            <TargetStat value={Number(protein) || 0} label="Protein" color={Accent.destructive} />
+            <TargetStat value={Number(carbs) || 0} label="Carbs" color={Accent.info} />
+            <TargetStat value={Number(fat) || 0} label="Fat" color={Accent.warning} />
           </View>
         </View>
 
@@ -286,7 +286,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name={active ? "checkmark-circle" : "ellipse-outline"}
                     size={18}
-                    color={active ? Neon.green : colors.textTertiary}
+                    color={active ? Accent.success : colors.textTertiary}
                   />
                   <Text style={[styles.dietaryLabel, active && { color: colors.text }]}>
                     {pref.label}

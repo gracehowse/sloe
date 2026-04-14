@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookMarked, Calendar, CheckCircle2, Target, X, ChevronRight } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
@@ -16,7 +16,7 @@ interface FirstRunChecklistProps {
 const STEPS = [
   {
     id: "log",
-    icon: Target,
+    icon: Icons.target,
     label: "Start with your dashboard",
     description: "Log food and water on the Tracker — that’s the daily home base; recipes and planning are extras when you want them",
     cta: "Open Tracker",
@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     id: "plan",
-    icon: Calendar,
+    icon: Icons.plan,
     label: "Plan meals when you’re ready",
     description: "Generate a week that lines up with your calorie and macro targets",
     cta: "Open Planner",
@@ -32,7 +32,7 @@ const STEPS = [
   },
   {
     id: "save",
-    icon: BookMarked,
+    icon: Icons.saved,
     label: "Save recipes to cook later",
     description: "Build a library from the feed or imports — optional once logging feels easy",
     cta: "Browse recipes",
@@ -86,32 +86,32 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
   if (dismissed || allDone) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border-2 border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xl shadow-slate-900/10 dark:shadow-black/30 overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-40 w-80 backdrop-blur-xl bg-card/95 border-2 border-border/80 rounded-2xl shadow-2xl shadow-foreground/10 overflow-hidden">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+          <h3 className="font-semibold text-foreground text-sm">
             Getting Started
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {completedCount} of {STEPS.length} complete
           </p>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Dismiss checklist"
         >
-          <X className="w-4 h-4" />
+          <Icons.close className="w-4 h-4" />
         </button>
       </div>
 
       {/* Progress bar */}
       <div className="px-4 pb-3">
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-500"
+            className="h-full bg-primary transition-all duration-500"
             style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
           />
         </div>
@@ -130,32 +130,32 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
                 done
                   ? "opacity-60"
-                  : "hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                  : "hover:bg-muted/60"
               }`}
             >
               {done ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
               ) : (
-                <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 shrink-0" />
+                <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p
                   className={`text-sm font-medium ${
                     done
-                      ? "line-through text-slate-500 dark:text-slate-400"
-                      : "text-slate-900 dark:text-white"
+                      ? "line-through text-muted-foreground"
+                      : "text-foreground"
                   }`}
                 >
                   {step.label}
                 </p>
                 {!done && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {step.description}
                   </p>
                 )}
               </div>
               {!done && (
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
             </button>
           );

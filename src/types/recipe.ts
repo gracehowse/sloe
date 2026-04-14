@@ -40,6 +40,12 @@ export interface RecipeCard {
    * Omit for legacy data — treated as fitting any slot.
    */
   mealSlots?: readonly PlannerMealSlot[];
+  /** Platform the recipe was imported from (social import feature). */
+  sourcePlatform?: "instagram" | "tiktok" | "youtube" | "pinterest" | "web" | "user";
+  /** Human-readable prep time (e.g. "15 min"). */
+  prepTime?: string;
+  /** Human-readable cook time (e.g. "30 min"). */
+  cookTime?: string;
 }
 
 export interface IngredientRow {

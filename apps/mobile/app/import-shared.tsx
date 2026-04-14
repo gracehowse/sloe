@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
@@ -42,6 +42,7 @@ function apiBase(): string {
 }
 
 type ImportState = "idle" | "checking" | "importing" | "review" | "saving" | "success" | "error";
+type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
   const colors = useThemeColors();
@@ -58,10 +59,22 @@ export default function ImportSharedScreen() {
   const [manualUrl, setManualUrl] = useState("");
   const [pendingRecipe, setPendingRecipe] = useState<ApiImportedRecipe | null>(null);
   const [mealTags, setMealTags] = useState<string[]>([]);
+  const [completedSteps, setCompletedSteps] = useState<ProgressStep[]>([]);
   const base = apiBase();
   const runImportRef = useRef<(url: string) => Promise<void>>(async () => {});
   /** Same URL can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
   const importInFlightRef = useRef<string | null>(null);
+
+  // Animate progress steps during import
+  useEffect(() => {
+    if (state !== "importing") return;
+    const timers = [
+      setTimeout(() => setCompletedSteps(["ingredients"]), 400),
+      setTimeout(() => setCompletedSteps(["ingredients", "nutrition"]), 1200),
+      setTimeout(() => setCompletedSteps(["ingredients", "nutrition", "macros"]), 2000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [state]);
 
   const runImport = useCallback(
     async (url: string) => {
@@ -83,6 +96,7 @@ export default function ImportSharedScreen() {
       setState("importing");
       setError(null);
       setSavedRecipeId(null);
+      setCompletedSteps([]);
 
       try {
         const res = await authedFetch(`${base}/api/recipe-import`, {
@@ -147,6 +161,7 @@ export default function ImportSharedScreen() {
 
     setState("importing");
     setError(null);
+    setCompletedSteps([]);
     try {
       const asset = result.assets[0];
       const form = new FormData();
@@ -367,7 +382,7 @@ export default function ImportSharedScreen() {
     backHit: { paddingVertical: 6, paddingHorizontal: 6 },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
     topTitle: {
-      color: Neon.purple,
+      color: Accent.primary,
       fontSize: 13,
       fontWeight: "800",
       letterSpacing: 3,
@@ -389,7 +404,7 @@ export default function ImportSharedScreen() {
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -412,7 +427,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Neon.purple + "18",
+      backgroundColor: Accent.primary + "18",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -431,13 +446,13 @@ export default function ImportSharedScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.xl,
       borderWidth: 1,
-      borderColor: Neon.green + "35",
+      borderColor: Accent.success + "35",
       paddingVertical: Spacing.xxxl,
       paddingHorizontal: Spacing.xxl,
       alignItems: "center",
       gap: Spacing.md,
       // subtle "sheet" depth
-      shadowColor: Neon.purple,
+      shadowColor: Accent.primary,
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.15,
       shadowRadius: 24,
@@ -449,7 +464,7 @@ export default function ImportSharedScreen() {
     successKicker: {
       fontSize: 11,
       fontWeight: "800",
-      color: Neon.green,
+      color: Accent.success,
       letterSpacing: 3,
       marginTop: Spacing.xs,
     },
@@ -465,12 +480,12 @@ export default function ImportSharedScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: Neon.purple + "22",
+      backgroundColor: Accent.primary + "22",
       paddingVertical: 10,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: Neon.purple + "44",
+      borderColor: Accent.primary + "44",
       marginTop: Spacing.xs,
       marginBottom: Spacing.sm,
     },
@@ -497,7 +512,7 @@ export default function ImportSharedScreen() {
       alignItems: "center",
       justifyContent: "center",
       gap: Spacing.sm,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       paddingVertical: 16,
       marginTop: Spacing.xs,
@@ -512,11 +527,11 @@ export default function ImportSharedScreen() {
       paddingVertical: 14,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: Neon.purple + "55",
+      borderColor: Accent.primary + "55",
       marginTop: Spacing.xs,
     },
-    outlineBtnPressed: { backgroundColor: Neon.purple + "12" },
-    outlineBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+    outlineBtnPressed: { backgroundColor: Accent.primary + "12" },
+    outlineBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
       flexDirection: "row",
@@ -525,7 +540,157 @@ export default function ImportSharedScreen() {
       gap: 8,
       paddingVertical: Spacing.md,
     },
-    textLinkLabel: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+    textLinkLabel: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
+
+    // Import from grid
+    importSourcesSection: {
+      gap: Spacing.sm,
+      marginBottom: Spacing.lg,
+    },
+    importSourcesLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
+      marginBottom: Spacing.xs,
+    },
+    importSourcesGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Spacing.md,
+    },
+    sourceButton: {
+      flex: 0.45,
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    sourceButtonPressed: { opacity: 0.7 },
+    sourceIconBox: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: Accent.primary + "22",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sourceLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.text,
+    },
+
+    // Recent imports
+    recentSection: {
+      gap: Spacing.sm,
+      marginBottom: Spacing.lg,
+    },
+    recentLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
+    },
+    recentItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+    },
+    recentBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    recentBadgeTT: { backgroundColor: "#000" },
+    recentBadgeIG: { backgroundColor: "#E4405F" },
+    recentBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#fff",
+    },
+    recentInfo: { flex: 1 },
+    recentTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 2,
+    },
+    recentTime: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+
+    // Progress steps
+    progressStepsContainer: {
+      gap: Spacing.md,
+      marginVertical: Spacing.lg,
+    },
+    progressStep: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+    },
+    stepIcon: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    stepIconPending: {
+      backgroundColor: colors.border,
+    },
+    stepIconDone: {
+      backgroundColor: Accent.success,
+    },
+    stepLabel: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.text,
+    },
+
+    // Macro impact card
+    macroCardContainer: {
+      backgroundColor: Accent.success + "18",
+      borderRadius: Radius.md,
+      padding: Spacing.lg,
+      marginBottom: Spacing.lg,
+      gap: Spacing.sm,
+    },
+    macroCardTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: Accent.success,
+      letterSpacing: 0.5,
+    },
+    macroCardText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.text,
+      lineHeight: 20,
+    },
+
+    // Ingredient count
+    ingredientCountLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
+      marginBottom: Spacing.sm,
+    },
   }), [colors]);
 
   return (
@@ -549,28 +714,78 @@ export default function ImportSharedScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {(authLoading || state === "checking" || state === "importing") && (
+        {(authLoading || state === "checking") && (
           <View style={styles.panelCard}>
             <View style={styles.brandCircle}>
               <Text style={styles.brandLetter}>P</Text>
             </View>
-            <ActivityIndicator size="large" color={Neon.purple} style={styles.loaderGap} />
-            <Text style={styles.panelTitle}>
-              {authLoading || state === "checking" ? "Looking for a link…" : "Pulling recipe…"}
-            </Text>
+            <ActivityIndicator size="large" color={Accent.primary} style={styles.loaderGap} />
+            <Text style={styles.panelTitle}>Looking for a link…</Text>
             <Text style={styles.panelSub}>
               Instagram, TikTok, or any recipe page — we’ll save it to your library.
             </Text>
           </View>
         )}
 
+        {state === "importing" && (
+          <View style={styles.panelCard}>
+            <Text style={[styles.panelTitle, { fontSize: 15, marginBottom: Spacing.xs }]}>
+              Extracting recipe…
+            </Text>
+            <Text style={[styles.panelSub, { marginBottom: Spacing.lg }]}>
+              Parsing ingredients and calculating macros
+            </Text>
+
+            <View style={styles.progressStepsContainer}>
+              {(["ingredients", "nutrition", "macros"] as ProgressStep[]).map((step, idx) => {
+                const isDone = completedSteps.includes(step);
+                const stepLabels: Record<ProgressStep, string> = {
+                  ingredients: "Extracting ingredients",
+                  nutrition: "Matching nutrition data",
+                  macros: "Calculating macros",
+                };
+                return (
+                  <View key={step} style={styles.progressStep}>
+                    <View
+                      style={[
+                        styles.stepIcon,
+                        isDone ? styles.stepIconDone : styles.stepIconPending,
+                      ]}
+                    >
+                      {isDone && (
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      )}
+                    </View>
+                    <Text style={styles.stepLabel}>{stepLabels[step]}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {(state === "review" || state === "saving") && pendingRecipe && (
           <View style={styles.panelCard}>
-            <Ionicons name="restaurant-outline" size={36} color={Neon.purple} />
+            <Ionicons name="restaurant-outline" size={36} color={Accent.primary} />
             <Text style={styles.panelTitle}>{title ?? "Imported recipe"}</Text>
             {pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
                 {pendingRecipe.calories} kcal · {pendingRecipe.protein ?? 0}g protein · {pendingRecipe.servings ?? 1} serving{(pendingRecipe.servings ?? 1) !== 1 ? "s" : ""}
+              </Text>
+            )}
+
+            {/* Macro impact card */}
+            <View style={styles.macroCardContainer}>
+              <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
+              <Text style={styles.macroCardText}>
+                This recipe will help balance your macros and fit your nutrition goals.
+              </Text>
+            </View>
+
+            {/* Ingredient count */}
+            {pendingRecipe.ingredients && Array.isArray(pendingRecipe.ingredients) && (
+              <Text style={styles.ingredientCountLabel}>
+                Parsed ingredients ({pendingRecipe.ingredients.length})
               </Text>
             )}
 
@@ -600,14 +815,14 @@ export default function ImportSharedScreen() {
         {state === "success" && title && savedRecipeId && (
           <View style={styles.successSheet}>
             <View style={styles.successIconWrap}>
-              <Ionicons name="checkmark-circle" size={72} color={Neon.green} />
+              <Ionicons name="checkmark-circle" size={72} color={Accent.success} />
             </View>
             <Text style={styles.successKicker}>SAVED</Text>
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
               {title}
             </Text>
             <View style={styles.libraryChip}>
-              <Ionicons name="bookmark" size={18} color={Neon.purple} />
+              <Ionicons name="bookmark" size={18} color={Accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
             </View>
             <Pressable
@@ -621,7 +836,7 @@ export default function ImportSharedScreen() {
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
             >
-              <Ionicons name="nutrition-outline" size={18} color={Neon.purple} style={{ marginRight: 6 }} />
+              <Ionicons name="nutrition-outline" size={18} color={Accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
           </View>
@@ -630,7 +845,7 @@ export default function ImportSharedScreen() {
         {!authLoading && !userId && state === "idle" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="person-outline" size={40} color={Neon.purple} />
+              <Ionicons name="person-outline" size={40} color={Accent.primary} />
             </View>
             <Text style={styles.panelTitle}>Sign in to import</Text>
             <Text style={styles.panelSub}>
@@ -658,7 +873,7 @@ export default function ImportSharedScreen() {
         {state === "error" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="alert-circle" size={44} color={Neon.red} />
+              <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
             </View>
             <Text style={styles.panelTitle}>Couldn’t import</Text>
             <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
@@ -679,46 +894,110 @@ export default function ImportSharedScreen() {
               <Text style={styles.primaryBtnText}>Try again</Text>
             </Pressable>
             <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <Ionicons name="clipboard-outline" size={18} color={Neon.purple} />
+              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
               <Text style={styles.textLinkLabel}>Paste from clipboard</Text>
             </Pressable>
           </View>
         )}
 
         {!authLoading && userId && state === "idle" && (
-          <View style={styles.panelCard}>
-            <View style={styles.brandCircle}>
-              <Text style={styles.brandLetter}>P</Text>
-            </View>
-            <Text style={styles.panelTitle}>Paste a recipe link</Text>
-            <Text style={styles.panelSub}>
-              From Instagram, TikTok, or any recipe site. If you just shared to Platemate, the link may already be on
-              your clipboard — tap below.
-            </Text>
-            <TextInput
-              value={manualUrl}
-              onChangeText={setManualUrl}
-              placeholder="https://…"
-              placeholderTextColor={colors.textTertiary}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-              <Text style={styles.primaryBtnText}>Import</Text>
-            </Pressable>
-            <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-              <Ionicons name="clipboard-outline" size={18} color={Neon.purple} />
-              <Text style={styles.textLinkLabel}>Use clipboard</Text>
-            </Pressable>
-            {ImagePicker && (
-              <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
-                <Ionicons name="camera-outline" size={18} color={Neon.purple} />
-                <Text style={styles.textLinkLabel}>Import from photo</Text>
+          <>
+            <View style={styles.panelCard}>
+              <View style={styles.brandCircle}>
+                <Text style={styles.brandLetter}>P</Text>
+              </View>
+              <Text style={styles.panelTitle}>Paste a recipe link</Text>
+              <Text style={styles.panelSub}>
+                From Instagram, TikTok, or any recipe site. If you just shared to Platemate, the link may already be on
+                your clipboard — tap below.
+              </Text>
+              <TextInput
+                value={manualUrl}
+                onChangeText={setManualUrl}
+                placeholder="https://…"
+                placeholderTextColor={colors.textTertiary}
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Pressable style={styles.primaryBtn} onPress={onManualImport}>
+                <Text style={styles.primaryBtnText}>Import</Text>
               </Pressable>
-            )}
-          </View>
+              <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
+                <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+                <Text style={styles.textLinkLabel}>Use clipboard</Text>
+              </Pressable>
+              {ImagePicker && (
+                <Pressable style={styles.textLinkBtn} onPress={() => void runImageImport()}>
+                  <Ionicons name="camera-outline" size={18} color={Accent.primary} />
+                  <Text style={styles.textLinkLabel}>Import from photo</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* Import from sources */}
+            <View style={styles.importSourcesSection}>
+              <Text style={styles.importSourcesLabel}>IMPORT FROM</Text>
+              <View style={styles.importSourcesGrid}>
+                {[
+                  { icon: "logo-tiktok", label: "TikTok" },
+                  { icon: "logo-instagram", label: "Instagram" },
+                  { icon: "logo-youtube", label: "YouTube" },
+                  { icon: "globe-outline", label: "Website" },
+                ].map((source) => (
+                  <Pressable
+                    key={source.label}
+                    style={({ pressed }) => [
+                      styles.sourceButton,
+                      pressed && styles.sourceButtonPressed,
+                    ]}
+                    onPress={() => {
+                      // These trigger the paste/import flow
+                      onPasteFromClipboard();
+                    }}
+                  >
+                    <View style={styles.sourceIconBox}>
+                      <Ionicons
+                        name={source.icon as any}
+                        size={24}
+                        color={Accent.primary}
+                      />
+                    </View>
+                    <Text style={styles.sourceLabel}>{source.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Recent imports */}
+            <View style={styles.recentSection}>
+              <Text style={styles.recentLabel}>RECENT IMPORTS</Text>
+              {[
+                { name: "Protein Ice Cream", source: "tiktok", time: "2 days ago" },
+                { name: "Sheet Pan Fajitas", source: "instagram", time: "5 days ago" },
+              ].map((item, idx) => (
+                <View key={idx} style={styles.recentItem}>
+                  <View
+                    style={[
+                      styles.recentBadge,
+                      item.source === "tiktok"
+                        ? styles.recentBadgeTT
+                        : styles.recentBadgeIG,
+                    ]}
+                  >
+                    <Text style={styles.recentBadgeText}>
+                      {item.source === "tiktok" ? "TT" : "IG"}
+                    </Text>
+                  </View>
+                  <View style={styles.recentInfo}>
+                    <Text style={styles.recentTitle}>{item.name}</Text>
+                    <Text style={styles.recentTime}>{item.time}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
         )}
       </ScrollView>
     </KeyboardAvoidingView>

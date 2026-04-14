@@ -38,6 +38,10 @@ export interface RecipeCard {
   sourceUrl?: string | null;
   mealSlots?: readonly PlannerMealSlot[] | string[];
   feedSource?: "catalog" | "community";
+  /** Human-readable prep time (e.g. "15 min"). */
+  prepTime?: string;
+  /** Human-readable cook time (e.g. "30 min"). */
+  cookTime?: string;
 }
 
 export interface IngredientRow {

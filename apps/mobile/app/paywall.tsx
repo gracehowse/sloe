@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { PurchasesPackage } from "react-native-purchases";
 
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   getOfferings,
@@ -26,10 +26,10 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 
 const TIMELINE = [
-  { icon: "checkmark-circle" as const, color: Neon.green, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
-  { icon: "restaurant" as const, color: Neon.purple, title: "Today: Start importing recipes", desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition." },
-  { icon: "analytics" as const, color: Neon.blue, title: "This week: Build your library", desc: "Save, verify, and plan meals that hit your macros." },
-  { icon: "flag" as const, color: Neon.yellow, title: "Day 7: Trial ends", desc: "Keep going with Pro, or continue with the free plan. We'll remind you before." },
+  { icon: "checkmark-circle" as const, color: Accent.success, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
+  { icon: "restaurant" as const, color: Accent.primary, title: "Today: Start importing recipes", desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition." },
+  { icon: "analytics" as const, color: Accent.info, title: "This week: Build your library", desc: "Save, verify, and plan meals that hit your macros." },
+  { icon: "flag" as const, color: Accent.warning, title: "Day 7: Trial ends", desc: "Keep going with Pro, or continue with the free plan. We'll remind you before." },
 ];
 
 export default function PaywallScreen() {
@@ -109,7 +109,7 @@ export default function PaywallScreen() {
       paddingBottom: Spacing.xl,
       backgroundColor: "#1a1a2e",
     },
-    headerKicker: { fontSize: 11, fontWeight: "700", color: Neon.green, letterSpacing: 2, marginBottom: Spacing.sm },
+    headerKicker: { fontSize: 11, fontWeight: "700", color: Accent.success, letterSpacing: 2, marginBottom: Spacing.sm },
     headerTitle: { fontSize: 26, fontWeight: "800", color: "#fff", lineHeight: 34 },
     scroll: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 40 },
 
@@ -130,7 +130,7 @@ export default function PaywallScreen() {
     priceText: { fontSize: 13, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
 
     trialBtn: {
-      backgroundColor: Neon.green, borderRadius: Radius.md,
+      backgroundColor: Accent.success, borderRadius: Radius.md,
       paddingVertical: 18, alignItems: "center",
     },
     trialBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
@@ -178,7 +178,7 @@ export default function PaywallScreen() {
 
         {/* Free confirmation */}
         <View style={styles.freeRow}>
-          <Ionicons name="checkmark-circle" size={18} color={Neon.green} />
+          <Ionicons name="checkmark-circle" size={18} color={Accent.success} />
           <Text style={styles.freeText}>No Payment Due Now</Text>
         </View>
 

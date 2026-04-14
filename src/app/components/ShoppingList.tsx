@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { ShoppingCart, Check, Plus, Trash2, Download, Printer, FileText, Minus, AlertTriangle, Calendar } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
@@ -174,38 +174,38 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl print:hidden">
-                <ShoppingCart className="w-5 h-5 text-white" />
+              <div className="p-2 bg-primary rounded-xl print:hidden">
+                <Icons.shopping className="w-5 h-5 text-white" />
               </div>
-              <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent print:text-slate-900 print:bg-none">
+              <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent print:text-foreground print:bg-none">
                 Shopping List
               </h1>
             </div>
-            <p className="text-slate-600 dark:text-slate-400 print:text-slate-600">From your meal plan</p>
+            <p className="text-muted-foreground print:text-muted-foreground">From your meal plan</p>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden">
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm"
+              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
             >
-              <Printer className="w-4 h-4" />
+              <Icons.printer className="w-4 h-4" />
               Print
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm"
+              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
             >
-              <Download className="w-4 h-4" />
+              <Icons.import className="w-4 h-4" />
               CSV
             </button>
             <button
               type="button"
               onClick={handleExportText}
-              className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium shadow-sm"
+              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
             >
-              <FileText className="w-4 h-4" />
+              <Icons.recipe className="w-4 h-4" />
               Text
             </button>
           </div>
@@ -214,14 +214,14 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
 
       {shoppingListOutOfSync ? (
         <div
-          className="mb-6 rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/60 bg-amber-50/95 dark:bg-amber-950/35 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden"
+          className="mb-6 rounded-2xl border-2 border-warning/80 bg-warning/10 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden"
           role="status"
         >
           <div className="flex gap-3 min-w-0">
-            <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+            <Icons.caution className="w-5 h-5 text-warning shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">List may not match your meal plan</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <p className="font-semibold text-foreground">List may not match your meal plan</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Your planner changed (meals or portions) after this list was built. Regenerate so quantities match what you
                 intend to cook.
               </p>
@@ -230,7 +230,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
           <button
             type="button"
             onClick={() => void generateShoppingListFromPlan()}
-            className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm"
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-warning hover:bg-warning/90 text-white text-sm font-semibold shadow-sm"
           >
             Regenerate from plan
           </button>
@@ -238,16 +238,16 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       ) : null}
 
       {/* Progress */}
-      <div className="backdrop-blur-xl bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-200/50 dark:border-violet-800/50 rounded-2xl p-6 mb-8 shadow-xl print:hidden">
+      <div className="backdrop-blur-xl bg-primary/10 border-2 border-primary/30 rounded-2xl p-6 mb-8 shadow-xl print:hidden">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-slate-900 dark:text-white">Shopping Progress</h3>
-          <span className="text-lg font-bold text-violet-600 dark:text-violet-400">
+          <h3 className="text-foreground">Shopping Progress</h3>
+          <span className="text-lg font-bold text-primary">
             {displayProgress.checkedGroups} / {displayProgress.groupCount} items
           </span>
         </div>
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+        <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-pm duration-[180ms]"
+            className="h-full bg-primary transition-pm duration-[180ms]"
             style={{
               width: `${displayProgress.groupCount ? (displayProgress.checkedGroups / displayProgress.groupCount) * 100 : 0}%`,
             }}
@@ -256,7 +256,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       </div>
 
       {/* Add Item */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg print:hidden">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg print:hidden">
         <div className="flex gap-3">
           <input
             type="text"
@@ -264,14 +264,14 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddCustom()}
-            className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           <button
             type="button"
             onClick={handleAddCustom}
-            className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
+            className="px-6 py-3 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
           >
-            <Plus className="w-5 h-5" />
+            <Icons.add className="w-5 h-5" />
             Add
           </button>
         </div>
@@ -280,7 +280,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       {/* Empty State */}
       {shoppingItems.length === 0 && (
         <EmptyState
-          icon={Calendar}
+          icon={Icons.plan}
           title="Your shopping list is empty"
           description="Generate a meal plan first, then build your shopping list from it. You can also add custom items manually above."
           ctaLabel="Go to Meal Planner"
@@ -292,9 +292,9 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       {categories.map((category) => {
         const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === category));
         return (
-          <div key={category} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
-            <div className="sticky top-0 z-10 -mx-2 mb-4 border-b border-slate-200/90 dark:border-slate-700/90 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{category}</h3>
+          <div key={category} className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+            <div className="sticky top-0 z-10 -mx-2 mb-4 border-b border-border/90 bg-card/90 backdrop-blur-md px-2 py-2">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">{category}</h3>
             </div>
             <div className="space-y-3">
               {groups.map((group) => {
@@ -314,8 +314,8 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
                     key={group.key}
                     className={`flex items-center gap-4 p-4 rounded-xl border transition-pm ${
                       dimmed
-                        ? "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60"
-                        : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                        ? "bg-muted border-border opacity-60"
+                        : "bg-card border-border hover:border-primary/30"
                     }`}
                   >
                     <button
@@ -323,43 +323,43 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
                       onClick={() => toggleGroupChecked(group)}
                       className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center print:hidden ${
                         allChecked
-                          ? "bg-violet-600 border-violet-600"
+                          ? "bg-primary border-primary"
                           : someChecked
-                            ? "border-violet-500 bg-violet-100 dark:bg-violet-950/40"
-                            : "border-slate-300 dark:border-slate-600 hover:border-violet-500"
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50"
                       }`}
                     >
                       {allChecked ? (
-                        <Check className="w-4 h-4 text-white" />
+                        <Icons.check className="w-4 h-4 text-white" />
                       ) : someChecked ? (
-                        <Minus className="w-4 h-4 text-violet-700 dark:text-violet-300" />
+                        <Icons.remove className="w-4 h-4 text-primary" />
                       ) : null}
                     </button>
-                    <span className="hidden print:inline w-6 text-center text-sm text-slate-500">
+                    <span className="hidden print:inline w-6 text-center text-sm text-muted-foreground">
                       {allChecked ? "☑" : "☐"}
                     </span>
                     {thumb ? (
                       <img
                         src={thumb}
                         alt=""
-                        className="hidden h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200/80 dark:ring-slate-600/80 sm:block"
+                        className="hidden h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-border/80 sm:block"
                       />
                     ) : null}
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`font-medium ${lineThrough ? "line-through text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}
+                        className={`font-medium ${lineThrough ? "line-through text-muted-foreground" : "text-foreground"}`}
                       >
                         {qtyLine} {group.displayName}
                       </p>
                       {group.items.length > 1 ? (
-                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Multiple quantities/units combined for shopping — amounts are not added when units differ.
                         </p>
                       ) : null}
-                      <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {multiFrom ? (
                           <>
-                            <span className="font-medium text-slate-600 dark:text-slate-300">Combined from plan: </span>
+                            <span className="font-medium text-foreground">Combined from plan: </span>
                             {fromMerged}
                           </>
                         ) : (
@@ -370,10 +370,10 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
                     <button
                       type="button"
                       onClick={() => removeGroup(group)}
-                      className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors print:hidden"
+                      className="flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors print:hidden"
                       aria-label={`Remove ${group.displayName}`}
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Icons.delete className="w-5 h-5" />
                     </button>
                   </div>
                 );
@@ -384,13 +384,13 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       })}
 
       {/* Actions */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg print:hidden">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-lg print:hidden">
         <div className="flex items-center justify-between">
-          <p className="text-slate-600 dark:text-slate-400">Generate from your current meal plan</p>
+          <p className="text-muted-foreground">Generate from your current meal plan</p>
           <button
             type="button"
             onClick={() => void generateShoppingListFromPlan()}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all font-medium"
+            className="px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all font-medium"
           >
             Regenerate from Plan
           </button>
