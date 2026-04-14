@@ -12,6 +12,7 @@
     "ios:device": "expo run:ios --device",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
+    "prebuild:ios:personal": "EXPO_IOS_PERSONAL_TEAM=1 expo prebuild --clean --platform ios",
     "ios:prebuild": "expo prebuild --platform ios",
     "ios:xcode": "open ios/mobile.xcworkspace",
     "web": "expo start --web",

@@ -15,8 +15,19 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
 ### Physical iPhone (USB)
 
 1. Plug in the phone, unlock it, tap **Trust** if asked.
-2. In Xcode (after `npx expo prebuild` at least once): **Signing & Capabilities** → pick your **Team** so the dev build installs.
-3. From **`apps/mobile`**:
+2. **Free Apple ID (“Personal Team”)** — Apple will **not** provision **Sign in with Apple** or **Push Notifications** for that team. Use one of:
+   - **Paid [Apple Developer Program](https://developer.apple.com/programs/)** ($99/yr) to keep every capability, or
+   - **Personal-team dev build**: regenerate iOS with entitlements stripped:
+
+     ```bash
+     cd apps/mobile
+     npm run prebuild:ios:personal
+     ```
+
+     Then use email / magic link sign-in (Apple button stays hidden). Remote push won’t work until you use a paid team and prebuild **without** `EXPO_IOS_PERSONAL_TEAM`.
+
+3. In Xcode (after prebuild): **Signing & Capabilities** → pick your **Team** so the dev build installs.
+4. From **`apps/mobile`**:
 
    ```bash
    npm run ios:device
@@ -30,7 +41,7 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
 
    That runs `expo run:ios --device`, builds, installs, and starts Metro.
 
-4. On the phone: **Settings → Platemate → Local Network → On** so Metro on your Mac is reachable. If it still won’t load JS, start Metro with a tunnel:
+5. On the phone: **Settings → Platemate → Local Network → On** so Metro on your Mac is reachable. If it still won’t load JS, start Metro with a tunnel:
 
    ```bash
    npm run start:tunnel

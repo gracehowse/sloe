@@ -21,6 +21,12 @@ export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    void AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+  }, []);
 
   useEffect(() => {
     if (!session) { setOnboardingChecked(false); return; }
@@ -281,8 +287,8 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Apple Sign-In */}
-        {Platform.OS === "ios" && (
+        {/* Apple Sign-In — hidden when capability not provisioned (e.g. Personal Team dev build) */}
+        {Platform.OS === "ios" && appleAuthAvailable && (
           <Pressable
             style={[styles.appleBtn, busy && styles.btnDisabled]}
             onPress={() => void onAppleSignIn()}
