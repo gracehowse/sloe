@@ -54,7 +54,7 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
 ### Simulator (one command)
 
 ```bash
-npx expo run:ios
+npm run ios
 ```
 
 ## “No script URL provided” / `unsanitizedScriptURLString = (null)`
@@ -86,6 +86,14 @@ The native app is running in **debug** but **cannot see Metro** (or the JS bundl
 
 5. **Still stuck**  
    In Xcode, select the project → **Build Phases** → **Bundle React Native code and images**. Compare with a fresh `expo prebuild` project or [Sentry’s RN docs](https://docs.sentry.io/platforms/react-native/manual-setup/metro/) / [issue #5168](https://github.com/getsentry/sentry-react-native/issues/5168) (wrong shell script paths break the bundle and produce this exact error).
+
+## `xcodebuild` exit code 65 — Sentry / `sentry-cli`
+
+If you see **`An organization ID or slug is required (provide with --org)`** during **Bundle React Native code and images**, local builds are trying to upload source maps without Sentry org/token.
+
+- Prefer **`npm run ios`** / **`npm run ios:device`** / **`npm run android`** (they set `SENTRY_DISABLE_AUTO_UPLOAD=true`).
+- Or run **`npx expo prebuild --platform ios`** so `ios/.xcode.env.local` gets `SENTRY_DISABLE_AUTO_UPLOAD=true` (skipped when `EAS_BUILD=true` so cloud builds can still upload if you add secrets).
+- Or export **`SENTRY_ALLOW_FAILURE=true`** so upload failures do not fail the build.
 
 ## More
 

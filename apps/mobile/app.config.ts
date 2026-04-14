@@ -9,6 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   if (process.env.EXPO_IOS_PERSONAL_TEAM === "1") {
     plugins.push("./plugins/withPersonalTeamDevIOS");
   }
+  plugins.push("./plugins/withSentryDisableUploadLocalXcode");
   return {
     ...config,
     plugins,
