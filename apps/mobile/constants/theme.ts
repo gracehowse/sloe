@@ -18,6 +18,8 @@ export const Accent = {
   cyan: '#06b6d4',
   orange: '#f97316',
   magenta: '#e04888',
+  /** Info / carbs-style accent (aligned with web macro-carbs tone where needed) */
+  info: '#0ea5e9',
 };
 
 /** Legacy alias — use Accent instead for new code */

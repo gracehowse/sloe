@@ -100,7 +100,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-primary/30 rounded-xl">
-            <SettingsIcon className="w-5 h-5 text-white" />
+            <Icons.settings className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-foreground bg-clip-text text-transparent">Settings</h1>
         </div>
@@ -110,7 +110,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Current plan */}
       <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-muted-foreground" />
+          <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Your plan</h3>
         </div>
         <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Ticket className="w-5 h-5 text-muted-foreground" />
+          <Icons.ticket className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Promo code</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
@@ -193,7 +193,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Account Section */}
       <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <User className="w-5 h-5 text-muted-foreground" />
+          <Icons.user className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Account</h3>
         </div>
         <div className="space-y-4">
@@ -237,7 +237,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Preferences */}
       <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <SettingsIcon className="w-5 h-5 text-muted-foreground" />
+          <Icons.settings className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Preferences</h3>
         </div>
         <div className="space-y-6">
@@ -294,7 +294,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Notifications */}
       <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <Bell className="w-5 h-5 text-muted-foreground" />
+          <Icons.notifications className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Notifications</h3>
         </div>
         <div className="space-y-4">
@@ -323,7 +323,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Privacy */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <Shield className="w-5 h-5 text-muted-foreground" />
+          <Icons.shield className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Privacy & Security</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">

@@ -782,12 +782,12 @@ export default function ImportSharedScreen() {
               </Text>
             </View>
 
-            {/* Ingredient count */}
-            {pendingRecipe.ingredients && Array.isArray(pendingRecipe.ingredients) && (
+            {/* Ingredient count — avoid `unknown &&` in JSX (tsc ReactNode) */}
+            {Array.isArray(pendingRecipe.ingredients) ? (
               <Text style={styles.ingredientCountLabel}>
                 Parsed ingredients ({pendingRecipe.ingredients.length})
               </Text>
-            )}
+            ) : null}
 
             <MealTypePicker
               selected={mealTags}

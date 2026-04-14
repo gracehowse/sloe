@@ -134,7 +134,7 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
               }`}
             >
               {done ? (
-                <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                <Icons.success className="w-5 h-5 text-success shrink-0" />
               ) : (
                 <div className="w-5 h-5 rounded-full border-2 border-border shrink-0" />
               )}

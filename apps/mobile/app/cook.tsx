@@ -173,7 +173,7 @@ export default function CookModeScreen() {
       flex: 1,
       paddingVertical: 16,
       borderRadius: Radius.md,
-      backgroundColor: colors.surfaceElevated,
+      backgroundColor: colors.card,
       alignItems: "center",
     },
     navBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },

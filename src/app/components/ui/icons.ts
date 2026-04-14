@@ -108,6 +108,8 @@ import {
   ShoppingCart,
   LogOut,
   Printer,
+  Ticket,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -219,6 +221,8 @@ export const Icons = {
   sparkle: Sparkles,
   premium: Crown,
   badgeCheck: BadgeCheck,
+  ticket: Ticket,
+  shield: Shield,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof Icons;

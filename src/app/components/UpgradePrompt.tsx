@@ -34,12 +34,12 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
           onClick={onDismiss}
           className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
         >
-          <X className="w-4 h-4" />
+          <Icons.close className="w-4 h-4" />
         </button>
       )}
       <div className="flex items-start gap-4">
         <div className="shrink-0 p-2.5 bg-primary rounded-xl shadow-lg shadow-primary/20">
-          <Crown className="w-5 h-5 text-white" />
+          <Icons.premium className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-foreground mb-1">
@@ -57,7 +57,7 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
               onClick={onUpgrade}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             >
-              <Sparkles className="w-4 h-4" />
+              <Icons.sparkles className="w-4 h-4" />
               Upgrade
             </button>
             <a

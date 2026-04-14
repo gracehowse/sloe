@@ -605,7 +605,7 @@ export default function PlannerScreen() {
         {/* Today's plan section label */}
         {plan && plan.length > 0 && (
           <Text style={styles.sectionLabel}>
-            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}'s plan
+            {`${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}'s plan`}
           </Text>
         )}
 
