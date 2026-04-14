@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { RECIPE_CATALOG } from "../../src/data/recipeCatalog.ts";
 import {
   collectPlanIngredientKeys,
   computeSmartRecipeSuggestions,
 } from "../../src/lib/planning/smartSuggestions.ts";
 
 describe("computeSmartRecipeSuggestions", () => {
-  it("returns catalog recipes that share ingredients with the plan, excluding meals already on the plan", () => {
+  it("returns pool recipes that share ingredients with the plan, excluding meals already on the plan", () => {
+    const chickenId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    const salmonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     const title = "High-Protein Chicken & Rice Bowl";
     const plan = [
       {
@@ -24,12 +25,37 @@ describe("computeSmartRecipeSuggestions", () => {
         totals: { calories: 542, protein: 48, carbs: 52, fat: 12 },
       },
     ];
-    const titleToId = (t: string) => RECIPE_CATALOG.find((r) => r.title === t)?.id ?? null;
-    const out = computeSmartRecipeSuggestions({ mealPlan: plan, titleToId });
+    const titleToId = (t: string) => (t === title ? chickenId : null);
+    const dbMap = new Map<string, string[]>([
+      [chickenId, ["Chicken breast", "White rice", "Olive oil"]],
+      [salmonId, ["Salmon fillet", "Mixed vegetables", "Olive oil"]],
+    ]);
+    const extraRecipePool = [
+      {
+        id: salmonId,
+        creatorName: "Test",
+        creatorImage: "",
+        title: "Grilled Salmon with Roasted Vegetables",
+        image: "",
+        servings: 1,
+        calories: 468,
+        protein: 42,
+        carbs: 28,
+        fat: 20,
+        isVerified: true,
+        savedCount: 0,
+        isSaved: false,
+      },
+    ];
+    const out = computeSmartRecipeSuggestions({
+      mealPlan: plan,
+      titleToId,
+      dbIngredientsByRecipeId: dbMap,
+      extraRecipePool,
+    });
     const ids = out.map((s) => s.recipe.id);
-    // Shares "olive oil" with salmon recipe in catalog data.
-    expect(ids).toContain("cccccccc-cccc-cccc-cccc-cccccccccccc");
-    expect(ids).not.toContain("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    expect(ids).toContain(salmonId);
+    expect(ids).not.toContain(chickenId);
   });
 
   it("includes community pool recipes when Supabase ingredient names overlap the plan", () => {
