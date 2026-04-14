@@ -10,6 +10,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
+| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, and any recipe whose `source_url` is listed in `seed-recipe-urls.txt` | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) |
 | `seed-discover.ts` | Seed the Discover feed from URLs in `seed-recipe-urls.txt` | `PLATEMATE_SEED_AUTHOR_ID=<uuid> npx tsx scripts/seed-discover.ts` |
 | `refresh-recipes.ts` | Re-fetch and re-verify ALL recipes with a `source_url` | `npx tsx scripts/refresh-recipes.ts [--dry-run]` |
 | `fix-servings.ts` | Re-fetch servings from source URLs for recipes stuck at `servings=1` | `npx tsx scripts/fix-servings.ts [--dry-run]` |
