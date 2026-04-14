@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# Platemate mobile (Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Run all commands from **`apps/mobile`** (or use `npm run mobile:dev` from the repo root).
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Everyday dev
 
 ```bash
-npm run reset-project
+cd apps/mobile
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu. For a one-shot iOS run (starts Metro and installs/launches):
 
-## Learn more
+```bash
+npx expo run:ios
+# Physical device:
+npx expo run:ios --device
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## “No script URL provided” / `unsanitizedScriptURLString = (null)`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The native app is running in **debug** but **cannot see Metro** (or the JS bundle was never embedded in **Release**).
 
-## Join the community
+1. **Start the bundler first**  
+   Leave `npx expo start` running in a terminal, then launch the app (don’t open the app from Xcode alone without Metro).
 
-Join our community of developers creating universal apps.
+2. **Physical iPhone**  
+   - **Settings → Platemate → Local Network → On** (Metro uses the LAN; iOS may not prompt until the app tries to connect).  
+   - If the Mac and phone are on different networks or discovery fails, use a tunnel:  
+     `npx expo start --tunnel`  
+     (or `npm run start:tunnel` from `apps/mobile`.)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+3. **Xcode scheme**  
+   - **Debug** → expects Metro (steps above).  
+   - **Release** → must embed the bundle at build time. If Release shows this error, the “Bundle React Native code and images” phase failed or was skipped; fix the iOS project (often after upgrading RN / Sentry).
+
+4. **Stale native project + Sentry**  
+   Regenerate iOS so the Sentry config plugin can refresh the bundle script (RN 0.81 + `@sentry/react-native` is picky):
+
+   ```bash
+   cd apps/mobile
+   npx expo prebuild --clean --platform ios
+   ```
+
+   Then `npx expo run:ios` again.
+
+5. **Still stuck**  
+   In Xcode, select the project → **Build Phases** → **Bundle React Native code and images**. Compare with a fresh `expo prebuild` project or [Sentry’s RN docs](https://docs.sentry.io/platforms/react-native/manual-setup/metro/) / [issue #5168](https://github.com/getsentry/sentry-react-native/issues/5168) (wrong shell script paths break the bundle and produce this exact error).
+
+## More
+
+- [Expo dev builds](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Expo Router](https://docs.expo.dev/router/introduction/)
