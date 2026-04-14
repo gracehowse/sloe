@@ -24,7 +24,9 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
      npm run prebuild:ios:personal
      ```
 
-     Then use email / magic link sign-in (Apple button stays hidden). Remote push won’t work until you use a paid team and prebuild **without** `EXPO_IOS_PERSONAL_TEAM`.
+     Then use email / magic link sign-in (Apple button stays hidden). **Apple Sign-In, remote push, and HealthKit** are omitted from the dev entitlements until you use a paid team and prebuild **without** `EXPO_IOS_PERSONAL_TEAM`.
+
+     If a build still fails, scroll to the **bottom** of the Xcode log — the long “Target … in project Pods” block is normal; the real error is usually the last `error:` line (often provisioning vs entitlements).
 
 3. In Xcode (after prebuild): **Signing & Capabilities** → pick your **Team** so the dev build installs.
 4. From **`apps/mobile`**:

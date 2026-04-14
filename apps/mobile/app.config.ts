@@ -1,8 +1,8 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 /**
- * Extends app.json. When EXPO_IOS_PERSONAL_TEAM=1, drops Sign in with Apple + Push
- * entitlements so Xcode can provision with a free Personal Team.
+ * Extends app.json. When EXPO_IOS_PERSONAL_TEAM=1, drops Sign in with Apple, Push,
+ * and HealthKit entitlements so Xcode can provision with a free Personal Team.
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
   const plugins = [...(config.plugins ?? [])];
