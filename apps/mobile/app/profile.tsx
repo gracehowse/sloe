@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   DIETARY_PREFERENCE_ENTRIES,
@@ -32,12 +33,12 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
-  const [calories, setCalories] = useState("2000");
-  const [protein, setProtein] = useState("150");
-  const [carbs, setCarbs] = useState("200");
-  const [fat, setFat] = useState("65");
-  const [fiber, setFiber] = useState("28");
-  const [water, setWater] = useState("2000");
+  const [calories, setCalories] = useState(String(NUTRITION_DEFAULTS.calories));
+  const [protein, setProtein] = useState(String(NUTRITION_DEFAULTS.protein));
+  const [carbs, setCarbs] = useState(String(NUTRITION_DEFAULTS.carbs));
+  const [fat, setFat] = useState(String(NUTRITION_DEFAULTS.fat));
+  const [fiber, setFiber] = useState(String(NUTRITION_DEFAULTS.fiber));
+  const [water, setWater] = useState(String(NUTRITION_DEFAULTS.water));
   const [dietary, setDietary] = useState<DietaryPreferenceId[]>([]);
 
   const toggleDietary = useCallback((id: DietaryPreferenceId) => {

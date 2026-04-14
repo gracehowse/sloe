@@ -3,7 +3,6 @@ import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { getIngredientsForRecipe, getInstructionsForRecipe, getRecipeById } from "../../data/recipeCatalog.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -82,7 +81,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
-  const isCatalogRecipe = Boolean(getRecipeById(recipe.id));
+  const isCatalogRecipe = false;
   const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
   const isPublished = publishedOverride ?? (recipe.isPublished ?? null);
 
@@ -380,23 +379,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     };
   }, [recipe.id, isCatalogRecipe]);
 
-  const catalogIngredients = useMemo(() => getIngredientsForRecipe(recipe.id), [recipe.id]);
-  const catalogInstructions = useMemo(() => getInstructionsForRecipe(recipe.id), [recipe.id]);
-
-  const ingredients = isCatalogRecipe ? catalogIngredients : dbIngredients;
+  const ingredients = dbIngredients;
   const instructionSteps = useMemo(() => {
-    if (isCatalogRecipe) {
-      return catalogInstructions;
-    }
     const text = dbInstructionsText?.trim() ?? "";
     if (!text) return [];
     return text
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);
-  }, [isCatalogRecipe, catalogInstructions, dbInstructionsText]);
+  }, [dbInstructionsText]);
 
-  const baseServings = isCatalogRecipe ? recipe.servings : (dbServings ?? recipe.servings);
+  const baseServings = dbServings ?? recipe.servings;
   const displayRecipe = useMemo(() => {
     if (isCatalogRecipe || !dbMacros) {
       return recipe;
@@ -424,9 +417,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       protein: acc.protein + ing.protein,
       carbs: acc.carbs + ing.carbs,
       fat: acc.fat + ing.fat,
+      fiberG: acc.fiberG + (ing.fiberG ?? 0),
+      sugarG: acc.sugarG + (ing.sugarG ?? 0),
+      sodiumMg: acc.sodiumMg + (ing.sodiumMg ?? 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
   );
+
+  // Scaled micronutrients — from ingredient sum or recipe-level fallback
+  const scaledMicros = {
+    fiberG: Math.round(((ingredientTotal.fiberG || displayRecipe.fiberG || 0) * servings) / baseServings * 10) / 10,
+    sugarG: Math.round(((ingredientTotal.sugarG || displayRecipe.sugarG || 0) * servings) / baseServings * 10) / 10,
+    sodiumMg: Math.round(((ingredientTotal.sodiumMg || displayRecipe.sodiumMg || 0) * servings) / baseServings),
+  };
 
   // macroAccuracy available if needed: Math.abs(ingredientTotal.calories - displayRecipe.calories)
 
@@ -790,15 +793,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               ))}
             </div>
 
-            {/* Micronutrient bars */}
+            {/* Micronutrient bars — real data from ingredients */}
             <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
               {[
-                { name: "Fiber", pct: 65, value: "8g" },
-                { name: "Iron", pct: 45, value: "6mg" },
-                { name: "Calcium", pct: 30, value: "120mg" },
-                { name: "Vitamin A", pct: 55, value: "450mcg" },
-                { name: "Vitamin C", pct: 85, value: "42mg" },
+                { name: "Fiber", pct: Math.min(100, Math.round((scaledMicros.fiberG / 28) * 100)), value: `${scaledMicros.fiberG}g` },
+                { name: "Sugar", pct: Math.min(100, Math.round((scaledMicros.sugarG / 50) * 100)), value: `${scaledMicros.sugarG}g` },
+                { name: "Sodium", pct: Math.min(100, Math.round((scaledMicros.sodiumMg / 2300) * 100)), value: `${scaledMicros.sodiumMg}mg` },
               ].map((micro) => (
                 <div key={micro.name} className="flex items-center gap-3">
                   <span className="text-xs text-foreground w-20 shrink-0">{micro.name}</span>

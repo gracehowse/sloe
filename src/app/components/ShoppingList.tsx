@@ -2,7 +2,6 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import {
   formatMixedShoppingAmounts,
   groupShoppingItemsByIngredientName,
@@ -35,8 +34,6 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
     (from: string) => {
       const title = singleRecipeTitleFromFromField(from);
       if (!title) return null;
-      const cat = RECIPE_CATALOG.find((r) => r.title === title);
-      if (cat) return cat.image;
       const lib = savedRecipesForLibrary.find((r) => r.title === title);
       return lib?.image ?? null;
     },

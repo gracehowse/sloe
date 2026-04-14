@@ -16,15 +16,21 @@ export interface MacroTargets {
   waterMl: number;
 }
 
-/** Defaults for hydration and legacy snapshots that only stored P/C/F. */
+/**
+ * Defaults for hydration and legacy snapshots that only stored P/C/F.
+ * MUST stay in sync with apps/mobile/constants/nutritionDefaults.ts
+ */
 export const DEFAULT_MACRO_TARGETS: MacroTargets = {
-  calories: 1400,
-  protein: 120,
-  carbs: 150,
-  fat: 40,
+  calories: 2000,
+  protein: 150,
+  carbs: 200,
+  fat: 65,
   fiber: 28,
   waterMl: 2000,
 };
+
+/** Default daily steps goal. MUST stay in sync with mobile NUTRITION_DEFAULTS.steps */
+export const DEFAULT_STEPS_GOAL = 10000;
 
 export function normalizeMacroTargets(partial: Partial<MacroTargets> | null | undefined): MacroTargets {
   const d = DEFAULT_MACRO_TARGETS;

@@ -1,7 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import { useRouter } from "next/navigation";
@@ -18,7 +17,6 @@ function entryKindForRecipe(
   userId: string | null,
 ): LibraryEntryKind {
   if (explicit) return explicit;
-  if (isCatalogRecipeId(recipe.id)) return "saved";
   if (recipe.creatorName === "Unavailable") return "saved";
   if (userId && recipe.authorId && recipe.authorId === userId) return "created";
   return "saved";

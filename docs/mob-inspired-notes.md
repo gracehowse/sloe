@@ -32,7 +32,7 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 - **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). **Display grouping** now merges rows that share a **normalized ingredient name** and shows **mixed units** as `amount unit + amount unit` (no false summing)—see `shoppingDisplayGroups.ts` + `ShoppingList.tsx`. We still do **not** show Mob-style **thumbnails per line**.
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).
-- **Smart suggestions:** **Shipped (MVP)** — catalog overlap with the current plan in `MealPlanner.tsx` (`smartSuggestions.ts`); save-to-library + analytics. Extending overlap to **community recipes** (DB ingredients) is a follow-up.
+- **Smart suggestions:** **Shipped (MVP)** — overlap scoring with the current plan in `MealPlanner.tsx` (`smartSuggestions.ts`); save-to-library + analytics. The old static catalog is removed; extending overlap further using **community recipes** (DB ingredients only) is a follow-up.
 
 ---
 
@@ -50,6 +50,6 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 - Planner + portions: `MealPlanner.tsx`, `generateMealPlan.ts`, `portionMultiplier.ts`.
 - List merge: `generateShoppingList.ts`, `guessGroceryCategory` / `category.ts`, `shoppingDisplayGroups.ts`, `ingredientNameKey.ts`.
-- Ingredients source: `recipeCatalog.ts`, Supabase `recipe_ingredients`.
+- Ingredients source: Supabase `recipe_ingredients` (and saved/library recipe data in app state).
 
 Update this file as you decide what to ship and what to drop.

@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
 import { normalizeMacroTargets } from "../../types/profile.ts";
+import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
@@ -34,6 +35,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
     setPreferActivityAdjustedCalories,
     setProfileMeasurementSystem,
     nutritionByDay,
+    savedRecipesForLibrary,
   } = useAppData();
 
   const loggingStats = useMemo(() => {
@@ -42,6 +44,28 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
     const recentDayKeys = [...daysWithLogs].sort((a, b) => b.localeCompare(a)).slice(0, 7);
     return { daysWithLogs: daysWithLogs.length, totalMeals, recentDayKeys };
   }, [nutritionByDay]);
+
+  const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
+  const recipeCount = savedRecipesForLibrary?.length ?? 0;
+  // Adherence score: % of last 7 tracked days where calories were within 10% of target
+  const adherenceScore = useMemo(() => {
+    const target = normalizeMacroTargets(nutritionTargets).calories;
+    if (!target) return 0;
+    const sortedKeys = Object.keys(nutritionByDay).sort((a, b) => b.localeCompare(a)).slice(0, 7);
+    if (sortedKeys.length === 0) return 0;
+    let hits = 0;
+    for (const key of sortedKeys) {
+      const dayMeals = nutritionByDay[key] ?? [];
+      const dayCal = dayMeals.reduce((s, m) => s + (m.calories ?? 0), 0);
+      if (dayCal > 0 && Math.abs(dayCal - target) / target <= 0.1) hits++;
+    }
+    return Math.round((hits / sortedKeys.length) * 100);
+  }, [nutritionByDay, nutritionTargets]);
+  // Dynamic profile metadata
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  const [notificationPref, setNotificationPref] = useState<string | null>(null);
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [isEditingTargets, setIsEditingTargets] = useState(false);
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
@@ -68,7 +92,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary_restrictions, notification_prefs")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
@@ -84,6 +108,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (profile.measurement_system === "imperial" || profile.measurement_system === "metric") {
         setMeasurementSystem(profile.measurement_system);
       }
+      // Dietary restrictions
+      if (Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0) {
+        setDietaryRestrictions(profile.dietary_restrictions.map(String));
+      }
+      // Notification prefs
+      if (profile.notification_prefs && typeof profile.notification_prefs === "object") {
+        const np = profile.notification_prefs as Record<string, unknown>;
+        if (np.reminder_time) setNotificationPref(String(np.reminder_time));
+      }
+      // Join date from auth user
+      const createdAt = data.session?.user?.created_at;
+      if (createdAt) setJoinedAt(createdAt);
     })();
     return () => {
       cancelled = true;
@@ -210,7 +246,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       {/* Header: Avatar + Name + Tier Side by Side */}
       <div className="flex items-center gap-3.5 mb-4">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <span className="text-lg font-bold text-primary">G</span>
+          <span className="text-lg font-bold text-primary">{(displayName?.[0] ?? "P").toUpperCase()}</span>
         </div>
         <div>
           <h1 className="text-lg font-bold text-foreground leading-tight">
@@ -221,23 +257,32 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               ? "Pro"
               : userTier === "base"
               ? "Base"
-              : "Free"} · Joined recently
+              : "Free"} · {joinedAt ? (() => {
+              const d = new Date(joinedAt);
+              const now = new Date();
+              const diffMs = now.getTime() - d.getTime();
+              const diffDays = Math.floor(diffMs / 86400000);
+              if (diffDays < 7) return "Joined this week";
+              if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
+              if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
+              return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+            })() : "Joined recently"}
           </p>
         </div>
       </div>
 
-      {/* Stat Pills — matches mobile (recipes / streak / score) */}
+      {/* Stat Pills — real data (recipes / streak / score) */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
-          <p className="text-lg font-bold text-primary tabular-nums">42</p>
+          <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Recipes</p>
         </div>
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
-          <p className="text-lg font-bold text-success tabular-nums">7</p>
+          <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
         </div>
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
-          <p className="text-lg font-bold text-warning tabular-nums">92</p>
+          <p className="text-lg font-bold text-warning tabular-nums">{adherenceScore}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Score</p>
         </div>
       </div>
@@ -253,7 +298,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Daily Targets</p>
-              <p className="text-xs text-muted-foreground truncate">2,100 kcal • 150P / 250C / 65F</p>
+              <p className="text-xs text-muted-foreground truncate">{(() => { const t = normalizeMacroTargets(nutritionTargets); return `${t.calories.toLocaleString()} kcal • ${t.protein}P / ${t.carbs}C / ${t.fat}F`; })()}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -265,7 +310,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Preferences</p>
-              <p className="text-xs text-muted-foreground truncate">No restrictions</p>
+              <p className="text-xs text-muted-foreground truncate">{dietaryRestrictions.length > 0 ? dietaryRestrictions.join(", ") : "No restrictions"}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -277,7 +322,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Connected</p>
-              <p className="text-xs text-muted-foreground truncate">Apple Health, Instagram</p>
+              <p className="text-xs text-muted-foreground truncate">Not connected</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -289,7 +334,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Notifications</p>
-              <p className="text-xs text-muted-foreground truncate">Daily reminder at 7 PM</p>
+              <p className="text-xs text-muted-foreground truncate">{notificationPref ? `Daily reminder at ${notificationPref}` : "Off"}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -331,7 +376,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Published Recipes</p>
-              <p className="text-xs text-muted-foreground truncate">12 recipes • 891 total makes</p>
+              <p className="text-xs text-muted-foreground truncate">{recipeCount} recipes saved</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>

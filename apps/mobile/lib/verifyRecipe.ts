@@ -71,6 +71,10 @@ export type BarcodeProduct = {
   fat: number;
   fiberG: number;
   servingSizeG: number | null;
+  /** Source of the data */
+  source?: "user" | "verified" | "open_food_facts";
+  /** Whether this is a verified community entry */
+  verified?: boolean;
 };
 
 const FRAC_MAP: Record<string, number> = {
@@ -486,6 +490,42 @@ export async function lookupBarcode(
   const trimmed = code.replace(/\s/g, "");
   if (!/^\d{8,14}$/.test(trimmed)) return null;
 
+  // 1. Check user-contributed foods first — prioritise verified entries
+  try {
+    const { supabase } = await import("@/lib/supabase");
+    // Try verified entries first, then fall back to any user entry
+    const { data: userFoods } = await supabase
+      .from("user_foods")
+      .select("name, calories, protein, carbs, fat, fiber_g, serving_size_g, verification_status")
+      .eq("barcode", trimmed)
+      .order("verification_status", { ascending: true }) // 'verified' sorts before 'pending'
+      .order("upvotes", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(5);
+
+    if (userFoods && userFoods.length > 0) {
+      // Pick verified entry if available, otherwise the top-voted
+      const best = userFoods.find((f) => f.verification_status === "verified") ?? userFoods[0];
+      if (best) {
+        const isVerified = best.verification_status === "verified";
+        return {
+          name: best.name,
+          calories: Math.round(Number(best.calories) || 0),
+          protein: Math.round((Number(best.protein) || 0) * 10) / 10,
+          carbs: Math.round((Number(best.carbs) || 0) * 10) / 10,
+          fat: Math.round((Number(best.fat) || 0) * 10) / 10,
+          fiberG: Math.round((Number(best.fiber_g) || 0) * 10) / 10,
+          servingSizeG: Number(best.serving_size_g) || 100,
+          source: isVerified ? "verified" : "user",
+          verified: isVerified,
+        };
+      }
+    }
+  } catch {
+    // Fall through to Open Food Facts
+  }
+
+  // 2. Fall back to Open Food Facts API
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${trimmed}.json`,
@@ -508,10 +548,48 @@ export async function lookupBarcode(
       fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
       fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
       servingSizeG: n.serving_quantity ?? null,
+      source: "open_food_facts",
+      verified: false,
     };
   } catch (e) {
     console.error("[lookupBarcode] failed:", e instanceof Error ? e.message : e);
     return null;
+  }
+}
+
+/** Submit a correction or new entry to the user_foods table. */
+export async function submitFoodCorrection(opts: {
+  barcode: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG?: number;
+  servingSizeG?: number;
+  userId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { supabase } = await import("@/lib/supabase");
+    const { error } = await supabase.from("user_foods").upsert(
+      {
+        barcode: opts.barcode,
+        name: opts.name,
+        calories: opts.calories,
+        protein: opts.protein,
+        carbs: opts.carbs,
+        fat: opts.fat,
+        fiber_g: opts.fiberG ?? 0,
+        serving_size_g: opts.servingSizeG ?? 100,
+        submitted_by: opts.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "barcode,submitted_by" },
+    );
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Unknown error" };
   }
 }
 

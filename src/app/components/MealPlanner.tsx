@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { DailyRing } from "./platemate/daily-ring";
 import { MacroCard } from "./platemate/macro-card";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import {
@@ -12,7 +11,6 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
-import { isCatalogRecipeId } from "../../lib/planning/generateShoppingList.ts";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
@@ -224,9 +222,8 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     const key = d.toISOString().slice(0, 10);
     setSelectedDateKey(key);
     const p = effectivePortionMultiplier(meal.portionMultiplier);
-    const catalogRecipe = RECIPE_CATALOG.find((r) => r.title === meal.recipeTitle);
     const savedMatch = savedRecipesForLibrary.find((r) => r.title === meal.recipeTitle);
-    const fiberBase = savedMatch?.fiberG ?? catalogRecipe?.fiberG;
+    const fiberBase = savedMatch?.fiberG;
     const fiberScaled =
       fiberBase != null && fiberBase > 0 ? scaledMacro(fiberBase, p) : null;
     addLoggedMealForDate(key, {
@@ -243,7 +240,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     toast.success(`Logged to Nutrition Tracker (Day ${day})`);
 
     const rid = resolveRecipeId(meal.recipeTitle);
-    if (rid && !isCatalogRecipeId(rid)) {
+    if (rid) {
       void (async () => {
         const { data: sessionData } = await supabase.auth.getSession();
         const uid = sessionData.session?.user.id;
@@ -289,8 +286,6 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
   const titleToId = useCallback(
     (title: string) => {
-      const catalog = RECIPE_CATALOG.find((r) => r.title === title);
-      if (catalog) return catalog.id;
       const uploaded = savedRecipesForLibrary.find((r) => r.title === title);
       return uploaded?.id ?? null;
     },
@@ -310,7 +305,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       for (const m of day.meals) {
         if (m.isPlaceholder) continue;
         const id = titleToId(m.recipeTitle);
-        if (id && !isCatalogRecipeId(id)) ids.add(id);
+        if (id) ids.add(id);
       }
     }
     if (ids.size === 0) {
@@ -342,7 +337,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
   }, [generatedPlan, mealPlan, titleToId]);
 
   const communitySuggestionPool = useMemo(
-    () => savedRecipesForLibrary.filter((r) => !isCatalogRecipeId(r.id)),
+    () => savedRecipesForLibrary,
     [savedRecipesForLibrary],
   );
 
@@ -358,8 +353,6 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
   const resolveRecipeId = useCallback(
     (recipeTitle: string) => {
-      const catalog = RECIPE_CATALOG.find((r) => r.title === recipeTitle);
-      if (catalog) return catalog.id;
       const uploaded = savedRecipesForLibrary.find((r) => r.title === recipeTitle);
       return uploaded?.id ?? null;
     },
@@ -774,7 +767,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
                     {/* Calorie label */}
                     <div className="text-[9px] text-muted-foreground text-center tabular-nums">
-                      {Math.round(dp.totals.calories)} / 2100
+                      {Math.round(dp.totals.calories)} / {targetCalories}
                     </div>
                   </div>
                 );
@@ -991,8 +984,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   }
                   const portion = effectivePortionMultiplier(meal.portionMultiplier);
                   const recipeMeta =
-                    savedRecipesForLibrary.find((r) => r.title === meal.recipeTitle) ??
-                    RECIPE_CATALOG.find((r) => r.title === meal.recipeTitle);
+                    savedRecipesForLibrary.find((r) => r.title === meal.recipeTitle);
                   const bestForLabel = recipeMeta?.mealSlots?.length
                     ? recipeMeta.mealSlots.join(", ")
                     : null;

@@ -239,7 +239,7 @@ export default function VerifyScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Accent.success, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, paddingBottom: 120, gap: Spacing.sm },
     recipeName: { fontSize: 22, fontWeight: "700", color: colors.text },
     subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md },

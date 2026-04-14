@@ -21,6 +21,8 @@ const R = (SIZE - STROKE) / 2 - 2;
 const MACRO_R = [R - 13, R - 24, R - 35];
 const CIRC = (r: number) => 2 * Math.PI * r;
 
+type DisplayMode = "remaining" | "consumed";
+
 type Props = {
   consumed: number;
   goal: number;
@@ -35,6 +37,10 @@ type Props = {
   expanded?: boolean;
   /** Toggle expanded */
   onToggle?: () => void;
+  /** Show remaining or consumed calories */
+  displayMode?: DisplayMode;
+  /** Called when user long-presses to toggle display mode */
+  onToggleDisplayMode?: () => void;
 };
 
 function MacroRing({
@@ -107,8 +113,20 @@ export default function CalorieRing({
   fatPct = 0,
   expanded = false,
   onToggle,
+  displayMode = "remaining",
+  onToggleDisplayMode,
 }: Props) {
-  const remaining = Math.max(0, Math.round(goal - consumed));
+  const diff = Math.round(goal - consumed);
+  const isOver = consumed > goal;
+  const centerValue = displayMode === "consumed"
+    ? Math.round(consumed)
+    : Math.abs(diff);
+  const centerLabel = displayMode === "consumed"
+    ? "LOGGED"
+    : isOver
+      ? "OVER"
+      : "UNDER";
+  const budgetLine = `of ${Math.round(goal)} kcal`;
   const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
   const mainCirc = CIRC(R);
 
@@ -127,7 +145,7 @@ export default function CalorieRing({
   }));
 
   return (
-    <Pressable onPress={onToggle} style={{ alignItems: "center" }}>
+    <Pressable onPress={onToggle} onLongPress={onToggleDisplayMode} style={{ alignItems: "center" }}>
       <View
         style={{
           width: SIZE,
@@ -151,7 +169,7 @@ export default function CalorieRing({
             cx={CX}
             cy={CX}
             r={R}
-            stroke={Accent.success}
+            stroke={isOver ? Accent.destructive : Accent.success}
             strokeWidth={STROKE}
             fill="none"
             strokeDasharray={`${mainCirc}`}
@@ -197,23 +215,35 @@ export default function CalorieRing({
           style={{
             fontSize: expanded ? 22 : 28,
             fontWeight: "700",
-            color: textColor,
+            color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
             fontVariant: ["tabular-nums"],
           }}
         >
-          {remaining}
+          {centerValue}
         </Text>
         <Text
           style={{
-            fontSize: 9,
-            fontWeight: "600",
-            color: secondaryColor,
+            fontSize: 10,
+            fontWeight: "700",
+            color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
             letterSpacing: 0.8,
             marginTop: 1,
           }}
         >
-          KCAL LEFT
+          {centerLabel}
         </Text>
+        {!expanded && (
+          <Text
+            style={{
+              fontSize: 8,
+              color: secondaryColor,
+              marginTop: 1,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {budgetLine}
+          </Text>
+        )}
       </View>
     </Pressable>
   );

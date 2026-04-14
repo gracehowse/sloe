@@ -19,7 +19,7 @@ type: project
 9. **P3-06: Analytics events** — Added 8 new events: cook_mode_started, cook_mode_completed, cook_mode_meal_logged, first_run_step_completed, empty_state_cta_clicked, pricing_page_viewed, recipe_page_viewed, onboarding_completed. Tracking calls added to CookMode.
 10. **P4-01: Code splitting** — Replaced static imports in App.tsx with `next/dynamic` for 7 components (MealPlanner, NutritionTracker, ShoppingList, Profile, Settings, NotificationsCenter, RecipeUpload). DiscoverFeed and Library remain eagerly loaded.
 11. **P4-03: Remove MUI/Emotion** — Removed @emotion/react, @emotion/styled, @mui/icons-material, @mui/material from package.json. No source files imported them.
-12. **P1-01: Seed URLs expanded** — Added 30 more URLs to seed-recipe-urls.txt (now 83 total). Categories: high-protein, breakfast, vegetarian, quick/30min, snacks. Ready to run with `npm run seed:discover`.
+12. **P1-01: Discover seeding (superseded)** — Was: expanded `seed-recipe-urls.txt` + `seed-discover`. **Removed:** static `recipeCatalog.ts`, URL seed scripts, and repo seed list; migration `20260414120000_remove_all_seeded_recipes.sql` + `delete-seeded-recipes.ts` for cleanup. `npm run seed:discover` removed from root `package.json`.
 
 ### Remaining (1 task)
 

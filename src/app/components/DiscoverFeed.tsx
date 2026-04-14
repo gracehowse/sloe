@@ -123,6 +123,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [heartTick, setHeartTick] = useState(0);
   const hearts = useMemo(() => loadHeartSet(), [heartTick]);
+  const [quickFilter, setQuickFilter] = useState("For You");
   const [feedScope, setFeedScope] = useState<"forYou" | "following">("forYou");
   const [followedAuthorIds, setFollowedAuthorIds] = useState<Set<string>>(() => new Set());
   const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(() => new Set());
@@ -343,12 +344,17 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       if (minP !== null && !Number.isNaN(minP) && recipe.protein < minP) {
         return false;
       }
+      // Quick filter pills
+      if (quickFilter === "High Protein" && recipe.protein < 25) return false;
+      if (quickFilter === "Low Carb" && recipe.carbs > 30) return false;
+      // "Popular" and "Quick" would need saves/cookTime data — pass through for now
       return true;
     });
   }, [
     discoverRecipes,
     searchQuery,
     filters,
+    quickFilter,
     activeCollectionId,
     collections,
     feedScope,
@@ -391,12 +397,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {/* Filter pills — horizontal scrollable */}
         <div className="mt-4 pl-4 pr-2">
           <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {["For You", "Popular", "Quick", "High Protein", "Low Carb"].map((label, idx) => (
+            {["For You", "Popular", "Quick", "High Protein", "Low Carb"].map((label) => (
               <button
-                key={idx}
+                key={label}
                 type="button"
+                onClick={() => setQuickFilter(label)}
                 className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                  idx === 0
+                  quickFilter === label
                     ? "border-2 border-primary bg-primary/15 text-primary"
                     : "border border-border bg-card text-foreground hover:bg-muted"
                 }`}
@@ -408,7 +415,19 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         </div>
 
         {/* Import CTA card */}
-        <div className="mx-4 mt-4 rounded-xl p-3.5 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow" style={{ background: "linear-gradient(135deg, var(--primary-soft, rgba(76,108,224,0.06)), var(--success-soft, rgba(34,168,96,0.06)))", border: "1px solid rgba(76,108,224,0.13)" }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("view", "import");
+            window.history.pushState({}, "", url.toString());
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+          className="mx-4 mt-4 rounded-xl p-3.5 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow"
+          style={{ background: "linear-gradient(135deg, var(--primary-soft, rgba(76,108,224,0.06)), var(--success-soft, rgba(34,168,96,0.06)))", border: "1px solid rgba(76,108,224,0.13)" }}
+        >
           <IconBox size="lg" tone="primary">
             <Icons.import />
           </IconBox>

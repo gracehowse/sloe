@@ -4,11 +4,6 @@ import { notFound } from "next/navigation";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
-import {
-  getRecipeById,
-  getIngredientsForRecipe,
-  getInstructionsForRecipe,
-} from "../../../src/data/recipeCatalog.ts";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 
@@ -47,41 +42,6 @@ interface IngredientRow {
 }
 
 async function fetchRecipe(id: string) {
-  // Check catalog first
-  const catalogRecipe = getRecipeById(id);
-  if (catalogRecipe) {
-    return {
-      recipe: {
-        id: catalogRecipe.id,
-        title: catalogRecipe.title,
-        description: null as string | null,
-        image: catalogRecipe.image,
-        servings: catalogRecipe.servings,
-        calories: catalogRecipe.calories,
-        protein: catalogRecipe.protein,
-        carbs: catalogRecipe.carbs,
-        fat: catalogRecipe.fat,
-        fiberG: catalogRecipe.fiberG ?? null,
-        sugarG: null,
-        sodiumMg: null,
-        authorName: catalogRecipe.creatorName,
-      },
-      ingredients: getIngredientsForRecipe(id).map((i) => ({
-        name: i.name,
-        amount: i.amount,
-        unit: i.unit,
-        calories: i.calories,
-        protein: i.protein,
-        carbs: i.carbs,
-        fat: i.fat,
-        fiberG: undefined,
-        sugarG: undefined,
-        sodiumMg: undefined,
-      })),
-      instructions: getInstructionsForRecipe(id),
-    };
-  }
-
   // Fetch from Supabase
   const sb = getServerClient();
   const { data: row } = await sb

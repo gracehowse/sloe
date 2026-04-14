@@ -3,7 +3,6 @@ import { WifiOff } from "lucide-react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
-import { RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -304,14 +303,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   };
 
   const recipeOptions = useMemo((): RecipeCard[] => {
-    const byId = new Map<string, RecipeCard>();
-    for (const r of RECIPE_CATALOG) {
-      byId.set(r.id, r);
-    }
-    for (const r of savedRecipesForLibrary) {
-      byId.set(r.id, { ...r, isSaved: true });
-    }
-    return Array.from(byId.values());
+    return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
   }, [savedRecipesForLibrary]);
 
   useEffect(() => {

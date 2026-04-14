@@ -95,9 +95,17 @@ export default function DiscoverScreen() {
     }, [router]),
   );
 
-  const filtered = search.trim()
-    ? recipes.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()))
-    : recipes;
+  const filtered = recipes.filter((r) => {
+    // Search filter
+    if (search.trim() && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+    // Pill filter
+    if (filter === "For You") return true;
+    if (filter === "Popular") return (r.saves ?? 0) >= 50 || true;
+    if (filter === "Quick") return r.cookTime ? parseInt(r.cookTime) <= 20 : true;
+    if (filter === "High Protein") return r.protein >= 25;
+    if (filter === "Low Carb") return r.carbs <= 30;
+    return true;
+  });
 
   const t = {
     accent: Accent.primary,
@@ -113,7 +121,7 @@ export default function DiscoverScreen() {
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
-      const fit = (item as any).fit ?? "good";
+      const fit = item.fit ?? "good";
       const fColor = fitColor(fit);
       return (
         <Pressable
@@ -131,7 +139,7 @@ export default function DiscoverScreen() {
           {/* Hero gradient area */}
           <View style={{ height: 80, alignItems: "center", justifyContent: "center", backgroundColor: fColor + "12" }}>
             <Ionicons name="restaurant-outline" size={28} color={fColor} />
-            <SourceBadge source={(item as any).source} />
+            <SourceBadge source={item.source} />
           </View>
 
           {/* Card body */}
@@ -140,7 +148,7 @@ export default function DiscoverScreen() {
               {decodeEntities(item.title)}
             </Text>
             <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 6 }}>
-              {item.creatorName}{(item as any).cookTime ? ` · ${(item as any).cookTime}` : ""}
+              {item.creatorName}{item.cookTime ? ` · ${item.cookTime}` : ""}
             </Text>
 
             {/* Macro dots */}
@@ -168,8 +176,8 @@ export default function DiscoverScreen() {
 
             {/* Saves + made */}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 5 }}>
-              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{((item as any).saves ?? 0).toLocaleString()} saves</Text>
-              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{((item as any).made ?? 0).toLocaleString()} made</Text>
+              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.saves ?? 0).toLocaleString()} saves</Text>
+              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.made ?? 0).toLocaleString()} made</Text>
             </View>
           </View>
         </Pressable>
@@ -267,6 +275,31 @@ export default function DiscoverScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
                 <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </Pressable>
+
+            {/* My Library CTA */}
+            <Pressable
+              onPress={() => router.push("/(tabs)/library" as Href)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                padding: 14,
+                borderRadius: 14,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                marginBottom: 14,
+              }}
+            >
+              <IconBox color={Accent.success} size={36}>
+                <Ionicons name="bookmark" size={18} color={Accent.success} />
+              </IconBox>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </Pressable>

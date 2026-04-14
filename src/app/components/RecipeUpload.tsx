@@ -12,6 +12,7 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
+import { normalizeMacroTargets } from "../../types/profile.ts";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
@@ -156,7 +157,7 @@ function resolveStructuredIngredient(i: { name: string; amount: string; unit: st
 }
 
 export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
-  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes } = useAppData();
+  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1500,8 +1501,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <span className="text-sm font-semibold text-success">How this fits your day</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              This recipe provides {Math.round(nutritionPreview.perServing.calories)} kcal per serving —
-              about {Math.round((nutritionPreview.perServing.calories / 2100) * 100)}% of a 2,100 kcal daily target.
+              {(() => {
+                const dailyTarget = normalizeMacroTargets(nutritionTargets).calories || 2100;
+                return `This recipe provides ${Math.round(nutritionPreview.perServing.calories)} kcal per serving — about ${Math.round((nutritionPreview.perServing.calories / dailyTarget) * 100)}% of your ${dailyTarget.toLocaleString()} kcal daily target.`;
+              })()}
             </p>
           </div>
         ) : null}

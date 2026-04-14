@@ -2,10 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useCameraPermissions } from "expo-camera";
@@ -14,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
-import { lookupBarcode, scaleMacros, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
@@ -35,6 +40,21 @@ export default function BarcodeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [gramsInput, setGramsInput] = useState("100");
   const [logging, setLogging] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualCalories, setManualCalories] = useState("");
+  const [manualProtein, setManualProtein] = useState("");
+  const [manualCarbs, setManualCarbs] = useState("");
+  const [manualFat, setManualFat] = useState("");
+
+  // Correction mode state (edit scanned product data and save to DB)
+  const [correctionMode, setCorrectionMode] = useState(false);
+  const [corrName, setCorrName] = useState("");
+  const [corrCalories, setCorrCalories] = useState("");
+  const [corrProtein, setCorrProtein] = useState("");
+  const [corrCarbs, setCorrCarbs] = useState("");
+  const [corrFat, setCorrFat] = useState("");
+  const [corrSaving, setCorrSaving] = useState(false);
 
   const grams = Math.max(1, parseInt(gramsInput, 10) || 100);
 
@@ -104,10 +124,88 @@ export default function BarcodeScreen() {
     }
   }, [scaled, product, userId, grams, router]);
 
+  const handleManualLog = useCallback(async () => {
+    const cal = Number(manualCalories) || 0;
+    if (!manualName.trim() || cal <= 0 || !userId) {
+      if (!userId) Alert.alert("Sign in", "Sign in to log food to your tracker.");
+      return;
+    }
+    setLogging(true);
+    const dateKey = dateKeyFromDate(new Date());
+    const mealId = newMealId();
+    const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const { error: dbErr } = await supabase.from("nutrition_entries").insert({
+      id: mealId,
+      user_id: userId,
+      date_key: dateKey,
+      name: "Snack",
+      recipe_title: manualName.trim(),
+      time_label: timeLabel,
+      calories: Math.min(32767, Math.round(cal)),
+      protein: Math.round((Number(manualProtein) || 0) * 10) / 10,
+      carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
+      fat: Math.round((Number(manualFat) || 0) * 10) / 10,
+      portion_multiplier: 1,
+      source: "Manual barcode entry",
+    });
+    setLogging(false);
+    if (dbErr) {
+      Alert.alert("Could not log", dbErr.message);
+    } else {
+      Alert.alert("Logged", `${manualName.trim()} added to today's tracker.`, [
+        { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); } },
+        { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
+      ]);
+    }
+  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router]);
+
+  const openCorrectionMode = useCallback(() => {
+    if (!product) return;
+    setCorrName(product.name);
+    setCorrCalories(String(product.calories));
+    setCorrProtein(String(product.protein));
+    setCorrCarbs(String(product.carbs));
+    setCorrFat(String(product.fat));
+    setCorrectionMode(true);
+  }, [product]);
+
+  const submitCorrection = useCallback(async () => {
+    if (!last || !userId) return;
+    const cal = Number(corrCalories) || 0;
+    if (!corrName.trim() || cal <= 0) return;
+    setCorrSaving(true);
+    const result = await submitFoodCorrection({
+      barcode: last,
+      name: corrName.trim(),
+      calories: Math.round(cal),
+      protein: Math.round((Number(corrProtein) || 0) * 10) / 10,
+      carbs: Math.round((Number(corrCarbs) || 0) * 10) / 10,
+      fat: Math.round((Number(corrFat) || 0) * 10) / 10,
+      userId,
+    });
+    setCorrSaving(false);
+    if (result.ok) {
+      const corrected: BarcodeProduct = {
+        name: corrName.trim(),
+        calories: Math.round(cal),
+        protein: Math.round((Number(corrProtein) || 0) * 10) / 10,
+        carbs: Math.round((Number(corrCarbs) || 0) * 10) / 10,
+        fat: Math.round((Number(corrFat) || 0) * 10) / 10,
+        fiberG: product?.fiberG ?? 0,
+        servingSizeG: product?.servingSizeG ?? 100,
+      };
+      setProduct(corrected);
+      setCorrectionMode(false);
+      setGramsInput("100");
+    }
+  }, [last, userId, corrName, corrCalories, corrProtein, corrCarbs, corrFat, product]);
+
   const resetScan = useCallback(() => {
     setLast(null);
     setProduct(null);
     setError(null);
+    setManualMode(false);
+    setCorrectionMode(false);
   }, []);
 
   const styles = useMemo(
@@ -206,6 +304,51 @@ export default function BarcodeScreen() {
           marginTop: Spacing.sm,
         },
         retryBtnText: { color: Accent.primary, fontWeight: "600" },
+        manualEntryBtn: {
+          borderWidth: 1,
+          borderColor: Accent.primary + "55",
+          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.xl,
+          paddingVertical: 12,
+          marginTop: Spacing.xs,
+        },
+        manualEntryBtnText: { color: Accent.primary, fontWeight: "600" },
+        manualOverlay: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          backgroundColor: colors.background,
+          padding: Spacing.xl,
+          paddingTop: insets.top + Spacing.xl,
+          gap: Spacing.md,
+        },
+        manualTitle: { color: "#fff", fontWeight: "700", fontSize: 18 },
+        manualSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
+        manualInput: {
+          backgroundColor: "rgba(255,255,255,0.12)",
+          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.lg,
+          paddingVertical: Spacing.md,
+          color: "#fff",
+          fontSize: 15,
+        },
+        manualInputRow: { flexDirection: "row", gap: Spacing.sm },
+        corrLink: { color: Accent.primary, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },
+        corrOverlay: {
+          position: "absolute" as const,
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          backgroundColor: colors.background,
+          padding: Spacing.xl,
+          paddingTop: insets.top + Spacing.xl,
+          gap: Spacing.md,
+        },
+        corrTitle: { color: "#fff", fontWeight: "700" as const, fontSize: 18 },
+        corrSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
       }),
     [colors, insets.bottom],
   );
@@ -238,13 +381,14 @@ export default function BarcodeScreen() {
       <BarcodeCameraView
         style={styles.camera}
         facing="back"
-        barcodeScannerEnabled={!product}
+        barcodeScannerEnabled={!product && !manualMode && !correctionMode}
         barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
-        onBarcodeScanned={product ? undefined : onBarcode}
+        onBarcodeScanned={product || manualMode || correctionMode ? undefined : onBarcode}
       />
 
       {!product && <View style={styles.reticle} />}
 
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.overlay}>
         {loading && (
           <>
@@ -253,7 +397,7 @@ export default function BarcodeScreen() {
           </>
         )}
 
-        {product && scaled && (
+        {product && scaled && !correctionMode && (
           <>
             <Text style={styles.productName}>{product.name}</Text>
             <View style={styles.macroRow}>
@@ -282,11 +426,15 @@ export default function BarcodeScreen() {
                 onChangeText={setGramsInput}
                 keyboardType="numeric"
                 selectTextOnFocus
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
                 accessibilityLabel="Serving size in grams"
               />
               <Text style={styles.servingUnit}>g</Text>
             </View>
-            <Text style={styles.source}>via Open Food Facts</Text>
+            <Text style={styles.source}>
+              {product.verified ? "✓ Verified" : product.source === "user" ? "Community submitted" : "via Open Food Facts"}
+            </Text>
             <View style={styles.btnRow}>
               <Pressable
                 style={styles.logBtn}
@@ -305,26 +453,171 @@ export default function BarcodeScreen() {
                 <Text style={styles.secondaryBtnText}>Scan again</Text>
               </Pressable>
             </View>
+            {/* "This is wrong" link */}
+            <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.xs }}>
+              <Text style={styles.corrLink}>This is wrong — edit &amp; update</Text>
+            </Pressable>
           </>
         )}
 
-        {error && (
+        {error && !manualMode && (
           <>
             <Ionicons name="alert-circle" size={32} color={Accent.destructive} style={styles.errorIcon} />
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={resetScan} accessibilityLabel="Try scanning again">
               <Text style={styles.retryBtnText}>Try again</Text>
             </Pressable>
+            <Pressable style={styles.manualEntryBtn} onPress={() => setManualMode(true)}>
+              <Text style={styles.manualEntryBtnText}>Enter manually instead</Text>
+            </Pressable>
           </>
         )}
 
-        {!loading && !product && !error && (
+        {!loading && !product && !error && !manualMode && (
           <>
             <Text style={styles.overlayTitle}>Barcode Scanner</Text>
             <Text style={styles.hint}>Point at a product barcode to look up nutrition</Text>
           </>
         )}
       </View>
+      </TouchableWithoutFeedback>
+
+      {/* Manual entry overlay */}
+      {manualMode && (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + 40 }}>
+            <Text style={styles.manualTitle}>Add Item Manually</Text>
+            <Text style={styles.manualSub}>
+              {last ? `Barcode: ${last}` : "Enter the nutrition info from the label"}
+            </Text>
+            <TextInput
+              style={styles.manualInput}
+              placeholder="Food name"
+              placeholderTextColor={Colors.dark.textTertiary}
+              value={manualName}
+              onChangeText={setManualName}
+              autoFocus
+            />
+            <View style={styles.manualInputRow}>
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Calories"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={manualCalories}
+                onChangeText={setManualCalories}
+              />
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Protein (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={manualProtein}
+                onChangeText={setManualProtein}
+              />
+            </View>
+            <View style={styles.manualInputRow}>
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Carbs (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={manualCarbs}
+                onChangeText={setManualCarbs}
+              />
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Fat (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={manualFat}
+                onChangeText={setManualFat}
+              />
+            </View>
+            <Pressable
+              style={[styles.logBtn, { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 }]}
+              onPress={handleManualLog}
+              disabled={!manualName.trim() || !(Number(manualCalories) > 0) || logging}
+            >
+              {logging ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="add-circle" size={20} color="#fff" />
+              )}
+              <Text style={styles.logBtnText}>{logging ? "Logging..." : "Add to Tracker"}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={resetScan}>
+              <Text style={styles.secondaryBtnText}>Back to scanner</Text>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Correction overlay */}
+      {correctionMode && (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.corrOverlay}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + 40 }}>
+            <Text style={styles.corrTitle}>Correct Nutrition Info</Text>
+            <Text style={styles.corrSub}>
+              {last ? `Barcode: ${last}` : "Update the nutrition data for this product"}
+            </Text>
+            <TextInput
+              style={styles.manualInput}
+              placeholder="Food name"
+              placeholderTextColor={Colors.dark.textTertiary}
+              value={corrName}
+              onChangeText={setCorrName}
+              autoFocus
+            />
+            <View style={styles.manualInputRow}>
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Calories"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={corrCalories}
+                onChangeText={setCorrCalories}
+              />
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Protein (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={corrProtein}
+                onChangeText={setCorrProtein}
+              />
+            </View>
+            <View style={styles.manualInputRow}>
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Carbs (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={corrCarbs}
+                onChangeText={setCorrCarbs}
+              />
+              <TextInput
+                style={[styles.manualInput, { flex: 1 }]}
+                placeholder="Fat (g)"
+                placeholderTextColor={Colors.dark.textTertiary}
+                keyboardType="numeric"
+                value={corrFat}
+                onChangeText={setCorrFat}
+              />
+            </View>
+            <Pressable
+              style={[styles.logBtn, { opacity: corrName.trim() && Number(corrCalories) > 0 ? 1 : 0.4 }]}
+              onPress={submitCorrection}
+              disabled={!corrName.trim() || !(Number(corrCalories) > 0) || corrSaving}
+            >
+              <Text style={styles.logBtnText}>{corrSaving ? "Saving..." : "Save Correction"}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={() => setCorrectionMode(false)}>
+              <Text style={styles.secondaryBtnText}>Cancel</Text>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </View>
   );
 }

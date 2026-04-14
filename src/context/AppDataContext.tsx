@@ -11,7 +11,6 @@ import {
   type SetStateAction,
 } from "react";
 import { toast } from "sonner";
-import { getRecipeById, RECIPE_CATALOG } from "../data/recipeCatalog.ts";
 import { effectivePortionMultiplier, normalizeDayPlans } from "../lib/nutrition/portionMultiplier.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
 import type {
@@ -773,7 +772,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
         const days = options?.days ?? 1;
         const savedRecipes = savedRecipeIds
-          .map((id) => getRecipeById(id) ?? uploadedRecipes.find((r) => r.id === id) ?? null)
+          .map((id) => uploadedRecipes.find((r) => r.id === id) ?? null)
           .filter((r): r is NonNullable<typeof r> => Boolean(r));
         if (savedRecipes.length === 0) {
           toast.error("Save at least one recipe from Discover (or your uploads) to generate a macro-aware plan.");
@@ -811,8 +810,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       "../lib/planning/generateShoppingList.ts"
     );
     const titleToId = (title: string) => {
-      const r = RECIPE_CATALOG.find((x) => x.title === title);
-      if (r) return r.id;
       const u = uploadedRecipes.find((x) => x.title === title);
       return u?.id ?? null;
     };
@@ -1122,9 +1119,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setSavedAtById((prev) => ({ ...prev, [recipeId]: iso }));
       setLibraryEntryKindByRecipeId((prev) => ({ ...prev, [recipeId]: kind ?? "saved" }));
       setSavedRecipeMetaById((prev) => {
-        const fromCatalog = getRecipeById(recipeId);
-        const fromCommunity = uploadedRecipes.find((r) => r.id === recipeId) ?? myLibraryRecipes.find((r) => r.id === recipeId);
-        const r = fromCatalog ?? fromCommunity;
+        const r = uploadedRecipes.find((r) => r.id === recipeId) ?? myLibraryRecipes.find((r) => r.id === recipeId);
         if (!r) return prev;
         return {
           ...prev,
@@ -1192,7 +1187,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const r =
           myLibraryRecipes.find((x) => x.id === recipeId) ??
           uploadedRecipes.find((x) => x.id === recipeId) ??
-          getRecipeById(recipeId) ??
           null;
         if (!r) return prev;
         return {
@@ -1242,12 +1236,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       isSaved: savedRecipeIds.includes(r.id),
       feedSource: "community" as const,
     }));
-    const catalog = RECIPE_CATALOG.map((r) => ({
-      ...r,
-      isSaved: savedRecipeIds.includes(r.id),
-      feedSource: "catalog" as const,
-    }));
-    return [...uploaded, ...catalog];
+    return uploaded;
   }, [savedRecipeIds, uploadedRecipes]);
 
   const communityFeedCount = uploadedRecipes.length;
@@ -1256,7 +1245,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const enriched = savedRecipeIds
       .map((id) => {
         const base =
-          getRecipeById(id) ??
           uploadedRecipes.find((r) => r.id === id) ??
           myLibraryRecipes.find((r) => r.id === id) ??
           null;

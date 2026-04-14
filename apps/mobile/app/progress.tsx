@@ -77,10 +77,10 @@ export default function ProgressScreen() {
     {},
   );
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(10000);
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
   const [waterByDay, setWaterByDay] = useState<Record<string, number>>({});
-  const [waterGoalMl, setWaterGoalMl] = useState(2000);
+  const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bfInput, setBfInput] = useState("");
@@ -140,15 +140,15 @@ export default function ProgressScreen() {
       setStepsByDay(parseNumMap(data.steps_by_day));
       const sg = Number(data.daily_steps_goal);
       setDailyStepsGoal(
-        Number.isFinite(sg) && sg > 0 ? Math.round(sg) : 10000,
+        Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps,
       );
       const bf =
         data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
       setWaterByDay(parseNumMap(data.extra_water_by_day));
       const tw =
-        data.target_water_ml != null ? Number(data.target_water_ml) : 2000;
-      setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : 2000);
+        data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
+      setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
     }
     setLoading(false);
   }, [userId]);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -13,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -23,7 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
-import { lookupBarcode } from "@/lib/verifyRecipe";
+
 import CalorieRing from "@/components/charts/CalorieRing";
 import DayStrip from "@/components/charts/DayStrip";
 import { computeLoggingStreak } from "@/lib/trackerStats";
@@ -31,8 +32,9 @@ import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { subscribeOffline } from "@/lib/subscribeOffline";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 
-const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 25 };
+const DEFAULT_TARGETS = NUTRITION_DEFAULTS;
 
 const MAX_JSONB_DAYS = 90;
 function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
@@ -44,6 +46,7 @@ function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
 
 export default function TrackerScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string; _t?: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -64,25 +67,46 @@ export default function TrackerScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(false);
+  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
+  const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"];
+  const [trackedMacros, setTrackedMacros] = useState<string[]>(DEFAULT_TRACKED_MACROS);
+  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [activeMealSlot, setActiveMealSlot] = useState("Breakfast");
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
-  const [waterGoalMl, setWaterGoalMl] = useState(2000);
+  const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>({});
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(10000);
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number}>>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
   const [photoAnalyzing, setPhotoAnalyzing] = useState(false);
   const [voiceInputOpen, setVoiceInputOpen] = useState(false);
   const [voiceInputText, setVoiceInputText] = useState("");
+  const [editingMeal, setEditingMeal] = useState<JournalMeal | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editKcal, setEditKcal] = useState("");
+  const [editProtein, setEditProtein] = useState("");
+  const [editCarbs, setEditCarbs] = useState("");
+  const [editFat, setEditFat] = useState("");
+  const [editSlot, setEditSlot] = useState("Snack");
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
+
+  // Handle date param from navigation (e.g. from Progress screen)
+  useEffect(() => {
+    if (params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)) {
+      const [y, m, d] = params.date.split("-").map(Number);
+      setSelectedDate(new Date(y, m - 1, d));
+      setViewMode("day");
+    }
+    // _t is a cache-buster so re-navigating to the same date still fires
+  }, [params.date, params._t]);
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
@@ -117,7 +141,7 @@ export default function TrackerScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -129,8 +153,8 @@ export default function TrackerScreen() {
       fat: (data.target_fat as number) ?? DEFAULT_TARGETS.fat,
       fiber: (data.target_fiber_g as number) ?? DEFAULT_TARGETS.fiber,
     });
-    const tw = data.target_water_ml != null ? Number(data.target_water_ml) : 2000;
-    setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : 2000);
+    const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
+    setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
     if (data.extra_water_by_day && typeof data.extra_water_by_day === "object") {
       const o = data.extra_water_by_day as Record<string, unknown>;
       const next: Record<string, number> = {};
@@ -149,11 +173,17 @@ export default function TrackerScreen() {
       }
       setStepsByDay(next);
     }
-    const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : 10000;
-    setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : 10000);
+    const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
+    setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
     if (Array.isArray(data.fasting_sessions)) {
       const active = (data.fasting_sessions as Array<{start: string; end: string | null}>).find((s) => s.end === null);
       setActiveFastStart(active?.start ?? null);
+    }
+    if (Array.isArray(data.tracked_macros) && data.tracked_macros.length > 0) {
+      setTrackedMacros(data.tracked_macros as string[]);
+    }
+    if (data.week_start_day === "sunday" || data.week_start_day === "monday") {
+      setWeekStartDay(data.week_start_day);
     }
   }, [userId]);
 
@@ -181,19 +211,25 @@ export default function TrackerScreen() {
     return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
   }, []);
 
-  // Week data: Mon-Sun for the selected date's week
+  // Week data: respects weekStartDay setting
   const weekData = useMemo(() => {
     const d = new Date(selectedDate);
-    const dayOfWeek = d.getDay(); // 0=Sun
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + mondayOffset);
+    const dow = d.getDay(); // 0=Sun, 1=Mon, ...
+    // Calculate offset to the start of the week
+    const startOffset = weekStartDay === "monday"
+      ? (dow === 0 ? -6 : 1 - dow)
+      : -dow; // sunday start
+    const weekFirst = new Date(d);
+    weekFirst.setDate(d.getDate() + startOffset);
+
+    const dayLabels = weekStartDay === "monday"
+      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     const days: { key: string; label: string; short: string; date: Date; meals: JournalMeal[]; totals: { calories: number; protein: number; carbs: number; fat: number } }[] = [];
-    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     for (let i = 0; i < 7; i++) {
-      const dd = new Date(monday);
-      dd.setDate(monday.getDate() + i);
+      const dd = new Date(weekFirst);
+      dd.setDate(weekFirst.getDate() + i);
       const dk = dateKeyFromDate(dd);
       const meals = byDay[dk] ?? [];
       const totals = meals.reduce(
@@ -226,13 +262,13 @@ export default function TrackerScreen() {
       fat: Math.round(weekTotals.fat / daysWithFood),
     };
 
-    const weekStart = monday.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const weekEnd = sunday.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const weekStartLabel = weekFirst.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const weekLast = new Date(weekFirst);
+    weekLast.setDate(weekFirst.getDate() + 6);
+    const weekEndLabel = weekLast.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
-    return { days, weekTotals, weekAvg, daysWithFood, label: `${weekStart} – ${weekEnd}` };
-  }, [selectedDate, byDay]);
+    return { days, weekTotals, weekAvg, daysWithFood, label: `${weekStartLabel} – ${weekEndLabel}` };
+  }, [selectedDate, byDay, weekStartDay]);
 
   const navigateWeek = useCallback((offset: number) => {
     setSelectedDate((prev) => {
@@ -249,14 +285,16 @@ export default function TrackerScreen() {
         protein: acc.protein + Math.max(0, m.protein),
         carbs: acc.carbs + Math.max(0, m.carbs),
         fat: acc.fat + Math.max(0, m.fat),
+        fiber: acc.fiber + Math.max(0, m.fiberG ?? 0),
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
     );
     return {
       calories: Math.round(raw.calories),
       protein: Math.round(raw.protein),
       carbs: Math.round(raw.carbs),
       fat: Math.round(raw.fat),
+      fiber: Math.round(raw.fiber),
     };
   }, [mealsToday]);
 
@@ -413,17 +451,25 @@ export default function TrackerScreen() {
     try {
       const { isSpeechAvailable, listenForSpeech } = await import("@/lib/voiceLog");
       if (!isSpeechAvailable()) {
+        // Native speech recognition not available — open text input fallback
         setVoiceInputOpen(true);
         return;
       }
-      Alert.alert("Listening...", "Describe what you ate.");
+      Alert.alert("Listening…", "Describe what you ate. Tap OK when done.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "OK", onPress: () => {} },
+      ]);
       const transcript = await listenForSpeech({ maxDurationMs: 10_000 });
       if (!transcript.trim()) {
-        Alert.alert("No speech detected", "Please try again.");
+        Alert.alert("No speech detected", "Try again or type what you ate instead.", [
+          { text: "Type instead", onPress: () => setVoiceInputOpen(true) },
+          { text: "Try again", onPress: () => handleVoiceLog() },
+        ]);
         return;
       }
       await submitVoiceTranscript(transcript);
     } catch {
+      // Speech recognition failed — fall back to text input
       setVoiceInputOpen(true);
     }
   }, [session, activeMealSlot, dayKey]);
@@ -432,56 +478,87 @@ export default function TrackerScreen() {
     try {
       const Constants = (await import("expo-constants")).default;
       const apiBase = (Constants.expoConfig?.extra as any)?.platemateApiUrl ?? "";
-      const resp = await fetch(`${apiBase}/api/nutrition/voice-log`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ transcript }),
-      });
-      const data = await resp.json();
-      if (resp.status === 403 && data.error === "upgrade_required") {
-        Alert.alert(
-          "Upgrade required",
-          typeof data.message === "string" && data.message
-            ? data.message
-            : "Voice meal logging is available on Base or Pro. Upgrade in the web app to continue.",
-        );
-        return;
-      }
-      if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-        Alert.alert("Could not parse", data.message ?? "Try describing your meal differently.");
-        return;
-      }
-      const itemNames = data.items.map((i: any) => `${i.name}: ${i.calories} kcal`).join("\n");
-      Alert.alert(
-        `Parsed ${data.items.length} item${data.items.length > 1 ? "s" : ""}`,
-        `${itemNames}\n\nTotal: ${data.totalCalories} kcal`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Log All",
-            onPress: () => {
-              const newMeals: JournalMeal[] = data.items.map((item: any) => ({
-                id: newMealId(),
-                name: activeMealSlot,
-                recipeTitle: item.name,
-                time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                calories: Math.round(item.calories),
-                protein: Math.round(item.protein),
-                carbs: Math.round(item.carbs),
-                fat: Math.round(item.fat),
-                source: "AI voice",
-              }));
-              setByDay((prev) => ({
-                ...prev,
-                [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
-              }));
-            },
+
+      // Try the AI API first
+      let data: any = null;
+      try {
+        const resp = await fetch(`${apiBase}/api/nutrition/voice-log`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
           },
-        ],
-      );
+          body: JSON.stringify({ transcript }),
+        });
+        data = await resp.json();
+        if (resp.status === 403 && data.error === "upgrade_required") {
+          // Tier-gated — fall through to manual entry below
+          data = null;
+        }
+      } catch {
+        // Network error — fall through to manual entry
+        data = null;
+      }
+
+      if (data?.ok && Array.isArray(data.items) && data.items.length > 0) {
+        const itemNames = data.items.map((i: any) => `${i.name}: ${i.calories} kcal`).join("\n");
+        Alert.alert(
+          `Parsed ${data.items.length} item${data.items.length > 1 ? "s" : ""}`,
+          `${itemNames}\n\nTotal: ${data.totalCalories} kcal`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Log All",
+              onPress: () => {
+                const newMeals: JournalMeal[] = data.items.map((item: any) => ({
+                  id: newMealId(),
+                  name: activeMealSlot,
+                  recipeTitle: item.name,
+                  time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                  calories: Math.round(item.calories),
+                  protein: Math.round(item.protein),
+                  carbs: Math.round(item.carbs),
+                  fat: Math.round(item.fat),
+                  source: "AI voice",
+                }));
+                setByDay((prev) => ({
+                  ...prev,
+                  [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
+                }));
+              },
+            },
+          ],
+        );
+      } else {
+        // AI unavailable or failed — log it as a quick entry with just the name
+        Alert.alert(
+          "Quick log",
+          `AI parsing unavailable. Log "${transcript}" as a quick entry?\n\nYou can edit the calories after.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Log it",
+              onPress: () => {
+                const meal: JournalMeal = {
+                  id: newMealId(),
+                  name: activeMealSlot,
+                  recipeTitle: transcript.trim(),
+                  time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                  calories: 0,
+                  protein: 0,
+                  carbs: 0,
+                  fat: 0,
+                  source: "Quick entry",
+                };
+                setByDay((prev) => ({
+                  ...prev,
+                  [dayKey]: [...(prev[dayKey] ?? []), meal],
+                }));
+              },
+            },
+          ],
+        );
+      }
     } catch {
       Alert.alert("Voice logging failed", "Please try again.");
     }
@@ -820,6 +897,34 @@ export default function TrackerScreen() {
     }
   }, [dayKey, userId]);
 
+  const openEditMeal = useCallback((meal: JournalMeal) => {
+    setEditingMeal(meal);
+    setEditTitle(meal.recipeTitle);
+    setEditKcal(String(Math.round(meal.calories)));
+    setEditProtein(String(Math.round(meal.protein)));
+    setEditCarbs(String(Math.round(meal.carbs)));
+    setEditFat(String(Math.round(meal.fat)));
+    setEditSlot(meal.name || "Snack");
+  }, []);
+
+  const saveEditMeal = useCallback(() => {
+    if (!editingMeal) return;
+    const updated: JournalMeal = {
+      ...editingMeal,
+      recipeTitle: editTitle.trim() || editingMeal.recipeTitle,
+      name: editSlot,
+      calories: Math.round(Number(editKcal) || editingMeal.calories),
+      protein: Math.round(Number(editProtein) || 0),
+      carbs: Math.round(Number(editCarbs) || 0),
+      fat: Math.round(Number(editFat) || 0),
+    };
+    setByDay((prev) => ({
+      ...prev,
+      [dayKey]: (prev[dayKey] ?? []).map((m) => (m.id === editingMeal.id ? updated : m)),
+    }));
+    setEditingMeal(null);
+  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, dayKey]);
+
   // Group meals by slot
   const mealGroups = useMemo(() => {
     const groups: Record<string, JournalMeal[]> = {};
@@ -860,22 +965,60 @@ export default function TrackerScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, position: "relative" }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header — prototype style */}
-        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <View>
-            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" }}>
-              {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {selectedDate.toLocaleDateString("en-US", { weekday: "long" })}
-            </Text>
-            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4, marginTop: 2 }}>
-              {isToday ? "Today" : formatDateLabel(selectedDate)}
-            </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Date navigation header */}
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable onPress={() => viewMode === "week" ? navigateWeek(-1) : navigateDay(-1)} hitSlop={12} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="chevron-back" size={16} color={colors.text} />
+              </Pressable>
+              <Pressable onPress={() => { setSelectedDate(new Date()); setViewMode("day"); }} hitSlop={8}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" }}>
+                  {viewMode === "week" ? weekData.label : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+                </Text>
+                <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4, marginTop: 1 }}>
+                  {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => viewMode === "week" ? navigateWeek(1) : navigateDay(1)} hitSlop={12} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="chevron-forward" size={16} color={colors.text} />
+              </Pressable>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {/* Day / Week toggle */}
+              <View style={{ flexDirection: "row", borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+                <Pressable
+                  onPress={() => setViewMode("day")}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: viewMode === "day" ? Accent.primary : "transparent" }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: viewMode === "day" ? "#fff" : colors.textSecondary }}>Day</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setViewMode("week")}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: viewMode === "week" ? Accent.primary : "transparent" }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: viewMode === "week" ? "#fff" : colors.textSecondary }}>Week</Text>
+                </Pressable>
+              </View>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: Accent.primary + "10", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>
+                  {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Accent.primary + "10", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
-              {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
-            </Text>
-          </View>
+          {/* Mini day strip in day mode — tap a day to jump */}
+          {viewMode === "day" && (
+            <DayStrip
+              selectedDate={selectedDate}
+              loggedDays={loggedDays}
+              onSelectDate={setSelectedDate}
+              textColor={colors.text}
+              secondaryColor={colors.textSecondary}
+              cardColor={colors.card}
+            />
+          )}
         </View>
 
         {isOffline && (
@@ -898,12 +1041,12 @@ export default function TrackerScreen() {
           </Pressable>
         )}
 
-        {/* Day-of-week strip — hidden by default, shown in week mode */}
+        {/* Day-of-week strip in week mode */}
         {viewMode === "week" && (
           <DayStrip
             selectedDate={selectedDate}
             loggedDays={loggedDays}
-            onSelectDate={setSelectedDate}
+            onSelectDate={(d) => { setSelectedDate(d); setViewMode("day"); }}
             textColor={colors.text}
             secondaryColor={colors.textSecondary}
             cardColor={colors.card}
@@ -939,19 +1082,6 @@ export default function TrackerScreen() {
 
         {viewMode === "week" ? (
           <>
-            {/* Week date nav */}
-            <View style={styles.dateNav}>
-              <Pressable onPress={() => navigateWeek(-1)} hitSlop={12}>
-                <Text style={styles.dateNavArrow}>‹</Text>
-              </Pressable>
-              <Pressable onPress={() => { setSelectedDate(new Date()); }} hitSlop={12}>
-                <Text style={styles.dateNavLabel}>{weekData.label}</Text>
-              </Pressable>
-              <Pressable onPress={() => navigateWeek(1)} hitSlop={12}>
-                <Text style={styles.dateNavArrow}>›</Text>
-              </Pressable>
-            </View>
-
             {/* Weekly bar chart */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Weekly Calories</Text>
@@ -1090,38 +1220,46 @@ export default function TrackerScreen() {
                 fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
                 expanded={ringExpanded}
                 onToggle={() => setRingExpanded((e) => !e)}
+                displayMode={calorieDisplayMode}
+                onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
               />
               <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 6 }}>
-                {ringExpanded ? "Tap to collapse" : "Tap for macro breakdown"}
+                {ringExpanded ? "Tap to collapse" : "Tap for macros"}
               </Text>
             </View>
 
-            {/* 3 Macro Cards — prototype style */}
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-              {([
-                ["Protein", totals.protein, targets.protein, MacroColors.protein],
-                ["Carbs", totals.carbs, targets.carbs, MacroColors.carbs],
-                ["Fat", totals.fat, targets.fat, MacroColors.fat],
-              ] as const).map(([label, cur, tgt, color]) => (
-                <View key={label} style={{ flex: 1, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{label}</Text>
+            {/* Dynamic Macro Cards */}
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              {trackedMacros.map((macro) => {
+                const macroMap: Record<string, { label: string; cur: number; tgt: number; color: string; unit: string }> = {
+                  protein: { label: "Protein", cur: totals.protein, tgt: targets.protein, color: MacroColors.protein, unit: "g" },
+                  carbs: { label: "Carbs", cur: totals.carbs, tgt: targets.carbs, color: MacroColors.carbs, unit: "g" },
+                  fat: { label: "Fat", cur: totals.fat, tgt: targets.fat, color: MacroColors.fat, unit: "g" },
+                  fiber: { label: "Fiber", cur: totals.fiber, tgt: targets.fiber, color: Accent.success, unit: "g" },
+                };
+                const m = macroMap[macro];
+                if (!m) return null;
+                return (
+                  <View key={macro} style={{ flex: 1, minWidth: 70, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
+                      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{m.label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{Math.round(m.cur)}{m.unit}</Text>
+                    <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
+                      <View style={{ width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`, height: "100%", borderRadius: 2, backgroundColor: m.color }} />
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>of {m.tgt}{m.unit}</Text>
                   </View>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{Math.round(cur)}g</Text>
-                  <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
-                    <View style={{ width: `${Math.min(cur / Math.max(tgt, 1), 1) * 100}%`, height: "100%", borderRadius: 2, backgroundColor: color }} />
-                  </View>
-                  <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>of {tgt}g</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* 4 Quick-log chips — prototype style */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
               {([
                 ["Photo", "camera-outline" as const, Accent.primary, () => handlePhotoLog()],
-                ["Voice", "mic-outline" as const, Accent.success, () => handleVoiceLog()],
+                ["AI Log", "mic-outline" as const, Accent.success, () => handleVoiceLog()],
                 ["Search", "search-outline" as const, Accent.warning, () => { setSearchOpen(true); }],
                 ["Scan", "scan-outline" as const, Accent.magenta, () => { setBarcodeOpen(true); }],
               ] as const).map(([label, iconName, color, onPress]) => (
@@ -1220,19 +1358,24 @@ export default function TrackerScreen() {
                     {hasMeals && isOpen && meals.map((m) => (
                       <Pressable
                         key={m.id}
+                        onPress={() => openEditMeal(m)}
                         onLongPress={() => {
-                          Alert.alert("Delete entry", `Remove "${m.recipeTitle}"?`, [
+                          Alert.alert(m.recipeTitle, `${Math.round(m.calories)} kcal · P ${Math.round(m.protein)}g · C ${Math.round(m.carbs)}g · F ${Math.round(m.fat)}g`, [
                             { text: "Cancel", style: "cancel" },
+                            { text: "Edit", onPress: () => openEditMeal(m) },
                             { text: "Delete", style: "destructive", onPress: () => deleteMeal(m.id) },
                           ]);
                         }}
-                        style={{ paddingVertical: 9, paddingLeft: 56, paddingRight: 14, flexDirection: "row", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.cardBorder + "08" }}
+                        style={{ paddingVertical: 9, paddingLeft: 56, paddingRight: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: colors.cardBorder + "08" }}
                       >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
                           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
                           <Text style={{ fontSize: 12, color: colors.text }} numberOfLines={1}>{m.recipeTitle}</Text>
                         </View>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(m.calories)}</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(m.calories)}</Text>
+                          <Ionicons name="chevron-forward" size={12} color={colors.textTertiary} />
+                        </View>
                       </Pressable>
                     ))}
                   </View>
@@ -1547,15 +1690,9 @@ export default function TrackerScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>Voice Log</Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.xs }}>
-              {"Describe what you ate (e.g. \"2 scrambled eggs and toast with butter\")"}
-            </Text>
-            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.xs, lineHeight: 15 }}>
-              Text is sent to our servers and may be processed with AI. See Privacy policy in More.
-            </Text>
-            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.lg }}>
-              {VOICE_LOG_NATIVE_BUILD_HINT}
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>AI Food Log</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.lg }}>
+              {"Describe what you ate in natural language (e.g. \"2 scrambled eggs and toast with butter\") and AI will estimate the nutrition."}
             </Text>
             <TextInput
               style={{
@@ -1597,6 +1734,114 @@ export default function TrackerScreen() {
         </Pressable>
       )}
 
+      {/* Edit meal modal */}
+      <Modal
+        visible={!!editingMeal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingMeal(null)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+            onPress={() => setEditingMeal(null)}
+          />
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingTop: Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.md }}>Edit Entry</Text>
+
+            {/* Meal slot selector */}
+            <View style={{ flexDirection: "row", gap: Spacing.xs, marginBottom: Spacing.md }}>
+              {MEAL_SLOTS.map((s) => (
+                <Pressable
+                  key={s}
+                  onPress={() => setEditSlot(s)}
+                  style={{
+                    flex: 1, paddingVertical: 6, borderRadius: Radius.sm, alignItems: "center",
+                    backgroundColor: editSlot === s ? Accent.primary : colors.border + "40",
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : colors.textSecondary }}>
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Food name"
+              placeholderTextColor={colors.textTertiary}
+              value={editTitle}
+              onChangeText={setEditTitle}
+            />
+            <View style={[styles.inputRow, { marginTop: Spacing.sm }]}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Calories"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+                value={editKcal}
+                onChangeText={setEditKcal}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Protein"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+                value={editProtein}
+                onChangeText={setEditProtein}
+              />
+            </View>
+            <View style={[styles.inputRow, { marginTop: Spacing.sm }]}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Carbs"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+                value={editCarbs}
+                onChangeText={setEditCarbs}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Fat"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+                value={editFat}
+                onChangeText={setEditFat}
+              />
+            </View>
+            <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md }}>
+              <Pressable style={[styles.submitBtn, { flex: 1 }]} onPress={saveEditMeal}>
+                <Text style={styles.submitBtnText}>Save Changes</Text>
+              </Pressable>
+              <Pressable
+                style={{ flex: 1, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, borderWidth: 1, borderColor: Accent.destructive + "40", paddingVertical: 14 }}
+                onPress={() => {
+                  if (editingMeal) {
+                    deleteMeal(editingMeal.id);
+                    setEditingMeal(null);
+                  }
+                }}
+              >
+                <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Food search modal for logging */}
       <FoodSearchModal
         visible={searchOpen}
@@ -1627,22 +1872,17 @@ export default function TrackerScreen() {
       {/* Barcode scanner */}
       <BarcodeScannerModal
         visible={barcodeOpen}
-        onScan={async (code: string) => {
-          const product = await lookupBarcode(code);
+        onScan={(_code: string, product) => {
           setBarcodeOpen(false);
-          if (!product) {
-            Alert.alert("Not found", "Couldn't find nutrition data for this barcode.");
-            return;
-          }
           const meal: JournalMeal = {
             id: newMealId(),
             name: activeMealSlot,
             recipeTitle: product.name,
             time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-            calories: product.calories,
-            protein: product.protein,
-            carbs: product.carbs,
-            fat: product.fat,
+            calories: Math.round(product.calories),
+            protein: Math.round(product.protein * 10) / 10,
+            carbs: Math.round(product.carbs * 10) / 10,
+            fat: Math.round(product.fat * 10) / 10,
             source: "Open Food Facts",
           };
           setByDay((prev) => ({
@@ -1671,7 +1911,7 @@ export default function TrackerScreen() {
               <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 40, gap: Spacing.sm }}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 40, gap: Spacing.sm }} keyboardShouldPersistTaps="handled">
             {recentMeals.length === 0 && (
               <Text style={{ color: colors.textSecondary, textAlign: "center", paddingTop: 40 }}>
                 No previous meals to show. Start logging to build your history.

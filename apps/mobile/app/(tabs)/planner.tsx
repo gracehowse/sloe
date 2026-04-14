@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 
 type PlanMeal = {
@@ -70,6 +71,19 @@ export default function PlannerScreen() {
   const isFree = userTier === "free";
   const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
+  const [shoppingItemCount, setShoppingItemCount] = useState(0);
+
+  // Load shopping item count
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("shopping_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .then(({ count }) => {
+        setShoppingItemCount(count ?? 0);
+      });
+  }, [userId, plan]);
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     // Filter recipes that fit this slot
@@ -134,7 +148,7 @@ export default function PlannerScreen() {
   const getDateRange = useCallback(() => {
     const today = new Date();
     const start = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    if (!plan || plan.length === 0) return start;
+    if (!plan || plan.length <= 1) return start;
     const end = new Date(today);
     end.setDate(end.getDate() + plan.length - 1);
     const endStr = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -188,9 +202,9 @@ export default function PlannerScreen() {
         },
         autoFillBtnText: { fontSize: 13, fontWeight: "600", color: Accent.primary },
 
-        dayCardsScroll: { marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg },
+        dayCardsScroll: { marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg, gap: 8 },
         dayCard: {
-          minWidth: 96,
+          width: 110,
           backgroundColor: colors.card,
           borderRadius: Radius.md,
           borderWidth: 1,
@@ -381,10 +395,10 @@ export default function PlannerScreen() {
     // Smart macro-aware plan generation
     {
       // Load targets from user profile
-      let profileCals = 2000;
-      let profilePro = 150;
-      let profileCarbs = 200;
-      let profileFat = 65;
+      let profileCals = NUTRITION_DEFAULTS.calories;
+      let profilePro = NUTRITION_DEFAULTS.protein;
+      let profileCarbs = NUTRITION_DEFAULTS.carbs;
+      let profileFat = NUTRITION_DEFAULTS.fat;
       if (userId) {
         const { data } = await supabase
           .from("profiles")
@@ -475,7 +489,7 @@ export default function PlannerScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Header with title, date range, and AI Auto-fill button */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -719,7 +733,7 @@ export default function PlannerScreen() {
             </View>
             <View style={styles.shoppingListContent}>
               <Text style={styles.shoppingListTitle}>Shopping List</Text>
-              <Text style={styles.shoppingListSubtitle}>23 items from this week</Text>
+              <Text style={styles.shoppingListSubtitle}>{shoppingItemCount > 0 ? `${shoppingItemCount} item${shoppingItemCount !== 1 ? "s" : ""} from this week` : "Generate a list from your plan"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </Pressable>

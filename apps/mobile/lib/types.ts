@@ -42,6 +42,14 @@ export interface RecipeCard {
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */
   cookTime?: string;
+  /** Macro fit indicator for discover feed. */
+  fit?: "great" | "good" | "warn";
+  /** Source platform label for discover feed (e.g. "TikTok"). */
+  source?: string;
+  /** Number of saves. */
+  saves?: number;
+  /** Number of times made. */
+  made?: number;
 }
 
 export interface IngredientRow {

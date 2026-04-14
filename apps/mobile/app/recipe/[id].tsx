@@ -19,6 +19,7 @@ import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { decodeEntities } from "@/lib/decodeEntities";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -95,7 +96,7 @@ export default function RecipeDetailScreen() {
   const [reverifying, setReverifying] = useState(false);
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
-  const [userTargets, setUserTargets] = useState({ protein: 150, carbs: 200, fat: 65, fiber: 28 });
+  const [userTargets, setUserTargets] = useState({ protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
 
   useEffect(() => {
@@ -108,10 +109,10 @@ export default function RecipeDetailScreen() {
       .then(({ data }) => {
         if (!data) return;
         setUserTargets({
-          protein: (data.target_protein as number) ?? 150,
-          carbs: (data.target_carbs as number) ?? 200,
-          fat: (data.target_fat as number) ?? 65,
-          fiber: (data.target_fiber_g as number) ?? 28,
+          protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
+          carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
+          fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
+          fiber: (data.target_fiber_g as number) ?? NUTRITION_DEFAULTS.fiber,
         });
       });
   }, [userId]);
@@ -420,13 +421,13 @@ export default function RecipeDetailScreen() {
     infoValue: { fontSize: 14, fontWeight: "700", color: colors.text },
     infoLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
 
-    macroCardsRow: { flexDirection: "row", gap: Spacing.md, marginBottom: Spacing.lg },
-    macroCard: { flex: 1, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-    macroCardDot: { width: 8, height: 8, borderRadius: 2, marginRight: 4 },
-    macroCardLabel: { fontSize: 10, fontWeight: "600", color: colors.textTertiary, flexDirection: "row", alignItems: "center" },
-    macroCardValue: { fontSize: 16, fontWeight: "700", color: colors.text, marginTop: 5 },
-    caloriesBadge: { paddingHorizontal: 10, borderRadius: 12, backgroundColor: Accent.success + "10", borderWidth: 1, borderColor: Accent.success + "22", alignItems: "center", justifyContent: "center", paddingVertical: 6, marginLeft: Spacing.md },
-    caloriesBadgeText: { fontSize: 14, fontWeight: "700", color: Accent.success },
+    macroCardsRow: { flexDirection: "row", gap: Spacing.sm },
+    macroCard: { flex: 1, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
+    macroCardDot: { width: 8, height: 8, borderRadius: 2 },
+    macroCardLabel: { fontSize: 10, fontWeight: "600", color: colors.textTertiary, marginTop: 2 },
+    macroCardValue: { fontSize: 16, fontWeight: "700", color: colors.text, marginTop: 2 },
+    caloriesBadge: { flex: 1, borderRadius: 12, backgroundColor: Accent.success + "10", borderWidth: 1, borderColor: Accent.success + "22", alignItems: "center", justifyContent: "center", paddingVertical: 6 },
+    caloriesBadgeText: { fontSize: 16, fontWeight: "700", color: Accent.success },
 
     tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: Spacing.lg, gap: 0 },
     tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
@@ -548,29 +549,27 @@ export default function RecipeDetailScreen() {
           </View>
 
           {/* Macro cards and calorie badge */}
-          <View style={{ flexDirection: "row", gap: Spacing.md, marginBottom: Spacing.lg }}>
-            <View style={styles.macroCardsRow}>
-              <View style={styles.macroCard}>
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                  <View style={[styles.macroCardDot, { backgroundColor: MacroColors.protein }]} />
-                  <Text style={styles.macroCardLabel}>PROTEIN</Text>
-                </View>
-                <Text style={styles.macroCardValue}>{Math.round(macros.protein)}g</Text>
+          <View style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.lg, alignItems: "stretch" }}>
+            <View style={styles.macroCard}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
+                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.protein }]} />
               </View>
-              <View style={styles.macroCard}>
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                  <View style={[styles.macroCardDot, { backgroundColor: MacroColors.carbs }]} />
-                  <Text style={styles.macroCardLabel}>CARBS</Text>
-                </View>
-                <Text style={styles.macroCardValue}>{Math.round(macros.carbs)}g</Text>
+              <Text style={styles.macroCardValue}>{Math.round(macros.protein)}g</Text>
+              <Text style={styles.macroCardLabel}>Protein</Text>
+            </View>
+            <View style={styles.macroCard}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
+                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.carbs }]} />
               </View>
-              <View style={styles.macroCard}>
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                  <View style={[styles.macroCardDot, { backgroundColor: MacroColors.fat }]} />
-                  <Text style={styles.macroCardLabel}>FAT</Text>
-                </View>
-                <Text style={styles.macroCardValue}>{Math.round(macros.fat)}g</Text>
+              <Text style={styles.macroCardValue}>{Math.round(macros.carbs)}g</Text>
+              <Text style={styles.macroCardLabel}>Carbs</Text>
+            </View>
+            <View style={styles.macroCard}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
+                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.fat }]} />
               </View>
+              <Text style={styles.macroCardValue}>{Math.round(macros.fat)}g</Text>
+              <Text style={styles.macroCardLabel}>Fat</Text>
             </View>
             <View style={styles.caloriesBadge}>
               <Text style={styles.caloriesBadgeText}>{Math.round(macros.calories)}</Text>
@@ -707,53 +706,35 @@ export default function RecipeDetailScreen() {
                 </View>
               </View>
 
-              {/* Micronutrients Section */}
+              {/* Micronutrients Section — real data from ingredients */}
               <View style={styles.micronutrientsSection}>
                 <Text style={styles.microLabel}>MICRONUTRIENTS</Text>
                 <View style={styles.microRow}>
                   <Text style={styles.microName}>Fiber</Text>
                   <View style={styles.microBarContainer}>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: "65%" }]} />
+                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.fiber_g / (userTargets?.fiber ?? 28)) * 100))}%` }]} />
                     </View>
                   </View>
                   <Text style={styles.microValue}>{macros.fiber_g}g</Text>
                 </View>
                 <View style={styles.microRow}>
-                  <Text style={styles.microName}>Iron</Text>
+                  <Text style={styles.microName}>Sugar</Text>
                   <View style={styles.microBarContainer}>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: "45%" }]} />
+                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sugar_g / 50) * 100))}%` }]} />
                     </View>
                   </View>
-                  <Text style={styles.microValue}>5.2mg</Text>
-                </View>
-                <View style={styles.microRow}>
-                  <Text style={styles.microName}>Calcium</Text>
-                  <View style={styles.microBarContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: "72%" }]} />
-                    </View>
-                  </View>
-                  <Text style={styles.microValue}>580mg</Text>
-                </View>
-                <View style={styles.microRow}>
-                  <Text style={styles.microName}>Vitamin A</Text>
-                  <View style={styles.microBarContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: "58%" }]} />
-                    </View>
-                  </View>
-                  <Text style={styles.microValue}>420µg</Text>
+                  <Text style={styles.microValue}>{macros.sugar_g}g</Text>
                 </View>
                 <View style={[styles.microRow, { borderBottomWidth: 0 }]}>
-                  <Text style={styles.microName}>Vitamin C</Text>
+                  <Text style={styles.microName}>Sodium</Text>
                   <View style={styles.microBarContainer}>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: "85%" }]} />
+                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sodium_mg / 2300) * 100))}%` }]} />
                     </View>
                   </View>
-                  <Text style={styles.microValue}>42mg</Text>
+                  <Text style={styles.microValue}>{macros.sodium_mg}mg</Text>
                 </View>
               </View>
             </View>

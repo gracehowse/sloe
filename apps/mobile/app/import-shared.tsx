@@ -20,9 +20,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { supabase } from "@/lib/supabase";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
 import MealTypePicker from "@/components/MealTypePicker";
@@ -64,6 +66,59 @@ export default function ImportSharedScreen() {
   const runImportRef = useRef<(url: string) => Promise<void>>(async () => {});
   /** Same URL can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
   const importInFlightRef = useRef<string | null>(null);
+
+  // Profile targets for "How this fits your day"
+  const [profileTargets, setProfileTargets] = useState({
+    calories: NUTRITION_DEFAULTS.calories,
+    protein: NUTRITION_DEFAULTS.protein,
+    carbs: NUTRITION_DEFAULTS.carbs,
+    fat: NUTRITION_DEFAULTS.fat,
+  });
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("target_calories, target_protein, target_carbs, target_fat")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setProfileTargets({
+        calories: (data.target_calories as number) ?? NUTRITION_DEFAULTS.calories,
+        protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
+        carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
+        fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // Fetch recent imported recipes
+  const [recentImports, setRecentImports] = useState<{ name: string; source: string; time: string }[]>([]);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("recipes")
+        .select("title, source_name, created_at")
+        .eq("author_id", userId)
+        .not("source_url", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (cancelled || !data) return;
+      const now = Date.now();
+      setRecentImports(data.map((r: any) => {
+        const diffDays = Math.floor((now - new Date(r.created_at).getTime()) / 86400000);
+        const time = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
+        const src = (r.source_name ?? "").toLowerCase();
+        const source = src.includes("tiktok") ? "tiktok" : src.includes("instagram") ? "instagram" : src.includes("youtube") ? "youtube" : "web";
+        return { name: r.title, source, time };
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   // Animate progress steps during import
   useEffect(() => {
@@ -492,7 +547,7 @@ export default function ImportSharedScreen() {
     libraryChipText: {
       fontSize: 14,
       fontWeight: "600",
-      color: "#e9d5ff",
+      color: Accent.primaryLight,
     },
 
     input: {
@@ -671,16 +726,31 @@ export default function ImportSharedScreen() {
       gap: Spacing.sm,
     },
     macroCardTitle: {
-      fontSize: 13,
-      fontWeight: "600",
+      fontSize: 11,
+      fontWeight: "800",
       color: Accent.success,
-      letterSpacing: 0.5,
+      letterSpacing: 2,
     },
-    macroCardText: {
-      fontSize: 14,
-      fontWeight: "500",
-      color: colors.text,
-      lineHeight: 20,
+    macroRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: Spacing.sm,
+    },
+    macroItem: {
+      flex: 1,
+      alignItems: "center",
+      gap: 2,
+    },
+    macroValue: {
+      fontSize: 17,
+      fontWeight: "800",
+      fontVariant: ["tabular-nums"],
+    },
+    macroLabel: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.textTertiary,
+      textAlign: "center",
     },
 
     // Ingredient count
@@ -774,13 +844,46 @@ export default function ImportSharedScreen() {
               </Text>
             )}
 
-            {/* Macro impact card */}
-            <View style={styles.macroCardContainer}>
-              <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
-              <Text style={styles.macroCardText}>
-                This recipe will help balance your macros and fit your nutrition goals.
-              </Text>
-            </View>
+            {/* Macro breakdown */}
+            {pendingRecipe.calories != null && (
+              <View style={styles.macroCardContainer}>
+                <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
+                <View style={styles.macroRow}>
+                  <View style={styles.macroItem}>
+                    <Text style={[styles.macroValue, { color: MacroColors.calories }]}>
+                      {pendingRecipe.calories}
+                    </Text>
+                    <Text style={styles.macroLabel}>
+                      kcal / {profileTargets.calories}
+                    </Text>
+                  </View>
+                  <View style={styles.macroItem}>
+                    <Text style={[styles.macroValue, { color: MacroColors.protein }]}>
+                      {pendingRecipe.protein ?? 0}g
+                    </Text>
+                    <Text style={styles.macroLabel}>
+                      protein / {profileTargets.protein}g
+                    </Text>
+                  </View>
+                  <View style={styles.macroItem}>
+                    <Text style={[styles.macroValue, { color: MacroColors.carbs }]}>
+                      {pendingRecipe.carbs ?? 0}g
+                    </Text>
+                    <Text style={styles.macroLabel}>
+                      carbs / {profileTargets.carbs}g
+                    </Text>
+                  </View>
+                  <View style={styles.macroItem}>
+                    <Text style={[styles.macroValue, { color: MacroColors.fat }]}>
+                      {pendingRecipe.fat ?? 0}g
+                    </Text>
+                    <Text style={styles.macroLabel}>
+                      fat / {profileTargets.fat}g
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             {/* Ingredient count — avoid `unknown &&` in JSX (tsc ReactNode) */}
             {Array.isArray(pendingRecipe.ingredients) ? (
@@ -971,12 +1074,9 @@ export default function ImportSharedScreen() {
             </View>
 
             {/* Recent imports */}
-            <View style={styles.recentSection}>
+            {recentImports.length > 0 && <View style={styles.recentSection}>
               <Text style={styles.recentLabel}>RECENT IMPORTS</Text>
-              {[
-                { name: "Protein Ice Cream", source: "tiktok", time: "2 days ago" },
-                { name: "Sheet Pan Fajitas", source: "instagram", time: "5 days ago" },
-              ].map((item, idx) => (
+              {recentImports.map((item, idx) => (
                 <View key={idx} style={styles.recentItem}>
                   <View
                     style={[
@@ -987,7 +1087,7 @@ export default function ImportSharedScreen() {
                     ]}
                   >
                     <Text style={styles.recentBadgeText}>
-                      {item.source === "tiktok" ? "TT" : "IG"}
+                      {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
                     </Text>
                   </View>
                   <View style={styles.recentInfo}>
@@ -996,7 +1096,7 @@ export default function ImportSharedScreen() {
                   </View>
                 </View>
               ))}
-            </View>
+            </View>}
           </>
         )}
       </ScrollView>

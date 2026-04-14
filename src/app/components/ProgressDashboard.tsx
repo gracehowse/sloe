@@ -19,6 +19,9 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, type PlanPace } from "../../lib/nutrition/tdee.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
+import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
+import type { LoggedMeal } from "../../types/recipe.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -40,7 +43,7 @@ function coercePace(v: string | null | undefined): PlanPace {
 
 export function ProgressDashboard() {
   const { authedUserId } = useAuthSession();
-  const { profileMeasurementSystem } = useAppData();
+  const { profileMeasurementSystem, nutritionByDay, nutritionTargets } = useAppData();
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -48,7 +51,7 @@ export function ProgressDashboard() {
   const [planPace, setPlanPace] = useState<PlanPace>("steady");
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(10000);
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
 
   const [weightInput, setWeightInput] = useState("");
@@ -90,8 +93,8 @@ export function ProgressDashboard() {
       setPlanPace(coercePace(data.plan_pace as string | undefined));
       setWeightKgByDay(parseNumMap(data.weight_kg_by_day));
       setStepsByDay(parseNumMap(data.steps_by_day));
-      const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : 10000;
-      setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : 10000);
+      const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : DEFAULT_STEPS_GOAL;
+      setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : DEFAULT_STEPS_GOAL);
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
     }
@@ -218,25 +221,53 @@ export function ProgressDashboard() {
     ? profileMeasurementSystem === "imperial" ? Math.round(kgToLb(goalWeightKg) * 10) / 10 : Math.round(goalWeightKg * 10) / 10
     : undefined;
 
-  // Mock data for protein, carbs, fat adherence
-  const proteinAdherence = 75;
-  const carbsAdherence = 62;
-  const fatAdherence = 68;
+  // Compute real weekly data from nutritionByDay
+  const targets = normalizeMacroTargets(nutritionTargets);
+  const weeklyStats = useMemo(() => {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const today = new Date();
+    const dailyCals: { day: string; calories: number; target: number }[] = [];
+    let totalProtein = 0, totalCarbs = 0, totalFat = 0;
+    let targetProteinTotal = 0, targetCarbsTotal = 0, targetFatTotal = 0;
+    let proteinDaysHit = 0;
 
-  // Mock daily calories for the week (Mon-Sun)
-  const dailyCaloriesData = [
-    { day: "Mon", calories: 2100, target: 2200 },
-    { day: "Tue", calories: 2350, target: 2200 },
-    { day: "Wed", calories: 2050, target: 2200 },
-    { day: "Thu", calories: 2280, target: 2200 },
-    { day: "Fri", calories: 2100, target: 2200 },
-    { day: "Sat", calories: 2450, target: 2200 },
-    { day: "Sun", calories: 2180, target: 2200 },
-  ];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const meals: LoggedMeal[] = nutritionByDay[key] ?? [];
+      const dayCal = meals.reduce((s, m) => s + m.calories, 0);
+      const dayP = meals.reduce((s, m) => s + m.protein, 0);
+      const dayC = meals.reduce((s, m) => s + m.carbs, 0);
+      const dayF = meals.reduce((s, m) => s + m.fat, 0);
 
-  const avgCalories = Math.round(dailyCaloriesData.reduce((sum, d) => sum + d.calories, 0) / dailyCaloriesData.length);
-  const proteinOnTarget = 5; // X/7 days
-  const streakDays = 12; // X days protein goal
+      dailyCals.push({ day: dayNames[d.getDay()], calories: Math.round(dayCal), target: targets.calories });
+      totalProtein += dayP;
+      totalCarbs += dayC;
+      totalFat += dayF;
+      targetProteinTotal += targets.protein;
+      targetCarbsTotal += targets.carbs;
+      targetFatTotal += targets.fat;
+      if (meals.length > 0 && dayP >= targets.protein * 0.9) proteinDaysHit++;
+    }
+
+    const proteinAdh = targetProteinTotal > 0 ? Math.round((totalProtein / targetProteinTotal) * 100) : 0;
+    const carbsAdh = targetCarbsTotal > 0 ? Math.round((totalCarbs / targetCarbsTotal) * 100) : 0;
+    const fatAdh = targetFatTotal > 0 ? Math.round((totalFat / targetFatTotal) * 100) : 0;
+
+    return { dailyCals, proteinAdh, carbsAdh, fatAdh, proteinDaysHit };
+  }, [nutritionByDay, targets]);
+
+  const dailyCaloriesData = weeklyStats.dailyCals;
+  const proteinAdherence = weeklyStats.proteinAdh;
+  const carbsAdherence = weeklyStats.carbsAdh;
+  const fatAdherence = weeklyStats.fatAdh;
+
+  const avgCalories = dailyCaloriesData.length > 0
+    ? Math.round(dailyCaloriesData.reduce((sum, d) => sum + d.calories, 0) / dailyCaloriesData.length)
+    : 0;
+  const proteinOnTarget = weeklyStats.proteinDaysHit;
+  const streakDays = computeLoggingStreak(nutritionByDay);
 
   return (
     <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
@@ -254,7 +285,7 @@ export function ProgressDashboard() {
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Calories</span>
           </div>
           <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
-          <p className="text-[11px] text-muted-foreground">vs 2,100 target</p>
+          <p className="text-[11px] text-muted-foreground">vs {targets.calories.toLocaleString()} target</p>
         </div>
         <div className="rounded-xl bg-card border border-border p-3">
           <div className="flex items-center gap-1.5 mb-2">
@@ -277,8 +308,22 @@ export function ProgressDashboard() {
             <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trend</span>
           </div>
-          <p className="text-[22px] font-bold text-primary tabular-nums mb-0.5">−0.4 kg</p>
-          <p className="text-[11px] text-muted-foreground">on track</p>
+          <p className="text-[22px] font-bold text-primary tabular-nums mb-0.5">{(() => {
+            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
+            if (entries.length < 2) return "—";
+            const recent = entries[0][1];
+            const weekAgo = entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1];
+            const delta = recent - weekAgo;
+            const val = profileMeasurementSystem === "imperial" ? Math.round(kgToLb(Math.abs(delta)) * 10) / 10 : Math.round(Math.abs(delta) * 10) / 10;
+            const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
+            return `${delta <= 0 ? "−" : "+"}${val} ${unit}`;
+          })()}</p>
+          <p className="text-[11px] text-muted-foreground">{(() => {
+            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
+            if (entries.length < 2) return "no data yet";
+            const delta = entries[0][1] - (entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1]);
+            return goalWeightKg != null && ((goalWeightKg < (weightKg ?? Infinity) && delta <= 0) || (goalWeightKg > (weightKg ?? 0) && delta >= 0)) ? "on track" : entries.length < 2 ? "no data yet" : "this week";
+          })()}</p>
         </div>
       </div>
 
@@ -288,7 +333,7 @@ export function ProgressDashboard() {
         <div className="flex items-end gap-2" style={{ height: 90 }}>
           {dailyCaloriesData.map((d, i) => {
             const overTarget = d.calories > d.target;
-            const barH = (d.calories / 2400) * 70;
+            const barH = (d.calories / Math.max(targets.calories * 1.15, 1)) * 70;
             return (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                 <span className="text-[9px] text-muted-foreground tabular-nums">
@@ -331,14 +376,125 @@ export function ProgressDashboard() {
       </div>
 
       {/* WEEKLY INSIGHT */}
-      <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
-        <div className="flex items-center gap-1.5 mb-1">
-          <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Weekly insight</span>
+      {avgCalories > 0 ? (
+        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Weekly insight</span>
+          </div>
+          <p className="text-xs text-foreground leading-relaxed">
+            {proteinOnTarget >= 5
+              ? `Protein consistency is strong — ${proteinOnTarget} of 7 days on target.`
+              : proteinOnTarget > 0
+              ? `Protein hit ${proteinOnTarget} of 7 days this week.`
+              : "No protein targets hit this week — try logging more meals."}{" "}
+            Average intake is {avgCalories} kcal vs your {targets.calories.toLocaleString()} target.{" "}
+            {avgCalories <= targets.calories * 1.1 && avgCalories >= targets.calories * 0.9 ? "Right on track!" : avgCalories < targets.calories * 0.9 ? "You're under target — make sure you're eating enough." : "Slightly over target this week."}
+          </p>
         </div>
-        <p className="text-xs text-foreground leading-relaxed">
-          Protein consistency is strong — {proteinOnTarget} of 7 days on target. Average intake is {avgCalories} kcal vs your 2,100 target. Keep it up!
-        </p>
+      ) : (
+        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Get started</span>
+          </div>
+          <p className="text-xs text-foreground leading-relaxed">
+            Log your meals on the Today tab to see weekly stats, macro adherence, and personalized insights here.
+          </p>
+        </div>
+      )}
+
+      {/* WEIGHT TRACKING */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
+        <div className="flex gap-6 mb-3">
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-foreground tabular-nums">{weightKg != null ? formatWeight(weightKg) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Current</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-success tabular-nums">{goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
+          </div>
+        </div>
+        {weightChartData.length >= 2 && (
+          <div className="mb-3">
+            <ResponsiveContainer width="100%" height={100}>
+              <LineChart data={weightChartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} dot={{ r: 2 }} />
+                {goalWeightChart != null && <ReferenceLine y={goalWeightChart} stroke="var(--success)" strokeDasharray="4 4" />}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
+            value={weightInput}
+            onChange={(e) => setWeightInput(e.target.value)}
+            type="number"
+            step="0.1"
+          />
+          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+        </div>
+      </div>
+
+      {/* STEPS */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
+        <div className="flex gap-6 mb-3">
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey] ?? 0).toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
+          </div>
+        </div>
+        {stepsChartData.length >= 2 && (
+          <div className="mb-3">
+            <ResponsiveContainer width="100%" height={80}>
+              <BarChart data={stepsChartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <ReferenceLine y={dailyStepsGoal} stroke="var(--success)" strokeDasharray="4 4" />
+                <Bar dataKey="value" fill="var(--success)" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder="Steps today"
+            value={stepsInput}
+            onChange={(e) => setStepsInput(e.target.value)}
+            type="number"
+          />
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+        </div>
+      </div>
+
+      {/* BODY FAT */}
+      <div className="rounded-xl bg-card border border-border p-4">
+        <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
+        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder="Body fat %"
+            value={bodyFatInput}
+            onChange={(e) => setBodyFatInput(e.target.value)}
+            type="number"
+            step="0.1"
+          />
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+        </div>
       </div>
     </div>
   );
