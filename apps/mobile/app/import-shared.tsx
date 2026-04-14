@@ -443,7 +443,7 @@ export default function ImportSharedScreen() {
       letterSpacing: 3,
     },
     scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, paddingTop: Spacing.lg, gap: Spacing.lg },
-    scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: Spacing.md },
+    scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: 0 },
 
     panelCard: {
       alignSelf: "stretch",
@@ -535,19 +535,19 @@ export default function ImportSharedScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: Accent.primary + "22",
+      backgroundColor: Accent.success + "15",
       paddingVertical: 10,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: Accent.primary + "44",
+      borderColor: Accent.success + "35",
       marginTop: Spacing.xs,
       marginBottom: Spacing.sm,
     },
     libraryChipText: {
       fontSize: 14,
       fontWeight: "600",
-      color: Accent.primaryLight,
+      color: Accent.success,
     },
 
     input: {
@@ -730,27 +730,31 @@ export default function ImportSharedScreen() {
       fontWeight: "800",
       color: Accent.success,
       letterSpacing: 2,
+      marginBottom: Spacing.xs,
     },
     macroRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
-      gap: Spacing.sm,
+      justifyContent: "space-evenly",
     },
     macroItem: {
-      flex: 1,
       alignItems: "center",
-      gap: 2,
+      gap: 1,
+      minWidth: 60,
     },
     macroValue: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: "800",
       fontVariant: ["tabular-nums"],
     },
     macroLabel: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    macroTarget: {
+      fontSize: 10,
+      fontWeight: "500",
       color: colors.textTertiary,
-      textAlign: "center",
     },
 
     // Ingredient count
@@ -849,38 +853,24 @@ export default function ImportSharedScreen() {
               <View style={styles.macroCardContainer}>
                 <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
                 <View style={styles.macroRow}>
-                  <View style={styles.macroItem}>
-                    <Text style={[styles.macroValue, { color: MacroColors.calories }]}>
-                      {pendingRecipe.calories}
-                    </Text>
-                    <Text style={styles.macroLabel}>
-                      kcal / {profileTargets.calories}
-                    </Text>
-                  </View>
-                  <View style={styles.macroItem}>
-                    <Text style={[styles.macroValue, { color: MacroColors.protein }]}>
-                      {pendingRecipe.protein ?? 0}g
-                    </Text>
-                    <Text style={styles.macroLabel}>
-                      protein / {profileTargets.protein}g
-                    </Text>
-                  </View>
-                  <View style={styles.macroItem}>
-                    <Text style={[styles.macroValue, { color: MacroColors.carbs }]}>
-                      {pendingRecipe.carbs ?? 0}g
-                    </Text>
-                    <Text style={styles.macroLabel}>
-                      carbs / {profileTargets.carbs}g
-                    </Text>
-                  </View>
-                  <View style={styles.macroItem}>
-                    <Text style={[styles.macroValue, { color: MacroColors.fat }]}>
-                      {pendingRecipe.fat ?? 0}g
-                    </Text>
-                    <Text style={styles.macroLabel}>
-                      fat / {profileTargets.fat}g
-                    </Text>
-                  </View>
+                  {[
+                    { val: Math.round(pendingRecipe.calories ?? 0), unit: "", label: "kcal", target: profileTargets.calories, color: MacroColors.calories },
+                    { val: Math.round(pendingRecipe.protein ?? 0), unit: "g", label: "protein", target: profileTargets.protein, color: MacroColors.protein },
+                    { val: Math.round(pendingRecipe.carbs ?? 0), unit: "g", label: "carbs", target: profileTargets.carbs, color: MacroColors.carbs },
+                    { val: Math.round(pendingRecipe.fat ?? 0), unit: "g", label: "fat", target: profileTargets.fat, color: MacroColors.fat },
+                  ].map((m) => (
+                    <View key={m.label} style={styles.macroItem}>
+                      <Text style={[styles.macroValue, { color: m.color }]} numberOfLines={1}>
+                        {m.val}{m.unit}
+                      </Text>
+                      <Text style={styles.macroLabel} numberOfLines={1}>
+                        {m.label}
+                      </Text>
+                      <Text style={styles.macroTarget} numberOfLines={1}>
+                        of {m.target}{m.unit}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
               </View>
             )}

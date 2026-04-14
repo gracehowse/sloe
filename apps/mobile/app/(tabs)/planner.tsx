@@ -55,7 +55,7 @@ export default function PlannerScreen() {
   const [days, setDays] = useState<1 | 3 | 7>(1);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
-  // Load user tier
+  // Load user tier — default to "pro" if column is null (graceful for existing users)
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -64,7 +64,13 @@ export default function PlannerScreen() {
       .eq("id", userId)
       .single()
       .then(({ data }) => {
-        if (data?.user_tier) setUserTier(data.user_tier as "free" | "base" | "pro");
+        const tier = data?.user_tier as string | null;
+        if (tier === "free" || tier === "base" || tier === "pro") {
+          setUserTier(tier);
+        } else {
+          // If null/unset, treat as pro (existing users before tier was added)
+          setUserTier("pro");
+        }
       });
   }, [userId]);
 

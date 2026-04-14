@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -73,7 +74,7 @@ export default function ProfileScreen() {
     notificationPref: string | null;
   }>({ savedCount: 0, streak: 0, targetCalories: NUTRITION_DEFAULTS.calories, targetProtein: NUTRITION_DEFAULTS.protein, targetCarbs: NUTRITION_DEFAULTS.carbs, targetFat: NUTRITION_DEFAULTS.fat, dietaryRestrictions: [], notificationPref: null });
 
-  useEffect(() => {
+  const loadProfileData = useCallback(async () => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
@@ -132,6 +133,9 @@ export default function ProfileScreen() {
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
+  // Reload profile data whenever this tab gets focus (e.g. after editing profile)
+  useFocusEffect(useCallback(() => { void loadProfileData(); }, [loadProfileData]));
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -236,14 +240,25 @@ export default function ProfileScreen() {
       {/* 3 Stat Pills — real data */}
       <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
         {([
-          [String(profileData.savedCount), "Recipes", t.accent],
-          [String(profileData.streak), "Streak", t.green],
-          [String(Math.round((profileData.streak / 7) * 100)), "Score", t.amber],
-        ] as const).map(([v, l, c]) => (
-          <View key={l} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+          [String(profileData.savedCount), "Recipes", t.accent, null],
+          [String(profileData.streak), "Streak", t.green, null],
+          [String(Math.min(100, Math.round(
+            (Math.min(profileData.streak, 7) / 7) * 40 +
+            (Math.min(profileData.savedCount, 10) / 10) * 30 +
+            30 // base points for being active
+          ))), "Score", t.amber, () => Alert.alert(
+            "Your Platemate Score",
+            "Your score (0–100) reflects how actively you're using Platemate.\n\n"
+            + "• Logging streak — log meals consistently to build your streak (up to 40 pts)\n"
+            + "• Saved recipes — save recipes to your library (up to 30 pts)\n"
+            + "• Active account — you get 30 pts just for being here\n\n"
+            + "Keep logging and saving recipes to hit 100!"
+          )],
+        ] as [string, string, string, (() => void) | null][]).map(([v, l, c, onPress]) => (
+          <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{l}</Text>
-          </View>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{l}{onPress ? " ⓘ" : ""}</Text>
+          </Pressable>
         ))}
       </View>
 
