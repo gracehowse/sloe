@@ -35,8 +35,9 @@ test.describe("Authenticated app view matrix", () => {
 
     await test.step("Nutrition tracker", async () => {
       await page.goto("/?view=tracker");
-      await expect(page.getByRole("heading", { name: /Nutrition Tracker/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: /add meal/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^Today$/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
+      await expect(page.getByText(/Tap for macro breakdown|Showing macro breakdown/i)).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
@@ -56,7 +57,7 @@ test.describe("Authenticated app view matrix", () => {
     await test.step("Profile", async () => {
       await page.goto("/?view=profile");
       await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-      await expect(page.getByText(/\b(free|base|pro) Plan\b/i)).toBeVisible();
+      await expect(page.getByText(/\b(Free|Base|Pro)\b.*Joined recently/i)).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
