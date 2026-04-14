@@ -51,6 +51,30 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
 
    Then open the app again (or re-run `ios:device`).
 
+### “Could not connect to development server” (real device)
+
+The app is trying to load JS from something like `http://192.168.x.x:8081/...` and the **phone cannot reach your Mac** on that port.
+
+1. **Metro must be running** on the Mac in **`apps/mobile`**: `npm start` or `npx expo start` (leave that terminal open). `npm run ios:device` starts it in some setups; if you closed that process, start Metro again.
+
+2. **Same network** — iPhone Wi‑Fi and Mac Wi‑Fi should be the **same LAN** (not iPhone on cellular only; avoid **guest** Wi‑Fi / AP isolation). Disconnect VPN on **both** while testing.
+
+3. **Local Network** — **Settings → Platemate → Local Network → On**. If you never saw a prompt, toggle off/on once or reinstall the dev build after enabling.
+
+4. **Mac firewall** — **System Settings → Network → Firewall** (or Security): allow **Node** / **incoming** for port **8081**, or temporarily turn the firewall off to confirm.
+
+5. **Quick check** — On the iPhone, open **Safari** and visit `http://192.168.108.177:8081` (use the IP shown in your error). If it doesn’t connect, it’s network/firewall, not the app.
+
+6. **Tunnel (works across networks)** — Stop Metro, then:
+
+   ```bash
+   npm run start:tunnel
+   ```
+
+   In the Expo CLI, open the project on the device again (link / QR / `i`). The bundle URL will **not** use your LAN IP; the phone reaches Metro via Expo’s tunnel.
+
+7. **Stale IP** — If your Mac’s Wi‑Fi IP changed, fully **kill and reopen** the app or use the dev menu **Reload** after restarting `expo start` so it picks up the current address.
+
 ### Simulator (one command)
 
 ```bash
