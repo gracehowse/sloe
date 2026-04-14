@@ -24,6 +24,7 @@ import {
   scaleMacros,
   parseIngredientForSearch,
   sourceLabel,
+  RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
   type VerifiableIngredient,
   type BarcodeProduct,
   type FoodPortion,
@@ -102,7 +103,9 @@ export default function VerifyScreen() {
   }, [ingredients, recipe?.servings]);
 
   const hasDirty = ingredients.some((i) => i.isDirty);
-  const hasUnverified = ingredients.some((i) => !i.isVerified || i.confidence < 0.5);
+  const hasUnverified = ingredients.some(
+    (i) => !i.isVerified || i.confidence < RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+  );
 
   const updateIngredient = useCallback(
     (index: number, updates: Partial<VerifiableIngredient>) => {
@@ -380,7 +383,8 @@ export default function VerifyScreen() {
         {/* Ingredient list */}
         {ingredients.map((ing, i) => {
           const expanded = expandedIndex === i;
-          const needsReview = !ing.isVerified || ing.confidence < 0.5;
+          const needsReview =
+            !ing.isVerified || ing.confidence < RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
           const displayName = decodeEntities(ing.matchedName ?? ing.name);
           const amountStr = ing.amount != null ? `${ing.amount}${ing.unit ? ` ${ing.unit}` : ""}` : "";
 

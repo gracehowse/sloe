@@ -58,6 +58,12 @@ export const MIN_MATCH_CONFIDENCE = 0.42;
 /** Minimum confidence for Open Food Facts (stricter — noisy product names). */
 export const MIN_OFF_CONFIDENCE = 0.52;
 
+/**
+ * Recipe verify UI: lines below this show “needs review” until the user confirms or picks a food.
+ * Above {@link MIN_MATCH_CONFIDENCE} so borderline auto-matches stay visually flagged.
+ */
+export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
+
 const ATWATER_MIN_RATIO = 0.62;
 const ATWATER_MAX_RATIO = 1.38;
 

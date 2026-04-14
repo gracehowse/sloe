@@ -44,9 +44,10 @@ export default function HelpPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">How recipe and food matches work</h2>
           <p>
             When you import a recipe or pick a food, we try sources in order (USDA FoodData Central, then Open Food Facts,
-            then FatSecret when configured). Each match must clear a minimum confidence score; if none qualify, we fall
-            back to a conservative estimate from ingredient text. You can override matches when editing or verifying a
-            recipe in the app.
+            then FatSecret when configured). Each match must clear a minimum confidence score; we also skip matches when
+            preparation wording clearly disagrees (for example grilled vs raw-only database rows) or when scaled macros
+            look implausible. If none qualify, we fall back to a conservative estimate from ingredient text. You can
+            override matches when editing or verifying a recipe in the app.
           </p>
 
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition data sources</h2>

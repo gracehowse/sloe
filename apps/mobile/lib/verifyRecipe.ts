@@ -2,6 +2,9 @@ import Constants from "expo-constants";
 import { supabase } from "./supabase";
 import { authedFetch } from "./authedFetch";
 
+/** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
+export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
+
 type Extra = { platemateApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
