@@ -889,7 +889,7 @@ export default function ImportSharedScreen() {
             <ActivityIndicator size="large" color={Accent.primary} style={styles.loaderGap} />
             <Text style={styles.panelTitle}>Looking for a link…</Text>
             <Text style={styles.panelSub}>
-              Instagram, TikTok, or any recipe page — we'll save it to your library.
+              {`Instagram, TikTok, or any recipe page — we'll save it to your library.`}
             </Text>
           </View>
         )}
@@ -1131,7 +1131,7 @@ export default function ImportSharedScreen() {
             <View style={styles.errorIconCircle}>
               <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
             </View>
-            <Text style={styles.panelTitle}>Couldn't import</Text>
+            <Text style={styles.panelTitle}>{`Couldn't import`}</Text>
             <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
             <TextInput
               value={manualUrl}

@@ -243,7 +243,7 @@ export default function HealthSyncScreen() {
       <View style={styles.card}>
         <CardTitle styles={styles} icon="nutrition" text="Nutrition Sync" />
         <Text style={styles.desc}>
-          Share your Suppr meals to Apple Health so other apps can see them. When you tap "Complete Day" on the Today tab, your logged meals are written to Health.
+          {`Share your Suppr meals to Apple Health so other apps can see them. When you tap "Complete Day" on the Today tab, your logged meals are written to Health.`}
         </Text>
 
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
