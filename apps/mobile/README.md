@@ -25,6 +25,8 @@ After prebuild, open **`ios/Suppr.xcworkspace`** (always the **workspace**, not 
 
 If Xcode says **`mobile.xcodeproj` couldn’t be opened**, or **Failed to load container for document at url: …/mobile…** (path truncated in the banner), you have a stale **`ios/mobile.xcworkspace`** that points at a missing **`mobile.xcodeproj`**. Quit Xcode, run **`rm -rf ios/mobile.xcworkspace`**, then open **`ios/Suppr.xcworkspace`** (or **`npm run ios:xcode`**, which removes that folder first).
 
+**`PhaseScriptExecution` failed** on **hermes-engine** or **ReactNativeDependencies:** Xcode’s script phases often don’t see `node` on `PATH`. Run **`npx expo prebuild --platform ios`** again — a config plugin writes **`ios/.xcode.env.local`** with **`NODE_BINARY`** set to the Node binary that ran prebuild. Or add the line manually: in Terminal run **`which node`**, then put **`export NODE_BINARY=<that full path>`** in **`ios/.xcode.env.local`** (Apple Silicon Homebrew is often **`/opt/homebrew/bin/node`**).
+
 ### Physical iPhone (USB)
 
 1. Plug in the phone, unlock it, tap **Trust** if asked.
