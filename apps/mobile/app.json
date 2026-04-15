@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.supprclub.suppr",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSHealthShareUsageDescription": "Suppr reads your steps, weight, and activity data to keep your tracker in sync."
+        "NSHealthShareUsageDescription": "Suppr reads your steps, weight, and activity data from Apple Health to keep your tracker in sync.",
+        "NSHealthUpdateUsageDescription": "Suppr only reads steps, weight, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
       },
       "entitlements": {
         "com.apple.developer.healthkit": true

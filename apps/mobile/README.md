@@ -62,6 +62,7 @@ Use this once you are on the **$99/year** Apple Developer Program so **Sign in w
    - **Team**: your paid team  
    - **Automatically manage signing**: on  
    - Confirm capabilities listed (Sign in with Apple, Push, HealthKit, etc.). Fix any red errors (usually enable the capability on the App ID in step 3, then **Download Manual Profiles** or toggle signing off/on).
+   - **HealthKit “Usage Description” placeholders in Xcode:** Suppr only **reads** Apple Health (see `app.json` → `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription`). After changing those strings, run **`npx expo prebuild --platform ios`** so `Info.plist` updates. In **Signing & Capabilities → HealthKit**, turn **off** **Clinical Health Records** and **HealthKit Background Delivery** unless you explicitly need them (they are off in our config).
 6. **Install on device** — `npm run ios:device` / `npm run mobile:ios:device`, or **Run** from Xcode. If Metro over Wi‑Fi fails, use **`npm run ios:device:tunnel`** (see below).
 
 **Backend / services (outside Xcode)**
