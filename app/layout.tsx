@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Platemate",
+  title: "Suppr",
   description: "Creator recipes with verified macros.",
 };
 

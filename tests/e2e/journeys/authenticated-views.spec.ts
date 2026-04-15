@@ -16,7 +16,7 @@ test.describe("Authenticated app view matrix", () => {
 
     await test.step("Discover", async () => {
       await page.goto("/?view=discover");
-      await expect(page.getByRole("heading", { name: /^Platemate$/i }).first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^Suppr$/i }).first()).toBeVisible();
       await expect(page.getByPlaceholder("Search")).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });

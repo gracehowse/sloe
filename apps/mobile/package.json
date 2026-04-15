@@ -1,5 +1,5 @@
 {
-  "name": "mobile",
+  "name": "suppr-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -10,6 +10,7 @@
     "android": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:android",
     "ios": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:ios",
     "ios:device": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:ios --device",
+    "ios:device:tunnel": "bash ./scripts/ios-device-with-tunnel.sh",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
     "prebuild:ios:personal": "EXPO_IOS_PERSONAL_TEAM=1 expo prebuild --clean --platform ios",

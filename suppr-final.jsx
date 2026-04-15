@@ -66,7 +66,7 @@ const IC = {
   barChart: (c,s=16) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
 };
 
-const SRC = { tiktok: ["TT", "#000", "#ff004f15"], instagram: ["IG", "#c13584", "#c1358415"], youtube: ["YT", "#ff0000", "#ff000015"], platemate: ["PM", null, null], web: ["WEB", null, null] };
+const SRC = { tiktok: ["TT", "#000", "#ff004f15"], instagram: ["IG", "#c13584", "#c1358415"], youtube: ["YT", "#ff0000", "#ff000015"], suppr: ["SP", null, null], web: ["WEB", null, null] };
 const SourceBadge = ({ source, t }) => {
   const [label, color, bg] = SRC[source] || ["?", t.sub, t.dim + "20"];
   return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "1px 5px", borderRadius: 4, background: bg || t.accentSoft, fontSize: 9, fontWeight: 700, color: color || t.accent, letterSpacing: "0.02em" }}>{label}</span>;
@@ -143,7 +143,7 @@ const FEED = [
   { id: 1, title: "Creamy Tuscan Chicken Pasta", creator: "Sarah Cooks", src: "tiktok", time: "25 min", cal: 520, p: 38, c: 52, f: 16, fit: "good", fitLabel: "Fits your dinner", saves: 2340, made: 891 },
   { id: 2, title: "High Protein Overnight Oats", creator: "FitMeals", src: "instagram", time: "5 min", cal: 385, p: 32, c: 45, f: 8, fit: "great", fitLabel: "Perfect breakfast", saves: 5120, made: 3200 },
   { id: 3, title: "Korean Beef Bibimbap Bowl", creator: "Chef Min", src: "youtube", time: "35 min", cal: 610, p: 42, c: 65, f: 18, fit: "warn", fitLabel: "High carb for targets", saves: 1890, made: 720 },
-  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", src: "platemate", time: "20 min", cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560 },
+  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", src: "suppr", time: "20 min", cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560 },
   { id: 5, title: "Peanut Butter Banana Smoothie", creator: "BlendQueen", src: "tiktok", time: "3 min", cal: 340, p: 18, c: 42, f: 12, fit: "good", fitLabel: "Great snack", saves: 8900, made: 5100 },
   { id: 6, title: "Salmon Teriyaki with Greens", creator: "OceanTable", src: "instagram", time: "22 min", cal: 440, p: 36, c: 28, f: 20, fit: "great", fitLabel: "High protein dinner", saves: 4200, made: 1800 },
 ];
@@ -688,7 +688,7 @@ function ProfileScreen({ t }) {
 /* ═══════════════════════════════════════════
    MAIN SHELL
    ═══════════════════════════════════════════ */
-export default function Platemate() {
+export default function Suppr() {
   const [isDark, setIsDark] = useState(false);
   const [screen, setScreen] = useState("today");
   const [recipe, setRecipe] = useState(null);
@@ -760,7 +760,7 @@ export default function Platemate() {
       </div>
 
       <div style={{ marginTop: 14, textAlign: "center" }}>
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "#444" : "#999" }}>Platemate · Icon-driven & Structured</div>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "#444" : "#999" }}>Suppr · Icon-driven & Structured</div>
       </div>
     </div>
   );

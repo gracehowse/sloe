@@ -335,7 +335,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             onClick={() => {
               try {
                 const data = buildLocalDataExport();
-                downloadJsonFile(`platemate-export-${new Date().toISOString().slice(0, 10)}.json`, data);
+                downloadJsonFile(`suppr-export-${new Date().toISOString().slice(0, 10)}.json`, data);
                 toast.success("Download started.");
               } catch {
                 toast.error("Could not build export.");
@@ -369,7 +369,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               if (
                 typeof window !== "undefined" &&
                 !window.confirm(
-                  "This will sign you out and remove Platemate data stored on this device. Continue?",
+                  "This will sign you out and remove Suppr data stored on this device. Continue?",
                 )
               ) {
                 return;

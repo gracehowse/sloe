@@ -95,7 +95,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
     if (shoppingItems.length === 0) {
       return "Shopping list is empty.";
     }
-    const lines: string[] = ["Platemate shopping list", ""];
+    const lines: string[] = ["Suppr shopping list", ""];
     for (const cat of categories) {
       const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === cat));
       lines.push(`## ${cat}`, "");

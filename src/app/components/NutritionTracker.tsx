@@ -37,8 +37,8 @@ import {
 } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import { distributeMealBudget } from "../../lib/nutrition/mealBudget.ts";
-import { DailyRing } from "./platemate/daily-ring";
-import { MacroCard } from "./platemate/macro-card";
+import { DailyRing } from "./suppr/daily-ring";
+import { MacroCard } from "./suppr/macro-card";
 
 const RECENT_BARCODE_KEY = "platemate-recent-foods-v1";
 

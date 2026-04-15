@@ -367,7 +367,7 @@ export default function BarcodeScreen() {
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <Ionicons name="camera-outline" size={48} color={colors.textSecondary} style={styles.permIcon} />
         <Text style={styles.permText}>
-          Platemate needs your camera to scan product barcodes and look up nutrition info.
+          Suppr needs your camera to scan product barcodes and look up nutrition info.
         </Text>
         <Pressable style={styles.permBtn} onPress={() => void requestPermission()} accessibilityLabel="Grant camera permission">
           <Text style={styles.permBtnText}>Grant Permission</Text>

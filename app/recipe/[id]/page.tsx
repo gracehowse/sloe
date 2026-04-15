@@ -103,11 +103,11 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await fetchRecipe(id);
-  if (!data) return { title: "Recipe Not Found — Platemate" };
+  if (!data) return { title: "Recipe Not Found — Suppr" };
 
   const { recipe } = data;
   return {
-    title: `${recipe.title} — Platemate`,
+    title: `${recipe.title} — Suppr`,
     description: `${recipe.calories} kcal · ${recipe.protein}g protein · ${recipe.carbs}g carbs · ${recipe.fat}g fat${recipe.description ? ` — ${recipe.description}` : ""}`,
     openGraph: {
       title: recipe.title,
@@ -178,7 +178,7 @@ export default async function RecipePage({ params }: Props) {
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <a href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-            Platemate
+            Suppr
           </a>
           <a
             href="/login"
@@ -278,7 +278,7 @@ export default async function RecipePage({ params }: Props) {
             Add this to a meal plan that hits your macros
           </h3>
           <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
-            Platemate plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
+            Suppr plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
           </p>
           <a
             href="/login"

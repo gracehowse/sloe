@@ -452,7 +452,7 @@ function WeeklySparkline({ theme }) {
 }
 
 // Main app
-export default function PlatemateRedesign() {
+export default function SupprRedesign() {
   const [isDark, setIsDark] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("today");
@@ -591,7 +591,7 @@ export default function PlatemateRedesign() {
         flexDirection: "column",
         gap: 2,
       }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: ACCENT.green, padding: "0 8px 20px", letterSpacing: "-0.02em" }}>platemate</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: ACCENT.green, padding: "0 8px 20px", letterSpacing: "-0.02em" }}>suppr</div>
         {[
           { label: "Today", id: "today", icon: "◉" },
           { label: "Recipes", id: "recipes", icon: "◈" },
@@ -727,7 +727,7 @@ export default function PlatemateRedesign() {
 
       {/* Title */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: ACCENT.green, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Platemate Redesign</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: ACCENT.green, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Suppr Redesign</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: isDark ? "#ede9e3" : "#1a1714", letterSpacing: "-0.02em" }}>
           {view === "mobile" ? "Today — Mobile" : "Today — Desktop"}
         </div>

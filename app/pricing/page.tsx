@@ -6,7 +6,7 @@ import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
 export const metadata: Metadata = {
-  title: "Pricing — Platemate",
+  title: "Pricing — Suppr",
   description: "Choose a plan that fits your goals. Free, Base, or Pro.",
 };
 
@@ -116,7 +116,7 @@ export default function PricingPage() {
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <a href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-            Platemate
+            Suppr
           </a>
           <a
             href="/login"

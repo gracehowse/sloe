@@ -25,6 +25,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
 import MealTypePicker from "@/components/MealTypePicker";
@@ -37,10 +38,10 @@ import {
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try { ImagePicker = require("expo-image-picker"); } catch { /* native build only */ }
 
-type Extra = { platemateApiUrl?: string };
+type Extra = { supprApiUrl?: string; platemateApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
-  return (extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
 }
 
 type ImportState = "idle" | "checking" | "importing" | "review" | "saving" | "success" | "error";
@@ -80,15 +81,20 @@ export default function ImportSharedScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !data) return;
+      const d = data as any;
+      const t = resolveTargets(
+        { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
+        { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+      );
       setProfileTargets({
-        calories: (data.target_calories as number) ?? NUTRITION_DEFAULTS.calories,
-        protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
-        carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
-        fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
+        calories: t.calories,
+        protein: t.protein,
+        carbs: t.carbs,
+        fat: t.fat,
       });
     })();
     return () => { cancelled = true; };
@@ -138,7 +144,7 @@ export default function ImportSharedScreen() {
 
       if (!base) {
         setState("error");
-        setError("API not configured. Set platemateApiUrl in app config.");
+        setError("API not configured. Set supprApiUrl in app config.");
         return;
       }
 
@@ -330,7 +336,7 @@ export default function ImportSharedScreen() {
   }, [authLoading, userId, routerUrl, runImportOnce]);
 
   /**
-   * No ?url= yet: read platemate:// initial link, then clipboard (delayed retries for iOS pasteboard).
+   * No ?url= yet: read suppr:// or legacy platemate:// initial link, then clipboard (delayed retries for iOS pasteboard).
    * https:// social opens are forwarded from root layout with params — avoids double import.
    */
   useEffect(() => {
@@ -383,7 +389,7 @@ export default function ImportSharedScreen() {
   useEffect(() => {
     if (authLoading || !userId) return;
     const sub = Linking.addEventListener("url", ({ url: href }) => {
-      if (!/^platemate:/i.test(href)) return;
+      if (!/^(platemate|suppr):/i.test(href)) return;
       const u = urlFromDeepLink(href);
       if (u) {
         setManualUrl(u);
@@ -1001,7 +1007,7 @@ export default function ImportSharedScreen() {
               </View>
               <Text style={styles.panelTitle}>Paste a recipe link</Text>
               <Text style={styles.panelSub}>
-                From Instagram, TikTok, or any recipe site. If you just shared to Platemate, the link may already be on
+                From Instagram, TikTok, or any recipe site. If you just shared to Suppr, the link may already be on
                 your clipboard — tap below.
               </Text>
               <TextInput

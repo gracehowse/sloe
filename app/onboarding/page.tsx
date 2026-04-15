@@ -291,7 +291,7 @@ export default function OnboardingPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Welcome to Platemate
+              Welcome to Suppr
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Step {wizardStep + 1} of {WIZARD_STEPS.length} — {WIZARD_STEPS[wizardStep]}

@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
-import { DailyRing } from "./platemate/daily-ring";
-import { MacroCard } from "./platemate/macro-card";
+import { DailyRing } from "./suppr/daily-ring";
+import { MacroCard } from "./suppr/macro-card";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";

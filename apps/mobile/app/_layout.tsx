@@ -10,7 +10,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
-import { ThemeProvider as PlatemateThemeProvider, useTheme } from '@/context/theme';
+import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
@@ -35,12 +35,12 @@ function ForwardSocialSharesToImport() {
   const forward = useCallback(
     (href: string) => {
       const t = href.trim();
-      if (/^platemate:/i.test(t)) {
+      if (/^(platemate|suppr):/i.test(t)) {
         const u = urlFromDeepLink(t);
         if (u) {
           router.replace({ pathname: "/import-shared", params: { url: u } });
         } else {
-          // Share-intent deep link (platemate://dataUrl=platemateShareKey) —
+          // Share-intent deep link (suppr://… legacy platemate://…) —
           // redirect home so expo-router doesn't show "Unmatched Route".
           // ForwardShareIntentToImport will pick up the data and navigate.
           router.replace("/");
@@ -67,7 +67,7 @@ function ForwardSocialSharesToImport() {
 }
 
 /**
- * Instagram / TikTok share sheet → Platemate (needs native share intent + dev build; not Expo Go).
+ * Instagram / TikTok share sheet → Suppr (needs native share intent + dev build; not Expo Go).
  * Resolves URL from shared text or webUrl and opens Import.
  */
 function ForwardShareIntentToImport() {
@@ -75,7 +75,7 @@ function ForwardShareIntentToImport() {
   const isExpoGo = Constants.appOwnership === "expo";
   const { isReady, hasShareIntent, shareIntent, resetShareIntent } = useShareIntent({
     disabled: isExpoGo,
-    scheme: "platemate",
+    scheme: (Constants.expoConfig?.scheme as string | undefined) ?? "suppr",
     resetOnBackground: false,
   });
 
@@ -102,7 +102,7 @@ function ForwardShareIntentToImport() {
 }
 
 /**
- * Share → “Open in Platemate” often returns to Discover with only the system pasteboard updated.
+ * Share → “Open in Suppr” often returns to Discover with only the system pasteboard updated.
  * import-shared never mounts, so we watch for resume + read clipboard here.
  */
 function ResumeClipboardToImport() {
@@ -164,9 +164,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AnalyticsProvider>
-        <PlatemateThemeProvider>
+        <SupprThemeProvider>
           <RootLayoutInner />
-        </PlatemateThemeProvider>
+        </SupprThemeProvider>
       </AnalyticsProvider>
     </AuthProvider>
   );

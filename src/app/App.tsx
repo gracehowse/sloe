@@ -305,7 +305,7 @@ export default function App() {
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="px-5 py-3 flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <h1 className="text-lg font-bold text-foreground tracking-tight">Platemate</h1>
+        <h1 className="text-lg font-bold text-foreground tracking-tight">Suppr</h1>
         <NotificationsBell
           onOpenRecipe={openRecipeById}
           onOpenAll={() => {

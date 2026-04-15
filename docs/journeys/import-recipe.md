@@ -3,10 +3,10 @@
 **Audience:** Product / Design
 
 ## Overview
-User finds a recipe online and imports it into their Platemate library with verified nutrition data.
+User finds a recipe online and imports it into their Suppr library with verified nutrition data.
 
 ## Entry Points
-1. **Share sheet** (iOS) — share a recipe URL from Safari/Instagram/TikTok to Platemate
+1. **Share sheet** (iOS) — share a recipe URL from Safari/Instagram/TikTok to Suppr
 2. **Clipboard auto-detect** — open the Import screen, app detects a recipe URL on clipboard
 3. **Manual paste** — paste a URL into the import screen input field
 4. **Deep link** — `platemate://import?url=...`

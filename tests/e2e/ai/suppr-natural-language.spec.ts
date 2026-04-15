@@ -21,7 +21,7 @@ const midsceneReady = Boolean(
     process.env.MIDSCENE_MODEL_FAMILY?.trim(),
 );
 
-test.describe("AI: Platemate (Midscene)", () => {
+test.describe("AI: Suppr (Midscene)", () => {
   test.skip(!midsceneReady, "Set MIDSCENE_MODEL_API_KEY, MIDSCENE_MODEL_NAME, MIDSCENE_MODEL_FAMILY (and usually MIDSCENE_MODEL_BASE_URL).");
 
   test("when I land on login, I can describe what I see in plain language", async ({

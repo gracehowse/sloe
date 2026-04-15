@@ -15,11 +15,11 @@ export async function register() {
   const missing = missingServerEnvKeys();
   if (missing.length === 0) {
     if (process.env.NODE_ENV === "development") {
-      console.info("[Platemate] Server env: all tracked keys present.");
+      console.info("[Suppr] Server env: all tracked keys present.");
     }
     return;
   }
   console.warn(
-    `[Platemate] Missing server env (some features will be unavailable): ${missing.join(", ")}`,
+    `[Suppr] Missing server env (some features will be unavailable): ${missing.join(", ")}`,
   );
 }

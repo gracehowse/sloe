@@ -155,7 +155,7 @@ export default function PaywallScreen() {
 
       {/* Dark header */}
       <View style={styles.header}>
-        <Text style={styles.headerKicker}>PLATEMATE PRO</Text>
+        <Text style={styles.headerKicker}>SUPPR PRO</Text>
         <Text style={styles.headerTitle}>Try Pro free{"\n"}for 7 days</Text>
       </View>
 

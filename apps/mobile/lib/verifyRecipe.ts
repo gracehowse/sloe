@@ -5,10 +5,10 @@ import { authedFetch } from "./authedFetch";
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
 
-type Extra = { platemateApiUrl?: string };
+type Extra = { supprApiUrl?: string; platemateApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
-  return (extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
 }
 
 export type MacrosPer100g = {
@@ -281,7 +281,7 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
         signal: ac.signal,
         headers: {
           Accept: "application/json",
-          "User-Agent": "PlatemateApp/1.0",
+          "User-Agent": "SupprApp/1.0",
         },
       },
     );

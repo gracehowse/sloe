@@ -33,6 +33,7 @@ import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 
 const DEFAULT_TARGETS = NUTRITION_DEFAULTS;
 
@@ -141,17 +142,22 @@ export default function TrackerScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, dob",
       )
       .eq("id", userId)
       .maybeSingle();
     if (!data) return;
+    const d = data as any;
+    const targets = resolveTargets(
+      { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
+      { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+    );
     setProfileTargets({
-      calories: (data.target_calories as number) ?? DEFAULT_TARGETS.calories,
-      protein: (data.target_protein as number) ?? DEFAULT_TARGETS.protein,
-      carbs: (data.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
-      fat: (data.target_fat as number) ?? DEFAULT_TARGETS.fat,
-      fiber: (data.target_fiber_g as number) ?? DEFAULT_TARGETS.fiber,
+      calories: targets.calories,
+      protein: targets.protein,
+      carbs: targets.carbs,
+      fat: targets.fat,
+      fiber: targets.fiber,
     });
     const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
     setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
@@ -389,7 +395,7 @@ export default function TrackerScreen() {
 
       const apiBase = (
         (await import("expo-constants")).default.expoConfig?.extra as any
-      )?.platemateApiUrl ?? "";
+      )?.supprApiUrl ?? (Constants.expoConfig?.extra as { platemateApiUrl?: string } | undefined)?.platemateApiUrl ?? "";
       const resp = await fetch(`${apiBase}/api/nutrition/photo-log`, {
         method: "POST",
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
@@ -477,7 +483,8 @@ export default function TrackerScreen() {
   const submitVoiceTranscript = useCallback(async (transcript: string) => {
     try {
       const Constants = (await import("expo-constants")).default;
-      const apiBase = (Constants.expoConfig?.extra as any)?.platemateApiUrl ?? "";
+      const ex = Constants.expoConfig?.extra as { supprApiUrl?: string; platemateApiUrl?: string } | undefined;
+      const apiBase = ex?.supprApiUrl ?? ex?.platemateApiUrl ?? "";
 
       // Try the AI API first
       let data: any = null;

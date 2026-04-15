@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 /**
- * Platemate brand accents (mobile). Aligned with the web design-overhaul palette.
+ * Suppr brand accents (mobile). Aligned with the web design-overhaul palette.
  * Primary: `Accent.primary` (#4c6ce0 blue). Use `Brand.gradient` for hero highlights only.
  * Canonical roles: `docs/ux/brand-tokens.md`.
  */

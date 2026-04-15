@@ -9,8 +9,8 @@ import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts"
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
-import { MacroCard } from "./platemate/macro-card";
-import { ConfidenceDot } from "./platemate/confidence-dot";
+import { MacroCard } from "./suppr/macro-card";
+import { ConfidenceDot } from "./suppr/confidence-dot";
 import {
   AlertDialog,
   AlertDialogAction,

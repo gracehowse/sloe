@@ -84,7 +84,7 @@ export default function NutritionSourcesScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.heading}>About nutrition data</Text>
         <Text style={styles.intro}>
-          Platemate combines multiple trusted databases to give you the most accurate nutrition information
+          Suppr combines multiple trusted databases to give you the most accurate nutrition information
           possible, wherever you are in the world. When you import a recipe or search for a food, we check
           these sources and pick the best match.
         </Text>

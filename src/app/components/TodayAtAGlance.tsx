@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
-import { DailyRing } from "./platemate/daily-ring";
-import { MacroCard } from "./platemate/macro-card";
+import { DailyRing } from "./suppr/daily-ring";
+import { MacroCard } from "./suppr/macro-card";
 
 type TodayAtAGlanceProps = {
   /** e.g. "Wednesday, April 8" */

@@ -6,10 +6,11 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { getPlatemateWebBase } from "@/lib/platemateWeb";
+import { getSupprWebBase } from "@/lib/supprWeb";
 
 /* ── Icon Box ── */
 function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -21,7 +22,7 @@ function IconBox({ color, size = 30, children }: { color: string; size?: number;
 }
 
 function openLegalPath(path: "/privacy" | "/terms") {
-  const base = getPlatemateWebBase();
+  const base = getSupprWebBase();
   if (!base) {
     Alert.alert("Unavailable", "Web URL is not configured in app settings.");
     return;
@@ -70,11 +71,13 @@ export default function ProfileScreen() {
     targetProtein: number;
     targetCarbs: number;
     targetFat: number;
+    usingDefaults: boolean;
+    userTier: string;
     dietaryRestrictions: string[];
     notificationPref: string | null;
-  }>({ savedCount: 0, streak: 0, targetCalories: NUTRITION_DEFAULTS.calories, targetProtein: NUTRITION_DEFAULTS.protein, targetCarbs: NUTRITION_DEFAULTS.carbs, targetFat: NUTRITION_DEFAULTS.fat, dietaryRestrictions: [], notificationPref: null });
+  }>({ savedCount: 0, streak: 0, targetCalories: NUTRITION_DEFAULTS.calories, targetProtein: NUTRITION_DEFAULTS.protein, targetCarbs: NUTRITION_DEFAULTS.carbs, targetFat: NUTRITION_DEFAULTS.fat, usingDefaults: true, userTier: "free", dietaryRestrictions: [], notificationPref: null });
 
-  const loadProfileData = useCallback(async () => {
+  const loadProfileData = useCallback(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
@@ -84,10 +87,10 @@ export default function ProfileScreen() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId);
 
-      // Profile targets + preferences
+      // Profile targets + preferences + tier
       const { data: profile } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, dietary_restrictions, notification_prefs")
+        .select("target_calories, target_protein, target_carbs, target_fat, dietary_restrictions, notification_prefs, user_tier, weight_kg, height_cm, sex, activity_level, goal, dob")
         .eq("id", userId)
         .maybeSingle();
 
@@ -120,13 +123,21 @@ export default function ProfileScreen() {
       const np = (profile as any)?.notification_prefs;
       const notifTime = np && typeof np === "object" && np.reminder_time ? String(np.reminder_time) : null;
 
+      const p = profile as any;
+      const targets = resolveTargets(
+        { target_calories: p?.target_calories, target_protein: p?.target_protein, target_carbs: p?.target_carbs, target_fat: p?.target_fat, target_fiber_g: p?.target_fiber_g },
+        { weight_kg: p?.weight_kg, height_cm: p?.height_cm, sex: p?.sex, activity_level: p?.activity_level, goal: p?.goal, dob: p?.dob },
+      );
+
       setProfileData({
         savedCount: count ?? 0,
         streak,
-        targetCalories: (profile as any)?.target_calories ?? NUTRITION_DEFAULTS.calories,
-        targetProtein: (profile as any)?.target_protein ?? NUTRITION_DEFAULTS.protein,
-        targetCarbs: (profile as any)?.target_carbs ?? NUTRITION_DEFAULTS.carbs,
-        targetFat: (profile as any)?.target_fat ?? NUTRITION_DEFAULTS.fat,
+        targetCalories: targets.calories,
+        targetProtein: targets.protein,
+        targetCarbs: targets.carbs,
+        targetFat: targets.fat,
+        usingDefaults: targets.usingDefaults,
+        userTier: p?.user_tier ?? "free",
         dietaryRestrictions: restrictions,
         notificationPref: notifTime,
       });
@@ -135,7 +146,7 @@ export default function ProfileScreen() {
   }, [userId]);
 
   // Reload profile data whenever this tab gets focus (e.g. after editing profile)
-  useFocusEffect(useCallback(() => { void loadProfileData(); }, [loadProfileData]));
+  useFocusEffect(useCallback(() => { return loadProfileData(); }, [loadProfileData]));
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -224,7 +235,7 @@ export default function ProfileScreen() {
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
             {session?.user?.user_metadata?.display_name ?? session?.user?.email?.split("@")[0] ?? "Your Profile"}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textTertiary }}>Pro · {(() => {
+          <Text style={{ fontSize: 12, color: colors.textTertiary }}>{profileData.userTier === "pro" ? "Pro" : profileData.userTier === "base" ? "Base" : "Free"} · {(() => {
             const createdAt = session?.user?.created_at;
             if (!createdAt) return "Joined recently";
             const d = new Date(createdAt);
@@ -247,8 +258,8 @@ export default function ProfileScreen() {
             (Math.min(profileData.savedCount, 10) / 10) * 30 +
             30 // base points for being active
           ))), "Score", t.amber, () => Alert.alert(
-            "Your Platemate Score",
-            "Your score (0–100) reflects how actively you're using Platemate.\n\n"
+            "Your Suppr Score",
+            "Your score (0–100) reflects how actively you're using Suppr.\n\n"
             + "• Logging streak — log meals consistently to build your streak (up to 40 pts)\n"
             + "• Saved recipes — save recipes to your library (up to 30 pts)\n"
             + "• Active account — you get 30 pts just for being here\n\n"
@@ -262,10 +273,32 @@ export default function ProfileScreen() {
         ))}
       </View>
 
+      {/* Upgrade Banner (free users) / Subscription row (pro users) */}
+      {profileData.userTier !== "pro" ? (
+        <Pressable
+          onPress={() => router.push("/paywall" as any)}
+          style={{
+            flexDirection: "row", alignItems: "center", gap: 12,
+            backgroundColor: Accent.primary + "14", borderRadius: 14,
+            borderWidth: 1, borderColor: Accent.primary + "30",
+            paddingVertical: 14, paddingHorizontal: 16, marginBottom: 16,
+          }}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Accent.primary + "22", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="diamond-outline" size={18} color={Accent.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Upgrade to Pro</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>Multi-day plans, advanced analytics & more</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        </Pressable>
+      ) : null}
+
       {/* Settings Section */}
       <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Settings</Text>
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="flame-outline" iconColor={t.accent} label="Daily Targets" sub={`${profileData.targetCalories.toLocaleString()} kcal · ${profileData.targetProtein}P / ${profileData.targetCarbs}C / ${profileData.targetFat}F`} onPress={() => router.push("/profile" as any)} />
+        <SettingsRow icon="flame-outline" iconColor={t.accent} label="Daily Targets" sub={profileData.usingDefaults ? `${profileData.targetCalories.toLocaleString()} kcal (defaults) · Tap to personalise` : `${profileData.targetCalories.toLocaleString()} kcal · ${profileData.targetProtein}P / ${profileData.targetCarbs}C / ${profileData.targetFat}F`} onPress={() => router.push("/profile" as any)} />
         <SettingsRow icon="color-palette-outline" iconColor={t.accent} label="Appearance" sub="Theme & display settings" onPress={() => router.push("/(tabs)/settings" as any)} />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week Starts On" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
@@ -274,7 +307,7 @@ export default function ProfileScreen() {
         <SettingsRow icon="download-outline" iconColor={t.accent} label="Export Data" sub="CSV download" />
         <SettingsRow icon="refresh-outline" iconColor={t.amber} label="Reset Plan" sub="Start fresh with new goals" onPress={() => setResetModalOpen(true)} />
         <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help" sub="FAQs and support" onPress={() => {
-          const base = getPlatemateWebBase();
+          const base = getSupprWebBase();
           if (base) void Linking.openURL(`${base}/help`).catch(() => {});
         }} />
       </View>

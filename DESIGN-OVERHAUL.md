@@ -1,10 +1,10 @@
-# Platemate Design Overhaul: Spec + Implementation Brief
+# Suppr Design Overhaul: Spec + Implementation Brief
 
-> **Purpose:** This document is both a design direction spec and an actionable implementation prompt. Use it to guide a ground-up visual and UX redesign of Platemate across web (Next.js) and mobile (Expo/React Native).
+> **Purpose:** This document is both a design direction spec and an actionable implementation prompt. Use it to guide a ground-up visual and UX redesign of Suppr across web (Next.js) and mobile (Expo/React Native).
 
-> **Positioning:** The first app that lets you import recipes from your favourite social media creators (TikTok, Instagram, YouTube, Pinterest) AND gives you full MFP-level macro tracking with intelligent auto-fitting to your daily targets. ReciMe proved people want social recipe saving. MFP proved people want macro tracking. Nobody has fused them. Platemate does. And with its built-in discovery feed and creator publishing tools, Platemate is building toward becoming the LTK of food — a creator commerce platform where food creators publish macro-calculated recipes and build audiences, not just a tracking tool.
+> **Positioning:** The first app that lets you import recipes from your favourite social media creators (TikTok, Instagram, YouTube, Pinterest) AND gives you full MFP-level macro tracking with intelligent auto-fitting to your daily targets. ReciMe proved people want social recipe saving. MFP proved people want macro tracking. Nobody has fused them. Suppr does. And with its built-in discovery feed and creator publishing tools, Suppr is building toward becoming the LTK of food — a creator commerce platform where food creators publish macro-calculated recipes and build audiences, not just a tracking tool.
 
-> **Audience:** Health-conscious home cooks who discover recipes on social media, meal preppers, macro trackers, food content creators, and anyone who wants to cook what they actually find inspiring — whether from TikTok or from creators publishing natively on Platemate. Appeals equally to men and women.
+> **Audience:** Health-conscious home cooks who discover recipes on social media, meal preppers, macro trackers, food content creators, and anyone who wants to cook what they actually find inspiring — whether from TikTok or from creators publishing natively on Suppr. Appeals equally to men and women.
 
 > **Platform evolution:** Tool → Network → Marketplace. Phase 1: best-in-class import + tracking. Phase 2: discovery feed with seeded + user-published recipes. Phase 3: creator platform with audience-building, analytics, and eventually monetisation (brand partnerships, affiliate ingredients, sponsored recipes).
 
@@ -21,7 +21,7 @@
 | Cronometer | Micronutrient depth. Scientific accuracy. Trusted by dietitians. | Steep learning curve. No social recipe import. UI overwhelms casual users. |
 | MacroFactor | Adaptive macro targets. Algorithm-driven coaching. Premium feel. | No recipe ecosystem at all. Pure tracking tool. $20+/mo pricing. |
 | ReciMe | Social media recipe import from TikTok, Instagram, YouTube, Pinterest. 10M+ users. Folder organisation. | Basic calorie calculation only. No real macro tracking. No auto-fitting recipes to daily targets. No meal planning that respects your macros. The nutrition side is an afterthought. |
-| LTK | Creator commerce platform. $5B+ annual sales. Creators build audiences, earn commissions. Proven model for creator-driven discovery. | Fashion/lifestyle only — no food vertical. But the model (creator publishes → audience discovers → platform facilitates) is exactly what Platemate's discovery feed can become for food. |
+| LTK | Creator commerce platform. $5B+ annual sales. Creators build audiences, earn commissions. Proven model for creator-driven discovery. | Fashion/lifestyle only — no food vertical. But the model (creator publishes → audience discovers → platform facilitates) is exactly what Suppr's discovery feed can become for food. |
 
 ### The gap nobody fills
 
@@ -29,7 +29,7 @@ ReciMe proved that millions of people discover and save recipes from social medi
 
 Meanwhile, MFP/Cronometer/MacroFactor have deep tracking but zero social recipe import. You can't forward a TikTok reel to MFP and have it parse the recipe, calculate macros, and slot it into your meal plan.
 
-**Platemate sits in the middle — and owns it.**
+**Suppr sits in the middle — and owns it.**
 
 ### Where every competitor also falls short (additional openings)
 
@@ -38,10 +38,10 @@ Meanwhile, MFP/Cronometer/MacroFactor have deep tracking but zero social recipe 
 3. **One-size-fits-all UI density.** Power users want data density; casual users want simplicity. Nobody lets you choose.
 4. **No confidence signals.** Users never know if a food match is accurate or a rough guess.
 
-### Platemate's differentiators to protect and amplify
+### Suppr's differentiators to protect and amplify
 
 - **Social recipe import pipeline** — forward/share recipes from TikTok, Instagram, YouTube, Pinterest, Facebook. AI parses the video/post, extracts ingredients and steps, calculates full macro breakdown with confidence scoring. This is the killer feature.
-- **Auto-fit to macros** — "I want to make this TikTok recipe for dinner" → Platemate shows how it fits your remaining daily macros, suggests portion adjustments, or proposes complementary meals to balance the day.
+- **Auto-fit to macros** — "I want to make this TikTok recipe for dinner" → Suppr shows how it fits your remaining daily macros, suggests portion adjustments, or proposes complementary meals to balance the day.
 - AI photo + voice logging (already built — make it the hero)
 - Recipe-to-log pipeline (cook it → log it in one tap)
 - Count-to-weight normalisation with confidence scoring
@@ -239,13 +239,13 @@ One unified logging screen with multiple input modes. The screen opens with a la
 
 ### 4.3 Social Recipe Import (The Killer Feature)
 
-**This is what nobody else does.** ReciMe lets you save recipes from social media but doesn't track macros. MFP tracks macros but can't import from TikTok. Platemate does both.
+**This is what nobody else does.** ReciMe lets you save recipes from social media but doesn't track macros. MFP tracks macros but can't import from TikTok. Suppr does both.
 
-**Import flow — "Share to Platemate":**
+**Import flow — "Share to Suppr":**
 
 1. User sees a recipe on TikTok, Instagram, YouTube, or Pinterest
-2. Taps the native share button → selects Platemate (or copies link and pastes in-app)
-3. Platemate receives the URL and shows a **processing card** with a shimmer animation:
+2. Taps the native share button → selects Suppr (or copies link and pastes in-app)
+3. Suppr receives the URL and shows a **processing card** with a shimmer animation:
    - AI extracts the recipe from the video/post/reel (ingredients, quantities, steps)
    - Matches each ingredient to the nutrition database (USDA, Open Food Facts)
    - Calculates full macro breakdown per serving
@@ -257,10 +257,10 @@ One unified logging screen with multiple input modes. The screen opens with a la
    - Full macro summary: calories, protein, carbs, fat per serving
    - **"How this fits your day"** panel: shows how adding this recipe to today's plan affects remaining macros. e.g. "This uses 45% of your remaining carbs. Pair with a high-protein snack to balance."
 5. User taps **Save** → recipe goes to their library, organised by folder/tag
-6. Optional: **"Add to meal plan"** → slot it into a specific day/meal. Platemate auto-adjusts surrounding meals to keep daily macros on target.
+6. Optional: **"Add to meal plan"** → slot it into a specific day/meal. Suppr auto-adjusts surrounding meals to keep daily macros on target.
 
 **In-app browser (fallback):**
-- For platforms where share-to-app isn't frictionless, Platemate has a built-in browser
+- For platforms where share-to-app isn't frictionless, Suppr has a built-in browser
 - User pastes a URL or browses TikTok/Instagram within the app
 - Tap "Import this recipe" on any page showing a recipe
 
@@ -277,7 +277,7 @@ One unified logging screen with multiple input modes. The screen opens with a la
 - Confidence scoring on every ingredient match — user knows what's accurate vs estimated
 - Auto-fitting to daily macro targets — "this recipe leaves you 30g short on protein, here's a suggestion"
 - One-tap logging after cooking — the recipe is already nutrition-calculated, so logging it is instant
-- Meal plan integration — import a week of creator recipes and Platemate builds a macro-balanced plan around them
+- Meal plan integration — import a week of creator recipes and Suppr builds a macro-balanced plan around them
 
 ### 4.4 Recipe Library & Detail
 
@@ -319,7 +319,7 @@ One unified logging screen with multiple input modes. The screen opens with a la
 |---|---|---|---|
 | Now | Seeded/curated recipes from credited internet sources + user-published recipes | Create recipe, save private or publish (with copyright declaration) | None |
 | Near-term | Mix of seeded, imported (social media), and growing user-published content. Algorithmic ranking by macro-fit, dietary preference, popularity | Creator profiles, follower counts, recipe analytics (views, saves, "I made this" count), recipe collections | None yet |
-| Long-term (LTK model) | Creator-driven feed. Top creators build audiences. Platemate becomes where food creators publish, not just cross-post | Full creator dashboard: audience demographics, engagement analytics, earnings. Verified creator programme. Brand collaboration tools | Affiliate ingredient links, sponsored recipes, brand partnerships, creator subscriptions |
+| Long-term (LTK model) | Creator-driven feed. Top creators build audiences. Suppr becomes where food creators publish, not just cross-post | Full creator dashboard: audience demographics, engagement analytics, earnings. Verified creator programme. Brand collaboration tools | Affiliate ingredient links, sponsored recipes, brand partnerships, creator subscriptions |
 
 **Discovery feed design:**
 
@@ -332,7 +332,7 @@ The feed is NOT a traditional social media timeline. It's a recipe discovery sur
 **Each recipe card shows:**
 - Hero photo (full-bleed on mobile, large thumbnail on web)
 - Recipe title + creator name/avatar (or source attribution for seeded recipes)
-- Source badge (Platemate original, imported from TikTok, etc.)
+- Source badge (Suppr original, imported from TikTok, etc.)
 - Macro summary pills (P/C/F per serving)
 - **Macro fit indicator** — personalised to the viewer: "Fits your dinner budget" (green) or "High carb for your targets" (amber). This is the differentiator vs every other recipe feed. Every card tells you how it fits YOUR day.
 - Save button (bookmark icon) + "I want to make this" button
@@ -391,7 +391,7 @@ The feed is NOT a traditional social media timeline. It's a recipe discovery sur
 
 **Goal: first food logged in under 60 seconds.**
 
-1. Welcome screen — "Platemate helps you cook better and eat smarter." One sentence. One CTA.
+1. Welcome screen — "Suppr helps you cook better and eat smarter." One sentence. One CTA.
 2. Goal selection — lose weight | maintain | gain | eat healthier | track for medical reasons. Single tap.
 3. Quick profile — age, height, weight, activity level. One screen, four inputs.
 4. Macro targets generated — shown as the daily ring preview. "We recommend 2,100 kcal. Adjust?"
@@ -498,18 +498,18 @@ Before shipping any phase, verify:
 
 ## 8. What "Winning" Looks Like
 
-Platemate wins when:
+Suppr wins when:
 
 - A ReciMe user switches because they want actual macro tracking on the recipes they import — not just a calorie estimate
 - A MyFitnessPal user switches because they can finally import the TikTok recipes they actually cook, instead of manually searching for "chicken pasta" and hoping the macros are close
 - A Cronometer user switches because the recipe experience is better without sacrificing data depth
-- Someone sees a recipe on Instagram, shares it to Platemate, and 10 seconds later knows exactly how it fits their macros for the day — then adds it to their meal plan with one tap
+- Someone sees a recipe on Instagram, shares it to Suppr, and 10 seconds later knows exactly how it fits their macros for the day — then adds it to their meal plan with one tap
 - A home cook who never tracked nutrition starts because importing recipes from their favourite creators is so easy they don't realize they're "tracking"
 - The web experience is so good that users prefer it for meal planning, while mobile handles on-the-go logging and social media imports
 - Users say "it just feels good to use" — the motion, the feedback, the confidence signals all create a sense of trust and craft
-- A food creator chooses to publish on Platemate instead of just TikTok because their audience here actually *cooks* their recipes — and they can see the "I made this" count to prove it
-- The discovery feed becomes a destination: users open Platemate not just to log, but to browse what creators are posting and find tonight's dinner
-- The short pitch: **"Import any recipe from TikTok or Instagram, and Platemate tells you exactly how it fits your macros."**
+- A food creator chooses to publish on Suppr instead of just TikTok because their audience here actually *cooks* their recipes — and they can see the "I made this" count to prove it
+- The discovery feed becomes a destination: users open Suppr not just to log, but to browse what creators are posting and find tonight's dinner
+- The short pitch: **"Import any recipe from TikTok or Instagram, and Suppr tells you exactly how it fits your macros."**
 - The platform pitch: **"The place where food creators publish recipes and health-conscious people actually cook them — with full nutrition tracking built in."**
 
 ---
@@ -528,12 +528,12 @@ _Last updated: 2026-04-13_
 | Typography (Inter, modular scale) | Done | `fonts.css` + `layout.tsx` wired via `next/font/google`. Tabular nums enabled. |
 | Centralised icon system | Done | `ui/icons.ts` — ~90 semantic names → lucide-react. Single import point for all features. |
 | `IconBox` tinted container | Done | `ui/icon-box.tsx` — cva variants for size (sm/md/lg/xl) and tone (primary/success/warning/destructive/protein/carbs/fat/muted/ghost). |
-| `DailyRing` SVG progress ring | Done | `platemate/daily-ring.tsx` — animated circular progress for calorie target. |
-| `MacroCard` colour-coded macro display | Done | `platemate/macro-card.tsx` — compact + full modes with progress bar. |
-| `ConfidenceDot` indicator | Done | `platemate/confidence-dot.tsx` — high (green), medium (amber), low (red). |
-| `FitBadge` macro-fit pill | Done | `platemate/fit-badge.tsx` — "Great Fit" / "Good Fit" / "Over Budget". |
-| `SourceBadge` platform origin | Done | `platemate/source-badge.tsx` — Instagram, TikTok, YouTube, Pinterest, Web, User. |
-| Barrel export | Done | `platemate/index.ts` |
+| `DailyRing` SVG progress ring | Done | `suppr/daily-ring.tsx` — animated circular progress for calorie target. |
+| `MacroCard` colour-coded macro display | Done | `suppr/macro-card.tsx` — compact + full modes with progress bar. |
+| `ConfidenceDot` indicator | Done | `suppr/confidence-dot.tsx` — high (green), medium (amber), low (red). |
+| `FitBadge` macro-fit pill | Done | `suppr/fit-badge.tsx` — "Great Fit" / "Good Fit" / "Over Budget". |
+| `SourceBadge` platform origin | Done | `suppr/source-badge.tsx` — Instagram, TikTok, YouTube, Pinterest, Web, User. |
+| Barrel export | Done | `suppr/index.ts` |
 | Home "Today at a Glance" | Done | `TodayAtAGlance.tsx` — DailyRing + MacroCard grid + fiber/water tiles. |
 | TrackerSummaryCard redesign | Done | Uses IconBox + Icons + semantic tokens. |
 | CalorieDeficitInsight redesign | Done | Uses IconBox + Icons + section-label utility. |
@@ -572,10 +572,10 @@ _Last updated: 2026-04-13_
 
 | File | Reason |
 |---|---|
-| `platemate-mockup.jsx` | Early prototype — superseded by implemented design system. |
-| `platemate-variations.jsx` | Design exploration — Variation C chosen and implemented. |
-| `platemate-prototype.jsx` | Prototype — features now live in production components. |
-| `platemate-final.jsx` | Can be moved to `docs/reference/` if desired, otherwise remove. |
+| `suppr-mockup.jsx` | Early prototype — superseded by implemented design system. |
+| `suppr-variations.jsx` | Design exploration — Variation C chosen and implemented. |
+| `suppr-prototype.jsx` | Prototype — features now live in production components. |
+| `suppr-final.jsx` | Can be moved to `docs/reference/` if desired, otherwise remove. |
 
 ### Remaining work
 
@@ -588,4 +588,4 @@ _Last updated: 2026-04-13_
 
 ---
 
-*This document should be treated as the source of truth for the Platemate redesign. Every PR, every component, every design decision should trace back to a principle or specification here.*
+*This document should be treated as the source of truth for the Suppr redesign. Every PR, every component, every design decision should trace back to a principle or specification here.*

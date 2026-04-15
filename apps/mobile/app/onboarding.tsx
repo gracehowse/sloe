@@ -717,7 +717,7 @@ export default function OnboardingScreen() {
               <Text style={styles.subheading}>{PACE_LABELS[data.planPace].title} pace — {formatWeeklyRate(planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg ?? 0, data.weightUnit)} per week</Text>
             )}
             <Text style={[styles.subheading, { marginTop: Spacing.lg }]}>
-              Platemate will use this to find recipes and build meal plans that fit your target. You can adjust it anytime in settings.
+              Suppr will use this to find recipes and build meal plans that fit your target. You can adjust it anytime in settings.
             </Text>
           </View>
         );
@@ -864,7 +864,7 @@ export default function OnboardingScreen() {
             <Text style={styles.heading}>{"You're all set up"}</Text>
             <Text style={styles.subheading}>
               {
-                "Platemate is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."
+                "Suppr is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."
               }
             </Text>
           </View>

@@ -50,7 +50,7 @@ const FEED_RECIPES = [
   { id: 1, title: "Creamy Tuscan Chicken Pasta", creator: "Sarah Cooks", avatar: "S", source: "tiktok", time: "25 min", servings: 4, cal: 520, p: 38, c: 52, f: 16, fit: "good", fitLabel: "Fits your dinner", saves: 2340, made: 891, img: "linear-gradient(135deg, #e8c4a0 0%, #d4956b 50%, #8b5e3c 100%)", emoji: "🍝" },
   { id: 2, title: "High Protein Overnight Oats", creator: "FitMeals", avatar: "F", source: "instagram", time: "5 min", servings: 1, cal: 385, p: 32, c: 45, f: 8, fit: "great", fitLabel: "Perfect for breakfast", saves: 5120, made: 3200, img: "linear-gradient(135deg, #f0e6d3 0%, #c9b896 50%, #8a7a5e 100%)", emoji: "🥣" },
   { id: 3, title: "Korean Beef Bibimbap Bowl", creator: "Chef Min", avatar: "M", source: "youtube", time: "35 min", servings: 2, cal: 610, p: 42, c: 65, f: 18, fit: "warn", fitLabel: "High carb for targets", saves: 1890, made: 720, img: "linear-gradient(135deg, #e8d5b7 0%, #c97c52 50%, #8b4513 100%)", emoji: "🍜" },
-  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", avatar: "H", source: "platemate", time: "20 min", servings: 2, cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560, img: "linear-gradient(135deg, #b8d4a8 0%, #7ea87e 50%, #4a7a4a 100%)", emoji: "🥗" },
+  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", avatar: "H", source: "suppr", time: "20 min", servings: 2, cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560, img: "linear-gradient(135deg, #b8d4a8 0%, #7ea87e 50%, #4a7a4a 100%)", emoji: "🥗" },
   { id: 5, title: "Peanut Butter Banana Smoothie", creator: "BlendQueen", avatar: "B", source: "tiktok", time: "3 min", servings: 1, cal: 340, p: 18, c: 42, f: 12, fit: "good", fitLabel: "Great snack option", saves: 8900, made: 5100, img: "linear-gradient(135deg, #f5e6c8 0%, #d4a76a 50%, #a67c52 100%)", emoji: "🥤" },
   { id: 6, title: "Salmon Teriyaki with Greens", creator: "OceanTable", avatar: "O", source: "instagram", time: "22 min", servings: 2, cal: 440, p: 36, c: 28, f: 20, fit: "great", fitLabel: "High protein dinner", saves: 4200, made: 1800, img: "linear-gradient(135deg, #ffc5a3 0%, #e88a6a 50%, #c45a3c 100%)", emoji: "🐟" },
 ];
@@ -130,8 +130,8 @@ const ICONS = {
 };
 
 const SourceIcon = ({ source, size = 14 }) => {
-  const colors = { tiktok: "#000", instagram: "#E1306C", youtube: "#FF0000", pinterest: "#E60023", platemate: A.green };
-  const labels = { tiktok: "TT", instagram: "IG", youtube: "YT", pinterest: "PI", platemate: "PM" };
+  const colors = { tiktok: "#000", instagram: "#E1306C", youtube: "#FF0000", pinterest: "#E60023", suppr: A.green };
+  const labels = { tiktok: "TT", instagram: "IG", youtube: "YT", pinterest: "PI", suppr: "SP" };
   return (
     <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 4, height: size + 4, borderRadius: 4, background: (colors[source] || A.green) + "20", fontSize: size * 0.6, fontWeight: 700, color: colors[source] || A.green, letterSpacing: "-0.02em" }}>
       {labels[source] || "?"}
@@ -940,7 +940,7 @@ function ProfileScreen({ theme }) {
 /* ═══════════════════════════════════════════
    MAIN APP SHELL
    ═══════════════════════════════════════════ */
-export default function PlatematePrototype() {
+export default function SupprPrototype() {
   const [isDark, setIsDark] = useState(false);
   const [screen, setScreen] = useState("today");
   const [selectedRecipe, setSelectedRecipe] = useState(null);
@@ -1026,7 +1026,7 @@ export default function PlatematePrototype() {
 
       {/* Label */}
       <div style={{ marginTop: 16, textAlign: "center" }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: A.green, letterSpacing: "0.1em", textTransform: "uppercase" }}>Platemate Prototype</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: A.green, letterSpacing: "0.1em", textTransform: "uppercase" }}>Suppr Prototype</div>
         <div style={{ fontSize: 12, color: isDark ? "#8a847e" : "#6b6560", marginTop: 2 }}>Tap the buttons above to explore every screen</div>
       </div>
     </div>

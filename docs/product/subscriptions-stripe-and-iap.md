@@ -1,6 +1,6 @@
 # Subscriptions: Stripe (web) and IAP (mobile)
 
-Platemate uses **two purchase systems** by design; they must stay aligned on **entitlements** in Supabase (`profiles.user_tier`), not on a single checkout provider.
+Suppr uses **two purchase systems** by design; they must stay aligned on **entitlements** in Supabase (`profiles.user_tier`), not on a single checkout provider.
 
 ## Web (Next.js)
 

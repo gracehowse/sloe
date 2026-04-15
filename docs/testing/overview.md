@@ -66,7 +66,7 @@
 |------|--------|
 | `auth-and-public.spec.ts` | Login page, public pages, unauthenticated redirect |
 | `authenticated-views.spec.ts` | Authenticated app shell views |
-| `platemate-natural-language.spec.ts` | AI-driven natural language tests |
+| `suppr-natural-language.spec.ts` | AI-driven natural language tests |
 | `views-placeholder.spec.ts` | Placeholder AI view tests |
 
 ## Coverage Gaps

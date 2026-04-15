@@ -1,7 +1,7 @@
 /**
- * Platemate design system — shared components.
+ * Suppr design system — shared components.
  *
- * These are the building blocks specific to Platemate's
+ * These are the building blocks specific to Suppr's
  * Icon-driven & Structured design language. They sit on
  * top of the shadcn/ui primitives.
  */

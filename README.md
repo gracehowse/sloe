@@ -1,4 +1,4 @@
-# Platemate
+# Suppr
 
 Web app for macro-first meal planning, recipe discovery, nutrition logging, and shopping lists. Built with Next.js (App Router), React, Supabase, and Stripe.
 

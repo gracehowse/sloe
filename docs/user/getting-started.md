@@ -1,14 +1,14 @@
-# Getting Started with Platemate
+# Getting Started with Suppr
 
 **Audience:** End Users
 
-## What is Platemate?
+## What is Suppr?
 
-Platemate helps you import recipes from the web, see accurate nutrition breakdowns, plan your meals to hit your macro targets, and track what you eat.
+Suppr helps you import recipes from the web, see accurate nutrition breakdowns, plan your meals to hit your macro targets, and track what you eat.
 
 ## Creating Your Account
 
-1. Open Platemate and tap **Sign Up**
+1. Open Suppr and tap **Sign Up**
 2. Enter your email and create a password — or use **Apple Sign-In** (iOS)
 3. Complete the onboarding quiz (takes ~2 minutes)
 
@@ -32,7 +32,7 @@ Your targets appear throughout the app — in the tracker, meal planner, and rec
 
 1. Find a recipe you like on any food blog (e.g. downshiftology.com)
 2. Copy the URL
-3. Open Platemate → **Import** (from the More tab)
+3. Open Suppr → **Import** (from the More tab)
 4. The URL is auto-detected from your clipboard
 5. Review the recipe, pick meal types (Breakfast/Lunch/Dinner/Snack)
 6. Tap **Save to Library**

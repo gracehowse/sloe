@@ -7,8 +7,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 function apiBase(): string {
-  const extra = Constants.expoConfig?.extra as { platemateApiUrl?: string } | undefined;
-  return (extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  const extra = Constants.expoConfig?.extra as { supprApiUrl?: string; platemateApiUrl?: string } | undefined;
+  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
 }
 
 type Hit = { description?: string; fdcId?: number };

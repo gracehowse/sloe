@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
-import { FitBadge, type FitLevel } from "./platemate/fit-badge";
-import { SourceBadge } from "./platemate/source-badge";
+import { FitBadge, type FitLevel } from "./suppr/fit-badge";
+import { SourceBadge } from "./suppr/source-badge";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";

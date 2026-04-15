@@ -1,6 +1,6 @@
 # Observability (errors and product analytics)
 
-Platemate uses **PostHog** for product analytics (client) and **Sentry** for error aggregation. The Next.js app is **already wired** for Sentry via `@sentry/nextjs` (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `next.config.ts`, `src/instrumentation.ts`). Remaining work is mostly **environment variables and dashboards**, not installing packages.
+Suppr uses **PostHog** for product analytics (client) and **Sentry** for error aggregation. The Next.js app is **already wired** for Sentry via `@sentry/nextjs` (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `next.config.ts`, `src/instrumentation.ts`). Remaining work is mostly **environment variables and dashboards**, not installing packages.
 
 ## PostHog (product)
 

@@ -1,6 +1,6 @@
 # Mob app — inspiration & observations (come back here)
 
-Reference notes from **Mob** (meal planning / recipe app) for **look-and-feel** and **behaviors** we may want on Platemate. Not a spec—capture ideas and revisit when prioritizing design or features.
+Reference notes from **Mob** (meal planning / recipe app) for **look-and-feel** and **behaviors** we may want on Suppr. Not a spec—capture ideas and revisit when prioritizing design or features.
 
 Session screenshots (if available locally) may live under the Cursor project `assets/` folder; this doc stands alone without them.
 
@@ -28,7 +28,7 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 ---
 
-## Platemate today (rough parity)
+## Suppr today (rough parity)
 
 - **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). **Display grouping** now merges rows that share a **normalized ingredient name** and shows **mixed units** as `amount unit + amount unit` (no false summing)—see `shoppingDisplayGroups.ts` + `ShoppingList.tsx`. We still do **not** show Mob-style **thumbnails per line**.
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).

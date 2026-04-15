@@ -51,7 +51,7 @@ export async function searchOffProducts(
       {
         headers: {
           Accept: "application/json",
-          "User-Agent": "PlatemateNutritionVerifier/1.0",
+          "User-Agent": "SupprNutritionVerifier/1.0",
         },
       },
     );

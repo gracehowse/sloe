@@ -27,7 +27,7 @@ const FEED_DATA = [
   { id: 1, title: "Creamy Tuscan Chicken Pasta", creator: "Sarah Cooks", source: "tiktok", time: "25 min", cal: 520, p: 38, c: 52, f: 16, fit: "good", fitLabel: "Fits your dinner", saves: 2340, made: 891, hue: 30 },
   { id: 2, title: "High Protein Overnight Oats", creator: "FitMeals", source: "instagram", time: "5 min", cal: 385, p: 32, c: 45, f: 8, fit: "great", fitLabel: "Perfect for breakfast", saves: 5120, made: 3200, hue: 45 },
   { id: 3, title: "Korean Beef Bibimbap Bowl", creator: "Chef Min", source: "youtube", time: "35 min", cal: 610, p: 42, c: 65, f: 18, fit: "warn", fitLabel: "High carb for targets", saves: 1890, made: 720, hue: 15 },
-  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", source: "platemate", time: "20 min", cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560, hue: 120 },
+  { id: 4, title: "Mediterranean Chicken Bowl", creator: "HealthyEats", source: "suppr", time: "20 min", cal: 485, p: 44, c: 38, f: 14, fit: "great", fitLabel: "Macro balanced", saves: 3400, made: 1560, hue: 120 },
 ];
 
 // ── SHARED ICONS (SVG paths, no emojis anywhere) ──
@@ -53,7 +53,7 @@ const I = {
   plate: (c, s=16) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>,
 };
 
-const SRC_LABEL = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", platemate: "Platemate" };
+const SRC_LABEL = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", suppr: "Suppr" };
 
 // ── RING COMPONENT (shared, style-agnostic) ──
 function Ring({ size, sw, progress, mainColor, bgColor, expanded, macroColors, onToggle, remainingText, textColor, subColor, font }) {
@@ -490,7 +490,7 @@ function VariationC({ isDark }) {
 /* ═══════════════════════════════════════════════════════════
    MAIN — VARIATION SWITCHER
    ═══════════════════════════════════════════════════════════ */
-export default function PlatemateVariations() {
+export default function SupprVariations() {
   const [variation, setVariation] = useState("A");
   const [isDark, setIsDark] = useState(false);
 
@@ -512,7 +512,7 @@ export default function PlatemateVariations() {
     <div style={{ minHeight: "100vh", background: bgOuter, display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 12px", fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Title */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: isDark ? "#555" : "#999" }}>Platemate · Design Exploration</div>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: isDark ? "#555" : "#999" }}>Suppr · Design Exploration</div>
       </div>
 
       {/* Variation selector */}

@@ -19,6 +19,7 @@ import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 
 type PlanMeal = {
@@ -55,7 +56,7 @@ export default function PlannerScreen() {
   const [days, setDays] = useState<1 | 3 | 7>(1);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
-  // Load user tier — default to "pro" if column is null (graceful for existing users)
+  // Load user tier from profile
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -68,8 +69,7 @@ export default function PlannerScreen() {
         if (tier === "free" || tier === "base" || tier === "pro") {
           setUserTier(tier);
         } else {
-          // If null/unset, treat as pro (existing users before tier was added)
-          setUserTier("pro");
+          setUserTier("free");
         }
       });
   }, [userId]);
@@ -401,29 +401,28 @@ export default function PlannerScreen() {
     // Smart macro-aware plan generation
     {
       // Load targets from user profile
-      let profileCals = NUTRITION_DEFAULTS.calories;
-      let profilePro = NUTRITION_DEFAULTS.protein;
-      let profileCarbs = NUTRITION_DEFAULTS.carbs;
-      let profileFat = NUTRITION_DEFAULTS.fat;
+      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat };
       if (userId) {
         const { data } = await supabase
           .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat")
+          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob")
           .eq("id", userId)
           .single();
         if (data) {
-          profileCals = data.target_calories ?? profileCals;
-          profilePro = data.target_protein ?? profilePro;
-          profileCarbs = data.target_carbs ?? profileCarbs;
-          profileFat = data.target_fat ?? profileFat;
+          const d = data as any;
+          const t = resolveTargets(
+            { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
+            { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+          );
+          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat };
         }
       }
 
       const targets: PlannerTargets = {
-        calories: profileCals,
-        protein: profilePro,
-        carbs: profileCarbs,
-        fat: profileFat,
+        calories: resolved.calories,
+        protein: resolved.protein,
+        carbs: resolved.carbs,
+        fat: resolved.fat,
         calorieBandPct: 12,
         carbFatBandPct: 18,
       };
@@ -444,7 +443,7 @@ export default function PlannerScreen() {
       });
 
       setPlan(newPlan);
-      setPlanTargets({ calories: profileCals, protein: profilePro, carbs: profileCarbs, fat: profileFat });
+      setPlanTargets(resolved);
       setGenerating(false);
 
       // Persist — relational tables with legacy fallback
@@ -567,7 +566,10 @@ export default function PlannerScreen() {
                     style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
-                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.");
+                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.", [
+                          { text: "Not now", style: "cancel" },
+                          { text: "See plans", onPress: () => router.push("/paywall" as any) },
+                        ]);
                         return;
                       }
                       setDays(d);

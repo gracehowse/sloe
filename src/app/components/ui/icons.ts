@@ -1,5 +1,5 @@
 /**
- * Platemate icon system — centralised icon map.
+ * Suppr icon system — centralised icon map.
  *
  * Import from here instead of lucide-react directly.
  * This gives us a single place to swap icons or add
@@ -113,7 +113,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** Semantic icon map — every icon used in Platemate */
+/** Semantic icon map — every icon used in Suppr */
 export const Icons = {
   // Navigation
   home: Home,

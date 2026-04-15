@@ -1,4 +1,4 @@
-# Product Audit — Platemate
+# Product Audit — Suppr
 
 **Date**: 2026-04-12
 **Verdict**: **Promising** — strong foundation with real technical depth, but critical reliability gaps prevent production deployment.
@@ -94,7 +94,7 @@ A recipe-centric nutrition platform: import recipes from Instagram/TikTok/websit
 
 ## Competitor Comparison
 
-| Feature | Platemate | MyFitnessPal | Lose It! | MacroFactor | Yummly |
+| Feature | Suppr | MyFitnessPal | Lose It! | MacroFactor | Yummly |
 |---------|-----------|--------------|----------|-------------|--------|
 | Recipe import from URL | Yes (strong) | No | No | No | Yes (basic) |
 | Social media import | Yes (Instagram, TikTok) | No | No | No | No |
@@ -110,9 +110,9 @@ A recipe-centric nutrition platform: import recipes from Instagram/TikTok/websit
 | Verified food database | USDA badges | Full DB | Full DB | Full DB | N/A |
 | Price | Free / £29.99/yr | Free / £69.99/yr | Free / £75.99/yr | £71.99/yr | Free |
 
-**Where Platemate wins**: Recipe import from social media links. No competitor does this well. The nutrition pipeline with UK aliases and multi-source verification is also above average.
+**Where Suppr wins**: Recipe import from social media links. No competitor does this well. The nutrition pipeline with UK aliases and multi-source verification is also above average.
 
-**Where Platemate loses**: Food diary depth (MFP/MacroFactor are leagues ahead), barcode scanning (Platemate's is stubbed), offline support (everyone else has it), community size (zero vs millions), food database size (69 recipes vs millions).
+**Where Suppr loses**: Food diary depth (MFP/MacroFactor are leagues ahead), barcode scanning (Suppr's is stubbed), offline support (everyone else has it), community size (zero vs millions), food database size (69 recipes vs millions).
 
 ---
 
@@ -126,7 +126,7 @@ A recipe-centric nutrition platform: import recipes from Instagram/TikTok/websit
 
 4. **Barcode scanning is the #1 feature request in every food app**: It's stubbed. This is table stakes.
 
-5. **No food diary depth**: MFP's food diary has meal slots, recent foods, favourites, custom foods, recipe integration, barcode history. Platemate's tracker is a quick-add box.
+5. **No food diary depth**: MFP's food diary has meal slots, recent foods, favourites, custom foods, recipe integration, barcode history. Suppr's tracker is a quick-add box.
 
 ---
 
