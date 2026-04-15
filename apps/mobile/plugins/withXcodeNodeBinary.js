@@ -1,7 +1,12 @@
-import type { ConfigPlugin } from "expo/config-plugins";
-import { withDangerousMod } from "expo/config-plugins";
-import fs from "node:fs";
-import path from "node:path";
+/**
+ * Xcode "Run Script" phases run with a minimal PATH, so `command -v node` in the stock
+ * `.xcode.env` is often empty → PhaseScriptExecution failures (Hermes, RN deps, EXConstants).
+ * Must be plain `.js` so Expo's Xcode "Generate app.config" step can resolve the plugin
+ * (`.ts` plugins fail with PluginError during that phase).
+ */
+const { withDangerousMod } = require("expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
 
 const XCODE_ENV_TEMPLATE = `# Used when running script phases inside Xcode (Hermes, ReactNativeDependencies, bundler, etc.).
 # Patched by withXcodeNodeBinary — Expo prebuild's default \`command -v node\` is often empty here.
@@ -19,14 +24,8 @@ if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
 fi
 `;
 
-/**
- * Xcode "Run Script" phases run with a minimal PATH, so `command -v node` in the stock
- * `.xcode.env` is often empty → PhaseScriptExecution failures (hermes-engine, RN deps).
- * Rewrites `ios/.xcode.env` with Homebrew on PATH + fallbacks, and sets `NODE_BINARY`
- * in `.xcode.env.local` from the Node that ran prebuild.
- */
-export const withXcodeNodeBinary: ConfigPlugin = (config) =>
-  withDangerousMod(config, [
+function withXcodeNodeBinary(config) {
+  return withDangerousMod(config, [
     "ios",
     async (cfg) => {
       const iosDir = cfg.modRequest.platformProjectRoot;
@@ -61,3 +60,6 @@ export const withXcodeNodeBinary: ConfigPlugin = (config) =>
       return cfg;
     },
   ]);
+}
+
+module.exports = withXcodeNodeBinary;
