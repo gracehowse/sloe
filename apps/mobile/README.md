@@ -23,7 +23,7 @@ npx expo prebuild --platform ios
 
 After prebuild, open **`ios/Suppr.xcworkspace`** (always the **workspace**, not `Suppr.xcodeproj` alone, so CocoaPods resolves). The main app target is **Suppr**.
 
-If Xcode says **`mobile.xcodeproj` couldn’t be opened**, you are opening an old **`mobile.xcworkspace`** from a previous template: remove **`ios/mobile.xcworkspace`** (and any **`mobile.xcodeproj`** if present) and use **`Suppr.xcworkspace`**, or run `npm run ios:xcode` from `apps/mobile`.
+If Xcode says **`mobile.xcodeproj` couldn’t be opened**, or **Failed to load container for document at url: …/mobile…** (path truncated in the banner), you have a stale **`ios/mobile.xcworkspace`** that points at a missing **`mobile.xcodeproj`**. Quit Xcode, run **`rm -rf ios/mobile.xcworkspace`**, then open **`ios/Suppr.xcworkspace`** (or **`npm run ios:xcode`**, which removes that folder first).
 
 ### Physical iPhone (USB)
 

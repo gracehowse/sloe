@@ -15,7 +15,8 @@
     "prebuild:clean": "expo prebuild --clean",
     "prebuild:ios:personal": "EXPO_IOS_PERSONAL_TEAM=1 expo prebuild --clean --platform ios",
     "ios:prebuild": "expo prebuild --platform ios",
-    "ios:xcode": "open ios/Suppr.xcworkspace",
+    "ios:prune-stale-workspace": "rm -rf ios/mobile.xcworkspace",
+    "ios:xcode": "npm run ios:prune-stale-workspace && open ios/Suppr.xcworkspace",
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
