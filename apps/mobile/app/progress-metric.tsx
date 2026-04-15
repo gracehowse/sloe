@@ -1,0 +1,364 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
+import { supabase } from "@/lib/supabase";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
+import { buildWeekStats, getStreakContributingDays } from "@/lib/progressWeekReport";
+import { computeLoggingStreak } from "@/lib/trackerStats";
+import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
+
+const DEFAULT_TARGETS = {
+  calories: NUTRITION_DEFAULTS.calories,
+  protein: NUTRITION_DEFAULTS.protein,
+  carbs: NUTRITION_DEFAULTS.carbs,
+  fat: NUTRITION_DEFAULTS.fat,
+};
+
+type Metric = "calories" | "protein" | "streak";
+
+function formatLongDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+export default function ProgressMetricDetailScreen() {
+  const { metric: metricParam } = useLocalSearchParams<{ metric?: string | string[] }>();
+  const metricRaw = Array.isArray(metricParam) ? metricParam[0] : metricParam;
+  const metric: Metric =
+    metricRaw === "protein" || metricRaw === "streak" || metricRaw === "calories" ? metricRaw : "calories";
+
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/progress");
+  const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+
+  const [loading, setLoading] = useState(true);
+  const [targets, setTargets] = useState(DEFAULT_TARGETS);
+  const [byDay, setByDay] = useState<ByDay>({});
+  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+
+  const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
+
+  const loadData = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    if (isHealthSyncAvailable()) {
+      try {
+        await syncHealthDataThrottled(userId);
+      } catch {
+        /* ignore */
+      }
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("target_calories, target_protein, target_carbs, target_fat, week_start_day")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profile) {
+      setTargets({
+        calories: (profile.target_calories as number) ?? DEFAULT_TARGETS.calories,
+        protein: (profile.target_protein as number) ?? DEFAULT_TARGETS.protein,
+        carbs: (profile.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
+        fat: (profile.target_fat as number) ?? DEFAULT_TARGETS.fat,
+      });
+      if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
+        setWeekStartDay(profile.week_start_day);
+      }
+    }
+    const { data: rows } = await supabase
+      .from("nutrition_entries")
+      .select("date_key, calories, protein, carbs, fat")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    if (rows) {
+      const loaded: ByDay = {};
+      for (const r of rows) {
+        const k = r.date_key as string;
+        if (!loaded[k]) loaded[k] = [];
+        loaded[k].push({
+          id: "",
+          name: "",
+          recipeTitle: "",
+          time: "",
+          calories: (r.calories as number) ?? 0,
+          protein: (r.protein as number) ?? 0,
+          carbs: (r.carbs as number) ?? 0,
+          fat: (r.fat as number) ?? 0,
+        } as JournalMeal);
+      }
+      setByDay(loaded);
+    }
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  const weekStats = useMemo(() => buildWeekStats(byDay, targets, weekStartDay), [byDay, targets, weekStartDay]);
+  const streakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
+  const streakDaysDetail = useMemo(() => getStreakContributingDays(byDay), [byDay]);
+
+  const t = useMemo(
+    () => ({
+      text: colors.text,
+      sub: colors.textSecondary,
+      dim: colors.textTertiary,
+      bg: colors.background,
+      elevated: colors.card,
+      border: colors.cardBorder,
+      accent: Accent.primary,
+      green: Accent.success,
+      amber: Accent.warning,
+      protein: MacroColors.protein,
+    }),
+    [colors],
+  );
+
+  const title = metric === "calories" ? "Calories this week" : metric === "protein" ? "Protein consistency" : "Logging streak";
+
+  const subtitle =
+    metric === "calories"
+      ? `Average across days you logged food: ${weekStats.avgCalories.toLocaleString()} kcal vs ${targets.calories.toLocaleString()} kcal target.`
+      : metric === "protein"
+        ? `A day counts as “on target” when protein is at least 90% of your ${Math.round(targets.protein)}g goal.`
+        : "Consecutive days (ending today or yesterday) where you logged at least one meal.";
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: t.bg,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingTop: insets.top,
+        }}
+      >
+        <ActivityIndicator size="large" color={t.accent} />
+      </View>
+    );
+  }
+
+  const openDay = (dateKey: string) => {
+    router.navigate({ pathname: "/(tabs)" as any, params: { date: dateKey, _t: String(Date.now()) } });
+  };
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingTop: insets.top + Spacing.sm,
+        paddingHorizontal: Spacing.xl,
+        paddingBottom: insets.bottom + 32,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          marginBottom: Spacing.md,
+        }}
+      >
+        <Pressable onPress={goBack} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color={t.text} />
+        </Pressable>
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 18,
+            fontWeight: "800",
+            color: Accent.primary,
+            letterSpacing: 2,
+          }}
+          numberOfLines={1}
+        >
+          {title.toUpperCase()}
+        </Text>
+      </View>
+      <Text style={{ fontSize: 14, color: t.sub, lineHeight: 20 }}>{subtitle}</Text>
+
+      {metric === "calories" && (
+        <>
+          <View style={{ marginTop: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: Spacing.lg }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: Spacing.md }}>Daily intake</Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 120 }}>
+              {weekStats.days.map((d) => {
+                const maxCal = Math.max(targets.calories, ...weekStats.days.map((x) => x.calories), 1);
+                const barH = maxCal > 0 ? Math.max(6, (d.calories / (maxCal * 1.15)) * 88) : 6;
+                const over = d.calories > targets.calories;
+                const isToday = d.key === todayKey;
+                return (
+                  <Pressable key={d.key} onPress={() => openDay(d.key)} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+                    <Text style={{ fontSize: 10, color: t.dim, fontVariant: ["tabular-nums"] }}>
+                      {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : "—"}
+                    </Text>
+                    <View
+                      style={{
+                        width: "100%",
+                        height: barH,
+                        borderRadius: 6,
+                        backgroundColor: d.calories === 0 ? t.border : over ? t.amber : t.green,
+                        opacity: isToday ? 1 : 0.85,
+                      }}
+                    />
+                    <Text style={{ fontSize: 11, fontWeight: isToday ? "800" : "600", color: isToday ? t.accent : t.dim }}>{d.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={{ fontSize: 11, color: t.dim, marginTop: Spacing.md }}>Tap a day to open it on Today.</Text>
+          </View>
+
+          {weekStats.days.map((d) => (
+            <Pressable
+              key={`row-${d.key}`}
+              onPress={() => openDay(d.key)}
+              style={{
+                marginTop: Spacing.sm,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: 14,
+                paddingHorizontal: Spacing.md,
+                backgroundColor: t.elevated,
+                borderRadius: Radius.md,
+                borderWidth: 1,
+                borderColor: t.border,
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
+                <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>{d.label}</Text>
+              </View>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: t.text, fontVariant: ["tabular-nums"] }}>
+                  {d.calories.toLocaleString()} kcal
+                </Text>
+                <Text style={{ fontSize: 11, color: d.calories > 0 ? t.sub : t.dim }}>
+                  {d.calories > 0 ? `${Math.round((d.calories / targets.calories) * 100)}% of goal` : "No meals"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={t.dim} />
+            </Pressable>
+          ))}
+        </>
+      )}
+
+      {metric === "protein" && (
+        <>
+          <View style={{ marginTop: Spacing.lg, flexDirection: "row", gap: Spacing.md }}>
+            <View style={{ flex: 1, padding: Spacing.md, backgroundColor: t.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: t.border }}>
+              <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>AVG / DAY</Text>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: t.protein, marginTop: 4, fontVariant: ["tabular-nums"] }}>{weekStats.avgProtein}g</Text>
+            </View>
+            <View style={{ flex: 1, padding: Spacing.md, backgroundColor: t.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: t.border }}>
+              <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>ON TARGET</Text>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: t.accent, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                {weekStats.proteinOnTarget}/7
+              </Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 12, color: t.sub, marginTop: Spacing.md, lineHeight: 18 }}>
+            Weekly protein adherence vs goal: {weekStats.proteinAdherence}%. Carbs {weekStats.carbsAdherence}% · Fat {weekStats.fatAdherence}%
+          </Text>
+
+          {weekStats.days.map((d) => {
+            const hit = d.protein >= targets.protein * 0.9;
+            const pct = targets.protein > 0 ? Math.round((d.protein / targets.protein) * 100) : 0;
+            return (
+              <Pressable
+                key={d.key}
+                onPress={() => openDay(d.key)}
+                style={{
+                  marginTop: Spacing.sm,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: 14,
+                  paddingHorizontal: Spacing.md,
+                  backgroundColor: t.elevated,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: t.border,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
+                  <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8, overflow: "hidden" }}>
+                    <View style={{ width: `${Math.min(pct, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: hit ? t.green : t.amber }} />
+                  </View>
+                </View>
+                <View style={{ alignItems: "flex-end", marginLeft: Spacing.md }}>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: t.protein, fontVariant: ["tabular-nums"] }}>{Math.round(d.protein)}g</Text>
+                  <Text style={{ fontSize: 11, color: hit ? t.green : t.dim }}>{hit ? "On target" : `${pct}% of goal`}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={t.dim} style={{ marginLeft: 8 }} />
+              </Pressable>
+            );
+          })}
+        </>
+      )}
+
+      {metric === "streak" && (
+        <>
+          <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border }}>
+            <Text style={{ fontSize: 36, fontWeight: "900", color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
+          </View>
+
+          {streakDaysDetail.length === 0 ? (
+            <Text style={{ fontSize: 14, color: t.sub, marginTop: Spacing.lg }}>Log a meal on Today to start a streak.</Text>
+          ) : (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: t.text, marginTop: Spacing.lg }}>Days in this streak</Text>
+              {streakDaysDetail.map((row) => (
+                <Pressable
+                  key={row.key}
+                  onPress={() => openDay(row.key)}
+                  style={{
+                    marginTop: Spacing.sm,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 12,
+                    paddingHorizontal: Spacing.md,
+                    backgroundColor: t.elevated,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor: t.border,
+                  }}
+                >
+                  <View>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
+                    <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>
+                      {row.mealCount} meal{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="checkmark-circle" size={22} color={t.green} />
+                    <Ionicons name="chevron-forward" size={18} color={t.dim} />
+                  </View>
+                </Pressable>
+              ))}
+            </>
+          )}
+        </>
+      )}
+    </ScrollView>
+  );
+}

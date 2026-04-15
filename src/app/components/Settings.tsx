@@ -12,6 +12,8 @@ import {
   normaliseDietaryFromProfile,
 } from "../../constants/dietaryPreferences.ts";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
+import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
+import type { NotificationPrefs } from "../../types/notifications.ts";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -267,6 +269,36 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             </div>
           </div>
           <div>
+            <label className="block mb-3 text-sm font-medium text-foreground">Burn / deficit summary</label>
+            <p className="text-xs text-muted-foreground mb-3 max-w-xl">
+              On the nutrition tracker, when you expand your calorie ring: show averages for the last seven days ending on the day you view, or for the current calendar week (Monday–Sunday).
+            </p>
+            <div className="flex gap-3">
+              {(
+                [
+                  { mode: "rolling" as const, label: "Rolling (last 7 days)" },
+                  { mode: "calendar_week" as const, label: "This week" },
+                ] as const
+              ).map(({ mode, label }) => {
+                const active = normalizeWeekSummaryMode(notifications.weekSummaryMode) === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setNotifications({ ...notifications, weekSummaryMode: mode })}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all text-sm font-semibold ${
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/30 text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
               {DIETARY_PREFERENCE_ENTRIES.map((diet) => (
@@ -298,7 +330,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h3 className="text-foreground">Notifications</h3>
         </div>
         <div className="space-y-4">
-          {Object.entries(notifications).map(([key, value]) => (
+          {(Object.entries(notifications) as [keyof NotificationPrefs, NotificationPrefs[keyof NotificationPrefs]][])
+            .filter((e): e is [keyof NotificationPrefs, boolean] => typeof e[1] === "boolean")
+            .map(([key, value]) => (
             <label key={key} className="flex items-center justify-between cursor-pointer group">
               <span className="text-foreground capitalize">
                 {key.replace(/([A-Z])/g, ' $1').trim()}

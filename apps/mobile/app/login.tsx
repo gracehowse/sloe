@@ -3,12 +3,45 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { sha256 } from "js-sha256";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+
+function createAppleRawNonce(): string {
+  const c = globalThis.crypto;
+  if (c && "randomUUID" in c && typeof c.randomUUID === "function") {
+    return c.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Maps Supabase / fetch failures to a short user-facing string. */
+function formatAuthError(err: unknown): string {
+  const msg =
+    err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
+      ? (err as { message: string }).message
+      : "Something went wrong. Please try again.";
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("internet") ||
+    lower.includes("failed to load") ||
+    lower.includes("host lookup") ||
+    lower.includes("connection")
+  ) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+  return msg;
+}
 
 export default function LoginScreen() {
   const colors = useThemeColors();
@@ -158,21 +191,22 @@ export default function LoginScreen() {
           email: email.trim(),
           password,
         });
-        if (error) setMessage(error.message);
+        if (error) setMessage(formatAuthError(error));
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
         if (error) {
-          // If user doesn't exist, suggest sign up
           if (error.message.includes("Invalid login")) {
             setMessage("No account found. Tap 'Create account' below to sign up.");
           } else {
-            setMessage(error.message);
+            setMessage(formatAuthError(error));
           }
         }
       }
+    } catch (e) {
+      setMessage(formatAuthError(e));
     } finally {
       setBusy(false);
     }
@@ -182,7 +216,11 @@ export default function LoginScreen() {
     setMessage(null);
     setBusy(true);
     try {
+      // Apple expects SHA256(rawNonce) on the request; Supabase verifies the ID token using rawNonce.
+      const rawNonce = createAppleRawNonce();
+      const hashedNonce = sha256(rawNonce);
       const credential = await AppleAuthentication.signInAsync({
+        nonce: hashedNonce,
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
@@ -190,18 +228,18 @@ export default function LoginScreen() {
       });
       if (!credential.identityToken) {
         setMessage("Apple Sign-In failed — no identity token received.");
-        setBusy(false);
         return;
       }
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
         token: credential.identityToken,
+        nonce: rawNonce,
       });
-      if (error) setMessage(error.message);
-    } catch (e: any) {
-      if (e?.code !== "ERR_REQUEST_CANCELED") {
-        setMessage("Apple Sign-In failed. Try email instead.");
-      }
+      if (error) setMessage(formatAuthError(error));
+    } catch (e: unknown) {
+      const code = e && typeof e === "object" && "code" in e ? (e as { code?: string }).code : undefined;
+      if (code === "ERR_REQUEST_CANCELED") return;
+      setMessage(formatAuthError(e));
     } finally {
       setBusy(false);
     }
@@ -212,7 +250,7 @@ export default function LoginScreen() {
       {/* Brand */}
       <View style={styles.brandSection}>
         <View style={styles.brandCircle}>
-          <Text style={styles.brandLetter}>P</Text>
+          <Text style={styles.brandLetter}>S</Text>
         </View>
         <Text style={styles.title}>SUPPR</Text>
         <Text style={styles.tagline}>Meal plans that hit your macros</Text>
@@ -260,7 +298,7 @@ export default function LoginScreen() {
             setBusy(true);
             const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
             setBusy(false);
-            if (error) { setMessage(error.message); return; }
+            if (error) { setMessage(formatAuthError(error)); return; }
             setMessage("Password reset email sent. Check your inbox.");
           }}>
             <Text style={[styles.hint, { marginTop: 0 }]}>Forgot password?</Text>
@@ -273,7 +311,7 @@ export default function LoginScreen() {
             setBusy(true);
             const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
             setBusy(false);
-            if (error) { setMessage(error.message); return; }
+            if (error) { setMessage(formatAuthError(error)); return; }
             setMessage("Magic link sent! Check your email inbox.");
           }}>
             <Text style={[styles.hint, { color: Accent.primary }]}>Sign in with magic link</Text>

@@ -30,6 +30,7 @@ import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
 } from "../../src/constants/dietaryPreferences.ts";
+import { ageFromIsoDateString, displayNameFromAuthUser } from "../../src/lib/profile/onboardingHydration.ts";
 
 const ACTIVITY_LEVELS: Array<{ value: ActivityLevel; label: string; desc: string }> = [
   { value: "sedentary", label: "Sedentary", desc: "Little to no exercise" },
@@ -105,15 +106,22 @@ export default function OnboardingPage() {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(
-          "display_name, avatar_url, user_tier, sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, dietary, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
+          "display_name, avatar_url, user_tier, sex, age, dob, height_cm, weight_kg, goal_weight_kg, activity_level, goal, plan_pace, nutrition_strategy, dietary, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
         )
         .eq("id", uid)
         .maybeSingle();
 
       if (!cancelled && profile && !profileError) {
-        setDisplayName(profile.display_name ?? "");
+        const ms = profile.measurement_system === "imperial" ? "imperial" : "metric";
+        if (profile.measurement_system) setMeasurementSystem(ms);
+        const nameFromProfile = (profile.display_name ?? "").trim();
+        setDisplayName(nameFromProfile || displayNameFromAuthUser(data.session?.user ?? null));
         if (profile.sex) setSex(profile.sex as Sex);
-        if (profile.age) setAge(String(profile.age));
+        const ageNum =
+          profile.age != null && Number(profile.age) > 0
+            ? Number(profile.age)
+            : ageFromIsoDateString(profile.dob as string | null | undefined);
+        if (ageNum != null) setAge(String(ageNum));
         if (profile.height_cm) setHeightCm(String(profile.height_cm));
         if (profile.weight_kg) setWeightKg(String(profile.weight_kg));
         if (profile.activity_level) setActivityLevel(profile.activity_level as ActivityLevel);
@@ -123,7 +131,10 @@ export default function OnboardingPage() {
         if (Array.isArray(profile.dietary)) {
           setDietary(normaliseDietaryFromProfile(profile.dietary));
         }
-        if (profile.measurement_system) setMeasurementSystem(profile.measurement_system as "metric" | "imperial");
+        if (profile.goal_weight_kg != null && Number(profile.goal_weight_kg) > 0) {
+          const gk = Number(profile.goal_weight_kg);
+          setGoalWeightKg(ms === "imperial" ? kgToLb(gk).toFixed(1) : String(Math.round(gk * 10) / 10));
+        }
         if (
           profile.target_calories &&
           profile.target_protein &&
@@ -145,10 +156,13 @@ export default function OnboardingPage() {
         if (profile.prefer_activity_adjusted_calories !== null && profile.prefer_activity_adjusted_calories !== undefined) {
           setPreferActivityAdjustedCalories(Boolean(profile.prefer_activity_adjusted_calories));
         }
+      } else if (!cancelled && !profile && !profileError) {
+        setDisplayName(displayNameFromAuthUser(data.session?.user ?? null));
       }
       if (!cancelled && profileError) {
-        // DB may not be configured yet — proceed silently with local-only mode.
+        // DB may not be configured yet — still pre-fill from auth when possible.
         console.warn("Profile load skipped:", profileError.message);
+        setDisplayName(displayNameFromAuthUser(data.session?.user ?? null));
       }
 
       if (!cancelled) {

@@ -15,8 +15,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import {
+  fetchShoppingListJsonItems,
+  upsertShoppingListJsonItems,
+} from "../../../src/lib/supabase/shoppingJsonFallback";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
 
 type ShoppingItem = {
   id: string;
@@ -32,6 +37,7 @@ export default function ShoppingListScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/planner");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -63,16 +69,11 @@ export default function ShoppingListScreen() {
         return;
       }
 
-      // Fall back to legacy JSONB
       if (!cancelled) {
-        const { data } = await supabase
-          .from("shopping_lists")
-          .select("items")
-          .eq("user_id", userId)
-          .maybeSingle();
+        const { items: legacyItems } = await fetchShoppingListJsonItems(supabase, userId);
         if (!cancelled) {
-          if (data?.items && Array.isArray(data.items)) {
-            setItems(data.items as ShoppingItem[]);
+          if (Array.isArray(legacyItems)) {
+            setItems(legacyItems as ShoppingItem[]);
           }
           setLoading(false);
         }
@@ -92,9 +93,7 @@ export default function ShoppingListScreen() {
           void supabase.from("shopping_items").update({ checked: target.checked }).eq("id", itemId)
             .then(({ error }) => {
               if (error) {
-                void supabase
-                  .from("shopping_lists")
-                  .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                void upsertShoppingListJsonItems(supabase, userId, next);
               }
             });
         }
@@ -110,9 +109,7 @@ export default function ShoppingListScreen() {
         void supabase.from("shopping_items").delete().eq("id", itemId)
           .then(({ error }) => {
             if (error) {
-              void supabase
-                .from("shopping_lists")
-                .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+              void upsertShoppingListJsonItems(supabase, userId, next);
             }
           });
       }
@@ -151,9 +148,7 @@ export default function ShoppingListScreen() {
         void supabase.from("shopping_items").delete().in("id", removedIds)
           .then(({ error }) => {
             if (error) {
-              void supabase
-                .from("shopping_lists")
-                .upsert({ user_id: userId, items: next, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+              void upsertShoppingListJsonItems(supabase, userId, next);
             }
           });
       }
@@ -296,7 +291,7 @@ export default function ShoppingListScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable onPress={goBack} hitSlop={12}>
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
           <Text style={styles.headerTitle}>SHOPPING LIST</Text>

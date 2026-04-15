@@ -48,7 +48,7 @@ describe("fingerprintMealPlanForShopping", () => {
       {
         day: 1,
         meals: [
-          { name: "Snack", recipeTitle: "Placeholder", calories: 0, protein: 0, carbs: 0, fat: 0, isPlaceholder: true },
+          { name: "Snacks", recipeTitle: "Placeholder", calories: 0, protein: 0, carbs: 0, fat: 0, isPlaceholder: true },
         ],
         totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
       },

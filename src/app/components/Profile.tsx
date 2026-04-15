@@ -18,6 +18,7 @@ import {
   type PlanPace,
   type NutritionStrategy,
 } from "../../lib/nutrition/tdee.ts";
+import { DIETARY_PREFERENCE_ENTRIES, normaliseDietaryFromProfile } from "../../constants/dietaryPreferences.ts";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -92,7 +93,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary_restrictions, notification_prefs")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary, notification_prefs")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
@@ -108,9 +109,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (profile.measurement_system === "imperial" || profile.measurement_system === "metric") {
         setMeasurementSystem(profile.measurement_system);
       }
-      // Dietary restrictions
-      if (Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0) {
-        setDietaryRestrictions(profile.dietary_restrictions.map(String));
+      const dietaryIds = normaliseDietaryFromProfile(profile.dietary);
+      if (dietaryIds.length > 0) {
+        setDietaryRestrictions(
+          dietaryIds.map((id) => DIETARY_PREFERENCE_ENTRIES.find((e) => e.id === id)?.label ?? id),
+        );
       }
       // Notification prefs
       if (profile.notification_prefs && typeof profile.notification_prefs === "object") {
@@ -316,13 +319,16 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           {/* Connected Row */}
-          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+          <div
+            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+            onClick={() => alert("Apple Health & nutrition import/export are available on the Suppr iOS app. Steps, weight, active energy, and meals from other apps (like MacroFactor or Lose It!) sync automatically.")}
+          >
             <IconBox tone="primary" size="sm" className="w-7 h-7">
               <Icons.link className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">Connected</p>
-              <p className="text-xs text-muted-foreground truncate">Not connected</p>
+              <p className="text-xs text-muted-foreground truncate">Available on iOS app</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>

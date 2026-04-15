@@ -41,7 +41,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
 
   // Serving size picker state
   const [gramsInput, setGramsInput] = useState("100");
-  const grams = Math.max(1, parseInt(gramsInput, 10) || 100);
+  const grams = useMemo(() => {
+    const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
+    if (!Number.isFinite(n) || n <= 0) return 100;
+    return Math.min(10_000, Math.round(n * 10) / 10);
+  }, [gramsInput]);
 
   // Manual entry state (when barcode not found)
   const [manualMode, setManualMode] = useState(false);
@@ -94,6 +98,12 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     [loading, scanned],
   );
 
+  const portionSummary = useMemo(() => {
+    const opts = product?.servingOptions ?? [];
+    const hit = opts.find((o) => Math.abs(o.grams - grams) < 0.51);
+    return hit?.label ?? `${grams} g`;
+  }, [product, grams]);
+
   const onConfirm = useCallback(() => {
     if (scanned && product && scaled) {
       // Pass a scaled product to the parent
@@ -105,13 +115,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
         fat: scaled.fat,
         fiberG: scaled.fiberG ?? 0,
         servingSizeG: grams,
+        portionSummary,
       };
       onScan(scanned, scaledProduct);
       setScanned(null);
       setProduct(null);
       setGramsInput("100");
     }
-  }, [scanned, product, scaled, grams, onScan]);
+  }, [scanned, product, scaled, grams, portionSummary, onScan]);
 
   const onManualSubmit = useCallback(() => {
     const cal = Number(manualCalories) || 0;
@@ -272,13 +283,17 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       textAlign: "center",
     },
     servingUnit: { fontSize: 13, color: colors.textSecondary },
-    presetRow: { flexDirection: "row", gap: 6 },
+    presetRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     presetChip: {
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: Radius.sm,
       borderWidth: 1,
       borderColor: Accent.primary + "40",
+    },
+    presetChipSelected: {
+      backgroundColor: Accent.primary + "18",
+      borderColor: Accent.primary,
     },
     presetChipText: { fontSize: 11, fontWeight: "600", color: Accent.primary },
     btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm },
@@ -486,12 +501,12 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                   </View>
                   {/* Serving size picker */}
                   <View style={styles.servingRow}>
-                    <Text style={styles.servingLabel}>Serving:</Text>
+                    <Text style={styles.servingLabel}>Amount:</Text>
                     <TextInput
                       style={styles.servingInput}
                       value={gramsInput}
                       onChangeText={setGramsInput}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                       selectTextOnFocus
                       returnKeyType="done"
                       onSubmitEditing={Keyboard.dismiss}
@@ -499,23 +514,41 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                     />
                     <Text style={styles.servingUnit}>g</Text>
                   </View>
-                  {/* Quick presets */}
+                  <Text style={[styles.per100g, { marginBottom: 4 }]}>Tap a label serving or edit grams (macros scale from per 100 g).</Text>
                   <View style={styles.presetRow}>
-                    {[50, 100, 150, 200].map((g) => (
-                      <Pressable key={g} style={styles.presetChip} onPress={() => setGramsInput(String(g))}>
-                        <Text style={styles.presetChipText}>{g}g</Text>
-                      </Pressable>
-                    ))}
-                    {product.servingSizeG && product.servingSizeG > 0 && product.servingSizeG !== 100 && (
-                      <Pressable style={styles.presetChip} onPress={() => setGramsInput(String(Math.round(product.servingSizeG!)))}>
-                        <Text style={styles.presetChipText}>1 serving</Text>
-                      </Pressable>
-                    )}
+                    {(product.servingOptions ?? []).map((o) => {
+                      const selected = Math.abs(o.grams - grams) < 0.51;
+                      return (
+                        <Pressable
+                          key={`${o.label}-${o.grams}`}
+                          style={[styles.presetChip, selected && styles.presetChipSelected]}
+                          onPress={() => setGramsInput(String(o.grams))}
+                        >
+                          <Text style={styles.presetChipText}>{o.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    {[50, 150, 200]
+                      .filter(
+                        (g) => !(product.servingOptions ?? []).some((o) => Math.abs(o.grams - g) < 0.51),
+                      )
+                      .map((g) => {
+                        const selected = Math.abs(g - grams) < 0.51;
+                        return (
+                          <Pressable
+                            key={`preset-${g}`}
+                            style={[styles.presetChip, selected && styles.presetChipSelected]}
+                            onPress={() => setGramsInput(String(g))}
+                          >
+                            <Text style={styles.presetChipText}>{g} g</Text>
+                          </Pressable>
+                        );
+                      })}
                   </View>
                   <View style={styles.btnRow}>
                     <Pressable style={styles.useBtn} onPress={onConfirm}>
                       <Ionicons name="checkmark" size={18} color="#fff" />
-                      <Text style={styles.useBtnText}>Log {grams}g</Text>
+                      <Text style={styles.useBtnText}>Log ({portionSummary})</Text>
                     </Pressable>
                     <Pressable style={styles.scanAgainBtn} onPress={onReset}>
                       <Text style={styles.scanAgainText}>Scan again</Text>
@@ -523,7 +556,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                   </View>
                   {/* "This is wrong" link */}
                   <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.xs }}>
-                    <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit &amp; update</Text>
+                    <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit and update</Text>
                   </Pressable>
                 </View>
               )}

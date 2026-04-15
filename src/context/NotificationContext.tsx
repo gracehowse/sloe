@@ -16,6 +16,7 @@ import {
   type AppNotification,
   type NotificationPrefs,
 } from "../types/notifications.ts";
+import { normalizeWeekSummaryMode } from "../lib/nutrition/weekSummaryWindow.ts";
 import { newId } from "./appData/persistence.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
 
@@ -187,7 +188,10 @@ export function NotificationProvider({
         }
         const prefs = (data as any)?.notification_prefs;
         if (prefs && typeof prefs === "object") {
-          setNotificationPrefs((prev) => ({ ...prev, ...(prefs as Partial<NotificationPrefs>) }));
+          setNotificationPrefs((prev) => {
+            const merged = { ...prev, ...(prefs as Partial<NotificationPrefs>) };
+            return { ...merged, weekSummaryMode: normalizeWeekSummaryMode(merged.weekSummaryMode) };
+          });
         }
 
         const seeded = Boolean((data as any)?.notifications_seeded);

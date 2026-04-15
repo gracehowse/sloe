@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -16,7 +17,9 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
@@ -27,6 +30,7 @@ export default function ProfileScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/more");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -140,29 +144,57 @@ export default function ProfileScreen() {
     );
   }
 
-  useEffect(() => {
-    if (!userId) { setLoading(false); return; }
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary")
-        .eq("id", userId)
-        .maybeSingle();
-      if (!cancelled && data) {
-        setDisplayName(data.display_name ?? "");
-        if (data.target_calories) setCalories(String(data.target_calories));
-        if (data.target_protein) setProtein(String(data.target_protein));
-        if (data.target_carbs) setCarbs(String(data.target_carbs));
-        if (data.target_fat) setFat(String(data.target_fat));
-        if (data.target_fiber_g) setFiber(String(data.target_fiber_g));
-        if (data.target_water_ml) setWater(String(data.target_water_ml));
-        if (data.dietary) setDietary(normaliseDietaryFromProfile(data.dietary));
-      }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
+  const loadProfile = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    const { data } = await supabase
+      .from("profiles")
+      .select(
+        "display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, weight_kg, height_cm, sex, activity_level, goal, dob, age",
+      )
+      .eq("id", userId)
+      .maybeSingle();
+    if (data) {
+      setDisplayName(data.display_name ?? "");
+      const d = data as Record<string, unknown>;
+      const resolved = resolveTargets(
+        {
+          target_calories: d.target_calories != null ? Number(d.target_calories) : null,
+          target_protein: d.target_protein != null ? Number(d.target_protein) : null,
+          target_carbs: d.target_carbs != null ? Number(d.target_carbs) : null,
+          target_fat: d.target_fat != null ? Number(d.target_fat) : null,
+          target_fiber_g: d.target_fiber_g != null ? Number(d.target_fiber_g) : null,
+        },
+        {
+          weight_kg: d.weight_kg != null ? Number(d.weight_kg) : null,
+          height_cm: d.height_cm != null ? Number(d.height_cm) : null,
+          sex: typeof d.sex === "string" ? d.sex : null,
+          activity_level: typeof d.activity_level === "string" ? d.activity_level : null,
+          goal: typeof d.goal === "string" ? d.goal : null,
+          dob: typeof d.dob === "string" ? d.dob : null,
+          age: d.age != null ? Number(d.age) : null,
+        },
+      );
+      setCalories(String(resolved.calories));
+      setProtein(String(resolved.protein));
+      setCarbs(String(resolved.carbs));
+      setFat(String(resolved.fat));
+      setFiber(String(resolved.fiber));
+      const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
+      setWater(String(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water));
+      if (data.dietary) setDietary(normaliseDietaryFromProfile(data.dietary));
+    }
+    setLoading(false);
   }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      void loadProfile();
+    }, [loadProfile]),
+  );
 
   const save = async () => {
     if (!userId) return;
@@ -203,7 +235,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable onPress={goBack} hitSlop={12}>
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
           <Text style={styles.headerTitle}>PROFILE</Text>

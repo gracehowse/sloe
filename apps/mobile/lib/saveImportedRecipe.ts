@@ -42,6 +42,19 @@ function normalizeIngredients(raw: unknown): string[] {
   return raw.map((x) => String(x).trim()).filter(Boolean);
 }
 
+/** Positive minutes from API (number or numeric string); otherwise null. */
+export function coercePositiveMinutes(raw: unknown): number | null {
+  if (raw == null) return null;
+  const n =
+    typeof raw === "string"
+      ? Number.parseFloat(raw.replace(/,/g, "").trim())
+      : typeof raw === "number"
+        ? raw
+        : NaN;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(Math.round(n), 24 * 60);
+}
+
 function normalizeInstructions(raw: unknown): string | null {
   if (Array.isArray(raw)) {
     const lines = raw.map((x) => String(x).trim()).filter(Boolean);
@@ -69,6 +82,19 @@ export async function saveImportedRecipe(
       ? Math.round(recipe.servings)
       : 1;
 
+  const prepRounded = coercePositiveMinutes(
+    (recipe as { prep_time_min?: unknown }).prep_time_min ?? recipe.prepTimeMin,
+  );
+  const cookRounded = coercePositiveMinutes(
+    (recipe as { cook_time_min?: unknown }).cook_time_min ?? recipe.cookTimeMin,
+  );
+
+  const sourceUrl =
+    ((recipe.sourceUrl ?? (recipe as { source_url?: string | null }).source_url) ?? "").trim() || null;
+  /** Human attribution (creator / site). Never use `primarySource` — that is nutrition verification (USDA, etc.). */
+  const sourceName =
+    ((recipe.sourceName ?? (recipe as { source_name?: string | null }).source_name) ?? "").trim() || null;
+
   const { data: row, error: insErr } = await supabase
     .from("recipes")
     .insert({
@@ -78,8 +104,10 @@ export async function saveImportedRecipe(
       instructions,
       image_url: recipe.imageUrl ?? null,
       servings,
-      prep_time_min: recipe.prepTimeMin ?? null,
-      cook_time_min: recipe.cookTimeMin ?? null,
+      prep_time_min: prepRounded,
+      cook_time_min: cookRounded,
+      source_url: sourceUrl,
+      source_name: sourceName,
       published: false,
       meal_type: recipe.mealType ?? classifyMealType({
         title,

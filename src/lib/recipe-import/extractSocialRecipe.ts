@@ -11,6 +11,8 @@
  * even though the full page is JS-rendered.
  */
 
+import { siteNameFromUrl } from "./parseRecipeFromHtml";
+
 export type SocialPlatform = "instagram" | "tiktok" | null;
 
 export function detectSocialPlatform(url: string): SocialPlatform {
@@ -29,6 +31,8 @@ export interface SocialPostMeta {
   caption: string;
   imageUrl: string | null;
   title: string | null;
+  /** Creator display (e.g. Instagram oEmbed author_name, TikTok @handle) — not a nutrition database label. */
+  authorDisplay: string | null;
 }
 
 /**
@@ -36,10 +40,7 @@ export interface SocialPostMeta {
  * The public endpoint works without an access token for basic metadata.
  * Falls back to null so callers can use og:image instead.
  */
-async function fetchInstagramOembedImage(postUrl: string): Promise<string | null> {
-  // Try the public Facebook Graph oEmbed endpoint first (requires app token if rate-limited,
-  // but the basic endpoint works for low-volume usage).
-  // Fallback: Instagram's own oEmbed endpoint.
+async function fetchInstagramOembed(postUrl: string): Promise<{ thumbnailUrl: string | null; authorName: string | null }> {
   const endpoints = [
     `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(postUrl)}`,
   ];
@@ -60,12 +61,23 @@ async function fetchInstagramOembedImage(postUrl: string): Promise<string | null
         title?: string;
         author_name?: string;
       };
-      if (data.thumbnail_url && typeof data.thumbnail_url === "string") {
-        return data.thumbnail_url;
-      }
+      const thumb = data.thumbnail_url && typeof data.thumbnail_url === "string" ? data.thumbnail_url : null;
+      const author =
+        typeof data.author_name === "string" && data.author_name.trim().length > 0 ? data.author_name.trim() : null;
+      if (thumb || author) return { thumbnailUrl: thumb, authorName: author };
     } catch {
-      // oEmbed failed — continue to next endpoint or fall through
+      // oEmbed failed — continue
     }
+  }
+  return { thumbnailUrl: null, authorName: null };
+}
+
+function guessTikTokAuthorDisplay(caption: string, pageTitle: string | null): string | null {
+  const fromCap = caption.match(/@([a-z0-9._]{2,30})\b/i);
+  if (fromCap) return `@${fromCap[1]}`;
+  if (pageTitle) {
+    const strip = pageTitle.replace(/\s*\|\s*TikTok.*$/i, "").trim();
+    if (strip.length >= 2 && strip.length < 80 && !/^tiktok$/i.test(strip)) return strip;
   }
   return null;
 }
@@ -135,8 +147,14 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   // For Instagram, try oEmbed first to get a clean thumbnail (no play-button overlay).
   // We'll use this image URL in preference to og:image if available.
   let oembedImageUrl: string | null = null;
+  let authorDisplay: string | null = null;
   if (platform === "instagram") {
-    oembedImageUrl = await fetchInstagramOembedImage(url);
+    const oem = await fetchInstagramOembed(url);
+    oembedImageUrl = oem.thumbnailUrl;
+    authorDisplay = instagramHandleFromPostUrl(url) ?? oem.authorName;
+  }
+  if (platform === "tiktok") {
+    authorDisplay = tiktokHandleFromPostUrl(url);
   }
 
   for (const ua of UA_ATTEMPTS) {
@@ -178,22 +196,123 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       null;
 
     if (caption || title) {
-      return { platform, caption, imageUrl, title };
+      if (platform === "tiktok" && !authorDisplay) {
+        authorDisplay = guessTikTokAuthorDisplay(caption, title);
+      }
+      if (!authorDisplay) {
+        const h = caption.match(/@([a-z0-9._]{2,30})\b/i);
+        if (h) authorDisplay = `@${h[1]}`;
+      }
+      return { platform, caption, imageUrl, title, authorDisplay };
     }
 
     // Strategy 2: Embedded JSON data in the page
     const embedded = extractFromEmbeddedJson(html);
     if (embedded) {
+      if (platform === "tiktok" && !authorDisplay) {
+        authorDisplay = guessTikTokAuthorDisplay(embedded.caption, title);
+      }
+      if (!authorDisplay) {
+        const h = embedded.caption.match(/@([a-z0-9._]{2,30})\b/i);
+        if (h) authorDisplay = `@${h[1]}`;
+      }
       return {
         platform,
         caption: embedded.caption,
         imageUrl: oembedImageUrl ?? embedded.imageUrl,
         title: null,
+        authorDisplay,
       };
     }
   }
 
   return null;
+}
+
+const RESERVED_IG_SEGMENTS = new Set([
+  "p",
+  "reel",
+  "reels",
+  "tv",
+  "stories",
+  "explore",
+  "accounts",
+  "direct",
+  "legal",
+]);
+
+/**
+ * Instagram URLs like `instagram.com/HANDLE/reel/…` or `…/HANDLE/p/…` encode the post owner.
+ * Prefer this over oEmbed `author_name`, which can be a generic display string or wrong in edge cases.
+ */
+export function instagramHandleFromPostUrl(postUrl: string): string | null {
+  try {
+    const u = new URL(postUrl);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (!host.includes("instagram")) return null;
+    const seg = u.pathname.split("/").filter(Boolean);
+    if (seg.length < 2) return null;
+    const first = seg[0].toLowerCase();
+    const second = seg[1].toLowerCase();
+    if (RESERVED_IG_SEGMENTS.has(first)) return null;
+    if (["p", "reel", "reels", "tv"].includes(second)) return `@${seg[0]}`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function tiktokHandleFromPostUrl(postUrl: string): string | null {
+  try {
+    const u = new URL(postUrl);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (!host.includes("tiktok")) return null;
+    const m = u.pathname.match(/^\/@([^/]+)/i);
+    if (m?.[1]) return `@${m[1]}`;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Human attribution for a saved social import when oEmbed `author_name` is missing.
+ * Order: "recipe by @x" / first @handle in caption → `username` from `/username/reel/…` paths → site label.
+ */
+export function socialImportSourceName(
+  platform: "instagram" | "tiktok",
+  postUrl: string,
+  authorDisplay: string | null,
+  captionText: string,
+): string | null {
+  const nick = authorDisplay?.trim();
+  if (nick) return nick;
+
+  const cap = captionText.replace(/\s+/g, " ");
+  const credit =
+    cap.match(/\b(?:recipe|recipes?)\s+by\s+@([a-z0-9._]{2,30})\b/i) ??
+    cap.match(/\b(?:created|posted)\s+by\s+@([a-z0-9._]{2,30})\b/i) ??
+    cap.match(/\bcredit\s*:?\s*@([a-z0-9._]{2,30})\b/i) ??
+    cap.match(/\bfollow\s+@([a-z0-9._]{2,30})\b/i);
+  if (credit?.[1]) return `@${credit[1]}`;
+
+  const h = cap.match(/@([a-z0-9._]{2,30})\b/i);
+  if (h?.[1]) return `@${h[1]}`;
+
+  try {
+    const u = new URL(postUrl);
+    const seg = u.pathname.split("/").filter(Boolean);
+    if (u.hostname.replace(/^www\./, "").includes("instagram") && seg[0]) {
+      const first = seg[0].toLowerCase();
+      if (!RESERVED_IG_SEGMENTS.has(first)) return `@${seg[0]}`;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const domain = siteNameFromUrl(postUrl);
+  if (platform === "tiktok") return domain || "TikTok";
+  return domain || "Instagram";
 }
 
 function extractMetaContent(html: string, property: string): string | null {
@@ -227,6 +346,40 @@ function decodeHtmlEntities(s: string): string {
 }
 
 /**
+ * Best-effort prep/cook minutes from caption (used when the model omits times).
+ */
+export function parsePrepCookMinutesFromCaption(text: string): { prepTimeMin: number | null; cookTimeMin: number | null } {
+  const t = text.replace(/\s+/g, " ");
+  let prepTimeMin: number | null = null;
+  let cookTimeMin: number | null = null;
+
+  const clamp = (n: number) => (Number.isFinite(n) && n > 0 && n <= 24 * 60 ? Math.round(n) : null);
+
+  const mPrep =
+    t.match(/\bprep(?:aration)?(?:\s*time)?\s*[:#\-–]?\s*(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\b/i) ??
+    t.match(/\b(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\s+prep(?:aration)?\b/i) ??
+    t.match(/\b(\d{1,3})\s*(?:min(?:utes?)?|m)\b[^.]{0,32}\bprep\b/i);
+  if (mPrep?.[1]) prepTimeMin = clamp(parseInt(mPrep[1], 10));
+
+  const mCook =
+    t.match(/\bcook(?:ing)?(?:\s*time)?\s*[:#\-–]?\s*(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\b/i) ??
+    t.match(/\b(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\s+cook(?:ing)?\b/i);
+  if (mCook?.[1]) cookTimeMin = clamp(parseInt(mCook[1], 10));
+
+  // "20 min prep" / "15m prep" (compact)
+  if (prepTimeMin == null) {
+    const m = t.match(/\b(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\s+prep\b/i) ?? t.match(/\b(\d{1,3})\s*m\s+prep\b/i);
+    if (m?.[1]) prepTimeMin = clamp(parseInt(m[1], 10));
+  }
+  if (cookTimeMin == null) {
+    const m = t.match(/\b(\d{1,3})\s*(?:min(?:utes?)?|mins?|m)\s+cook\b/i) ?? t.match(/\b(\d{1,3})\s*m\s+cook\b/i);
+    if (m?.[1]) cookTimeMin = clamp(parseInt(m[1], 10));
+  }
+
+  return { prepTimeMin, cookTimeMin };
+}
+
+/**
  * Send social post caption to OpenAI to extract structured recipe data.
  */
 export async function extractRecipeFromCaption(
@@ -239,6 +392,8 @@ export async function extractRecipeFromCaption(
   steps: string[];
   notes: string | null;
   servings: number | null;
+  prepTimeMin: number | null;
+  cookTimeMin: number | null;
 }> {
   const prompt = `You are extracting a recipe from a social media post caption.
 
@@ -253,7 +408,9 @@ Return a single JSON object (no markdown fences):
   "ingredients": string[],
   "steps": string[],
   "notes": string or null,
-  "servings": number or null
+  "servings": number or null,
+  "prepTimeMin": number or null,
+  "cookTimeMin": number or null
 }
 
 Rules:
@@ -262,7 +419,8 @@ Rules:
 - If the caption doesn't contain a recipe, return empty arrays and null title
 - If ingredients or steps are implied but not explicit, use best effort
 - Ignore hashtags, mentions, and promotional text
-- servings: extract if mentioned, otherwise null`;
+- servings: extract if mentioned, otherwise null
+- prepTimeMin / cookTimeMin: total minutes if the caption states prep time or cook time (e.g. "prep 15 min", "20 min cook"); otherwise null`;
 
   const body: Record<string, unknown> = {
     model: "gpt-4o-mini",
@@ -322,7 +480,18 @@ Rules:
       steps?: string[];
       notes?: string | null;
       servings?: number | null;
+      prepTimeMin?: number | null;
+      cookTimeMin?: number | null;
     };
+    const heur = parsePrepCookMinutesFromCaption(caption);
+    const asPosMin = (v: unknown): number | null => {
+      if (v == null) return null;
+      const n = typeof v === "string" ? Number.parseFloat(v.replace(/,/g, "")) : typeof v === "number" ? v : NaN;
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return Math.min(Math.round(n), 24 * 60);
+    };
+    const prepFromModel = asPosMin(parsed.prepTimeMin);
+    const cookFromModel = asPosMin(parsed.cookTimeMin);
     return {
       title: parsed.title ?? null,
       ingredients: Array.isArray(parsed.ingredients)
@@ -333,8 +502,19 @@ Rules:
         : [],
       notes: parsed.notes ?? null,
       servings: typeof parsed.servings === "number" ? parsed.servings : null,
+      prepTimeMin: prepFromModel ?? heur.prepTimeMin,
+      cookTimeMin: cookFromModel ?? heur.cookTimeMin,
     };
   } catch {
-    return { title: null, ingredients: [], steps: [], notes: raw.slice(0, 500), servings: null };
+    const heur = parsePrepCookMinutesFromCaption(caption);
+    return {
+      title: null,
+      ingredients: [],
+      steps: [],
+      notes: raw.slice(0, 500),
+      servings: null,
+      prepTimeMin: heur.prepTimeMin,
+      cookTimeMin: heur.cookTimeMin,
+    };
   }
 }

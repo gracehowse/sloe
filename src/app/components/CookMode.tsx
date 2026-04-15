@@ -161,7 +161,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   const handleLogMeal = useCallback(() => {
     // Infer meal name from recipe's tagged slots or time of day
     const hour = new Date().getHours();
-    const fallbackMeal = hour < 11 ? "Breakfast" : hour < 15 ? "Lunch" : hour < 17 ? "Snack" : "Dinner";
+    const fallbackMeal = hour < 11 ? "Breakfast" : hour < 15 ? "Lunch" : hour < 17 ? "Snacks" : "Dinner";
     const mealName = recipe.mealSlots?.[0] ?? fallbackMeal;
 
     // Scale macros by servings relative to recipe base (e.g. cooking 2 servings of a 1-serving recipe)

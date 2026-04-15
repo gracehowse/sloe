@@ -3,8 +3,8 @@ export type UserTier = "free" | "base" | "pro";
 /** How a recipe ended up in your library (local + synced metadata). */
 export type LibraryEntryKind = "saved" | "created" | "imported";
 
-/** Planner meal slots (order matches UI: breakfast → lunch → snack → dinner). */
-export const PLANNER_MEAL_SLOT_LABELS = ["Breakfast", "Lunch", "Snack", "Dinner"] as const;
+/** Planner meal slots (order matches UI: breakfast → lunch → snacks → dinner). */
+export const PLANNER_MEAL_SLOT_LABELS = ["Breakfast", "Lunch", "Snacks", "Dinner"] as const;
 export type PlannerMealSlot = (typeof PLANNER_MEAL_SLOT_LABELS)[number];
 
 export interface RecipeCard {
@@ -46,6 +46,9 @@ export interface RecipeCard {
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */
   cookTime?: string;
+  /** Raw minutes from DB — used for Quick filters when set. */
+  prepTimeMin?: number | null;
+  cookTimeMin?: number | null;
 }
 
 export interface IngredientRow {
@@ -91,6 +94,8 @@ export interface LoggedMeal {
   fiberG?: number;
   /** Optional water logged with this entry (ml). */
   waterMl?: number;
+  /** Optional micronutrients (e.g. sugarG, sodiumMg from Health import). */
+  micros?: Record<string, number> | null;
   /** Optional provenance for confidence badges (USDA, Open Food Facts, AI photo, etc.). */
   source?: string | null;
 }

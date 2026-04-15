@@ -8,6 +8,8 @@ export type BodyStats = {
   activity_level?: string | null;
   goal?: string | null;
   dob?: string | null;
+  /** Saved during onboarding when DOB is not collected */
+  age?: number | null;
 };
 
 export type MacroTargets = {
@@ -32,25 +34,47 @@ const GOAL_ADJ: Record<string, number> = {
   gain: 300,
 };
 
+/** DB + legacy goal strings → kcal adjustment vs TDEE */
+function goalCalorieAdjustment(goal: string | null | undefined): number {
+  const g = (goal ?? "maintain").trim().toLowerCase();
+  if (g === "cut" || g === "lose") return -500;
+  if (g === "bulk" || g === "gain" || g === "strength") return 300;
+  return GOAL_ADJ[g] ?? 0;
+}
+
 /**
  * Calculate macro targets from body stats using Mifflin-St Jeor.
  * Returns null if insufficient data (caller should fall back to NUTRITION_DEFAULTS).
  */
 export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
-  const { weight_kg, height_cm, sex, activity_level } = stats;
-  if (!weight_kg || !height_cm || !sex || !activity_level) return null;
+  const sexRaw = stats.sex != null ? String(stats.sex).trim() : "";
+  const activityRaw = stats.activity_level != null ? String(stats.activity_level).trim() : "";
+  if (!sexRaw || !activityRaw) return null;
 
-  const age = stats.dob
-    ? Math.floor((Date.now() - new Date(stats.dob).getTime()) / 31557600000)
-    : 30;
+  const weightKg = typeof stats.weight_kg === "number" ? stats.weight_kg : Number(stats.weight_kg);
+  const heightCm = typeof stats.height_cm === "number" ? stats.height_cm : Number(stats.height_cm);
+  if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm) || weightKg <= 0 || heightCm <= 0) {
+    return null;
+  }
+
+  let age = 30;
+  if (stats.dob) {
+    const dobMs = new Date(stats.dob).getTime();
+    if (Number.isFinite(dobMs)) {
+      age = Math.max(14, Math.min(100, Math.floor((Date.now() - dobMs) / 31557600000)));
+    }
+  } else if (stats.age != null) {
+    const a = typeof stats.age === "number" ? stats.age : Number(stats.age);
+    if (Number.isFinite(a) && a > 0) age = Math.round(Math.min(100, Math.max(14, a)));
+  }
 
   const bmr =
-    sex === "male"
-      ? 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
-      : 10 * weight_kg + 6.25 * height_cm - 5 * age - 161;
+    sexRaw === "male"
+      ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+      : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
 
-  const tdee = bmr * (ACTIVITY_MULT[activity_level] ?? 1.55);
-  const cals = Math.round(tdee + (GOAL_ADJ[stats.goal ?? "maintain"] ?? 0));
+  const tdee = bmr * (ACTIVITY_MULT[activityRaw] ?? 1.55);
+  const cals = Math.round(tdee + goalCalorieAdjustment(stats.goal));
 
   return {
     calories: cals,
@@ -61,6 +85,20 @@ export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
   };
 }
 
+/** Coerce PostgREST numeric / string JSON to a finite number, else null. */
+function nn(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return null;
+  return n;
+}
+
+export type ResolvedTargets = MacroTargets & {
+  usingDefaults: boolean;
+  /** explicit = saved calorie target in DB; computed = Mifflin from body; fallback = app defaults */
+  resolution: "explicit" | "computed" | "fallback";
+};
+
 /**
  * Resolve macro targets: use DB values if set, else compute from body stats,
  * else fall back to NUTRITION_DEFAULTS.
@@ -68,20 +106,26 @@ export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
 export function resolveTargets(
   dbTargets: { target_calories?: number | null; target_protein?: number | null; target_carbs?: number | null; target_fat?: number | null; target_fiber_g?: number | null },
   bodyStats: BodyStats,
-): MacroTargets & { usingDefaults: boolean } {
-  if (dbTargets.target_calories != null) {
+): ResolvedTargets {
+  const cal = nn(dbTargets.target_calories);
+  if (cal != null && cal > 0) {
+    const p = nn(dbTargets.target_protein);
+    const c = nn(dbTargets.target_carbs);
+    const f = nn(dbTargets.target_fat);
+    const fib = nn(dbTargets.target_fiber_g);
     return {
-      calories: dbTargets.target_calories,
-      protein: dbTargets.target_protein ?? NUTRITION_DEFAULTS.protein,
-      carbs: dbTargets.target_carbs ?? NUTRITION_DEFAULTS.carbs,
-      fat: dbTargets.target_fat ?? NUTRITION_DEFAULTS.fat,
-      fiber: dbTargets.target_fiber_g ?? NUTRITION_DEFAULTS.fiber,
+      calories: Math.round(cal),
+      protein: p != null && p > 0 ? Math.round(p) : NUTRITION_DEFAULTS.protein,
+      carbs: c != null && c > 0 ? Math.round(c) : NUTRITION_DEFAULTS.carbs,
+      fat: f != null && f > 0 ? Math.round(f) : NUTRITION_DEFAULTS.fat,
+      fiber: fib != null && fib > 0 ? Math.round(fib) : NUTRITION_DEFAULTS.fiber,
       usingDefaults: false,
+      resolution: "explicit",
     };
   }
 
   const computed = calcTargetsFromStats(bodyStats);
-  if (computed) return { ...computed, usingDefaults: false };
+  if (computed) return { ...computed, usingDefaults: false, resolution: "computed" };
 
   return {
     calories: NUTRITION_DEFAULTS.calories,
@@ -90,5 +134,6 @@ export function resolveTargets(
     fat: NUTRITION_DEFAULTS.fat,
     fiber: NUTRITION_DEFAULTS.fiber,
     usingDefaults: true,
+    resolution: "fallback",
   };
 }

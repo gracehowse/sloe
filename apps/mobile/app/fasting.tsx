@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
@@ -48,7 +48,7 @@ function formatDuration(ms: number): { hours: number; minutes: number; seconds: 
 
 export default function FastingScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useSafeBack("/(tabs)");
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
@@ -175,7 +175,7 @@ export default function FastingScreen() {
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Intermittent Fasting</Text>

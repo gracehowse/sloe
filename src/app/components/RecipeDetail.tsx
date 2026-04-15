@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
@@ -9,7 +9,6 @@ import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts"
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
-import { MacroCard } from "./suppr/macro-card";
 import { ConfidenceDot } from "./suppr/confidence-dot";
 import {
   AlertDialog,
@@ -22,6 +21,28 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog.tsx";
+import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
+import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
+
+async function shareRecipeDeepLink(recipeId: string) {
+  if (typeof window === "undefined") return;
+  const url = webRecipeDeepLink(recipeId, window.location.origin);
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: "Recipe on Suppr", text: "Open this recipe in Suppr", url });
+      toast.success("Shared");
+      return;
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && (e as { name?: string }).name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Share link copied");
+  } catch {
+    window.prompt("Copy this link:", url);
+  }
+}
 
 interface RecipeDetailProps {
   recipe: RecipeCard;
@@ -70,6 +91,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     refreshMyLibraryRecipes,
     addNotification,
     notificationPrefs,
+    nutritionTargets,
   } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
@@ -94,7 +116,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     protein: number;
     carbs: number;
     fat: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
   } | null>(null);
+  const [dbPrepMin, setDbPrepMin] = useState<number | null>(null);
+  const [dbCookMin, setDbCookMin] = useState<number | null>(null);
+  const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
+  const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
+  const [recipeYieldEditing, setRecipeYieldEditing] = useState(false);
+  const recipeYieldInputRef = useRef<HTMLInputElement | null>(null);
+  const recipeYieldEscapeBlurRef = useRef(false);
   const [dbIngredients, setDbIngredients] = useState<IngredientRow[]>([]);
   const [dbIngredientIds, setDbIngredientIds] = useState<string[]>([]);
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
@@ -104,6 +136,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [followCreatorId, setFollowCreatorId] = useState<string | null>(null);
   const [recipeAuthorId, setRecipeAuthorId] = useState<string | null>(null);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [trackedMacros, setTrackedMacros] = useState<string[]>(["protein", "carbs", "fat"]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMetaLoaded, setFollowMetaLoaded] = useState(false);
@@ -248,6 +281,24 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     };
   }, [recipe.id, recipe.savedCount, isCatalogRecipe]);
 
+  useEffect(() => {
+    if (!authUserId) {
+      setTrackedMacros(["protein", "carbs", "fat"]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.from("profiles").select("tracked_macros").eq("id", authUserId).maybeSingle();
+      if (cancelled) return;
+      if (data?.tracked_macros && Array.isArray(data.tracked_macros) && data.tracked_macros.length > 0) {
+        setTrackedMacros(data.tracked_macros as string[]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authUserId]);
+
   const showFollowButton =
     !isCatalogRecipe &&
     followMetaLoaded &&
@@ -333,10 +384,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     (async () => {
       setDbLoading(true);
       setDbFetchFailed(false);
+      setDbPrepMin(null);
+      setDbCookMin(null);
       const { data: row, error: recipeError } = await supabase
         .from("recipes")
         .select(
-          "description, instructions, servings, calories, protein, carbs, fat, is_verified",
+          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, prep_time_min, cook_time_min",
         )
         .eq("id", recipe.id)
         .maybeSingle();
@@ -348,6 +401,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         return;
       }
 
+      const prepRaw = Number((row as { prep_time_min?: unknown }).prep_time_min);
+      const cookRaw = Number((row as { cook_time_min?: unknown }).cook_time_min);
+      setDbPrepMin(Number.isFinite(prepRaw) && prepRaw > 0 ? Math.round(prepRaw) : null);
+      setDbCookMin(Number.isFinite(cookRaw) && cookRaw > 0 ? Math.round(cookRaw) : null);
+
       setDbDescription((row.description as string | null) ?? null);
       setDbInstructionsText((row.instructions as string | null) ?? null);
       setDbServings((row.servings as number) ?? recipe.servings);
@@ -356,6 +414,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         protein: (row.protein as number) ?? 0,
         carbs: (row.carbs as number) ?? 0,
         fat: (row.fat as number) ?? 0,
+        fiberG: Number((row as { fiber_g?: unknown }).fiber_g) || 0,
+        sugarG: Number((row as { sugar_g?: unknown }).sugar_g) || 0,
+        sodiumMg: Number((row as { sodium_mg?: unknown }).sodium_mg) || 0,
       });
 
       const { data: ingRows, error: ingError } = await supabase
@@ -379,6 +440,20 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     };
   }, [recipe.id, isCatalogRecipe]);
 
+  useEffect(() => {
+    const s = dbServings ?? recipe.servings;
+    setRecipeYieldDraft(String(Math.max(1, s)));
+  }, [dbServings, recipe.servings]);
+
+  useEffect(() => {
+    if (!recipeYieldEditing) return;
+    const id = requestAnimationFrame(() => {
+      recipeYieldInputRef.current?.focus();
+      recipeYieldInputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [recipeYieldEditing]);
+
   const ingredients = dbIngredients;
   const instructionSteps = useMemo(() => {
     const text = dbInstructionsText?.trim() ?? "";
@@ -390,6 +465,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }, [dbInstructionsText]);
 
   const baseServings = dbServings ?? recipe.servings;
+  const prepDisplay =
+    formatRecipeMinutes(dbPrepMin) ?? recipe.prepTime ?? "—";
+  const cookDisplay =
+    formatRecipeMinutes(dbCookMin) ?? recipe.cookTime ?? "—";
+
   const displayRecipe = useMemo(() => {
     if (isCatalogRecipe || !dbMacros) {
       return recipe;
@@ -401,8 +481,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       protein: dbMacros.protein,
       carbs: dbMacros.carbs,
       fat: dbMacros.fat,
+      fiberG: dbMacros.fiberG,
+      sugarG: dbMacros.sugarG,
+      sodiumMg: dbMacros.sodiumMg,
+      prepTime: formatRecipeMinutes(dbPrepMin) ?? recipe.prepTime,
+      cookTime: formatRecipeMinutes(dbCookMin) ?? recipe.cookTime,
     };
-  }, [recipe, isCatalogRecipe, dbMacros, baseServings]);
+  }, [recipe, isCatalogRecipe, dbMacros, baseServings, dbPrepMin, dbCookMin]);
 
   const scaledMacros = {
     calories: Math.round((displayRecipe.calories * servings) / baseServings),
@@ -411,17 +496,21 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     fat: Math.round((displayRecipe.fat * servings) / baseServings),
   };
 
-  const ingredientTotal = ingredients.reduce(
-    (acc, ing) => ({
-      calories: acc.calories + ing.calories,
-      protein: acc.protein + ing.protein,
-      carbs: acc.carbs + ing.carbs,
-      fat: acc.fat + ing.fat,
-      fiberG: acc.fiberG + (ing.fiberG ?? 0),
-      sugarG: acc.sugarG + (ing.sugarG ?? 0),
-      sodiumMg: acc.sodiumMg + (ing.sodiumMg ?? 0),
-    }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
+  const ingredientTotal = useMemo(
+    () =>
+      ingredients.reduce(
+        (acc, ing) => ({
+          calories: acc.calories + ing.calories,
+          protein: acc.protein + ing.protein,
+          carbs: acc.carbs + ing.carbs,
+          fat: acc.fat + ing.fat,
+          fiberG: acc.fiberG + (ing.fiberG ?? 0),
+          sugarG: acc.sugarG + (ing.sugarG ?? 0),
+          sodiumMg: acc.sodiumMg + (ing.sodiumMg ?? 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
+      ),
+    [ingredients],
   );
 
   // Scaled micronutrients — from ingredient sum or recipe-level fallback
@@ -431,7 +520,122 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     sodiumMg: Math.round(((ingredientTotal.sodiumMg || displayRecipe.sodiumMg || 0) * servings) / baseServings),
   };
 
+  const RECIPE_MACRO_KEYS = new Set(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
+  const recipeMacrosToShow = useMemo(() => {
+    const filtered = trackedMacros.filter((k) => RECIPE_MACRO_KEYS.has(k));
+    return filtered.length > 0 ? filtered : ["protein", "carbs", "fat"];
+  }, [trackedMacros]);
+
   // macroAccuracy available if needed: Math.abs(ingredientTotal.calories - displayRecipe.calories)
+
+  const persistRecipeYield = useCallback(async (opts?: { explicitServings?: number; silentNoop?: boolean }) => {
+    if (!authUserId || !isMyRecipe || !dbMacros) return;
+    const raw = opts?.explicitServings ?? Number(recipeYieldDraft);
+    const newS = Math.max(1, Math.min(48, Math.round(Number(raw)) || 1));
+    const oldS = Math.max(1, baseServings);
+    if (newS === oldS) {
+      if (!opts?.silentNoop) toast.message("Servings unchanged");
+      return;
+    }
+    setRecipeYieldSaving(true);
+    try {
+      let calories: number;
+      let protein: number;
+      let carbs: number;
+      let fat: number;
+      let fiber_g: number;
+      let sugar_g: number;
+      let sodium_mg: number;
+
+      if (ingredients.length > 0) {
+        const t = ingredientTotal;
+        calories = Math.max(0, Math.round(t.calories / newS));
+        protein = Math.max(0, Math.round((t.protein / newS) * 10) / 10);
+        carbs = Math.max(0, Math.round((t.carbs / newS) * 10) / 10);
+        fat = Math.max(0, Math.round((t.fat / newS) * 10) / 10);
+        fiber_g = Math.max(0, Math.round((t.fiberG / newS) * 10) / 10);
+        sugar_g = Math.max(0, Math.round((t.sugarG / newS) * 10) / 10);
+        sodium_mg = Math.max(0, Math.round(t.sodiumMg / newS));
+      } else {
+        calories = Math.max(0, Math.round((dbMacros.calories * oldS) / newS));
+        protein = Math.max(0, Math.round(((dbMacros.protein * oldS) / newS) * 10) / 10);
+        carbs = Math.max(0, Math.round(((dbMacros.carbs * oldS) / newS) * 10) / 10);
+        fat = Math.max(0, Math.round(((dbMacros.fat * oldS) / newS) * 10) / 10);
+        fiber_g = Math.max(0, Math.round(((dbMacros.fiberG * oldS) / newS) * 10) / 10);
+        sugar_g = Math.max(0, Math.round(((dbMacros.sugarG * oldS) / newS) * 10) / 10);
+        sodium_mg = Math.max(0, Math.round((dbMacros.sodiumMg * oldS) / newS));
+      }
+
+      const { error } = await supabase
+        .from("recipes")
+        .update({
+          servings: newS,
+          calories,
+          protein,
+          carbs,
+          fat,
+          fiber_g,
+          sugar_g,
+          sodium_mg,
+        })
+        .eq("id", recipe.id)
+        .eq("author_id", authUserId);
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      setDbServings(newS);
+      setDbMacros({
+        calories,
+        protein,
+        carbs,
+        fat,
+        fiberG: fiber_g,
+        sugarG: sugar_g,
+        sodiumMg: sodium_mg,
+      });
+      setServings((prev) => Math.min(Math.max(1, prev), newS));
+      setRecipeYieldDraft(String(newS));
+      await refreshMyLibraryRecipes();
+      toast.success(`Recipe yields ${newS} servings — per-serving nutrition updated.`);
+    } catch {
+      toast.error("Could not update recipe yield.");
+    } finally {
+      setRecipeYieldSaving(false);
+    }
+  }, [
+    authUserId,
+    isMyRecipe,
+    dbMacros,
+    recipeYieldDraft,
+    baseServings,
+    ingredients,
+    ingredientTotal,
+    recipe.id,
+    refreshMyLibraryRecipes,
+  ]);
+
+  const commitInlineRecipeYield = useCallback(async () => {
+    if (recipeYieldEscapeBlurRef.current) {
+      recipeYieldEscapeBlurRef.current = false;
+      return;
+    }
+    if (!recipeYieldEditing) return;
+    const newS = Math.max(1, Math.min(48, Math.round(Number(recipeYieldDraft)) || 1));
+    setRecipeYieldDraft(String(newS));
+    setRecipeYieldEditing(false);
+    if (newS === Math.max(1, baseServings)) return;
+    await persistRecipeYield({ explicitServings: newS, silentNoop: true });
+  }, [recipeYieldEditing, recipeYieldDraft, baseServings, persistRecipeYield]);
+
+  const cancelInlineRecipeYield = useCallback(() => {
+    recipeYieldEscapeBlurRef.current = true;
+    setRecipeYieldDraft(String(Math.max(1, baseServings)));
+    setRecipeYieldEditing(false);
+    recipeYieldInputRef.current?.blur();
+  }, [baseServings]);
 
   if (!isCatalogRecipe && dbLoading) {
     return (
@@ -556,15 +760,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         </button>
         <button
           type="button"
-          onClick={() => {
-            const url = `${window.location.origin}${window.location.pathname}?recipe=${encodeURIComponent(recipe.id)}`;
-            void navigator.clipboard.writeText(url).then(
-              () => toast.success("Share link copied"),
-              () => toast.error("Could not copy link"),
-            );
-          }}
+          onClick={() => void shareRecipeDeepLink(recipe.id)}
           className="p-2.5 text-muted-foreground hover:bg-muted/60 rounded-xl transition-all"
-          aria-label="Copy share link"
+          aria-label="Share recipe link"
         >
           <Icons.share className="w-5 h-5" />
         </button>
@@ -626,13 +824,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           ) : null}
         </div>
 
-        {/* Info Row — Prep / Cook / Servings / Confidence (matches mobile) */}
+        {/* Info Row — Prep / Cook / Portions (tap total to edit yield if yours) / Confidence */}
         <div className="flex gap-3">
           {[
-            { icon: Icons.timer, label: "Prep", value: recipe.prepTime ?? "—" },
-            { icon: Icons.time, label: "Cook", value: recipe.cookTime ?? "—" },
-            { icon: Icons.target, label: "Servings", value: `${servings}` },
-            { icon: Icons.verified, label: "Confidence", value: isCatalogRecipe ? "Verified" : "Estimated" },
+            { icon: Icons.timer, label: "Prep", value: prepDisplay },
+            { icon: Icons.time, label: "Cook", value: cookDisplay },
           ].map((item) => (
             <div key={item.label} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border">
               <item.icon className="w-4 h-4 text-muted-foreground" />
@@ -640,11 +836,66 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               <span className="text-[10px] text-muted-foreground">{item.label}</span>
             </div>
           ))}
+          <div className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border min-w-0">
+            <Icons.target className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-baseline justify-center gap-0.5 text-xs font-bold text-foreground tabular-nums">
+              <span>{servings}</span>
+              <span className="text-muted-foreground font-semibold">/</span>
+              {isMyRecipe && !isCatalogRecipe && recipeYieldEditing ? (
+                <input
+                  ref={recipeYieldInputRef}
+                  type="number"
+                  min={1}
+                  max={48}
+                  inputMode="numeric"
+                  disabled={recipeYieldSaving || dbLoading}
+                  value={recipeYieldDraft}
+                  onChange={(e) => setRecipeYieldDraft(e.target.value)}
+                  onBlur={() => void commitInlineRecipeYield()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelInlineRecipeYield();
+                    }
+                  }}
+                  className="w-11 min-w-0 rounded-md border border-primary bg-background px-1 py-0.5 text-center text-xs font-bold text-foreground"
+                  aria-label="Total portions this full recipe makes"
+                />
+              ) : isMyRecipe && !isCatalogRecipe ? (
+                <button
+                  type="button"
+                  disabled={recipeYieldSaving || dbLoading}
+                  onClick={() => {
+                    recipeYieldEscapeBlurRef.current = false;
+                    setRecipeYieldDraft(String(baseServings));
+                    setRecipeYieldEditing(true);
+                  }}
+                  title="Change how many portions the full recipe makes"
+                  className="min-w-[1.25rem] rounded-md border border-transparent px-0.5 py-0.5 hover:border-border hover:bg-muted/60 disabled:opacity-50 underline decoration-dotted decoration-muted-foreground/70 underline-offset-2"
+                  aria-label={`Full recipe makes ${baseServings} portions. Click to edit.`}
+                >
+                  {baseServings}
+                </button>
+              ) : (
+                <span>{baseServings}</span>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground text-center leading-tight px-0.5">Portions</span>
+          </div>
+          <div className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border">
+            <Icons.verified className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-bold text-foreground">{isCatalogRecipe ? "Verified" : "Estimated"}</span>
+            <span className="text-[10px] text-muted-foreground">Confidence</span>
+          </div>
         </div>
 
-        {/* Servings Selector */}
+        {/* Servings Selector — how many portions you are viewing / logging */}
         <div className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border">
-          <span className="font-semibold text-foreground text-sm">Servings</span>
+          <span className="font-semibold text-foreground text-sm">Portions to view</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -664,15 +915,106 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         </div>
 
-        {/* Macro Cards Row (3 macros + kcal badge — matches mobile) */}
-        <div className="flex gap-2">
-          <MacroCard macro="protein" value={scaledMacros.protein} target={undefined} />
-          <MacroCard macro="carbs" value={scaledMacros.carbs} target={undefined} />
-          <MacroCard macro="fat" value={scaledMacros.fat} target={undefined} />
-          <div className="flex-1 flex flex-col items-center justify-center rounded-xl p-2.5 border border-border" style={{ backgroundColor: "var(--macro-calories)", color: "#fff" }}>
-            <span className="text-base font-bold tabular-nums">{Math.round(scaledMacros.calories)}</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">kcal</span>
+        {/* Calories hero + macro tiles from profile tracked_macros */}
+        <div
+          className="mb-3 rounded-2xl border px-5 py-6 text-center"
+          style={{
+            borderColor: "color-mix(in srgb, var(--macro-calories) 45%, var(--border))",
+            backgroundColor: "color-mix(in srgb, var(--macro-calories) 14%, transparent)",
+          }}
+        >
+          <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--macro-calories)" }}>
+            Calories per portion
           </div>
+          <div className="mt-2 text-4xl font-extrabold tabular-nums text-foreground">{Math.round(scaledMacros.calories)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">kilocalories</div>
+        </div>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Macros</p>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {recipeMacrosToShow.map((macro) => {
+            const REF_SUGAR_G = 50;
+            const REF_SODIUM_MG = 2300;
+            const macroMap: Record<string, { label: string; cur: number; tgt: number; color: string; unit: string }> = {
+              protein: {
+                label: "Protein",
+                cur: scaledMacros.protein,
+                tgt: nutritionTargets.protein,
+                color: "var(--macro-protein)",
+                unit: "g",
+              },
+              carbs: {
+                label: "Carbs",
+                cur: scaledMacros.carbs,
+                tgt: nutritionTargets.carbs,
+                color: "var(--macro-carbs)",
+                unit: "g",
+              },
+              fat: {
+                label: "Fat",
+                cur: scaledMacros.fat,
+                tgt: nutritionTargets.fat,
+                color: "var(--macro-fat)",
+                unit: "g",
+              },
+              fiber: {
+                label: "Fiber",
+                cur: scaledMicros.fiberG,
+                tgt: nutritionTargets.fiber,
+                color: "var(--macro-calories)",
+                unit: "g",
+              },
+              sugar: {
+                label: "Sugar",
+                cur: scaledMicros.sugarG,
+                tgt: REF_SUGAR_G,
+                color: "#6c8cff",
+                unit: "g",
+              },
+              sodium: {
+                label: "Sodium",
+                cur: scaledMicros.sodiumMg,
+                tgt: REF_SODIUM_MG,
+                color: "#f97316",
+                unit: "mg",
+              },
+            };
+            const m = macroMap[macro];
+            if (!m) return null;
+            const displayAmount =
+              macro === "sugar" || macro === "fiber"
+                ? Math.round(m.cur * 10) / 10
+                : macro === "sodium"
+                  ? Math.round(m.cur)
+                  : Math.round(m.cur);
+            return (
+              <div
+                key={macro}
+                className="min-w-[76px] max-w-[48%] flex-1 rounded-xl border border-border bg-card p-2.5"
+              >
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-sm" style={{ background: m.color }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.label}</span>
+                </div>
+                <div className="text-base font-bold tabular-nums text-foreground">
+                  {displayAmount}
+                  {m.unit}
+                </div>
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-sm bg-muted">
+                  <div
+                    className="h-full rounded-sm transition-all"
+                    style={{
+                      width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
+                      backgroundColor: m.color,
+                    }}
+                  />
+                </div>
+                <div className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                  of {m.tgt}
+                  {m.unit}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Creator Discrepancy */}

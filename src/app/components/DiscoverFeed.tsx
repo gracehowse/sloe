@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { FitBadge, type FitLevel } from "./suppr/fit-badge";
@@ -303,7 +304,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   };
 
   const copyShareLink = (recipeId: string) => {
-    const url = `${window.location.origin}${window.location.pathname}?recipe=${encodeURIComponent(recipeId)}`;
+    const url = webRecipeDeepLink(recipeId, window.location.origin);
     void navigator.clipboard.writeText(url).then(
       () => toast.success("Link copied"),
       () => toast.error("Could not copy link"),
@@ -347,7 +348,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       // Quick filter pills
       if (quickFilter === "High Protein" && recipe.protein < 25) return false;
       if (quickFilter === "Low Carb" && recipe.carbs > 30) return false;
-      // "Popular" and "Quick" would need saves/cookTime data — pass through for now
+      if (quickFilter === "Quick") {
+        const cm = recipe.cookTimeMin;
+        if (cm != null && cm > 0) return cm <= 20;
+        return true;
+      }
       return true;
     });
   }, [

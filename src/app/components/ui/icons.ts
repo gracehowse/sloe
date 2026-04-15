@@ -86,6 +86,9 @@ import {
   QrCode,
   RotateCcw,
 
+  // Fitness
+  Dumbbell,
+
   // Progress & data
   Trophy,
   Flame as Streak,
@@ -194,6 +197,9 @@ export const Icons = {
   scan: ScanBarcode,
   qr: QrCode,
   refresh: RotateCcw,
+
+  // Fitness
+  dumbbell: Dumbbell,
 
   // Progress & data
   trophy: Trophy,

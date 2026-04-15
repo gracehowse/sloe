@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -8,15 +8,28 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
+import {
+  syncHealthDataThrottled,
+  getHealthBodyLookbackDays,
+  setHealthBodyLookbackDays,
+  HEALTH_BODY_LOOKBACK_PRESETS,
+  isHealthSyncAvailable,
+} from "@/lib/healthSync";
+import {
+  resolveLatestWeightKg,
+  weightJourneyProgress,
+} from "@/lib/weightProjection";
+import { dateKeyFromDate } from "@/lib/nutritionJournal";
 
 import TrendLine from "@/components/charts/TrendLine";
 import MiniBarChart from "@/components/charts/MiniBarChart";
@@ -50,8 +63,9 @@ function filterByRange(
 ): Record<string, number> {
   const maxDays = daysForRange(range);
   const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
   cutoff.setDate(cutoff.getDate() - maxDays);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = dateKeyFromDate(cutoff);
   const entries = Object.entries(map)
     .filter(([k]) => k >= cutoffStr)
     .sort(([a], [b]) => a.localeCompare(b));
@@ -64,7 +78,7 @@ function formatShortDate(dateStr: string): string {
 }
 
 export default function ProgressScreen() {
-  const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/progress");
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -72,7 +86,6 @@ export default function ProgressScreen() {
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
-  const [startWeightKg, setStartWeightKg] = useState<number | null>(null);
   const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null);
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>(
     {},
@@ -87,6 +100,12 @@ export default function ProgressScreen() {
   const [bfInput, setBfInput] = useState("");
   const [isImperial, setIsImperial] = useState(false);
   const [range, setRange] = useState<TimeRange>("3M");
+  const [healthLookbackDays, setHealthLookbackDays] = useState(366);
+  const [healthRefreshing, setHealthRefreshing] = useState(false);
+
+  const weightInputUserEdited = useRef(false);
+  const stepsInputUserEdited = useRef(false);
+  const bfInputUserEdited = useRef(false);
 
   const kgToLb = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
   const lbToKg = (lb: number) => Math.round((lb / 2.20462) * 10) / 10;
@@ -111,6 +130,12 @@ export default function ProgressScreen() {
     return () => clearTimeout(timer);
   }, [todayKey]);
 
+  useEffect(() => {
+    weightInputUserEdited.current = false;
+    stepsInputUserEdited.current = false;
+    bfInputUserEdited.current = false;
+  }, [userId]);
+
   const load = useCallback(async () => {
     if (!userId) {
       setLoading(false);
@@ -133,12 +158,8 @@ export default function ProgressScreen() {
       setGoalWeightKg(Number.isFinite(gw) ? gw : null);
       const wByDay = parseNumMap(data.weight_kg_by_day);
       setWeightKgByDay(wByDay);
-      const sortedWeights = Object.entries(wByDay).sort(([a], [b]) =>
-        a.localeCompare(b),
-      );
-      if (sortedWeights.length > 0)
-        setStartWeightKg(sortedWeights[0][1]);
-      setStepsByDay(parseNumMap(data.steps_by_day));
+      const stepsParsed = parseNumMap(data.steps_by_day);
+      setStepsByDay(stepsParsed);
       const sg = Number(data.daily_steps_goal);
       setDailyStepsGoal(
         Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps,
@@ -150,21 +171,82 @@ export default function ProgressScreen() {
       const tw =
         data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
       setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
+
+      const imperial = data.measurement_system === "imperial";
+      const tk = dateKeyFromDate(new Date());
+      const todaySteps = stepsParsed[tk];
+      if (
+        !stepsInputUserEdited.current &&
+        todaySteps != null &&
+        todaySteps > 0
+      ) {
+        setStepsInput(String(Math.round(todaySteps)));
+      }
+
+      if (!weightInputUserEdited.current) {
+        let displayKg: number | null =
+          w != null && Number.isFinite(w) ? w : null;
+        const sorted = Object.entries(wByDay).sort(([a], [b]) =>
+          b.localeCompare(a),
+        );
+        if (sorted[0]?.[1] != null && Number.isFinite(sorted[0][1])) {
+          displayKg = sorted[0][1];
+        }
+        if (displayKg != null && displayKg > 0) {
+          const shown = imperial
+            ? Math.round(displayKg * 2.20462 * 10) / 10
+            : Math.round(displayKg * 10) / 10;
+          setWeightInput(String(shown));
+        }
+      }
+
+      if (
+        !bfInputUserEdited.current &&
+        bf != null &&
+        Number.isFinite(bf) &&
+        bf > 0
+      ) {
+        setBfInput(String(Math.round(bf * 10) / 10));
+      }
     }
     setLoading(false);
   }, [userId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void getHealthBodyLookbackDays().then(setHealthLookbackDays);
+  }, []);
 
-  const latestKg = useMemo(() => {
-    const sorted = Object.entries(weightKgByDay).sort(([a], [b]) =>
-      b.localeCompare(a),
-    );
-    const v = sorted[0]?.[1];
-    return v != null && Number.isFinite(v) ? v : weightKg;
-  }, [weightKgByDay, weightKg]);
+  const refreshFromApple = useCallback(
+    async (days?: number) => {
+      if (!userId || !isHealthSyncAvailable()) return;
+      setHealthRefreshing(true);
+      try {
+        if (days != null) await setHealthBodyLookbackDays(days);
+        await syncHealthDataThrottled(userId, { bypassThrottle: true });
+        const d = await getHealthBodyLookbackDays();
+        setHealthLookbackDays(d);
+        await load();
+      } finally {
+        setHealthRefreshing(false);
+      }
+    },
+    [userId, load],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      void (async () => {
+        if (isHealthSyncAvailable()) await syncHealthDataThrottled(userId);
+        await load();
+      })();
+    }, [userId, load]),
+  );
+
+  const latestKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg),
+    [weightKgByDay, weightKg],
+  );
 
   const persist = useCallback(
     async (patch: Record<string, unknown>) => {
@@ -185,6 +267,7 @@ export default function ProgressScreen() {
     setWeightKgByDay(next);
     setWeightKg(kg);
     setWeightInput("");
+    weightInputUserEdited.current = false;
     await persist({ weight_kg: kg, weight_kg_by_day: next });
   }, [weightInput, weightKgByDay, todayKey, persist, userId, isImperial]);
 
@@ -194,6 +277,7 @@ export default function ProgressScreen() {
     const next = pruneByDay({ ...stepsByDay, [todayKey]: v });
     setStepsByDay(next);
     setStepsInput("");
+    stepsInputUserEdited.current = false;
     await persist({ steps_by_day: next });
   }, [stepsInput, stepsByDay, todayKey, persist, userId]);
 
@@ -202,6 +286,7 @@ export default function ProgressScreen() {
     if (!Number.isFinite(v) || v <= 0 || v > 60 || !userId) return;
     setBodyFatPct(v);
     setBfInput("");
+    bfInputUserEdited.current = false;
     await persist({ body_fat_pct: v });
   }, [bfInput, persist, userId]);
 
@@ -215,42 +300,48 @@ export default function ProgressScreen() {
   }, [weightKgByDay, range, isImperial]);
 
   const weightProjection = useMemo(() => {
-    if (
-      !goalWeightKg ||
-      !latestKg ||
-      weightData.length < 2
-    )
+    if (!goalWeightKg || latestKg == null || weightData.length < 2)
       return undefined;
-    const entries = Object.entries(weightKgByDay)
-      .sort(([a], [b]) => a.localeCompare(b));
+    const filtered = filterByRange(weightKgByDay, range);
+    const entries = Object.entries(filtered).sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
     if (entries.length < 2) return undefined;
+    const firstKey = entries[0][0];
+    const lastKey = entries[entries.length - 1][0];
     const first = entries[0][1];
     const last = entries[entries.length - 1][1];
     const daysBetween = Math.max(
       1,
-      (new Date(entries[entries.length - 1][0]).getTime() -
-        new Date(entries[0][0]).getTime()) /
-        86400000,
+      Math.round(
+        (new Date(`${lastKey}T12:00:00`).getTime() -
+          new Date(`${firstKey}T12:00:00`).getTime()) /
+          86400000,
+      ),
     );
     const dailyRate = (last - first) / daysBetween;
     if (Math.abs(dailyRate) < 0.001) return undefined;
-    const daysToGoal = Math.abs((goalWeightKg - last) / dailyRate);
+    const deltaToGoal = goalWeightKg - last;
+    if (Math.sign(deltaToGoal) !== Math.sign(dailyRate)) return undefined;
+    const daysToGoal = Math.abs(deltaToGoal / dailyRate);
     if (daysToGoal > 365) return undefined;
     const pts: { label: string; value: number }[] = [];
     const weeks = Math.min(12, Math.ceil(daysToGoal / 7));
     for (let w = 1; w <= weeks; w++) {
       const projected = last + dailyRate * w * 7;
-      const d = new Date();
-      d.setDate(d.getDate() + w * 7);
+      const future = new Date();
+      future.setHours(12, 0, 0, 0);
+      future.setDate(future.getDate() + w * 7);
+      const futureKey = dateKeyFromDate(future);
       pts.push({
-        label: formatShortDate(d.toISOString().slice(0, 10)),
+        label: formatShortDate(futureKey),
         value: isImperial
           ? kgToLb(projected)
           : Math.round(projected * 10) / 10,
       });
     }
     return pts;
-  }, [weightKgByDay, goalWeightKg, latestKg, weightData.length, isImperial]);
+  }, [weightKgByDay, goalWeightKg, latestKg, range, weightData.length, isImperial]);
 
   const stepsData = useMemo(() => {
     const filtered = filterByRange(stepsByDay, range);
@@ -268,34 +359,55 @@ export default function ProgressScreen() {
     }));
   }, [waterByDay, range]);
 
-  // Journey / milestone
+  // Journey / milestone (baseline = peak when losing, trough when gaining — uses full history)
   const journey = useMemo(() => {
-    if (!startWeightKg || !goalWeightKg || !latestKg) return null;
-    const totalToLose = Math.abs(startWeightKg - goalWeightKg);
-    if (totalToLose < 0.1) return null;
-    const lost = Math.abs(startWeightKg - latestKg);
-    const pct = Math.min(1, lost / totalToLose);
-    const remaining = Math.max(0, totalToLose - lost);
+    if (!goalWeightKg || latestKg == null) return null;
+    const jp = weightJourneyProgress({
+      goalKg: goalWeightKg,
+      latestKg,
+      weightKgByDay,
+    });
+    if (!jp) return null;
+    const { lostKg, pct, remainingKg, totalKg } = jp;
 
-    const entries = Object.entries(weightKgByDay).sort(([a], [b]) =>
+    const trendMap = filterByRange(weightKgByDay, range);
+    const entries = Object.entries(trendMap).sort(([a], [b]) =>
       a.localeCompare(b),
     );
     let weeksEta: number | null = null;
     if (entries.length >= 2) {
+      const firstKey = entries[0][0];
+      const lastKey = entries[entries.length - 1][0];
       const first = entries[0][1];
       const last = entries[entries.length - 1][1];
       const daysBetween = Math.max(
         1,
-        (new Date(entries[entries.length - 1][0]).getTime() -
-          new Date(entries[0][0]).getTime()) /
-          86400000,
+        Math.round(
+          (new Date(`${lastKey}T12:00:00`).getTime() -
+            new Date(`${firstKey}T12:00:00`).getTime()) /
+            86400000,
+        ),
       );
-      const weeklyRate = Math.abs(((last - first) / daysBetween) * 7);
-      if (weeklyRate > 0.01) weeksEta = Math.round(remaining / weeklyRate);
+      const weeklyRateKg = ((last - first) / daysBetween) * 7;
+      if (
+        Math.abs(weeklyRateKg) > 0.01 &&
+        (goalWeightKg - last) * weeklyRateKg > 0
+      ) {
+        weeksEta = Math.round(remainingKg / Math.abs(weeklyRateKg));
+      }
     }
 
-    return { totalToLose, lost, pct, remaining, weeksEta };
-  }, [startWeightKg, goalWeightKg, latestKg, weightKgByDay]);
+    const losingPhysique = goalWeightKg < latestKg - 0.05;
+
+    return {
+      totalToLose: totalKg,
+      lost: lostKg,
+      pct,
+      remaining: remainingKg,
+      weeksEta,
+      losingPhysique,
+    };
+  }, [goalWeightKg, latestKg, weightKgByDay, range]);
 
   const styles = useMemo(
     () =>
@@ -412,10 +524,10 @@ export default function ProgressScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable onPress={goBack} hitSlop={12}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>PROGRESS</Text>
+          <Text style={styles.headerTitle}>WEIGHT & TRENDS</Text>
         </View>
 
         {/* Time range selector */}
@@ -426,6 +538,60 @@ export default function ProgressScreen() {
           textColor={colors.text}
           secondaryColor={colors.textSecondary}
         />
+
+        {isHealthSyncAvailable() && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Apple Health range</Text>
+            <Text style={styles.muted}>
+              Choose how far back to import weight and steps. &quot;All&quot; reads up to ~11 years (HealthKit cap).
+              Journey &quot;lost&quot; uses roughly the last 18 months of saved weights and trims statistical outliers so one
+              bad reading does not dominate the bar.
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: Spacing.md,
+              }}
+            >
+              {HEALTH_BODY_LOOKBACK_PRESETS.map((p) => (
+                <Pressable
+                  key={p.days}
+                  onPress={() => void refreshFromApple(p.days)}
+                  disabled={healthRefreshing}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor:
+                      healthLookbackDays === p.days ? Accent.primary : colors.border,
+                    backgroundColor:
+                      healthLookbackDays === p.days ? Accent.primary + "18" : colors.card,
+                    opacity: healthRefreshing ? 0.55 : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: "700",
+                      fontSize: 13,
+                      color:
+                        healthLookbackDays === p.days ? Accent.primary : colors.text,
+                    }}
+                  >
+                    {p.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {healthRefreshing ? (
+              <Text style={[styles.muted, { marginTop: Spacing.sm }]}>
+                Syncing from Apple Health…
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {loading ? (
           <Text style={styles.muted}>Loading...</Text>
@@ -452,21 +618,29 @@ export default function ProgressScreen() {
               </View>
 
               {weightData.length >= 2 && (
-                <TrendLine
-                  data={weightData}
-                  projectedData={weightProjection}
-                  goalValue={
-                    goalWeightKg != null
-                      ? isImperial
-                        ? kgToLb(goalWeightKg)
-                        : Math.round(goalWeightKg * 10) / 10
-                      : undefined
-                  }
-                  color={Accent.primary}
-                  labelColor={colors.textTertiary}
-                  trackColor={colors.border}
-                  goalColor={Accent.success}
-                />
+                <>
+                  <Text style={[styles.muted, { marginBottom: 4 }]}>
+                    Tap the chart to see weight on that day.
+                  </Text>
+                  <TrendLine
+                    data={weightData}
+                    projectedData={weightProjection}
+                    goalValue={
+                      goalWeightKg != null
+                        ? isImperial
+                          ? kgToLb(goalWeightKg)
+                          : Math.round(goalWeightKg * 10) / 10
+                        : undefined
+                    }
+                    color={Accent.primary}
+                    labelColor={colors.textTertiary}
+                    trackColor={colors.border}
+                    goalColor={Accent.success}
+                    formatValue={(v) =>
+                      `${Math.round(v * 10) / 10}${isImperial ? " lb" : " kg"}`
+                    }
+                  />
+                </>
               )}
 
               <View style={styles.inputRow}>
@@ -478,7 +652,10 @@ export default function ProgressScreen() {
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="decimal-pad"
                   value={weightInput}
-                  onChangeText={setWeightInput}
+                  onChangeText={(t) => {
+                    weightInputUserEdited.current = true;
+                    setWeightInput(t);
+                  }}
                 />
                 <Pressable
                   style={[styles.btn, { paddingHorizontal: Spacing.xl }]}
@@ -510,13 +687,13 @@ export default function ProgressScreen() {
                 >
                   <Text style={styles.muted}>
                     {isImperial
-                      ? `${Math.round(kgToLb(journey.lost) * 10) / 10} lb lost`
-                      : `${Math.round(journey.lost * 10) / 10} kg lost`}
+                      ? `${Math.round(kgToLb(journey.lost) * 10) / 10} lb ${journey.losingPhysique ? "lost" : "gained"}`
+                      : `${Math.round(journey.lost * 10) / 10} kg ${journey.losingPhysique ? "lost" : "gained"}`}
                   </Text>
                   <Text style={styles.muted}>
                     {isImperial
-                      ? `${Math.round(kgToLb(journey.remaining) * 10) / 10} lb to go`
-                      : `${Math.round(journey.remaining * 10) / 10} kg to go`}
+                      ? `${Math.round(kgToLb(journey.remaining) * 10) / 10} lb to goal`
+                      : `${Math.round(journey.remaining * 10) / 10} kg to goal`}
                   </Text>
                 </View>
 
@@ -610,7 +787,10 @@ export default function ProgressScreen() {
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="number-pad"
                   value={stepsInput}
-                  onChangeText={setStepsInput}
+                  onChangeText={(t) => {
+                    stepsInputUserEdited.current = true;
+                    setStepsInput(t);
+                  }}
                 />
                 <Pressable
                   style={[styles.btn, { paddingHorizontal: Spacing.xl }]}
@@ -649,7 +829,10 @@ export default function ProgressScreen() {
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="decimal-pad"
                   value={bfInput}
-                  onChangeText={setBfInput}
+                  onChangeText={(t) => {
+                    bfInputUserEdited.current = true;
+                    setBfInput(t);
+                  }}
                 />
                 <Pressable
                   style={[styles.btn, { paddingHorizontal: Spacing.xl }]}

@@ -56,7 +56,11 @@ export default function BarcodeScreen() {
   const [corrFat, setCorrFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
 
-  const grams = Math.max(1, parseInt(gramsInput, 10) || 100);
+  const grams = useMemo(() => {
+    const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
+    if (!Number.isFinite(n) || n <= 0) return 100;
+    return Math.min(10_000, Math.round(n * 10) / 10);
+  }, [gramsInput]);
 
   const scaled = useMemo(() => {
     if (!product) return null;
@@ -64,6 +68,12 @@ export default function BarcodeScreen() {
       { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat, fiberG: product.fiberG },
       grams,
     );
+  }, [product, grams]);
+
+  const portionSummary = useMemo(() => {
+    const opts = product?.servingOptions ?? [];
+    const hit = opts.find((o) => Math.abs(o.grams - grams) < 0.51);
+    return hit?.label ?? `${grams} g`;
   }, [product, grams]);
 
   const onBarcode = useCallback(
@@ -102,8 +112,8 @@ export default function BarcodeScreen() {
       id: mealId,
       user_id: userId,
       date_key: dateKey,
-      name: "Snack",
-      recipe_title: product.name,
+      name: "Snacks",
+      recipe_title: `${product.name} (${portionSummary})`,
       time_label: timeLabel,
       calories: Math.min(32767, Math.round(scaled.calories)),
       protein: scaled.protein,
@@ -117,12 +127,12 @@ export default function BarcodeScreen() {
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);
     } else {
-      Alert.alert("Logged", `${product.name} (${grams}g) added to today's tracker.`, [
+      Alert.alert("Logged", `${product.name} (${portionSummary}) added to today's tracker.`, [
         { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
-  }, [scaled, product, userId, grams, router]);
+  }, [scaled, product, userId, grams, portionSummary, router]);
 
   const handleManualLog = useCallback(async () => {
     const cal = Number(manualCalories) || 0;
@@ -138,7 +148,7 @@ export default function BarcodeScreen() {
       id: mealId,
       user_id: userId,
       date_key: dateKey,
-      name: "Snack",
+      name: "Snacks",
       recipe_title: manualName.trim(),
       time_label: timeLabel,
       calories: Math.min(32767, Math.round(cal)),
@@ -271,6 +281,17 @@ export default function BarcodeScreen() {
           textAlign: "center",
         },
         servingUnit: { color: Colors.dark.textSecondary, fontSize: 13 },
+        servingHint: { color: Colors.dark.textTertiary, fontSize: 11, textAlign: "center" as const },
+        presetRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, justifyContent: "center" as const },
+        presetChip: {
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: Radius.sm,
+          borderWidth: 1,
+          borderColor: Accent.primary + "55",
+        },
+        presetChipSelected: { backgroundColor: Accent.primary + "22", borderColor: Accent.primary },
+        presetChipText: { fontSize: 11, fontWeight: "600" as const, color: Accent.primary },
         btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xs },
         logBtn: {
           flex: 2,
@@ -419,18 +440,47 @@ export default function BarcodeScreen() {
               </View>
             </View>
             <View style={styles.servingRow}>
-              <Text style={styles.servingLabel}>Serving:</Text>
+              <Text style={styles.servingLabel}>Amount:</Text>
               <TextInput
                 style={styles.servingInput}
                 value={gramsInput}
                 onChangeText={setGramsInput}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 selectTextOnFocus
                 returnKeyType="done"
                 onSubmitEditing={Keyboard.dismiss}
                 accessibilityLabel="Serving size in grams"
               />
               <Text style={styles.servingUnit}>g</Text>
+            </View>
+            <Text style={styles.servingHint}>Tap a label serving or edit grams.</Text>
+            <View style={styles.presetRow}>
+              {(product.servingOptions ?? []).map((o) => {
+                const selected = Math.abs(o.grams - grams) < 0.51;
+                return (
+                  <Pressable
+                    key={`${o.label}-${o.grams}`}
+                    style={[styles.presetChip, selected && styles.presetChipSelected]}
+                    onPress={() => setGramsInput(String(o.grams))}
+                  >
+                    <Text style={styles.presetChipText}>{o.label}</Text>
+                  </Pressable>
+                );
+              })}
+              {[50, 150, 200]
+                .filter((g) => !(product.servingOptions ?? []).some((o) => Math.abs(o.grams - g) < 0.51))
+                .map((g) => {
+                  const selected = Math.abs(g - grams) < 0.51;
+                  return (
+                    <Pressable
+                      key={`preset-${g}`}
+                      style={[styles.presetChip, selected && styles.presetChipSelected]}
+                      onPress={() => setGramsInput(String(g))}
+                    >
+                      <Text style={styles.presetChipText}>{g} g</Text>
+                    </Pressable>
+                  );
+                })}
             </View>
             <Text style={styles.source}>
               {product.verified ? "✓ Verified" : product.source === "user" ? "Community submitted" : "via Open Food Facts"}
@@ -447,7 +497,7 @@ export default function BarcodeScreen() {
                 ) : (
                   <Ionicons name="add-circle" size={20} color="#fff" />
                 )}
-                <Text style={styles.logBtnText}>{logging ? "Logging…" : "Log to Tracker"}</Text>
+                <Text style={styles.logBtnText}>{logging ? "Logging…" : `Log (${portionSummary})`}</Text>
               </Pressable>
               <Pressable style={styles.secondaryBtn} onPress={resetScan} accessibilityLabel="Scan another barcode">
                 <Text style={styles.secondaryBtnText}>Scan again</Text>
@@ -455,7 +505,7 @@ export default function BarcodeScreen() {
             </View>
             {/* "This is wrong" link */}
             <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.xs }}>
-              <Text style={styles.corrLink}>This is wrong — edit &amp; update</Text>
+              <Text style={styles.corrLink}>This is wrong — edit and update</Text>
             </Pressable>
           </>
         )}

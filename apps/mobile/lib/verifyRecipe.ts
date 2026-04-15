@@ -1,6 +1,13 @@
 import Constants from "expo-constants";
 import { supabase } from "./supabase";
 import { authedFetch } from "./authedFetch";
+import {
+  buildOffServingOptionsFromProduct,
+  pickDefaultServingGrams,
+  type OffServingOption,
+} from "../../../src/lib/openFoodFacts/offServingPortions";
+import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
+import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -71,6 +78,10 @@ export type BarcodeProduct = {
   fat: number;
   fiberG: number;
   servingSizeG: number | null;
+  /** OFF-style presets (label + grams) for scaling per-100g macros. */
+  servingOptions?: OffServingOption[];
+  /** Filled by scanner when confirming (e.g. "4 dumplings"). */
+  portionSummary?: string;
   /** Source of the data */
   source?: "user" | "verified" | "open_food_facts";
   /** Whether this is a verified community entry */
@@ -227,13 +238,14 @@ export async function fetchIngredientsForVerification(
 /** Search USDA foods via the Next.js API. */
 export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
   const base = apiBase();
-  if (!base || !query.trim()) return [];
+  const q = effectiveFoodSearchQuery(query);
+  if (!base || !q.trim()) return [];
 
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 15000);
     const res = await authedFetch(
-      `${base}/api/usda/search?q=${encodeURIComponent(query.trim())}`,
+      `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
@@ -271,12 +283,13 @@ export type OffSearchResult = {
 
 /** Search Open Food Facts by text (real products with barcodes). */
 export async function searchOpenFoodFacts(query: string): Promise<OffSearchResult[]> {
-  if (!query.trim()) return [];
+  const q = effectiveFoodSearchQuery(query);
+  if (!q.trim()) return [];
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url`,
       {
         signal: ac.signal,
         headers: {
@@ -359,9 +372,13 @@ export async function searchFoods(
   query: string,
   onPartial?: (results: UnifiedSearchResult[]) => void,
 ): Promise<UnifiedSearchResult[]> {
+  const t = query.trim();
+  if (!t) return [];
+  const qRank = effectiveFoodSearchQuery(t);
+  if (!qRank.trim()) return [];
   // Run both searches in parallel; deliver partial results as each resolves
-  const usdaP = searchUsda(query);
-  const offP = searchOpenFoodFacts(query);
+  const usdaP = searchUsda(t);
+  const offP = searchOpenFoodFacts(t);
 
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
@@ -372,7 +389,7 @@ export async function searchFoods(
       offP.then((r) => { off = r; return "off" as const; }),
       usdaP.then((r) => { usda = r; return "usda" as const; }),
     ]);
-    onPartial(mergeResults(query, usda, off));
+    onPartial(mergeResults(qRank, usda, off));
     // Now wait for the other
     if (first === "off") usda = await usdaP;
     else off = await offP;
@@ -380,7 +397,7 @@ export async function searchFoods(
     [usda, off] = await Promise.all([usdaP, offP]);
   }
 
-  return mergeResults(query, usda, off);
+  return mergeResults(qRank, usda, off);
 }
 
 /** Convert ALL CAPS or all-lowercase to Title Case */
@@ -533,12 +550,24 @@ export async function lookupBarcode(
     const data = await res.json();
     if (data.status !== 1 || !data.product) return null;
 
-    const p = data.product;
+    const p = data.product as {
+      brands?: string;
+      product_name?: string;
+      product_name_en?: string;
+      generic_name?: string;
+      serving_size?: string;
+      serving_quantity?: string | number;
+      serving_quantity_unit?: string;
+      nutriments?: Record<string, number | undefined>;
+    };
     const n = p.nutriments ?? {};
     const brand = (p.brands ?? "").split(",")[0]?.trim() ?? "";
     const baseName =
       (p.product_name ?? p.product_name_en ?? p.generic_name ?? "").trim() ||
       "Packaged food";
+
+    const servingOptions = buildOffServingOptionsFromProduct(p);
+    const servingSizeG = pickDefaultServingGrams(servingOptions);
 
     return {
       name: [brand, baseName].filter(Boolean).join(" · "),
@@ -547,7 +576,8 @@ export async function lookupBarcode(
       carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
       fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
       fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
-      servingSizeG: n.serving_quantity ?? null,
+      servingSizeG,
+      servingOptions,
       source: "open_food_facts",
       verified: false,
     };
@@ -598,16 +628,7 @@ export function scaleMacros(
   per100g: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG?: number; sodiumMg?: number },
   grams: number,
 ) {
-  const f = grams / 100;
-  return {
-    calories: Math.round(per100g.calories * f),
-    protein: Math.round(per100g.protein * f * 10) / 10,
-    carbs: Math.round(per100g.carbs * f * 10) / 10,
-    fat: Math.round(per100g.fat * f * 10) / 10,
-    fiberG: Math.round((per100g.fiberG ?? 0) * f * 10) / 10,
-    sugarG: Math.round((per100g.sugarG ?? 0) * f * 10) / 10,
-    sodiumMg: Math.round((per100g.sodiumMg ?? 0) * f),
-  };
+  return scaleFromPer100gGrams(per100g, grams);
 }
 
 /** Save verified ingredients back to Supabase and update recipe totals. */

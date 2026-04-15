@@ -3,6 +3,10 @@ import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { ShoppingItem } from "../../types/recipe.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
+import {
+  fetchShoppingListJsonItems,
+  probeAnyShoppingListJsonTable,
+} from "../../lib/supabase/shoppingJsonFallback.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 
@@ -38,9 +42,13 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
     if (!authedUserId) return false;
     const { error } = await supabase.from("shopping_items").select("id").limit(1);
     if (error) {
-      // Fall back to legacy table
-      const { error: legacyError } = await supabase.from("shopping_lists").select("user_id").limit(1);
-      if (!legacyError) { setDbShoppingEnabled(true); return true; }
+      if (looksLikeMissingTableError(error.message ?? "")) {
+        const legacyOk = await probeAnyShoppingListJsonTable(supabase);
+        if (legacyOk) {
+          setDbShoppingEnabled(true);
+          return true;
+        }
+      }
       return false;
     }
     setDbShoppingEnabled(true);
@@ -66,11 +74,9 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
 
       if (error) {
         if (looksLikeMissingTableError(error.message ?? "")) {
-          // Fall back to legacy JSONB table
-          const { data: legacyData, error: legacyError } = await supabase
-            .from("shopping_lists").select("items").eq("user_id", authedUserId).maybeSingle();
-          if (!cancelled && !legacyError && Array.isArray(legacyData?.items)) {
-            setShoppingItems(legacyData.items as ShoppingItem[]);
+          const { items } = await fetchShoppingListJsonItems(supabase, authedUserId);
+          if (!cancelled && Array.isArray(items)) {
+            setShoppingItems(items as ShoppingItem[]);
           }
           return;
         }

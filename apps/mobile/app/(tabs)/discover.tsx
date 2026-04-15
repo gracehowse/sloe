@@ -101,7 +101,11 @@ export default function DiscoverScreen() {
     // Pill filter
     if (filter === "For You") return true;
     if (filter === "Popular") return (r.saves ?? 0) >= 50 || true;
-    if (filter === "Quick") return r.cookTime ? parseInt(r.cookTime) <= 20 : true;
+    if (filter === "Quick") {
+      const cm = r.cookTimeMin;
+      if (cm != null && cm > 0) return cm <= 20;
+      return true;
+    }
     if (filter === "High Protein") return r.protein >= 25;
     if (filter === "Low Carb") return r.carbs <= 30;
     return true;

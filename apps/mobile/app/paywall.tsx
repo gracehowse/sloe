@@ -16,7 +16,9 @@ import type { PurchasesPackage } from "react-native-purchases";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
+  ensurePurchasesUser,
   getOfferings,
+  isPurchasesApiKeyPresent,
   purchasePackage,
   restorePurchases,
   isProEntitled,
@@ -41,10 +43,16 @@ export default function PaywallScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [restoring, setRestoring] = useState(false);
+  const [offeringsReady, setOfferingsReady] = useState(false);
 
   useEffect(() => {
-    void getOfferings().then(setPackages);
-  }, []);
+    void (async () => {
+      await ensurePurchasesUser(userId);
+      const pkgs = await getOfferings();
+      setPackages(pkgs);
+      setOfferingsReady(true);
+    })();
+  }, [userId]);
 
   const annualPkg = packages.find(
     (p) => p.packageType === "ANNUAL" || p.identifier === "$rc_annual",
@@ -53,11 +61,7 @@ export default function PaywallScreen() {
   async function onStartTrial() {
     const pkg = annualPkg ?? packages[0];
     if (!pkg) {
-      Alert.alert(
-        "Subscriptions unavailable",
-        "We couldn't load pricing. You can try again later from Settings.",
-        [{ text: "Continue", onPress: () => router.replace("/notifications-prompt") }],
-      );
+      router.replace("/notifications-prompt");
       return;
     }
     setPurchasing(true);
@@ -128,6 +132,13 @@ export default function PaywallScreen() {
     freeText: { fontSize: 14, fontWeight: "600", color: colors.text },
 
     priceText: { fontSize: 13, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    pricingNote: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 18,
+      marginTop: -Spacing.sm,
+    },
 
     trialBtn: {
       backgroundColor: Accent.success, borderRadius: Radius.md,
@@ -187,6 +198,14 @@ export default function PaywallScreen() {
             ? `7 days free, then ${annualPkg.product.priceString} per year. Cancel anytime. No charge today.`
             : "7 days free trial. Cancel anytime. No charge today."}
         </Text>
+
+        {offeringsReady && packages.length === 0 && (
+          <Text style={styles.pricingNote}>
+            {isPurchasesApiKeyPresent()
+              ? "We couldn't load subscription offers. You can still use the app on the free plan, or try again later from Settings."
+              : "In-app purchases are not configured in this build. Continue on the free plan, or use a build with the store keys set."}
+          </Text>
+        )}
 
         <Pressable
           style={[styles.trialBtn, purchasing && { opacity: 0.6 }]}

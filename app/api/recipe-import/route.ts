@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { parseRecipeFromHtml } from "@/lib/recipe-import/parseRecipeFromHtml";
+import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
+import { parseRecipeFromHtml, siteNameFromUrl } from "@/lib/recipe-import/parseRecipeFromHtml";
 import {
   detectSocialPlatform,
   fetchSocialPostMeta,
   extractRecipeFromCaption,
+  socialImportSourceName,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
@@ -202,6 +204,13 @@ export async function POST(req: Request) {
         console.error("[recipe-import] verifyIngredients failed:", e instanceof Error ? e.message : e);
       }
 
+      const mealType = classifyMealType({
+        title: recipe.title ?? meta.title ?? "",
+        ingredients: recipe.ingredients,
+        caloriesPerServing: nutrition?.perServing.calories ?? null,
+        caption: captionText,
+      });
+
       return NextResponse.json({
         ok: true,
         source: socialPlatform,
@@ -211,9 +220,12 @@ export async function POST(req: Request) {
           ingredients: recipe.ingredients,
           instructions: recipe.steps,
           servings,
-          prepTimeMin: null,
-          cookTimeMin: null,
+          prepTimeMin: recipe.prepTimeMin ?? null,
+          cookTimeMin: recipe.cookTimeMin ?? null,
           imageUrl: meta.imageUrl,
+          sourceUrl: trimmed,
+          sourceName: socialImportSourceName(socialPlatform, trimmed, meta.authorDisplay ?? null, captionText),
+          mealType,
           calories: nutrition?.perServing.calories ?? 0,
           protein: nutrition?.perServing.protein ?? 0,
           carbs: nutrition?.perServing.carbs ?? 0,
@@ -342,7 +354,23 @@ export async function POST(req: Request) {
           console.error("[recipe-import] nutrition verification failed:", e instanceof Error ? e.message : e);
         }
       }
-      return NextResponse.json({ ok: true, recipe: parsed });
+
+      const mealType = classifyMealType({
+        title: parsed.title,
+        ingredients: ingList,
+        caloriesPerServing: parsed.calories ?? null,
+        caption: [parsed.description, parsed.title].filter(Boolean).join("\n\n"),
+      });
+
+      const resolvedSourceName =
+        typeof parsed.sourceName === "string" && parsed.sourceName.trim().length > 0
+          ? parsed.sourceName.trim()
+          : siteNameFromUrl(currentUrl);
+
+      return NextResponse.json({
+        ok: true,
+        recipe: { ...parsed, mealType, sourceName: resolvedSourceName },
+      });
     }
     if (!res.ok) {
       return NextResponse.json(

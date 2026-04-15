@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -29,7 +29,7 @@ const SOURCES = [
 
 export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/more");
   const colors = useThemeColors();
 
   const styles = useMemo(
@@ -74,7 +74,7 @@ export default function NutritionSourcesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={goBack} hitSlop={12}>
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
         <Text style={styles.topTitle}>INFO</Text>

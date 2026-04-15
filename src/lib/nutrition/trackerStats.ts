@@ -1,4 +1,5 @@
 import type { LoggedMeal } from "../../types/recipe";
+import { sumDayFiberFromMeals } from "./microNutrientDisplay";
 
 export function dateKeyFromDate(d: Date): string {
   const y = d.getFullYear();
@@ -12,7 +13,7 @@ function sumCalories(meals: LoggedMeal[]): number {
 }
 
 function sumFiber(meals: LoggedMeal[]): number {
-  return meals.reduce((a, m) => a + (m.fiberG ?? 0), 0);
+  return sumDayFiberFromMeals(meals);
 }
 
 function sumWaterFromMeals(meals: LoggedMeal[]): number {

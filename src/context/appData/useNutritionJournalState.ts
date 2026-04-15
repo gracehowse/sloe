@@ -5,6 +5,10 @@ import type { LoggedMeal } from "../../types/recipe.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
+import {
+  fetchNutritionJournalByDay,
+  probeAnyNutritionJournalJsonTable,
+} from "../../lib/supabase/phase1LegacyJsonb.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
@@ -23,10 +27,22 @@ type NutritionEntryRow = {
   water_ml: number | null;
   portion_multiplier: number | null;
   source: string | null;
+  nutrition_micros?: Record<string, unknown> | null;
 };
+
+function parseRowMicros(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
+  if (raw == null || typeof raw !== "object") return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n) && n !== 0) out[k] = n;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
   const src = row.source;
+  const micros = parseRowMicros(row.nutrition_micros);
   return {
     id: row.id,
     name: row.name,
@@ -39,6 +55,7 @@ function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
     fiberG: row.fiber_g ?? undefined,
     waterMl: row.water_ml ?? undefined,
     portionMultiplier: row.portion_multiplier ?? undefined,
+    ...(micros ? { micros } : {}),
     ...(typeof src === "string" && src.trim() !== "" ? { source: src.trim() } : {}),
   };
 }
@@ -57,11 +74,12 @@ export function useNutritionJournalState(opts: {
     if (!authedUserId) return false;
     const { error } = await supabase.from("nutrition_entries").select("id").limit(1);
     if (error) {
-      // Fall back to legacy table
-      const { error: legacyError } = await supabase.from("nutrition_journals").select("user_id").limit(1);
-      if (!legacyError) {
-        setDbNutritionEnabled(true);
-        return true;
+      if (looksLikeMissingTableError(error.message ?? "")) {
+        const legacyOk = await probeAnyNutritionJournalJsonTable(supabase);
+        if (legacyOk) {
+          setDbNutritionEnabled(true);
+          return true;
+        }
       }
       return false;
     }
@@ -81,7 +99,7 @@ export function useNutritionJournalState(opts: {
       // Try new relational table first
       const { data, error } = await supabase
         .from("nutrition_entries")
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros")
         .eq("user_id", authedUserId)
         .order("created_at", { ascending: true });
 
@@ -89,14 +107,9 @@ export function useNutritionJournalState(opts: {
 
       if (error) {
         if (looksLikeMissingTableError(error.message ?? "")) {
-          // Fall back to legacy JSONB table
-          const { data: legacyData, error: legacyError } = await supabase
-            .from("nutrition_journals")
-            .select("by_day")
-            .eq("user_id", authedUserId)
-            .maybeSingle();
-          if (!cancelled && !legacyError && legacyData?.by_day && typeof legacyData.by_day === "object") {
-            setNutritionByDay(legacyData.by_day as Record<string, LoggedMeal[]>);
+          const byDay = await fetchNutritionJournalByDay(supabase, authedUserId);
+          if (!cancelled && byDay) {
+            setNutritionByDay(byDay as Record<string, LoggedMeal[]>);
           }
           return;
         }
@@ -146,6 +159,7 @@ export function useNutritionJournalState(opts: {
           fiber_g: meal.fiberG ?? null,
           water_ml: meal.waterMl ?? null,
           portion_multiplier: meal.portionMultiplier ?? 1,
+          nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
           source: meal.source ?? null,
         })
         .then(({ error }) => {

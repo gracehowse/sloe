@@ -4,13 +4,13 @@ export type UserTier = "free" | "base" | "pro";
 
 export type LibraryEntryKind = "saved" | "created" | "imported";
 
-export type PlannerMealSlot = "Breakfast" | "Lunch" | "Dinner" | "Snack";
+export type PlannerMealSlot = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 
 export const PLANNER_MEAL_SLOT_LABELS: readonly PlannerMealSlot[] = [
   "Breakfast",
   "Lunch",
   "Dinner",
-  "Snack",
+  "Snacks",
 ] as const;
 
 export interface RecipeCard {
@@ -42,6 +42,8 @@ export interface RecipeCard {
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */
   cookTime?: string;
+  prepTimeMin?: number | null;
+  cookTimeMin?: number | null;
   /** Macro fit indicator for discover feed. */
   fit?: "great" | "good" | "warn";
   /** Source platform label for discover feed (e.g. "TikTok"). */

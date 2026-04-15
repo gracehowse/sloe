@@ -20,14 +20,14 @@ describe("generateSmartPlan", () => {
     expect(plan).toHaveLength(3);
   });
 
-  it("each day has meals for all slots", () => {
+  it("each day fills every slot when the pool has a match per slot", () => {
     const plan = generateSmartPlan({
       recipes: [breakfast, lunch, dinner1, snack],
       targets,
       days: 1,
     });
     expect(plan[0].meals).toHaveLength(4);
-    expect(plan[0].meals.map((m) => m.name)).toEqual(["Breakfast", "Lunch", "Snack", "Dinner"]);
+    expect(plan[0].meals.map((m) => m.name)).toEqual(["Breakfast", "Lunch", "Snacks", "Dinner"]);
   });
 
   it("respects meal type tags — breakfast only in Breakfast slot", () => {
@@ -41,7 +41,7 @@ describe("generateSmartPlan", () => {
     expect(breakfastMeal?.recipeTitle).toBe("Oats");
   });
 
-  it("configurable slots — can exclude Snack", () => {
+  it("configurable slots — can exclude Snacks", () => {
     const plan = generateSmartPlan({
       recipes: [breakfast, lunch, dinner1, snack],
       targets,
@@ -99,7 +99,8 @@ describe("generateSmartPlan", () => {
   it("handles empty recipe pool gracefully", () => {
     const plan = generateSmartPlan({ recipes: [], targets, days: 1 });
     expect(plan).toHaveLength(1);
-    expect(plan[0].meals.every((m) => m.isPlaceholder)).toBe(true);
+    expect(plan[0].meals).toHaveLength(0);
+    expect(plan[0].totals.calories).toBe(0);
   });
 
   it("untagged recipes can fill any slot", () => {
@@ -112,6 +113,13 @@ describe("generateSmartPlan", () => {
     for (const meal of plan[0].meals) {
       expect(meal.recipeTitle).toBe("Mystery");
     }
+  });
+
+  it("fills only slots that have matching recipes when the pool is sparse", () => {
+    const plan = generateSmartPlan({ recipes: [breakfast], targets, days: 1 });
+    expect(plan[0].meals).toHaveLength(1);
+    expect(plan[0].meals[0]?.name).toBe("Breakfast");
+    expect(plan[0].meals[0]?.recipeTitle).toBe("Oats");
   });
 
   it("same seed produces same plan (deterministic)", () => {

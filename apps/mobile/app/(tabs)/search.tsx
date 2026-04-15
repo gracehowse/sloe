@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
 import Constants from "expo-constants";
 import { authedFetch } from "@/lib/authedFetch";
+import { effectiveFoodSearchQuery } from "../../../../src/lib/nutrition/foodSearchQuery";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -28,7 +29,13 @@ export default function SearchScreen() {
     setBusy(true);
     setErr(null);
     try {
-      const url = `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}`;
+      const searchQ = effectiveFoodSearchQuery(q.trim());
+      if (!searchQ) {
+        setErr("Enter a food name.");
+        setBusy(false);
+        return;
+      }
+      const url = `${base}/api/usda/search?q=${encodeURIComponent(searchQ)}`;
       const res = await authedFetch(url);
       const data = (await res.json()) as { hits?: Hit[]; ok?: boolean };
       if (!res.ok) {

@@ -53,15 +53,65 @@ export interface ParsedRecipeDraft {
   fat?: number;
 }
 
+/**
+ * Parse schema.org / ISO-8601 duration strings to total minutes.
+ * Handles `PT15M`, `PT1H30M`, `P1DT2H30M` (day + time), and plain `P2D`.
+ */
 function parseIsoDurationToMinutes(iso: string | null | undefined): number | null {
   if (!iso || typeof iso !== "string") return null;
-  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
-  if (!m) return null;
-  const h = m[1] ? Number.parseInt(m[1], 10) : 0;
-  const min = m[2] ? Number.parseInt(m[2], 10) : 0;
-  const s = m[3] ? Number.parseInt(m[3], 10) : 0;
-  const total = h * 60 + min + Math.round(s / 60);
-  return total > 0 ? total : null;
+  const s = iso.trim();
+  if (!s) return null;
+
+  if (!/^P/i.test(s)) {
+    const bareMin = s.match(/^(\d+)\s*(?:min|minutes?)\s*$/i);
+    if (bareMin) {
+      const n = Number.parseInt(bareMin[1], 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return null;
+  }
+
+  let total = 0;
+  const dayPart = s.match(/^P(\d+)D/i);
+  if (dayPart) total += Number.parseInt(dayPart[1], 10) * 24 * 60;
+
+  const tIdx = s.indexOf("T");
+  if (tIdx >= 0) {
+    const afterT = s.slice(tIdx + 1);
+    const timeMatch = afterT.match(/^(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+    if (timeMatch) {
+      const h = timeMatch[1] ? Number.parseInt(timeMatch[1], 10) : 0;
+      const min = timeMatch[2] ? Number.parseInt(timeMatch[2], 10) : 0;
+      const sec = timeMatch[3] ? Number.parseInt(timeMatch[3], 10) : 0;
+      total += h * 60 + min + Math.round(sec / 60);
+    }
+  }
+
+  if (total > 0) return total;
+
+  if (/^PT/i.test(s)) {
+    const m = s.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+    if (m) {
+      const h = m[1] ? Number.parseInt(m[1], 10) : 0;
+      const min = m[2] ? Number.parseInt(m[2], 10) : 0;
+      const sec = m[3] ? Number.parseInt(m[3], 10) : 0;
+      const sub = h * 60 + min + Math.round(sec / 60);
+      if (sub > 0) return sub;
+    }
+  }
+
+  return null;
+}
+
+function durationFieldToMinutes(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return Math.round(raw);
+  if (typeof raw === "string") return parseIsoDurationToMinutes(raw);
+  if (typeof raw === "object" && raw !== null) {
+    const o = raw as Record<string, unknown>;
+    if (typeof o.duration === "string") return parseIsoDurationToMinutes(o.duration);
+  }
+  return null;
 }
 
 function asStringArrayRecipeYield(yieldVal: unknown): number | null {
@@ -316,8 +366,22 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
       }
 
       const servings = asStringArrayRecipeYield(r.recipeYield);
-      const prepTimeMin = parseIsoDurationToMinutes(r.prepTime as string | undefined);
-      const cookTimeMin = parseIsoDurationToMinutes(r.cookTime as string | undefined);
+      const prepTimeMin =
+        durationFieldToMinutes(r.prepTime) ??
+        durationFieldToMinutes((r as Record<string, unknown>).preparationTime) ??
+        null;
+      const cookFromCook = durationFieldToMinutes(r.cookTime);
+      const cookFromPerform = durationFieldToMinutes((r as Record<string, unknown>).performTime);
+      const totalMin = durationFieldToMinutes(r.totalTime);
+      let cookTimeMin = cookFromCook ?? cookFromPerform ?? null;
+      if (cookTimeMin == null && totalMin != null) {
+        if (prepTimeMin != null && totalMin >= prepTimeMin) {
+          const diff = totalMin - prepTimeMin;
+          cookTimeMin = diff > 0 ? diff : totalMin;
+        } else {
+          cookTimeMin = totalMin;
+        }
+      }
       const imageUrl = firstImageUrl(r.image);
       const sourceName = extractAuthorName(r.author) ?? extractPublisherName(r.publisher);
       const siteNutrition = extractNutrition(r.nutrition);

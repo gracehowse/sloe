@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
 import { Loader2 } from "lucide-react";
 import { Icons } from "./ui/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog.tsx";
@@ -107,9 +108,10 @@ function scaleMacros(per100g: MacrosPer100g, grams: number): MacrosPer100g {
 // ── Search API calls ────────────────────────────────────────────────
 
 async function searchUsda(query: string): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
+  const q = effectiveFoodSearchQuery(query);
+  if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(query.trim())}`);
+    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}`);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return json.hits.map((h: any) => ({
@@ -125,10 +127,11 @@ async function searchUsda(query: string): Promise<SearchResult[]> {
 }
 
 async function searchOff(query: string): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
+  const q = effectiveFoodSearchQuery(query);
+  if (!q.trim()) return [];
   try {
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments`,
     );
     const data = await res.json();
     if (!Array.isArray(data.products)) return [];
@@ -279,7 +282,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       if (initialQuery.trim()) {
         setLoading(true);
         Promise.all([searchUsda(initialQuery), searchOff(initialQuery)]).then(([usda, off]) => {
-          const merged = mergeAndDedup(initialQuery, usda, off);
+          const rankQ = effectiveFoodSearchQuery(initialQuery);
+          const merged = mergeAndDedup(rankQ, usda, off);
           setResults(merged);
           setLoading(false);
           backfillMissingMacros(merged);
@@ -296,8 +300,9 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     if (!q) { setResults([]); return; }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
+      const rankQ = effectiveFoodSearchQuery(q);
       const [usda, off] = await Promise.all([searchUsda(q), searchOff(q)]);
-      const merged = mergeAndDedup(q, usda, off);
+      const merged = mergeAndDedup(rankQ, usda, off);
       setResults(merged);
       setLoading(false);
       backfillMissingMacros(merged);

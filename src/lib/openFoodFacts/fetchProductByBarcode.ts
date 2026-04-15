@@ -1,3 +1,11 @@
+import {
+  buildOffServingOptionsFromProduct,
+  pickDefaultServingGrams,
+  type OffServingOption,
+} from "./offServingPortions.ts";
+
+export type { OffServingOption };
+
 export interface OffProductMacros {
   name: string;
   /** Nutrients per 100g (approximate; user can scale in the diary). */
@@ -11,19 +19,8 @@ export interface OffProductMacros {
   servingLabel: string;
   /** If OFF provides a serving size like "50 g", parse to grams. */
   servingSizeG?: number;
-}
-
-function parseServingSizeToGrams(raw: string | undefined): number | null {
-  if (!raw) return null;
-  const t = raw.trim().toLowerCase();
-  const m = t.match(/(\d+(?:\.\d+)?)\s*(g|gram|grams|ml)\b/);
-  if (!m) return null;
-  const n = Number.parseFloat(m[1]!);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const unit = m[2]!;
-  // Treat ml as grams for most beverages (good-enough MVP).
-  if (unit === "ml") return n;
-  return n;
+  /** Label + gram weight presets (e.g. "4 dumplings", "1 dumpling (~20 g)", "100 g"). */
+  servingOptions: OffServingOption[];
 }
 
 export async function fetchProductByBarcode(code: string): Promise<
@@ -51,6 +48,8 @@ export async function fetchProductByBarcode(code: string): Promise<
         brands?: string;
         quantity?: string;
         serving_size?: string;
+        serving_quantity?: string | number;
+        serving_quantity_unit?: string;
         nutriments?: Record<string, number | undefined>;
       };
     };
@@ -72,7 +71,9 @@ export async function fetchProductByBarcode(code: string): Promise<
     const fiberG = Math.round(n.fiber_100g ?? n.fiber ?? 0);
     const sugarG = Math.round((n["sugars_100g"] ?? n.sugars ?? 0) * 10) / 10;
     const sodiumMg = Math.round((n.sodium_100g ?? n.sodium ?? 0) * 1000);
-    const servingSizeG = parseServingSizeToGrams(p.serving_size);
+    const servingOptions = buildOffServingOptionsFromProduct(p);
+    const servingSizeG = pickDefaultServingGrams(servingOptions);
+    const rawServing = (p.serving_size ?? "").trim();
     return {
       ok: true,
       product: {
@@ -84,8 +85,9 @@ export async function fetchProductByBarcode(code: string): Promise<
         fiberG,
         sugarG,
         sodiumMg,
-        servingLabel: servingSizeG ? `per 100g (serving: ${p.serving_size})` : "per 100g (approximate)",
-        servingSizeG: servingSizeG ?? undefined,
+        servingLabel: rawServing ? `per 100 g (label: ${rawServing})` : "per 100 g (approximate)",
+        servingSizeG,
+        servingOptions,
       },
     };
   } catch (e) {

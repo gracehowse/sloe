@@ -26,26 +26,43 @@ import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { projectWeight } from "../../lib/weightProjection.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
-import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
+import {
+  fetchProductByBarcode,
+  type OffProductMacros,
+} from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
+import { scaleFromPer100gGrams } from "../../lib/openFoodFacts/scaleFromPer100g.ts";
 import {
   computeLoggingStreak,
   computeWeekFiberWaterHits,
 } from "../../lib/nutrition/trackerStats.ts";
+import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
+import {
+  normalizeWeekSummaryMode,
+  weekSummaryDateKeys,
+  weekSummaryHeading,
+} from "../../lib/nutrition/weekSummaryWindow.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
 import NutritionSourceBadge from "../../components/NutritionSourceBadge.tsx";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
+  isMealPlanPlaceholderLikeTitle,
   scaledMacro,
 } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import { distributeMealBudget } from "../../lib/nutrition/mealBudget.ts";
+import {
+  buildDayNutrientDetailRows,
+  mealContributedFiberG,
+  sumMicrosFromLoggedMeals,
+} from "../../lib/nutrition/microNutrientDisplay.ts";
+import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
 
 const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 
-const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack", "Planned"];
+const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks", "Planned"];
 
 type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string };
 type UsdaFoodDetails = {
@@ -89,6 +106,11 @@ function todayKey(): string {
   return `${y}-${mo}-${da}`;
 }
 
+function barcodePortionLabel(product: OffProductMacros, grams: number): string {
+  const hit = product.servingOptions.find((o) => Math.abs(o.grams - grams) < 0.51);
+  return hit?.label ?? `${Math.round(grams * 10) / 10} g`;
+}
+
 function loadRecentFoods(): string[] {
   try {
     const raw = localStorage.getItem(RECENT_BARCODE_KEY);
@@ -118,13 +140,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
+    activityBurnKcal,
     activityBurnForSelectedDay,
+    activityBurnByDay,
     setActivityBurnForSelectedDay,
     addWaterMlForSelectedDay,
     extraWaterMlForSelectedDay,
+    workoutsByDay,
+    basalBurnByDay,
     profileMeasurementSystem,
     nutritionByDay,
     extraWaterByDay,
+    notificationPrefs,
   } = useAppData();
 
   const useImperialWater = profileMeasurementSystem === "imperial";
@@ -159,6 +186,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState("");
   const [barcodeBusy, setBarcodeBusy] = useState(false);
+  const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
+  const [barcodeGramsStr, setBarcodeGramsStr] = useState("100");
+  const barcodeGramsParsed = useMemo(() => {
+    const n = Number.parseFloat(barcodeGramsStr.replace(",", ".").trim());
+    if (!Number.isFinite(n) || n <= 0) return 100;
+    return Math.min(10_000, Math.round(n * 10) / 10);
+  }, [barcodeGramsStr]);
   const [foodQuery, setFoodQuery] = useState("");
   const [foodHits, setFoodHits] = useState<UsdaHit[] | null>(null);
   const [foodLoading, setFoodLoading] = useState(false);
@@ -337,6 +371,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   const selectedDate = useMemo(() => parseDateKey(selectedDateKey), [selectedDateKey]);
 
+  const weekSummaryMode = normalizeWeekSummaryMode(notificationPrefs.weekSummaryMode);
+  const trackerWeekSummaryKeys = useMemo(
+    () => weekSummaryDateKeys(weekSummaryMode, selectedDate, "monday"),
+    [weekSummaryMode, selectedDate],
+  );
+
   const totals = (() => {
     const raw = mealsForSelectedDate.reduce(
       (acc, meal) => ({
@@ -344,7 +384,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         protein: acc.protein + meal.protein,
         carbs: acc.carbs + meal.carbs,
         fat: acc.fat + meal.fat,
-        fiber: acc.fiber + (meal.fiberG ?? 0),
+        fiber: acc.fiber + mealContributedFiberG(meal),
         waterMl: acc.waterMl + (meal.waterMl ?? 0),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, waterMl: 0 },
@@ -359,10 +399,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     };
   })();
 
+  const dayNutrientDetailRows = useMemo(() => {
+    const microSum = sumMicrosFromLoggedMeals(mealsForSelectedDate);
+    return buildDayNutrientDetailRows(totals.fiber, microSum);
+  }, [mealsForSelectedDate, totals.fiber]);
+
   const mealsGrouped = useMemo(() => {
     const map = new Map<string, typeof mealsForSelectedDate>();
     for (const m of mealsForSelectedDate) {
-      const k = m.name?.trim() || "Other";
+      const k = normalizeJournalSlotName(m.name?.trim() || "Other") || "Other";
       const arr = map.get(k);
       if (arr) arr.push(m);
       else map.set(k, [m]);
@@ -383,6 +428,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const activityAdjustment = preferActivityAdjustedCalories ? activityBurnForSelectedDay : 0;
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
+
+  // Burn data for the selected day
+  const dayWorkouts = workoutsByDay[selectedDateKey] ?? [];
+  const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
+  const totalBurnKcal = activityBurnForSelectedDay + basalBurnKcal;
+  const hasBurnData = activityBurnForSelectedDay > 0 || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
   const getProgress = (current: number, target: number) => {
     return Math.min((current / target) * 100, 100);
@@ -544,6 +595,23 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         <MacroCard macro="fat" value={totals.fat} target={targets.fat} />
       </div>
 
+      {dayNutrientDetailRows.length > 0 ? (
+        <div className="mb-8">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Nutrients</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {dayNutrientDetailRows.map((row) => (
+              <div
+                key={row.key}
+                className="rounded-xl border border-border bg-card px-3 py-2.5"
+              >
+                <p className="text-[10px] text-muted-foreground">{row.label}</p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">{row.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* 4. Quick Log Strip: 4 action chips in a row */}
       <div className="flex gap-2 mb-8">
         {/* Photo chip */}
@@ -623,7 +691,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               if (name === "Breakfast") return { icon: Icons.breakfast, tone: "warning" as const };
               if (name === "Lunch") return { icon: Icons.lunch, tone: "success" as const };
               if (name === "Dinner") return { icon: Icons.dinner, tone: "primary" as const };
-              if (name === "Snack") return { icon: Icons.snack, tone: "fat" as const };
+              if (name === "Snacks") return { icon: Icons.snack, tone: "fat" as const };
               return { icon: Icons.add, tone: "primary" as const };
             };
 
@@ -697,19 +765,27 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           {mealsForSelectedDate.length === 0 && (
             <div className="py-8">
               {/* Quick-log from plan if plan exists for day 1 */}
-              {mealPlan && mealPlan.length > 0 && mealPlan[0]!.meals.filter((m) => !m.isPlaceholder).length > 0 ? (
+              {mealPlan &&
+              mealPlan.length > 0 &&
+              mealPlan[0]!.meals.filter(
+                (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+              ).length > 0 ? (
                 <div className="mb-6">
                   <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Log from today&apos;s plan</p>
                   <div className="space-y-2">
-                    {mealPlan[0]!.meals.filter((m) => !m.isPlaceholder).map((meal, idx) => (
+                    {mealPlan[0]!.meals
+                      .filter(
+                        (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+                      )
+                      .map((meal, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => {
                           addLoggedMealForDate(selectedDateKey, {
-                            name: meal.name,
+                            name: normalizeJournalSlotName(meal.name),
                             recipeTitle: meal.recipeTitle,
-                            time: meal.name,
+                            time: normalizeJournalSlotName(meal.name),
                             calories: meal.calories,
                             protein: meal.protein,
                             carbs: meal.carbs,
@@ -788,6 +864,106 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               {streakDays === 1 ? "Great start! Keep the streak alive." : "Consistently on target. Keep it going."}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Calorie Burn Bonus */}
+      {hasBurnData && (
+        <div className="rounded-xl border border-border bg-card p-4 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Icons.calories className="h-5 w-5 text-warning" />
+            <h3 className="text-sm font-bold text-foreground">Calorie Burn Bonus</h3>
+          </div>
+
+          {/* Summary row */}
+          <div className="grid grid-cols-3 gap-2 text-center mb-3">
+            <div>
+              <p className="text-lg font-extrabold text-foreground tabular-nums">{totalBurnKcal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground">Total burn</p>
+            </div>
+            <div className="border-x border-border">
+              <p className="text-lg font-extrabold text-foreground tabular-nums">{effectiveCalorieTarget > 0 ? effectiveCalorieTarget.toLocaleString() : "—"}</p>
+              <p className="text-[10px] text-muted-foreground">Target intake</p>
+            </div>
+            <div>
+              {(() => {
+                const deficit = totalBurnKcal - totals.calories;
+                const isDeficit = deficit >= 0;
+                return (
+                  <>
+                    <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(deficit).toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground">{isDeficit ? "Under" : "Over"}</p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Burn breakdown */}
+          <div className="space-y-1 mb-3 text-xs">
+            {basalBurnKcal > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Resting energy</span>
+                <span className="font-semibold text-foreground tabular-nums">{basalBurnKcal.toLocaleString()} kcal</span>
+              </div>
+            )}
+            {activityBurnForSelectedDay > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Active energy</span>
+                <span className="font-semibold text-foreground tabular-nums">{activityBurnForSelectedDay.toLocaleString()} kcal</span>
+              </div>
+            )}
+          </div>
+
+          {/* Workouts */}
+          {dayWorkouts.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-foreground">Workouts</p>
+              {dayWorkouts.map((w, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs py-0.5">
+                  <Icons.dumbbell className="h-4 w-4 text-primary" />
+                  <span className="flex-1 text-foreground">{w.type}</span>
+                  {w.minutes > 0 && <span className="text-muted-foreground tabular-nums">{w.minutes} min</span>}
+                  {w.calories > 0 && <span className="font-semibold text-warning tabular-nums">{w.calories} kcal</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Weekly deficit summary */}
+          {(() => {
+            let weekBurn = 0;
+            let weekConsumed = 0;
+            for (const dk of trackerWeekSummaryKeys) {
+              const activeKcal =
+                activityBurnByDay[dk] ?? (dk === selectedDateKey ? activityBurnKcal : 0);
+              weekBurn += activeKcal + (basalBurnByDay[dk] ?? 0);
+              const dayMeals = nutritionByDay[dk] ?? [];
+              weekConsumed += dayMeals.reduce((s, m) => s + Math.max(0, m.calories ?? 0), 0);
+            }
+            if (weekBurn === 0) return null;
+            const weekDeficit = weekBurn - weekConsumed;
+            const dailyAvgDeficit = Math.round(weekDeficit / 7);
+            const weeklyKgRate = (Math.abs(weekDeficit) / 3500) * 0.4536;
+            const isDeficit = weekDeficit >= 0;
+            return (
+              <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
+                <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Avg daily {isDeficit ? "deficit" : "surplus"}</span>
+                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Weekly {isDeficit ? "deficit" : "surplus"}</span>
+                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Projected weekly {isDeficit ? "loss" : "gain"}</span>
+                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{weeklyKgRate.toFixed(2)} kg</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -914,7 +1090,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                 onChange={(e) => setMealSlot(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
               >
-                {["Breakfast", "Lunch", "Dinner", "Snack"].map((s) => (
+                {["Breakfast", "Lunch", "Dinner", "Snacks"].map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -988,7 +1164,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     variant="outline"
                     disabled={foodLoading}
                     onClick={() => {
-                      const q = foodQuery.trim();
+                      const q = effectiveFoodSearchQuery(foodQuery.trim());
                       if (!q) return;
                       setFoodLoading(true);
                       setFoodSelected(null);
@@ -1169,101 +1345,221 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </DialogContent>
       </Dialog>
 
-      <Dialog open={barcodeOpen} onOpenChange={setBarcodeOpen}>
+      <Dialog
+        open={barcodeOpen}
+        onOpenChange={(open) => {
+          setBarcodeOpen(open);
+          if (!open) {
+            setBarcodePreview(null);
+            setBarcodeGramsStr("100");
+            setBarcodeValue("");
+          }
+        }}
+      >
         <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Barcode (Open Food Facts)</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Enter a packaged food barcode. We'll pull label-backed macros per 100 g — you can edit the serving size after logging.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <label className="grid gap-1">
-              <span className="text-sm font-medium text-foreground">Barcode</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={barcodeValue}
-                onChange={(e) => setBarcodeValue(e.target.value.replace(/\D/g, ""))}
-                placeholder="8–13 digits"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-card"
-              />
-            </label>
-            {recentFoods.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-muted-foreground w-full">Recent:</span>
-                {recentFoods.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/70"
-                    onClick={() => {
-                      addLoggedMeal({
-                        name: "Snack",
-                        recipeTitle: n,
-                        time: timeLabel,
-                        calories: 0,
-                        protein: 0,
-                        carbs: 0,
-                        fat: 0,
-                        source: "Manual",
-                      });
-                      setBarcodeOpen(false);
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
+          {!barcodePreview ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Barcode (Open Food Facts)</DialogTitle>
+                <DialogDescription className="text-muted-foreground">
+                  Enter a barcode. We load label macros per 100 g, then you pick a serving (like 4 dumplings) or type grams.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3 py-2">
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium text-foreground">Barcode</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={barcodeValue}
+                    onChange={(e) => setBarcodeValue(e.target.value.replace(/\D/g, ""))}
+                    placeholder="8–13 digits"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card"
+                  />
+                </label>
+                {recentFoods.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs text-muted-foreground w-full">Recent:</span>
+                    {recentFoods.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/70"
+                        onClick={() => {
+                          addLoggedMeal({
+                            name: "Snacks",
+                            recipeTitle: n,
+                            time: timeLabel,
+                            calories: 0,
+                            protein: 0,
+                            carbs: 0,
+                            fat: 0,
+                            source: "Manual",
+                          });
+                          setBarcodeOpen(false);
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setBarcodeOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={barcodeBusy}
-              onClick={async () => {
-                setBarcodeBusy(true);
-                try {
-                  const result = await fetchProductByBarcode(barcodeValue);
-                  if (!result.ok) {
-                    toast.error(
-                      result.error === "not_found"
-                        ? "Product not found"
-                        : result.error === "invalid"
-                          ? "Enter a valid barcode"
-                          : "Could not reach Open Food Facts",
-                    );
-                    return;
-                  }
-                  const p = result.product;
-                  pushRecentFood(p.name);
-                  setRecentFoods(loadRecentFoods());
-                  addLoggedMeal({
-                    name: "Snack",
-                    recipeTitle: `${p.name} (${p.servingLabel})`,
-                    time: timeLabel,
-                    calories: p.calories,
-                    protein: p.protein,
-                    carbs: p.carbs,
-                    fat: p.fat,
-                    source: "Open Food Facts",
-                    ...(p.fiberG > 0 ? { fiberG: p.fiberG } : {}),
-                  });
-                  setBarcodeValue("");
-                  setBarcodeOpen(false);
-                  toast.success("Logged from barcode");
-                  track(AnalyticsEvents.barcode_lookup, { ok: true });
-                } finally {
-                  setBarcodeBusy(false);
-                }
-              }}
-            >
-              {barcodeBusy ? "Looking up…" : "Log per 100g"}
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setBarcodeOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={barcodeBusy}
+                  onClick={async () => {
+                    setBarcodeBusy(true);
+                    try {
+                      const result = await fetchProductByBarcode(barcodeValue);
+                      if (!result.ok) {
+                        toast.error(
+                          result.error === "not_found"
+                            ? "Product not found"
+                            : result.error === "invalid"
+                              ? "Enter a valid barcode"
+                              : "Could not reach Open Food Facts",
+                        );
+                        return;
+                      }
+                      const p = result.product;
+                      setBarcodePreview(p);
+                      setBarcodeGramsStr(
+                        typeof p.servingSizeG === "number" && p.servingSizeG > 0
+                          ? String(Math.round(p.servingSizeG * 10) / 10)
+                          : "100",
+                      );
+                    } finally {
+                      setBarcodeBusy(false);
+                    }
+                  }}
+                >
+                  {barcodeBusy ? "Looking up…" : "Look up"}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Serving size</DialogTitle>
+                <DialogDescription className="text-muted-foreground line-clamp-3">
+                  {barcodePreview.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3 py-2">
+                {(() => {
+                  const scaled = scaleFromPer100gGrams(barcodePreview, barcodeGramsParsed);
+                  const portion = barcodePortionLabel(barcodePreview, barcodeGramsParsed);
+                  return (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{scaled.calories}</span> kcal · P{" "}
+                        {scaled.protein}g · C {scaled.carbs}g · F {scaled.fat}g
+                        {scaled.fiberG > 0 ? ` · Fiber ${scaled.fiberG}g` : ""}
+                      </p>
+                      <label className="grid gap-1">
+                        <span className="text-sm font-medium text-foreground">Grams</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={barcodeGramsStr}
+                          onChange={(e) => setBarcodeGramsStr(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-card"
+                        />
+                      </label>
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground">Quick picks</span>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {barcodePreview.servingOptions.map((o) => {
+                            const selected = Math.abs(o.grams - barcodeGramsParsed) < 0.51;
+                            return (
+                              <button
+                                key={`${o.label}-${o.grams}`}
+                                type="button"
+                                onClick={() => setBarcodeGramsStr(String(o.grams))}
+                                className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+                                  selected
+                                    ? "border-primary bg-primary/15 text-foreground"
+                                    : "border-border bg-muted/40 hover:bg-muted"
+                                }`}
+                              >
+                                {o.label}
+                              </button>
+                            );
+                          })}
+                          {[50, 150, 200]
+                            .filter(
+                              (g) =>
+                                !barcodePreview.servingOptions.some((o) => Math.abs(o.grams - g) < 0.51),
+                            )
+                            .map((g) => {
+                              const selected = Math.abs(g - barcodeGramsParsed) < 0.51;
+                              return (
+                                <button
+                                  key={`g-${g}`}
+                                  type="button"
+                                  onClick={() => setBarcodeGramsStr(String(g))}
+                                  className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+                                    selected
+                                      ? "border-primary bg-primary/15 text-foreground"
+                                      : "border-border bg-muted/40 hover:bg-muted"
+                                  }`}
+                                >
+                                  {g} g
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Logging: {portion}</p>
+                    </>
+                  );
+                })()}
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setBarcodePreview(null);
+                  }}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const p = barcodePreview;
+                    if (!p) return;
+                    const scaled = scaleFromPer100gGrams(p, barcodeGramsParsed);
+                    const portion = barcodePortionLabel(p, barcodeGramsParsed);
+                    pushRecentFood(p.name);
+                    setRecentFoods(loadRecentFoods());
+                    addLoggedMeal({
+                      name: "Snacks",
+                      recipeTitle: `${p.name} (${portion})`,
+                      time: timeLabel,
+                      calories: scaled.calories,
+                      protein: scaled.protein,
+                      carbs: scaled.carbs,
+                      fat: scaled.fat,
+                      source: "Open Food Facts",
+                      ...(scaled.fiberG > 0 ? { fiberG: scaled.fiberG } : {}),
+                    });
+                    setBarcodeOpen(false);
+                    toast.success("Logged from barcode");
+                    track(AnalyticsEvents.barcode_lookup, { ok: true });
+                  }}
+                >
+                  Add to diary
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

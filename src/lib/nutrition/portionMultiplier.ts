@@ -1,5 +1,28 @@
 import type { DayPlan, DayPlanMeal } from "../../types/recipe.ts";
 
+/** Legacy / empty-slot copy stored in old plans — dropped on normalize so UI never shows fake rows. */
+export const MEAL_PLAN_LEGACY_PLACEHOLDER_TITLE = "Save recipes to build a macro-aware plan";
+
+/** True for explicit placeholders, legacy empty-slot titles, and older “hint” rows saved without the flag. */
+export function isMealPlanPlaceholderLikeTitle(
+  recipeTitle: string,
+  opts?: { isPlaceholder?: boolean },
+): boolean {
+  if (opts?.isPlaceholder) return true;
+  const title = recipeTitle.trim();
+  if (!title) return true;
+  const tLower = title.toLowerCase();
+  if (tLower === MEAL_PLAN_LEGACY_PLACEHOLDER_TITLE.toLowerCase()) return true;
+  if (tLower.startsWith("save recipes to build") && tLower.includes("macro")) return true;
+  if (tLower === "save more recipes" || tLower.startsWith("save more recipes")) return true;
+  if (tLower === "placeholder" || /^placeholder(\s+meal)?$/i.test(title)) return true;
+  if (/^tbd$/i.test(title) || /^coming soon$/i.test(title)) return true;
+  if (/^empty slot|^no recipe (yet|chosen)|^tap to add|^pick a recipe|^choose (a )?recipe|^add (a )?recipe/i.test(title)) {
+    return true;
+  }
+  return false;
+}
+
 const MIN = 0.5;
 const MAX = 8;
 
@@ -39,17 +62,18 @@ function normalizeDayPlanMeal(m: unknown): DayPlanMeal | null {
   if (!m || typeof m !== "object") return null;
   const o = m as Partial<DayPlanMeal>;
   if (typeof o.name !== "string" || typeof o.recipeTitle !== "string") return null;
+  if (isMealPlanPlaceholderLikeTitle(o.recipeTitle, { isPlaceholder: o.isPlaceholder })) {
+    return null;
+  }
+  const title = o.recipeTitle.trim();
   const base = {
     name: o.name,
-    recipeTitle: o.recipeTitle,
+    recipeTitle: title,
     calories: Math.max(0, Math.round(Number(o.calories) || 0)),
     protein: Math.max(0, Math.round(Number(o.protein) || 0)),
     carbs: Math.max(0, Math.round(Number(o.carbs) || 0)),
     fat: Math.max(0, Math.round(Number(o.fat) || 0)),
   };
-  if (o.isPlaceholder) {
-    return { ...base, isPlaceholder: true as const, portionMultiplier: 1 };
-  }
   const mult = effectivePortionMultiplier(
     typeof o.portionMultiplier === "number" ? o.portionMultiplier : undefined,
   );

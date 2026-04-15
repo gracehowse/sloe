@@ -3,7 +3,28 @@
  * Drives the meal planner's slot assignment.
  */
 import { describe, it, expect } from "vitest";
-import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
+import {
+  classifyMealType,
+  inferExplicitMealSlotsFromText,
+} from "@/lib/recipe-import/classifyMealType";
+
+describe("inferExplicitMealSlotsFromText", () => {
+  it("detects #breakfast", () => {
+    expect(inferExplicitMealSlotsFromText("random #breakfast more")).toEqual(["breakfast"]);
+  });
+
+  it("detects for breakfast phrase", () => {
+    expect(inferExplicitMealSlotsFromText("Try this for breakfast tomorrow!")).toEqual(["breakfast"]);
+  });
+
+  it("does not treat not for breakfast as breakfast", () => {
+    expect(inferExplicitMealSlotsFromText("This is not for breakfast — dinner only")).toBeNull();
+  });
+
+  it("returns null when no explicit meal cue", () => {
+    expect(inferExplicitMealSlotsFromText("chicken garlic olive oil salt")).toBeNull();
+  });
+});
 
 describe("classifyMealType", () => {
   // ── Breakfast ──────────────────────────────────────────────────
@@ -113,5 +134,23 @@ describe("classifyMealType", () => {
   it("never returns empty array", () => {
     const tags = classifyMealType({ title: "Something Unknown" });
     expect(tags.length).toBeGreaterThan(0);
+  });
+
+  it("prioritises caption over dinner-like title when caption says breakfast", () => {
+    const tags = classifyMealType({
+      title: "Chicken Stir Fry",
+      ingredients: ["1 cup rice", "chicken"],
+      caption: "#breakfast High-protein bowl — chicken and rice",
+    });
+    expect(tags).toEqual(["breakfast"]);
+  });
+
+  it("uses description for explicit dinner when title is vague", () => {
+    const tags = classifyMealType({
+      title: "Recipe",
+      ingredients: ["pasta"],
+      description: "A cosy Sunday dinner recipe the whole family will love.",
+    });
+    expect(tags).toEqual(["dinner"]);
   });
 });

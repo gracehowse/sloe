@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -37,6 +38,13 @@ export default function LibraryScreen() {
 
   const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
+
+  /** Reload rows after yield/macros edits on recipe detail (list state is otherwise stale). */
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) void refresh();
+    }, [userId, refresh]),
+  );
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
@@ -167,6 +175,11 @@ export default function LibraryScreen() {
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.lg,
     },
+    logBtn: {
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.lg,
+      justifyContent: "center",
+    },
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
     emptyContainer: {
       paddingTop: 80,
@@ -198,29 +211,39 @@ export default function LibraryScreen() {
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => (
-      <Pressable
-        style={styles.card}
-        onPress={() => router.push(`/recipe/${item.id}`)}
-        accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories`}
-      >
-        <Image source={{ uri: item.image }} style={styles.cardImage} />
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-          <View style={styles.macroRow}>
-            <View style={[styles.macroChip, { borderColor: MacroColors.calories + "60" }]}>
-              <Text style={[styles.macroChipText, { color: MacroColors.calories }]}>{Math.round(item.calories)} kcal</Text>
-            </View>
-            <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
-              <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {Math.round(item.protein)}g</Text>
-            </View>
-            <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
-              <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {Math.round(item.carbs)}g</Text>
-            </View>
-            <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
-              <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {Math.round(item.fat)}g</Text>
+      <View style={styles.card}>
+        <Pressable
+          style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+          onPress={() => router.push(`/recipe/${item.id}`)}
+          accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories`}
+        >
+          <Image source={{ uri: item.image }} style={styles.cardImage} />
+          <View style={styles.cardBody}>
+            <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+            <View style={styles.macroRow}>
+              <View style={[styles.macroChip, { borderColor: MacroColors.calories + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.calories }]}>{Math.round(item.calories)} kcal</Text>
+              </View>
+              <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {Math.round(item.protein)}g</Text>
+              </View>
+              <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {Math.round(item.carbs)}g</Text>
+              </View>
+              <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
+                <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {Math.round(item.fat)}g</Text>
+              </View>
             </View>
           </View>
-        </View>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push(`/recipe/${item.id}`)}
+          style={styles.logBtn}
+          hitSlop={8}
+          accessibilityLabel={`Log ${item.title} to journal`}
+        >
+          <Ionicons name="nutrition-outline" size={22} color={Accent.primary} />
+        </Pressable>
         <Pressable
           onPress={() => confirmRemove(item)}
           hitSlop={12}
@@ -229,7 +252,7 @@ export default function LibraryScreen() {
         >
           <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
         </Pressable>
-      </Pressable>
+      </View>
     ),
     [router, confirmRemove, styles, colors],
   );

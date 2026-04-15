@@ -35,7 +35,7 @@ const recipes = [
   recipe({ id: "a", title: "Oats", calories: 400, protein: 30, carbs: 50, fat: 10, mealSlots: ["Breakfast"] }),
   recipe({ id: "b", title: "Salad", calories: 350, protein: 35, carbs: 30, fat: 12, mealSlots: ["Lunch"] }),
   recipe({ id: "c", title: "Steak", calories: 600, protein: 50, carbs: 20, fat: 30, mealSlots: ["Dinner"] }),
-  recipe({ id: "d", title: "Yogurt", calories: 200, protein: 20, carbs: 25, fat: 5, mealSlots: ["Snack"] }),
+  recipe({ id: "d", title: "Yogurt", calories: 200, protein: 20, carbs: 25, fat: 5, mealSlots: ["Snacks"] }),
   recipe({ id: "e", title: "Chicken Bowl", calories: 500, protein: 45, carbs: 40, fat: 15, mealSlots: ["Lunch", "Dinner"] }),
 ];
 
@@ -44,10 +44,10 @@ describe("slot weighting", () => {
     const plan = generatePlanFromLibrary({ savedRecipes: recipes, targets, days: 1, seed: 42 });
     const day = plan[0];
     const dinner = day.meals.find((m) => m.name === "Dinner");
-    const snack = day.meals.find((m) => m.name === "Snack");
+    const snack = day.meals.find((m) => m.name === "Snacks");
     expect(dinner).toBeDefined();
     expect(snack).toBeDefined();
-    if (dinner && snack && !dinner.isPlaceholder && !snack.isPlaceholder) {
+    if (dinner && snack) {
       expect(dinner.calories).toBeGreaterThan(snack.calories);
     }
   });
@@ -60,7 +60,7 @@ describe("portion scaling", () => {
     // At least one meal should have a non-1 portionMultiplier (scaled to fit slot target)
     const hasScaled = day.meals.some((m) => m.portionMultiplier !== undefined && m.portionMultiplier !== 1);
     // This is probabilistic but with the given recipes + targets, scaling should occur
-    expect(hasScaled || day.meals.every(m => m.isPlaceholder)).toBe(true);
+    expect(hasScaled || day.meals.length === 0).toBe(true);
   });
 
   it("portionMultiplier is between 0.5 and 2", () => {
@@ -90,7 +90,7 @@ describe("configurable slots", () => {
     expect(plan[0].meals[1].name).toBe("Dinner");
   });
 
-  it("generates plan with 3 slots excluding Snack", () => {
+  it("generates plan with 3 slots excluding Snacks", () => {
     const plan = generatePlanFromLibrary({
       savedRecipes: recipes,
       targets,
@@ -99,7 +99,7 @@ describe("configurable slots", () => {
       seed: 42,
     });
     expect(plan[0].meals).toHaveLength(3);
-    expect(plan[0].meals.find((m) => m.name === "Snack")).toBeUndefined();
+    expect(plan[0].meals.find((m) => m.name === "Snacks")).toBeUndefined();
   });
 });
 

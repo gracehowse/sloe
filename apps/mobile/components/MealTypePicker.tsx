@@ -6,7 +6,7 @@ const MEAL_OPTIONS = [
   { value: "breakfast", label: "Breakfast", emoji: "\u2600\uFE0F" },
   { value: "lunch", label: "Lunch", emoji: "\uD83C\uDF1E" },
   { value: "dinner", label: "Dinner", emoji: "\uD83C\uDF19" },
-  { value: "snack", label: "Snack", emoji: "\uD83C\uDF7F" },
+  { value: "snack", label: "Snacks", emoji: "\uD83C\uDF7F" },
 ] as const;
 
 type Props = {

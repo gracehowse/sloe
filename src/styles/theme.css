@@ -107,6 +107,18 @@
   --sidebar-accent-foreground: #111118;
   --sidebar-border: #e4e4ec;
   --sidebar-ring: #4c6ce0;
+
+  /** Glass / surface tokens (Apple-style, used by marketing pages) */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.1);
+  --accent-muted: rgba(76, 108, 224, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --radius-xl-landing: 20px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
 }
 
 .dark {
@@ -174,6 +186,15 @@
   --sidebar-accent-foreground: #e4e4e8;
   --sidebar-border: #282830;
   --sidebar-ring: #6c8cff;
+
+  /** Glass / surface tokens — dark */
+  --glass: rgba(24, 24, 28, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --accent-muted: rgba(108, 140, 255, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 @theme inline {
@@ -347,4 +368,73 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
+}
+
+/* ─── Marketing / landing-page utilities (mirrored from Vielum design system) ─── */
+
+/* Cards: soft shadow, subtle hover lift */
+.card-landing {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl-landing);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.card-landing:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.card-landing:active {
+  transform: translateY(0);
+}
+
+/* Primary button: solid accent */
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.2;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  border: none;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-primary:hover {
+  filter: brightness(0.92);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* Secondary / ghost button */
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 500;
+  font-size: 15px;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--accent-muted);
+  border-color: var(--primary);
+}
+
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }

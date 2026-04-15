@@ -1,16 +1,14 @@
-import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  LayoutChangeEvent,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 import { Accent } from "@/constants/theme";
-
-const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 type DataPoint = { label: string; value: number };
 
@@ -23,6 +21,8 @@ type Props = {
   labelColor: string;
   goalColor?: string;
   trackColor: string;
+  /** When set, tap-to-inspect shows this string for the selected point. */
+  formatValue?: (value: number) => string;
 };
 
 export default function TrendLine({
@@ -34,7 +34,21 @@ export default function TrendLine({
   labelColor,
   goalColor,
   trackColor,
+  formatValue,
 }: Props) {
+  const [chartWidthPx, setChartWidthPx] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(() =>
+    Math.max(0, data.length - 1),
+  );
+
+  const dataSig = data.map((d) => `${d.label}:${d.value}`).join("|");
+
+  useEffect(() => {
+    if (data.length > 0) {
+      setSelectedIndex(data.length - 1);
+    }
+  }, [dataSig, data.length]);
+
   if (data.length === 0) return null;
 
   const allValues = [
@@ -82,64 +96,150 @@ export default function TrendLine({
   const lastX = paddingX + (data.length - 1) * stepX;
   const lastY = toY(lastPt.value);
 
+  const safeIdx = Math.min(
+    Math.max(0, selectedIndex),
+    data.length - 1,
+  );
+  const selPt = data[safeIdx];
+  const selX = paddingX + safeIdx * stepX;
+  const selY = toY(selPt.value);
+
+  const pickNearestFromX = (locationX: number, widthPx: number) => {
+    if (widthPx <= 0 || data.length < 2) return;
+    const xSvg = (locationX / widthPx) * viewW;
+    let bestI = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < data.length; i++) {
+      const px = paddingX + i * stepX;
+      const dist = Math.abs(px - xSvg);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestI = i;
+      }
+    }
+    setSelectedIndex((prev) => {
+      if (prev !== bestI) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      return bestI;
+    });
+  };
+
+  const valueLabel =
+    formatValue != null ? formatValue(selPt.value) : String(selPt.value);
+
   return (
-    <View style={{ height, width: "100%" }}>
-      <Svg
-        width="100%"
-        height={height}
-        viewBox={`0 0 ${viewW} ${height}`}
+    <View style={{ width: "100%" }}>
+      <View
+        style={{ width: "100%" }}
+        onLayout={(e: LayoutChangeEvent) => {
+          const w = e.nativeEvent.layout.width;
+          if (w > 0) setChartWidthPx(w);
+        }}
       >
-        {/* Goal line */}
-        {goalY != null && (
-          <>
-            <Line
-              x1={0}
-              y1={goalY}
-              x2={viewW}
-              y2={goalY}
-              stroke={goalColor ?? Accent.success}
-              strokeWidth={1}
-              strokeDasharray="4,3"
-              opacity={0.5}
+        <Pressable
+          accessibilityRole="image"
+          accessibilityLabel="Weight trend chart"
+          accessibilityHint="Tap the chart to see weight on a date"
+          style={{ height }}
+          onPressIn={(e) => {
+            if (chartWidthPx > 0) {
+              pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
+            }
+          }}
+        >
+          <Svg
+            width="100%"
+            height={height}
+            viewBox={`0 0 ${viewW} ${height}`}
+          >
+            {/* Goal line */}
+            {goalY != null && (
+              <Line
+                x1={0}
+                y1={goalY}
+                x2={viewW}
+                y2={goalY}
+                stroke={goalColor ?? Accent.success}
+                strokeWidth={1}
+                strokeDasharray="4,3"
+                opacity={0.5}
+              />
+            )}
+
+            {/* Vertical guide at selected historical point */}
+            {data.length >= 2 && (
+              <Line
+                x1={selX}
+                y1={0}
+                x2={selX}
+                y2={chartH}
+                stroke={trackColor}
+                strokeWidth={1}
+                opacity={0.65}
+              />
+            )}
+
+            {/* Main line */}
+            <Polyline
+              points={pointsStr}
+              fill="none"
+              stroke={color}
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
             />
-          </>
-        )}
 
-        {/* Main line */}
-        <Polyline
-          points={pointsStr}
-          fill="none"
-          stroke={color}
-          strokeWidth={2.5}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+            {/* Projected line */}
+            {projPointsStr.length > 0 && (
+              <Polyline
+                points={projPointsStr}
+                fill="none"
+                stroke={color}
+                strokeWidth={2}
+                strokeDasharray="5,4"
+                opacity={0.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            )}
 
-        {/* Projected line */}
-        {projPointsStr.length > 0 && (
-          <Polyline
-            points={projPointsStr}
-            fill="none"
-            stroke={color}
-            strokeWidth={2}
-            strokeDasharray="5,4"
-            opacity={0.5}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
+            {/* Latest point (faded when inspecting an earlier day) */}
+            {safeIdx !== data.length - 1 && (
+              <Circle cx={lastX} cy={lastY} r={3} fill={color} opacity={0.35} />
+            )}
 
-        {/* Current dot */}
-        <Circle cx={lastX} cy={lastY} r={4} fill={color} />
-        <Circle cx={lastX} cy={lastY} r={6} fill={color} opacity={0.25} />
-      </Svg>
+            {/* Selected point */}
+            {data.length >= 2 && (
+              <>
+                <Circle cx={selX} cy={selY} r={5} fill={color} />
+                <Circle cx={selX} cy={selY} r={8} fill={color} opacity={0.22} />
+              </>
+            )}
+          </Svg>
+        </Pressable>
+      </View>
+
+      <Text
+        style={{
+          textAlign: "center",
+          fontSize: 13,
+          fontWeight: "700",
+          color,
+          marginTop: 6,
+          fontVariant: ["tabular-nums"],
+        }}
+        numberOfLines={1}
+      >
+        {selPt.label} · {valueLabel}
+      </Text>
 
       {/* X-axis labels */}
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
-          paddingTop: 2,
+          paddingTop: 4,
         }}
       >
         <Text style={{ fontSize: 9, color: labelColor }}>

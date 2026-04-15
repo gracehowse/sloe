@@ -4,6 +4,7 @@ import {
   effectivePortionMultiplier,
   scaledMacro,
   dayPlanTotalsFromMeals,
+  isMealPlanPlaceholderLikeTitle,
   normalizeDayPlans,
 } from "../../src/lib/nutrition/portionMultiplier.ts";
 import type { DayPlanMeal } from "../../src/types/recipe.ts";
@@ -96,6 +97,52 @@ describe("portionMultiplier", () => {
 
   it("normalizeDayPlans returns null for non-array", () => {
     expect(normalizeDayPlans("oops" as any)).toBeNull();
+  });
+
+  it("isMealPlanPlaceholderLikeTitle catches legacy empty-slot copy without flag", () => {
+    expect(
+      isMealPlanPlaceholderLikeTitle("Save recipes to build a macro-aware plan", {}),
+    ).toBe(true);
+    expect(isMealPlanPlaceholderLikeTitle("Grilled salmon", {})).toBe(false);
+  });
+
+  it("treats common stub titles as placeholders", () => {
+    expect(isMealPlanPlaceholderLikeTitle("Placeholder", {})).toBe(true);
+    expect(isMealPlanPlaceholderLikeTitle("Save more recipes", {})).toBe(true);
+    expect(isMealPlanPlaceholderLikeTitle("TBD", {})).toBe(true);
+    expect(isMealPlanPlaceholderLikeTitle("Choose a recipe", {})).toBe(true);
+    expect(isMealPlanPlaceholderLikeTitle("Chicken tikka", {})).toBe(false);
+  });
+
+  it("normalizeDayPlans drops legacy hint rows saved without isPlaceholder", () => {
+    const raw = [
+      {
+        day: 1,
+        meals: [
+          {
+            name: "Lunch",
+            recipeTitle: "Save recipes to build a macro-aware plan",
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          },
+          {
+            name: "Dinner",
+            recipeTitle: "Salmon bowl",
+            calories: 500,
+            protein: 40,
+            carbs: 30,
+            fat: 20,
+          },
+        ],
+        totals: { calories: 500, protein: 40, carbs: 30, fat: 20 },
+      },
+    ];
+    const out = normalizeDayPlans(raw);
+    expect(out).not.toBeNull();
+    expect(out![0]!.meals).toHaveLength(1);
+    expect(out![0]!.meals[0]!.recipeTitle).toBe("Salmon bowl");
   });
 
   it("dayPlanTotalsFromMeals skips placeholder meals", () => {

@@ -48,6 +48,7 @@ import {
   type PlanPace,
   type NutritionStrategy,
 } from "@/lib/tdee";
+import { ageFromIsoDateString, displayNameFromAuthUser } from "../../../src/lib/profile/onboardingHydration";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -162,6 +163,7 @@ type ProfileHydrationRow = {
   display_name: string | null;
   sex: string | null;
   age: number | null;
+  dob: string | null;
   height_cm: number | null;
   weight_kg: number | null;
   goal_weight_kg: number | null;
@@ -181,7 +183,12 @@ function mergeProfileIntoOnboarding(prev: OnboardingData, row: ProfileHydrationR
   const next = { ...prev };
   if (row.display_name) next.displayName = row.display_name;
   if (row.sex === "male" || row.sex === "female" || row.sex === "unspecified") next.sex = row.sex;
-  if (row.age != null && row.age > 0) next.age = String(row.age);
+  if (row.age != null && row.age > 0) {
+    next.age = String(row.age);
+  } else if (row.dob) {
+    const a = ageFromIsoDateString(String(row.dob));
+    if (a != null) next.age = String(a);
+  }
   if (row.height_cm != null && Number(row.height_cm) > 0) {
     const h = Number(row.height_cm);
     next.heightCm = String(Math.round(h * 10) / 10);
@@ -259,15 +266,26 @@ export default function OnboardingScreen() {
     const id = ++hydrateSeq.current;
     let cancelled = false;
     void (async () => {
-      const { data: row, error } = await supabase
-        .from("profiles")
-        .select(
-          "display_name, sex, age, height_cm, weight_kg, goal_weight_kg, activity_level, goal, dietary, plan_pace, nutrition_strategy, calorie_schedule, high_days, fasting_enabled, fasting_window, measurement_system",
-        )
-        .eq("id", userId)
-        .maybeSingle();
-      if (cancelled || error || !row || hydrateSeq.current !== id) return;
-      setData((prev) => mergeProfileIntoOnboarding(prev, row as ProfileHydrationRow));
+      const [{ data: sessionWrap }, { data: row }] = await Promise.all([
+        supabase.auth.getSession(),
+        supabase
+          .from("profiles")
+          .select(
+            "display_name, sex, age, dob, height_cm, weight_kg, goal_weight_kg, activity_level, goal, dietary, plan_pace, nutrition_strategy, calorie_schedule, high_days, fasting_enabled, fasting_window, measurement_system",
+          )
+          .eq("id", userId)
+          .maybeSingle(),
+      ]);
+      if (cancelled || hydrateSeq.current !== id) return;
+      let next: OnboardingData = { ...INITIAL_DATA };
+      if (row) {
+        next = mergeProfileIntoOnboarding(next, row as ProfileHydrationRow);
+      }
+      if (!next.displayName.trim()) {
+        const nm = displayNameFromAuthUser(sessionWrap?.session?.user ?? null);
+        if (nm) next = { ...next, displayName: nm };
+      }
+      setData(next);
     })();
     return () => {
       cancelled = true;

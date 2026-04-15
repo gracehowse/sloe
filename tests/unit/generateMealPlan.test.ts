@@ -28,7 +28,7 @@ const targets = {
 };
 
 describe("generatePlanFromLibrary", () => {
-  it("assigns recipes only to slots they fit (e.g. breakfast oats not in Snack)", () => {
+  it("assigns recipes only to slots they fit (e.g. breakfast oats not in Snacks)", () => {
     const oats = recipe({
       id: "oats",
       title: "Overnight Oats",
@@ -54,7 +54,7 @@ describe("generatePlanFromLibrary", () => {
       protein: 24,
       carbs: 35,
       fat: 8,
-      mealSlots: ["Breakfast", "Snack"],
+      mealSlots: ["Breakfast", "Snacks"],
     });
     const chicken = recipe({
       id: "chicken",
@@ -72,17 +72,18 @@ describe("generatePlanFromLibrary", () => {
     for (const day of plan) {
       const byName = Object.fromEntries(day.meals.map((m) => [m.name, m.recipeTitle]));
       expect(byName["Breakfast"]).toBeDefined();
-      expect(byName["Snack"]).toBe("Yogurt Parfait");
+      expect(byName["Snacks"]).toBe("Yogurt Parfait");
       expect(byName["Breakfast"]).not.toBe("Grilled Salmon");
-      expect(byName["Snack"]).not.toBe("Overnight Oats");
-      expect(byName["Snack"]).not.toBe("Grilled Salmon");
+      expect(byName["Snacks"]).not.toBe("Overnight Oats");
+      expect(byName["Snacks"]).not.toBe("Grilled Salmon");
     }
   });
 
-  it("returns placeholder meals for empty recipe pool", () => {
+  it("returns no meals when the recipe pool is empty", () => {
     const plan = generatePlanFromLibrary({ savedRecipes: [], targets, days: 1 });
     expect(plan).toHaveLength(1);
-    expect(plan[0].meals.every((m) => m.isPlaceholder)).toBe(true);
+    expect(plan[0].meals).toHaveLength(0);
+    expect(plan[0].totals.calories).toBe(0);
   });
 
   it("clamps days to 1-7 range", () => {
@@ -115,6 +116,10 @@ describe("mealPlannerSlotsFromMealType", () => {
   it("handles case-insensitive input", () => {
     expect(mealPlannerSlotsFromMealType("BREAKFAST")).toEqual(["Breakfast"]);
     expect(mealPlannerSlotsFromMealType("Dinner")).toEqual(["Dinner"]);
+  });
+
+  it("maps snack meal type to Snacks slot", () => {
+    expect(mealPlannerSlotsFromMealType("snack")).toEqual(["Snacks"]);
   });
 
   it("filters out unknown tags", () => {

@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,10 +22,32 @@ export default function NotificationsPromptScreen() {
   async function onEnable() {
     try {
       const Notifications = await import("expo-notifications");
-      const { status } = await Notifications.requestPermissionsAsync();
-      console.log("[notifications] permission:", status);
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "Default",
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+      }
+      const existing = await Notifications.getPermissionsAsync();
+      const next =
+        existing.status === "granted"
+          ? existing
+          : await Notifications.requestPermissionsAsync();
+      if (next.status !== "granted") {
+        Alert.alert(
+          "Notifications are off",
+          "You can turn them on any time in Settings → Suppr → Notifications.",
+          [
+            { text: "Not now", style: "cancel" },
+            { text: "Open Settings", onPress: () => void Linking.openSettings() },
+          ],
+        );
+      }
     } catch {
-      // module not available in this build or permission denied
+      Alert.alert(
+        "Not available here",
+        "System notifications require a full Suppr install (not Expo Go).",
+      );
     }
     router.replace("/(tabs)/discover");
   }

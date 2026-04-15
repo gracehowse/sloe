@@ -10,16 +10,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.supprclub.suppr",
+      "bundleIdentifier": "com.supprclub.supprapp",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSHealthShareUsageDescription": "Suppr reads your steps, weight, and activity data from Apple Health to keep your tracker in sync.",
-        "NSHealthUpdateUsageDescription": "Suppr only reads steps, weight, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
+        "NSHealthShareUsageDescription": "Suppr reads your steps, weight, body fat, and activity data from Apple Health to keep your tracker in sync.",
+        "NSHealthUpdateUsageDescription": "Suppr only reads steps, weight, body fat, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
       },
-      "appleTeamId": "H37U24NTP9"
+      "appleTeamId": "CRQBTX5797"
     },
     "android": {
       "intentFilters": [
@@ -120,7 +120,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.supprclub.suppr"
+      "package": "com.supprclub.supprapp"
     },
     "web": {
       "output": "static",
@@ -138,8 +138,8 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "Suppr reads your steps, weight, and activity data from Apple Health to keep your tracker in sync.",
-          "healthUpdatePermission": "Suppr only reads steps, weight, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
+          "healthSharePermission": "Suppr reads your steps, weight, body fat, and activity data from Apple Health to keep your tracker in sync.",
+          "healthUpdatePermission": "Suppr only reads steps, weight, body fat, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
         }
       ],
       [
@@ -152,6 +152,8 @@
       [
         "expo-share-intent",
         {
+          "iosShareExtensionBundleIdentifier": "com.supprclub.supprapp.share-extension",
+          "iosAppGroupIdentifier": "group.com.supprclub.supprapp",
           "iosActivationRules": {
             "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
             "NSExtensionActivationSupportsWebPageWithMaxCount": 1,

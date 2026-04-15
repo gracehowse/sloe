@@ -3,13 +3,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 
-export function LoginClient() {
+export type LoginClientProps = {
+  /** Default tab; `/login?mode=signin` also sets this from the server. */
+  initialMode?: "signin" | "signup";
+};
+
+export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [status, setStatus] = useState<"idle" | "working" | "sent" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [showMagicLink, setShowMagicLink] = useState(false);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   useEffect(() => {
     const {

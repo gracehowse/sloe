@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -6,12 +6,14 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { resolveTargets } from "@/lib/calcTargets";
+import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { isHealthSyncAvailable } from "@/lib/healthSync";
+import { nukeAllUserAppData, clearStructuredMealPlans } from "@/lib/nukeAccountData";
+import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 
 /* ── Icon Box ── */
 function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -73,81 +75,146 @@ export default function ProfileScreen() {
     targetCarbs: number;
     targetFat: number;
     usingDefaults: boolean;
+    targetResolution: ResolvedTargets["resolution"];
     userTier: string;
     dietaryRestrictions: string[];
     notificationPref: string | null;
-  }>({ savedCount: 0, streak: 0, targetCalories: NUTRITION_DEFAULTS.calories, targetProtein: NUTRITION_DEFAULTS.protein, targetCarbs: NUTRITION_DEFAULTS.carbs, targetFat: NUTRITION_DEFAULTS.fat, usingDefaults: true, userTier: "free", dietaryRestrictions: [], notificationPref: null });
+  }>({
+    savedCount: 0,
+    streak: 0,
+    targetCalories: NUTRITION_DEFAULTS.calories,
+    targetProtein: NUTRITION_DEFAULTS.protein,
+    targetCarbs: NUTRITION_DEFAULTS.carbs,
+    targetFat: NUTRITION_DEFAULTS.fat,
+    usingDefaults: true,
+    targetResolution: "fallback",
+    userTier: "free",
+    dietaryRestrictions: [],
+    notificationPref: null,
+  });
+
+  /** After first successful load, keep showing cached targets while refetching (avoids 2000 kcal flash). */
+  const profileTargetsShownOnceRef = useRef(false);
+  const [profileTargetsSubReady, setProfileTargetsSubReady] = useState(false);
 
   const loadProfileData = useCallback(() => {
-    if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      // Saved recipes count
-      const { count } = await supabase
-        .from("saved_recipes")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-
-      // Profile targets + preferences + tier
-      const { data: profile } = await supabase
+    if (!userId) {
+      profileTargetsShownOnceRef.current = false;
+      setProfileTargetsSubReady(true);
+      return;
+    }
+    if (!profileTargetsShownOnceRef.current) {
+      setProfileTargetsSubReady(false);
+    }
+    void (async () => {
+      try {
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, dietary_restrictions, notification_prefs, user_tier, weight_kg, height_cm, sex, activity_level, goal, dob")
+        .select(
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, dietary, notification_prefs, user_tier, weight_kg, height_cm, sex, activity_level, goal, dob, age",
+        )
         .eq("id", userId)
         .maybeSingle();
 
-      // Logging streak (count consecutive days with entries ending today)
-      const { data: logs } = await supabase
-        .from("nutrition_entries")
-        .select("date_key")
-        .eq("user_id", userId)
-        .order("date_key", { ascending: false })
-        .limit(60);
-
-      let streak = 0;
-      if (logs && logs.length > 0) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const uniqueDays = [...new Set(logs.map((l: any) => l.date_key))].sort((a: string, b: string) => b.localeCompare(a));
-        for (const dayStr of uniqueDays) {
-          const d = new Date(dayStr + "T00:00:00");
-          const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
-          if (diff === streak) streak++;
-          else break;
-        }
+      if (profileErr || !profile) {
+        setProfileData((prev) => ({
+          ...prev,
+          usingDefaults: true,
+          targetResolution: "fallback",
+          targetCalories: NUTRITION_DEFAULTS.calories,
+          targetProtein: NUTRITION_DEFAULTS.protein,
+          targetCarbs: NUTRITION_DEFAULTS.carbs,
+          targetFat: NUTRITION_DEFAULTS.fat,
+        }));
+        return;
       }
 
-      if (cancelled) return;
-      // Parse dietary restrictions
-      const dr = (profile as any)?.dietary_restrictions;
-      const restrictions: string[] = Array.isArray(dr) ? dr.map(String) : [];
-      // Parse notification prefs
-      const np = (profile as any)?.notification_prefs;
-      const notifTime = np && typeof np === "object" && np.reminder_time ? String(np.reminder_time) : null;
+      let savedCount = 0;
+      try {
+        const { count } = await supabase
+          .from("saves")
+          .select("recipe_id", { count: "exact", head: true })
+          .eq("user_id", userId);
+        savedCount = count ?? 0;
+      } catch {
+        savedCount = 0;
+      }
 
-      const p = profile as any;
+      let streak = 0;
+      try {
+        const { data: logs } = await supabase
+          .from("nutrition_entries")
+          .select("date_key")
+          .eq("user_id", userId)
+          .order("date_key", { ascending: false })
+          .limit(60);
+        if (logs && logs.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const uniqueDays = [...new Set(logs.map((l: { date_key: string }) => l.date_key))].sort((a: string, b: string) =>
+            b.localeCompare(a),
+          );
+          for (const dayStr of uniqueDays) {
+            const d = new Date(`${dayStr}T00:00:00`);
+            const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+            if (diff === streak) streak++;
+            else break;
+          }
+        }
+      } catch {
+        streak = 0;
+      }
+
+      const p = profile as Record<string, unknown>;
+      const restrictions = normaliseDietaryFromProfile(p.dietary);
+      const np = p.notification_prefs as { reminder_time?: unknown } | null | undefined;
+      const notifTime = np && typeof np === "object" && np.reminder_time != null ? String(np.reminder_time) : null;
+
       const targets = resolveTargets(
-        { target_calories: p?.target_calories, target_protein: p?.target_protein, target_carbs: p?.target_carbs, target_fat: p?.target_fat, target_fiber_g: p?.target_fiber_g },
-        { weight_kg: p?.weight_kg, height_cm: p?.height_cm, sex: p?.sex, activity_level: p?.activity_level, goal: p?.goal, dob: p?.dob },
+        {
+          target_calories: p.target_calories != null ? Number(p.target_calories) : null,
+          target_protein: p.target_protein != null ? Number(p.target_protein) : null,
+          target_carbs: p.target_carbs != null ? Number(p.target_carbs) : null,
+          target_fat: p.target_fat != null ? Number(p.target_fat) : null,
+          target_fiber_g: p.target_fiber_g != null ? Number(p.target_fiber_g) : null,
+        },
+        {
+          weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
+          height_cm: p.height_cm != null ? Number(p.height_cm) : null,
+          sex: typeof p.sex === "string" ? p.sex : null,
+          activity_level: typeof p.activity_level === "string" ? p.activity_level : null,
+          goal: typeof p.goal === "string" ? p.goal : null,
+          dob: typeof p.dob === "string" ? p.dob : null,
+          age: p.age != null ? Number(p.age) : null,
+        },
       );
 
       setProfileData({
-        savedCount: count ?? 0,
+        savedCount,
         streak,
         targetCalories: targets.calories,
         targetProtein: targets.protein,
         targetCarbs: targets.carbs,
         targetFat: targets.fat,
         usingDefaults: targets.usingDefaults,
-        userTier: p?.user_tier ?? "free",
+        targetResolution: targets.resolution,
+        userTier: (typeof p.user_tier === "string" ? p.user_tier : null) ?? "free",
         dietaryRestrictions: restrictions,
         notificationPref: notifTime,
       });
+      } finally {
+        setProfileTargetsSubReady(true);
+        profileTargetsShownOnceRef.current = true;
+      }
     })();
-    return () => { cancelled = true; };
   }, [userId]);
 
   // Reload profile data whenever this tab gets focus (e.g. after editing profile)
-  useFocusEffect(useCallback(() => { return loadProfileData(); }, [loadProfileData]));
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, [loadProfileData]),
+  );
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -180,34 +247,49 @@ export default function ProfileScreen() {
     setResetModalOpen(false);
 
     try {
-      // Run data clearing operations in parallel for speed
-      const ops = [
-        supabase.from("profiles").update({
-          target_calories: NUTRITION_DEFAULTS.calories,
-          target_protein: NUTRITION_DEFAULTS.protein,
-          target_carbs: NUTRITION_DEFAULTS.carbs,
-          target_fat: NUTRITION_DEFAULTS.fat,
-          target_fiber_g: NUTRITION_DEFAULTS.fiber,
-          target_water_ml: NUTRITION_DEFAULTS.water,
-          onboarding_completed: false,
-        }).eq("id", userId),
-        supabase.from("meal_plan_days").delete().eq("user_id", userId),
-      ] as PromiseLike<any>[];
-
       if (clearData) {
-        ops.push(
-          supabase.from("nutrition_entries").delete().eq("user_id", userId),
-          supabase.from("nutrition_journals").update({ by_day: {} }).eq("user_id", userId),
-          supabase.from("saved_recipes").delete().eq("user_id", userId),
-        );
+        const r = await nukeAllUserAppData(supabase, userId);
+        if (!r.ok) {
+          Alert.alert("Could not erase data", r.message);
+          return;
+        }
+        try {
+          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+          await AsyncStorage.multiRemove([
+            "health_import_nutrition",
+            "health_export_nutrition",
+            "health_import_generic_labels",
+          ]);
+        } catch {
+          /* ignore */
+        }
+      } else {
+        const cleared = await clearStructuredMealPlans(supabase, userId);
+        if (!cleared.ok) {
+          Alert.alert("Reset failed", cleared.message);
+          return;
+        }
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            target_calories: NUTRITION_DEFAULTS.calories,
+            target_protein: NUTRITION_DEFAULTS.protein,
+            target_carbs: NUTRITION_DEFAULTS.carbs,
+            target_fat: NUTRITION_DEFAULTS.fat,
+            target_fiber_g: NUTRITION_DEFAULTS.fiber,
+            target_water_ml: NUTRITION_DEFAULTS.water,
+            onboarding_completed: false,
+          })
+          .eq("id", userId);
+        if (error) {
+          Alert.alert("Reset failed", error.message);
+          return;
+        }
       }
 
-      await Promise.all(ops);
-
-      // Navigate immediately — don't wait for an alert
       router.replace("/onboarding" as any);
-    } catch (e: any) {
-      Alert.alert("Reset failed", e?.message ?? "Something went wrong. Please try again.");
+    } catch (e: unknown) {
+      Alert.alert("Reset failed", e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
       setResetting(false);
     }
@@ -299,14 +381,55 @@ export default function ProfileScreen() {
       {/* Settings Section */}
       <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Settings</Text>
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="flame-outline" iconColor={t.accent} label="Daily Targets" sub={profileData.usingDefaults ? `${profileData.targetCalories.toLocaleString()} kcal (defaults) · Tap to personalise` : `${profileData.targetCalories.toLocaleString()} kcal · ${profileData.targetProtein}P / ${profileData.targetCarbs}C / ${profileData.targetFat}F`} onPress={() => router.push("/profile" as any)} />
-        <SettingsRow icon="color-palette-outline" iconColor={t.accent} label="Appearance" sub="Theme & display settings" onPress={() => router.push("/(tabs)/settings" as any)} />
+        <SettingsRow
+          icon="flame-outline"
+          iconColor={t.accent}
+          label="Daily Targets"
+          sub={
+            !profileTargetsSubReady
+              ? "Loading…"
+              : (() => {
+                  const macro = `${profileData.targetProtein}P / ${profileData.targetCarbs}C / ${profileData.targetFat}F`;
+                  const k = `${profileData.targetCalories.toLocaleString()} kcal`;
+                  if (profileData.targetResolution === "fallback") return `${k} (defaults) · Tap to personalise`;
+                  if (profileData.targetResolution === "computed") return `${k} (from your stats) · ${macro}`;
+                  return `${k} · ${macro}`;
+                })()
+          }
+          onPress={() => router.push("/profile" as any)}
+        />
+        <SettingsRow
+          icon="color-palette-outline"
+          iconColor={t.accent}
+          label="Appearance & settings"
+          sub="Plan, promo, theme, notifications"
+          onPress={() => router.push("/(tabs)/settings" as any)}
+        />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week Starts On" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
         <SettingsRow icon="link-outline" iconColor={t.accent} label="Connected" sub={isHealthSyncAvailable() ? "Apple Health" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
-        <SettingsRow icon="time-outline" iconColor={t.accent} label="Notifications" sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"} onPress={() => router.push("/(tabs)/notifications" as any)} />
+        <SettingsRow
+          icon="time-outline"
+          iconColor={t.accent}
+          label="Notifications"
+          sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"}
+          onPress={() => router.push("/(tabs)/settings" as any)}
+        />
+        <SettingsRow
+          icon="notifications-outline"
+          iconColor={t.accent}
+          label="Alerts inbox"
+          sub="Recipe updates & messages"
+          onPress={() => router.push("/(tabs)/notifications" as any)}
+        />
         <SettingsRow icon="download-outline" iconColor={t.accent} label="Export Data" sub="CSV download" />
-        <SettingsRow icon="refresh-outline" iconColor={t.amber} label="Reset Plan" sub="Start fresh with new goals" onPress={() => setResetModalOpen(true)} />
+        <SettingsRow
+          icon="refresh-outline"
+          iconColor={t.amber}
+          label="Reset or erase everything"
+          sub="New targets, or wipe log, library & plans"
+          onPress={() => setResetModalOpen(true)}
+        />
         <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help" sub="FAQs and support" onPress={() => {
           const base = getSupprWebBase();
           if (base) void Linking.openURL(`${base}/help`).catch(() => {});
@@ -328,10 +451,28 @@ export default function ProfileScreen() {
         <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
+      <Pressable
+        onPress={() => setResetModalOpen(true)}
+        style={{
+          paddingVertical: 14,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: t.red + "55",
+          backgroundColor: t.red + "0c",
+          alignItems: "center",
+          marginTop: 20,
+        }}
+      >
+        <Text style={{ color: t.red, fontWeight: "800", fontSize: 14 }}>Erase all app data…</Text>
+        <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 4, textAlign: "center", paddingHorizontal: 16 }}>
+          Opens reset options (journal, library, plans, shopping)
+        </Text>
+      </Pressable>
+
       {/* Sign Out */}
       <Pressable
         onPress={() => void supabase.auth.signOut()}
-        style={{ paddingVertical: 16, borderRadius: 14, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 16 }}
+        style={{ paddingVertical: 16, borderRadius: 14, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 12 }}
       >
         <Text style={{ color: t.red, fontWeight: "600", fontSize: 15 }}>Sign Out</Text>
       </Pressable>
@@ -365,9 +506,9 @@ export default function ProfileScreen() {
               <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.amber + "18", alignItems: "center", justifyContent: "center", marginBottom: Spacing.md }}>
                 <Ionicons name="refresh" size={24} color={t.amber} />
               </View>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center" }}>Start Fresh</Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 6, maxWidth: 280, lineHeight: 18 }}>
-                Reset your calorie and macro targets back to defaults and clear your meal plan. You can then set up new goals.
+              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center" }}>Reset or start over</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 6, maxWidth: 300, lineHeight: 18 }}>
+                Reset targets clears your planner and defaults your goals while keeping your food log and saved recipes. Erase everything also removes journal entries, library saves, shopping lists, your private imported recipes, and synced activity summaries stored on Suppr — then sends you through onboarding again. Your account and subscription tier stay as they are.
               </Text>
             </View>
 
@@ -413,9 +554,9 @@ export default function ProfileScreen() {
                 opacity: resetting ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: t.red, fontWeight: "700", fontSize: 15 }}>Reset and Clear Data</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2 }}>
-                Removes all logged food, recipes, and plans
+              <Text style={{ color: t.red, fontWeight: "700", fontSize: 15 }}>Erase all app data</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2, textAlign: "center", paddingHorizontal: 12 }}>
+                Journal, library, plans, shopping, private recipes, notifications
               </Text>
             </Pressable>
 

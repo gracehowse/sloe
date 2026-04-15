@@ -188,6 +188,42 @@ describe("parseRecipeFromHtml", () => {
     expect(result!.cookTimeMin).toBe(90);
   });
 
+  it("parses ISO duration with day segment (P1DT30M)", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "R",
+      recipeIngredient: ["a"],
+      prepTime: "P1DT30M",
+    });
+    const result = parseRecipeFromHtml(html);
+    expect(result!.prepTimeMin).toBe(24 * 60 + 30);
+  });
+
+  it("derives cook time from totalTime when cookTime missing", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "R",
+      recipeIngredient: ["a"],
+      prepTime: "PT10M",
+      totalTime: "PT40M",
+    });
+    const result = parseRecipeFromHtml(html);
+    expect(result!.prepTimeMin).toBe(10);
+    expect(result!.cookTimeMin).toBe(30);
+  });
+
+  it("uses totalTime as cook when prep absent", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "R",
+      recipeIngredient: ["a"],
+      totalTime: "PT25M",
+    });
+    const result = parseRecipeFromHtml(html);
+    expect(result!.prepTimeMin).toBeNull();
+    expect(result!.cookTimeMin).toBe(25);
+  });
+
   it("handles partial nutrition (calories only)", () => {
     const html = wrapJsonLd({
       "@type": "Recipe",

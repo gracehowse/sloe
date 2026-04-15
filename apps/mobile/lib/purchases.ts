@@ -18,6 +18,40 @@ const API_KEY_ANDROID =
 
 let configured = false;
 
+export function isPurchasesApiKeyPresent(): boolean {
+  const key = Platform.OS === "ios" ? API_KEY_IOS : API_KEY_ANDROID;
+  return !!key;
+}
+
+/**
+ * Configure RevenueCat on first call, then associate the Supabase user when available
+ * (module-level `configurePurchases()` may have run without a user id).
+ */
+export async function ensurePurchasesUser(
+  userId: string | undefined,
+): Promise<void> {
+  const key = Platform.OS === "ios" ? API_KEY_IOS : API_KEY_ANDROID;
+  if (!key) return;
+
+  if (!configured) {
+    Purchases.configure({
+      apiKey: key,
+      appUserID: userId || undefined,
+    });
+    if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+    configured = true;
+    return;
+  }
+
+  if (userId) {
+    try {
+      await Purchases.logIn(userId);
+    } catch {
+      /* offerings may still work as anonymous */
+    }
+  }
+}
+
 export function configurePurchases(userId?: string): void {
   if (configured) return;
   const key = Platform.OS === "ios" ? API_KEY_IOS : API_KEY_ANDROID;
@@ -77,16 +111,43 @@ export function resolvedTier(info: CustomerInfo): "free" | "base" | "pro" {
   return "free";
 }
 
+const tierRank = (t: string) => (t === "pro" ? 2 : t === "base" ? 1 : 0);
+
+/** Best tier from promo codes the user has redeemed (requires RLS policy on promo_codes). */
+async function bestPromoTierFromRedemptions(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<"free" | "base" | "pro"> {
+  const { data, error } = await supabase
+    .from("promo_redemptions")
+    .select("promo_codes(tier)")
+    .eq("user_id", userId);
+  if (error || !data?.length) return "free";
+  let best: "free" | "base" | "pro" = "free";
+  for (const row of data as { promo_codes: { tier: string } | { tier: string }[] | null }[]) {
+    const pc = row.promo_codes;
+    const embedded = Array.isArray(pc) ? pc[0] : pc;
+    const t = (embedded?.tier as string | undefined)?.toLowerCase();
+    if (t === "pro" || t === "base" || t === "free") {
+      if (tierRank(t) > tierRank(best)) best = t;
+    }
+  }
+  return best;
+}
+
 /**
- * Sync RevenueCat entitlement to Supabase `profiles.user_tier`.
- * Call after purchase, restore, or app launch.
+ * Sync effective plan tier to Supabase `profiles.user_tier`.
+ * Merges RevenueCat entitlements with redeemed promo tiers so promos are not wiped by a later RC sync.
  */
 export async function syncTierToSupabase(
   info: CustomerInfo,
   supabase: SupabaseClient,
   userId: string,
 ): Promise<void> {
-  const tier = resolvedTier(info);
+  const rc = resolvedTier(info);
+  const promo = await bestPromoTierFromRedemptions(supabase, userId);
+  const mergedRank = Math.max(tierRank(rc), tierRank(promo));
+  const tier: "free" | "base" | "pro" = mergedRank >= 2 ? "pro" : mergedRank >= 1 ? "base" : "free";
   const { error } = await supabase.from("profiles").update({ user_tier: tier }).eq("id", userId);
   if (error && __DEV__) {
     console.warn("[syncTierToSupabase]", error.message);

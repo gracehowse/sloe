@@ -105,10 +105,24 @@ export default function App() {
 
   useEffect(() => {
     if (searchParams.get("view")) return;
+    // Shared recipe links use ?recipe= without view; don't stomp them with view=today.
+    if (searchParams.get("recipe")?.trim()) return;
     const p = new URLSearchParams(searchParams.toString());
     p.set("view", "today");
     router.replace(`/?${p.toString()}`, { scroll: false });
   }, [searchParams, router]);
+
+  const recipeDeepLinkId = searchParams.get("recipe")?.trim() ?? "";
+  useEffect(() => {
+    if (!recipeDeepLinkId) return;
+    setCurrentView("discover");
+    const v = searchParams.get("view");
+    if (v !== "discover") {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("view", "discover");
+      router.replace(`/?${p.toString()}`, { scroll: false });
+    }
+  }, [recipeDeepLinkId, searchParams, router]);
 
   const navigateToView = useCallback(
     (view: View) => {

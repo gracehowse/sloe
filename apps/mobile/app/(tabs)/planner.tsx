@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  ScrollViewProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -15,12 +14,37 @@ import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
+import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppingJsonFallback";
+import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
+import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+
+function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
+  return meals.filter(
+    (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+  );
+}
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+
+function stripMidnight(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Calendar date for plan row at index `idx` (ordered days; anchored to “today” like the header range). */
+function planCalendarDateForIndex(idx: number): Date {
+  const d = stripMidnight(new Date());
+  d.setDate(d.getDate() + idx);
+  return d;
+}
 
 type PlanMeal = {
   name: string;
@@ -208,16 +232,31 @@ export default function PlannerScreen() {
         },
         autoFillBtnText: { fontSize: 13, fontWeight: "600", color: Accent.primary },
 
-        dayCardsScroll: { marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg, gap: 8 },
+        dayCardsScroll: {
+          marginHorizontal: -Spacing.xl,
+          paddingHorizontal: Spacing.xl,
+          marginBottom: Spacing.sm,
+          gap: Spacing.sm,
+          flexGrow: 0,
+        },
+        dayCardsSingleWrap: {
+          marginBottom: Spacing.sm,
+        },
         dayCard: {
-          width: 110,
+          width: 108,
+          minHeight: 128,
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
+          borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.sm,
+          padding: Spacing.md,
           alignItems: "center",
           gap: Spacing.xs,
+        },
+        dayCardFull: {
+          width: "100%" as const,
+          alignSelf: "stretch",
+          minHeight: 132,
         },
         dayCardToday: { borderColor: Accent.primary, backgroundColor: Accent.primary + "08" },
         dayCardName: { fontSize: 13, fontWeight: "600", color: colors.text },
@@ -228,7 +267,14 @@ export default function PlannerScreen() {
         dayCardProgressFill: { height: 3, borderRadius: 1.5 },
         dayCardCalories: { fontSize: 10, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
 
-        sectionLabel: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.5, marginTop: Spacing.md },
+        sectionLabel: {
+          fontSize: 13,
+          fontWeight: "700",
+          color: colors.textSecondary,
+          letterSpacing: 0.2,
+          marginTop: Spacing.sm,
+          marginBottom: Spacing.xs,
+        },
 
         card: {
           backgroundColor: colors.card,
@@ -277,15 +323,18 @@ export default function PlannerScreen() {
 
         mealRow: {
           flexDirection: "row",
-          alignItems: "center",
+          alignItems: "flex-start",
           paddingVertical: Spacing.md,
           borderTopWidth: 1,
           borderTopColor: colors.border,
+          gap: Spacing.sm,
         },
         mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
-        mealTitle: { fontSize: 15, fontWeight: "500", color: colors.text, marginTop: 2 },
-        mealMacros: { fontSize: 11, color: colors.textTertiary, marginTop: 2, fontVariant: ["tabular-nums"] },
-        mealChevron: { color: colors.tabIconDefault, fontSize: 22, fontWeight: "600" },
+        mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
+        mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
+        mealLogBtn: { paddingVertical: 6, paddingHorizontal: 4, minWidth: 56, alignItems: "flex-end" },
+        mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
+        mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
         shoppingListCard: {
           backgroundColor: colors.card,
@@ -349,7 +398,8 @@ export default function PlannerScreen() {
             mealsByDay.set(m.plan_day_id as string, arr);
           }
           const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
-            const meals = (mealsByDay.get(d.id) ?? []).map((m) => ({
+            const meals = stripPlanPlaceholders(
+              (mealsByDay.get(d.id) ?? []).map((m) => ({
               name: (m.name as string) ?? "",
               recipeTitle: (m.recipe_title as string) ?? "",
               calories: (m.calories as number) ?? 0,
@@ -358,9 +408,10 @@ export default function PlannerScreen() {
               fat: (m.fat as number) ?? 0,
               portionMultiplier: (m.portion_multiplier as number) ?? 1,
               isPlaceholder: (m.is_placeholder as boolean) || undefined,
-            }));
+            })),
+            );
             const totals = meals.reduce(
-              (acc, ml) => ml.isPlaceholder ? acc : ({
+              (acc, ml) => ({
                 calories: acc.calories + ml.calories,
                 protein: acc.protein + ml.protein,
                 carbs: acc.carbs + ml.carbs,
@@ -375,15 +426,23 @@ export default function PlannerScreen() {
         }
       }
 
-      // Fall back to legacy JSONB
       if (!cancelled) {
-        const { data } = await supabase
-          .from("meal_plans")
-          .select("plan")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (!cancelled && data?.plan && Array.isArray(data.plan)) {
-          setPlan(data.plan as DayPlan[]);
+        const planJson = await fetchMealPlanJson(supabase, userId);
+        if (!cancelled && planJson != null && Array.isArray(planJson)) {
+          const cleaned = (planJson as DayPlan[]).map((dp) => {
+            const meals = stripPlanPlaceholders(dp.meals);
+            const totals = meals.reduce(
+              (acc, ml) => ({
+                calories: acc.calories + ml.calories,
+                protein: acc.protein + ml.protein,
+                carbs: acc.carbs + ml.carbs,
+                fat: acc.fat + ml.fat,
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
+            return { ...dp, meals, totals };
+          });
+          setPlan(cleaned);
         }
       }
     })();
@@ -405,14 +464,22 @@ export default function PlannerScreen() {
       if (userId) {
         const { data } = await supabase
           .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob")
+          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age")
           .eq("id", userId)
           .single();
         if (data) {
           const d = data as any;
           const t = resolveTargets(
             { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
-            { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+            {
+              weight_kg: d.weight_kg,
+              height_cm: d.height_cm,
+              sex: d.sex,
+              activity_level: d.activity_level,
+              goal: d.goal,
+              dob: d.dob,
+              age: d.age != null ? Number(d.age) : null,
+            },
           );
           resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat };
         }
@@ -427,7 +494,7 @@ export default function PlannerScreen() {
         carbFatBandPct: 18,
       };
 
-      const newPlan = generateSmartPlan({
+      const rawPlan = generateSmartPlan({
         recipes: savedRecipes.map((r) => ({
           id: r.id,
           title: r.title,
@@ -440,6 +507,19 @@ export default function PlannerScreen() {
         targets,
         days,
         slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
+      });
+      const newPlan = rawPlan.map((dp) => {
+        const meals = stripPlanPlaceholders(dp.meals);
+        const totals = meals.reduce(
+          (acc, ml) => ({
+            calories: acc.calories + ml.calories,
+            protein: acc.protein + ml.protein,
+            carbs: acc.carbs + ml.carbs,
+            fat: acc.fat + ml.fat,
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        );
+        return { ...dp, meals, totals };
       });
 
       setPlan(newPlan);
@@ -457,10 +537,7 @@ export default function PlannerScreen() {
             .eq("slot_id", "default");
 
           if (delErr) {
-            // Fall back to legacy JSONB
-            void supabase
-              .from("meal_plans")
-              .upsert({ user_id: userId, plan: newPlan, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            void upsertMealPlanJson(supabase, userId, newPlan);
             return;
           }
 
@@ -507,45 +584,82 @@ export default function PlannerScreen() {
           </Pressable>
         </View>
 
-        {/* Horizontal scrollable day cards (when plan exists) */}
+        {/* Day summary strip: full width for 1-day plans; horizontal scroll for multi-day */}
         {plan && plan.length > 0 && planTargets && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dayCardsScroll}
-            scrollEventThrottle={16}
-          >
-            {plan.map((dp, idx) => {
-              const isToday = idx === 0;
-              const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
-              const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
-              return (
-                <View key={dp.day} style={[styles.dayCard, isToday && styles.dayCardToday]}>
-                  <Text style={[styles.dayCardName, isToday && styles.dayCardNameToday]}>
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(new Date().setDate(new Date().getDate() + idx)).getDay()]}
-                  </Text>
-                  <View style={styles.dayCardMeals}>
-                    {dp.meals.map((m, mi) => (
-                      <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
-                        {truncateMealName(m.name)}
-                      </Text>
-                    ))}
+          plan.length === 1 ? (
+            <View style={styles.dayCardsSingleWrap}>
+              {plan.map((dp, idx) => {
+                const cal = planCalendarDateForIndex(idx);
+                const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
+                const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
+                const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
+                return (
+                  <View key={dp.day} style={[styles.dayCard, styles.dayCardFull, isTodayCard && styles.dayCardToday]}>
+                    <Text style={[styles.dayCardName, isTodayCard && styles.dayCardNameToday]}>
+                      {WEEKDAY_SHORT[cal.getDay()]}
+                    </Text>
+                    <View style={styles.dayCardMeals}>
+                      {dp.meals.map((m, mi) => (
+                        <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
+                          {truncateMealName(m.recipeTitle)}
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={styles.dayCardProgressBar}>
+                      <View
+                        style={[
+                          styles.dayCardProgressFill,
+                          { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.dayCardCalories}>
+                      {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
+                    </Text>
                   </View>
-                  <View style={styles.dayCardProgressBar}>
-                    <View
-                      style={[
-                        styles.dayCardProgressFill,
-                        { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
-                      ]}
-                    />
+                );
+              })}
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dayCardsScroll}
+              scrollEventThrottle={16}
+            >
+              {plan.map((dp, idx) => {
+                const cal = planCalendarDateForIndex(idx);
+                const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
+                const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
+                const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
+                return (
+                  <View key={dp.day} style={[styles.dayCard, isTodayCard && styles.dayCardToday]}>
+                    <Text style={[styles.dayCardName, isTodayCard && styles.dayCardNameToday]}>
+                      {WEEKDAY_SHORT[cal.getDay()]}
+                    </Text>
+                    <View style={styles.dayCardMeals}>
+                      {dp.meals.map((m, mi) => (
+                        <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
+                          {truncateMealName(m.recipeTitle)}
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={styles.dayCardProgressBar}>
+                      <View
+                        style={[
+                          styles.dayCardProgressFill,
+                          { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.dayCardCalories}>
+                      {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
+                    </Text>
                   </View>
-                  <Text style={styles.dayCardCalories}>
-                    {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
+                );
+              })}
+            </ScrollView>
+          )
         )}
 
         {/* Generate controls */}
@@ -584,9 +698,7 @@ export default function PlannerScreen() {
             </View>
 
             {/* Meal slot toggles */}
-            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>
-              INCLUDE MEALS
-            </Text>
+            <Text style={styles.sectionLabel}>Include meals</Text>
             <View style={styles.daysRow}>
               {ALL_MEAL_SLOTS.map((slot) => {
                 const active = enabledSlots.has(slot);
@@ -624,10 +736,11 @@ export default function PlannerScreen() {
           </View>
         )}
 
-        {/* Today's plan section label */}
         {plan && plan.length > 0 && (
           <Text style={styles.sectionLabel}>
-            {`${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}'s plan`}
+            {plan.length === 1
+              ? `${WEEKDAY_LONG[planCalendarDateForIndex(0).getDay()]}'s plan`
+              : `Your ${plan.length}-day plan`}
           </Text>
         )}
 
@@ -660,6 +773,11 @@ export default function PlannerScreen() {
               </View>
             )}
 
+            {dp.meals.length === 0 ? (
+              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.md }}>
+                No meals for this day. Generate again after saving recipes that match each slot, or pick a shorter day range.
+              </Text>
+            ) : null}
             {dp.meals.map((meal, i) => (
               <Pressable
                 key={i}
@@ -720,9 +838,9 @@ export default function PlannerScreen() {
                       Alert.alert("Logged", `${meal.recipeTitle} added to today's tracker.`);
                     }
                   }}
-                  style={{ paddingHorizontal: 8, paddingVertical: 12 }}
+                  style={styles.mealLogBtn}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>Log{"\n"}today</Text>
+                  <Text style={styles.mealLogBtnText}>Log today</Text>
                 </Pressable>
                 <Text style={styles.mealChevron}>›</Text>
               </Pressable>
@@ -851,9 +969,10 @@ export default function PlannerScreen() {
                   // Clear existing then insert
                   const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId!);
                   if (delErr) {
-                    await supabase
-                      .from("shopping_lists")
-                      .upsert({ user_id: userId, items, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                    const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId!, items);
+                    if (upErr) {
+                      throw new Error(upErr.message);
+                    }
                   } else if (inserts.length > 0) {
                     await supabase.from("shopping_items").insert(inserts);
                   }

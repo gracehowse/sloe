@@ -88,6 +88,42 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 ---
 
+## Phase F — Friends, shared meals, and household meal plans *(future; not in current scope)*
+
+**Goal:** Let people who cook and eat together stay aligned in Suppr without duplicating work—while each person keeps **their own targets** and fills **their own gaps** in the day.
+
+### Social & sharing
+
+- **Friends** (or trusted connections) on Suppr.
+- **Share meals** — send or link individual logged or saved meals to someone.
+- **Share meal plans** — share a full weekly (or other horizon) plan.
+- **Share slices of a plan** — e.g. only *dinners this week* or specific slots, not necessarily the entire plan.
+
+### Household / multi-person cooking
+
+- **Plan for one person, cook for two (or more)** — e.g. a weekly plan stays anchored to *my* calorie and macro goals, but **recipe yield / portions** can reflect that I am cooking **two servings** every night (me + partner) without breaking personal logging semantics—or with an explicit model for **“my portion”** vs **household batch** (product rule TBD).
+
+### Partner sync (both on Suppr)
+
+- **Shared plan surface** — partner receives the agreed meals (e.g. shared dinners) on *their* calendar or planner view.
+- **Independent slots** — after shared meals are applied, **breakfast, lunch, and snacks** remain **fully theirs** to plan and log.
+- **Macro-aware gaps** — compute **remaining calories and macros** (and relevant micros as the product supports them) after fixed shared meals, then support **generating or suggesting** meals that fill **only those gaps**—not replanning the shared slots.
+
+### Product tensions to resolve when scoping
+
+- **Privacy & consent** — opt-in per share type; revoke access; clarify whether the recipient can edit or only view.
+- **Single source of truth** — if both users edit the same slot (e.g. Tuesday dinner), define **conflict handling** and ownership.
+- **Portion math** — whose “one serving” when the recipe is scaled for two; logging for one diner vs both; avoid double-counting or silent misallocation.
+- **Notifications** — plan updated, meal swapped, shopping list impact (frequency and muting).
+
+### Suggested first slice (when this phase starts)
+
+- **Read-only shared dinner list** for the week plus **“remaining macros”** on the partner’s Today / planner before full co-editing, social graph, or complex permission models.
+
+*Depends on:* solid single-user meal planning and day totals (Phase A/C); identity and sharing primitives (may overlap Phase D social work).
+
+---
+
 ## Suggested sequencing
 
 1. **Fiber + water** in targets, logging, and daily summary (Phase A/C overlap).
@@ -95,6 +131,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 3. **Dietary requirements** — profile + recipe labeling so coeliac/celiac, allergies, and chosen diets gate discovery and planning (Phase A; surfaced again in feed filters, Phase D).
 4. **Activity adjustment** spike → Apple Health path decision → implement adjustment + UI (Phase B).
 5. **Feed + save + plan** depth (Phase D) in parallel where staffing allows. **LTK-style multi-format creator publishing and cross-platform syndication** stay exploratory until the core feed and compliance baseline (Phase E) are clear.
+6. **Friends + shared plans + household sync** (Phase F) after core planner, logging, and optional social primitives are stable—start with read-only shared slots and remaining-macro gaps.
 
 ---
 
@@ -110,6 +147,9 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 | Water | Single daily total vs time-bucketed logs? |
 | Dietary requirements | Profile-level hard filters vs soft warnings; allergen data source (manual, supplier, third-party)? |
 | Creator syndication | Build in-house “post once” vs partner integrations / ingest from existing creator tools; v1 format scope (recipe + link vs in-app video)? |
+| Shared plans (Phase F) | Invite model (link vs in-app friend); edit vs view-only; how shared slots merge into recipient’s week without overwriting their other meals? |
+| Shared plans (Phase F) | Portion and logging model when one recipe serves multiple Suppr users—single log split vs mirrored entries? |
+| Shared plans (Phase F) | Which macro/micro fields drive “gap fill” suggestions for B/L/snacks after dinners are fixed? |
 
 ---
 

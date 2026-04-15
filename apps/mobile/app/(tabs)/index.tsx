@@ -18,7 +18,20 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { dateKeyFromDate, newMealId, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
+import {
+  dateKeyFromDate,
+  newMealId,
+  normalizeJournalSlotName,
+  parseNutritionMicrosJson,
+  type ByDay,
+  type JournalMeal,
+} from "@/lib/nutritionJournal";
+import {
+  buildDayNutrientDetailRows,
+  formatMealNutritionMultiline,
+  mealContributedFiberG,
+  sumMicrosFromLoggedMeals,
+} from "@/lib/healthDietaryNutrients";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -27,14 +40,29 @@ import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 import CalorieRing from "@/components/charts/CalorieRing";
 import DayStrip from "@/components/charts/DayStrip";
+import JournalDatePickerModal from "@/components/JournalDatePickerModal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import {
+  normalizeWeekSummaryMode,
+  weekSummaryDateKeys,
+  weekSummaryHeading,
+  type WeekSummaryMode,
+} from "../../../../src/lib/nutrition/weekSummaryWindow";
 import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
+import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { projectWeight } from "@/lib/weightProjection";
+import {
+  syncHealthDataThrottled,
+  syncNutritionFromHealthThrottled,
+  exportDayToHealth,
+  isHealthSyncAvailable,
+} from "@/lib/healthSync";
+import { clampJournalDate } from "@/lib/journalNavigation";
 
 type TrackerMacroTargets = Pick<
   NutritionDefaults,
@@ -50,6 +78,52 @@ const DEFAULT_TRACKER_TARGETS: TrackerMacroTargets = {
 };
 
 const MAX_JSONB_DAYS = 90;
+
+function formatMealMacroDetail(m: JournalMeal): string {
+  return formatMealNutritionMultiline({
+    calories: m.calories,
+    protein: m.protein,
+    carbs: m.carbs,
+    fat: m.fat,
+    fiberG: m.fiberG,
+    micros: m.micros,
+  });
+}
+
+/** Supabase JSONB sometimes arrives as a string; normalize to a day → number map. */
+function parseByDayNumberMap(raw: unknown): Record<string, number> {
+  let obj: Record<string, unknown> | null = null;
+  if (raw == null) return {};
+  if (typeof raw === "string") {
+    try {
+      const p = JSON.parse(raw) as unknown;
+      if (p && typeof p === "object" && !Array.isArray(p)) obj = p as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  } else if (typeof raw === "object" && !Array.isArray(raw)) {
+    obj = raw as Record<string, unknown>;
+  }
+  if (!obj) return {};
+  const next: Record<string, number> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n)) next[k] = Math.round(n);
+  }
+  return next;
+}
+
+/** Match web `NutritionTracker`: extra calorie budget from Apple Health active energy when pref is on. */
+function dayActivityAdjustment(
+  prefer: boolean,
+  activityByDay: Record<string, number>,
+  dk: string,
+): number {
+  if (!prefer) return 0;
+  const v = activityByDay[dk];
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : 0;
+}
+
 function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
   const keys = Object.keys(map).sort().reverse().slice(0, MAX_JSONB_DAYS);
   const pruned: Record<string, V> = {};
@@ -57,9 +131,20 @@ function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
   return pruned;
 }
 
+function formatMealTimeDisplay(time: string | undefined, createdAt?: string | null): string {
+  const t = time?.trim();
+  if (t) return t;
+  if (!createdAt) return "";
+  try {
+    return new Date(createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 export default function TrackerScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; _t?: string }>();
+  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -86,10 +171,15 @@ export default function TrackerScreen() {
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [activeMealSlot, setActiveMealSlot] = useState("Breakfast");
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  const [journalCalendarOpen, setJournalCalendarOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
   const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>({});
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
+  const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
+  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
+  const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
+  const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number}>>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
@@ -103,11 +193,16 @@ export default function TrackerScreen() {
   const [editProtein, setEditProtein] = useState("");
   const [editCarbs, setEditCarbs] = useState("");
   const [editFat, setEditFat] = useState("");
-  const [editSlot, setEditSlot] = useState("Snack");
+  const [editSlot, setEditSlot] = useState("Snacks");
+  /** Portion multiplier (×); macros = canonical × portion. Synced from fields before changing portion via chips. */
+  const [editPortion, setEditPortion] = useState("1");
+  const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  const [showMealTimestamps, setShowMealTimestamps] = useState(false);
+  const [weekSummaryMode, setWeekSummaryMode] = useState<WeekSummaryMode>("rolling");
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoalWeightKg, setProfileGoalWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
@@ -119,7 +214,7 @@ export default function TrackerScreen() {
   useEffect(() => {
     if (params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)) {
       const [y, m, d] = params.date.split("-").map(Number);
-      setSelectedDate(new Date(y, m - 1, d));
+      setSelectedDate(clampJournalDate(new Date(y, m - 1, d)));
       setViewMode("day");
     }
     // _t is a cache-buster so re-navigating to the same date still fires
@@ -133,7 +228,7 @@ export default function TrackerScreen() {
     return () => clearInterval(id);
   }, [activeFastStart]);
 
-  const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
+  const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
   // Recent unique meals from all days for "Add previous meal"
   const recentMeals = useMemo(() => {
@@ -158,7 +253,7 @@ export default function TrackerScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -166,7 +261,15 @@ export default function TrackerScreen() {
     const d = data as any;
     const targets = resolveTargets(
       { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
-      { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+      {
+        weight_kg: d.weight_kg,
+        height_cm: d.height_cm,
+        sex: d.sex,
+        activity_level: d.activity_level,
+        goal: d.goal,
+        dob: d.dob,
+        age: d.age != null ? Number(d.age) : null,
+      },
     );
     setProfileTargets({
       calories: targets.calories,
@@ -177,24 +280,15 @@ export default function TrackerScreen() {
     });
     const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
     setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
-    if (data.extra_water_by_day && typeof data.extra_water_by_day === "object") {
-      const o = data.extra_water_by_day as Record<string, unknown>;
-      const next: Record<string, number> = {};
-      for (const [k, v] of Object.entries(o)) {
-        const n = typeof v === "number" ? v : Number(v);
-        if (Number.isFinite(n)) next[k] = Math.round(n);
-      }
-      setExtraWaterByDay(next);
+    setExtraWaterByDay(parseByDayNumberMap(data.extra_water_by_day));
+    setStepsByDay(parseByDayNumberMap(data.steps_by_day));
+    setActivityBurnByDay(parseByDayNumberMap(data.activity_burn_by_day));
+    // Workouts: JSONB map { "2026-04-15": [{ type, minutes, calories, source }] }
+    if (d.workouts_by_day && typeof d.workouts_by_day === "object" && !Array.isArray(d.workouts_by_day)) {
+      setWorkoutsByDay(d.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
     }
-    if (data.steps_by_day && typeof data.steps_by_day === "object") {
-      const o = data.steps_by_day as Record<string, unknown>;
-      const next: Record<string, number> = {};
-      for (const [k, v] of Object.entries(o)) {
-        const n = typeof v === "number" ? v : Number(v);
-        if (Number.isFinite(n)) next[k] = Math.round(n);
-      }
-      setStepsByDay(next);
-    }
+    setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
+    setPreferActivityAdjustedCalories(Boolean(d.prefer_activity_adjusted_calories));
     const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
     setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
     if (Array.isArray(data.fasting_sessions)) {
@@ -212,18 +306,35 @@ export default function TrackerScreen() {
     const gwk = d.goal_weight_kg != null ? Number(d.goal_weight_kg) : null;
     setProfileGoalWeightKg(Number.isFinite(gwk) ? gwk : null);
     setProfileGoal(d.goal ?? null);
+    const np = d.notification_prefs as { showMealTimestamps?: boolean; weekSummaryMode?: string } | null | undefined;
+    setShowMealTimestamps(Boolean(np?.showMealTimestamps));
+    setWeekSummaryMode(normalizeWeekSummaryMode(np?.weekSummaryMode));
   }, [userId]);
 
   const dayKey = dateKeyFromDate(selectedDate);
+  const trackerWeekSummaryKeys = useMemo(
+    () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
+    [weekSummaryMode, selectedDate, weekStartDay],
+  );
   const mealsToday = byDay[dayKey] ?? [];
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
+
+  const effectiveCalorieGoal = useMemo(
+    () =>
+      Math.max(
+        0,
+        targets.calories +
+          dayActivityAdjustment(preferActivityAdjustedCalories, activityBurnByDay, dayKey),
+      ),
+    [targets.calories, preferActivityAdjustedCalories, activityBurnByDay, dayKey],
+  );
 
   const navigateDay = useCallback((offset: number) => {
     setSelectedDate((prev) => {
       const next = new Date(prev);
       next.setDate(next.getDate() + offset);
-      return next;
+      return clampJournalDate(next);
     });
   }, []);
 
@@ -297,11 +408,22 @@ export default function TrackerScreen() {
     return { days, weekTotals, weekAvg, daysWithFood, label: `${weekStartLabel} – ${weekEndLabel}` };
   }, [selectedDate, byDay, weekStartDay]);
 
+  const weekEffectiveCalorieBudget = useMemo(() => {
+    if (!preferActivityAdjustedCalories) return targets.calories * 7;
+    return weekData.days.reduce(
+      (sum, d) =>
+        sum +
+        targets.calories +
+        dayActivityAdjustment(preferActivityAdjustedCalories, activityBurnByDay, d.key),
+      0,
+    );
+  }, [preferActivityAdjustedCalories, weekData.days, targets.calories, activityBurnByDay]);
+
   const navigateWeek = useCallback((offset: number) => {
     setSelectedDate((prev) => {
       const next = new Date(prev);
       next.setDate(next.getDate() + offset * 7);
-      return next;
+      return clampJournalDate(next);
     });
   }, []);
 
@@ -312,7 +434,7 @@ export default function TrackerScreen() {
         protein: acc.protein + Math.max(0, m.protein),
         carbs: acc.carbs + Math.max(0, m.carbs),
         fat: acc.fat + Math.max(0, m.fat),
-        fiber: acc.fiber + Math.max(0, m.fiberG ?? 0),
+        fiber: acc.fiber + mealContributedFiberG(m),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
     );
@@ -325,13 +447,26 @@ export default function TrackerScreen() {
     };
   }, [mealsToday]);
 
+  const dayNutrientDetailRows = useMemo(() => {
+    const microSum = sumMicrosFromLoggedMeals(mealsToday);
+    return buildDayNutrientDetailRows(totals.fiber, microSum);
+  }, [mealsToday, totals.fiber]);
+
+  /** Fiber is already shown in the macro widget row when enabled in Dashboard Widgets — avoid duplicating it here. */
+  const dayNutrientDetailRowsWithoutMacroDupes = useMemo(() => {
+    if (trackedMacros.includes("fiber")) {
+      return dayNutrientDetailRows.filter((r) => r.key !== "__fiber_day");
+    }
+    return dayNutrientDetailRows;
+  }, [dayNutrientDetailRows, trackedMacros]);
+
   useEffect(() => {
     if (!hydrated) return;
     if (viewMode !== "day" || !isToday) return;
     const goalsOk = targets.calories > 0 && targets.protein > 0;
     const hit =
       goalsOk &&
-      totals.calories >= targets.calories &&
+      totals.calories >= effectiveCalorieGoal &&
       totals.protein >= targets.protein;
 
     const map = targetHitPrevByDayRef.current;
@@ -360,18 +495,13 @@ export default function TrackerScreen() {
     viewMode,
     isToday,
     dayKey,
-    targets.calories,
+    effectiveCalorieGoal,
     targets.protein,
     totals.calories,
     totals.protein,
   ]);
 
-  const remaining = targets.calories - totals.calories;
-
-  const fiberToday = useMemo(
-    () => mealsToday.reduce((a, m) => a + (m.fiberG ?? 0), 0),
-    [mealsToday],
-  );
+  const remaining = effectiveCalorieGoal - totals.calories;
 
   const loggedDays = useMemo(() => {
     const s = new Set<string>();
@@ -387,7 +517,20 @@ export default function TrackerScreen() {
   );
 
   const extraWaterToday = extraWaterByDay[dayKey] ?? 0;
-  const stepsTodayCount = stepsByDay[dayKey] ?? 0;
+  const waterFromMealsMl = useMemo(
+    () => Math.round(mealsToday.reduce((a, m) => a + Math.max(0, m.waterMl ?? 0), 0)),
+    [mealsToday],
+  );
+  /** Used for Today macro strip when "water" is enabled in dashboard widgets. */
+  const totalWaterMl = extraWaterToday + waterFromMealsMl;
+  const stepsRecorded = Object.prototype.hasOwnProperty.call(stepsByDay, dayKey);
+  const stepsCount = stepsRecorded ? (stepsByDay[dayKey] ?? 0) : null;
+  const activityBurnRecorded = Object.prototype.hasOwnProperty.call(activityBurnByDay, dayKey);
+  const activityBurnKcal = activityBurnRecorded ? (activityBurnByDay[dayKey] ?? 0) : null;
+  const basalBurnKcal = basalBurnByDay[dayKey] ?? 0;
+  const dayWorkouts = workoutsByDay[dayKey] ?? [];
+  const totalBurnKcal = (activityBurnKcal ?? 0) + basalBurnKcal;
+  const hasBurnData = activityBurnRecorded || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
   const handlePhotoLog = useCallback(async () => {
     try {
@@ -736,19 +879,14 @@ export default function TrackerScreen() {
     if (!userId) return;
 
     const loadLegacyByDay = async (): Promise<ByDay | null> => {
-      const { data: legacyData, error: legacyError } = await supabase
-        .from("nutrition_journals")
-        .select("by_day")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (legacyError || !legacyData?.by_day || typeof legacyData.by_day !== "object") return null;
-      const raw = legacyData.by_day as Record<string, unknown>;
+      const raw = await fetchNutritionJournalByDay(supabase, userId);
+      if (!raw) return null;
       const out: ByDay = {};
       for (const [dayKey, meals] of Object.entries(raw)) {
         if (!Array.isArray(meals)) continue;
         out[dayKey] = meals.map((m: Record<string, unknown>) => ({
           id: typeof m.id === "string" ? m.id : newMealId(),
-          name: String(m.name ?? ""),
+          name: normalizeJournalSlotName(String(m.name ?? "")),
           recipeTitle: String(m.recipeTitle ?? m.recipe_title ?? ""),
           time: String(m.time ?? m.time_label ?? ""),
           calories: Number(m.calories) || 0,
@@ -771,9 +909,11 @@ export default function TrackerScreen() {
 
     const { data: rows, error } = await supabase
       .from("nutrition_entries")
-      .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source")
+      .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
       .eq("user_id", userId)
-      .order("created_at", { ascending: true });
+      .order("date_key", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(20_000);
 
     let loaded: ByDay = {};
 
@@ -794,7 +934,7 @@ export default function TrackerScreen() {
         if (!loaded[k]) loaded[k] = [];
         loaded[k].push({
           id: r.id as string,
-          name: (r.name as string) ?? "",
+          name: normalizeJournalSlotName((r.name as string) ?? ""),
           recipeTitle: (r.recipe_title as string) ?? "",
           time: (r.time_label as string) ?? "",
           calories: (r.calories as number) ?? 0,
@@ -804,7 +944,9 @@ export default function TrackerScreen() {
           fiberG: (r.fiber_g as number) ?? undefined,
           waterMl: (r.water_ml as number) ?? undefined,
           portionMultiplier: (r.portion_multiplier as number) ?? undefined,
+          micros: parseNutritionMicrosJson((r as { nutrition_micros?: unknown }).nutrition_micros),
           source: (r.source as string) ?? undefined,
+          createdAt: (r as { created_at?: string }).created_at ?? undefined,
         });
       }
       if (Object.keys(loaded).length === 0) {
@@ -815,19 +957,64 @@ export default function TrackerScreen() {
     }
     setHydrated(true);
 
-    // Load today's planned meals
+    // Today's planned meals: relational `meal_plan_days` + `meal_plan_meals`, else legacy JSON plan
     const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
-    const { data: planRows } = await supabase
+    const { data: dayRow } = await supabase
       .from("meal_plan_days")
-      .select("meals")
+      .select("id")
       .eq("user_id", userId)
-      .eq("day_number", todayDow)
+      .eq("day", todayDow)
       .eq("slot_id", "default")
       .maybeSingle();
-    if (planRows?.meals && Array.isArray(planRows.meals)) {
-      setPlannedMeals(planRows.meals as typeof plannedMeals);
+
+    if (dayRow?.id) {
+      const { data: mealRows } = await supabase
+        .from("meal_plan_meals")
+        .select("name, recipe_title, calories, protein, carbs, fat")
+        .eq("plan_day_id", dayRow.id)
+        .order("slot_index", { ascending: true });
+      if (mealRows && mealRows.length > 0) {
+        setPlannedMeals(
+          mealRows.map((m) => ({
+            name: (m.name as string) ?? "",
+            recipe_title: (m.recipe_title as string) ?? "",
+            calories: (m.calories as number) ?? 0,
+            protein: (m.protein as number) ?? 0,
+            carbs: (m.carbs as number) ?? 0,
+            fat: (m.fat as number) ?? 0,
+          })),
+        );
+      } else {
+        setPlannedMeals([]);
+      }
     } else {
-      setPlannedMeals([]);
+      const planJson = await fetchMealPlanJson(supabase, userId);
+      type LegacyMeal = {
+        name?: string;
+        recipeTitle?: string;
+        recipe_title?: string;
+        calories?: number;
+        protein?: number;
+        carbs?: number;
+        fat?: number;
+      };
+      type LegacyDay = { day: number; meals?: LegacyMeal[] };
+      if (planJson != null && Array.isArray(planJson)) {
+        const dayPlan = (planJson as LegacyDay[]).find((d) => d.day === todayDow);
+        const meals = dayPlan?.meals ?? [];
+        setPlannedMeals(
+          meals.map((m) => ({
+            name: m.name,
+            recipe_title: m.recipeTitle ?? m.recipe_title,
+            calories: m.calories,
+            protein: m.protein,
+            carbs: m.carbs,
+            fat: m.fat,
+          })),
+        );
+      } else {
+        setPlannedMeals([]);
+      }
     }
   }, [userId]);
 
@@ -837,6 +1024,23 @@ export default function TrackerScreen() {
       void loadJournal();
       void loadProfileTargets();
     }, [loadJournal, loadProfileTargets]),
+  );
+
+  // Pull steps / weight / active energy from HealthKit into `profiles`, then refresh targets (throttled app-wide).
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId || !isHealthSyncAvailable()) return;
+      void (async () => {
+        try {
+          await syncHealthDataThrottled(userId);
+          await syncNutritionFromHealthThrottled(userId);
+          await loadProfileTargets();
+          await loadJournal();
+        } catch {
+          // HealthKit or network — ignore; user can sync from More → Connected
+        }
+      })();
+    }, [userId, loadProfileTargets, loadJournal]),
   );
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -862,6 +1066,7 @@ export default function TrackerScreen() {
           fiber_g: m.fiberG ?? null,
           water_ml: m.waterMl ?? null,
           portion_multiplier: m.portionMultiplier ?? 1,
+          nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
           source: m.source ?? null,
         }));
         void supabase
@@ -927,33 +1132,118 @@ export default function TrackerScreen() {
     }
   }, [dayKey, userId]);
 
+  const syncEditCanonicalFromFields = useCallback(() => {
+    const p = parseFloat(editPortion.replace(",", ".")) || 1;
+    if (p <= 0) return;
+    editCanonicalRef.current = {
+      cal: (Number(editKcal) || 0) / p,
+      p: (Number(editProtein) || 0) / p,
+      cb: (Number(editCarbs) || 0) / p,
+      f: (Number(editFat) || 0) / p,
+    };
+  }, [editPortion, editKcal, editProtein, editCarbs, editFat]);
+
+  const applyEditPortionMultiplier = useCallback(
+    (raw: number) => {
+      syncEditCanonicalFromFields();
+      const clamped = Math.max(0.125, Math.min(24, raw));
+      const c = editCanonicalRef.current;
+      const roundedP = Math.round(clamped * 1000) / 1000;
+      setEditPortion(String(roundedP));
+      setEditKcal(String(Math.round(c.cal * clamped)));
+      setEditProtein(String(Math.round(c.p * clamped * 10) / 10));
+      setEditCarbs(String(Math.round(c.cb * clamped * 10) / 10));
+      setEditFat(String(Math.round(c.f * clamped * 10) / 10));
+    },
+    [syncEditCanonicalFromFields],
+  );
+
   const openEditMeal = useCallback((meal: JournalMeal) => {
+    const p0 = meal.portionMultiplier ?? 1;
+    editCanonicalRef.current = {
+      cal: meal.calories / p0,
+      p: meal.protein / p0,
+      cb: meal.carbs / p0,
+      f: meal.fat / p0,
+    };
+    const pLabel = Number.isInteger(p0) ? String(p0) : String(Math.round(p0 * 100) / 100);
+    setEditPortion(pLabel);
     setEditingMeal(meal);
     setEditTitle(meal.recipeTitle);
     setEditKcal(String(Math.round(meal.calories)));
-    setEditProtein(String(Math.round(meal.protein)));
-    setEditCarbs(String(Math.round(meal.carbs)));
-    setEditFat(String(Math.round(meal.fat)));
-    setEditSlot(meal.name || "Snack");
+    setEditProtein(String(Math.round(meal.protein * 10) / 10));
+    setEditCarbs(String(Math.round(meal.carbs * 10) / 10));
+    setEditFat(String(Math.round(meal.fat * 10) / 10));
+    setEditSlot(normalizeJournalSlotName(meal.name) || "Snacks");
   }, []);
+
+  /** Open edit modal when returning from meal nutrition screen with `editMealId`. */
+  useEffect(() => {
+    const raw = params.editMealId;
+    const editId = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
+    if (!editId || !hydrated) return;
+    const dk =
+      params.date && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date))
+        ? String(params.date)
+        : dateKeyFromDate(selectedDate);
+    const meal = (byDay[dk] ?? []).find((m) => m.id === editId);
+    if (meal) {
+      openEditMeal(meal);
+      router.setParams({ editMealId: undefined } as Record<string, undefined>);
+    }
+  }, [params.editMealId, params.date, hydrated, byDay, selectedDate, openEditMeal, router]);
 
   const saveEditMeal = useCallback(() => {
     if (!editingMeal) return;
+    const portionMul = Math.max(0.125, Math.min(24, parseFloat(editPortion.replace(",", ".")) || 1));
     const updated: JournalMeal = {
       ...editingMeal,
       recipeTitle: editTitle.trim() || editingMeal.recipeTitle,
       name: editSlot,
       calories: Math.round(Number(editKcal) || editingMeal.calories),
-      protein: Math.round(Number(editProtein) || 0),
-      carbs: Math.round(Number(editCarbs) || 0),
-      fat: Math.round(Number(editFat) || 0),
+      protein: Math.round((Number(editProtein) || 0) * 10) / 10,
+      carbs: Math.round((Number(editCarbs) || 0) * 10) / 10,
+      fat: Math.round((Number(editFat) || 0) * 10) / 10,
+      portionMultiplier: portionMul,
     };
     setByDay((prev) => ({
       ...prev,
       [dayKey]: (prev[dayKey] ?? []).map((m) => (m.id === editingMeal.id ? updated : m)),
     }));
     setEditingMeal(null);
-  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, dayKey]);
+  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, dayKey]);
+
+  const logPlannedMealWithPortion = useCallback(
+    async (
+      pm: { name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number },
+      portion: number,
+    ) => {
+      if (!userId) return;
+      const mult = Math.max(0.125, Math.min(24, portion));
+      const entryId = newMealId();
+      const dk = dateKeyFromDate(selectedDate);
+      const { error } = await supabase.from("nutrition_entries").insert({
+        id: entryId,
+        user_id: userId,
+        date_key: dk,
+        name: pm.name ?? pm.recipe_title ?? "",
+        recipe_title: pm.recipe_title ?? pm.name ?? "",
+        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: Math.round((pm.calories ?? 0) * mult),
+        protein: Math.round((pm.protein ?? 0) * mult * 10) / 10,
+        carbs: Math.round((pm.carbs ?? 0) * mult * 10) / 10,
+        fat: Math.round((pm.fat ?? 0) * mult * 10) / 10,
+        portion_multiplier: mult,
+        source: "Meal plan",
+      });
+      if (error) {
+        Alert.alert("Log failed", error.message);
+      } else {
+        void loadJournal();
+      }
+    },
+    [userId, selectedDate, loadJournal],
+  );
 
   // Group meals by slot
   const mealGroups = useMemo(() => {
@@ -1042,11 +1332,12 @@ export default function TrackerScreen() {
           {viewMode === "day" && (
             <DayStrip
               selectedDate={selectedDate}
+              weekStartDay={weekStartDay}
               loggedDays={loggedDays}
-              onSelectDate={setSelectedDate}
+              onSelectDate={(d) => setSelectedDate(clampJournalDate(d))}
+              onOpenCalendar={() => setJournalCalendarOpen(true)}
               textColor={colors.text}
               secondaryColor={colors.textSecondary}
-              cardColor={colors.card}
             />
           )}
         </View>
@@ -1075,11 +1366,15 @@ export default function TrackerScreen() {
         {viewMode === "week" && (
           <DayStrip
             selectedDate={selectedDate}
+            weekStartDay={weekStartDay}
             loggedDays={loggedDays}
-            onSelectDate={(d) => { setSelectedDate(d); setViewMode("day"); }}
+            onSelectDate={(d) => {
+              setSelectedDate(clampJournalDate(d));
+              setViewMode("day");
+            }}
+            onOpenCalendar={() => setJournalCalendarOpen(true)}
             textColor={colors.text}
             secondaryColor={colors.textSecondary}
-            cardColor={colors.card}
           />
         )}
 
@@ -1117,9 +1412,21 @@ export default function TrackerScreen() {
               <Text style={styles.cardTitle}>Weekly Calories</Text>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 140, marginTop: Spacing.md }}>
                 {weekData.days.map((day) => {
-                  const maxCal = Math.max(targets.calories, ...weekData.days.map((d) => d.totals.calories));
+                  const dayGoal =
+                    targets.calories +
+                    dayActivityAdjustment(preferActivityAdjustedCalories, activityBurnByDay, day.key);
+                  const maxCal = Math.max(
+                    1,
+                    ...weekData.days.map((d) =>
+                      Math.max(
+                        d.totals.calories,
+                        targets.calories +
+                          dayActivityAdjustment(preferActivityAdjustedCalories, activityBurnByDay, d.key),
+                      ),
+                    ),
+                  );
                   const barHeight = maxCal > 0 ? Math.max(4, (day.totals.calories / maxCal) * 110) : 4;
-                  const over = day.totals.calories > targets.calories;
+                  const over = day.totals.calories > dayGoal;
                   const todayDk = dateKeyFromDate(new Date());
                   const isCurrentDay = day.key === todayDk;
                   return (
@@ -1152,7 +1459,11 @@ export default function TrackerScreen() {
               </View>
               {/* Goal line label */}
               <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 4 }}>
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Daily goal: {targets.calories} kcal</Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                  {preferActivityAdjustedCalories
+                    ? `Goal: ${targets.calories} kcal base + active energy from Health`
+                    : `Daily goal: ${targets.calories} kcal`}
+                </Text>
               </View>
             </View>
 
@@ -1169,11 +1480,11 @@ export default function TrackerScreen() {
                   <Text style={{ fontSize: 11, color: colors.textSecondary }}>Daily avg</Text>
                 </View>
                 <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 24, fontWeight: "800", color: targets.calories * 7 > weekData.weekTotals.calories ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
-                    {Math.round(Math.abs(targets.calories * 7 - weekData.weekTotals.calories))}
+                  <Text style={{ fontSize: 24, fontWeight: "800", color: weekEffectiveCalorieBudget > weekData.weekTotals.calories ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
+                    {Math.round(Math.abs(weekEffectiveCalorieBudget - weekData.weekTotals.calories))}
                   </Text>
                   <Text style={{ fontSize: 11, color: colors.textSecondary }}>
-                    {targets.calories * 7 > weekData.weekTotals.calories ? "Under budget" : "Over budget"}
+                    {weekEffectiveCalorieBudget > weekData.weekTotals.calories ? "Under budget" : "Over budget"}
                   </Text>
                 </View>
               </View>
@@ -1241,7 +1552,7 @@ export default function TrackerScreen() {
             <View style={{ alignItems: "center", paddingVertical: 14 }}>
               <CalorieRing
                 consumed={totals.calories}
-                goal={targets.calories}
+                goal={effectiveCalorieGoal}
                 textColor={colors.text}
                 secondaryColor={colors.textSecondary}
                 trackColor={colors.border}
@@ -1269,13 +1580,15 @@ export default function TrackerScreen() {
                 };
                 const m = macroMap[macro];
                 if (!m) return null;
+                const displayAmount =
+                  macro === "fiber" ? Math.round(m.cur * 10) / 10 : Math.round(m.cur);
                 return (
                   <View key={macro} style={{ flex: 1, minWidth: 70, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
                       <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{m.label}</Text>
                     </View>
-                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{Math.round(m.cur)}{m.unit}</Text>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{displayAmount}{m.unit}</Text>
                     <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
                       <View style={{ width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`, height: "100%", borderRadius: 2, backgroundColor: m.color }} />
                     </View>
@@ -1284,6 +1597,37 @@ export default function TrackerScreen() {
                 );
               })}
             </View>
+
+            {dayNutrientDetailRowsWithoutMacroDupes.length > 0 ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary, marginBottom: 8 }}>
+                  Nutrients
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {dayNutrientDetailRowsWithoutMacroDupes.map((row) => (
+                    <View
+                      key={row.key}
+                      style={{
+                        width: "48%",
+                        flexGrow: 1,
+                        minWidth: 140,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderRadius: 10,
+                        backgroundColor: colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.cardBorder,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{row.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                        {row.value}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             {/* 4 Quick-log chips — prototype style */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
@@ -1311,8 +1655,8 @@ export default function TrackerScreen() {
               <Ionicons name="flame" size={18} color={Accent.success} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>{streakDays}-day protein streak</Text>
-              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Consistently on target. Keep it going.</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>{streakDays}-day logging streak</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>You’ve logged meals on consecutive days. Keep it going.</Text>
             </View>
           </View>
         )}
@@ -1324,18 +1668,22 @@ export default function TrackerScreen() {
               ~{remaining} kcal under budget so far today
             </Text>
             {(() => {
-              const last7Keys = Object.keys(byDay).sort().reverse().slice(0, 7);
-              if (last7Keys.length < 2) return null;
+              const keys = weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay);
+              const keysWithMeals = keys.filter((k) => (byDay[k] ?? []).length > 0);
+              if (keysWithMeals.length < 2) return null;
               const avgDeficit = Math.round(
-                last7Keys.reduce((sum, k) => {
+                keysWithMeals.reduce((sum, k) => {
                   const dayCals = (byDay[k] ?? []).reduce((a, m) => a + m.calories, 0);
-                  return sum + (targets.calories - dayCals);
-                }, 0) / last7Keys.length,
+                  const dayGoal =
+                    targets.calories +
+                    dayActivityAdjustment(preferActivityAdjustedCalories, activityBurnByDay, k);
+                  return sum + (dayGoal - dayCals);
+                }, 0) / keysWithMeals.length,
               );
               if (avgDeficit <= 0) return null;
               return (
                 <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
-                  7-day avg: ~{avgDeficit} kcal/day under goal
+                  {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit} kcal/day under goal
                 </Text>
               );
             })()}
@@ -1345,9 +1693,21 @@ export default function TrackerScreen() {
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
         {viewMode === "day" && (() => {
           const slotIcon = (s: string): keyof typeof Ionicons.glyphMap =>
-            ({ Breakfast: "cafe-outline", Lunch: "sunny-outline", Dinner: "restaurant-outline", Snack: "star-outline" }[s] ?? "restaurant-outline") as any;
+            ({
+              Breakfast: "cafe-outline",
+              Lunch: "sunny-outline",
+              Dinner: "restaurant-outline",
+              Snacks: "star-outline",
+              Snack: "star-outline",
+            }[s] ?? "restaurant-outline") as any;
           const slotColor = (s: string) =>
-            ({ Breakfast: Accent.warning, Lunch: Accent.success, Dinner: Accent.primary, Snack: MacroColors.fat }[s] ?? Accent.primary);
+            ({
+              Breakfast: Accent.warning,
+              Lunch: Accent.success,
+              Dinner: Accent.primary,
+              Snacks: MacroColors.fat,
+              Snack: MacroColors.fat,
+            }[s] ?? Accent.primary);
           return (
             <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
               {MEAL_SLOTS.map((slot) => {
@@ -1388,9 +1748,9 @@ export default function TrackerScreen() {
                     {hasMeals && isOpen && meals.map((m) => (
                       <Pressable
                         key={m.id}
-                        onPress={() => openEditMeal(m)}
+                        onPress={() => router.push(`/meal-nutrition?id=${encodeURIComponent(m.id)}` as const)}
                         onLongPress={() => {
-                          Alert.alert(m.recipeTitle, `${Math.round(m.calories)} kcal · P ${Math.round(m.protein)}g · C ${Math.round(m.carbs)}g · F ${Math.round(m.fat)}g`, [
+                          Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
                             { text: "Cancel", style: "cancel" },
                             { text: "Edit", onPress: () => openEditMeal(m) },
                             { text: "Delete", style: "destructive", onPress: () => deleteMeal(m.id) },
@@ -1398,9 +1758,19 @@ export default function TrackerScreen() {
                         }}
                         style={{ paddingVertical: 9, paddingLeft: 56, paddingRight: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: colors.cardBorder + "08" }}
                       >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
-                          <Text style={{ fontSize: 12, color: colors.text }} numberOfLines={1}>{m.recipeTitle}</Text>
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
+                            <Text style={{ fontSize: 12, color: colors.text }} numberOfLines={1}>{m.recipeTitle}</Text>
+                          </View>
+                          {showMealTimestamps ? (
+                            (() => {
+                              const ts = formatMealTimeDisplay(m.time, m.createdAt);
+                              return ts ? (
+                                <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 12 }}>{ts}</Text>
+                              ) : null;
+                            })()
+                          ) : null}
                         </View>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <Text style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(m.calories)}</Text>
@@ -1414,7 +1784,7 @@ export default function TrackerScreen() {
               {/* Add meal footer */}
               <Pressable
                 style={{ padding: 12, alignItems: "center" }}
-                onPress={() => { setActiveMealSlot("Snack"); setFabSheetOpen(true); }}
+                onPress={() => { setActiveMealSlot("Snacks"); setFabSheetOpen(true); }}
               >
                 <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "500" }}>+ Add Food</Text>
               </Pressable>
@@ -1437,32 +1807,18 @@ export default function TrackerScreen() {
                   </Text>
                 </View>
                 <Pressable
-                  onPress={async () => {
-                    const entryId = newMealId();
-                    const dk = dateKeyFromDate(selectedDate);
-                    const { error } = await supabase.from("nutrition_entries").insert({
-                      id: entryId,
-                      user_id: userId,
-                      date_key: dk,
-                      name: pm.name ?? pm.recipe_title ?? "",
-                      recipe_title: pm.recipe_title ?? pm.name ?? "",
-                      time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                      calories: pm.calories ?? 0,
-                      protein: pm.protein ?? 0,
-                      carbs: pm.carbs ?? 0,
-                      fat: pm.fat ?? 0,
-                      portion_multiplier: 1,
-                      source: "Meal plan",
-                    });
-                    if (error) {
-                      Alert.alert("Log failed", error.message);
-                    } else {
-                      void loadJournal();
-                    }
+                  onPress={() => {
+                    Alert.alert("Log planned meal", "Pick portion vs the planned serving.", [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "½×", onPress: () => void logPlannedMealWithPortion(pm, 0.5) },
+                      { text: "1×", onPress: () => void logPlannedMealWithPortion(pm, 1) },
+                      { text: "1½×", onPress: () => void logPlannedMealWithPortion(pm, 1.5) },
+                      { text: "2×", onPress: () => void logPlannedMealWithPortion(pm, 2) },
+                    ]);
                   }}
                   style={{ paddingHorizontal: 8, paddingVertical: 12 }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>Log{"\n"}today</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>Log today</Text>
                 </Pressable>
               </View>
             ))}
@@ -1548,10 +1904,263 @@ export default function TrackerScreen() {
           </View>
         )}
 
+        {/* Steps, water, active energy — per selected day (historic via header / DayStrip) */}
+        {viewMode === "day" && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Steps, water & activity</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.md }}>
+              {isToday ? "Today" : formatDateLabel(selectedDate)} — use the strip or arrows to pick another day
+            </Text>
+
+            <View style={{ gap: Spacing.sm }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="footsteps-outline" size={18} color={colors.textSecondary} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Steps</Text>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {stepsCount != null ? stepsCount.toLocaleString() : "—"}
+                  {stepsCount != null && (
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary }}>
+                      {" "}/ {dailyStepsGoal.toLocaleString()}
+                    </Text>
+                  )}
+                </Text>
+              </View>
+              {stepsCount != null && dailyStepsGoal > 0 && (
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
+                  <View
+                    style={{
+                      width: `${Math.min(stepsCount / dailyStepsGoal, 1) * 100}%`,
+                      height: "100%",
+                      borderRadius: 3,
+                      backgroundColor: stepsCount >= dailyStepsGoal ? Accent.success : Accent.primary,
+                    }}
+                  />
+                </View>
+              )}
+
+              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+
+              <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <Ionicons name="water-outline" size={18} color={MacroColors.water} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Water</Text>
+                </View>
+                <View style={{ flex: 1, alignItems: "flex-end", gap: 6 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                    {totalWaterMl.toLocaleString()} / {waterGoalMl.toLocaleString()} ml
+                  </Text>
+                  <View style={{ width: "100%", maxWidth: 220, height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
+                    <View
+                      style={{
+                        width: `${Math.min(totalWaterMl / Math.max(waterGoalMl, 1), 1) * 100}%`,
+                        height: "100%",
+                        borderRadius: 3,
+                        backgroundColor: MacroColors.water,
+                      }}
+                    />
+                  </View>
+                  {waterFromMealsMl > 0 && (
+                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                      Includes {waterFromMealsMl.toLocaleString()} ml from logged food
+                    </Text>
+                  )}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "flex-end", marginTop: 2 }}>
+                    {([250, 500] as const).map((ml) => (
+                      <Pressable
+                        key={ml}
+                        onPress={() => addWaterMl(ml)}
+                        style={{
+                          paddingVertical: 6,
+                          paddingHorizontal: 10,
+                          borderRadius: Radius.sm,
+                          backgroundColor: MacroColors.water + "22",
+                          borderWidth: 1,
+                          borderColor: MacroColors.water + "55",
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: MacroColors.water }}>+{ml} ml</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="flame-outline" size={18} color={Accent.warning} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Active energy</Text>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {activityBurnKcal != null ? `${activityBurnKcal.toLocaleString()} kcal` : "—"}
+                </Text>
+              </View>
+              {activityBurnKcal == null && (
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                  Apple Health active calories appear here after you sync from More → Connected.
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Calorie Burn Bonus card — shows total burn, deficit, workouts */}
+        {viewMode === "day" && hasBurnData && (
+          <View style={styles.card}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
+              <Ionicons name="flame" size={20} color={Accent.warning} />
+              <Text style={styles.cardTitle}>Calorie Burn Bonus</Text>
+            </View>
+
+            {/* Summary row: total TDEE | food logged in Suppr | net burn − logged */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm }}>
+              <View style={{ alignItems: "center", flex: 1 }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {totalBurnKcal.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>Total burn</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: colors.border }} />
+              <View style={{ alignItems: "center", flex: 1 }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {totals.calories.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>Food logged</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: colors.border }} />
+              <View style={{ alignItems: "center", flex: 1 }}>
+                {(() => {
+                  const consumed = totals.calories;
+                  const net = totalBurnKcal - consumed;
+                  const isDeficit = net >= 0;
+                  return (
+                    <>
+                      <Text style={{ fontSize: 20, fontWeight: "800", color: isDeficit ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
+                        {Math.abs(net).toLocaleString()}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>
+                        {isDeficit ? "Net deficit" : "Net surplus"}
+                      </Text>
+                    </>
+                  );
+                })()}
+              </View>
+            </View>
+            {effectiveCalorieGoal > 0 && (
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: Spacing.md, textAlign: "center" }}>
+                Calorie goal for this day: {effectiveCalorieGoal.toLocaleString()} kcal (ring on Today)
+              </Text>
+            )}
+
+            {/* Burn breakdown */}
+            <View style={{ gap: 4, marginBottom: Spacing.md }}>
+              {basalBurnKcal > 0 && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>Resting energy</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                    {basalBurnKcal.toLocaleString()} kcal
+                  </Text>
+                </View>
+              )}
+              {(activityBurnKcal ?? 0) > 0 && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>Active energy</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                    {(activityBurnKcal ?? 0).toLocaleString()} kcal
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Workouts list */}
+            {dayWorkouts.length > 0 && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, marginBottom: 2 }}>Workouts</Text>
+                {dayWorkouts.map((w, i) => (
+                  <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
+                    <Ionicons name="barbell-outline" size={16} color={Accent.primary} />
+                    <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                      {w.minutes > 0 ? `${w.minutes} min` : ""}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.warning, fontVariant: ["tabular-nums"] }}>
+                      {w.calories > 0 ? `${w.calories} kcal` : ""}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Weekly deficit summary */}
+            {(() => {
+              let weekBurn = 0;
+              let weekConsumed = 0;
+              for (const dk of trackerWeekSummaryKeys) {
+                weekBurn += (activityBurnByDay[dk] ?? 0) + (basalBurnByDay[dk] ?? 0);
+                const dayMeals = byDay[dk] ?? [];
+                weekConsumed += dayMeals.reduce((s, m) => s + Math.max(0, m.calories), 0);
+              }
+              if (weekBurn === 0) return null;
+              const weekDeficit = weekBurn - weekConsumed;
+              const dailyAvgDeficit = Math.round(weekDeficit / 7);
+              const weeklyLbsRate = Math.abs(weekDeficit) / 3500; // 3500 kcal ≈ 1 lb
+              const weeklyKgRate = weeklyLbsRate * 0.4536;
+              const isDeficit = weekDeficit >= 0;
+              return (
+                <View style={{ marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, marginBottom: 6 }}>
+                    {weekSummaryHeading(weekSummaryMode)}
+                  </Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                      Avg daily {isDeficit ? "deficit" : "surplus"}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: isDeficit ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
+                      {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                      Weekly {isDeficit ? "deficit" : "surplus"}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: isDeficit ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
+                      {Math.abs(weekDeficit).toLocaleString()} kcal
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                      Projected weekly {isDeficit ? "loss" : "gain"}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: isDeficit ? Accent.success : Accent.destructive, fontVariant: ["tabular-nums"] }}>
+                      {weeklyKgRate.toFixed(2)} kg
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
         {/* Complete Day button — only when viewing today and there are logged meals */}
         {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
           <Pressable
-            onPress={() => setCompleteDayOpen(true)}
+            onPress={async () => {
+              setCompleteDayOpen(true);
+              // Auto-export to HealthKit if enabled
+              if (userId && isHealthSyncAvailable()) {
+                try {
+                  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+                  const exp = await AsyncStorage.getItem("health_export_nutrition");
+                  if (exp === "true") {
+                    const dk = dateKeyFromDate(selectedDate);
+                    void exportDayToHealth(userId, dk);
+                  }
+                } catch {}
+              }
+            }}
             style={{
               marginTop: Spacing.lg,
               paddingVertical: 16,
@@ -1604,7 +2213,7 @@ export default function TrackerScreen() {
               const prediction = projectWeight({
                 currentWeightKg: profileWeightKg,
                 todayCalories: totals.calories,
-                targetCalories: targets.calories,
+                targetCalories: effectiveCalorieGoal,
                 goal: profileGoal,
               });
               return (
@@ -1903,6 +2512,40 @@ export default function TrackerScreen() {
               ))}
             </View>
 
+            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: Spacing.xs }}>
+              Portion (×)
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: Spacing.sm }}>
+              {([0.5, 0.75, 1, 1.25, 1.5, 2] as const).map((mult) => (
+                <Pressable
+                  key={mult}
+                  onPress={() => applyEditPortionMultiplier(mult)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: Radius.sm,
+                    backgroundColor: colors.inputBg,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{mult}×</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              style={[styles.input, { marginBottom: Spacing.md }]}
+              placeholder="Portion multiplier (e.g. 1.25)"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="decimal-pad"
+              value={editPortion}
+              onChangeText={setEditPortion}
+              onBlur={() => {
+                const p = parseFloat(editPortion.replace(",", ".")) || 1;
+                applyEditPortionMultiplier(p);
+              }}
+            />
+
             <TextInput
               style={styles.input}
               placeholder="Food name"
@@ -2001,13 +2644,14 @@ export default function TrackerScreen() {
           const meal: JournalMeal = {
             id: newMealId(),
             name: activeMealSlot,
-            recipeTitle: product.name,
+            recipeTitle: product.portionSummary ? `${product.name} (${product.portionSummary})` : product.name,
             time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
             calories: Math.round(product.calories),
             protein: Math.round(product.protein * 10) / 10,
             carbs: Math.round(product.carbs * 10) / 10,
             fat: Math.round(product.fat * 10) / 10,
             source: "Open Food Facts",
+            ...(product.fiberG > 0 ? { fiberG: Math.round(product.fiberG * 10) / 10 } : {}),
           };
           setByDay((prev) => ({
             ...prev,
@@ -2080,6 +2724,24 @@ export default function TrackerScreen() {
           </ScrollView>
         </View>
       )}
+
+      <JournalDatePickerModal
+        visible={journalCalendarOpen}
+        onClose={() => setJournalCalendarOpen(false)}
+        selectedDate={selectedDate}
+        onSelectDate={(d) => {
+          setSelectedDate(clampJournalDate(d));
+          setViewMode("day");
+        }}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+        }}
+      />
     </View>
   );
 }

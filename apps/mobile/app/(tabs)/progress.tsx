@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -12,12 +12,30 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
-import { calcGoalTimeline, projectWeight } from "@/lib/weightProjection";
+import {
+  calcGoalTimeline,
+  projectWeight,
+  resolveLatestWeightKg,
+  weightJourneyProgress,
+} from "@/lib/weightProjection";
+import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
+import { buildWeekStats } from "@/lib/progressWeekReport";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
-  if (!raw || typeof raw !== "object") return {};
-  const o = raw as Record<string, unknown>;
+  let o: Record<string, unknown> | null = null;
+  if (raw == null) return {};
+  if (typeof raw === "string") {
+    try {
+      const p = JSON.parse(raw) as unknown;
+      if (p && typeof p === "object" && !Array.isArray(p)) o = p as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  } else if (typeof raw === "object" && !Array.isArray(raw)) {
+    o = raw as Record<string, unknown>;
+  }
+  if (!o) return {};
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(o)) {
     const n = typeof v === "number" ? v : Number(v);
@@ -56,9 +74,22 @@ export default function ProgressScreen() {
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
+  const latestWeightKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg),
+    [weightKgByDay, weightKg],
+  );
+
   const loadData = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
+
+    if (isHealthSyncAvailable()) {
+      try {
+        await syncHealthDataThrottled(userId);
+      } catch {
+        // HealthKit unavailable or denied — continue with DB-only data
+      }
+    }
 
     // Profile targets + weight + steps
     const { data: profile } = await supabase
@@ -119,54 +150,19 @@ export default function ProgressScreen() {
 
   useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
 
-  // Weekly stats: current week based on weekStartDay setting
-  const weekStats = useMemo(() => {
-    const days: { key: string; label: string; calories: number; protein: number; carbs: number; fat: number }[] = [];
-    const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    // Find start of current week
-    const today = new Date();
-    const dow = today.getDay(); // 0=Sun
-    const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
-    const weekFirst = new Date(today);
-    weekFirst.setDate(today.getDate() + startOffset);
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(weekFirst);
-      d.setDate(weekFirst.getDate() + i);
-      const key = dateKeyFromDate(d);
-      const meals = byDay[key] ?? [];
-      const totals = meals.reduce(
-        (acc, m) => ({
-          calories: acc.calories + Math.max(0, m.calories),
-          protein: acc.protein + Math.max(0, m.protein),
-          carbs: acc.carbs + Math.max(0, m.carbs),
-          fat: acc.fat + Math.max(0, m.fat),
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      );
-      days.push({ key, label: dayLabels[d.getDay()], ...totals });
-    }
-
-    const daysWithFood = days.filter((d) => d.calories > 0).length || 1;
-    const avgCalories = Math.round(days.reduce((s, d) => s + d.calories, 0) / daysWithFood);
-    const avgProtein = Math.round(days.reduce((s, d) => s + d.protein, 0) / daysWithFood);
-    const avgCarbs = Math.round(days.reduce((s, d) => s + d.carbs, 0) / daysWithFood);
-    const avgFat = Math.round(days.reduce((s, d) => s + d.fat, 0) / daysWithFood);
-
-    const proteinOnTarget = days.filter((d) => d.protein >= targets.protein * 0.9).length;
-    const proteinAdherence = daysWithFood > 0 ? Math.round((avgProtein / targets.protein) * 100) : 0;
-    const carbsAdherence = daysWithFood > 0 ? Math.round((avgCarbs / targets.carbs) * 100) : 0;
-    const fatAdherence = daysWithFood > 0 ? Math.round((avgFat / targets.fat) * 100) : 0;
-
-    return { days, avgCalories, avgProtein, proteinOnTarget, daysWithFood, proteinAdherence, carbsAdherence, fatAdherence };
-  }, [byDay, targets]);
+  const weekStats = useMemo(() => buildWeekStats(byDay, targets, weekStartDay), [byDay, targets, weekStartDay]);
 
   const streakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
 
   // Weight trend (last entries)
   const weightTrend = useMemo(() => {
-    const keys = Object.keys(weightKgByDay).sort();
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - 90);
+    const cutoffStr = dateKeyFromDate(cutoff);
+    const keys = Object.keys(weightKgByDay)
+      .filter((k) => k >= cutoffStr)
+      .sort();
     if (keys.length < 2) return null;
     const first = weightKgByDay[keys[0]];
     const last = weightKgByDay[keys[keys.length - 1]];
@@ -246,25 +242,79 @@ export default function ProgressScreen() {
               ],
               [
                 "Trend",
-                weightTrend ? `${weightTrend.diff > 0 ? "+" : ""}${weightTrend.diff} kg` : weightKg ? `${weightKg} kg` : "—",
                 weightTrend
-                  ? weightTrend.direction === "down" ? "losing" : weightTrend.direction === "up" ? "gaining" : "maintaining"
+                  ? `${weightTrend.diff > 0 ? "+" : ""}${weightTrend.diff} kg`
+                  : latestWeightKg != null
+                    ? `${latestWeightKg} kg`
+                    : "—",
+                weightTrend
+                  ? weightTrend.direction === "down"
+                    ? "losing (90d)"
+                    : weightTrend.direction === "up"
+                      ? "gaining (90d)"
+                      : "maintaining (90d)"
                   : "no weight data",
                 weightTrend?.direction === "down" ? t.green : weightTrend?.direction === "up" ? t.amber : t.accent,
                 weightTrend?.direction === "down" ? "trending-down-outline" : weightTrend?.direction === "up" ? "trending-up-outline" : "analytics-outline",
               ],
-            ] as const).map(([title, val, sub, color, iconName], i) => (
-              <View key={i} style={{ width: "48.5%", padding: 14, borderRadius: 14, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                  <IconBox color={color as string} size={24}>
-                    <Ionicons name={iconName as any} size={12} color={color as string} />
-                  </IconBox>
-                  <Text style={{ fontSize: 10, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
-                </View>
-                <Text style={{ fontSize: 22, fontWeight: "700", color: color as string, fontVariant: ["tabular-nums"] }}>{val}</Text>
-                <Text style={{ fontSize: 11, color: t.sub, marginTop: 2 }}>{sub}</Text>
-              </View>
-            ))}
+            ] as const).map(([title, val, sub, color, iconName], i) => {
+              const tileBody = (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                    <IconBox color={color as string} size={24}>
+                      <Ionicons name={iconName as any} size={12} color={color as string} />
+                    </IconBox>
+                    <Text style={{ fontSize: 10, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: "700", color: color as string, fontVariant: ["tabular-nums"] }}>{val}</Text>
+                  <Text style={{ fontSize: 11, color: t.sub, marginTop: 2 }}>{sub}</Text>
+                </>
+              );
+              const shellStyle = {
+                width: "48.5%" as const,
+                padding: 14,
+                borderRadius: 14,
+                backgroundColor: t.elevated,
+                borderWidth: 1,
+                borderColor: t.border,
+              };
+              const openTile = () => {
+                if (title === "Trend") {
+                  router.push("/weight-tracker" as const);
+                  return;
+                }
+                const metric =
+                  title === "Avg Calories" ? "calories" : title === "Protein Hit" ? "protein" : title === "Streak" ? "streak" : null;
+                if (metric) {
+                  router.push({ pathname: "/progress-metric" as any, params: { metric } });
+                }
+              };
+              const a11yLabel =
+                title === "Trend"
+                  ? `Weight trend, ${val} kilograms, ${sub}`
+                  : title === "Avg Calories"
+                    ? `Average calories ${val}, ${sub}`
+                    : title === "Protein Hit"
+                      ? `Protein on target ${val}, ${sub}`
+                      : `Logging streak ${val}, ${sub}`;
+              const footerLabel = title === "Trend" ? "Chart & breakdown" : "Tap for breakdown";
+              return (
+                <Pressable
+                  key={i}
+                  onPress={openTile}
+                  accessibilityRole="button"
+                  accessibilityLabel={a11yLabel}
+                  accessibilityHint="Opens detailed breakdown"
+                  style={({ pressed }) => [shellStyle, pressed && { opacity: 0.92 }]}
+                >
+                  {tileBody}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent }}>{footerLabel}</Text>
+                    <Ionicons name="chevron-forward" size={12} color={t.accent} />
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Daily Calories Bar Chart */}
@@ -342,17 +392,34 @@ export default function ProgressScreen() {
           </View>
 
           {/* Weight Card */}
-          {(weightKg != null || Object.keys(weightKgByDay).length > 0) && (
-            <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <IconBox color={t.accent} size={28}>
-                  <Ionicons name="scale-outline" size={14} color={t.accent} />
-                </IconBox>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
+          {(latestWeightKg != null || Object.keys(weightKgByDay).length > 0) && (
+            <Pressable
+              onPress={() => router.push("/weight-tracker" as const)}
+              accessibilityRole="button"
+              accessibilityLabel="Weight details"
+              accessibilityHint="Opens weight graph and history"
+              style={({ pressed }) => ({
+                backgroundColor: t.elevated,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: t.border,
+                padding: 16,
+                marginBottom: 14,
+                opacity: pressed ? 0.92 : 1,
+              })}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <IconBox color={t.accent} size={28}>
+                    <Ionicons name="scale-outline" size={14} color={t.accent} />
+                  </IconBox>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={t.dim} />
               </View>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
                 <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {weightKg ?? "—"}
+                  {latestWeightKg ?? "—"}
                 </Text>
                 <Text style={{ fontSize: 13, color: t.sub }}>kg{goalWeightKg ? ` → ${goalWeightKg} kg goal` : ""}</Text>
               </View>
@@ -361,34 +428,62 @@ export default function ProgressScreen() {
                   {weightTrend.diff > 0 ? "+" : ""}{weightTrend.diff} kg overall trend
                 </Text>
               )}
-            </View>
+              <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for graph & log weight</Text>
+            </Pressable>
           )}
 
           {/* Weight Projection / Journey Card */}
-          {weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (
+          {latestWeightKg != null &&
+            goalWeightKg != null &&
+            Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
             (() => {
               const timeline = calcGoalTimeline({
-                currentWeightKg: weightKg,
+                currentWeightKg: latestWeightKg,
                 goalWeightKg: goalWeightKg,
                 weightKgByDay,
               });
-              const progressPct = Math.max(0, Math.min(100,
-                timeline.remainingKg > 0
-                  ? ((Math.abs(weightKg - goalWeightKg) - timeline.remainingKg) / Math.abs(weightKg - goalWeightKg)) * 100
-                  : 100
-              ));
+              const journeyProg = weightJourneyProgress({
+                goalKg: goalWeightKg,
+                latestKg: latestWeightKg,
+                weightKgByDay,
+              });
+              const progressPct = journeyProg
+                ? Math.max(3, Math.min(100, Math.round(journeyProg.pct * 100)))
+                : timeline.remainingKg <= 0.1
+                  ? 100
+                  : 3;
               // Also show daily projection based on average recent intake
               const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
               const recentDays = daysWithFood.slice(-7);
               const avgCals = recentDays.length > 0
                 ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
                 : 0;
-              const dailyProjection = avgCals > 0 && weightKg
-                ? projectWeight({ currentWeightKg: weightKg, todayCalories: avgCals, targetCalories: targets.calories, goal: userGoal })
-                : null;
+              const dailyProjection =
+                avgCals > 0 && latestWeightKg != null
+                  ? projectWeight({
+                      currentWeightKg: latestWeightKg,
+                      todayCalories: avgCals,
+                      targetCalories: targets.calories,
+                      goal: userGoal,
+                    })
+                  : null;
 
               return (
-                <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+                <Pressable
+                  onPress={() => router.push("/weight-tracker" as const)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Weight journey and charts"
+                  accessibilityHint="Opens detailed weight progress"
+                  style={({ pressed }) => ({
+                    backgroundColor: t.elevated,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: t.border,
+                    padding: 16,
+                    marginBottom: 14,
+                    opacity: pressed ? 0.94 : 1,
+                  })}
+                >
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <IconBox color={t.green} size={28}>
@@ -396,11 +491,14 @@ export default function ProgressScreen() {
                       </IconBox>
                       <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Journey</Text>
                     </View>
-                    {timeline.daysToGoal != null && (
-                      <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
-                        {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
-                      </Text>
-                    )}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {timeline.daysToGoal != null && (
+                        <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
+                          {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
+                        </Text>
+                      )}
+                      <Ionicons name="chevron-forward" size={18} color={t.dim} />
+                    </View>
                   </View>
 
                   {/* Progress description */}
@@ -413,7 +511,7 @@ export default function ProgressScreen() {
 
                   {/* Progress bar */}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{weightKg} kg</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{latestWeightKg} kg</Text>
                     <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: t.border }}>
                       <View style={{
                         width: `${Math.max(progressPct, 3)}%`,
@@ -434,7 +532,8 @@ export default function ProgressScreen() {
                       </Text>
                     </View>
                   )}
-                </View>
+                  <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for full weight analytics</Text>
+                </Pressable>
               );
             })()
           )}

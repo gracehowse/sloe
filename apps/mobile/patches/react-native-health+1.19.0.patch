@@ -1,0 +1,411 @@
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.h b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.h
+index fba0f76..fc5f398 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.h
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.h
+@@ -20,4 +20,10 @@
+ - (void)dietary_getProteinSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
+ - (void)dietary_getFiberSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
+ - (void)dietary_getTotalFatSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getSugarSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getSodiumSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getFatSaturatedSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getCholesterolSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getFoodCorrelationSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
++- (void)dietary_getDietaryQuantitySamplesForPermission:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
+ @end
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
+index 9d532ee..e43436a 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
+@@ -10,9 +10,14 @@
+ #import "RCTAppleHealthKit+Queries.h"
+ #import "RCTAppleHealthKit+Utils.h"
+ 
++#import <HealthKit/HealthKit.h>
+ #import <React/RCTBridgeModule.h>
+ #import <React/RCTEventDispatcher.h>
+ 
++@interface RCTAppleHealthKit (SupprDietaryReadPerm)
++- (nullable HKObjectType *)getReadPermFromText:(nonnull NSString *)key;
++@end
++
+ @implementation RCTAppleHealthKit (Methods_Dietary)
+ 
+ - (void)dietary_getEnergyConsumedSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
+@@ -139,6 +144,246 @@ - (void)dietary_getFiberSamples:(NSDictionary *)input callback:(RCTResponseSende
+     }];
+ }
+ 
++- (void)dietary_getSugarSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietarySugar];
++    HKUnit *unit = [RCTAppleHealthKit hkUnitFromOptions:input key:@"unit" withDefault:[HKUnit gramUnit]];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate * predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++
++    [self fetchQuantitySamplesOfType:type
++                                unit:unit
++                           predicate:predicate
++                           ascending:ascending
++                               limit:limit
++                          completion:^(NSArray *results, NSError *error) {
++        if(results){
++            callback(@[[NSNull null], results]);
++            return;
++        } else {
++            NSLog(@"An error occured while retrieving the sugar sample %@. The error was: ", error);
++            callback(@[RCTMakeError(@"An error occured while retrieving the sugar sample", error, nil)]);
++            return;
++        }
++    }];
++}
++
++- (void)dietary_getSodiumSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietarySodium];
++    HKUnit *unit = [RCTAppleHealthKit hkUnitFromOptions:input key:@"unit" withDefault:[HKUnit gramUnit]];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate * predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++
++    [self fetchQuantitySamplesOfType:type
++                                unit:unit
++                           predicate:predicate
++                           ascending:ascending
++                               limit:limit
++                          completion:^(NSArray *results, NSError *error) {
++        if(results){
++            callback(@[[NSNull null], results]);
++            return;
++        } else {
++            NSLog(@"An error occured while retrieving the sodium sample %@. The error was: ", error);
++            callback(@[RCTMakeError(@"An error occured while retrieving the sodium sample", error, nil)]);
++            return;
++        }
++    }];
++}
++
++- (void)dietary_getFatSaturatedSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatSaturated];
++    HKUnit *unit = [RCTAppleHealthKit hkUnitFromOptions:input key:@"unit" withDefault:[HKUnit gramUnit]];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate * predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++
++    [self fetchQuantitySamplesOfType:type
++                                unit:unit
++                           predicate:predicate
++                           ascending:ascending
++                               limit:limit
++                          completion:^(NSArray *results, NSError *error) {
++        if(results){
++            callback(@[[NSNull null], results]);
++            return;
++        } else {
++            NSLog(@"An error occured while retrieving the saturated fat sample %@. The error was: ", error);
++            callback(@[RCTMakeError(@"An error occured while retrieving the saturated fat sample", error, nil)]);
++            return;
++        }
++    }];
++}
++
++- (void)dietary_getCholesterolSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCholesterol];
++    HKUnit *unit = [RCTAppleHealthKit hkUnitFromOptions:input key:@"unit" withDefault:[HKUnit gramUnit]];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate * predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++
++    [self fetchQuantitySamplesOfType:type
++                                unit:unit
++                           predicate:predicate
++                           ascending:ascending
++                               limit:limit
++                          completion:^(NSArray *results, NSError *error) {
++        if(results){
++            callback(@[[NSNull null], results]);
++            return;
++        } else {
++            NSLog(@"An error occured while retrieving the cholesterol sample %@. The error was: ", error);
++            callback(@[RCTMakeError(@"An error occured while retrieving the cholesterol sample", error, nil)]);
++            return;
++        }
++    }];
++}
++
++- (void)dietary_getFoodCorrelationSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    HKCorrelationType *foodType = [HKCorrelationType correlationTypeForIdentifier:HKCorrelationTypeIdentifierFood];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate *predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++
++    NSSortDescriptor *timeSortDescriptor = [[NSSortDescriptor alloc] initWithKey:HKSampleSortIdentifierEndDate
++                                                                       ascending:ascending];
++
++    void (^handlerBlock)(HKSampleQuery *query, NSArray *results, NSError *error);
++    handlerBlock = ^(HKSampleQuery *query, NSArray *results, NSError *error) {
++        if (error) {
++            NSLog(@"RNHealth: food correlation query error: %@", error);
++            callback(@[RCTMakeError(@"An error occured while retrieving food correlations", error, nil)]);
++            return;
++        }
++        if (!results) {
++            callback(@[[NSNull null], @[]]);
++            return;
++        }
++
++        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
++            NSMutableArray *data = [NSMutableArray arrayWithCapacity:results.count];
++            for (id raw in results) {
++                if (![raw isKindOfClass:[HKCorrelation class]]) {
++                    continue;
++                }
++                HKCorrelation *corr = (HKCorrelation *)raw;
++                NSString *startDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.startDate];
++                NSString *endDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.endDate];
++                NSMutableArray *qtyIds = [NSMutableArray array];
++                for (HKSample *child in [corr objects]) {
++                    if ([child isKindOfClass:[HKQuantitySample class]]) {
++                        [qtyIds addObject:[[child UUID] UUIDString]];
++                    }
++                }
++                NSDictionary *meta = [corr metadata];
++                NSString *bundleId = [[[corr sourceRevision] source] bundleIdentifier];
++                NSString *srcName = [[[corr sourceRevision] source] name];
++                NSDictionary *row = @{
++                    @"id" : [[corr UUID] UUIDString],
++                    @"startDate" : startDateString,
++                    @"endDate" : endDateString,
++                    @"quantitySampleIds" : qtyIds,
++                    @"metadata" : meta ? meta : @{},
++                    @"sourceBundleId" : bundleId ? bundleId : @"",
++                    @"sourceName" : srcName ? srcName : @"",
++                };
++                [data addObject:row];
++            }
++            callback(@[[NSNull null], data]);
++        });
++    };
++
++    HKSampleQuery *query = [[HKSampleQuery alloc] initWithSampleType:foodType
++                                                           predicate:predicate
++                                                               limit:limit
++                                                     sortDescriptors:@[timeSortDescriptor]
++                                                      resultsHandler:handlerBlock];
++    [self.healthStore executeQuery:query];
++}
++
++- (void)dietary_getDietaryQuantitySamplesForPermission:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
++{
++    NSString *permissionKey = [RCTAppleHealthKit stringFromOptions:input key:@"permissionKey" withDefault:nil];
++    if (permissionKey == nil) {
++        callback(@[RCTMakeError(@"permissionKey is required in options", nil, nil)]);
++        return;
++    }
++    HKObjectType *resolved = [self getReadPermFromText:permissionKey];
++    if (!resolved || ![resolved isKindOfClass:[HKQuantityType class]]) {
++        callback(@[RCTMakeError(@"Unsupported or unknown dietary permissionKey", nil, nil)]);
++        return;
++    }
++    HKQuantityType *type = (HKQuantityType *)resolved;
++
++    HKUnit *defaultUnit = [HKUnit gramUnit];
++    if ([permissionKey isEqualToString:@"EnergyConsumed"]) {
++        defaultUnit = [HKUnit kilocalorieUnit];
++    }
++
++    HKUnit *unit = [RCTAppleHealthKit hkUnitFromOptions:input key:@"unit" withDefault:defaultUnit];
++    NSUInteger limit = [RCTAppleHealthKit uintFromOptions:input key:@"limit" withDefault:HKObjectQueryNoLimit];
++    BOOL ascending = [RCTAppleHealthKit boolFromOptions:input key:@"ascending" withDefault:false];
++    NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:nil];
++    NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
++    if(startDate == nil){
++        callback(@[RCTMakeError(@"startDate is required in options", nil, nil)]);
++        return;
++    }
++    NSPredicate *predicate = [RCTAppleHealthKit predicateForSamplesBetweenDates:startDate endDate:endDate];
++
++    [self fetchQuantitySamplesOfType:type
++                                unit:unit
++                           predicate:predicate
++                           ascending:ascending
++                               limit:limit
++                          completion:^(NSArray *results, NSError *error) {
++        if(results){
++            callback(@[[NSNull null], results]);
++            return;
++        } else {
++            NSLog(@"RNHealth: dietary quantity samples failed for %@: %@", permissionKey, error);
++            callback(@[RCTMakeError(@"An error occured while retrieving dietary quantity samples", error, nil)]);
++            return;
++        }
++    }];
++}
++
+ - (void)saveFood:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
+ {
+     NSString *foodNameValue = [RCTAppleHealthKit stringFromOptions:input key:@"foodName" withDefault:nil];
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
+index 287399f..0b7d478 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
+@@ -110,7 +110,9 @@ - (nullable HKObjectType *)getReadPermFromText:(nonnull NSString*)key {
+     }
+ 
+     // Nutrition Identifiers
+-    if ([@"Biotin" isEqualToString:key]) {
++    if ([@"FoodCorrelation" isEqualToString:key]) {
++        return [HKObjectType correlationTypeForIdentifier:HKCorrelationTypeIdentifierFood];
++    } else if ([@"Biotin" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryBiotin];
+     } else if ([@"Caffeine" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCaffeine];
+@@ -124,6 +126,11 @@ - (nullable HKObjectType *)getReadPermFromText:(nonnull NSString*)key {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCholesterol];
+     } else if ([@"Copper" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCopper];
++    } else if ([@"Chromium" isEqualToString:key]) {
++        if (@available(iOS 13.0, *)) {
++            return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryChromium];
++        }
++        return nil;
+     } else if ([@"EnergyConsumed" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryEnergyConsumed];
+     } else if ([@"FatMonounsaturated" isEqualToString:key]) {
+@@ -132,6 +139,9 @@ - (nullable HKObjectType *)getReadPermFromText:(nonnull NSString*)key {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatPolyunsaturated];
+     } else if ([@"FatSaturated" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatSaturated];
++    } else if ([@"FatTrans" isEqualToString:key]) {
++        // HKQuantityTypeIdentifierDietaryFatTrans was removed from the HealthKit SDK (Xcode 16+).
++        return nil;
+     } else if ([@"FatTotal" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatTotal];
+     } else if ([@"Fiber" isEqualToString:key]) {
+@@ -339,7 +349,9 @@ - (nullable HKObjectType *)getWritePermFromText:(nonnull NSString*) key {
+     }
+ 
+     // Nutrition Identifiers
+-    if ([@"Biotin" isEqualToString:key]) {
++    if ([@"FoodCorrelation" isEqualToString:key]) {
++        return [HKObjectType correlationTypeForIdentifier:HKCorrelationTypeIdentifierFood];
++    } else if ([@"Biotin" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryBiotin];
+     } else if ([@"Caffeine" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCaffeine];
+@@ -353,6 +365,11 @@ - (nullable HKObjectType *)getWritePermFromText:(nonnull NSString*) key {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCholesterol];
+     } else if ([@"Copper" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryCopper];
++    } else if ([@"Chromium" isEqualToString:key]) {
++        if (@available(iOS 13.0, *)) {
++            return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryChromium];
++        }
++        return nil;
+     } else if ([@"EnergyConsumed" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryEnergyConsumed];
+     } else if ([@"FatMonounsaturated" isEqualToString:key]) {
+@@ -361,6 +378,9 @@ - (nullable HKObjectType *)getWritePermFromText:(nonnull NSString*) key {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatPolyunsaturated];
+     } else if ([@"FatSaturated" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatSaturated];
++    } else if ([@"FatTrans" isEqualToString:key]) {
++        // HKQuantityTypeIdentifierDietaryFatTrans was removed from the HealthKit SDK (Xcode 16+).
++        return nil;
+     } else if ([@"FatTotal" isEqualToString:key]) {
+         return [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDietaryFatTotal];
+     } else if ([@"Fiber" isEqualToString:key]) {
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
+index 307056d..d51cd4c 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
+@@ -276,6 +276,12 @@ + (HKUnit *)hkUnitFromOptions:(NSDictionary *)options key:(NSString *)key withDe
+     if ([unitString isEqualToString:@"gram"]) {
+          theUnit = [HKUnit gramUnit];
+     }
++    if ([unitString isEqualToString:@"liter"]) {
++         theUnit = [HKUnit literUnit];
++    }
++    if ([unitString isEqualToString:@"kilocalorie"]) {
++         theUnit = [HKUnit kilocalorieUnit];
++    }
+     if ([unitString isEqualToString:@"kg"]) {
+          theUnit = [HKUnit gramUnitWithMetricPrefix:HKMetricPrefixKilo];
+     }
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+index e8ddce1..5736b5a 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+@@ -345,6 +345,38 @@ + (BOOL)requiresMainQueueSetup
+    [self dietary_getTotalFatSamples:input callback:callback];
+ }
+ 
++RCT_EXPORT_METHOD(getSugarSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++   [self dietary_getSugarSamples:input callback:callback];
++}
++
++RCT_EXPORT_METHOD(getSodiumSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++   [self dietary_getSodiumSamples:input callback:callback];
++}
++
++RCT_EXPORT_METHOD(getFatSaturatedSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++   [self dietary_getFatSaturatedSamples:input callback:callback];
++}
++
++RCT_EXPORT_METHOD(getCholesterolSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++   [self dietary_getCholesterolSamples:input callback:callback];
++}
++
++RCT_EXPORT_METHOD(getDietaryQuantitySamplesForPermission:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++    [self _initializeHealthStore];
++    [self dietary_getDietaryQuantitySamplesForPermission:input callback:callback];
++}
++
++RCT_EXPORT_METHOD(getFoodCorrelationSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
++{
++    [self _initializeHealthStore];
++    [self dietary_getFoodCorrelationSamples:input callback:callback];
++}
++
+ RCT_EXPORT_METHOD(saveFood:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
+ {
+     [self _initializeHealthStore];

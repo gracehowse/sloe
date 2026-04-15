@@ -7,7 +7,7 @@ const SLOT_RATIOS: Record<string, number> = {
   Breakfast: 0.25,
   Lunch: 0.30,
   Dinner: 0.30,
-  Snack: 0.15,
+  Snacks: 0.15,
 };
 
 export type MealBudget = {

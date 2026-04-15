@@ -1,0 +1,295 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
+import { listMicroNutrientsForDisplay } from "@/lib/healthDietaryNutrients";
+import { parseNutritionMicrosJson, type JournalMeal } from "@/lib/nutritionJournal";
+import { supabase } from "@/lib/supabase";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function macroCalorieSplit(m: Pick<JournalMeal, "protein" | "carbs" | "fat">): {
+  proteinPct: number;
+  carbsPct: number;
+  fatPct: number;
+  proteinKcal: number;
+  carbsKcal: number;
+  fatKcal: number;
+} {
+  const proteinKcal = m.protein * 4;
+  const carbsKcal = m.carbs * 4;
+  const fatKcal = m.fat * 9;
+  const sum = proteinKcal + carbsKcal + fatKcal;
+  if (sum <= 0) {
+    return { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 };
+  }
+  return {
+    proteinPct: Math.round((proteinKcal / sum) * 100),
+    carbsPct: Math.round((carbsKcal / sum) * 100),
+    fatPct: Math.round((fatKcal / sum) * 100),
+    proteinKcal,
+    carbsKcal,
+    fatKcal,
+  };
+}
+
+export default function MealNutritionScreen() {
+  const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : undefined;
+
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const goBack = useSafeBack("/(tabs)");
+  const navigation = useNavigation();
+  const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [meal, setMeal] = useState<JournalMeal | null>(null);
+  const [dateKey, setDateKey] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!userId || !id || !UUID_RE.test(id)) {
+      setLoading(false);
+      setError(!id ? "Missing meal" : "Invalid meal id");
+      setMeal(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const { data, error: qErr } = await supabase
+      .from("nutrition_entries")
+      .select(
+        "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros",
+      )
+      .eq("user_id", userId)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (qErr) {
+      setError(qErr.message);
+      setMeal(null);
+    } else if (!data) {
+      setError("Meal not found");
+      setMeal(null);
+    } else {
+      setDateKey((data.date_key as string) ?? null);
+      setMeal({
+        id: data.id as string,
+        name: (data.name as string) ?? "",
+        recipeTitle: (data.recipe_title as string) ?? "",
+        time: (data.time_label as string) ?? "",
+        calories: (data.calories as number) ?? 0,
+        protein: (data.protein as number) ?? 0,
+        carbs: (data.carbs as number) ?? 0,
+        fat: (data.fat as number) ?? 0,
+        fiberG: (data.fiber_g as number) ?? undefined,
+        waterMl: (data.water_ml as number) ?? undefined,
+        portionMultiplier: (data.portion_multiplier as number) ?? undefined,
+        micros: parseNutritionMicrosJson((data as { nutrition_micros?: unknown }).nutrition_micros),
+        source: (data.source as string) ?? undefined,
+      });
+    }
+    setLoading(false);
+  }, [userId, id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const microRows = useMemo(() => listMicroNutrientsForDisplay(meal?.micros ?? null), [meal?.micros]);
+  const split = useMemo(
+    () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
+    [meal],
+  );
+
+  const openEditOnToday = useCallback(() => {
+    if (!meal || !dateKey) return;
+    router.navigate({
+      pathname: "/(tabs)",
+      params: { date: dateKey, editMealId: meal.id, _t: String(Date.now()) },
+    } as Parameters<typeof router.navigate>[0]);
+  }, [router, meal, dateKey]);
+
+  useLayoutEffect(() => {
+    const title = meal?.recipeTitle?.trim() || "Meal nutrition";
+    navigation.setOptions({
+      title,
+      headerRight: () =>
+        meal ? (
+          <Pressable onPress={openEditOnToday} hitSlop={12} style={{ paddingHorizontal: Spacing.md }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>Edit</Text>
+          </Pressable>
+        ) : null,
+    });
+  }, [navigation, meal, openEditOnToday]);
+
+  if (loading) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={Accent.primary} />
+      </View>
+    );
+  }
+
+  if (error || !meal) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
+        <Text style={{ color: colors.textSecondary, textAlign: "center" }}>{error ?? "Could not load meal."}</Text>
+        <Pressable onPress={goBack} style={{ marginTop: Spacing.md }}>
+          <Text style={{ color: Accent.primary, fontWeight: "600" }}>Go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const portion = meal.portionMultiplier ?? 1;
+  const portionLabel = Number.isInteger(portion) ? String(portion) : String(Math.round(portion * 100) / 100);
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.backgroundSecondary }}
+      contentContainerStyle={{ padding: Spacing.md, paddingBottom: insets.bottom + 24 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <Text style={[styles.meta, { color: colors.textTertiary }]}>
+          {[meal.name, meal.time].filter(Boolean).join(" · ")}
+          {meal.source ? ` · ${meal.source}` : ""}
+        </Text>
+        <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
+        <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
+
+        <View style={styles.macroBar}>
+          {split.proteinKcal + split.carbsKcal + split.fatKcal > 0 ? (
+            <>
+              <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: MacroColors.protein }]} />
+              <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: MacroColors.carbs }]} />
+              <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: MacroColors.fat }]} />
+            </>
+          ) : (
+            <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
+          )}
+        </View>
+
+        <View style={styles.macroGrid}>
+          <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={MacroColors.protein} textColor={colors.text} />
+          <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={MacroColors.carbs} textColor={colors.text} />
+          <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={MacroColors.fat} textColor={colors.text} />
+        </View>
+
+        {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
+          <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
+            {meal.fiberG != null && meal.fiberG > 0 ? (
+              <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+                Fiber <Text style={{ fontWeight: "700", color: colors.text }}>{meal.fiberG}g</Text>
+              </Text>
+            ) : null}
+            {meal.waterMl != null && meal.waterMl > 0 ? (
+              <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+                Water <Text style={{ fontWeight: "700", color: colors.text }}>{Math.round(meal.waterMl)} ml</Text>
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {microRows.length > 0 ? (
+        <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Micronutrients</Text>
+          {microRows.map((row) => (
+            <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
+              <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
+                {row.label}
+              </Text>
+              <Text style={[styles.microValue, { color: colors.textSecondary }]}>{row.value}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={openEditOnToday}
+        style={[styles.editCta, { marginTop: Spacing.md, backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}
+      >
+        <Ionicons name="create-outline" size={20} color={Accent.primary} />
+        <Text style={{ marginLeft: 10, fontSize: 15, fontWeight: "600", color: Accent.primary }}>Edit entry</Text>
+        <Ionicons name="chevron-forward" size={18} color={Accent.primary} style={{ marginLeft: "auto" }} />
+      </Pressable>
+
+      <Text style={[styles.hint, { color: colors.textTertiary }]}>
+        On Today, long-press a meal for quick delete or edit from the menu.
+      </Text>
+    </ScrollView>
+  );
+}
+
+function MacroStat({
+  label,
+  grams,
+  pct,
+  color,
+  textColor,
+}: {
+  label: string;
+  grams: number;
+  pct: number;
+  color: string;
+  textColor: string;
+}) {
+  return (
+    <View style={styles.macroCell}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{label}</Text>
+      </View>
+      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
+      <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of macro calories</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  card: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.md,
+  },
+  meta: { fontSize: 12, marginBottom: 4 },
+  portion: { fontSize: 13, marginBottom: Spacing.sm },
+  kcal: { fontSize: 28, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
+  macroBar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: Spacing.md },
+  macroSeg: { minWidth: 2 },
+  macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  macroCell: { flex: 1 },
+  extras: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
+  extraLine: { fontSize: 14, marginTop: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: Spacing.sm },
+  microRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  microLabel: { flex: 1, fontSize: 14 },
+  microValue: { fontSize: 14, fontVariant: ["tabular-nums"] },
+  editCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+  },
+  hint: { fontSize: 12, marginTop: Spacing.md, textAlign: "center", lineHeight: 18 },
+});

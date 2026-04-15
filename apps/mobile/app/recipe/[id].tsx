@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Constants from "expo-constants";
 import {
   ActivityIndicator,
   Alert,
   Image,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,12 +23,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
+import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
+import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
+import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+
+const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
+/** Matches Today dashboard widgets except water (not derived from recipe nutrition). */
+const RECIPE_TRACKABLE_MACRO_KEYS = new Set<string>(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
+const REF_SUGAR_G = 50;
+const REF_SODIUM_MG = 2300;
 
 type FullRecipe = {
   id: string;
@@ -32,18 +47,34 @@ type FullRecipe = {
   instructions: string | null;
   image_url: string | null;
   servings: number;
+  prep_time_min: number | null;
+  cook_time_min: number | null;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
-  fiber_g: number;
-  sugar_g: number;
-  sodium_mg: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  sodium_mg?: number;
   meal_type: string[] | null;
   source_url: string | null;
   source_name: string | null;
+  author_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
 };
+
+function journalSlotFromMealTypes(mealType: string[] | null | undefined): string {
+  if (!mealType?.length) return "Lunch";
+  const joined = mealType.map((t) => t.toLowerCase()).join(" ");
+  if (joined.includes("breakfast")) return "Breakfast";
+  if (joined.includes("lunch")) return "Lunch";
+  if (joined.includes("dinner") || joined.includes("supper")) return "Dinner";
+  if (joined.includes("snack")) return "Snacks";
+  const first = mealType[0]?.trim();
+  const slots = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
+  const hit = slots.find((s) => s.toLowerCase() === first?.toLowerCase());
+  return hit ?? "Lunch";
+}
 
 type Ingredient = {
   name: string;
@@ -80,8 +111,9 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
 
 export default function RecipeDetailScreen() {
   const { id, portion } = useLocalSearchParams<{ id: string; portion?: string }>();
-  const portionMultiplier = portion ? parseFloat(portion) : 1;
+  const portionMultiplier = portion ? parseFloat(String(portion)) : 1;
   const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/discover");
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -97,25 +129,56 @@ export default function RecipeDetailScreen() {
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
   const [userTargets, setUserTargets] = useState({ protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
+  const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
+  const [logPortion, setLogPortion] = useState(1);
+  const [loggingJournal, setLoggingJournal] = useState(false);
+  const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
+  const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
+  const [yieldEditOpen, setYieldEditOpen] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
-    supabase
+    const p = portion ? parseFloat(String(portion)) : NaN;
+    if (Number.isFinite(p) && p > 0) setLogPortion(p);
+  }, [portion]);
+
+  useEffect(() => {
+    if (recipe) setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
+  }, [recipe?.id, recipe?.servings]);
+
+  const loadProfileMacroPrefs = useCallback(async () => {
+    if (!userId) {
+      setTrackedMacros([...DEFAULT_TRACKED_MACROS]);
+      return;
+    }
+    const { data } = await supabase
       .from("profiles")
-      .select("target_protein, target_carbs, target_fat, target_fiber_g")
+      .select("tracked_macros, target_protein, target_carbs, target_fat, target_fiber_g")
       .eq("id", userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        setUserTargets({
-          protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
-          carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
-          fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
-          fiber: (data.target_fiber_g as number) ?? NUTRITION_DEFAULTS.fiber,
-        });
-      });
+      .maybeSingle();
+    if (!data) return;
+    setUserTargets({
+      protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
+      carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
+      fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
+      fiber: (data.target_fiber_g as number) ?? NUTRITION_DEFAULTS.fiber,
+    });
+    if (Array.isArray(data.tracked_macros) && data.tracked_macros.length > 0) {
+      setTrackedMacros(data.tracked_macros as string[]);
+    } else {
+      setTrackedMacros([...DEFAULT_TRACKED_MACROS]);
+    }
   }, [userId]);
+
+  useEffect(() => {
+    void loadProfileMacroPrefs();
+  }, [loadProfileMacroPrefs]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadProfileMacroPrefs();
+    }, [loadProfileMacroPrefs]),
+  );
 
   const reverifyNutrition = async () => {
     if (!recipe || ingredients.length === 0 || !session?.access_token) return;
@@ -208,13 +271,17 @@ export default function RecipeDetailScreen() {
       // Try with source columns; fall back without if they don't exist yet (migration pending).
       let recipeRes = await supabase
         .from("recipes")
-        .select("id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name")
+        .select(
+          "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id",
+        )
         .eq("id", recipeId)
         .maybeSingle();
       if (recipeRes.error?.code === "42703") {
         recipeRes = await supabase
           .from("recipes")
-          .select("id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, meal_type")
+          .select(
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id",
+          )
           .eq("id", recipeId)
           .maybeSingle();
       }
@@ -223,7 +290,34 @@ export default function RecipeDetailScreen() {
         .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
         .eq("recipe_id", recipeId);
       if (cancelled) return;
-      if (recipeRes.data) setRecipe(recipeRes.data as any);
+      if (recipeRes.data) {
+        const row = recipeRes.data as Record<string, unknown>;
+        const aid = (row.author_id as string | null) ?? null;
+        let author: FullRecipe["author"] = null;
+        if (aid) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("id", aid)
+            .maybeSingle();
+          if (prof) {
+            author = {
+              display_name: (prof.display_name as string | null) ?? null,
+              avatar_url: (prof.avatar_url as string | null) ?? null,
+            };
+          }
+        }
+        const r = row as Record<string, unknown>;
+        setRecipe({
+          ...r,
+          prep_time_min: (r.prep_time_min as number | null | undefined) ?? null,
+          cook_time_min: (r.cook_time_min as number | null | undefined) ?? null,
+          source_url: (r.source_url as string | null | undefined) ?? null,
+          source_name: (r.source_name as string | null | undefined) ?? null,
+          author_id: aid,
+          author,
+        } as FullRecipe);
+      }
       if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
       setLoading(false);
     })();
@@ -231,6 +325,125 @@ export default function RecipeDetailScreen() {
   }, [recipeId]);
 
   const saved = savedIds.has(recipeId);
+
+  const recipeByline = useMemo(() => {
+    if (!recipe) return { label: "", href: null as string | null };
+    const src = recipe.source_name?.trim();
+    const looksLikeNutritionDb =
+      Boolean(src) &&
+      /^(USDA|OFF|Open Food Facts|FatSecret|Estimated|Unverified|Site)\b/i.test(src ?? "");
+    if (src && !looksLikeNutritionDb) return { label: src, href: recipe.source_url?.trim() ?? null };
+    const url = recipe.source_url?.trim();
+    if (url) {
+      const fromSocial = instagramHandleFromPostUrl(url) ?? tiktokHandleFromPostUrl(url);
+      if (fromSocial) return { label: fromSocial, href: url };
+      try {
+        const host = new URL(url).hostname.replace(/^www\./, "");
+        if (host) return { label: host, href: url };
+      } catch {
+        /* ignore */
+      }
+    }
+    const author = recipe.author?.display_name?.trim();
+    if (author) return { label: author, href: null };
+    if (src) return { label: src, href: recipe.source_url?.trim() ?? null };
+    return { label: "", href: null };
+  }, [recipe]);
+
+  const isRecipeOwner = useMemo(
+    () => Boolean(userId && recipe?.author_id && recipe.author_id === userId),
+    [userId, recipe?.author_id],
+  );
+
+  const saveRecipeYield = useCallback(async () => {
+    if (!recipe || !userId || !isRecipeOwner) return;
+    const newS = Math.max(1, Math.min(48, parseInt(recipeYieldDraft.replace(/[^0-9]/g, ""), 10) || 1));
+    const oldS = Math.max(1, recipe.servings || 1);
+    if (newS === oldS) {
+      setYieldEditOpen(false);
+      return;
+    }
+    setRecipeYieldSaving(true);
+    try {
+      let calories: number;
+      let protein: number;
+      let carbs: number;
+      let fat: number;
+      let fiber_g: number;
+      let sugar_g: number;
+      let sodium_mg: number;
+
+      if (ingredients.length > 0) {
+        const sum = ingredients.reduce(
+          (acc, i) => ({
+            calories: acc.calories + (i.calories ?? 0),
+            protein: acc.protein + (i.protein ?? 0),
+            carbs: acc.carbs + (i.carbs ?? 0),
+            fat: acc.fat + (i.fat ?? 0),
+            fiber_g: acc.fiber_g + (i.fiber_g ?? 0),
+            sugar_g: acc.sugar_g + (i.sugar_g ?? 0),
+            sodium_mg: acc.sodium_mg + (i.sodium_mg ?? 0),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0, fiber_g: 0, sugar_g: 0, sodium_mg: 0 },
+        );
+        calories = Math.max(0, Math.round(sum.calories / newS));
+        protein = Math.max(0, Math.round(sum.protein / newS));
+        carbs = Math.max(0, Math.round(sum.carbs / newS));
+        fat = Math.max(0, Math.round(sum.fat / newS));
+        fiber_g = Math.max(0, Math.round((sum.fiber_g / newS) * 10) / 10);
+        sugar_g = Math.max(0, Math.round((sum.sugar_g / newS) * 10) / 10);
+        sodium_mg = Math.max(0, Math.round(sum.sodium_mg / newS));
+      } else {
+        calories = Math.max(0, Math.round((recipe.calories * oldS) / newS));
+        protein = Math.max(0, Math.round((recipe.protein * oldS) / newS));
+        carbs = Math.max(0, Math.round((recipe.carbs * oldS) / newS));
+        fat = Math.max(0, Math.round((recipe.fat * oldS) / newS));
+        fiber_g = Math.max(0, Math.round((((recipe.fiber_g ?? 0) * oldS) / newS) * 10) / 10);
+        sugar_g = Math.max(0, Math.round((((recipe.sugar_g ?? 0) * oldS) / newS) * 10) / 10);
+        sodium_mg = Math.max(0, Math.round(((recipe.sodium_mg ?? 0) * oldS) / newS));
+      }
+
+      const { error } = await supabase
+        .from("recipes")
+        .update({
+          servings: newS,
+          calories: Math.round(calories),
+          protein: Math.round(protein),
+          carbs: Math.round(carbs),
+          fat: Math.round(fat),
+          fiber_g,
+          sugar_g,
+          sodium_mg: Math.round(sodium_mg),
+        })
+        .eq("id", recipeId)
+        .eq("author_id", userId);
+
+      if (error) {
+        Alert.alert("Could not save", error.message);
+        return;
+      }
+
+      setRecipe((prev) =>
+        prev
+          ? {
+              ...prev,
+              servings: newS,
+              calories: Math.round(calories),
+              protein: Math.round(protein),
+              carbs: Math.round(carbs),
+              fat: Math.round(fat),
+              fiber_g,
+              sugar_g,
+              sodium_mg: Math.round(sodium_mg),
+            }
+          : prev,
+      );
+      setYieldEditOpen(false);
+      Alert.alert("Updated", `This recipe now yields ${newS} portions. Per-serving nutrition was recalculated.`);
+    } finally {
+      setRecipeYieldSaving(false);
+    }
+  }, [recipe, userId, isRecipeOwner, recipeYieldDraft, ingredients, recipeId]);
 
   // Compute totals from actual ingredients so they always match what's displayed
   const { macros, totalMacros } = useMemo(() => {
@@ -288,6 +501,55 @@ export default function RecipeDetailScreen() {
       },
     };
   }, [ingredients, recipe]);
+
+  const recipeMacrosToShow = useMemo(() => {
+    const ordered = trackedMacros.filter((k) => RECIPE_TRACKABLE_MACRO_KEYS.has(k));
+    return ordered.length > 0 ? ordered : [...DEFAULT_TRACKED_MACROS];
+  }, [trackedMacros]);
+
+  const scaledForLog = useMemo(
+    () => ({
+      calories: Math.round(macros.calories * logPortion),
+      protein: Math.round(macros.protein * logPortion * 10) / 10,
+      carbs: Math.round(macros.carbs * logPortion * 10) / 10,
+      fat: Math.round(macros.fat * logPortion * 10) / 10,
+    }),
+    [macros, logPortion],
+  );
+
+  const addRecipeToTodayJournal = useCallback(async () => {
+    if (!userId || !recipe) return;
+    setLoggingJournal(true);
+    try {
+      const dk = dateKeyFromDate(new Date());
+      const slot = journalSlotFromMealTypes(recipe.meal_type);
+      const mult = Math.max(0.125, Math.min(24, logPortion));
+      const { error } = await supabase.from("nutrition_entries").insert({
+        id: newMealId(),
+        user_id: userId,
+        date_key: dk,
+        name: slot,
+        recipe_title: recipe.title,
+        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: scaledForLog.calories,
+        protein: scaledForLog.protein,
+        carbs: scaledForLog.carbs,
+        fat: scaledForLog.fat,
+        portion_multiplier: mult,
+        source: "Recipe",
+      });
+      if (error) {
+        Alert.alert("Could not log", error.message);
+      } else {
+        Alert.alert("Logged", `${recipe.title} added to today at ${mult}× portion.`, [
+          { text: "Stay", style: "cancel" },
+          { text: "View Today", onPress: () => router.push("/(tabs)" as any) },
+        ]);
+      }
+    } finally {
+      setLoggingJournal(false);
+    }
+  }, [userId, recipe, scaledForLog, logPortion, router]);
 
   // Clean up video thumbnail URLs (YouTube thumbnails have baked-in play buttons)
   const heroImageUrl = useMemo(() => {
@@ -421,14 +683,6 @@ export default function RecipeDetailScreen() {
     infoValue: { fontSize: 14, fontWeight: "700", color: colors.text },
     infoLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
 
-    macroCardsRow: { flexDirection: "row", gap: Spacing.sm },
-    macroCard: { flex: 1, padding: 10, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
-    macroCardDot: { width: 8, height: 8, borderRadius: 2 },
-    macroCardLabel: { fontSize: 10, fontWeight: "600", color: colors.textTertiary, marginTop: 2 },
-    macroCardValue: { fontSize: 16, fontWeight: "700", color: colors.text, marginTop: 2 },
-    caloriesBadge: { flex: 1, borderRadius: 12, backgroundColor: Accent.success + "10", borderWidth: 1, borderColor: Accent.success + "22", alignItems: "center", justifyContent: "center", paddingVertical: 6 },
-    caloriesBadgeText: { fontSize: 16, fontWeight: "700", color: Accent.success },
-
     tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: Spacing.lg, gap: 0 },
     tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
     tabText: { fontSize: 14, fontWeight: "600", color: colors.textTertiary },
@@ -474,7 +728,7 @@ export default function RecipeDetailScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <Text style={styles.errorText}>Recipe not found</Text>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable style={styles.backBtn} onPress={goBack}>
             <Text style={styles.backBtnText}>Go back</Text>
           </Pressable>
         </View>
@@ -488,14 +742,19 @@ export default function RecipeDetailScreen() {
         {/* Hero image */}
         <View>
           <Image source={{ uri: heroImageUrl }} style={styles.hero} />
-          <Pressable style={[styles.headerBtn, { left: Spacing.lg }]} onPress={() => router.back()}>
+          <Pressable style={[styles.headerBtn, { left: Spacing.lg }]} onPress={goBack}>
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </Pressable>
           <Pressable
             style={[styles.headerBtn, { right: Spacing.lg + 50 }]}
             onPress={() => {
-              // Share functionality
-              Linking.openURL(`https://yourapp.com/recipe/${recipeId}`);
+              const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+              const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
+              const url = webRecipeDeepLink(String(recipeId), origin);
+              const title = decodeEntities(recipe.title);
+              void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
+                void Linking.openURL(url);
+              });
             }}
           >
             <Ionicons name="share-social-outline" size={20} color="#fff" />
@@ -515,9 +774,24 @@ export default function RecipeDetailScreen() {
         <View style={styles.body}>
           {/* Title + meta */}
           <Text style={styles.title}>{decodeEntities(recipe.title)}</Text>
-          {recipe.author?.display_name && (
-            <Text style={styles.authorName}>by {recipe.author.display_name}</Text>
-          )}
+          {recipeByline.label ? (
+            <Pressable
+              onPress={() => {
+                if (recipeByline.href) void Linking.openURL(recipeByline.href);
+              }}
+              disabled={!recipeByline.href}
+              style={{ alignSelf: "flex-start" }}
+            >
+              <Text
+                style={[
+                  styles.authorName,
+                  recipeByline.href ? { textDecorationLine: "underline" } : null,
+                ]}
+              >
+                by {recipeByline.label}
+              </Text>
+            </Pressable>
+          ) : null}
           {recipe.meal_type && recipe.meal_type.length > 0 && (
             <View style={styles.mealTypeBadge}>
               <Text style={styles.mealTypeText}>{recipe.meal_type.join(", ")}</Text>
@@ -528,19 +802,40 @@ export default function RecipeDetailScreen() {
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Ionicons name="time-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>30m</Text>
+              <Text style={styles.infoValue}>
+                {recipe.prep_time_min != null && recipe.prep_time_min > 0 ? `${recipe.prep_time_min}m` : "—"}
+              </Text>
               <Text style={styles.infoLabel}>Prep</Text>
             </View>
             <View style={styles.infoItem}>
               <Ionicons name="timer-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>45m</Text>
+              <Text style={styles.infoValue}>
+                {recipe.cook_time_min != null && recipe.cook_time_min > 0 ? `${recipe.cook_time_min}m` : "—"}
+              </Text>
               <Text style={styles.infoLabel}>Cook</Text>
             </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>{recipe.servings}</Text>
-              <Text style={styles.infoLabel}>Servings</Text>
-            </View>
+            {isRecipeOwner ? (
+              <Pressable
+                onPress={() => {
+                  setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
+                  setYieldEditOpen(true);
+                }}
+                style={styles.infoItem}
+                accessibilityRole="button"
+                accessibilityLabel="Yield"
+                accessibilityHint="Opens editor to change how many portions the full recipe makes"
+              >
+                <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+                <Text style={styles.infoValue}>{recipe.servings}</Text>
+                <Text style={styles.infoLabel}>Yield</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.infoItem}>
+                <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+                <Text style={styles.infoValue}>{recipe.servings}</Text>
+                <Text style={styles.infoLabel}>Yield</Text>
+              </View>
+            )}
             <View style={styles.infoItem}>
               <Ionicons name="checkmark-circle-outline" size={20} color={Accent.success} style={styles.infoIcon} />
               <Text style={styles.infoValue}>92%</Text>
@@ -548,33 +843,92 @@ export default function RecipeDetailScreen() {
             </View>
           </View>
 
-          {/* Macro cards and calorie badge */}
-          <View style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.lg, alignItems: "stretch" }}>
-            <View style={styles.macroCard}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.protein }]} />
-              </View>
-              <Text style={styles.macroCardValue}>{Math.round(macros.protein)}g</Text>
-              <Text style={styles.macroCardLabel}>Protein</Text>
-            </View>
-            <View style={styles.macroCard}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.carbs }]} />
-              </View>
-              <Text style={styles.macroCardValue}>{Math.round(macros.carbs)}g</Text>
-              <Text style={styles.macroCardLabel}>Carbs</Text>
-            </View>
-            <View style={styles.macroCard}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-                <View style={[styles.macroCardDot, { backgroundColor: MacroColors.fat }]} />
-              </View>
-              <Text style={styles.macroCardValue}>{Math.round(macros.fat)}g</Text>
-              <Text style={styles.macroCardLabel}>Fat</Text>
-            </View>
-            <View style={styles.caloriesBadge}>
-              <Text style={styles.caloriesBadgeText}>{Math.round(macros.calories)}</Text>
-              <Text style={{ fontSize: 10, color: Accent.success, fontWeight: "600" }}>kcal</Text>
-            </View>
+          {/* Calories hero (per portion); macro tiles follow dashboard widget prefs */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: Spacing.md,
+              paddingVertical: Spacing.lg,
+              paddingHorizontal: Spacing.lg,
+              borderRadius: Radius.lg,
+              borderWidth: 1,
+              borderColor: MacroColors.calories + "55",
+              backgroundColor: MacroColors.calories + "14",
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "800", color: MacroColors.calories, letterSpacing: 1 }}>
+              CALORIES PER PORTION
+            </Text>
+            <Text style={[styles.calorieNumber, { marginTop: 8, color: colors.text }]}>{Math.round(macros.calories)}</Text>
+            <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>kilocalories</Text>
+          </View>
+
+          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.6, marginBottom: Spacing.sm }}>
+            Macros
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.lg }}>
+            {recipeMacrosToShow.map((macro) => {
+              const fiberG = macros.fiber_g ?? 0;
+              const sugarG = macros.sugar_g ?? 0;
+              const sodiumMg = macros.sodium_mg ?? 0;
+              const macroMap: Record<
+                string,
+                { label: string; cur: number; tgt: number; color: string; unit: string }
+              > = {
+                protein: { label: "Protein", cur: macros.protein, tgt: userTargets.protein, color: MacroColors.protein, unit: "g" },
+                carbs: { label: "Carbs", cur: macros.carbs, tgt: userTargets.carbs, color: MacroColors.carbs, unit: "g" },
+                fat: { label: "Fat", cur: macros.fat, tgt: userTargets.fat, color: MacroColors.fat, unit: "g" },
+                fiber: { label: "Fiber", cur: fiberG, tgt: userTargets.fiber, color: Accent.success, unit: "g" },
+                sugar: { label: "Sugar", cur: sugarG, tgt: REF_SUGAR_G, color: MacroColors.sugar, unit: "g" },
+                sodium: { label: "Sodium", cur: sodiumMg, tgt: REF_SODIUM_MG, color: MacroColors.sodium, unit: "mg" },
+              };
+              const m = macroMap[macro];
+              if (!m) return null;
+              const displayAmount =
+                macro === "sugar" || macro === "fiber"
+                  ? Math.round(m.cur * 10) / 10
+                  : macro === "sodium"
+                    ? Math.round(m.cur)
+                    : Math.round(m.cur);
+              return (
+                <View
+                  key={macro}
+                  style={{
+                    flexGrow: 1,
+                    minWidth: 76,
+                    maxWidth: "48%",
+                    padding: 10,
+                    borderRadius: 12,
+                    backgroundColor: colors.card,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
+                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{m.label}</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                    {displayAmount}
+                    {m.unit}
+                  </Text>
+                  <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
+                    <View
+                      style={{
+                        width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
+                        height: "100%",
+                        borderRadius: 2,
+                        backgroundColor: m.color,
+                      }}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>
+                    of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
+                    {m.unit}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
 
@@ -754,6 +1108,81 @@ export default function RecipeDetailScreen() {
             </View>
           )}
 
+          {/* Log to journal — portion vs one recipe serving */}
+          {userId && (
+            <View style={[styles.card, { gap: Spacing.md }]}>
+              <Text style={styles.cardTitle}>Log to today&apos;s journal</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+                One database serving = the macros above. Adjust if you ate more or less.
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary }}>Portion</Text>
+                <Pressable
+                  onPress={() => setLogPortion((p) => Math.max(0.125, Math.round((p - 0.25) * 1000) / 1000))}
+                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }}
+                >
+                  <Ionicons name="remove" size={20} color={colors.text} />
+                </Pressable>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, minWidth: 52, textAlign: "center", fontVariant: ["tabular-nums"] }}>
+                  {(Math.round(logPortion * 1000) / 1000).toString()}×
+                </Text>
+                <Pressable
+                  onPress={() => setLogPortion((p) => Math.min(24, Math.round((p + 0.25) * 1000) / 1000))}
+                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }}
+                >
+                  <Ionicons name="add" size={20} color={colors.text} />
+                </Pressable>
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {([0.5, 0.75, 1, 1.25, 1.5, 2] as const).map((p) => {
+                  const active = Math.abs(logPortion - p) < 1e-6;
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => setLogPortion(p)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: Radius.sm,
+                        backgroundColor: active ? Accent.primary : colors.inputBg,
+                        borderWidth: 1,
+                        borderColor: active ? Accent.primary : colors.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#fff" : colors.text }}>{p}×</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={{ fontSize: 12, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                {scaledForLog.calories} kcal · P {scaledForLog.protein}g · C {scaledForLog.carbs}g · F {scaledForLog.fat}g
+              </Text>
+              <Pressable
+                disabled={loggingJournal}
+                onPress={() => void addRecipeToTodayJournal()}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 14,
+                  borderRadius: Radius.md,
+                  backgroundColor: Accent.primary,
+                  opacity: loggingJournal ? 0.6 : 1,
+                }}
+              >
+                {loggingJournal ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="nutrition-outline" size={20} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Add to today</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
+
           {/* Action buttons */}
           <View style={styles.actionsRow}>
             <Pressable
@@ -778,6 +1207,80 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={yieldEditOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !recipeYieldSaving && setYieldEditOpen(false)}
+      >
+        <View
+          style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "center", paddingHorizontal: Spacing.xl }}
+        >
+          <View
+            style={{
+              borderRadius: Radius.lg,
+              paddingVertical: Spacing.lg,
+              paddingHorizontal: Spacing.lg,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              gap: Spacing.sm,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>Recipe yield</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+              Portions the full dish makes (1–48). Macros per portion update automatically.
+            </Text>
+            <TextInput
+              value={recipeYieldDraft}
+              onChangeText={setRecipeYieldDraft}
+              keyboardType="number-pad"
+              editable={!recipeYieldSaving}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: Radius.md,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                fontSize: 17,
+                fontWeight: "700",
+                color: colors.text,
+                backgroundColor: colors.background,
+              }}
+            />
+            <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.xs }}>
+              <Pressable
+                onPress={() => !recipeYieldSaving && setYieldEditOpen(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 15 }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void saveRecipeYield()}
+                disabled={recipeYieldSaving}
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: Radius.md,
+                  backgroundColor: Accent.primary,
+                  alignItems: "center",
+                  opacity: recipeYieldSaving ? 0.65 : 1,
+                }}
+              >
+                <Text style={{ fontWeight: "800", color: "#fff", fontSize: 15 }}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Cook Mode Overlay */}
       {cookMode && instructionSteps.length > 0 && (

@@ -1,10 +1,10 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 
-export type TimeRange = "1W" | "1M" | "3M" | "6M" | "All";
+export type TimeRange = "1W" | "1M" | "3M" | "6M" | "9M" | "12M" | "All";
 
-const RANGES: TimeRange[] = ["1W", "1M", "3M", "6M", "All"];
+const RANGES: TimeRange[] = ["1W", "1M", "3M", "6M", "9M", "12M", "All"];
 
 type Props = {
   selected: TimeRange;
@@ -24,6 +24,10 @@ export function daysForRange(range: TimeRange): number {
       return 90;
     case "6M":
       return 180;
+    case "9M":
+      return 275;
+    case "12M":
+      return 366;
     case "All":
       return 9999;
   }
@@ -37,13 +41,16 @@ export default function TimeRangeSelector({
   secondaryColor,
 }: Props) {
   return (
-    <View
-      style={{
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{
         flexDirection: "row",
         backgroundColor: cardColor,
         borderRadius: Radius.sm,
         padding: 2,
-        gap: 2,
+        gap: 4,
+        alignItems: "center",
       }}
     >
       {RANGES.map((r) => (
@@ -51,8 +58,8 @@ export default function TimeRangeSelector({
           key={r}
           onPress={() => onSelect(r)}
           style={{
-            flex: 1,
             paddingVertical: 6,
+            paddingHorizontal: 10,
             borderRadius: Radius.sm - 2,
             alignItems: "center",
             backgroundColor: selected === r ? Accent.primary : "transparent",
@@ -69,6 +76,6 @@ export default function TimeRangeSelector({
           </Text>
         </Pressable>
       ))}
-    </View>
+    </ScrollView>
   );
 }

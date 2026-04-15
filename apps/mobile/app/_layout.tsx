@@ -15,11 +15,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
 import { configurePurchases } from '@/lib/purchases';
+import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
 import { extractUrlFromShareText, urlFromDeepLink } from '@/lib/resolveImportUrl';
 
 initErrorTracking();
 configurePurchases();
+configureNotificationPresentation();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -136,6 +138,51 @@ function ResumeClipboardToImport() {
   return null;
 }
 
+/** Full-screen flows — no stack chrome (custom in-screen headers / modals). */
+const STACK_HEADER_HIDDEN = new Set([
+  "(tabs)",
+  "login",
+  "import-shared",
+  "cook",
+  "recipe/verify",
+  "shopping",
+  "profile",
+  "paywall",
+  "onboarding",
+  "notifications-prompt",
+  // Custom in-screen headers (avoid double back + native title clash)
+  "weight-tracker",
+  "progress-metric",
+  "health-sync",
+  "fasting",
+  "nutrition-sources",
+  "create-recipe",
+  "recipe/[id]",
+]);
+
+/** Readable titles (route `name` from Expo Router file path). */
+const STACK_TITLES: Record<string, string> = {
+  "health-sync": "Apple Health",
+  fasting: "Fasting",
+  "meal-nutrition": "Nutrition",
+  "progress-metric": "This week",
+  "weight-tracker": "Weight & trends",
+  "recipe/[id]": "Recipe",
+  "create-recipe": "New recipe",
+  "nutrition-sources": "Nutrition sources",
+  "+not-found": "Not found",
+};
+
+function stackTitleForRoute(routeName: string): string {
+  if (STACK_TITLES[routeName]) return STACK_TITLES[routeName];
+  const segment = routeName.replace(/^\(+|\)+$/g, "").split("/").pop() ?? routeName;
+  return segment
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 function RootLayoutInner() {
   const { resolved } = useTheme();
 
@@ -144,13 +191,23 @@ function RootLayoutInner() {
       <ForwardSocialSharesToImport />
       <ForwardShareIntentToImport />
       <ResumeClipboardToImport />
-      <Stack>
+      <Stack
+        screenOptions={({ route }) => ({
+          headerShown: !STACK_HEADER_HIDDEN.has(route.name),
+          // Avoid "< (tabs)" / long parent labels on iOS back button
+          headerBackButtonDisplayMode: "minimal",
+          headerBackTitle: "Back",
+          title: stackTitleForRoute(route.name),
+        })}
+      >
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="recipe/[id]" />
         <Stack.Screen name="shopping" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen name="progress" options={{ title: "Progress", headerBackTitle: "Back" }} />
+        <Stack.Screen name="weight-tracker" />
+        <Stack.Screen name="progress-metric" />
+        <Stack.Screen name="meal-nutrition" />
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />

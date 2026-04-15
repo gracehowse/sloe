@@ -1,4 +1,5 @@
 import type { DayPlan, RecipeCard } from "../../types/recipe.ts";
+import { isMealPlanPlaceholderLikeTitle } from "../nutrition/portionMultiplier.ts";
 import { normalizeIngredientNameKey } from "./ingredientNameKey.ts";
 
 /**
@@ -14,7 +15,7 @@ export function collectPlanIngredientKeys(
   if (!mealPlan?.length) return keys;
   for (const day of mealPlan) {
     for (const meal of day.meals) {
-      if (meal.isPlaceholder) continue;
+      if (isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) continue;
       const id = titleToId(meal.recipeTitle);
       if (!id) continue;
       const names = dbIngredientsByRecipeId?.get(id);
@@ -58,7 +59,9 @@ export function computeSmartRecipeSuggestions(input: {
   const titlesOnPlan = new Set<string>();
   for (const d of input.mealPlan ?? []) {
     for (const m of d.meals) {
-      if (!m.isPlaceholder) titlesOnPlan.add(m.recipeTitle);
+      if (!isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder })) {
+        titlesOnPlan.add(m.recipeTitle);
+      }
     }
   }
 

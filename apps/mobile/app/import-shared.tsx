@@ -23,10 +23,11 @@ import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
-import { saveImportedRecipe, type ApiImportedRecipe } from "@/lib/saveImportedRecipe";
+import { saveImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
 import MealTypePicker from "@/components/MealTypePicker";
 import {
@@ -39,6 +40,52 @@ let ImagePicker: typeof import("expo-image-picker") | null = null;
 try { ImagePicker = require("expo-image-picker"); } catch { /* native build only */ }
 
 type Extra = { supprApiUrl?: string };
+
+/** Parse servings draft; clamps 1–99. */
+function parseRecipeYieldDraft(draft: string, fallback: number): number {
+  return Math.max(1, Math.min(99, Math.round(parseFloat(draft.replace(",", ".")) || fallback)));
+}
+
+/**
+ * Rescale per-serving macros when the user fixes total portions.
+ * Assumes API values are per-serving at `recipe.servings` (whole-dish total = per × base).
+ */
+/** Map API JSON (camelCase or snake_case, string minutes) into our import shape. */
+function normalizeApiImportedRecipe(raw: Record<string, unknown>): ApiImportedRecipe {
+  const r = raw as Record<string, unknown>;
+  return {
+    ...(r as unknown as ApiImportedRecipe),
+    prepTimeMin: coercePositiveMinutes(r.prepTimeMin ?? r.prep_time_min),
+    cookTimeMin: coercePositiveMinutes(r.cookTimeMin ?? r.cook_time_min),
+    sourceUrl:
+      (typeof r.sourceUrl === "string" && r.sourceUrl.trim()
+        ? r.sourceUrl.trim()
+        : typeof r.source_url === "string" && r.source_url.trim()
+          ? r.source_url.trim()
+          : undefined) as string | undefined,
+    sourceName:
+      (typeof r.sourceName === "string" && r.sourceName.trim()
+        ? r.sourceName.trim()
+        : typeof r.source_name === "string" && r.source_name.trim()
+          ? r.source_name.trim()
+          : undefined) as string | undefined,
+  };
+}
+
+function nutritionRescale(recipe: ApiImportedRecipe, draftStr: string) {
+  const base = Math.max(1, recipe.servings ?? 1);
+  const draft = parseRecipeYieldDraft(draftStr, base);
+  const factor = base / draft;
+  return {
+    draft,
+    factor,
+    calories: Math.round((recipe.calories ?? 0) * factor),
+    protein: Math.round((recipe.protein ?? 0) * factor),
+    carbs: Math.round((recipe.carbs ?? 0) * factor),
+    fat: Math.round((recipe.fat ?? 0) * factor),
+  };
+}
+
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
   return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
@@ -51,6 +98,7 @@ export default function ImportSharedScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const goBack = useSafeBack("/(tabs)/discover");
   const params = useLocalSearchParams();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -61,6 +109,8 @@ export default function ImportSharedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [manualUrl, setManualUrl] = useState("");
   const [pendingRecipe, setPendingRecipe] = useState<ApiImportedRecipe | null>(null);
+  const [reviewServingsDraft, setReviewServingsDraft] = useState("1");
+  const [servingsEditorOpen, setServingsEditorOpen] = useState(false);
   const [mealTags, setMealTags] = useState<string[]>([]);
   const [completedSteps, setCompletedSteps] = useState<ProgressStep[]>([]);
   const base = apiBase();
@@ -81,14 +131,22 @@ export default function ImportSharedScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !data) return;
       const d = data as any;
       const t = resolveTargets(
         { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
-        { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+        {
+          weight_kg: d.weight_kg,
+          height_cm: d.height_cm,
+          sex: d.sex,
+          activity_level: d.activity_level,
+          goal: d.goal,
+          dob: d.dob,
+          age: d.age != null ? Number(d.age) : null,
+        },
       );
       setProfileTargets({
         calories: t.calories,
@@ -186,14 +244,26 @@ export default function ImportSharedScreen() {
         const ingredients = Array.isArray(data.recipe.ingredients)
           ? data.recipe.ingredients.map(String)
           : [];
-        const autoTags = classifyMealType({
-          title: data.recipe.title ?? "",
-          ingredients,
-          caloriesPerServing: data.recipe.calories ?? null,
-        });
+        const fromApi = data.recipe.mealType;
+        const allowed = /^(breakfast|lunch|dinner|snack)$/;
+        const fromApiNorm =
+          Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
+            ? fromApi
+                .map((x) => String(x).toLowerCase().trim())
+                .filter((x) => allowed.test(x))
+            : [];
+        const autoTags =
+          fromApiNorm.length > 0
+            ? fromApiNorm
+            : classifyMealType({
+                title: data.recipe.title ?? "",
+                ingredients,
+                caloriesPerServing: data.recipe.calories ?? null,
+              });
         setMealTags(autoTags);
-        setPendingRecipe(data.recipe);
-        setTitle((data.recipe.title ?? "Imported recipe").trim() || "Imported recipe");
+        const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
+        setPendingRecipe(normalized);
+        setTitle((normalized.title ?? "Imported recipe").trim() || "Imported recipe");
         setState("review");
       } catch {
         setState("error");
@@ -262,10 +332,12 @@ export default function ImportSharedScreen() {
         carbs: data.nutrition?.perServing?.carbs ?? null,
         fat: data.nutrition?.perServing?.fat ?? null,
       };
+      const captionHint = Array.isArray(data.steps) ? data.steps.map((s) => String(s)).join("\n") : "";
       const autoTags = classifyMealType({
         title: recipe.title ?? "",
         ingredients: data.ingredients,
         caloriesPerServing: recipe.calories,
+        caption: captionHint.trim() ? captionHint : undefined,
       });
       setMealTags(autoTags);
       setPendingRecipe(recipe);
@@ -277,10 +349,25 @@ export default function ImportSharedScreen() {
     }
   }, [base, userId]);
 
+  useEffect(() => {
+    if (!pendingRecipe || state !== "review") return;
+    setReviewServingsDraft(String(pendingRecipe.servings ?? 1));
+  }, [pendingRecipe, state]);
+
+  /** Per-serving macros rescaled from recipe yield (`reviewServingsDraft`). */
+  const previewNutrition = useMemo(() => {
+    if (!pendingRecipe) return null;
+    return nutritionRescale(pendingRecipe, reviewServingsDraft);
+  }, [pendingRecipe, reviewServingsDraft]);
+
   const confirmSave = useCallback(async () => {
     if (!pendingRecipe || !userId) return;
     setState("saving");
-    const recipeWithTags = { ...pendingRecipe, mealType: mealTags };
+    const servingsParsed = Math.max(
+      1,
+      Math.min(99, Math.round(parseFloat(reviewServingsDraft.replace(",", ".")) || pendingRecipe.servings || 1)),
+    );
+    const recipeWithTags = { ...pendingRecipe, mealType: mealTags, servings: servingsParsed };
     const saved = await saveImportedRecipe(userId, recipeWithTags);
     if ("error" in saved) {
       setState("error");
@@ -290,7 +377,7 @@ export default function ImportSharedScreen() {
     setSavedRecipeId(saved.recipeId);
     setState("success");
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [pendingRecipe, userId, mealTags]);
+  }, [pendingRecipe, userId, mealTags, reviewServingsDraft]);
 
   runImportRef.current = runImport;
 
@@ -779,7 +866,7 @@ export default function ImportSharedScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
+        <Pressable onPress={goBack} hitSlop={12} style={styles.backHit}>
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
         <Text style={styles.topTitle}>IMPORT</Text>
@@ -848,22 +935,92 @@ export default function ImportSharedScreen() {
           <View style={styles.panelCard}>
             <Ionicons name="restaurant-outline" size={36} color={Accent.primary} />
             <Text style={styles.panelTitle}>{title ?? "Imported recipe"}</Text>
-            {pendingRecipe.calories != null && (
+            {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
-                {pendingRecipe.calories} kcal · {pendingRecipe.protein ?? 0}g protein · {pendingRecipe.servings ?? 1} serving{(pendingRecipe.servings ?? 1) !== 1 ? "s" : ""}
+                {previewNutrition.calories} kcal · {previewNutrition.protein}g protein · recipe yields{" "}
+                {previewNutrition.draft} serving{previewNutrition.draft !== 1 ? "s" : ""}
               </Text>
             )}
 
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.md }}>
+              SERVINGS (RECIPE YIELD)
+            </Text>
+            {!servingsEditorOpen ? (
+              <Pressable
+                onPress={() => setServingsEditorOpen(true)}
+                style={{
+                  alignSelf: "stretch",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: colors.inputBg,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: Spacing.lg,
+                  paddingVertical: 14,
+                  marginBottom: Spacing.md,
+                }}
+              >
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
+                    {previewNutrition?.draft ?? pendingRecipe.servings ?? 1} portions
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                    Per-serving macros scale when you change portions.
+                  </Text>
+                </View>
+                <Ionicons name="create-outline" size={22} color={Accent.primary} />
+              </Pressable>
+            ) : (
+              <View style={{ alignSelf: "stretch", marginBottom: Spacing.md, gap: Spacing.sm }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                  How many portions does the full recipe make? Values below rescale to stay consistent with the same
+                  total dish.
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: colors.inputBg,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    paddingHorizontal: Spacing.md,
+                    paddingVertical: 12,
+                    fontSize: 18,
+                    fontWeight: "700",
+                    color: colors.text,
+                  }}
+                  keyboardType="number-pad"
+                  value={reviewServingsDraft}
+                  onChangeText={setReviewServingsDraft}
+                  placeholder="e.g. 6"
+                  placeholderTextColor={colors.textTertiary}
+                />
+                <Pressable
+                  onPress={() => setServingsEditorOpen(false)}
+                  style={{
+                    alignSelf: "flex-start",
+                    paddingVertical: 8,
+                    paddingHorizontal: 14,
+                    borderRadius: Radius.md,
+                    backgroundColor: Accent.primary + "18",
+                  }}
+                >
+                  <Text style={{ color: Accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
+                </Pressable>
+              </View>
+            )}
+
             {/* Macro breakdown */}
-            {pendingRecipe.calories != null && (
+            {previewNutrition != null && pendingRecipe.calories != null && (
               <View style={styles.macroCardContainer}>
                 <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
                 <View style={styles.macroRow}>
                   {[
-                    { val: Math.round(pendingRecipe.calories ?? 0), unit: "", label: "kcal", target: profileTargets.calories, color: MacroColors.calories },
-                    { val: Math.round(pendingRecipe.protein ?? 0), unit: "g", label: "protein", target: profileTargets.protein, color: MacroColors.protein },
-                    { val: Math.round(pendingRecipe.carbs ?? 0), unit: "g", label: "carbs", target: profileTargets.carbs, color: MacroColors.carbs },
-                    { val: Math.round(pendingRecipe.fat ?? 0), unit: "g", label: "fat", target: profileTargets.fat, color: MacroColors.fat },
+                    { val: previewNutrition.calories, unit: "", label: "kcal", target: profileTargets.calories, color: MacroColors.calories },
+                    { val: previewNutrition.protein, unit: "g", label: "protein", target: profileTargets.protein, color: MacroColors.protein },
+                    { val: previewNutrition.carbs, unit: "g", label: "carbs", target: profileTargets.carbs, color: MacroColors.carbs },
+                    { val: previewNutrition.fat, unit: "g", label: "fat", target: profileTargets.fat, color: MacroColors.fat },
                   ].map((m) => (
                     <View key={m.label} style={styles.macroItem}>
                       <Text style={[styles.macroValue, { color: m.color }]} numberOfLines={1}>

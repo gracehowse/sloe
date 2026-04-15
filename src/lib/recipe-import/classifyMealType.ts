@@ -1,9 +1,64 @@
 /**
- * Auto-classify a recipe into meal types based on title, ingredients, and calories.
+ * Auto-classify a recipe into meal types based on title, ingredients, optional caption/body, and calories.
  * Returns an array of applicable meal slots, e.g. ["lunch", "dinner"].
+ *
+ * When the caption or description **explicitly** names a meal (hashtags, "for breakfast", "dinner recipe", …),
+ * that wins over title-only heuristics so social imports match creator intent.
  */
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+
+type ExplicitHit = { index: number; priority: number; slot: MealType };
+
+/**
+ * Detect a single explicit meal call-out in social / long-form text (caption, description, hashtags).
+ * Returns one slot when confident; otherwise `null` so callers fall back to title heuristics.
+ */
+export function inferExplicitMealSlotsFromText(text: string): MealType[] | null {
+  const hay = text.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!hay) return null;
+
+  const hits: ExplicitHit[] = [];
+  const add = (re: RegExp, slot: MealType, priority: number) => {
+    const m = hay.match(re);
+    if (m && m.index !== undefined) hits.push({ index: m.index, priority, slot });
+  };
+
+  // Hashtags — highest confidence
+  add(/#easybreakfast\b/, "breakfast", 110);
+  add(/#breakfast\b/, "breakfast", 105);
+  add(/#brunch\b/, "breakfast", 104);
+  add(/#lunch\b/, "lunch", 105);
+  add(/#lunchbox\b/, "lunch", 104);
+  add(/#dinner\b/, "dinner", 105);
+  add(/#weeknightdinner\b/, "dinner", 104);
+  add(/#(snacks?|healthysnack)\b/, "snack", 105);
+
+  // Phrases — avoid bare "dinner" in "dinner rolls" via "dinner recipe / for dinner / dinner tonight"
+  add(/(?<!\bnot\s)for\s+breakfast\b/, "breakfast", 96);
+  add(/(?<!\bnot\s)for\s+brunch\b/, "breakfast", 95);
+  add(/\b(a\s+)?(quick|easy|healthy|high[- ]protein|best|yummy|delicious)\s+breakfast\b/, "breakfast", 90);
+  add(/\bbreakfast\s+(recipe|recipes|ideas?|inspo|bowl|toast|parfait|sandwich|wrap|idea|meal)\b/, "breakfast", 92);
+  add(/\bbrunch\s+(recipe|ideas?|time)?\b/, "breakfast", 88);
+  add(/\bmorning\s+(meal|fuel|routine)\b/, "breakfast", 85);
+
+  add(/(?<!\bnot\s)for\s+lunch\b/, "lunch", 96);
+  add(/\blunch\s+(recipe|recipes|ideas?|idea|meal|prep|box|bowl)\b/, "lunch", 92);
+  add(/\b(light|quick|easy|healthy)\s+lunch\b/, "lunch", 88);
+
+  add(/(?<!\bnot\s)for\s+dinner\b/, "dinner", 96);
+  add(/\bdinner\s+(recipe|recipes|ideas?|idea|tonight|time|meal|plate)\b/, "dinner", 92);
+  add(/\b(weeknight|sunday|family|date\s*night)\s+dinner\b/, "dinner", 90);
+
+  add(/(?<!\bnot\s)for\s+a\s+snack\b/, "snack", 95);
+  add(/\b(post[- ]workout|afternoon|mid[- ]morning|healthy)\s+snack\b/, "snack", 90);
+  add(/\bsnack\s+(recipe|recipes|ideas?|time|attack)\b/, "snack", 88);
+
+  if (hits.length === 0) return null;
+  hits.sort((a, b) => a.index - b.index || b.priority - a.priority);
+  const best = hits[0]!;
+  return [best.slot];
+}
 
 const BREAKFAST_TITLE = /\b(breakfast|pancakes?|waffles?|omelette|omelet|scrambled?\b|french toast|overnight oats|oatmeal|porridge|granola|smoothie bowl|acai|egg muffins?|frittata|shakshuka|eggs benedict|morning|brunch|cereal|muesli)\b/i;
 const SNACK_TITLE = /\b(snack|energy balls?|protein balls?|protein bar|trail mix|hummus|dip|guacamole|popcorn|crackers|bliss balls?|bites|cookies?|brownies?|banana bread|flapjack|cake|cupcake|muffins?|crumble|pudding|tart|scones?|sponge)\b/i;
@@ -14,8 +69,19 @@ export function classifyMealType(opts: {
   title: string;
   ingredients?: string[];
   caloriesPerServing?: number | null;
+  /** Social caption, meta description, or any extra prose — checked first for explicit meal tags. */
+  caption?: string | null;
+  /** Recipe / post description body (HTML import, etc.). */
+  description?: string | null;
 }): MealType[] {
-  const { title, caloriesPerServing } = opts;
+  const { title, caloriesPerServing, caption, description } = opts;
+
+  const blob = [caption, description, title, ...(opts.ingredients ?? [])]
+    .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+    .join("\n");
+  const explicit = inferExplicitMealSlotsFromText(blob);
+  if (explicit && explicit.length > 0) return explicit;
+
   const tags = new Set<MealType>();
 
   // Breakfast signals

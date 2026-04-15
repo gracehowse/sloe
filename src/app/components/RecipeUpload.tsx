@@ -8,6 +8,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
+import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -226,8 +227,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const matchSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (matchPickerIdx == null) return;
-    const q = matchQuery.trim();
-    if (!q || q.length < 2) return;
+    const raw = matchQuery.trim();
+    if (!raw || raw.length < 2) return;
+    const q = effectiveFoodSearchQuery(raw);
+    if (!q.trim() || q.length < 2) return;
     if (matchSearchTimerRef.current) clearTimeout(matchSearchTimerRef.current);
     matchSearchTimerRef.current = setTimeout(() => {
       void (async () => {
@@ -245,8 +248,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   }, [matchQuery, matchPickerIdx]);
 
   const runUsdaSearch = async () => {
-    const q = matchQuery.trim();
-    if (!q) return;
+    const raw = matchQuery.trim();
+    if (!raw) return;
+    const q = effectiveFoodSearchQuery(raw);
+    if (!q.trim()) return;
     setMatchLoading(true);
     try {
       const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q)}`);
@@ -1174,7 +1179,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 <option value="breakfast">Breakfast</option>
                 <option value="lunch">Lunch</option>
                 <option value="dinner">Dinner</option>
-                <option value="snack">Snack</option>
+                <option value="snack">Snacks</option>
               </select>
               <p className="text-xs text-muted-foreground mt-1.5">
                 Helps the meal planner place this recipe in the right slot. Lunch and dinner recipes can be swapped

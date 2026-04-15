@@ -11,7 +11,12 @@ import {
   type SetStateAction,
 } from "react";
 import { toast } from "sonner";
-import { effectivePortionMultiplier, normalizeDayPlans } from "../lib/nutrition/portionMultiplier.ts";
+import {
+  effectivePortionMultiplier,
+  isMealPlanPlaceholderLikeTitle,
+  normalizeDayPlans,
+} from "../lib/nutrition/portionMultiplier.ts";
+import { formatRecipeMinutes } from "../lib/recipe/formatRecipeMinutes.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
 import type {
   DayPlan,
@@ -47,6 +52,7 @@ import {
   syncDisabledBecauseSchemaMessage,
   syncFailedRetryMessage,
 } from "./appData/supabaseErrors.ts";
+import { fetchMealPlanJson, probeAnyMealPlanJsonTable, upsertMealPlanJson } from "../lib/supabase/phase1LegacyJsonb.ts";
 import { useNutritionJournalState } from "./appData/useNutritionJournalState.ts";
 import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
@@ -116,10 +122,16 @@ interface AppDataContextValue {
   setActivityBurnKcal: Dispatch<SetStateAction<number>>;
   /** Activity burn for the selected tracker day (per-day override or default). */
   activityBurnForSelectedDay: number;
+  /** Per-day active energy (kcal) for multi-day summaries. */
+  activityBurnByDay: Record<string, number>;
   setActivityBurnForSelectedDay: (kcal: number) => void;
   /** Quick-add water (ml) for the selected day, in addition to per-meal water. */
   addWaterMlForSelectedDay: (ml: number) => void;
   extraWaterMlForSelectedDay: number;
+  /** Per-day workout list from Apple Health / Health Connect. */
+  workoutsByDay: Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>;
+  /** Per-day resting (basal) energy burned in kcal from Apple Health. */
+  basalBurnByDay: Record<string, number>;
   /** All quick-add water amounts by `YYYY-MM-DD` (for weekly summaries / export). */
   extraWaterByDay: Record<string, number>;
   selectedDateKey: string;
@@ -254,6 +266,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>(
     () => initial.extraWaterByDay ?? {},
   );
+  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
+  const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
   /** Guard: skip debounced write-back until the initial Supabase fetch resolves. */
   const waterActivityLoadedRef = useRef(false);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
@@ -302,11 +316,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const tryEnableDbMealPlans = useCallback(async () => {
     if (!authedUserId) return false;
-    // Try relational table first, fall back to legacy
     const { error } = await supabase.from("meal_plan_days").select("id").limit(1);
-    if (!error) { setDbMealPlanEnabled(true); return true; }
-    const { error: legacyErr } = await supabase.from("meal_plans").select("user_id").limit(1);
-    if (!legacyErr) { setDbMealPlanEnabled(true); return true; }
+    if (!error) {
+      setDbMealPlanEnabled(true);
+      return true;
+    }
+    if (looksLikeMissingTableError(error.message ?? "")) {
+      const legacyOk = await probeAnyMealPlanJsonTable(supabase);
+      if (legacyOk) {
+        setDbMealPlanEnabled(true);
+        return true;
+      }
+    }
     return false;
   }, [authedUserId]);
 
@@ -435,20 +456,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!trimmed) {
       return { ok: false, error: "invalid_code" };
     }
-    const { data, error } = await supabase.rpc("redeem_promo_code", { p_code: trimmed });
+    const { data, error } = await supabase.rpc("redeem_promo_code", {
+      p_code: trimmed.toUpperCase(),
+    });
     if (error) {
       if (looksLikeMissingTableError(error.message ?? "")) {
         return { ok: false, error: "not_deployed", message: error.message };
       }
       return { ok: false, error: "rpc_error", message: error.message };
     }
-    const payload = data as {
-      ok?: boolean;
+    let parsed: unknown = data;
+    if (Array.isArray(parsed) && parsed.length === 1) parsed = parsed[0];
+    for (let i = 0; i < 3; i++) {
+      if (typeof parsed !== "string") break;
+      try {
+        parsed = JSON.parse(parsed) as unknown;
+      } catch {
+        break;
+      }
+    }
+    const payload = parsed as {
+      ok?: boolean | string;
       error?: string;
       tier?: string;
       already_redeemed?: boolean;
     } | null;
-    if (!payload?.ok) {
+    const ok = payload?.ok === true || payload?.ok === "true";
+    if (!ok) {
       const err = payload?.error;
       if (
         err === "not_authenticated" ||
@@ -460,9 +494,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return { ok: false, error: "rpc_error", message: err ?? "unknown" };
     }
-    const tier = (payload.tier as UserTier) ?? "free";
+    const tier = (payload!.tier as UserTier) ?? "free";
     setProfileTier(tier);
-    return { ok: true, tier, alreadyRedeemed: Boolean(payload.already_redeemed) };
+    return { ok: true, tier, alreadyRedeemed: Boolean(payload!.already_redeemed) };
   }, [authedUserId]);
 
   // Load persisted meal plan from Supabase (tries relational table, falls back to legacy JSONB).
@@ -496,15 +530,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             mealsByDay.set(m.plan_day_id, arr);
           }
           const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
-            const meals = (mealsByDay.get(d.id) ?? []).map((m): import("../types/recipe.ts").DayPlanMeal => ({
-              name: m.name, recipeTitle: m.recipe_title,
-              calories: m.calories, protein: m.protein, carbs: m.carbs, fat: m.fat,
-              portionMultiplier: m.portion_multiplier, isPlaceholder: m.is_placeholder || undefined,
-            }));
-            const totals = meals.reduce((acc, m) => m.isPlaceholder ? acc : ({
-              calories: acc.calories + m.calories, protein: acc.protein + m.protein,
-              carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat,
-            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+            const meals = (mealsByDay.get(d.id) ?? [])
+              .map((m): import("../types/recipe.ts").DayPlanMeal => ({
+                name: m.name,
+                recipeTitle: m.recipe_title,
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                portionMultiplier: m.portion_multiplier,
+                isPlaceholder: m.is_placeholder || undefined,
+              }))
+              .filter(
+                (m) =>
+                  typeof m.recipeTitle === "string" &&
+                  !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+              );
+            const totals = meals.reduce(
+              (acc, m) => ({
+                calories: acc.calories + m.calories,
+                protein: acc.protein + m.protein,
+                carbs: acc.carbs + m.carbs,
+                fat: acc.fat + m.fat,
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
             return { day: d.day, meals, totals };
           });
           const slotId = activeMealPlanSlotIdRef.current;
@@ -513,25 +563,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Fall back to legacy JSONB table
+      // Fall back to legacy JSONB table (`meal_plans` or `meal_plans_legacy`)
       if (!cancelled) {
-        const { data, error } = await supabase
-          .from("meal_plans")
-          .select("plan")
-          .eq("user_id", authedUserId)
-          .maybeSingle();
+        const planJson = await fetchMealPlanJson(supabase, authedUserId);
         if (!cancelled) {
-          if (error) {
-            if (looksLikeMissingTableError(error.message ?? "")) {
-              setDbMealPlanEnabled(false);
-              if (!dbMealPlanWarned) {
-                setDbMealPlanWarned(true);
-                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
-              }
-            }
-          } else if (data?.plan) {
+          if (planJson != null) {
             const normalized =
-              normalizeDayPlans(data.plan) ?? (Array.isArray(data.plan) ? (data.plan as DayPlan[]) : null);
+              normalizeDayPlans(planJson) ?? (Array.isArray(planJson) ? (planJson as DayPlan[]) : null);
             const slotId = activeMealPlanSlotIdRef.current;
             setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: normalized } : s)));
           }
@@ -557,7 +595,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, author:profiles(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, author:profiles(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -569,29 +607,39 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const mapped: RecipeCard[] = (data ?? []).map((row: any) => ({
-      id: row.id as string,
-      creatorName: (row?.author?.display_name as string | null) ?? "Community",
-      creatorImage:
-        (row?.author?.avatar_url as string | null) ??
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-      title: (row.title as string) ?? "Untitled",
-      image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
-      servings: (row.servings as number) ?? 1,
-      calories: (row.calories as number) ?? 0,
-      protein: (row.protein as number) ?? 0,
-      carbs: (row.carbs as number) ?? 0,
-      fat: (row.fat as number) ?? 0,
-      fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
-      isVerified: Boolean(row.is_verified),
-      creatorCalories: (row.creator_calories as number | null) ?? undefined,
-      savedCount: 0,
-      isSaved: false,
-      feedCreatedAt: row.created_at as string,
-      authorId: (row.author_id as string | null) ?? null,
-      creatorId: (row.creator_id as string | null) ?? null,
-      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
-    }));
+    const mapped: RecipeCard[] = (data ?? []).map((row: any) => {
+      const prepM = row.prep_time_min != null ? Number(row.prep_time_min) : NaN;
+      const cookM = row.cook_time_min != null ? Number(row.cook_time_min) : NaN;
+      const prepOk = Number.isFinite(prepM) && prepM > 0;
+      const cookOk = Number.isFinite(cookM) && cookM > 0;
+      return {
+        id: row.id as string,
+        creatorName: (row?.author?.display_name as string | null) ?? "Community",
+        creatorImage:
+          (row?.author?.avatar_url as string | null) ??
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+        title: (row.title as string) ?? "Untitled",
+        image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        servings: (row.servings as number) ?? 1,
+        calories: (row.calories as number) ?? 0,
+        protein: (row.protein as number) ?? 0,
+        carbs: (row.carbs as number) ?? 0,
+        fat: (row.fat as number) ?? 0,
+        fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
+        isVerified: Boolean(row.is_verified),
+        creatorCalories: (row.creator_calories as number | null) ?? undefined,
+        savedCount: 0,
+        isSaved: false,
+        feedCreatedAt: row.created_at as string,
+        authorId: (row.author_id as string | null) ?? null,
+        creatorId: (row.creator_id as string | null) ?? null,
+        mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
+        prepTimeMin: prepOk ? Math.round(prepM) : null,
+        cookTimeMin: cookOk ? Math.round(cookM) : null,
+        prepTime: formatRecipeMinutes(prepOk ? prepM : null),
+        cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+      };
+    });
 
     setUploadedRecipes(mapped);
   }, []);
@@ -606,35 +654,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, prep_time_min, cook_time_min",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) return;
-    const mapped: RecipeCard[] = (data ?? []).map((row: any) => ({
-      id: row.id as string,
-      creatorName: profileDisplayName ?? "You",
-      creatorImage:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-      title: (row.title as string) ?? "Untitled",
-      image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
-      servings: (row.servings as number) ?? 1,
-      calories: (row.calories as number) ?? 0,
-      protein: (row.protein as number) ?? 0,
-      carbs: (row.carbs as number) ?? 0,
-      fat: (row.fat as number) ?? 0,
-      fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
-      isVerified: Boolean(row.is_verified),
-      creatorCalories: (row.creator_calories as number | null) ?? undefined,
-      savedCount: 0,
-      isSaved: false,
-      feedCreatedAt: row.created_at as string,
-      authorId: (row.author_id as string | null) ?? null,
-      creatorId: (row.creator_id as string | null) ?? null,
-      mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
-      isPublished: Boolean((row as { published?: boolean | null }).published),
-    }));
+    const mapped: RecipeCard[] = (data ?? []).map((row: any) => {
+      const importAttribution = (row.source_name as string | null)?.trim() ?? "";
+      const prepM = row.prep_time_min != null ? Number(row.prep_time_min) : NaN;
+      const cookM = row.cook_time_min != null ? Number(row.cook_time_min) : NaN;
+      const prepOk = Number.isFinite(prepM) && prepM > 0;
+      const cookOk = Number.isFinite(cookM) && cookM > 0;
+      return {
+        id: row.id as string,
+        creatorName: importAttribution || profileDisplayName || "You",
+        creatorImage:
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+        title: (row.title as string) ?? "Untitled",
+        image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        servings: (row.servings as number) ?? 1,
+        calories: (row.calories as number) ?? 0,
+        protein: (row.protein as number) ?? 0,
+        carbs: (row.carbs as number) ?? 0,
+        fat: (row.fat as number) ?? 0,
+        fiberG: Math.max(0, Number((row as { fiber_g?: number }).fiber_g ?? 0) || 0),
+        isVerified: Boolean(row.is_verified),
+        creatorCalories: (row.creator_calories as number | null) ?? undefined,
+        savedCount: 0,
+        isSaved: false,
+        feedCreatedAt: row.created_at as string,
+        authorId: (row.author_id as string | null) ?? null,
+        creatorId: (row.creator_id as string | null) ?? null,
+        mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
+        isPublished: Boolean((row as { published?: boolean | null }).published),
+        prepTimeMin: prepOk ? Math.round(prepM) : null,
+        cookTimeMin: cookOk ? Math.round(cookM) : null,
+        prepTime: formatRecipeMinutes(prepOk ? prepM : null),
+        cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+      };
+    });
     setMyLibraryRecipes(mapped);
   }, [authedUserId, profileDisplayName]);
 
@@ -815,7 +874,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     const entries = (mealPlan ?? [])
       .flatMap((d) => d.meals)
-      .filter((m) => !m.isPlaceholder && m.recipeTitle && titleToId(m.recipeTitle))
+      .filter(
+        (m) =>
+          m.recipeTitle &&
+          !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
+          titleToId(m.recipeTitle),
+      )
       .map((m) => ({
         title: m.recipeTitle,
         multiplier: effectivePortionMultiplier(m.portionMultiplier),
@@ -904,22 +968,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         .eq("slot_id", "default");
 
       if (delErr && looksLikeMissingTableError(delErr.message ?? "")) {
-        // Fall back to legacy JSONB table
-        supabase
-          .from("meal_plans")
-          .upsert({ user_id: authedUserId, updated_at: new Date().toISOString(), plan: mealPlan }, { onConflict: "user_id" })
-          .then(({ error }) => {
-            if (error) {
-              const msg = error.message ?? "";
-              if (looksLikeMissingTableError(msg)) {
-                setDbMealPlanEnabled(false);
-                if (!dbMealPlanWarned) {
-                  setDbMealPlanWarned(true);
-                  toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
-                }
+        void upsertMealPlanJson(supabase, authedUserId, mealPlan).then(({ error }) => {
+          if (error) {
+            const msg = error.message ?? "";
+            if (
+              looksLikeMissingTableError(msg) ||
+              msg.toLowerCase().includes("no meal_plans json table")
+            ) {
+              setDbMealPlanEnabled(false);
+              if (!dbMealPlanWarned) {
+                setDbMealPlanWarned(true);
+                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
               }
             }
-          });
+          }
+        });
         return;
       }
 
@@ -1019,7 +1082,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     supabase
       .from("profiles")
-      .select("extra_water_by_day, activity_burn_by_day")
+      .select("extra_water_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day")
       .eq("id", authedUserId)
       .maybeSingle()
       .then(({ data }) => {
@@ -1029,6 +1092,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         if (data?.activity_burn_by_day && typeof data.activity_burn_by_day === "object") {
           setActivityBurnByDay(data.activity_burn_by_day as Record<string, number>);
+        }
+        if (data?.workouts_by_day && typeof data.workouts_by_day === "object" && !Array.isArray(data.workouts_by_day)) {
+          setWorkoutsByDay(data.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
+        }
+        if (data?.basal_burn_by_day && typeof data.basal_burn_by_day === "object") {
+          setBasalBurnByDay(data.basal_burn_by_day as Record<string, number>);
         }
         waterActivityLoadedRef.current = true;
       });
@@ -1319,9 +1388,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       activityBurnKcal,
       setActivityBurnKcal,
       activityBurnForSelectedDay,
+      activityBurnByDay,
       setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      workoutsByDay,
+      basalBurnByDay,
       extraWaterByDay,
       selectedDateKey,
       setSelectedDateKey,
@@ -1383,9 +1455,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       activityBurnKcal,
       setActivityBurnKcal,
       activityBurnForSelectedDay,
+      activityBurnByDay,
       setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      workoutsByDay,
+      basalBurnByDay,
       extraWaterByDay,
       selectedDateKey,
       setSelectedDateKey,

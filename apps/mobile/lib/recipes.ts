@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import { formatRecipeMinutes } from "./formatRecipeMinutes";
 import { supabase } from "./supabase";
 import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
@@ -17,7 +18,7 @@ export function useDiscoverRecipes() {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, meal_type, source_url, source_name"
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -25,26 +26,36 @@ export function useDiscoverRecipes() {
       .limit(200);
 
     if (!error && data) {
-      const mapped: RecipeCard[] = data.map((r: any) => ({
-        id: r.id,
-        title: r.title ?? "Untitled",
-        image: r.image_url ?? DEFAULT_IMAGE,
-        creatorName: r.source_name ?? "Community",
-        creatorImage: DEFAULT_AVATAR,
-        servings: r.servings ?? 1,
-        calories: r.calories ?? 0,
-        protein: r.protein ?? 0,
-        carbs: r.carbs ?? 0,
-        fat: r.fat ?? 0,
-        fiberG: r.fiber_g ?? 0,
-        isVerified: r.is_verified ?? false,
-        savedCount: 0,
-        isSaved: false,
-        authorId: r.author_id,
-        sourceUrl: r.source_url ?? null,
-        mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
-        feedSource: "community" as const,
-      }));
+      const mapped: RecipeCard[] = data.map((r: any) => {
+        const prepM = r.prep_time_min != null ? Number(r.prep_time_min) : NaN;
+        const cookM = r.cook_time_min != null ? Number(r.cook_time_min) : NaN;
+        const prepOk = Number.isFinite(prepM) && prepM > 0;
+        const cookOk = Number.isFinite(cookM) && cookM > 0;
+        return {
+          id: r.id,
+          title: r.title ?? "Untitled",
+          image: r.image_url ?? DEFAULT_IMAGE,
+          creatorName: r.source_name ?? "Community",
+          creatorImage: DEFAULT_AVATAR,
+          servings: r.servings ?? 1,
+          calories: r.calories ?? 0,
+          protein: r.protein ?? 0,
+          carbs: r.carbs ?? 0,
+          fat: r.fat ?? 0,
+          fiberG: r.fiber_g ?? 0,
+          isVerified: r.is_verified ?? false,
+          savedCount: 0,
+          isSaved: false,
+          authorId: r.author_id,
+          sourceUrl: r.source_url ?? null,
+          mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
+          feedSource: "community" as const,
+          prepTimeMin: prepOk ? Math.round(prepM) : null,
+          cookTimeMin: cookOk ? Math.round(cookM) : null,
+          prepTime: formatRecipeMinutes(prepOk ? prepM : null),
+          cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+        };
+      });
       setRecipes(mapped);
       void cacheDiscoverRecipes(mapped); // Cache for offline
     } else if (error) {
@@ -183,7 +194,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
     const { data: rows, error: recErr } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name",
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, author:profiles!author_id(display_name, avatar_url)",
       )
       .in("id", ids);
 
@@ -195,12 +206,23 @@ export function useSavedLibraryRecipes(userId: string | null) {
 
     const byId = new Map(
       (rows as any[]).map((r) => {
+        const importAttribution = (r.source_name as string | null | undefined)?.trim() ?? "";
+        const authorDisplay = (r.author?.display_name as string | null | undefined)?.trim() ?? "";
+        const isOwn = r.author_id === userId;
+        const creatorName =
+          importAttribution || (isOwn ? "You" : authorDisplay || "Community");
+        const creatorImage =
+          (r.author?.avatar_url as string | null | undefined)?.trim() || DEFAULT_AVATAR;
+        const prepM = r.prep_time_min != null ? Number(r.prep_time_min) : NaN;
+        const cookM = r.cook_time_min != null ? Number(r.cook_time_min) : NaN;
+        const prepOk = Number.isFinite(prepM) && prepM > 0;
+        const cookOk = Number.isFinite(cookM) && cookM > 0;
         const card: RecipeCard = {
           id: r.id,
           title: r.title ?? "Untitled",
           image: r.image_url ?? DEFAULT_IMAGE,
-          creatorName: r.source_name ?? "You",
-          creatorImage: DEFAULT_AVATAR,
+          creatorName,
+          creatorImage,
           servings: r.servings ?? 1,
           calories: r.calories ?? 0,
           protein: r.protein ?? 0,
@@ -213,6 +235,10 @@ export function useSavedLibraryRecipes(userId: string | null) {
           authorId: r.author_id,
           sourceUrl: r.source_url ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
+          prepTimeMin: prepOk ? Math.round(prepM) : null,
+          cookTimeMin: cookOk ? Math.round(cookM) : null,
+          prepTime: formatRecipeMinutes(prepOk ? prepM : null),
+          cookTime: formatRecipeMinutes(cookOk ? cookM : null),
         };
         return [r.id as string, card] as const;
       }),

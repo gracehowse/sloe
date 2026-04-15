@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -52,6 +53,7 @@ function newIngId() { return `ing_${Date.now()}_${_nextId++}`; }
 export default function CreateRecipeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const goBackOrCancel = useSafeBack("/(tabs)/more");
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id;
@@ -305,7 +307,7 @@ export default function CreateRecipeScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={goBackOrCancel} hitSlop={12}>
           <Text style={styles.backText}>Cancel</Text>
         </Pressable>
         <Text style={styles.topTitle}>CREATE</Text>

@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { projectId, publicAnonKey } from "./utils/supabase/info.tsx";
 
 const PUBLIC_ROUTES = new Set([
+  "/",
   "/login",
+  "/signup",
+  "/roadmap",
   "/auth/callback",
   "/help",
   "/pricing",

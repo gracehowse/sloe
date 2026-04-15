@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins.push("./plugins/withPersonalTeamDevIOS");
   }
   plugins.push("./plugins/withXcodeNodeBinary.js");
+  plugins.push("./plugins/withIosMetroBundleUrlFallback.js");
   plugins.push("./plugins/withIosXcodeAutomaticSigning.js");
   plugins.push("./plugins/withSentryDisableUploadLocalXcode");
   return {

@@ -489,6 +489,25 @@ export type Database = {
         }
         Relationships: []
       }
+      /** Renamed from `meal_plans` by migration `20260413100000_relational_user_data.sql`. */
+      meal_plans_legacy: {
+        Row: {
+          plan: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          plan?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          plan?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_entries: {
         Row: {
           calories: number
@@ -497,8 +516,10 @@ export type Database = {
           date_key: string
           fat: number
           fiber_g: number | null
+          health_sample_id: string | null
           id: string
           name: string
+          nutrition_micros: Json
           portion_multiplier: number | null
           protein: number
           recipe_title: string
@@ -514,8 +535,10 @@ export type Database = {
           date_key: string
           fat?: number
           fiber_g?: number | null
+          health_sample_id?: string | null
           id?: string
           name?: string
+          nutrition_micros?: Json
           portion_multiplier?: number | null
           protein?: number
           recipe_title?: string
@@ -531,8 +554,10 @@ export type Database = {
           date_key?: string
           fat?: number
           fiber_g?: number | null
+          health_sample_id?: string | null
           id?: string
           name?: string
+          nutrition_micros?: Json
           portion_multiplier?: number | null
           protein?: number
           recipe_title?: string
@@ -561,10 +586,30 @@ export type Database = {
         }
         Relationships: []
       }
+      /** Renamed from `nutrition_journals` by migration `20260413100000_relational_user_data.sql`. */
+      nutrition_journals_legacy: {
+        Row: {
+          by_day: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          by_day?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          by_day?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_burn_by_day: Json | null
           activity_level: string | null
+          basal_burn_by_day: Json | null
           adaptive_tdee: number | null
           adaptive_tdee_confidence: string | null
           adaptive_tdee_updated_at: string | null
@@ -604,12 +649,14 @@ export type Database = {
           user_tier: string
           weight_kg: number | null
           weight_kg_by_day: Json
+          workouts_by_day: Json | null
         }
         Insert: {
           activity_burn_by_day?: Json | null
           activity_level?: string | null
           age?: number | null
           avatar_url?: string | null
+          basal_burn_by_day?: Json | null
           body_fat_pct?: number | null
           calorie_schedule?: string | null
           created_at?: string
@@ -644,6 +691,7 @@ export type Database = {
           user_tier?: string
           weight_kg?: number | null
           weight_kg_by_day?: Json
+          workouts_by_day?: Json | null
         }
         Update: {
           activity_burn_by_day?: Json | null
@@ -653,6 +701,7 @@ export type Database = {
           adaptive_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
+          basal_burn_by_day?: Json | null
           body_fat_pct?: number | null
           calorie_schedule?: string | null
           created_at?: string
@@ -687,6 +736,7 @@ export type Database = {
           user_tier?: string
           weight_kg?: number | null
           weight_kg_by_day?: Json
+          workouts_by_day?: Json | null
         }
         Relationships: []
       }
@@ -1044,6 +1094,25 @@ export type Database = {
         Relationships: []
       }
       shopping_lists: {
+        Row: {
+          items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          items?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      /** Renamed from `shopping_lists` by migration `20260413100000_relational_user_data.sql`. */
+      shopping_lists_legacy: {
         Row: {
           items: Json
           updated_at: string

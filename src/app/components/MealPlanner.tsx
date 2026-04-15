@@ -17,6 +17,7 @@ import {
   clampPortionMultiplier,
   dayPlanTotalsFromMeals,
   effectivePortionMultiplier,
+  isMealPlanPlaceholderLikeTitle,
   scaledMacro,
 } from "../../lib/nutrition/portionMultiplier.ts";
 import type { DayPlan } from "../../types/recipe.ts";
@@ -24,7 +25,7 @@ import type { DayPlan } from "../../types/recipe.ts";
 interface MealPlannerProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
-  onNavigate?: (view: "discover" | "library") => void;
+  onNavigate?: (view: "discover" | "library" | "shopping") => void;
   /** Opens recipe detail (e.g. Discover + `?recipe=`). */
   onOpenRecipe?: (recipeId: string) => void;
   /** Opens recipe detail in cook mode directly. Optionally pass portion multiplier. */
@@ -139,7 +140,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       return prev.map((dp) => {
         if (dp.day !== day) return dp;
         const meals = dp.meals.map((m, idx) => {
-          if (idx !== mealIndex || m.isPlaceholder) return m;
+          if (idx !== mealIndex || isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder })) {
+            return m;
+          }
           const next = clampPortionMultiplier(effectivePortionMultiplier(m.portionMultiplier) + delta);
           return { ...m, portionMultiplier: next };
         });
@@ -150,7 +153,11 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
   const swapMeal = (day: number, mealIndex: number) => {
     const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
-    if (dp?.meals[mealIndex]?.isPlaceholder) {
+    const curMeal = dp?.meals[mealIndex];
+    if (
+      curMeal &&
+      isMealPlanPlaceholderLikeTitle(curMeal.recipeTitle, { isPlaceholder: curMeal.isPlaceholder })
+    ) {
       toast.error("Save recipes to enable swapping");
       return;
     }
@@ -208,7 +215,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
   const logPlannedMeal = (day: number, mealIndex: number) => {
     const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
     const meal = dp?.meals[mealIndex];
-    if (!meal || meal.isPlaceholder) return;
+    if (!meal || isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) return;
 
     const mealKey = `${day}-${mealIndex}`;
     if (loggedMealKeys.has(mealKey)) {
@@ -303,7 +310,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     const ids = new Set<string>();
     for (const day of plan) {
       for (const m of day.meals) {
-        if (m.isPlaceholder) continue;
+        if (isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder })) continue;
         const id = titleToId(m.recipeTitle);
         if (id) ids.add(id);
       }
@@ -368,9 +375,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             <div className="p-2 bg-primary rounded-xl">
               <Icons.sparkles className="w-5 h-5 text-white" />
             </div>
-            <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">AI Meal Planner</h1>
+            <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">Meal planner</h1>
           </div>
-          <p className="text-muted-foreground">Generate meal plans from your saved recipes</p>
+          <p className="text-muted-foreground">Build macro-aware days from your saved recipes</p>
         </div>
         {generatedPlan && (
           <div className="flex items-center gap-3">
@@ -423,7 +430,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           <button
             type="button"
             onClick={() => {
-              const name = window.prompt("New plan name (e.g. Week of Apr 8)", "");
+              const name = window.prompt("New plan name", "");
               if (name === null) return;
               createMealPlanSlot(name);
               toast.success("Created plan");
@@ -674,19 +681,18 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             </div>
           </button>
 
-          {/* Info */}
-          <div className="mt-6 p-5 bg-gradient-to-br from-muted to-muted/50 rounded-2xl border border-border/50">
+          <div className="mt-6 p-4 rounded-xl border border-border bg-muted/30">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-foreground">💡 Pro tip:</span> Plans are generated using verified recipes from your library. Save more recipes from Discover to get better variety and accuracy.
+              Save recipes that match breakfast, lunch, dinner, or snacks so each slot can pick a sensible fit. You can
+              adjust targets and bands above before generating.
             </p>
           </div>
         </div>
       ) : generatedPlan ? (
         <div className="space-y-6">
-          {/* Header: "Meal Plan" + date range on left, "AI Auto-fill" button on right */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-[22px] font-bold text-foreground">Meal Plan</h2>
+              <h2 className="text-[22px] font-bold text-foreground">Meal plan</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {generatedPlan.length > 0
                   ? (() => {
@@ -700,13 +706,6 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleRegenerate}
-              className="px-3 py-2 text-sm font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              AI Auto-fill
-            </button>
           </div>
 
           {/* Horizontal scrollable day cards */}
@@ -738,15 +737,23 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
                     {/* Meal names */}
                     <div className="flex-1 flex flex-col gap-1 text-[10px] text-muted-foreground mb-2">
-                      {dp.meals.length > 0 ? (
-                        dp.meals.map((meal, idx) => (
-                          <div key={idx} className="truncate">
-                            {meal.recipeTitle}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-[10px] text-muted-foreground">Empty</div>
-                      )}
+                      {(() => {
+                        const titles = dp.meals
+                          .filter(
+                            (meal) =>
+                              !isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder }),
+                          )
+                          .map((meal) => meal.recipeTitle);
+                        return titles.length > 0 ? (
+                          titles.map((title, idx) => (
+                            <div key={idx} className="truncate">
+                              {title}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center text-[10px] text-muted-foreground">Empty</div>
+                        );
+                      })()}
                     </div>
 
                     {/* Progress bar */}
@@ -780,14 +787,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             const todayPlan = generatedPlan[0];
             return (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                  TODAY'S PLAN
-                </div>
+                <div className="text-[13px] font-semibold text-muted-foreground mb-2">Today&apos;s plan</div>
                 <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                   <div className="space-y-4">
                     {todayPlan.meals.length > 0 ? (
                       todayPlan.meals.map((meal, index) => {
-                        if (meal.isPlaceholder) return null;
+                        if (isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) {
+                          return null;
+                        }
                         const portion = effectivePortionMultiplier(meal.portionMultiplier);
                         return (
                           <div key={index} className="flex items-start gap-3">
@@ -824,18 +831,33 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           {/* Shopping list link */}
           <div
             className="bg-card border border-border rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onNavigate?.("library")}
+            onClick={() => onNavigate?.("shopping")}
             role="button"
             tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onNavigate?.("shopping");
+              }
+            }}
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                 <Icons.shopping className="w-4 h-4 text-amber-500" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[13px] font-semibold text-foreground">Shopping List</h3>
+                <h3 className="text-[13px] font-semibold text-foreground">Shopping list</h3>
                 <p className="text-[12px] text-muted-foreground mt-0.5">
-                  {generatedPlan.flatMap((d) => d.meals).filter((m) => !m.isPlaceholder).length} items from this week
+                  {(() => {
+                    const n = generatedPlan
+                      .flatMap((d) => d.meals)
+                      .filter(
+                        (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+                      ).length;
+                    return n > 0
+                      ? `${n} planned meal${n === 1 ? "" : "s"} · open list or generate ingredients`
+                      : "Open your list or build it from this plan";
+                  })()}
                 </p>
               </div>
               <Icons.forward className="w-5 h-5 text-muted-foreground flex-shrink-0" />
@@ -951,36 +973,8 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
               <div className="space-y-5">
                 {dp.meals.map((meal, index) => {
                   const slotKey = `${dp.day}-${index}`;
-                  if (meal.isPlaceholder) {
-                    return (
-                      <div
-                        key={slotKey}
-                        className="backdrop-blur-xl bg-muted/50 border-2 border-dashed border-border rounded-2xl p-6"
-                      >
-                        <span className="inline-block px-3 py-1 bg-muted text-foreground rounded-lg text-sm font-semibold mb-2">
-                          {meal.name}
-                        </span>
-                        <p className="text-foreground mb-4">{meal.recipeTitle}</p>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onNavigate?.("discover")}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-card text-sm font-medium"
-                          >
-                            <Icons.home className="w-4 h-4" />
-                            Discover
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onNavigate?.("library")}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium"
-                          >
-                            <Icons.save className="w-4 h-4" />
-                            Library
-                          </button>
-                        </div>
-                      </div>
-                    );
+                  if (isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) {
+                    return null;
                   }
                   const portion = effectivePortionMultiplier(meal.portionMultiplier);
                   const recipeMeta =

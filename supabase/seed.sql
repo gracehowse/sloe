@@ -107,7 +107,8 @@ begin
   end if;
 end $$;
 
--- Test / dev promo: full Pro access (high max_uses; restrict in production)
+-- Test / dev promos: Pro tier via `redeem_promo_code` RPC (Settings → promo on web/mobile).
+-- For hosted Supabase without running seed: run the same INSERTs in the SQL editor.
 do $$
 begin
   if exists (
@@ -116,7 +117,9 @@ begin
     where table_schema = 'public' and table_name = 'promo_codes'
   ) then
     insert into public.promo_codes (code, tier, max_uses)
-    values ('PLATEMATE_PRO', 'pro', 10000)
+    values
+      ('PLATEMATE_PRO', 'pro', 10000),
+      ('SUPPR_TEST_PREMIUM', 'pro', 100000)
     on conflict (code) do nothing;
   end if;
 end $$;

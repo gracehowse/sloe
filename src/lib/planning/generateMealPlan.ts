@@ -41,7 +41,7 @@ export function mealPlannerSlotsFromMealType(raw: string | string[] | null | und
     breakfast: "Breakfast",
     lunch: "Lunch",
     dinner: "Dinner",
-    snack: "Snack",
+    snack: "Snacks",
   };
   const slots = new Set<PlannerMealSlot>();
   for (const t of tags) {
@@ -149,8 +149,18 @@ const SLOT_WEIGHTS: Record<string, number> = {
   lunch: 0.30,
   dinner: 0.35,
   snack: 0.10,
+  snacks: 0.10,
 };
 
+function slotCalorieTargets(slots: string[], targets: PlannerTargets): number[] {
+  const totalWeight = slots.reduce((a, s) => a + (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25), 0);
+  return slots.map((s) => {
+    const w = (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25) / totalWeight;
+    return targets.calories * w;
+  });
+}
+
+/** Only recipes tagged for the slot (or untagged). Never fills a slot from unrelated recipes. */
 function findBestSmartMealSet(
   pool: RecipeCard[],
   slots: string[],
@@ -160,17 +170,12 @@ function findBestSmartMealSet(
 ): { recipes: RecipeCard[]; multipliers: number[] } | null {
   if (pool.length === 0) return null;
 
-  const perSlot = slots.map((slot) => {
-    const fits = pool.filter((r) => recipeFitsMealSlot(r, slot as PlannerMealSlot));
-    return fits.length > 0 ? fits : pool;
-  });
+  const perSlot = slots.map((slot) =>
+    pool.filter((r) => recipeFitsMealSlot(r, slot as PlannerMealSlot)),
+  );
+  if (perSlot.some((p) => p.length === 0)) return null;
 
-  // Calorie target per slot based on weights
-  const totalWeight = slots.reduce((a, s) => a + (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25), 0);
-  const slotCalTargets = slots.map((s) => {
-    const w = (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25) / totalWeight;
-    return targets.calories * w;
-  });
+  const slotCalTargets = slotCalorieTargets(slots, targets);
 
   let best: { recipes: RecipeCard[]; multipliers: number[]; score: number } | null = null;
   const samples = Math.min(20_000, perSlot.reduce((a, p) => a * p.length, 1));
@@ -197,16 +202,36 @@ function findBestSmartMealSet(
   return best;
 }
 
-function placeholderMeal(name: string): DayPlanMeal {
-  return {
-    name,
-    recipeTitle: "Save recipes to build a macro-aware plan",
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    isPlaceholder: true,
-  };
+/** One pick per slot that has ≥1 matching recipe; skips slots with no matches (partial day). */
+function buildIndependentSlotDay(
+  pool: RecipeCard[],
+  slots: string[],
+  targets: PlannerTargets,
+  rand: () => number,
+): { meals: DayPlanMeal[]; pickedIds: string[] } {
+  const slotCalTargets = slotCalorieTargets(slots, targets);
+  const meals: DayPlanMeal[] = [];
+  const pickedIds: string[] = [];
+  for (let j = 0; j < slots.length; j++) {
+    const name = slots[j]!;
+    const fits = pool.filter((r) => recipeFitsMealSlot(r, name as PlannerMealSlot));
+    if (fits.length === 0) continue;
+    const pick = fits[Math.floor(rand() * fits.length)]!;
+    pickedIds.push(pick.id);
+    const ideal = pick.calories > 0 ? slotCalTargets[j] / pick.calories : 1;
+    const mult = Math.max(0.5, Math.min(2, Math.round(ideal * 4) / 4));
+    const scaled = scaleMacros(pick, mult);
+    meals.push({
+      name,
+      recipeTitle: pick.title,
+      calories: scaled.calories,
+      protein: scaled.protein,
+      carbs: scaled.carbs,
+      fat: scaled.fat,
+      portionMultiplier: mult !== 1 ? mult : undefined,
+    });
+  }
+  return { meals, pickedIds };
 }
 
 /**
@@ -235,30 +260,26 @@ export function generatePlanFromLibrary(input: {
     if (d > 1 && (d - 1) % 3 === 0) recentIds.clear();
 
     const rand = mulberry32(baseSeed + d * 7919 + savedRecipes.length * 31);
-    const result = findBestSmartMealSet(savedRecipes, slots, targets, recentIds, rand);
-
-    if (!result) {
-      plans.push({
-        day: d,
-        meals: slots.map((name) => placeholderMeal(name)),
-        totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    const joint = findBestSmartMealSet(savedRecipes, slots, targets, recentIds, rand);
+    let meals: DayPlanMeal[];
+    if (joint) {
+      for (const r of joint.recipes) recentIds.add(r.id);
+      meals = slots.map((name, i) => {
+        const r = joint.recipes[i]!;
+        const mult = joint.multipliers[i]!;
+        const scaled = scaleMacros(r, mult);
+        return {
+          name,
+          recipeTitle: r.title,
+          ...scaled,
+          portionMultiplier: mult !== 1 ? mult : undefined,
+        };
       });
-      continue;
+    } else {
+      const { meals: indMeals, pickedIds } = buildIndependentSlotDay(savedRecipes, slots, targets, rand);
+      meals = indMeals;
+      for (const id of pickedIds) recentIds.add(id);
     }
-
-    for (const r of result.recipes) recentIds.add(r.id);
-
-    const meals: DayPlanMeal[] = slots.map((name, i) => {
-      const r = result.recipes[i]!;
-      const mult = result.multipliers[i];
-      const scaled = scaleMacros(r, mult);
-      return {
-        name,
-        recipeTitle: r.title,
-        ...scaled,
-        portionMultiplier: mult !== 1 ? mult : undefined,
-      };
-    });
 
     const totals = dayPlanTotalsFromMeals(meals);
     plans.push({ day: d, meals, totals });
