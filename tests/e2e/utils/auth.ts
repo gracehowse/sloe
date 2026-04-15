@@ -30,5 +30,5 @@ export async function loginWithTestUser(page: Page): Promise<void> {
     );
   }
 
-  await expect(page.getByRole("heading", { name: /^Platemate$/i }).first()).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole("heading", { name: /^Suppr$/i }).first()).toBeVisible({ timeout: 25_000 });
 }

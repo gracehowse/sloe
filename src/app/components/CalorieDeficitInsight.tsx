@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { Info } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import type { LoggedMeal } from "../../types/recipe.ts";
 import {
   rollingDeficitStats,
@@ -53,40 +54,42 @@ export function CalorieDeficitInsight({
 
   return (
     <section
-      className="rounded-2xl border border-violet-200/60 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-950/20 px-4 py-4 mb-6"
+      className="rounded-card border border-border bg-card px-4 py-4 mb-6"
       aria-label="Calorie budget insight"
     >
-      <div className="flex gap-2 mb-2">
-        <Info className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+      <div className="flex gap-2.5 mb-3">
+        <IconBox size="sm" tone="primary">
+          <Icons.info />
+        </IconBox>
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Budget &amp; deficit (estimated)</h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+          <h3 className="text-sm font-semibold text-foreground">Budget &amp; deficit (estimated)</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Numbers are projections from what you&apos;ve logged — resting burn and activity can still change through the day.
           </p>
         </div>
       </div>
 
       {isToday ? (
-        <p className="text-sm text-slate-800 dark:text-slate-200 font-medium mb-3">{headline}</p>
+        <p className="text-sm text-foreground font-medium mb-3">{headline}</p>
       ) : (
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+        <p className="text-sm text-muted-foreground mb-3">
           Open today&apos;s date for live budget pacing; this day shows logged food vs that day&apos;s net goal in the summary above.
         </p>
       )}
 
       <dl className="grid gap-2 text-sm">
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500 dark:text-slate-400">Food logged</dt>
-          <dd className="font-mono tabular-nums text-slate-900 dark:text-white">{caloriesEatenToday} kcal</dd>
+          <dt className="text-muted-foreground">Food logged</dt>
+          <dd className="tabular-nums font-medium text-foreground">{caloriesEatenToday} kcal</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500 dark:text-slate-400">Net calorie goal</dt>
-          <dd className="font-mono tabular-nums text-slate-900 dark:text-white">{netCalorieGoal} kcal</dd>
+          <dt className="text-muted-foreground">Net calorie goal</dt>
+          <dd className="tabular-nums font-medium text-foreground">{netCalorieGoal} kcal</dd>
         </div>
         {preferActivityAdjusted && (
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500 dark:text-slate-400">Activity adjustment</dt>
-            <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">
+            <dt className="text-muted-foreground">Activity adjustment</dt>
+            <dd className="tabular-nums font-medium text-success">
               +{activityBurnKcal} kcal (on top of {baseCalorieGoal} base)
             </dd>
           </div>
@@ -94,11 +97,11 @@ export function CalorieDeficitInsight({
       </dl>
 
       {rolling.loggedDayCount > 0 && rolling.avgDailyDeficitKcal != null && (
-        <div className="mt-4 pt-3 border-t border-violet-200/50 dark:border-violet-900/40">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
+        <div className="mt-4 pt-3 border-t border-border">
+          <p className="section-label mb-1.5">
             Recent pace (last 7 days, logged days only)
           </p>
-          <p className="text-sm text-slate-800 dark:text-slate-200">
+          <p className="text-sm text-foreground">
             Averaging about{" "}
             <span className="font-semibold">
               {rolling.avgDailyDeficitKcal > 0
@@ -110,13 +113,13 @@ export function CalorieDeficitInsight({
             your base goal per logged day.
           </p>
           {rolling.projectedWeekDeficitKcal != null && rolling.projectedWeekDeficitKcal > 0 && rolling.fatKgEquivalentIfWeekHeld != null ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               If that pace held for a full week, that&apos;s roughly{" "}
-              <span className="font-medium text-slate-800 dark:text-slate-200">
+              <span className="font-medium text-foreground">
                 {rolling.projectedWeekDeficitKcal.toLocaleString()} kcal
               </span>{" "}
               cumulative vs base goal — on the order of{" "}
-              <span className="font-medium text-slate-800 dark:text-slate-200">
+              <span className="font-medium text-foreground">
                 ~{rolling.fatKgEquivalentIfWeekHeld} kg
               </span>{" "}
               fat-equivalent (very rough; not medical advice).

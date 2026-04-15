@@ -51,7 +51,7 @@ export default function Page() {
   }, []);
 
   if (!ready) {
-    return <AppLoadingSkeleton label="Starting Platemate…" />;
+    return <AppLoadingSkeleton label="Starting Suppr…" />;
   }
 
   if (!authed) {

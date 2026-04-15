@@ -1,11 +1,11 @@
-# Platemate Documentation
+# Suppr Documentation
 
-Single source of truth for the Platemate product, codebase, and operations.
+Single source of truth for the Suppr product, codebase, and operations.
 
 ## Documentation Index
 
 ### Product
-- [Product Overview](product/overview.md) — what Platemate is, who it's for, feature map
+- [Product Overview](product/overview.md) — what Suppr is, who it's for, feature map
 
 ### User Guides
 - [Getting Started](user/getting-started.md) — onboarding, first recipe import, daily usage

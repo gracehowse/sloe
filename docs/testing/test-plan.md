@@ -1,4 +1,4 @@
-# Platemate Test Plan
+# Suppr Test Plan
 
 **Audience:** QA / Developers
 
@@ -37,7 +37,7 @@
 |----|------|------|----------|
 | E01 | `auth-and-public.spec.ts` | Login, public pages | Critical |
 | E02 | `authenticated-views.spec.ts` | App shell views | High |
-| E03 | `platemate-natural-language.spec.ts` | AI-driven tests | Low |
+| E03 | `suppr-natural-language.spec.ts` | AI-driven tests | Low |
 | E04 | `views-placeholder.spec.ts` | View placeholders | Low |
 
 ---

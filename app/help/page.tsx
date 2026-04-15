@@ -22,7 +22,7 @@ export default function HelpPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Intermittent fasting timer</h2>
           <p>
             The fasting timer (start and end fasts, window presets, synced history) lives in the{" "}
-            <strong>Platemate mobile app</strong> under More → Fasting. This website does not include that screen yet; your
+            <strong>Suppr mobile app</strong> under More → Fasting. This website does not include that screen yet; your
             progress still syncs to your account if you use mobile.
           </p>
 
@@ -52,7 +52,7 @@ export default function HelpPage() {
 
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition data sources</h2>
           <p>
-            Platemate combines multiple trusted databases to provide accurate nutrition information worldwide:
+            Suppr combines multiple trusted databases to provide accurate nutrition information worldwide:
           </p>
           <ul>
             <li>

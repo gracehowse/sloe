@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const STORAGE_KEY = "platemate-checklist-dismissed";
@@ -43,14 +43,14 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
   const styles = useMemo(() => StyleSheet.create({
     card: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Neon.green + "30",
+      borderWidth: 1, borderColor: Accent.success + "30",
       padding: Spacing.lg, gap: Spacing.md,
     },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     title: { fontSize: 15, fontWeight: "700", color: colors.text },
     dismiss: { fontSize: 12, color: colors.textTertiary },
     progress: { height: 4, backgroundColor: colors.border, borderRadius: 2 },
-    progressFill: { height: 4, backgroundColor: Neon.green, borderRadius: 2, width: `${(doneCount / steps.length) * 100}%` },
+    progressFill: { height: 4, backgroundColor: Accent.success, borderRadius: 2, width: `${(doneCount / steps.length) * 100}%` },
     step: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingVertical: 4 },
     stepText: { fontSize: 14, color: colors.text, flex: 1 },
     stepDone: { textDecorationLine: "line-through" as const, color: colors.textTertiary },
@@ -71,7 +71,7 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
       </View>
       {steps.map((s, i) => (
         <Pressable key={i} style={styles.step} onPress={s.done ? undefined : s.action}>
-          <Ionicons name={s.done ? "checkmark-circle" : "ellipse-outline"} size={20} color={s.done ? Neon.green : colors.textTertiary} />
+          <Ionicons name={s.done ? "checkmark-circle" : "ellipse-outline"} size={20} color={s.done ? Accent.success : colors.textTertiary} />
           <Text style={[styles.stepText, s.done && styles.stepDone]}>{s.label}</Text>
           {!s.done && <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />}
         </Pressable>

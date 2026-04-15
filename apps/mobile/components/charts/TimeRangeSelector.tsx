@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 
-import { Neon, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 
 export type TimeRange = "1W" | "1M" | "3M" | "6M" | "All";
 
@@ -55,7 +55,7 @@ export default function TimeRangeSelector({
             paddingVertical: 6,
             borderRadius: Radius.sm - 2,
             alignItems: "center",
-            backgroundColor: selected === r ? Neon.purple : "transparent",
+            backgroundColor: selected === r ? Accent.primary : "transparent",
           }}
         >
           <Text

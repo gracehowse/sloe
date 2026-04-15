@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Scale, Footprints, Percent, Activity } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import {
   LineChart,
   Line,
@@ -18,6 +19,9 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, type PlanPace } from "../../lib/nutrition/tdee.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
+import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
+import type { LoggedMeal } from "../../types/recipe.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -39,7 +43,7 @@ function coercePace(v: string | null | undefined): PlanPace {
 
 export function ProgressDashboard() {
   const { authedUserId } = useAuthSession();
-  const { profileMeasurementSystem } = useAppData();
+  const { profileMeasurementSystem, nutritionByDay, nutritionTargets } = useAppData();
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -47,7 +51,7 @@ export function ProgressDashboard() {
   const [planPace, setPlanPace] = useState<PlanPace>("steady");
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(10000);
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
 
   const [weightInput, setWeightInput] = useState("");
@@ -89,8 +93,8 @@ export function ProgressDashboard() {
       setPlanPace(coercePace(data.plan_pace as string | undefined));
       setWeightKgByDay(parseNumMap(data.weight_kg_by_day));
       setStepsByDay(parseNumMap(data.steps_by_day));
-      const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : 10000;
-      setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : 10000);
+      const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : DEFAULT_STEPS_GOAL;
+      setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : DEFAULT_STEPS_GOAL);
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
     }
@@ -201,7 +205,7 @@ export function ProgressDashboard() {
 
   if (!authedUserId) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-slate-600 dark:text-slate-400">
+      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">
         Sign in to track progress.
       </div>
     );
@@ -209,7 +213,7 @@ export function ProgressDashboard() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-slate-600 dark:text-slate-400">Loading progress…</div>
+      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">Loading progress…</div>
     );
   }
 
@@ -217,151 +221,281 @@ export function ProgressDashboard() {
     ? profileMeasurementSystem === "imperial" ? Math.round(kgToLb(goalWeightKg) * 10) / 10 : Math.round(goalWeightKg * 10) / 10
     : undefined;
 
+  // Compute real weekly data from nutritionByDay
+  const targets = normalizeMacroTargets(nutritionTargets);
+  const weeklyStats = useMemo(() => {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const today = new Date();
+    const dailyCals: { day: string; calories: number; target: number }[] = [];
+    let totalProtein = 0, totalCarbs = 0, totalFat = 0;
+    let targetProteinTotal = 0, targetCarbsTotal = 0, targetFatTotal = 0;
+    let proteinDaysHit = 0;
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const meals: LoggedMeal[] = nutritionByDay[key] ?? [];
+      const dayCal = meals.reduce((s, m) => s + m.calories, 0);
+      const dayP = meals.reduce((s, m) => s + m.protein, 0);
+      const dayC = meals.reduce((s, m) => s + m.carbs, 0);
+      const dayF = meals.reduce((s, m) => s + m.fat, 0);
+
+      dailyCals.push({ day: dayNames[d.getDay()], calories: Math.round(dayCal), target: targets.calories });
+      totalProtein += dayP;
+      totalCarbs += dayC;
+      totalFat += dayF;
+      targetProteinTotal += targets.protein;
+      targetCarbsTotal += targets.carbs;
+      targetFatTotal += targets.fat;
+      if (meals.length > 0 && dayP >= targets.protein * 0.9) proteinDaysHit++;
+    }
+
+    const proteinAdh = targetProteinTotal > 0 ? Math.round((totalProtein / targetProteinTotal) * 100) : 0;
+    const carbsAdh = targetCarbsTotal > 0 ? Math.round((totalCarbs / targetCarbsTotal) * 100) : 0;
+    const fatAdh = targetFatTotal > 0 ? Math.round((totalFat / targetFatTotal) * 100) : 0;
+
+    return { dailyCals, proteinAdh, carbsAdh, fatAdh, proteinDaysHit };
+  }, [nutritionByDay, targets]);
+
+  const dailyCaloriesData = weeklyStats.dailyCals;
+  const proteinAdherence = weeklyStats.proteinAdh;
+  const carbsAdherence = weeklyStats.carbsAdh;
+  const fatAdherence = weeklyStats.fatAdh;
+
+  const avgCalories = dailyCaloriesData.length > 0
+    ? Math.round(dailyCaloriesData.reduce((sum, d) => sum + d.calories, 0) / dailyCaloriesData.length)
+    : 0;
+  const proteinOnTarget = weeklyStats.proteinDaysHit;
+  const streakDays = computeLoggingStreak(nutritionByDay);
+
   return (
-    <div className="max-w-3xl mx-auto px-pm-6 py-pm-8">
-      <div className="flex items-center gap-2 mb-2">
-        <Activity className="w-6 h-6 text-violet-600 dark:text-violet-400" />
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Progress</h1>
+    <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
+      {/* HEADER */}
+      <div className="mb-8">
+        <h1 className="text-[22px] font-bold text-foreground mb-1">Progress</h1>
+        <p className="text-sm text-muted-foreground">Weekly report</p>
       </div>
 
-      {/* Time range selector */}
-      <div className="flex gap-1.5 mb-6 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-        {(["1W", "1M", "3M", "6M", "All"] as const).map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => setRange(r)}
-            className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              range === r
-                ? "bg-violet-600 text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-            }`}
-          >
-            {r}
-          </button>
-        ))}
+      {/* 2x2 STAT GRID */}
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="warning"><Icons.calories /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Calories</span>
+          </div>
+          <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
+          <p className="text-[11px] text-muted-foreground">vs {targets.calories.toLocaleString()} target</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="success"><Icons.check /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Protein Hit</span>
+          </div>
+          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{proteinOnTarget}/7</p>
+          <p className="text-[11px] text-muted-foreground">days on target</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="success"><Icons.trophy /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
+          </div>
+          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
+          <p className="text-[11px] text-muted-foreground">protein goal</p>
+        </div>
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trend</span>
+          </div>
+          <p className="text-[22px] font-bold text-primary tabular-nums mb-0.5">{(() => {
+            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
+            if (entries.length < 2) return "—";
+            const recent = entries[0][1];
+            const weekAgo = entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1];
+            const delta = recent - weekAgo;
+            const val = profileMeasurementSystem === "imperial" ? Math.round(kgToLb(Math.abs(delta)) * 10) / 10 : Math.round(Math.abs(delta) * 10) / 10;
+            const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
+            return `${delta <= 0 ? "−" : "+"}${val} ${unit}`;
+          })()}</p>
+          <p className="text-[11px] text-muted-foreground">{(() => {
+            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
+            if (entries.length < 2) return "no data yet";
+            const delta = entries[0][1] - (entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1]);
+            return goalWeightKg != null && ((goalWeightKg < (weightKg ?? Infinity) && delta <= 0) || (goalWeightKg > (weightKg ?? 0) && delta >= 0)) ? "on track" : entries.length < 2 ? "no data yet" : "this week";
+          })()}</p>
+        </div>
       </div>
 
-      {/* WEIGHT */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Scale className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Weight</h2>
+      {/* DAILY CALORIES CHART */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
+        <div className="flex items-end gap-2" style={{ height: 90 }}>
+          {dailyCaloriesData.map((d, i) => {
+            const overTarget = d.calories > d.target;
+            const barH = (d.calories / Math.max(targets.calories * 1.15, 1)) * 70;
+            return (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-[9px] text-muted-foreground tabular-nums">
+                  {d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : d.calories}
+                </span>
+                <div
+                  className="w-full rounded-md"
+                  style={{
+                    height: barH,
+                    background: overTarget ? "var(--warning)" : "var(--success)",
+                    opacity: i === 6 ? 0.4 : 0.75,
+                  }}
+                />
+                <span className="text-[10px] text-muted-foreground font-medium">{d.day}</span>
+              </div>
+            );
+          })}
         </div>
-        <div className="grid sm:grid-cols-2 gap-4 text-sm mb-4">
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200/80 dark:border-slate-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Current</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
-              {latestWeightKg != null ? formatWeight(latestWeightKg) : "—"}
-            </p>
-          </div>
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200/80 dark:border-slate-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Goal</p>
-            <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-              {goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}
-            </p>
-            {weeksToGoalVal != null && weeksToGoalVal > 0 && goalDateLabel && (
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                ~{weeksToGoalVal} weeks to goal ({goalDateLabel})
-              </p>
-            )}
-          </div>
-        </div>
+      </div>
 
+      {/* MACRO ADHERENCE */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
+        <div className="space-y-2">
+          {([
+            ["Protein", proteinAdherence, "var(--macro-protein)"],
+            ["Carbs", carbsAdherence, "var(--macro-carbs)"],
+            ["Fat", fatAdherence, "var(--macro-fat)"],
+          ] as const).map(([name, pct, color]) => (
+            <div key={name} className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
+              <span className="text-xs text-muted-foreground w-12">{name}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+              </div>
+              <span className="text-xs font-semibold tabular-nums w-8 text-right" style={{ color }}>{pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* WEEKLY INSIGHT */}
+      {avgCalories > 0 ? (
+        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Weekly insight</span>
+          </div>
+          <p className="text-xs text-foreground leading-relaxed">
+            {proteinOnTarget >= 5
+              ? `Protein consistency is strong — ${proteinOnTarget} of 7 days on target.`
+              : proteinOnTarget > 0
+              ? `Protein hit ${proteinOnTarget} of 7 days this week.`
+              : "No protein targets hit this week — try logging more meals."}{" "}
+            Average intake is {avgCalories} kcal vs your {targets.calories.toLocaleString()} target.{" "}
+            {avgCalories <= targets.calories * 1.1 && avgCalories >= targets.calories * 0.9 ? "Right on track!" : avgCalories < targets.calories * 0.9 ? "You're under target — make sure you're eating enough." : "Slightly over target this week."}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Get started</span>
+          </div>
+          <p className="text-xs text-foreground leading-relaxed">
+            Log your meals on the Today tab to see weekly stats, macro adherence, and personalized insights here.
+          </p>
+        </div>
+      )}
+
+      {/* WEIGHT TRACKING */}
+      <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
+        <div className="flex gap-6 mb-3">
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-foreground tabular-nums">{weightKg != null ? formatWeight(weightKg) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Current</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-success tabular-nums">{goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
+          </div>
+        </div>
         {weightChartData.length >= 2 && (
-          <div className="h-48 mb-4">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="mb-3">
+            <ResponsiveContainer width="100%" height={100}>
               <LineChart data={weightChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} stroke="#94a3b8" width={40} />
-                <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={2.5} dot={{ r: 3, fill: "#a855f7" }} />
-                {goalWeightChart != null && (
-                  <ReferenceLine y={goalWeightChart} stroke="#22c55e" strokeDasharray="4 3" label={{ value: "Goal", position: "right", fill: "#22c55e", fontSize: 10 }} />
-                )}
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} dot={{ r: 2 }} />
+                {goalWeightChart != null && <ReferenceLine y={goalWeightChart} stroke="var(--success)" strokeDasharray="4 4" />}
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
-
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[140px]">
-            <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Log today ({profileMeasurementSystem === "imperial" ? "lb" : "kg"})</label>
-            <input type="text" inputMode="decimal" value={weightInput} onChange={(e) => setWeightInput(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
-              placeholder={profileMeasurementSystem === "imperial" ? "e.g. 165" : "e.g. 72.5"} />
-          </div>
-          <button type="button" onClick={() => void saveTodayWeight()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
+            value={weightInput}
+            onChange={(e) => setWeightInput(e.target.value)}
+            type="number"
+            step="0.1"
+          />
+          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
-      </section>
+      </div>
 
       {/* STEPS */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Footprints className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Steps</h2>
-        </div>
-        <div className="flex items-center gap-4 mb-4">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Today</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
-              {todaySteps.toLocaleString()} <span className="text-sm font-medium text-slate-500">/ {dailyStepsGoal.toLocaleString()}</span>
-            </p>
+      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
+        <div className="flex gap-6 mb-3">
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey] ?? 0).toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
           </div>
-          <div className="flex gap-2">
-            <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700" onClick={() => void saveStepsGoal(dailyStepsGoal - 1000)}>−1k</button>
-            <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700" onClick={() => void saveStepsGoal(dailyStepsGoal + 1000)}>+1k</button>
+          <div className="text-center">
+            <p className="text-[22px] font-bold text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
           </div>
         </div>
-
         {stepsChartData.length >= 2 && (
-          <div className="h-40 mb-4">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="mb-3">
+            <ResponsiveContainer width="100%" height={80}>
               <BarChart data={stepsChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" width={40} />
-                <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="value" fill="#22c55e" radius={[3, 3, 0, 0]} />
-                <ReferenceLine y={dailyStepsGoal} stroke="#22c55e" strokeDasharray="4 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <ReferenceLine y={dailyStepsGoal} stroke="var(--success)" strokeDasharray="4 4" />
+                <Bar dataKey="value" fill="var(--success)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
-
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[140px]">
-            <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Steps today</label>
-            <input type="text" inputMode="numeric" value={stepsInput} onChange={(e) => setStepsInput(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
-              placeholder="e.g. 8240" />
-          </div>
-          <button type="button" onClick={() => void saveTodaySteps()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder="Steps today"
+            value={stepsInput}
+            onChange={(e) => setStepsInput(e.target.value)}
+            type="number"
+          />
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
-      </section>
+      </div>
 
       {/* BODY FAT */}
-      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 mb-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Percent className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-          <h2 className="font-semibold text-slate-900 dark:text-white">Body Fat</h2>
+      <div className="rounded-xl bg-card border border-border p-4">
+        <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
+        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            placeholder="Body fat %"
+            value={bodyFatInput}
+            onChange={(e) => setBodyFatInput(e.target.value)}
+            type="number"
+            step="0.1"
+          />
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
-        <div className="flex flex-wrap gap-2 items-end">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Current</p>
-            <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
-          </div>
-          <input type="text" inputMode="decimal" value={bodyFatInput} onChange={(e) => setBodyFatInput(e.target.value)}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm w-28"
-            placeholder="%" />
-          <button type="button" onClick={() => void saveBodyFat()} className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2">
-            Save
-          </button>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

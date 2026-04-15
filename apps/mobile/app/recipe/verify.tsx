@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import {
@@ -239,7 +239,7 @@ export default function VerifyScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Neon.green, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, paddingBottom: 120, gap: Spacing.sm },
     recipeName: { fontSize: 22, fontWeight: "700", color: colors.text },
     subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md },
@@ -247,7 +247,7 @@ export default function VerifyScreen() {
     // Totals card
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Neon.purple + "30",
+      borderWidth: 1, borderColor: Accent.primary + "30",
       padding: Spacing.lg, marginBottom: Spacing.sm,
     },
     totalsLabel: { fontSize: 12, color: colors.textTertiary, fontWeight: "600", marginBottom: Spacing.sm },
@@ -263,7 +263,7 @@ export default function VerifyScreen() {
       borderWidth: 1, borderColor: colors.border,
       padding: Spacing.lg, marginTop: Spacing.sm,
     },
-    ingRowNeedsReview: { borderColor: Neon.yellow + "60" },
+    ingRowNeedsReview: { borderColor: Accent.warning + "60" },
     ingContent: { flex: 1, gap: 2 },
     ingMatchedName: { fontSize: 15, fontWeight: "600", color: colors.text },
     ingDetail: { fontSize: 13, color: colors.textSecondary },
@@ -274,7 +274,7 @@ export default function VerifyScreen() {
     // Expanded section
     expandedSection: {
       backgroundColor: colors.card, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: Neon.purple + "40",
+      borderWidth: 1, borderColor: Accent.primary + "40",
       padding: Spacing.lg, marginTop: -1, gap: Spacing.md,
     },
     sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
@@ -300,9 +300,9 @@ export default function VerifyScreen() {
     actionBtn: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, paddingVertical: 12, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: Neon.purple + "40",
+      borderWidth: 1, borderColor: Accent.primary + "40",
     },
-    actionBtnText: { color: Neon.purple, fontSize: 13, fontWeight: "600" },
+    actionBtnText: { color: Accent.primary, fontSize: 13, fontWeight: "600" },
 
     // Footer
     footer: {
@@ -311,10 +311,10 @@ export default function VerifyScreen() {
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
-    footerLabel: { fontSize: 12, color: Neon.purple, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
+    footerLabel: { fontSize: 12, color: Accent.primary, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
     confirmBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Neon.green,
+      gap: Spacing.sm, backgroundColor: Accent.success,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
@@ -324,7 +324,7 @@ export default function VerifyScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Neon.purple} />
+          <ActivityIndicator size="large" color={Accent.primary} />
         </View>
       </View>
     );
@@ -396,7 +396,7 @@ export default function VerifyScreen() {
                 onPress={() => setExpandedIndex(expanded ? null : i)}
               >
                 {needsReview && (
-                  <Ionicons name="alert-circle" size={18} color={Neon.yellow} style={{ marginRight: Spacing.sm }} />
+                  <Ionicons name="alert-circle" size={18} color={Accent.warning} style={{ marginRight: Spacing.sm }} />
                 )}
                 <View style={styles.ingContent}>
                   <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
@@ -476,12 +476,12 @@ export default function VerifyScreen() {
                           style={{
                             paddingHorizontal: 10, paddingVertical: 6,
                             borderRadius: Radius.sm, borderWidth: 1,
-                            borderColor: isActive ? Neon.green : colors.border,
-                            backgroundColor: isActive ? Neon.green + "15" : "transparent",
+                            borderColor: isActive ? Accent.success : colors.border,
+                            backgroundColor: isActive ? Accent.success + "15" : "transparent",
                             minWidth: 44, alignItems: "center",
                           }}
                         >
-                          <Text style={{ fontSize: 12, fontWeight: isActive ? "700" : "500", color: isActive ? Neon.green : colors.text }}>
+                          <Text style={{ fontSize: 12, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
                             {p.label}
                           </Text>
                           {p.gramWeight !== 1 && (
@@ -518,14 +518,14 @@ export default function VerifyScreen() {
                       style={styles.actionBtn}
                       onPress={() => { setSearchIndex(i); setExpandedIndex(null); }}
                     >
-                      <Ionicons name="search" size={16} color={Neon.purple} />
+                      <Ionicons name="search" size={16} color={Accent.primary} />
                       <Text style={styles.actionBtnText}>Search alternative</Text>
                     </Pressable>
                     <Pressable
                       style={styles.actionBtn}
                       onPress={() => { setBarcodeIndex(i); setExpandedIndex(null); }}
                     >
-                      <Ionicons name="barcode-outline" size={16} color={Neon.purple} />
+                      <Ionicons name="barcode-outline" size={16} color={Accent.primary} />
                       <Text style={styles.actionBtnText}>Scan</Text>
                     </Pressable>
                   </View>

@@ -11,7 +11,7 @@ export function AppLoadingSkeleton({ label }: { label?: string }) {
         <Skeleton className="h-32 w-full rounded-xl" />
       </div>
       {label ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
           {label}
         </p>
       ) : null}

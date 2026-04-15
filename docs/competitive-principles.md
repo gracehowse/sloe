@@ -1,10 +1,10 @@
-# Competitive principles: product patterns for Platemate
+# Competitive principles: product patterns for Suppr
 
-Use this document when scoping features: which **mental model** are we extending—**diary**, **recipe library**, or **feed** (Platemate’s wedge)?
+Use this document when scoping features: which **mental model** are we extending—**diary**, **recipe library**, or **feed** (Suppr’s wedge)?
 
 ## Pattern comparison
 
-| Pattern | Diary-first apps | Recipe-first apps | Platemate stance |
+| Pattern | Diary-first apps | Recipe-first apps | Suppr stance |
 |--------|------------------------|-----------------|------------------|
 | Core unit | Food entries → meals → day | Recipe documents → plan grid → list | **All three**: recipes + diary + feed; single profile targets |
 | Nutrition source | Huge searchable DB + barcode; recipes from ingredient rows | Per-recipe macros (Plus); not full packaged diary | Recipe nutrition from structured data + **logging** from catalog/staples where needed |
@@ -25,7 +25,7 @@ Ship **URL recipe import** (parse URL → structured recipe → user confirms) *
 - **Activity adjustment**: additional calories we add when you opt in to Apple Health / synced activity, using the net formula: **net goal = base + adjustment** when enabled.
 - **Dedupe**: avoid double-counting the same workout from multiple sources; document which source wins in product copy when integrations ship.
 
-## Tiering strategy (Platemate)
+## Tiering strategy (Suppr)
 
 - **Free**: Core diary (calories + macros), basic discovery, limited saves—**do not** gate basic logging.
 - **Base**: Unlimited saves, macro-aware planner, merged shopping list from plan, collections, URL import quota aligned with infra.

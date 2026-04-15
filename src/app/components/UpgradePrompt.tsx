@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Sparkles, X } from "lucide-react";
+import { Icons } from "./ui/icons";
 import type { UserTier } from "../../types/recipe.ts";
 
 interface UpgradePromptProps {
@@ -27,25 +27,25 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
   if (currentTier === "base" && requiredTier === "base") return null;
 
   return (
-    <div className="relative rounded-2xl border-2 border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 p-6 shadow-lg">
+    <div className="relative rounded-2xl border-2 border-primary/30 bg-primary/10 p-6 shadow-lg">
       {onDismiss && (
         <button
           type="button"
           onClick={onDismiss}
-          className="absolute top-3 right-3 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
         >
-          <X className="w-4 h-4" />
+          <Icons.close className="w-4 h-4" />
         </button>
       )}
       <div className="flex items-start gap-4">
-        <div className="shrink-0 p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg shadow-violet-500/20">
-          <Crown className="w-5 h-5 text-white" />
+        <div className="shrink-0 p-2.5 bg-primary rounded-xl shadow-lg shadow-primary/20">
+          <Icons.premium className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+          <h3 className="font-semibold text-foreground mb-1">
             Upgrade to {TIER_LABELS[requiredTier]} to unlock
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {feature} requires a {TIER_LABELS[requiredTier]} plan.
             {currentTier === "free" && requiredTier === "base"
               ? " Unlock unlimited saves, meal planning, shopping lists, and more."
@@ -55,14 +55,14 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
             <button
               type="button"
               onClick={onUpgrade}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-medium shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             >
-              <Sparkles className="w-4 h-4" />
+              <Icons.sparkles className="w-4 h-4" />
               Upgrade
             </button>
             <a
               href="/pricing"
-              className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:underline"
+              className="text-sm font-medium text-primary hover:underline"
             >
               Compare plans
             </a>
@@ -94,8 +94,8 @@ export function SaveLimitBanner({
     <div
       className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3 ${
         atLimit
-          ? "bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/50"
-          : "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+          ? "bg-warning/10 text-warning border border-warning/30"
+          : "bg-muted text-muted-foreground border border-border"
       }`}
     >
       <span>
@@ -110,7 +110,7 @@ export function SaveLimitBanner({
       <button
         type="button"
         onClick={onUpgrade}
-        className="shrink-0 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
+        className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
       >
         Upgrade
       </button>

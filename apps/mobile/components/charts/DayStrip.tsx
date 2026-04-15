@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Neon, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -79,7 +79,7 @@ export default function DayStrip({
               style={{
                 fontSize: 11,
                 fontWeight: "600",
-                color: isSelected ? Neon.purple : secondaryColor,
+                color: isSelected ? Accent.primary : secondaryColor,
               }}
             >
               {label}
@@ -92,16 +92,16 @@ export default function DayStrip({
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: isSelected
-                  ? Neon.purple
+                  ? Accent.primary
                   : hasLogs
-                    ? Neon.green + "20"
+                    ? Accent.success + "20"
                     : "transparent",
                 borderWidth: isToday && !isSelected ? 2 : 0,
-                borderColor: Neon.purple + "60",
+                borderColor: Accent.primary + "60",
               }}
             >
               {hasLogs && !isSelected ? (
-                <Ionicons name="checkmark" size={14} color={Neon.green} />
+                <Ionicons name="checkmark" size={14} color={Accent.success} />
               ) : (
                 <Text
                   style={{

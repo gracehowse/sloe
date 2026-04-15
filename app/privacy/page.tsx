@@ -12,7 +12,7 @@ export default function PrivacyPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">Privacy policy</h1>
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
-            <strong>Last updated:</strong> April 2026. Platemate helps you log recipes, nutrition, and discover meals.
+            <strong>Last updated:</strong> April 2026. Suppr helps you log recipes, nutrition, and discover meals.
             This policy describes what we process and your choices.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What we collect</h2>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
           </ul>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Subprocessors and infrastructure</h2>
           <p>
-            Depending on how Platemate is deployed, data may be processed by service providers such as hosting,
+            Depending on how Suppr is deployed, data may be processed by service providers such as hosting,
             database, authentication, payments, analytics, error monitoring, and AI inference. Examples include
             Supabase (auth/database), Stripe (billing), PostHog or similar (product analytics, if enabled), Sentry or
             similar (errors, if enabled), and OpenAI (optional AI features). The exact list for your deployment should be
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
-            Questions about this policy should go to the support channel for your Platemate deployment (e.g. the app
+            Questions about this policy should go to the support channel for your Suppr deployment (e.g. the app
             maintainer or organization).
           </p>
         </div>

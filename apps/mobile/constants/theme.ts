@@ -1,41 +1,62 @@
 import { Platform } from 'react-native';
 
 /**
- * Platemate brand accents (mobile). Primary actions: `Neon.violet` / `Neon.purple` (aligned with web Tailwind
- * violet–indigo accents in the Next app). Use `Brand.gradient` for hero / marketing-style highlights only.
+ * Suppr brand accents (mobile). Aligned with the web design-overhaul palette.
+ * Primary: `Accent.primary` (#4c6ce0 blue). Use `Brand.gradient` for hero highlights only.
  * Canonical roles: `docs/ux/brand-tokens.md`.
  */
-/** Neon accent colors */
-export const Neon = {
-  pink: '#ff2d78',
-  purple: '#a855f7',
-  violet: '#7c3aed',
-  blue: '#3b82f6',
+/** Accent palette — aligned with web CSS custom properties in theme.css */
+export const Accent = {
+  primary: '#4c6ce0',
+  primaryLight: '#6c8cff',
+  success: '#22a860',
+  successLight: '#4cd080',
+  warning: '#e8a020',
+  warningLight: '#ffc04c',
+  destructive: '#e04848',
+  destructiveLight: '#ff6c6c',
   cyan: '#06b6d4',
-  green: '#22c55e',
-  yellow: '#eab308',
   orange: '#f97316',
-  red: '#ef4444',
-  magenta: '#e839f6',
+  magenta: '#e04888',
+  /** Info / carbs-style accent (aligned with web macro-carbs tone where needed) */
+  info: '#0ea5e9',
 };
 
-/** Macro-specific colors */
+/** Legacy alias — use Accent instead for new code */
+export const Neon = {
+  pink: Accent.magenta,
+  purple: Accent.primaryLight,
+  violet: Accent.primary,
+  blue: Accent.primary,
+  cyan: Accent.cyan,
+  green: Accent.success,
+  yellow: Accent.warning,
+  orange: Accent.orange,
+  red: Accent.destructive,
+  magenta: Accent.magenta,
+};
+
+/** Macro-specific colors — aligned with web --macro-* CSS custom properties */
 export const MacroColors = {
-  calories: Neon.purple,
-  protein: Neon.red,
-  carbs: Neon.blue,
-  fat: Neon.yellow,
-  fiber: Neon.green,
-  sugar: Neon.purple,
-  sodium: Neon.orange,
-  water: Neon.cyan,
+  calories: Accent.success,       // web: --macro-calories (#22a860)
+  protein: Accent.primary,        // web: --macro-protein  (#4c6ce0)
+  carbs: Accent.warning,          // web: --macro-carbs    (#e8a020)
+  fat: Accent.magenta,            // web: --macro-fat      (#e04888)
+  fiber: Accent.success,
+  sugar: Accent.primaryLight,
+  sodium: Accent.orange,
+  water: Accent.cyan,
 };
 
 /** Brand */
 export const Brand = {
-  violet: Neon.violet,
-  pink: Neon.pink,
-  gradient: [Neon.violet, Neon.pink] as const,
+  primary: Accent.primary,
+  accent: Accent.magenta,
+  gradient: [Accent.primary, Accent.magenta] as const,
+  /** @deprecated — use Brand.primary */
+  violet: Accent.primary,
+  /** @deprecated — use Brand.accent */
+  pink: Accent.magenta,
 };
 
 /** Dark-first color system */
@@ -49,10 +70,10 @@ export const Colors = {
     card: '#ffffff',
     cardBorder: '#e2e8f0',
     border: '#e2e8f0',
-    tint: Neon.violet,
+    tint: Accent.primary,
     icon: '#64748b',
     tabIconDefault: '#94a3b8',
-    tabIconSelected: Neon.violet,
+    tabIconSelected: Accent.primary,
     inputBg: '#f1f5f9',
     overlay: '#00000088',
   },
@@ -65,10 +86,10 @@ export const Colors = {
     card: '#16161e',
     cardBorder: '#2a2a3a',
     border: '#1e1e2a',
-    tint: Neon.violet,
+    tint: Accent.primaryLight,
     icon: '#94a3b8',
     tabIconDefault: '#4a4a5a',
-    tabIconSelected: Neon.purple,
+    tabIconSelected: Accent.primaryLight,
     inputBg: '#1e1e2a',
     overlay: '#000000aa',
   },

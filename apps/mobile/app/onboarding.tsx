@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -403,7 +403,7 @@ export default function OnboardingScreen() {
     skipBtn: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
     skipText: { color: colors.textTertiary, fontSize: 14, fontWeight: "600" },
     progressBar: { height: 4, backgroundColor: colors.border, marginHorizontal: Spacing.xl, borderRadius: 2 },
-    progressFill: { height: 4, backgroundColor: Neon.green, borderRadius: 2 },
+    progressFill: { height: 4, backgroundColor: Accent.success, borderRadius: 2 },
     scroll: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: 40 },
     stepContent: { flex: 1, justifyContent: "center", gap: Spacing.lg },
 
@@ -414,9 +414,9 @@ export default function OnboardingScreen() {
       borderWidth: 1.5, borderColor: colors.border, borderRadius: Radius.lg,
       paddingVertical: 18, paddingHorizontal: Spacing.xl, alignItems: "center",
     },
-    optionBtnActive: { borderColor: Neon.green, backgroundColor: Neon.green + "12" },
+    optionBtnActive: { borderColor: Accent.success, backgroundColor: Accent.success + "12" },
     optionText: { fontSize: 16, fontWeight: "600", color: colors.text },
-    optionTextActive: { color: Neon.green },
+    optionTextActive: { color: Accent.success },
     optionDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 
     inputRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
@@ -434,7 +434,7 @@ export default function OnboardingScreen() {
       flex: 1, paddingVertical: 16, borderRadius: Radius.md,
       borderWidth: 1.5, borderColor: colors.border, alignItems: "center",
     },
-    sexBtnActive: { borderColor: Neon.green, backgroundColor: Neon.green + "12" },
+    sexBtnActive: { borderColor: Accent.success, backgroundColor: Accent.success + "12" },
     sexBtnText: { fontSize: 15, fontWeight: "600", color: colors.text },
 
     // Plan cards
@@ -443,25 +443,25 @@ export default function OnboardingScreen() {
       borderWidth: 2, borderColor: colors.border,
       padding: Spacing.xl, gap: Spacing.sm, alignItems: "center",
     },
-    planCardRecommended: { borderColor: Neon.green },
+    planCardRecommended: { borderColor: Accent.success },
     planBadge: {
       paddingHorizontal: 14, paddingVertical: 4, borderRadius: Radius.full,
-      backgroundColor: Neon.green, marginBottom: Spacing.xs,
+      backgroundColor: Accent.success, marginBottom: Spacing.xs,
     },
-    planBadgeWarning: { backgroundColor: Neon.yellow },
+    planBadgeWarning: { backgroundColor: Accent.warning },
     planBadgeText: { fontSize: 11, fontWeight: "800", color: "#fff", letterSpacing: 1 },
     planTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
     planDesc: { fontSize: 13, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
     planStat: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
     planStatText: { fontSize: 14, color: colors.text },
     planSelectBtn: {
-      backgroundColor: Neon.green, borderRadius: Radius.md,
+      backgroundColor: Accent.success, borderRadius: Radius.md,
       paddingVertical: 14, paddingHorizontal: 40, marginTop: Spacing.sm,
     },
     planSelectText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
     // Budget confirmation
-    budgetNumber: { fontSize: 48, fontWeight: "900", color: Neon.green, textAlign: "center" },
+    budgetNumber: { fontSize: 48, fontWeight: "900", color: Accent.success, textAlign: "center" },
     budgetLabel: { fontSize: 16, color: colors.textSecondary, textAlign: "center" },
 
     // Multi-select chips
@@ -470,11 +470,11 @@ export default function OnboardingScreen() {
       paddingHorizontal: 16, paddingVertical: 12, borderRadius: Radius.lg,
       borderWidth: 1.5, borderColor: colors.border,
     },
-    chipActive: { borderColor: Neon.green, backgroundColor: Neon.green + "12" },
+    chipActive: { borderColor: Accent.success, backgroundColor: Accent.success + "12" },
     chipText: { fontSize: 14, fontWeight: "500", color: colors.text, textAlign: "center" },
 
     // Projection
-    projDate: { fontSize: 28, fontWeight: "800", color: Neon.green, textAlign: "center" },
+    projDate: { fontSize: 28, fontWeight: "800", color: Accent.success, textAlign: "center" },
     projSub: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
     weightRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: Spacing.md },
     weightBadge: {
@@ -500,7 +500,7 @@ export default function OnboardingScreen() {
       backgroundColor: colors.background,
     },
     ctaBtn: {
-      backgroundColor: Neon.green, borderRadius: Radius.md,
+      backgroundColor: Accent.success, borderRadius: Radius.md,
       paddingVertical: 18, alignItems: "center",
     },
     ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
@@ -538,8 +538,8 @@ export default function OnboardingScreen() {
         const UnitToggle = ({ options, value, onChange }: { options: { label: string; value: string }[]; value: string; onChange: (v: any) => void }) => (
           <View style={{ flexDirection: "row", gap: 4, alignSelf: "flex-end" }}>
             {options.map((o) => (
-              <Pressable key={o.value} onPress={() => onChange(o.value)} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: value === o.value ? Neon.green + "20" : "transparent" }}>
-                <Text style={{ fontSize: 12, fontWeight: value === o.value ? "700" : "500", color: value === o.value ? Neon.green : colors.textTertiary }}>{o.label}</Text>
+              <Pressable key={o.value} onPress={() => onChange(o.value)} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: value === o.value ? Accent.success + "20" : "transparent" }}>
+                <Text style={{ fontSize: 12, fontWeight: value === o.value ? "700" : "500", color: value === o.value ? Accent.success : colors.textTertiary }}>{o.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -660,7 +660,7 @@ export default function OnboardingScreen() {
             <Text style={styles.heading}>Select your plan</Text>
             <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 0 }}>
               {planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).map((opt) => {
-                const badgeColor = opt.safety === "safe" ? Neon.green : opt.safety === "caution" ? Neon.yellow : Neon.red;
+                const badgeColor = opt.safety === "safe" ? Accent.success : opt.safety === "caution" ? Accent.warning : Accent.destructive;
                 const badgeLabel = opt.pace === "relaxed" ? "RECOMMENDED"
                   : opt.safety === "safe" ? "AVAILABLE"
                   : opt.safety === "caution" ? "CHALLENGING"
@@ -692,7 +692,7 @@ export default function OnboardingScreen() {
                         </>
                       )}
                       {opt.safety === "warning" && (
-                        <Text style={{ fontSize: 11, color: Neon.red, textAlign: "center", marginTop: Spacing.xs }}>
+                        <Text style={{ fontSize: 11, color: Accent.destructive, textAlign: "center", marginTop: Spacing.xs }}>
                           Very low calorie — consult a doctor before starting
                         </Text>
                       )}
@@ -710,14 +710,14 @@ export default function OnboardingScreen() {
       case "budget_confirm":
         return (
           <View style={[styles.stepContent, { alignItems: "center" }]}>
-            <Ionicons name="restaurant-outline" size={60} color={Neon.green} />
+            <Ionicons name="restaurant-outline" size={60} color={Accent.success} />
             <Text style={styles.budgetNumber}>{budget.toLocaleString()}</Text>
             <Text style={styles.budgetLabel}>calories per day</Text>
             {data.goalType === "lose" && (
               <Text style={styles.subheading}>{PACE_LABELS[data.planPace].title} pace — {formatWeeklyRate(planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg ?? 0, data.weightUnit)} per week</Text>
             )}
             <Text style={[styles.subheading, { marginTop: Spacing.lg }]}>
-              Platemate will use this to find recipes and build meal plans that fit your target. You can adjust it anytime in settings.
+              Suppr will use this to find recipes and build meal plans that fit your target. You can adjust it anytime in settings.
             </Text>
           </View>
         );
@@ -784,7 +784,7 @@ export default function OnboardingScreen() {
       case "fasting":
         return (
           <View style={styles.stepContent}>
-            <Ionicons name="time-outline" size={60} color={Neon.purple} style={{ alignSelf: "center" }} />
+            <Ionicons name="time-outline" size={60} color={Accent.primary} style={{ alignSelf: "center" }} />
             <Text style={styles.heading}>Interested in intermittent fasting?</Text>
             <Text style={styles.subheading}>
               Intermittent fasting is an eating pattern where you only eat during certain hours of the day. For example, eating between noon and 8pm.
@@ -811,13 +811,13 @@ export default function OnboardingScreen() {
                 </Text>
                 <View style={{ width: "100%", marginVertical: Spacing.lg }}>
                   <View style={styles.weightRow}>
-                    <View style={[styles.weightBadge, { backgroundColor: Neon.green }]}>
+                    <View style={[styles.weightBadge, { backgroundColor: Accent.success }]}>
                       <Text style={styles.weightBadgeText}>{formatWeight(weightKg, data.weightUnit)}</Text>
                     </View>
-                    <View style={{ flex: 1, height: 3, backgroundColor: Neon.green + "30", marginHorizontal: Spacing.md, borderRadius: 2 }}>
-                      <View style={{ height: 3, width: "100%", backgroundColor: Neon.green, borderRadius: 2 }} />
+                    <View style={{ flex: 1, height: 3, backgroundColor: Accent.success + "30", marginHorizontal: Spacing.md, borderRadius: 2 }}>
+                      <View style={{ height: 3, width: "100%", backgroundColor: Accent.success, borderRadius: 2 }} />
                     </View>
-                    <View style={[styles.weightBadge, { backgroundColor: Neon.purple }]}>
+                    <View style={[styles.weightBadge, { backgroundColor: Accent.primary }]}>
                       <Text style={styles.weightBadgeText}>{formatWeight(goalWeightKg, data.weightUnit)}</Text>
                     </View>
                   </View>
@@ -825,20 +825,20 @@ export default function OnboardingScreen() {
               </>
             ) : (
               <>
-                <Ionicons name="checkmark-circle" size={80} color={Neon.green} />
+                <Ionicons name="checkmark-circle" size={80} color={Accent.success} />
                 <Text style={styles.heading}>{"You're all set!"}</Text>
               </>
             )}
             <View style={{ width: "100%", gap: Spacing.md }}>
               <View style={styles.summaryRow}>
-                <View style={styles.summaryIcon}><Ionicons name="flame" size={20} color={Neon.green} /></View>
+                <View style={styles.summaryIcon}><Ionicons name="flame" size={20} color={Accent.success} /></View>
                 <View>
                   <Text style={styles.summaryLabel}>Budget: {budget.toLocaleString()} calories</Text>
                   {data.goalType === "lose" && <Text style={styles.summarySub}>Lose {formatWeeklyRate(planOptions(tdee, weightKg, goalWeightKg, data.goalType, data.sex).find(o => o.pace === data.planPace)?.weeklyKg ?? 0, data.weightUnit)} per week</Text>}
                 </View>
               </View>
               <View style={styles.summaryRow}>
-                <View style={styles.summaryIcon}><Ionicons name="restaurant" size={20} color={Neon.purple} /></View>
+                <View style={styles.summaryIcon}><Ionicons name="restaurant" size={20} color={Accent.primary} /></View>
                 <View>
                   <Text style={styles.summaryLabel}>{STRATEGY_LABELS[data.strategy].title} Strategy</Text>
                   <Text style={styles.summarySub}>P: {macros.protein}g  C: {macros.carbs}g  F: {macros.fat}g</Text>
@@ -846,7 +846,7 @@ export default function OnboardingScreen() {
               </View>
               {data.fastingEnabled && (
                 <View style={styles.summaryRow}>
-                  <View style={styles.summaryIcon}><Ionicons name="time" size={20} color={Neon.yellow} /></View>
+                  <View style={styles.summaryIcon}><Ionicons name="time" size={20} color={Accent.warning} /></View>
                   <View>
                     <Text style={styles.summaryLabel}>Intermittent Fasting</Text>
                     <Text style={styles.summarySub}>{data.fastingWindow} schedule</Text>
@@ -860,11 +860,11 @@ export default function OnboardingScreen() {
       case "summary":
         return (
           <View style={[styles.stepContent, { alignItems: "center" }]}>
-            <Ionicons name="sparkles" size={60} color={Neon.green} />
+            <Ionicons name="sparkles" size={60} color={Accent.success} />
             <Text style={styles.heading}>{"You're all set up"}</Text>
             <Text style={styles.subheading}>
               {
-                "Platemate is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."
+                "Suppr is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."
               }
             </Text>
           </View>

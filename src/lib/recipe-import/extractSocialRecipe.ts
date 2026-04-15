@@ -31,6 +31,45 @@ export interface SocialPostMeta {
   title: string | null;
 }
 
+/**
+ * Try Instagram's oEmbed API to get a clean thumbnail without the play-button overlay.
+ * The public endpoint works without an access token for basic metadata.
+ * Falls back to null so callers can use og:image instead.
+ */
+async function fetchInstagramOembedImage(postUrl: string): Promise<string | null> {
+  // Try the public Facebook Graph oEmbed endpoint first (requires app token if rate-limited,
+  // but the basic endpoint works for low-volume usage).
+  // Fallback: Instagram's own oEmbed endpoint.
+  const endpoints = [
+    `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(postUrl)}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        thumbnail_url?: string;
+        title?: string;
+        author_name?: string;
+      };
+      if (data.thumbnail_url && typeof data.thumbnail_url === "string") {
+        return data.thumbnail_url;
+      }
+    } catch {
+      // oEmbed failed — continue to next endpoint or fall through
+    }
+  }
+  return null;
+}
+
 /** User-Agent strings to try — platforms serve meta tags to some crawlers but not others. */
 const UA_ATTEMPTS = [
   // Chrome desktop (default)
@@ -93,6 +132,13 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   const platform = detectSocialPlatform(url);
   if (!platform) return null;
 
+  // For Instagram, try oEmbed first to get a clean thumbnail (no play-button overlay).
+  // We'll use this image URL in preference to og:image if available.
+  let oembedImageUrl: string | null = null;
+  if (platform === "instagram") {
+    oembedImageUrl = await fetchInstagramOembedImage(url);
+  }
+
   for (const ua of UA_ATTEMPTS) {
     let html: string;
     try {
@@ -118,10 +164,13 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       extractMetaContent(html, "description") ||
       "";
 
-    const imageUrl =
+    const ogImage =
       extractMetaContent(html, "og:image") ||
       extractMetaContent(html, "twitter:image") ||
       null;
+
+    // Prefer oEmbed thumbnail (clean, no play-button) over og:image for Instagram
+    const imageUrl = oembedImageUrl ?? ogImage;
 
     const title =
       extractMetaContent(html, "og:title") ||
@@ -138,7 +187,7 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       return {
         platform,
         caption: embedded.caption,
-        imageUrl: embedded.imageUrl,
+        imageUrl: oembedImageUrl ?? embedded.imageUrl,
         title: null,
       };
     }

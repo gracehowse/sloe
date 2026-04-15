@@ -2,9 +2,9 @@
  * Remove seeded recipe rows from Supabase:
  * - Fixed demo UUIDs (historical supabase/seed.sql)
  * - Legacy SQL batch: description + seed author
- * - Discover seeds: any recipe whose source_url appears in scripts/seed-recipe-urls.txt
+ * - Optional URL list: if scripts/seed-recipe-urls.txt exists, delete any recipe whose source_url matches a line
  *
- * Requires SUPABASE_SERVICE_ROLE_KEY (deletes bypass RLS). Loads .env.local like seed-discover.
+ * Requires SUPABASE_SERVICE_ROLE_KEY (deletes bypass RLS). Loads `.env.local` from the project root.
  *
  * Usage: npx tsx scripts/delete-seeded-recipes.ts [--dry-run]
  */
@@ -19,7 +19,7 @@ const DEMO_RECIPE_IDS = [
 ] as const;
 
 const LEGACY_SEED_DESCRIPTION = "Community seed recipe for Discover.";
-/** Same UUID documented as PLATEMATE_SEED_AUTHOR_ID in docs/operations/scripts.md */
+/** Historical seed author — see docs/operations/scripts.md (Key User IDs) */
 const SEED_AUTHOR_ID = "e9f85055-876b-4bde-9267-476567b16884";
 
 const DEMO_CREATOR_IDS = [

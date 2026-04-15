@@ -1,13 +1,13 @@
 import type { ShoppingItem } from "../../types/recipe.ts";
-import { getIngredientsForRecipe, RECIPE_CATALOG } from "../../data/recipeCatalog.ts";
 import { guessGroceryCategory } from "./category.ts";
 
 function normalizeKey(name: string, unit: string): string {
   return `${name.trim().toLowerCase()}|${unit.trim().toLowerCase()}`;
 }
 
-export function isCatalogRecipeId(id: string): boolean {
-  return RECIPE_CATALOG.some((r) => r.id === id);
+/** @deprecated Catalog removed — always returns false. Kept for API compat. */
+export function isCatalogRecipeId(_id: string): boolean {
+  return false;
 }
 
 function mergeRows(
@@ -73,12 +73,10 @@ export function generateShoppingListFromRecipeEntriesSync(input: {
 }): ShoppingItem[] {
   const itemsByKey = new Map<string, ShoppingItem>();
 
-  for (const { title, multiplier } of input.entries) {
-    const id = input.recipeTitleToId(title);
-    if (!id) continue;
-    const ingredients = getIngredientsForRecipe(id);
-    const rows = ingredients.map((ing) => ({ name: ing.name, amount: ing.amount, unit: ing.unit }));
-    mergeRows(rows, title, itemsByKey, multiplier);
+  for (const { title } of input.entries) {
+    // Sync path: no ingredients available without DB fetch
+    // This path is unused now that catalog is removed
+    void title;
   }
 
   return sortItems(Array.from(itemsByKey.values()));
@@ -107,13 +105,7 @@ export async function generateShoppingListFromRecipeEntriesAsync(input: {
   for (const { title, multiplier } of input.entries) {
     const id = input.recipeTitleToId(title);
     if (!id) continue;
-    let rows: Array<{ name: string; amount: string; unit: string }>;
-    if (isCatalogRecipeId(id)) {
-      const ingredients = getIngredientsForRecipe(id);
-      rows = ingredients.map((ing) => ({ name: ing.name, amount: ing.amount, unit: ing.unit }));
-    } else {
-      rows = await input.fetchDbIngredients(id);
-    }
+    const rows = await input.fetchDbIngredients(id);
     mergeRows(rows, title, itemsByKey, multiplier);
   }
 

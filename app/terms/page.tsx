@@ -12,12 +12,12 @@ export default function TermsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">Terms of service</h1>
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
-            <strong>Last updated:</strong> April 2026. By using Platemate you agree to these terms. If you use a
+            <strong>Last updated:</strong> April 2026. By using Suppr you agree to these terms. If you use a
             hosted instance, the operator may add their own terms.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">The service</h2>
           <p>
-            Platemate is provided “as is” for personal nutrition and recipe planning. Nutrition estimates, barcode data,
+            Suppr is provided “as is” for personal nutrition and recipe planning. Nutrition estimates, barcode data,
             and third-party recipe imports may be incomplete or inaccurate. Always verify critical dietary or medical
             decisions with a professional. Optional AI-assisted features (for example photo or voice meal logging) rely
             on third-party models; see the{" "}
@@ -38,7 +38,7 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>
-            To the maximum extent permitted by law, Platemate and its contributors are not liable for indirect or
+            To the maximum extent permitted by law, Suppr and its contributors are not liable for indirect or
             consequential damages arising from use of the app.
           </p>
         </div>

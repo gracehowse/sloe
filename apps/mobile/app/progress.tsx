@@ -11,7 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { MacroColors, Neon, Radius, Spacing } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -77,10 +78,10 @@ export default function ProgressScreen() {
     {},
   );
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(10000);
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
   const [waterByDay, setWaterByDay] = useState<Record<string, number>>({});
-  const [waterGoalMl, setWaterGoalMl] = useState(2000);
+  const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bfInput, setBfInput] = useState("");
@@ -140,15 +141,15 @@ export default function ProgressScreen() {
       setStepsByDay(parseNumMap(data.steps_by_day));
       const sg = Number(data.daily_steps_goal);
       setDailyStepsGoal(
-        Number.isFinite(sg) && sg > 0 ? Math.round(sg) : 10000,
+        Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps,
       );
       const bf =
         data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
       setWaterByDay(parseNumMap(data.extra_water_by_day));
       const tw =
-        data.target_water_ml != null ? Number(data.target_water_ml) : 2000;
-      setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : 2000);
+        data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
+      setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
     }
     setLoading(false);
   }, [userId]);
@@ -314,7 +315,7 @@ export default function ProgressScreen() {
         headerTitle: {
           fontSize: 22,
           fontWeight: "800",
-          color: Neon.purple,
+          color: Accent.primary,
           letterSpacing: 3,
         },
         card: {
@@ -369,7 +370,7 @@ export default function ProgressScreen() {
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
         btn: {
-          backgroundColor: Neon.purple,
+          backgroundColor: Accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 12,
           alignItems: "center",
@@ -384,7 +385,7 @@ export default function ProgressScreen() {
         journeyFill: {
           height: 12,
           borderRadius: 6,
-          backgroundColor: Neon.purple,
+          backgroundColor: Accent.primary,
         },
       }),
     [colors],
@@ -442,7 +443,7 @@ export default function ProgressScreen() {
                 </View>
                 <View style={styles.stat}>
                   <Text
-                    style={[styles.statValue, { color: Neon.green }]}
+                    style={[styles.statValue, { color: Accent.success }]}
                   >
                     {goalWeightKg != null ? fmtW(goalWeightKg) : "—"}
                   </Text>
@@ -461,10 +462,10 @@ export default function ProgressScreen() {
                         : Math.round(goalWeightKg * 10) / 10
                       : undefined
                   }
-                  color={Neon.purple}
+                  color={Accent.primary}
                   labelColor={colors.textTertiary}
                   trackColor={colors.border}
-                  goalColor={Neon.green}
+                  goalColor={Accent.success}
                 />
               )}
 
@@ -537,7 +538,7 @@ export default function ProgressScreen() {
                         }
                         size={20}
                         color={
-                          journey.pct >= m ? Neon.green : colors.textTertiary
+                          journey.pct >= m ? Accent.success : colors.textTertiary
                         }
                       />
                       <Text
@@ -560,7 +561,7 @@ export default function ProgressScreen() {
                       style={{
                         fontSize: 14,
                         fontWeight: "700",
-                        color: Neon.purple,
+                        color: Accent.primary,
                         textAlign: "center",
                         marginTop: Spacing.sm,
                       }}
@@ -583,7 +584,7 @@ export default function ProgressScreen() {
                 </View>
                 <View style={styles.stat}>
                   <Text
-                    style={[styles.statValue, { color: Neon.green }]}
+                    style={[styles.statValue, { color: Accent.success }]}
                   >
                     {dailyStepsGoal.toLocaleString()}
                   </Text>
@@ -595,10 +596,10 @@ export default function ProgressScreen() {
                 <MiniBarChart
                   data={stepsData}
                   goalLine={dailyStepsGoal}
-                  color={Neon.green}
+                  color={Accent.success}
                   trackColor={colors.border}
                   labelColor={colors.textTertiary}
-                  goalColor={Neon.green}
+                  goalColor={Accent.success}
                 />
               )}
 

@@ -11,7 +11,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -133,7 +133,7 @@ export default function FastingScreen() {
 
   const dur = formatDuration(elapsed);
 
-  const ringColor = isComplete ? Neon.green : Neon.purple;
+  const ringColor = isComplete ? Accent.success : Accent.primary;
 
   const styles = useMemo(
     () =>
@@ -199,7 +199,7 @@ export default function FastingScreen() {
           </Text>
         </View>
 
-        <Text style={[styles.stateLabel, { color: isFasting ? (isComplete ? Neon.green : Neon.purple) : colors.textSecondary }]}>
+        <Text style={[styles.stateLabel, { color: isFasting ? (isComplete ? Accent.success : Accent.primary) : colors.textSecondary }]}>
           {isFasting ? (isComplete ? "FAST COMPLETE" : "FASTING") : "Tap Start to begin"}
         </Text>
         <Text style={styles.windowLabel}>{fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat</Text>
@@ -213,7 +213,7 @@ export default function FastingScreen() {
               <Text style={styles.label}>Started</Text>
             </View>
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: Neon.green, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: Accent.success, fontVariant: ["tabular-nums"] }}>
                 {new Date(new Date(activeFast!.start).getTime() + fastMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </Text>
               <Text style={styles.label}>Goal</Text>
@@ -224,7 +224,7 @@ export default function FastingScreen() {
 
       {/* Start / End button */}
       <Pressable
-        style={[styles.btn, { backgroundColor: isFasting ? (isComplete ? Neon.green : Neon.red) : Neon.purple }]}
+        style={[styles.btn, { backgroundColor: isFasting ? (isComplete ? Accent.success : Accent.destructive) : Accent.primary }]}
         onPress={isFasting ? endFast : startFast}
       >
         <Text style={styles.btnText}>{isFasting ? (isComplete ? "Complete Fast" : "End Fast") : "Start Fast"}</Text>

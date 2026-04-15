@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isHealthSyncAvailable, requestHealthPermissions, syncHealthData } from "@/lib/healthSync";
@@ -100,17 +100,17 @@ export default function HealthSyncScreen() {
 
         <View style={{ marginTop: Spacing.lg }}>
           <View style={styles.feature}>
-            <Ionicons name="footsteps-outline" size={20} color={Neon.purple} />
+            <Ionicons name="footsteps-outline" size={20} color={Accent.primary} />
             <Text style={styles.featureText}>Daily step count</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Neon.green : colors.textTertiary} />
+            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={styles.feature}>
-            <Ionicons name="scale-outline" size={20} color={Neon.purple} />
+            <Ionicons name="scale-outline" size={20} color={Accent.primary} />
             <Text style={styles.featureText}>Weight measurements</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Neon.green : colors.textTertiary} />
+            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={[styles.feature, { opacity: 0.5 }]}>
-            <Ionicons name="flame-outline" size={20} color={Neon.purple} />
+            <Ionicons name="flame-outline" size={20} color={Accent.primary} />
             <Text style={styles.featureText}>Active energy burned</Text>
             <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary }}>Coming soon</Text>
           </View>
@@ -118,8 +118,8 @@ export default function HealthSyncScreen() {
       </View>
 
       {!available && (
-        <View style={[styles.card, { borderColor: Neon.orange + "40", gap: Spacing.sm }]}>
-          <Text style={{ fontSize: 14, color: Neon.orange, fontWeight: "600" }}>
+        <View style={[styles.card, { borderColor: Accent.warning + "40", gap: Spacing.sm }]}>
+          <Text style={{ fontSize: 14, color: Accent.warning, fontWeight: "600" }}>
             Health sync needs a dev or production build — not Expo Go.
           </Text>
           <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -130,7 +130,7 @@ export default function HealthSyncScreen() {
 
       {!connected ? (
         <Pressable
-          style={[styles.btn, { backgroundColor: available ? Neon.purple : colors.textTertiary }]}
+          style={[styles.btn, { backgroundColor: available ? Accent.primary : colors.textTertiary }]}
           onPress={handleConnect}
           disabled={!available}
         >
@@ -138,7 +138,7 @@ export default function HealthSyncScreen() {
         </Pressable>
       ) : (
         <Pressable
-          style={[styles.btn, { backgroundColor: Neon.purple }]}
+          style={[styles.btn, { backgroundColor: Accent.primary }]}
           onPress={handleSync}
           disabled={syncing}
         >
@@ -162,7 +162,7 @@ export default function HealthSyncScreen() {
 function CardTitle({ styles, icon, text }: { styles: any; icon: string; text: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-      <Ionicons name={icon as any} size={20} color={Neon.purple} />
+      <Ionicons name={icon as any} size={20} color={Accent.primary} />
       <Text style={styles.cardTitle}>{text}</Text>
     </View>
   );

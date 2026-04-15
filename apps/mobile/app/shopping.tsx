@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 type ShoppingItem = {
@@ -215,7 +215,7 @@ export default function ShoppingListScreen() {
     headerTitle: {
       fontSize: 22,
       fontWeight: "800",
-      color: Neon.purple,
+      color: Accent.primary,
       letterSpacing: 3,
     },
 
@@ -230,9 +230,9 @@ export default function ShoppingListScreen() {
 
     progressRow: { flexDirection: "row", justifyContent: "space-between" },
     progressLabel: { color: colors.text, fontWeight: "600", fontSize: 14 },
-    progressCount: { color: Neon.purple, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
+    progressCount: { color: Accent.primary, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
-    progressFill: { height: 6, backgroundColor: Neon.purple, borderRadius: 3 },
+    progressFill: { height: 6, backgroundColor: Accent.primary, borderRadius: 3 },
 
     categoryTitle: {
       fontSize: 11,
@@ -258,7 +258,7 @@ export default function ShoppingListScreen() {
       justifyContent: "center",
       alignItems: "center",
     },
-    checkboxChecked: { backgroundColor: Neon.purple, borderColor: Neon.purple },
+    checkboxChecked: { backgroundColor: Accent.primary, borderColor: Accent.primary },
     checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
     itemName: { fontSize: 14, color: colors.text },
     itemChecked: { textDecorationLine: "line-through", color: colors.tabIconDefault },
@@ -277,7 +277,7 @@ export default function ShoppingListScreen() {
     emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
     emptyDesc: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
     ctaBtn: {
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.xxxl,
@@ -306,7 +306,7 @@ export default function ShoppingListScreen() {
                 <Ionicons name="share-outline" size={22} color={colors.text} />
               </Pressable>
               <Pressable hitSlop={12} onPress={clearAll}>
-                <Ionicons name="trash-outline" size={22} color={Neon.red} />
+                <Ionicons name="trash-outline" size={22} color={Accent.destructive} />
               </Pressable>
             </View>
           ) : (
@@ -316,7 +316,7 @@ export default function ShoppingListScreen() {
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Neon.purple} />
+            <ActivityIndicator size="large" color={Accent.primary} />
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -348,7 +348,7 @@ export default function ShoppingListScreen() {
                 onPress={clearChecked}
                 style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
               >
-                <Text style={{ color: Neon.purple, fontWeight: "600", fontSize: 14 }}>
+                <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>
                   Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
                 </Text>
               </Pressable>

@@ -1,4 +1,5 @@
-import { CalendarRange, Flame, Target, TrendingUp } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 
 type TrackerSummaryCardProps = {
   /** Selected calendar date label */
@@ -13,6 +14,31 @@ type TrackerSummaryCardProps = {
   /** Total distinct days with at least one logged meal (across all time). */
   totalDaysLogged?: number;
 };
+
+function StatTile({
+  icon,
+  label,
+  value,
+  sub,
+  tone = "primary",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  tone?: "primary" | "success" | "warning";
+}) {
+  return (
+    <div className="rounded-card bg-card border border-border p-4">
+      <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1.5">
+        {icon}
+        {label}
+      </div>
+      <p className="text-xl font-bold text-foreground tabular-nums">{value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+    </div>
+  );
+}
 
 export function TrackerSummaryCard({
   dateLabel,
@@ -31,88 +57,57 @@ export function TrackerSummaryCard({
   const hasEnoughData = totalDaysLogged >= 1;
 
   return (
-    <div className="backdrop-blur-xl bg-gradient-to-br from-violet-50/90 to-indigo-50/90 dark:from-violet-950/40 dark:to-indigo-950/40 border-2 border-violet-200/50 dark:border-violet-800/50 rounded-2xl p-6 mb-6 shadow-lg">
-      <div className="flex items-center gap-2 mb-4">
-        <CalendarRange className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Today &amp; this week</h2>
-      </div>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-        Snapshot for <span className="font-medium text-slate-800 dark:text-slate-200">{dateLabel}</span> — same
-        metrics as the cards below, in one place.
-      </p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-violet-200/40 dark:border-violet-900/40 p-4">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs font-medium mb-1">
-            <Target className="w-4 h-4" />
-            Calories vs goal
-          </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
-            {caloriesToday} / {calorieTarget}
+    <div className="rounded-card bg-card border border-border p-5 mb-6">
+      <div className="flex items-center gap-2.5 mb-4">
+        <IconBox size="sm" tone="primary">
+          <Icons.calendarCheck />
+        </IconBox>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Today &amp; this week</h2>
+          <p className="text-xs text-muted-foreground">
+            Snapshot for <span className="font-medium text-foreground">{dateLabel}</span>
           </p>
-          {pctOfGoal != null ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{pctOfGoal}% of daily goal</p>
-          ) : null}
-        </div>
-        <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-violet-200/40 dark:border-violet-900/40 p-4">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs font-medium mb-1">
-            <Flame className="w-4 h-4" />
-            Logging streak
-          </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
-            {streakDays > 0 ? `${streakDays}d` : "—"}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Consecutive days with a log</p>
-        </div>
-        <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-violet-200/40 dark:border-violet-900/40 p-4">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs font-medium mb-1">
-            <CalendarRange className="w-4 h-4" />
-            Week logged
-          </div>
-          {hasEnoughData ? (
-            <>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
-                {weekLogged.logged}/{weekLogged.total}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Mon–Sun with ≥1 meal</p>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-slate-400 dark:text-slate-600">—</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Log a full day to start tracking</p>
-            </>
-          )}
-        </div>
-        <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-violet-200/40 dark:border-violet-900/40 p-4">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs font-medium mb-1">
-            <TrendingUp className="w-4 h-4" />
-            7-day calorie fit
-          </div>
-          {hasEnoughData && goalFitPercent != null ? (
-            <>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
-                {goalFitPercent}%
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Avg closeness to target</p>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-slate-400 dark:text-slate-600">—</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Not enough data yet</p>
-            </>
-          )}
         </div>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatTile
+          icon={<Icons.target className="size-4" />}
+          label="Calories vs goal"
+          value={`${caloriesToday} / ${calorieTarget}`}
+          sub={pctOfGoal != null ? `${pctOfGoal}% of daily goal` : ""}
+        />
+        <StatTile
+          icon={<Icons.streak className="size-4" />}
+          label="Logging streak"
+          value={streakDays > 0 ? `${streakDays}d` : "—"}
+          sub="Consecutive days with a log"
+        />
+        <StatTile
+          icon={<Icons.calendarCheck className="size-4" />}
+          label="Week logged"
+          value={hasEnoughData ? `${weekLogged.logged}/${weekLogged.total}` : "—"}
+          sub={hasEnoughData ? "Mon–Sun with ≥1 meal" : "Log a full day to start tracking"}
+        />
+        <StatTile
+          icon={<Icons.trendUp className="size-4" />}
+          label="7-day calorie fit"
+          value={hasEnoughData && goalFitPercent != null ? `${goalFitPercent}%` : "—"}
+          sub={hasEnoughData && goalFitPercent != null ? "Avg closeness to target" : "Not enough data yet"}
+        />
+      </div>
+
       {weekFiberWater ? (
-        <div className="mt-4 pt-4 border-t border-violet-200/50 dark:border-violet-900/50 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg bg-white/60 dark:bg-slate-900/40 px-3 py-2 border border-violet-200/30 dark:border-violet-900/30">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Fiber goal (Mon–Sun)</p>
-            <p className="font-semibold text-slate-900 dark:text-white tabular-nums">
+        <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-lg bg-muted/40 border border-border px-3 py-2">
+            <p className="text-xs text-muted-foreground">Fiber goal (Mon–Sun)</p>
+            <p className="font-semibold text-foreground tabular-nums">
               {weekFiberWater.fiberDaysMet}/{weekFiberWater.total} days
             </p>
           </div>
-          <div className="rounded-lg bg-white/60 dark:bg-slate-900/40 px-3 py-2 border border-violet-200/30 dark:border-violet-900/30">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Water goal (Mon–Sun)</p>
-            <p className="font-semibold text-slate-900 dark:text-white tabular-nums">
+          <div className="rounded-lg bg-muted/40 border border-border px-3 py-2">
+            <p className="text-xs text-muted-foreground">Water goal (Mon–Sun)</p>
+            <p className="font-semibold text-foreground tabular-nums">
               {weekFiberWater.waterDaysMet}/{weekFiberWater.total} days
             </p>
           </div>

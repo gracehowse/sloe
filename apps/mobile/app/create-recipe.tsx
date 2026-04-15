@@ -26,7 +26,7 @@ try {
   // Native module not available (Expo Go) — image picker will be disabled
 }
 
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -229,7 +229,7 @@ export default function CreateRecipeScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: Neon.purple, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
+    topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 120 },
     label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
     input: {
@@ -255,14 +255,14 @@ export default function CreateRecipeScreen() {
     addBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, paddingVertical: 14, borderRadius: Radius.md,
-      borderWidth: 1.5, borderColor: Neon.purple + "50", borderStyle: "dashed" as const,
+      borderWidth: 1.5, borderColor: Accent.primary + "50", borderStyle: "dashed" as const,
     },
-    addBtnText: { color: Neon.purple, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: Accent.primary, fontWeight: "600", fontSize: 14 },
 
     // Totals
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Neon.purple + "30",
+      borderWidth: 1, borderColor: Accent.primary + "30",
       padding: Spacing.lg,
     },
     totalsRow: { flexDirection: "row", justifyContent: "space-around" },
@@ -279,7 +279,7 @@ export default function CreateRecipeScreen() {
     },
     saveBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Neon.green,
+      gap: Spacing.sm, backgroundColor: Accent.success,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
@@ -363,12 +363,12 @@ export default function CreateRecipeScreen() {
               </View>
               <Text style={styles.ingCals}>{ing.calories}</Text>
               <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)}>
-                <Ionicons name="close-circle" size={22} color={Neon.red + "80"} />
+                <Ionicons name="close-circle" size={22} color={Accent.destructive + "80"} />
               </Pressable>
             </View>
           ))}
           <Pressable style={styles.addBtn} onPress={() => setSearchOpen(true)}>
-            <Ionicons name="add" size={18} color={Neon.purple} />
+            <Ionicons name="add" size={18} color={Accent.primary} />
             <Text style={styles.addBtnText}>Add ingredient</Text>
           </Pressable>
         </View>
@@ -422,8 +422,8 @@ export default function CreateRecipeScreen() {
           <Switch
             value={publish}
             onValueChange={setPublish}
-            trackColor={{ false: colors.border, true: Neon.green + "80" }}
-            thumbColor={publish ? Neon.green : colors.textTertiary}
+            trackColor={{ false: colors.border, true: Accent.success + "80" }}
+            thumbColor={publish ? Accent.success : colors.textTertiary}
           />
         </View>
       </ScrollView>

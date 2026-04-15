@@ -2,9 +2,9 @@
 
 **Audience:** All
 
-## What is Platemate?
+## What is Suppr?
 
-Platemate is a recipe and nutrition tracking platform that helps users import recipes from the web, verify their nutritional content against USDA/FDA databases, plan meals to hit personal macro targets, and track daily food intake.
+Suppr is a recipe and nutrition tracking platform that helps users import recipes from the web, verify their nutritional content against USDA/FDA databases, plan meals to hit personal macro targets, and track daily food intake.
 
 ## Who is it for?
 

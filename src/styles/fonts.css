@@ -1,0 +1,12 @@
+/**
+ * Platemate v2 — Font setup
+ *
+ * Inter is loaded via next/font/google in layout.tsx (self-hosted, subset).
+ * The CSS variable --font-inter is set on <html> by Next.js.
+ * We map it here so Tailwind's font-sans utility resolves correctly.
+ */
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}

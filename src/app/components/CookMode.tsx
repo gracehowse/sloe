@@ -1,16 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  CookingPot,
-  ListChecks,
-  Timer,
-  X,
-  CheckCircle2,
-} from "lucide-react";
+import { Icons } from "./ui/icons";
+import { ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import type { IngredientRow, RecipeCard } from "../../types/recipe.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -215,15 +207,15 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   }, [goNext, goPrev, onExit]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background text-white flex flex-col">
       {/* Header — always dark for kitchen context */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+      <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
         <button
           type="button"
           onClick={onExit}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors text-sm font-medium"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <Icons.back className="w-4 h-4" />
           Exit Cook Mode
         </button>
         <h2 className="text-sm font-semibold text-white truncate max-w-[50%]">
@@ -234,8 +226,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
           onClick={() => setShowIngredients(!showIngredients)}
           className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
             showIngredients
-              ? "bg-violet-950/40 text-violet-300"
-              : "text-slate-300 hover:bg-slate-800"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted/60"
           }`}
         >
           <ListChecks className="w-4 h-4" />
@@ -251,7 +243,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
             <>
               {/* Step Counter */}
               <div className="mb-6">
-                <span className="px-4 py-1.5 rounded-full bg-violet-950/40 text-violet-300 text-sm font-semibold">
+                <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
                   Step {currentStep + 1} of {totalSteps}
                 </span>
               </div>
@@ -264,10 +256,10 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                       key={i}
                       className={`h-1 flex-1 rounded-full transition-all ${
                         i < currentStep
-                          ? "bg-violet-600"
+                          ? "bg-primary"
                           : i === currentStep
-                            ? "bg-violet-400 dark:bg-violet-500"
-                            : "bg-slate-200 dark:bg-slate-700"
+                            ? "bg-primary"
+                            : "bg-muted"
                       }`}
                     />
                   ))}
@@ -286,13 +278,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 <div className="mb-8">
                   {timerActive ? (
                     <div className="flex items-center gap-4">
-                      <div className="text-3xl font-mono font-bold text-violet-400 tabular-nums">
+                      <div className="text-3xl font-mono font-bold text-primary tabular-nums">
                         {formatTime(timerRemaining)}
                       </div>
                       <button
                         type="button"
                         onClick={stopTimer}
-                        className="px-4 py-2 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-800 transition-colors"
+                        className="px-4 py-2 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:bg-muted/60 transition-colors"
                       >
                         Cancel
                       </button>
@@ -301,9 +293,9 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                     <button
                       type="button"
                       onClick={startTimer}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-950/40 text-violet-300 font-medium hover:bg-violet-200 dark:hover:bg-violet-950/60 transition-colors"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
                     >
-                      <Timer className="w-4 h-4" />
+                      <Icons.timer className="w-4 h-4" />
                       Start {formatTime(stepTimerSeconds)} timer
                     </button>
                   ) : null}
@@ -316,14 +308,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   type="button"
                   onClick={goPrev}
                   disabled={currentStep === 0}
-                  className="p-3 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-3 rounded-xl border border-border text-muted-foreground dark:text-muted-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <Icons.back className="w-6 h-6" />
                 </button>
                 <button
                   type="button"
                   onClick={goNext}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all text-lg"
+                  className="px-8 py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all text-lg"
                 >
                   {isLastStep ? "Finish" : "Next"}
                 </button>
@@ -331,26 +323,26 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   type="button"
                   onClick={goNext}
                   disabled={isLastStep}
-                  className="p-3 rounded-xl border border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-0 disabled:cursor-default"
+                  className="p-3 rounded-xl border border-border text-muted-foreground dark:text-muted-foreground hover:bg-muted/60 transition-colors disabled:opacity-0 disabled:cursor-default"
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <Icons.forward className="w-6 h-6" />
                 </button>
               </div>
 
-              <p className="mt-4 text-xs text-slate-500">
+              <p className="mt-4 text-xs text-muted-foreground">
                 Use arrow keys or swipe to navigate
               </p>
             </>
           ) : (
             /* Done State */
             <div className="text-center max-w-md">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
-                <CookingPot className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 rounded-full bg-success flex items-center justify-center mx-auto mb-6 shadow-lg shadow-success/30">
+                <Icons.cook className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Enjoy your meal!
               </h2>
-              <p className="text-slate-400 mb-8">
+              <p className="text-muted-foreground mb-8">
                 {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""} — {Math.round(recipe.calories * servings / (recipe.servings || 1))} kcal · {Math.round(recipe.protein * servings / (recipe.servings || 1))}g protein
               </p>
 
@@ -358,22 +350,22 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 <button
                   type="button"
                   onClick={handleLogMeal}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-lg hover:shadow-xl hover:shadow-violet-500/30 transition-all mb-4"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-primary text-white font-semibold text-lg hover:shadow-xl hover:shadow-primary/30 transition-all mb-4"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <Icons.success className="w-5 h-5" />
                   Log this meal
                 </button>
               ) : (
                 <div className="flex flex-col items-center gap-3 mb-4">
-                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-950/40 text-emerald-300 font-semibold">
-                    <CheckCircle2 className="w-5 h-5" />
+                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-success/10 text-success font-semibold">
+                    <Icons.success className="w-5 h-5" />
                     Logged to tracker
                   </div>
                   {onViewTracker && (
                     <button
                       type="button"
                       onClick={() => { onExit(); onViewTracker(); }}
-                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+                      className="px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
                     >
                       View in Tracker
                     </button>
@@ -385,7 +377,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 <button
                   type="button"
                   onClick={onExit}
-                  className="px-6 py-3 rounded-xl text-slate-300 font-medium hover:bg-slate-800 transition-colors"
+                  className="px-6 py-3 rounded-xl text-muted-foreground font-medium hover:bg-muted/60 transition-colors"
                 >
                   Back to recipe
                 </button>
@@ -396,7 +388,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
 
         {/* Ingredients Sidebar */}
         {showIngredients && (
-          <div className="w-80 shrink-0 border-l border-slate-800 bg-slate-900 overflow-y-auto p-4 hidden sm:block">
+          <div className="w-80 shrink-0 border-l border-border bg-card overflow-y-auto p-4 hidden sm:block">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-white text-sm">
                 Ingredients ({servings} serving{servings !== 1 ? "s" : ""})
@@ -404,9 +396,9 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
               <button
                 type="button"
                 onClick={() => setShowIngredients(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="p-1 rounded-lg text-muted-foreground hover:text-muted-foreground/80"
               >
-                <X className="w-4 h-4" />
+                <Icons.close className="w-4 h-4" />
               </button>
             </div>
             <ul className="space-y-2">
@@ -417,8 +409,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                     onClick={() => toggleIngredientChecked(idx)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       checkedIngredients.has(idx)
-                        ? "line-through text-slate-500 bg-slate-100 dark:bg-slate-800"
-                        : "text-slate-300 hover:bg-slate-800"
+                        ? "line-through text-muted-foreground bg-muted"
+                        : "text-muted-foreground hover:bg-muted/60"
                     }`}
                   >
                     <span className="font-medium">

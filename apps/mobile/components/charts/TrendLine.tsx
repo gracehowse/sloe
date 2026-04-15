@@ -8,7 +8,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Neon } from "@/constants/theme";
+import { Accent } from "@/constants/theme";
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
@@ -97,7 +97,7 @@ export default function TrendLine({
               y1={goalY}
               x2={viewW}
               y2={goalY}
-              stroke={goalColor ?? Neon.green}
+              stroke={goalColor ?? Accent.success}
               strokeWidth={1}
               strokeDasharray="4,3"
               opacity={0.5}

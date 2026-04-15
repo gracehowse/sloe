@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  ScrollViewProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -16,7 +17,9 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 
 type PlanMeal = {
@@ -53,7 +56,7 @@ export default function PlannerScreen() {
   const [days, setDays] = useState<1 | 3 | 7>(1);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
-  // Load user tier
+  // Load user tier from profile
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -62,13 +65,31 @@ export default function PlannerScreen() {
       .eq("id", userId)
       .single()
       .then(({ data }) => {
-        if (data?.user_tier) setUserTier(data.user_tier as "free" | "base" | "pro");
+        const tier = data?.user_tier as string | null;
+        if (tier === "free" || tier === "base" || tier === "pro") {
+          setUserTier(tier);
+        } else {
+          setUserTier("free");
+        }
       });
   }, [userId]);
 
   const isFree = userTier === "free";
   const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
+  const [shoppingItemCount, setShoppingItemCount] = useState(0);
+
+  // Load shopping item count
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("shopping_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .then(({ count }) => {
+        setShoppingItemCount(count ?? 0);
+      });
+  }, [userId, plan]);
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     // Filter recipes that fit this slot
@@ -129,6 +150,30 @@ export default function PlannerScreen() {
     });
   }, []);
 
+  // Get date range for header (assuming plan starts today)
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    const start = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (!plan || plan.length <= 1) return start;
+    const end = new Date(today);
+    end.setDate(end.getDate() + plan.length - 1);
+    const endStr = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `${start} – ${endStr}`;
+  }, [plan]);
+
+  // Helper to truncate meal names in day cards
+  const truncateMealName = (name: string, maxLen: number = 12) => {
+    return name.length > maxLen ? name.substring(0, maxLen - 1) + "…" : name;
+  };
+
+  // Determine progress bar color based on calorie percentage vs target
+  const getProgressColor = (cals: number, target: number) => {
+    const pct = target > 0 ? (cals / target) * 100 : 0;
+    if (pct >= 90) return Accent.success;
+    if (pct >= 50) return Accent.warning;
+    return colors.border;
+  };
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -137,11 +182,53 @@ export default function PlannerScreen() {
         headerTitle: {
           fontSize: 22,
           fontWeight: "700",
-          color: Neon.purple,
-          letterSpacing: 0,
-          textAlign: "center",
-          paddingVertical: Spacing.md,
+          color: colors.text,
+          letterSpacing: -0.4,
+          paddingTop: 18,
+          paddingBottom: 4,
         },
+        headerRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: Spacing.md,
+          marginBottom: Spacing.md,
+        },
+        headerLeft: { flex: 1 },
+        headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+        autoFillBtn: {
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: Accent.primary,
+          flexDirection: "row",
+          gap: 4,
+          alignItems: "center",
+        },
+        autoFillBtnText: { fontSize: 13, fontWeight: "600", color: Accent.primary },
+
+        dayCardsScroll: { marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg, gap: 8 },
+        dayCard: {
+          width: 110,
+          backgroundColor: colors.card,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: Spacing.sm,
+          alignItems: "center",
+          gap: Spacing.xs,
+        },
+        dayCardToday: { borderColor: Accent.primary, backgroundColor: Accent.primary + "08" },
+        dayCardName: { fontSize: 13, fontWeight: "600", color: colors.text },
+        dayCardNameToday: { color: Accent.primary },
+        dayCardMeals: { gap: 2 },
+        dayCardMeal: { fontSize: 10, color: colors.textTertiary, lineHeight: 12 },
+        dayCardProgressBar: { width: "100%", height: 3, backgroundColor: colors.border, borderRadius: 1.5, marginVertical: Spacing.xs },
+        dayCardProgressFill: { height: 3, borderRadius: 1.5 },
+        dayCardCalories: { fontSize: 10, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+
+        sectionLabel: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.5, marginTop: Spacing.md },
 
         card: {
           backgroundColor: colors.card,
@@ -168,12 +255,12 @@ export default function PlannerScreen() {
           borderColor: colors.border,
           alignItems: "center",
         },
-        dayBtnActive: { borderColor: Neon.purple, backgroundColor: Neon.purple + "15" },
+        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "15" },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
-        dayBtnTextActive: { color: Neon.purple },
+        dayBtnTextActive: { color: Accent.primary },
 
         generateBtn: {
-          backgroundColor: Neon.purple,
+          backgroundColor: Accent.primary,
           borderRadius: Radius.md,
           paddingVertical: 16,
           alignItems: "center",
@@ -195,20 +282,40 @@ export default function PlannerScreen() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
         },
-        mealSlot: { fontSize: 11, fontWeight: "700", color: Neon.purple, letterSpacing: 1 },
+        mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
         mealTitle: { fontSize: 15, fontWeight: "500", color: colors.text, marginTop: 2 },
         mealMacros: { fontSize: 11, color: colors.textTertiary, marginTop: 2, fontVariant: ["tabular-nums"] },
         mealChevron: { color: colors.tabIconDefault, fontSize: 22, fontWeight: "600" },
 
+        shoppingListCard: {
+          backgroundColor: colors.card,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: Spacing.xl,
+          gap: Spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
+        },
+        shoppingListIcon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Accent.warning + "15", alignItems: "center", justifyContent: "center", marginRight: Spacing.md },
+        shoppingListContent: { flex: 1 },
+        shoppingListTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+        shoppingListSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+
         actionsRow: { gap: Spacing.md },
         regenBtn: {
           borderWidth: 1,
-          borderColor: Neon.purple + "50",
+          borderColor: Accent.primary + "50",
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
         },
-        regenBtnText: { color: Neon.purple, fontWeight: "700", fontSize: 15 },
+        regenBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 15 },
       }),
     [colors],
   );
@@ -294,29 +401,28 @@ export default function PlannerScreen() {
     // Smart macro-aware plan generation
     {
       // Load targets from user profile
-      let profileCals = 2000;
-      let profilePro = 150;
-      let profileCarbs = 200;
-      let profileFat = 65;
+      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat };
       if (userId) {
         const { data } = await supabase
           .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat")
+          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob")
           .eq("id", userId)
           .single();
         if (data) {
-          profileCals = data.target_calories ?? profileCals;
-          profilePro = data.target_protein ?? profilePro;
-          profileCarbs = data.target_carbs ?? profileCarbs;
-          profileFat = data.target_fat ?? profileFat;
+          const d = data as any;
+          const t = resolveTargets(
+            { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
+            { weight_kg: d.weight_kg, height_cm: d.height_cm, sex: d.sex, activity_level: d.activity_level, goal: d.goal, dob: d.dob },
+          );
+          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat };
         }
       }
 
       const targets: PlannerTargets = {
-        calories: profileCals,
-        protein: profilePro,
-        carbs: profileCarbs,
-        fat: profileFat,
+        calories: resolved.calories,
+        protein: resolved.protein,
+        carbs: resolved.carbs,
+        fat: resolved.fat,
         calorieBandPct: 12,
         carbFatBandPct: 18,
       };
@@ -337,7 +443,7 @@ export default function PlannerScreen() {
       });
 
       setPlan(newPlan);
-      setPlanTargets({ calories: profileCals, protein: profilePro, carbs: profileCarbs, fat: profileFat });
+      setPlanTargets(resolved);
       setGenerating(false);
 
       // Persist — relational tables with legacy fallback
@@ -388,8 +494,59 @@ export default function PlannerScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Text style={styles.headerTitle}>Meal Planner</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Header with title, date range, and AI Auto-fill button */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Meal Plan</Text>
+            {plan && <Text style={styles.headerSubtitle}>{getDateRange()}</Text>}
+          </View>
+          <Pressable style={styles.autoFillBtn} onPress={generatePlan} disabled={generating || !plan}>
+            <Ionicons name="sparkles" size={14} color={Accent.primary} />
+            <Text style={styles.autoFillBtnText}>AI Auto-fill</Text>
+          </Pressable>
+        </View>
+
+        {/* Horizontal scrollable day cards (when plan exists) */}
+        {plan && plan.length > 0 && planTargets && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayCardsScroll}
+            scrollEventThrottle={16}
+          >
+            {plan.map((dp, idx) => {
+              const isToday = idx === 0;
+              const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
+              const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
+              return (
+                <View key={dp.day} style={[styles.dayCard, isToday && styles.dayCardToday]}>
+                  <Text style={[styles.dayCardName, isToday && styles.dayCardNameToday]}>
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(new Date().setDate(new Date().getDate() + idx)).getDay()]}
+                  </Text>
+                  <View style={styles.dayCardMeals}>
+                    {dp.meals.map((m, mi) => (
+                      <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
+                        {truncateMealName(m.name)}
+                      </Text>
+                    ))}
+                  </View>
+                  <View style={styles.dayCardProgressBar}>
+                    <View
+                      style={[
+                        styles.dayCardProgressFill,
+                        { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.dayCardCalories}>
+                    {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Generate controls */}
         {!plan && (
@@ -409,7 +566,10 @@ export default function PlannerScreen() {
                     style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
-                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.");
+                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.", [
+                          { text: "Not now", style: "cancel" },
+                          { text: "See plans", onPress: () => router.push("/paywall" as any) },
+                        ]);
                         return;
                       }
                       setDays(d);
@@ -464,6 +624,13 @@ export default function PlannerScreen() {
           </View>
         )}
 
+        {/* Today's plan section label */}
+        {plan && plan.length > 0 && (
+          <Text style={styles.sectionLabel}>
+            {`${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}'s plan`}
+          </Text>
+        )}
+
         {/* Plan display */}
         {plan && plan.map((dp, dayIdx) => (
           <View key={dp.day} style={styles.card}>
@@ -484,7 +651,7 @@ export default function PlannerScreen() {
                   return (
                     <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
                       <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label} {val}g</Text>
-                      <Text style={{ fontSize: 10, color: isClose ? Neon.green : diff > 0 ? Neon.red : Neon.yellow }}>
+                      <Text style={{ fontSize: 10, color: isClose ? Accent.success : diff > 0 ? Accent.destructive : Accent.warning }}>
                         {isClose ? "✓" : diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`}
                       </Text>
                     </View>
@@ -555,13 +722,30 @@ export default function PlannerScreen() {
                   }}
                   style={{ paddingHorizontal: 8, paddingVertical: 12 }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: Neon.purple }}>Log{"\n"}today</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>Log{"\n"}today</Text>
                 </Pressable>
                 <Text style={styles.mealChevron}>›</Text>
               </Pressable>
             ))}
           </View>
         ))}
+
+        {/* Shopping list CTA */}
+        {plan && (
+          <Pressable
+            style={styles.shoppingListCard}
+            onPress={() => router.push("/shopping")}
+          >
+            <View style={styles.shoppingListIcon}>
+              <Ionicons name="cart" size={24} color={Accent.warning} />
+            </View>
+            <View style={styles.shoppingListContent}>
+              <Text style={styles.shoppingListTitle}>Shopping List</Text>
+              <Text style={styles.shoppingListSubtitle}>{shoppingItemCount > 0 ? `${shoppingItemCount} item${shoppingItemCount !== 1 ? "s" : ""} from this week` : "Generate a list from your plan"}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </Pressable>
+        )}
 
         {/* Actions */}
         {plan && (

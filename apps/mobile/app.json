@@ -1,18 +1,19 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Suppr",
+    "slug": "suppr",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "platemate",
+    "scheme": "suppr",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.graceturner.platemate",
+      "bundleIdentifier": "com.supprclub.suppr",
+      "usesAppleSignIn": true,
       "infoPlist": {
-        "NSHealthShareUsageDescription": "Platemate reads your steps, weight, and activity data to keep your tracker in sync."
+        "NSHealthShareUsageDescription": "Suppr reads your steps, weight, and activity data to keep your tracker in sync."
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
@@ -117,20 +118,28 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.graceturner.platemate"
+      "package": "com.supprclub.suppr"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "extra": {
-      "platemateWebUrl": "https://platemate-api.vercel.app",
-      "platemateApiUrl": "https://platemate-api.vercel.app",
+      "supprWebUrl": "https://platemate-api.vercel.app",
+      "supprApiUrl": "https://platemate-api.vercel.app",
       "supabaseUrl": "https://fnfgxsignmuepshbebrl.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4"
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E6F4FE"
+        }
+      ],
       [
         "expo-share-intent",
         {
@@ -147,7 +156,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Platemate to scan product barcodes."
+          "cameraPermission": "Allow Suppr to scan product barcodes."
         }
       ],
       [

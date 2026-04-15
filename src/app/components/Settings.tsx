@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Settings as SettingsIcon, User, Bell, Shield, Sparkles, Ticket } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -88,9 +88,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   }, [authEmail]);
 
   const tierLabels: Record<string, { name: string; color: string }> = {
-    free: { name: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-    base: { name: "Base", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
-    pro: { name: "Pro", color: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300" },
+    free: { name: "Free", color: "bg-muted text-muted-foreground" },
+    base: { name: "Base", color: "bg-success/10 text-success" },
+    pro: { name: "Pro", color: "bg-primary/10 text-primary" },
   };
   const currentTier = tierLabels[userTier] ?? tierLabels.free;
 
@@ -99,19 +99,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-gradient-to-br from-slate-600 to-slate-800 dark:from-slate-700 dark:to-slate-900 rounded-xl">
-            <SettingsIcon className="w-5 h-5 text-white" />
+          <div className="p-2 bg-primary/30 rounded-xl">
+            <Icons.settings className="w-5 h-5 text-white" />
           </div>
-          <h1 className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Settings</h1>
+          <h1 className="text-foreground bg-clip-text text-transparent">Settings</h1>
         </div>
-        <p className="text-slate-600 dark:text-slate-400">Manage your account and preferences</p>
+        <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
       {/* Current plan */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Your plan</h3>
+          <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Your plan</h3>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -119,13 +119,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               {currentTier.name}
             </span>
             {authEmail && (
-              <span className="text-sm text-slate-500 dark:text-slate-400">{authEmail}</span>
+              <span className="text-sm text-muted-foreground">{authEmail}</span>
             )}
           </div>
           {userTier !== "pro" && (
             <Link
               href="/pricing"
-              className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              className="text-sm font-medium text-success hover:text-success/80"
             >
               View plans
             </Link>
@@ -136,13 +136,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Promo code (e.g. testing / partner access) */}
       <div
         ref={promoSectionRef}
-        className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
+        className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Ticket className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Promo code</h3>
+          <Icons.ticket className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Promo code</h3>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Redeem a code to upgrade your plan (one use per account per code).
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -152,7 +152,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             onChange={(e) => setPromoCode(e.target.value)}
             placeholder="e.g. PLATEMATE_PRO"
             autoComplete="off"
-            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button
             type="button"
@@ -183,7 +183,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 setPromoSubmitting(false);
               }
             }}
-            className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            className="px-6 py-2.5 rounded-xl bg-foreground text-background font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
             {promoSubmitting ? "Applying…" : "Apply"}
           </button>
@@ -191,42 +191,42 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Account Section */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Account</h3>
+          <Icons.user className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Account</h3>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+            <label className="block mb-2 text-sm font-medium text-foreground">Email</label>
             <input
               type="email"
               value={authEmail ?? ""}
               readOnly
-              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Display Name</label>
+            <label className="block mb-2 text-sm font-medium text-foreground">Display Name</label>
             <input
               type="text"
               value={profileDisplayName ?? ""}
               readOnly
-              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => void handleChangePassword()}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all text-sm font-medium"
+              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-all text-sm font-medium"
             >
               Change Password
             </button>
             <button
               type="button"
               onClick={signOut}
-              className="ml-auto px-4 py-2 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 text-red-700 dark:text-red-300 rounded-lg transition-all text-sm font-semibold border border-red-200/60 dark:border-red-900/40"
+              className="ml-auto px-4 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-all text-sm font-semibold border border-destructive/30"
             >
               Sign out
             </button>
@@ -235,21 +235,21 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Preferences */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Preferences</h3>
+          <Icons.settings className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Preferences</h3>
         </div>
         <div className="space-y-6">
           <div>
-            <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Measurement System</label>
+            <label className="block mb-3 text-sm font-medium text-foreground">Measurement System</label>
             <div className="flex gap-3">
               <button
                 onClick={() => { setMeasurementSystem("metric"); void savePref({ measurement_system: "metric" }); }}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                   measurementSystem === "metric"
-                    ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
-                    : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/30"
                 }`}
               >
                 Metric (g, kg, ml)
@@ -258,8 +258,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 onClick={() => { setMeasurementSystem("imperial"); void savePref({ measurement_system: "imperial" }); }}
                 className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                   measurementSystem === "imperial"
-                    ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
-                    : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/30"
                 }`}
               >
                 Imperial (oz, lb, cups)
@@ -267,7 +267,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             </div>
           </div>
           <div>
-            <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Dietary Restrictions</label>
+            <label className="block mb-3 text-sm font-medium text-foreground">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
               {DIETARY_PREFERENCE_ENTRIES.map((diet) => (
                 <button
@@ -279,8 +279,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   }}
                   className={`px-4 py-2 rounded-lg border-2 transition-all capitalize ${
                     dietary.includes(diet.id)
-                      ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300"
-                      : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700 text-slate-700 dark:text-slate-300"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/30 text-foreground"
                   }`}
                 >
                   {diet.label}
@@ -292,15 +292,15 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Notifications */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Notifications</h3>
+          <Icons.notifications className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Notifications</h3>
         </div>
         <div className="space-y-4">
           {Object.entries(notifications).map(([key, value]) => (
             <label key={key} className="flex items-center justify-between cursor-pointer group">
-              <span className="text-slate-700 dark:text-slate-300 capitalize">
+              <span className="text-foreground capitalize">
                 {key.replace(/([A-Z])/g, ' $1').trim()}
               </span>
               <div className="relative">
@@ -310,7 +310,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer-checked:bg-violet-600 transition-all peer-focus:ring-2 peer-focus:ring-violet-500/50"></div>
+                <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
                 <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
               </div>
             </label>
@@ -321,12 +321,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Subscription plans are hidden for now. */}
 
       {/* Privacy */}
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-slate-900 dark:text-white">Privacy & Security</h3>
+          <Icons.shield className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Privacy & Security</h3>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Download includes nutrition snapshots, library saves, collections, and profile data stored on this device.
         </p>
         <div className="space-y-3">
@@ -335,31 +335,31 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             onClick={() => {
               try {
                 const data = buildLocalDataExport();
-                downloadJsonFile(`platemate-export-${new Date().toISOString().slice(0, 10)}.json`, data);
+                downloadJsonFile(`suppr-export-${new Date().toISOString().slice(0, 10)}.json`, data);
                 toast.success("Download started.");
               } catch {
                 toast.error("Could not build export.");
               }
             }}
-            className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+            className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
             Download your data (JSON)
           </button>
           <Link
             href="/privacy"
-            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+            className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
             Privacy policy
           </Link>
           <Link
             href="/help"
-            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+            className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
             Help
           </Link>
           <Link
             href="/terms"
-            className="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-700 dark:text-slate-300"
+            className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
             Terms of service
           </Link>
@@ -369,7 +369,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               if (
                 typeof window !== "undefined" &&
                 !window.confirm(
-                  "This will sign you out and remove Platemate data stored on this device. Continue?",
+                  "This will sign you out and remove Suppr data stored on this device. Continue?",
                 )
               ) {
                 return;

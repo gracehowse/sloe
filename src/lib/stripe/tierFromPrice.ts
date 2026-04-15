@@ -1,6 +1,6 @@
 import type { UserTier } from "../../types/recipe.ts";
 
-/** Map Stripe Price id → Platemate tier using env-configured monthly prices. */
+/** Map Stripe Price id → Suppr tier using env-configured monthly prices. */
 export function tierFromStripePriceId(priceId: string | undefined | null): UserTier | null {
   if (!priceId) return null;
   const base = process.env.STRIPE_PRICE_BASE_MONTHLY?.trim();

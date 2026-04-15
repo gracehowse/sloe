@@ -10,16 +10,16 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, and any recipe whose `source_url` is listed in `seed-recipe-urls.txt` | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) |
-| `seed-discover.ts` | Seed the Discover feed from URLs in `seed-recipe-urls.txt` | `PLATEMATE_SEED_AUTHOR_ID=<uuid> npx tsx scripts/seed-discover.ts` |
-| `refresh-recipes.ts` | Re-fetch and re-verify ALL recipes with a `source_url` | `npx tsx scripts/refresh-recipes.ts [--dry-run]` |
+| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, demo creators; optionally deletes rows whose `source_url` matches lines in `scripts/seed-recipe-urls.txt` if you create that file | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
 | `fix-servings.ts` | Re-fetch servings from source URLs for recipes stuck at `servings=1` | `npx tsx scripts/fix-servings.ts [--dry-run]` |
 | `fix-html-entities.ts` | Decode HTML entities in existing recipe data | `npx tsx scripts/fix-html-entities.ts [--dry-run]` |
 | `classify-meals.ts` | Auto-classify `meal_type` for untagged recipes | `npx tsx scripts/classify-meals.ts [--dry-run]` |
 
 **Requirements:**
-- Dev server running on localhost:3000 (for `seed-discover.ts` and `refresh-recipes.ts` — they call the verify API)
-- Supabase credentials in `.env.local`
+- Supabase credentials in `.env.local` (`delete-seeded-recipes.ts` needs `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS)
+- Scripts that call local APIs need the dev server on localhost:3000 (not required for `delete-seeded-recipes.ts`)
+
+**Migrations:** One-off DB cleanup for seeded content is in `supabase/migrations/20260414120000_remove_all_seeded_recipes.sql`. Apply with `npx supabase db push` (after local/remote migration history matches) or run the SQL in the Supabase SQL editor.
 
 ### Production
 
@@ -28,22 +28,21 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 | `verify-production-env.ts` | Check Stripe / Supabase production vars (warns; exits 1 only with `VERIFY_STRICT=1` when Stripe is misconfigured) | `npm run verify:production-env` — on `main` CI sets `VERIFY_STRICT=1` |
 | `production-smoke.ts` | HTTP smoke test against production URL | `npm run smoke:production` |
 
-## Approved Recipe Sources
+## Trusted recipe domains (import quality)
 
-Only seed from these sites (high-quality photography):
+When importing or curating URLs, these sites tend to have reliable structure and photography:
+
 - fitfoodiefinds.com
 - downshiftology.com (Lisa Bryan)
 - minimalistbaker.com
 - pinchofyum.com
 - halfbakedharvest.com
 
-See `scripts/seed-recipe-urls.txt` for the full URL list.
-
 ## Key User IDs
 
 | User | ID | Notes |
 |------|----|-------|
-| Grace (primary) | `e9f85055-876b-4bde-9267-476567b16884` | Used as `PLATEMATE_SEED_AUTHOR_ID` |
+| Grace (primary) | `e9f85055-876b-4bde-9267-476567b16884` | Historical seed author ID (referenced in migrations and `delete-seeded-recipes.ts` for cleanup) |
 
 ## Debugging
 

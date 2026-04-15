@@ -74,7 +74,7 @@ export async function fdcFoodsSearch(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "PlatemateNutritionVerifier/1.0",
+      "User-Agent": "SupprNutritionVerifier/1.0",
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -141,7 +141,7 @@ export async function fdcFoodGet(cfg: FdcConfig, fdcId: number): Promise<FdcFood
   // Request full nutrient set (we’ll pick what we need).
   const res = await fetch(url.toString(), {
     method: "GET",
-    headers: { Accept: "application/json", "User-Agent": "PlatemateNutritionVerifier/1.0" },
+    headers: { Accept: "application/json", "User-Agent": "SupprNutritionVerifier/1.0" },
     cache: "no-store",
   });
   if (!res.ok) {

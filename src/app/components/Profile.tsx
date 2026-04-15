@@ -1,9 +1,11 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { Calculator, TrendingUp, Activity, User, Crown, Target, UtensilsCrossed } from "lucide-react";
+import { Icons } from "./ui/icons";
+import { IconBox } from "./ui/icon-box";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
 import { normalizeMacroTargets } from "../../types/profile.ts";
+import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
@@ -33,6 +35,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
     setPreferActivityAdjustedCalories,
     setProfileMeasurementSystem,
     nutritionByDay,
+    savedRecipesForLibrary,
   } = useAppData();
 
   const loggingStats = useMemo(() => {
@@ -41,6 +44,28 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
     const recentDayKeys = [...daysWithLogs].sort((a, b) => b.localeCompare(a)).slice(0, 7);
     return { daysWithLogs: daysWithLogs.length, totalMeals, recentDayKeys };
   }, [nutritionByDay]);
+
+  const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
+  const recipeCount = savedRecipesForLibrary?.length ?? 0;
+  // Adherence score: % of last 7 tracked days where calories were within 10% of target
+  const adherenceScore = useMemo(() => {
+    const target = normalizeMacroTargets(nutritionTargets).calories;
+    if (!target) return 0;
+    const sortedKeys = Object.keys(nutritionByDay).sort((a, b) => b.localeCompare(a)).slice(0, 7);
+    if (sortedKeys.length === 0) return 0;
+    let hits = 0;
+    for (const key of sortedKeys) {
+      const dayMeals = nutritionByDay[key] ?? [];
+      const dayCal = dayMeals.reduce((s, m) => s + (m.calories ?? 0), 0);
+      if (dayCal > 0 && Math.abs(dayCal - target) / target <= 0.1) hits++;
+    }
+    return Math.round((hits / sortedKeys.length) * 100);
+  }, [nutritionByDay, nutritionTargets]);
+  // Dynamic profile metadata
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  const [notificationPref, setNotificationPref] = useState<string | null>(null);
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [isEditingTargets, setIsEditingTargets] = useState(false);
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
@@ -67,7 +92,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system")
+        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary_restrictions, notification_prefs")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
@@ -83,6 +108,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (profile.measurement_system === "imperial" || profile.measurement_system === "metric") {
         setMeasurementSystem(profile.measurement_system);
       }
+      // Dietary restrictions
+      if (Array.isArray(profile.dietary_restrictions) && profile.dietary_restrictions.length > 0) {
+        setDietaryRestrictions(profile.dietary_restrictions.map(String));
+      }
+      // Notification prefs
+      if (profile.notification_prefs && typeof profile.notification_prefs === "object") {
+        const np = profile.notification_prefs as Record<string, unknown>;
+        if (np.reminder_time) setNotificationPref(String(np.reminder_time));
+      }
+      // Join date from auth user
+      const createdAt = data.session?.user?.created_at;
+      if (createdAt) setJoinedAt(createdAt);
     })();
     return () => {
       cancelled = true;
@@ -206,44 +243,206 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <User className="w-10 h-10 text-white" />
-          </div>
-          <div>
-            <h1 className="mb-1 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              {displayName?.trim() ? displayName : "Your profile"}
-            </h1>
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-sm capitalize inline-flex items-center gap-1.5 font-semibold shadow-sm ${
-                  userTier === "pro"
-                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white"
-                    : userTier === "base"
-                    ? "bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-950/30 dark:to-indigo-950/30 text-violet-700 dark:text-violet-300"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                {userTier === "pro" && <Crown className="w-3 h-3" />}
-                {userTier} Plan
-              </span>
-            </div>
-          </div>
+      {/* Header: Avatar + Name + Tier Side by Side */}
+      <div className="flex items-center gap-3.5 mb-4">
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <span className="text-lg font-bold text-primary">{(displayName?.[0] ?? "P").toUpperCase()}</span>
         </div>
-        {userTier === "free" ? null : null}
+        <div>
+          <h1 className="text-lg font-bold text-foreground leading-tight">
+            {displayName?.trim() ? displayName : "Your profile"}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {userTier === "pro"
+              ? "Pro"
+              : userTier === "base"
+              ? "Base"
+              : "Free"} · {joinedAt ? (() => {
+              const d = new Date(joinedAt);
+              const now = new Date();
+              const diffMs = now.getTime() - d.getTime();
+              const diffDays = Math.floor(diffMs / 86400000);
+              if (diffDays < 7) return "Joined this week";
+              if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
+              if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
+              return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+            })() : "Joined recently"}
+          </p>
+        </div>
       </div>
 
+      {/* Stat Pills — real data (recipes / streak / score) */}
+      <div className="flex gap-2 mb-4">
+        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+          <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Recipes</p>
+        </div>
+        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+          <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
+        </div>
+        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+          <p className="text-lg font-bold text-warning tabular-nums">{adherenceScore}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Score</p>
+        </div>
+      </div>
+
+      {/* Settings Section */}
+      <div className="mb-8">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Settings</p>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          {/* Daily Targets Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.calories className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Daily Targets</p>
+              <p className="text-xs text-muted-foreground truncate">{(() => { const t = normalizeMacroTargets(nutritionTargets); return `${t.calories.toLocaleString()} kcal • ${t.protein}P / ${t.carbs}C / ${t.fat}F`; })()}</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Preferences Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.dinner className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Preferences</p>
+              <p className="text-xs text-muted-foreground truncate">{dietaryRestrictions.length > 0 ? dietaryRestrictions.join(", ") : "No restrictions"}</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Connected Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.link className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Connected</p>
+              <p className="text-xs text-muted-foreground truncate">Not connected</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Notifications Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.time className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Notifications</p>
+              <p className="text-xs text-muted-foreground truncate">{notificationPref ? `Daily reminder at ${notificationPref}` : "Off"}</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Export Data Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.import className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Export Data</p>
+              <p className="text-xs text-muted-foreground truncate">CSV download</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Help Row — matches mobile */}
+          <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.info className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Help</p>
+              <p className="text-xs text-muted-foreground truncate">FAQs and support</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+        </div>
+      </div>
+
+      {/* Creator Tools Section */}
+      <div className="mb-8">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Creator Tools</p>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          {/* Published Recipes Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="success" size="sm" className="w-7 h-7">
+              <Icons.edit className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Published Recipes</p>
+              <p className="text-xs text-muted-foreground truncate">{recipeCount} recipes saved</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Analytics Row */}
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="success" size="sm" className="w-7 h-7">
+              <Icons.progress className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Analytics</p>
+              <p className="text-xs text-muted-foreground truncate">Views, saves, engagement</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+
+          {/* Publish New Row */}
+          <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+            <IconBox tone="success" size="sm" className="w-7 h-7">
+              <Icons.add className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Publish New</p>
+              <p className="text-xs text-muted-foreground truncate">Share with the community</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+        </div>
+      </div>
+
+      {/* Legal Section — matches mobile */}
+      <div className="mb-8">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Legal</p>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
+            <span className="text-sm text-foreground">Terms of Service</span>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
+          </div>
+          <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+            <span className="text-sm text-foreground">Privacy Policy</span>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
+          </div>
+        </div>
+      </div>
+
+      {/* Sign Out — matches mobile */}
+      <button
+        type="button"
+        onClick={() => {
+          void supabase.auth.signOut();
+          toast.success("Signed out");
+        }}
+        className="w-full py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors mb-8"
+      >
+        Sign Out
+      </button>
+
       {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-800 mb-8">
-        <div className="flex gap-6">
+      <div className="border-t border-border pt-8">
+        <div className="flex gap-6 mb-8">
           <button
             onClick={() => setActiveTab("targets")}
             className={`pb-3 border-b-2 transition-colors font-medium ${
               activeTab === "targets"
-                ? "border-violet-600 text-slate-900 dark:text-white"
-                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             Macro Calculator
@@ -252,8 +451,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             onClick={() => setActiveTab("progress")}
             className={`pb-3 border-b-2 transition-colors font-medium ${
               activeTab === "progress"
-                ? "border-violet-600 text-slate-900 dark:text-white"
-                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             Progress Tracking
@@ -264,18 +463,20 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       {activeTab === "targets" && (
         <div className="space-y-8">
           {/* Macro Calculator */}
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-6">
-              <Calculator className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-              <h3 className="text-slate-900 dark:text-white">Calculate Your Targets</h3>
+              <IconBox tone="primary" size="md">
+                <Icons.target className="w-5 h-5" />
+              </IconBox>
+              <h3 className="text-foreground">Calculate Your Targets</h3>
             </div>
 
             <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Units</label>
+              <label className="block mb-2 text-sm font-medium text-foreground">Units</label>
               <select
                 value={measurementSystem}
                 onChange={(e) => setMeasurementSystem(e.target.value as "metric" | "imperial")}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="metric">Metric (cm, kg)</option>
                 <option value="imperial">Imperial (ft/in, lb)</option>
@@ -284,21 +485,21 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Age</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">Age</label>
                 <input
                   type="number"
                   value={age ?? ""}
                   placeholder="e.g. 28"
                   onChange={(e) => setAge(e.target.value ? parseInt(e.target.value, 10) : null)}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
               <div>
-                <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Sex</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">Sex</label>
                 <select
                   value={sex}
                   onChange={(e) => setSex(e.target.value as "male" | "female" | "unspecified")}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -308,24 +509,24 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               {measurementSystem === "metric" ? (
                 <>
                   <div>
-                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Weight (kg)</label>
+                    <label className="block mb-2 text-sm font-medium text-foreground">Weight (kg)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={weight ?? ""}
                       placeholder="e.g. 65"
                       onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (cm)</label>
+                    <label className="block mb-2 text-sm font-medium text-foreground">Height (cm)</label>
                     <input
                       type="number"
                       value={height ?? ""}
                       placeholder="e.g. 170"
                       onChange={(e) => setHeight(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                   </div>
                 </>
@@ -333,7 +534,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                 <>
                   <div className="md:col-span-2 grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (ft)</label>
+                      <label className="block mb-2 text-sm font-medium text-foreground">Height (ft)</label>
                       <input
                         type="number"
                         min={0}
@@ -346,11 +547,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                             setHeight(Math.round(feetInchesToCm(ft, inch)));
                           }
                         }}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                        className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                     <div>
-                      <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Height (in)</label>
+                      <label className="block mb-2 text-sm font-medium text-foreground">Height (in)</label>
                       <input
                         type="number"
                         min={0}
@@ -363,12 +564,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                             setHeight(Math.round(feetInchesToCm(ft, inch)));
                           }
                         }}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                        className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Weight (lb)</label>
+                    <label className="block mb-2 text-sm font-medium text-foreground">Weight (lb)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -380,7 +581,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                           setWeight(Math.round(lbToKg(lb) * 10) / 10);
                         }
                       }}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                   </div>
                 </>
@@ -388,7 +589,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </div>
 
             <div className="mb-6">
-              <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Activity Level</label>
+              <label className="block mb-3 text-sm font-medium text-foreground">Activity Level</label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { value: "sedentary", label: "Sedentary", desc: "Little to no exercise" },
@@ -402,19 +603,19 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     onClick={() => setActivityLevel(level.value as typeof activityLevel)}
                     className={`p-4 border-2 rounded-xl text-left transition-all ${
                       activityLevel === level.value
-                        ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20"
-                        : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/30"
                     }`}
                   >
-                    <p className="font-medium text-slate-900 dark:text-white">{level.label}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{level.desc}</p>
+                    <p className="font-medium text-foreground">{level.label}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{level.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="mb-6">
-              <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Goal</label>
+              <label className="block mb-3 text-sm font-medium text-foreground">Goal</label>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { value: "cut", label: "Lose weight", desc: "Deficit" },
@@ -426,18 +627,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     onClick={() => setGoal(goalOption.value as typeof goal)}
                     className={`p-4 border-2 rounded-xl text-center transition-all ${
                       goal === goalOption.value
-                        ? "border-violet-600 bg-violet-50 dark:bg-violet-950/20"
-                        : "border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/30"
                     }`}
                   >
-                    <p className="font-medium text-slate-900 dark:text-white">{goalOption.label}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{goalOption.desc}</p>
+                    <p className="font-medium text-foreground">{goalOption.label}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{goalOption.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
+            <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
               <p>
                 BMR: {computedTargets ? Math.round(computedTargets.bmr) : "—"} kcal · TDEE: {computedTargets ? Math.round(computedTargets.tdee) : "—"} kcal
               </p>
@@ -446,14 +647,16 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           {/* Calculated Targets */}
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 px-6 py-4 border-b border-violet-200 dark:border-violet-800">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg">
+            <div className="bg-primary/10 px-6 py-4 border-b border-primary/30">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                <h3 className="text-slate-900 dark:text-white">Your Daily Targets</h3>
+                <IconBox tone="primary" size="md">
+                  <Icons.trendUp className="w-5 h-5" />
+                </IconBox>
+                <h3 className="text-foreground">Your Daily Targets</h3>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-border">
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
                   <input
@@ -463,9 +666,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.calories}</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.calories}</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Calories</p>
+                <p className="text-sm text-muted-foreground">Calories</p>
               </div>
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
@@ -476,10 +679,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.protein}g</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.protein}g</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Protein</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">2.2g per kg</p>
+                <p className="text-sm text-muted-foreground">Protein</p>
+                <p className="text-xs text-muted-foreground mt-1">2.2g per kg</p>
               </div>
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
@@ -490,10 +693,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.carbs}g</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.carbs}g</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Carbs</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Remainder</p>
+                <p className="text-sm text-muted-foreground">Carbs</p>
+                <p className="text-xs text-muted-foreground mt-1">Remainder</p>
               </div>
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
@@ -504,10 +707,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fat}g</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.fat}g</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Fat</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">25% of kcal</p>
+                <p className="text-sm text-muted-foreground">Fat</p>
+                <p className="text-xs text-muted-foreground mt-1">25% of kcal</p>
               </div>
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
@@ -518,9 +721,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.fiber}g</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.fiber}g</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Fiber</p>
+                <p className="text-sm text-muted-foreground">Fiber</p>
               </div>
               <div className="px-6 py-6 text-center">
                 {isEditingTargets ? (
@@ -531,12 +734,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{displayTargets.waterMl}</p>
+                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.waterMl}</p>
                 )}
-                <p className="text-sm text-slate-600 dark:text-slate-400">Water (ml)</p>
+                <p className="text-sm text-muted-foreground">Water (ml)</p>
               </div>
             </div>
-            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800 space-y-3">
+            <div className="px-6 py-4 bg-muted space-y-3">
               <label className="flex items-start gap-3 cursor-pointer">
                 <Checkbox
                   checked={activityAdjustPref}
@@ -544,14 +747,14 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                   disabled={!isEditingTargets}
                   className="mt-0.5"
                 />
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  <span className="text-slate-800 dark:text-slate-200 font-medium">Adjust calories for activity</span>
+                <span className="text-sm text-muted-foreground">
+                  <span className="text-foreground font-medium">Adjust calories for activity</span>
                   <span className="block mt-1">
                     When on, your daily calorie goal increases by the activity burn you log in the Tracker. Net goal = base target + activity burn for that day.
                   </span>
                 </span>
               </label>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 All targets are customizable. Click &quot;Edit Targets&quot; to override these values with your own preferences.
               </p>
             </div>
@@ -562,7 +765,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               <button
                 type="button"
                 onClick={() => setIsEditingTargets(true)}
-                className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium"
+                className="flex-1 py-3 border-2 border-border rounded-xl hover:bg-muted/60 transition-all text-foreground font-medium"
               >
                 Edit Targets Manually
               </button>
@@ -575,7 +778,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     setManualTargets({ ...displayTargets });
                     setActivityAdjustPref(preferActivityAdjustedCalories);
                   }}
-                  className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 font-medium"
+                  className="flex-1 py-3 border-2 border-border rounded-xl hover:bg-muted/60 transition-all text-foreground font-medium"
                 >
                   Cancel
                 </button>
@@ -583,7 +786,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                   type="button"
                   disabled={!canSave || saving}
                   onClick={() => void saveProfile()}
-                  className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  className="flex-1 py-3 bg-primary text-white rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
@@ -595,58 +798,64 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
       {activeTab === "progress" && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-              <h3 className="text-slate-900 dark:text-white">Weight</h3>
+              <IconBox tone="primary" size="md">
+                <Icons.activity className="w-5 h-5" />
+              </IconBox>
+              <h3 className="text-foreground">Weight</h3>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Weight history and charts are not available yet. The number below is your{" "}
-              <strong className="text-slate-800 dark:text-slate-200">profile weight</strong> from the Targets tab—it updates
+              <strong className="text-foreground">profile weight</strong> from the Targets tab—it updates
               when you save your profile.
             </p>
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-center">
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            <div className="rounded-xl bg-muted border border-border p-4 text-center">
+              <p className="text-3xl font-bold text-foreground">
                 {measurementSystem === "imperial" ? `${weightLb} lb` : `${weight} kg`}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Current (profile)</p>
+              <p className="text-xs text-muted-foreground mt-1">Current (profile)</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Days with food logged</p>
+                <IconBox tone="success" size="sm">
+                  <Icons.target className="w-5 h-5" />
+                </IconBox>
+                <p className="text-sm text-muted-foreground">Days with food logged</p>
               </div>
-              <p className="text-4xl font-bold text-slate-900 dark:text-white">{loggingStats.daysWithLogs}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Distinct days in your nutrition journal</p>
+              <p className="text-4xl font-bold text-foreground">{loggingStats.daysWithLogs}</p>
+              <p className="text-xs text-muted-foreground mt-2">Distinct days in your nutrition journal</p>
             </div>
-            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
-                <UtensilsCrossed className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total log entries</p>
+                <IconBox tone="primary" size="sm">
+                  <Icons.dinner className="w-5 h-5" />
+                </IconBox>
+                <p className="text-sm text-muted-foreground">Total log entries</p>
               </div>
-              <p className="text-4xl font-bold text-slate-900 dark:text-white">{loggingStats.totalMeals}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Meals and snacks recorded across all days</p>
+              <p className="text-4xl font-bold text-foreground">{loggingStats.totalMeals}</p>
+              <p className="text-xs text-muted-foreground mt-2">Meals and snacks recorded across all days</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <h3 className="text-slate-900 dark:text-white">Recent days</h3>
+              <h3 className="text-foreground">Recent days</h3>
               {onOpenNutrition ? (
                 <button
                   type="button"
                   onClick={onOpenNutrition}
-                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all text-sm font-medium shrink-0"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm font-medium shrink-0"
                 >
                   Open tracker
                 </button>
               ) : null}
             </div>
             {loggingStats.recentDayKeys.length === 0 ? (
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 No nutrition log yet. Use Nutrition to add food—counts here update from your real journal (stored on this
                 device and synced when cloud sync is available).
               </p>
@@ -666,10 +875,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                   return (
                     <li
                       key={key}
-                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm"
+                      className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-sm"
                     >
-                      <span className="font-medium text-slate-900 dark:text-white">{label}</span>
-                      <span className="text-slate-600 dark:text-slate-400">
+                      <span className="font-medium text-foreground">{label}</span>
+                      <span className="text-muted-foreground">
                         {n} {n === 1 ? "entry" : "entries"}
                       </span>
                     </li>

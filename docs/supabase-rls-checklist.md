@@ -1,6 +1,6 @@
 # Supabase RLS verification checklist
 
-Row Level Security for Platemate is defined in [`supabase/schema.sql`](../supabase/schema.sql) and follow-on migrations under `supabase/migrations/`. Use this list before shipping auth-sensitive features or opening beta widely.
+Row Level Security for Suppr is defined in [`supabase/schema.sql`](../supabase/schema.sql) and follow-on migrations under `supabase/migrations/`. Use this list before shipping auth-sensitive features or opening beta widely.
 
 ## Tables with user-scoped data
 

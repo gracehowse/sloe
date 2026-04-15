@@ -1,54 +1,74 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Alert,
   View,
   Text,
   FlatList,
-  Image,
   Pressable,
   TextInput,
-  StyleSheet,
+  ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
-import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
-import FirstRunChecklist from "@/components/FirstRunChecklist";
-import { useChecklistSignals } from "@/lib/checklistSignals";
-import { useDiscoverRecipes, useSavedRecipes } from "@/lib/recipes";
+import { useDiscoverRecipes } from "@/lib/recipes";
 import { Ionicons } from "@expo/vector-icons";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
+
+const FILTERS = ["For You", "Popular", "Quick", "High Protein", "Low Carb"];
+
+/* ── Icon Box (local helper matching prototype) ── */
+function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
+      {children}
+    </View>
+  );
+}
+
+/* ── Fit Badge ── */
+function FitBadge({ fit }: { fit: string }) {
+  const label = fit === "great" ? "Great" : fit === "warn" ? "High" : "Good";
+  const color = fit === "great" ? Accent.success : fit === "warn" ? Accent.warning : Accent.primary;
+  return (
+    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: color + "18" }}>
+      <Text style={{ fontSize: 9, fontWeight: "600", color }}>{label}</Text>
+    </View>
+  );
+}
+
+/* ── Source Badge ── */
+function SourceBadge({ source }: { source?: string }) {
+  if (!source) return null;
+  return (
+    <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#00000066" }}>
+      <Text style={{ fontSize: 9, fontWeight: "500", color: "#fff" }}>{source}</Text>
+    </View>
+  );
+}
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session } = useAuth();
-  const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  const screenWidth = Dimensions.get("window").width;
+  const cardWidth = (screenWidth - 40 - 8) / 2; // 20px padding each side, 8px gap from columnWrapperStyle
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
-  const { savedIds, toggleSave } = useSavedRecipes(userId);
-  const { hasPlan, hasLoggedMeal, refresh: refreshChecklist } = useChecklistSignals(userId);
   const [search, setSearch] = useState("");
-  const listRef = useRef<FlatList<RecipeCard>>(null);
+  const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
-
-  const handleChecklistDiscover = useCallback(() => {
-    setSearch("");
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    requestAnimationFrame(() => searchInputRef.current?.focus());
-  }, []);
 
   /**
    * Instagram → Copy link or share often leaves the URL on the pasteboard; read on Discover focus.
-   * Runs even when signed out so we can open Import with ?url= and prompt sign-in there.
    */
   useFocusEffect(
     useCallback(() => {
@@ -75,264 +95,235 @@ export default function DiscoverScreen() {
     }, [router]),
   );
 
-  const filtered = search.trim()
-    ? recipes.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()))
-    : recipes;
+  const filtered = recipes.filter((r) => {
+    // Search filter
+    if (search.trim() && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+    // Pill filter
+    if (filter === "For You") return true;
+    if (filter === "Popular") return (r.saves ?? 0) >= 50 || true;
+    if (filter === "Quick") return r.cookTime ? parseInt(r.cookTime) <= 20 : true;
+    if (filter === "High Protein") return r.protein >= 25;
+    if (filter === "Low Carb") return r.carbs <= 30;
+    return true;
+  });
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1, backgroundColor: colors.background },
-        header: { alignItems: "center", paddingVertical: Spacing.md },
-        headerTitle: {
-          fontSize: 22,
-          fontWeight: "700",
-          color: Neon.purple,
-          letterSpacing: 0,
-        },
-        searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
-        searchInput: {
-          backgroundColor: colors.card,
-          paddingHorizontal: Spacing.lg,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
-          fontSize: 15,
-          color: colors.text,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        list: {
-          paddingHorizontal: Spacing.xl,
-          paddingBottom: 100,
-          gap: Spacing.lg,
-        },
-        card: {
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          overflow: "hidden",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
-        },
-        cardImage: {
-          width: "100%",
-          height: 190,
-          backgroundColor: colors.border,
-        },
-        calBadge: {
-          position: "absolute",
-          top: Spacing.md,
-          right: Spacing.md,
-          backgroundColor: "#000000bb",
-          paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.xs,
-          borderRadius: Radius.sm,
-        },
-        calBadgeText: {
-          color: "#ffffff",
-          fontSize: 13,
-          fontWeight: "700",
-          fontVariant: ["tabular-nums"],
-        },
-        cardBody: { padding: Spacing.lg, gap: Spacing.sm },
-        cardTitle: {
-          fontSize: 17,
-          fontWeight: "600",
-          color: colors.text,
-        },
-        macroRow: { flexDirection: "row", gap: Spacing.sm },
-        macroChip: {
-          borderWidth: 1,
-          borderRadius: Radius.sm,
-          paddingHorizontal: Spacing.sm,
-          paddingVertical: 2,
-        },
-        macroChipText: {
-          fontSize: 11,
-          fontWeight: "600",
-          fontVariant: ["tabular-nums"],
-        },
-        cardFooter: {
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: Spacing.xs,
-        },
-        creatorRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: Spacing.sm,
-          flex: 1,
-        },
-        creatorName: { fontSize: 13, color: colors.textSecondary, flex: 1 },
-        saveBtn: {
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          justifyContent: "center",
-          alignItems: "center",
-        },
-        saveBtnActive: {
-          backgroundColor: Neon.purple + "18",
-        },
-        loadingContainer: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          gap: Spacing.md,
-        },
-        loadingText: { fontSize: 14, color: colors.textSecondary },
-        emptyContainer: {
-          paddingTop: 80,
-          alignItems: "center",
-          gap: Spacing.sm,
-        },
-        emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
-        emptySubtext: {
-          fontSize: 14,
-          color: colors.textSecondary,
-          textAlign: "center",
-          maxWidth: 260,
-        },
-      }),
-    [colors],
-  );
+  const t = {
+    accent: Accent.primary,
+    green: Accent.success,
+    amber: Accent.warning,
+    protein: MacroColors.protein,
+    carbs: MacroColors.carbs,
+    fat: MacroColors.fat,
+  };
+
+  const fitColor = (fit?: string) =>
+    fit === "great" ? t.green : fit === "warn" ? t.amber : t.accent;
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
-      const saved = savedIds.has(item.id);
+      const fit = item.fit ?? "good";
+      const fColor = fitColor(fit);
       return (
         <Pressable
-          style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
-          android_ripple={{ color: "#ffffff10" }}
+          style={{
+            width: cardWidth,
+            borderRadius: 14,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            overflow: "hidden",
+            marginBottom: 8,
+          }}
         >
-          <Image source={{ uri: item.image }} style={styles.cardImage} />
-
-          {/* Calorie badge */}
-          <View style={styles.calBadge}>
-            <Text style={styles.calBadgeText}>{Math.round(item.calories)} kcal</Text>
+          {/* Hero gradient area */}
+          <View style={{ height: 80, alignItems: "center", justifyContent: "center", backgroundColor: fColor + "12" }}>
+            <Ionicons name="restaurant-outline" size={28} color={fColor} />
+            <SourceBadge source={item.source} />
           </View>
 
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle} numberOfLines={2}>
+          {/* Card body */}
+          <View style={{ padding: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, lineHeight: 16, marginBottom: 2 }} numberOfLines={2}>
               {decodeEntities(item.title)}
             </Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 6 }}>
+              {item.creatorName}{item.cookTime ? ` · ${item.cookTime}` : ""}
+            </Text>
 
-            {/* Macro chips */}
-            <View style={styles.macroRow}>
-              <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {Math.round(item.protein)}g</Text>
-              </View>
-              <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {Math.round(item.carbs)}g</Text>
-              </View>
-              <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {Math.round(item.fat)}g</Text>
-              </View>
-              {(item.fiberG ?? 0) > 0 && (
-                <View style={[styles.macroChip, { borderColor: MacroColors.fiber + "60" }]}>
-                  <Text style={[styles.macroChipText, { color: MacroColors.fiber }]}>Fb {Math.round(item.fiberG ?? 0)}g</Text>
+            {/* Macro dots */}
+            <View style={{ flexDirection: "row", gap: 6, marginBottom: 6 }}>
+              {([
+                ["P", Math.round(item.protein), t.protein],
+                ["C", Math.round(item.carbs), t.carbs],
+                ["F", Math.round(item.fat), t.fat],
+              ] as const).map(([label, val, color]) => (
+                <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                  <View style={{ width: 4, height: 4, borderRadius: 1, backgroundColor: color }} />
+                  <Text style={{ fontSize: 10, color: colors.textSecondary }}>{val}g</Text>
                 </View>
-              )}
+              ))}
             </View>
 
-            <View style={styles.cardFooter}>
-              <View style={styles.creatorRow}>
-                <Text style={styles.creatorName} numberOfLines={1}>
-                  {item.creatorName}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => toggleSave(item.id)}
-                hitSlop={12}
-                style={[styles.saveBtn, saved && styles.saveBtnActive]}
-              >
-                <Ionicons
-                  name={saved ? "bookmark" : "bookmark-outline"}
-                  size={20}
-                  color={saved ? Neon.purple : colors.tabIconDefault}
-                />
-              </Pressable>
+            {/* Cal + fit badge */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                {Math.round(item.calories)}
+                <Text style={{ fontSize: 9, fontWeight: "400", color: colors.textTertiary }}> kcal</Text>
+              </Text>
+              <FitBadge fit={fit} />
+            </View>
+
+            {/* Saves + made */}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 5 }}>
+              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.saves ?? 0).toLocaleString()} saves</Text>
+              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.made ?? 0).toLocaleString()} made</Text>
             </View>
           </View>
         </Pressable>
       );
     },
-    [savedIds, router, toggleSave, styles, colors],
+    [cardWidth, router, colors, t],
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        renderItem={renderRecipe}
+        columnWrapperStyle={{ gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={() => void refresh()}
+            tintColor={Accent.primary}
+          />
+        }
+        ListHeaderComponent={
+          <View>
+            {/* Header */}
+            <View style={{ paddingTop: 18, paddingBottom: 12 }}>
+              <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 }}>Discover</Text>
+              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>Recipes that fit your macros</Text>
+            </View>
 
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <TextInput
-          ref={searchInputRef}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search recipes..."
-          placeholderTextColor={colors.tabIconDefault}
-          style={styles.searchInput}
-        />
-      </View>
+            {/* Search bar */}
+            <View style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 9,
+              borderRadius: 10,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              marginBottom: 12,
+            }}>
+              <Ionicons name="search-outline" size={15} color={colors.textTertiary} />
+              <TextInput
+                ref={searchInputRef}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search or paste a link..."
+                placeholderTextColor={colors.textTertiary}
+                style={{ flex: 1, fontSize: 12, color: colors.text, padding: 0 }}
+              />
+            </View>
 
-      {/* Recipe list */}
-      {loading && recipes.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Neon.purple} />
-          <Text style={styles.loadingText}>Loading recipes...</Text>
-        </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={renderRecipe}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            userId ? (
-              <View style={{ marginBottom: Spacing.lg }}>
-                <FirstRunChecklist
-                  savedCount={savedIds.size}
-                  hasPlan={hasPlan}
-                  hasLoggedMeal={hasLoggedMeal}
-                  onGoDiscover={handleChecklistDiscover}
-                  onGoPlanner={() => router.push("/(tabs)/planner")}
-                  onGoTracker={() => router.push("/(tabs)/index" as Href)}
-                />
-              </View>
-            ) : null
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={() => {
-                void refresh();
-                void refreshChecklist();
+            {/* Filter pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+              {FILTERS.map((f) => (
+                <Pressable
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  style={{
+                    paddingHorizontal: 13,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: filter === f ? t.accent : colors.cardBorder,
+                    backgroundColor: filter === f ? t.accent + "10" : "transparent",
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}>{f}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Import CTA */}
+            <Pressable
+              onPress={() => router.push("/import-shared" as Href)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                padding: 14,
+                borderRadius: 14,
+                backgroundColor: t.accent + "08",
+                borderWidth: 1,
+                borderColor: t.accent + "22",
+                marginBottom: 14,
               }}
-              tintColor={Neon.purple}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            >
+              <IconBox color={t.accent} size={36}>
+                <Ionicons name="download-outline" size={18} color={t.accent} />
+              </IconBox>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </Pressable>
+
+            {/* My Library CTA */}
+            <Pressable
+              onPress={() => router.push("/(tabs)/library" as Href)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                padding: 14,
+                borderRadius: 14,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                marginBottom: 14,
+              }}
+            >
+              <IconBox color={Accent.success} size={36}>
+                <Ionicons name="bookmark" size={18} color={Accent.success} />
+              </IconBox>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ paddingTop: 60, alignItems: "center", gap: 8 }}>
+              <ActivityIndicator size="large" color={Accent.primary} />
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Loading recipes...</Text>
+            </View>
+          ) : (
+            <View style={{ paddingTop: 80, alignItems: "center", gap: 8 }}>
               <Ionicons name={search.trim() ? "search-outline" : "restaurant-outline"} size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
-              <Text style={styles.emptyTitle}>{search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}</Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
+                {search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}
+              </Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
                 {search.trim() ? "Try a different search term." : "Pull down to refresh, or check your connection."}
               </Text>
             </View>
-          }
-        />
-      )}
+          )
+        }
+      />
     </View>
   );
 }

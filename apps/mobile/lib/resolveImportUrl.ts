@@ -56,7 +56,7 @@ export function urlFromRouterParams(params: Record<string, string | string[] | u
   return null;
 }
 
-/** Resolve URL from a full app deep link, e.g. platemate://import-shared?url=... */
+/** Resolve URL from a full app deep link, e.g. suppr://import-shared?url=... */
 export function urlFromDeepLink(href: string | null | undefined): string | null {
   if (!href || !href.trim()) return null;
   try {

@@ -6,7 +6,7 @@
 
 ## Product summary
 
-**Platemate** is a cross-platform recipe and nutrition app. Users import/create recipes, verify per-ingredient nutrition against USDA/OFF/FatSecret, plan meals, log daily food/water/steps, generate shopping lists, and cook with step-by-step timers.
+**Suppr** is a cross-platform recipe and nutrition app. Users import/create recipes, verify per-ingredient nutrition against USDA/OFF/FatSecret, plan meals, log daily food/water/steps, generate shopping lists, and cook with step-by-step timers.
 
 **Web** (Next.js 15 App Router, Tailwind, shadcn/ui): 9 API routes + SPA shell at `/` with views for discover, library, planner, tracker, progress, shopping, settings, notifications, recipe create/import. **Mobile** (Expo SDK 53, React Native): 25 screens under Expo Router (tabs: Discover, Library, Track, Plan, More) plus standalone screens for onboarding, login, paywall, profile, progress, cook, verify, create, import, shopping, barcode, notifications, settings.
 

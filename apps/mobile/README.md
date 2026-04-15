@@ -1,4 +1,4 @@
-# Platemate mobile (Expo)
+# Suppr mobile (Expo)
 
 Run all commands from **`apps/mobile`** (or use `npm run mobile:dev` from the repo root).
 
@@ -11,6 +11,19 @@ npx expo start
 ```
 
 Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu.
+
+### Xcode and `ios/` (native project)
+
+The **`ios/`** folder is **gitignored** — it only exists after you generate it on your machine:
+
+```bash
+cd apps/mobile
+npx expo prebuild --platform ios
+```
+
+After prebuild, open **`ios/Suppr.xcworkspace`** (always the **workspace**, not `Suppr.xcodeproj` alone, so CocoaPods resolves). The main app target is **Suppr**.
+
+If Xcode says **`mobile.xcodeproj` couldn’t be opened**, you are opening an old **`mobile.xcworkspace`** from a previous template: remove **`ios/mobile.xcworkspace`** (and any **`mobile.xcodeproj`** if present) and use **`Suppr.xcworkspace`**, or run `npm run ios:xcode` from `apps/mobile`.
 
 ### Physical iPhone (USB)
 
@@ -28,52 +41,85 @@ Then open the **development build** (simulator, device, or Xcode) from the Expo 
 
      If a build still fails, scroll to the **bottom** of the Xcode log — the long “Target … in project Pods” block is normal; the real error is usually the last `error:` line (often provisioning vs entitlements).
 
-3. In Xcode (after prebuild): **Signing & Capabilities** → pick your **Team** so the dev build installs.
-4. From **`apps/mobile`**:
+### Apple Developer Program (paid team)
+
+Use this once you are on the **$99/year** Apple Developer Program so **Sign in with Apple**, **Push Notifications**, and **HealthKit** can be provisioned.
+
+1. **Apple Developer** — Sign in at [developer.apple.com](https://developer.apple.com), accept any pending **Agreements** (Programs / Paid Applications).
+2. **Xcode account** — **Xcode → Settings → Accounts** → **+** → add your Apple ID → select your **Team** (the paid org, not “Personal Team”).
+3. **App ID & capabilities** — [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers/list) → **App IDs** → find or create **`com.supprclub.suppr`** (must match `app.json` `ios.bundleIdentifier` / `android.package` and your Apple Developer portal). Enable at least:
+   - **Sign In with Apple**
+   - **Push Notifications**
+   - **HealthKit** (and **Background Modes** in Xcode later if you add HealthKit background delivery)
+4. **Regenerate native iOS without the Personal Team stripper** — Do **not** set `EXPO_IOS_PERSONAL_TEAM`. From **`apps/mobile`**:
 
    ```bash
-   npm run ios:device
+   npx expo prebuild --clean --platform ios
    ```
 
-   From the **repo root**:
+   This applies `expo-apple-authentication`, `expo-notifications`, HealthKit from `app.json`, and the Sentry plugin.
+5. **Xcode signing** — Open **`ios/Suppr.xcworkspace`** → target **Suppr** → **Signing & Capabilities**:
+   - **Team**: your paid team  
+   - **Automatically manage signing**: on  
+   - Confirm capabilities listed (Sign in with Apple, Push, HealthKit, etc.). Fix any red errors (usually enable the capability on the App ID in step 3, then **Download Manual Profiles** or toggle signing off/on).
+6. **Install on device** — `npm run ios:device` / `npm run mobile:ios:device`, or **Run** from Xcode. If Metro over Wi‑Fi fails, use **`npm run ios:device:tunnel`** (see below).
 
-   ```bash
-   npm run mobile:ios:device
-   ```
+**Backend / services (outside Xcode)**
 
-   That runs `expo run:ios --device`, builds, installs, and starts Metro.
+- **Sign in with Apple (Supabase / web)** — In the [Supabase Auth Apple provider](https://supabase.com/docs/guides/auth/social-login/auth-apple) and Apple Developer **Services IDs**, configure the **Services ID**, **redirect URL**, and **key** Apple expects. The mobile app only needs the native entitlement; the **same** Apple app configuration often ties to your backend.
+- **Remote push (APNs)** — For production tokens you need an **APNs Auth Key** (or certificates) in Apple Developer → **Keys**, and your push provider (e.g. Expo Push if you use `expo-notifications` with EAS, or your own server) must use that key. Local dev builds can still receive pushes once capabilities and provisioning are correct.
 
-5. On the phone: **Settings → Platemate → Local Network → On** so Metro on your Mac is reachable. If it still won’t load JS, start Metro with a tunnel:
+**Personal Team only:** after `npm run prebuild:ios:personal`, open Xcode → **Signing & Capabilities** → choose your **Personal Team** so the app installs.
 
-   ```bash
-   npm run start:tunnel
-   ```
-
-   Then open the app again (or re-run `ios:device`).
+**Install on device (any team):** from **`apps/mobile`**, `npm run ios:device`, or from the repo root `npm run mobile:ios:device`. Prefer **`npm run ios:device:tunnel`** / **`npm run mobile:ios:device:tunnel`** if you hit “Could not connect to development server”. On the phone, **Settings → Suppr → Local Network → On** when using LAN Metro; see the section below for tunnel vs Wi‑Fi.
 
 ### “Could not connect to development server” (real device)
 
 The app is trying to load JS from something like `http://192.168.x.x:8081/...` and the **phone cannot reach your Mac** on that port.
 
-1. **Metro must be running** on the Mac in **`apps/mobile`**: `npm start` or `npx expo start` (leave that terminal open). `npm run ios:device` starts it in some setups; if you closed that process, start Metro again.
+**One command (recommended): tunnel + install/run on device**
 
-2. **Same network** — iPhone Wi‑Fi and Mac Wi‑Fi should be the **same LAN** (not iPhone on cellular only; avoid **guest** Wi‑Fi / AP isolation). Disconnect VPN on **both** while testing.
+From **`apps/mobile`**:
 
-3. **Local Network** — **Settings → Platemate → Local Network → On**. If you never saw a prompt, toggle off/on once or reinstall the dev build after enabling.
+```bash
+npm run ios:device:tunnel
+```
 
-4. **Mac firewall** — **System Settings → Network → Firewall** (or Security): allow **Node** / **incoming** for port **8081**, or temporarily turn the firewall off to confirm.
+From the **repo root**:
 
-5. **Quick check** — On the iPhone, open **Safari** and visit `http://192.168.108.177:8081` (use the IP shown in your error). If it doesn’t connect, it’s network/firewall, not the app.
+```bash
+npm run mobile:ios:device:tunnel
+```
 
-6. **Tunnel (works across networks)** — Stop Metro, then:
+This stops whatever is on port **8081**, starts **`expo start --tunnel`** in the background (log: `/tmp/suppr-expo-tunnel.log`), waits until Metro answers, then runs **`expo run:ios --device --no-bundler`**. After install, **force-quit** Suppr once if it still shows an old LAN URL, then reopen.
 
-   ```bash
-   npm run start:tunnel
-   ```
+**Manual tunnel (same idea)**
 
-   In the Expo CLI, open the project on the device again (link / QR / `i`). The bundle URL will **not** use your LAN IP; the phone reaches Metro via Expo’s tunnel.
+1. Stop any existing Metro (quit the terminal running `expo start`, or kill whatever is using port **8081**).
+2. From **`apps/mobile`**: `npm run start:tunnel` — or from the **repo root**: `npm run mobile:dev:tunnel`.
+3. Wait until the log shows **`Tunnel ready`**.
+4. Reconnect the dev client: in a **normal interactive terminal** (Terminal.app / iTerm), Expo prints a **QR code** and/or an **“Open in development build”** link—use that so the phone stops using a stale LAN URL.
+5. **Force-quit** Suppr on the phone and open it again (or **Reload** from the dev menu).
 
-7. **Stale IP** — If your Mac’s Wi‑Fi IP changed, fully **kill and reopen** the app or use the dev menu **Reload** after restarting `expo start` so it picks up the current address.
+**If you want to stay on LAN (same Wi‑Fi as the Mac)**
+
+1. **Metro must be running** on the Mac in **`apps/mobile`**: `npm start` or `npx expo start` (leave that terminal open).
+
+2. **Same network** — iPhone Wi‑Fi and Mac Wi‑Fi on the **same LAN** (not iPhone on cellular only; avoid **guest** Wi‑Fi / **client isolation** / captive portals). Disconnect VPN on **both** while testing.
+
+3. **Local Network** — **Settings → Suppr → Local Network → On**. If you never saw a prompt, toggle off/on once or reinstall the dev build after enabling.
+
+4. **Private Wi‑Fi address** — **Settings → Wi‑Fi → (your network) → Private Wi‑Fi Address**: try **Off** for that network while debugging (reduces odd routing on some routers).
+
+5. **Mac firewall** — **System Settings → Network → Firewall**: allow **Node** (or **node**) for **incoming** connections, or add a rule for port **8081**, or temporarily disable the firewall to confirm.
+
+6. **Sanity check** — On the iPhone, open **Safari** and visit `http://<IP-from-error>:8081` (example: `http://192.168.108.177:8081`). If the page does not load, fix network/firewall before changing app code.
+
+7. **Stale IP** — If your Mac’s Wi‑Fi IP changed, restart `expo start` and reconnect via QR/link (tunnel or LAN) so the dev client picks up the new address.
+
+**React Native dev menu (optional manual host)**
+
+Shake the device → **Dev Settings** (or Expo dev menu) → **Configure bundler** / **Debug server host & port for device** — only if your tooling exposes it; prefer QR + tunnel when unsure.
 
 ### Simulator (one command)
 
@@ -89,7 +135,7 @@ The native app is running in **debug** but **cannot see Metro** (or the JS bundl
    Leave `npx expo start` running in a terminal, then launch the app (don’t open the app from Xcode alone without Metro).
 
 2. **Physical iPhone**  
-   - **Settings → Platemate → Local Network → On** (Metro uses the LAN; iOS may not prompt until the app tries to connect).  
+   - **Settings → Suppr → Local Network → On** (Metro uses the LAN; iOS may not prompt until the app tries to connect).  
    - If the Mac and phone are on different networks or discovery fails, use a tunnel:  
      `npx expo start --tunnel`  
      (or `npm run start:tunnel` from `apps/mobile`.)

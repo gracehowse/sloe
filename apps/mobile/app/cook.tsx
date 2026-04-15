@@ -6,12 +6,13 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  Animated,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "@/lib/supabase";
-import { Neon, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -20,22 +21,6 @@ function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function parseTimerFromStep(text: string): number | null {
-  const patterns = [
-    /(\d+)\s*[–-]\s*(\d+)\s*min/i,
-    /(\d+)\s*min/i,
-    /(\d+)\s*hour/i,
-  ];
-  for (const p of patterns) {
-    const m = text.match(p);
-    if (!m) continue;
-    if (p.source.includes("hour")) return parseInt(m[1]!) * 3600;
-    const val = m[2] ? parseInt(m[2]!) : parseInt(m[1]!);
-    return val * 60;
-  }
-  return null;
 }
 
 export default function CookModeScreen() {
@@ -52,50 +37,54 @@ export default function CookModeScreen() {
   const steps: string[] = stepsJson ? JSON.parse(stepsJson) : [];
   const [current, setCurrent] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
-  const [timerRemaining, setTimerRemaining] = useState(0);
+  const [timerElapsed, setTimerElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressWidthRef = useRef(new Animated.Value(0)).current;
 
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
   const stepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
-  const stepTimer = current < totalSteps ? parseTimerFromStep(steps[current]!) : null;
 
-  // Timer countdown
+  // Timer count up
   useEffect(() => {
-    if (timerActive && timerRemaining > 0) {
+    if (timerActive) {
       intervalRef.current = setInterval(() => {
-        setTimerRemaining((prev) => {
-          if (prev <= 1) {
-            setTimerActive(false);
-            Alert.alert("Timer done!");
-            return 0;
-          }
-          return prev - 1;
-        });
+        setTimerElapsed((prev) => prev + 1);
       }, 1000);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [timerActive, timerRemaining]);
+  }, [timerActive]);
+
+  // Animate progress bar
+  useEffect(() => {
+    const progressPercent = (current + 1) / totalSteps;
+    Animated.timing(progressWidthRef, {
+      toValue: progressPercent,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [current, totalSteps, progressWidthRef]);
 
   const goNext = () => {
-    setTimerActive(false);
-    setTimerRemaining(0);
+    stopTimer();
     if (current < totalSteps) setCurrent((c) => c + 1);
   };
 
   const goPrev = () => {
-    setTimerActive(false);
-    setTimerRemaining(0);
+    stopTimer();
     if (current > 0) setCurrent((c) => c - 1);
   };
 
   const startTimer = () => {
-    if (stepTimer) {
-      setTimerRemaining(stepTimer);
-      setTimerActive(true);
-    }
+    setTimerElapsed(0);
+    setTimerActive(true);
+  };
+
+  const stopTimer = () => {
+    setTimerActive(false);
+    setTimerElapsed(0);
   };
 
   const styles = useMemo(() => StyleSheet.create({
@@ -111,11 +100,19 @@ export default function CookModeScreen() {
       justifyContent: "space-between",
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
     },
-    headerBack: { color: colors.textSecondary, fontSize: 20, fontWeight: "600" },
-    headerTitle: { color: colors.text, fontSize: 15, fontWeight: "600", flex: 1, textAlign: "center" },
+    headerExit: { color: Accent.destructive, fontSize: 16, fontWeight: "600" },
+    headerCounter: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+
+    progressBar: {
+      height: 3,
+      backgroundColor: colors.border,
+      width: "100%",
+    },
+    progressBarFilled: {
+      height: 3,
+      backgroundColor: Accent.primary,
+    },
 
     stepContainer: {
       flex: 1,
@@ -125,60 +122,46 @@ export default function CookModeScreen() {
       gap: Spacing.xl,
     },
 
-    stepBadge: {
-      backgroundColor: Neon.purple + "20",
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.full,
+    stepNumber: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: Accent.primary + "20",
+      justifyContent: "center",
+      alignItems: "center",
     },
-    stepBadgeText: { color: Neon.purple, fontSize: 13, fontWeight: "700" },
-
-    progressRow: {
-      flexDirection: "row",
-      gap: 4,
-      width: "100%",
-    },
-    progressDot: {
-      flex: 1,
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-    },
-    progressDotDone: { backgroundColor: Neon.purple },
-    progressDotActive: { backgroundColor: Neon.purple },
+    stepNumberText: { color: Accent.primary, fontSize: 18, fontWeight: "700" },
 
     stepText: {
-      fontSize: 24,
+      fontSize: 17,
       fontWeight: "500",
       color: colors.text,
       textAlign: "center",
-      lineHeight: 34,
+      lineHeight: 24,
     },
 
-    timerSection: { marginTop: Spacing.md },
-    timerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.lg },
+    timerSection: { alignItems: "center", gap: Spacing.md },
     timerDisplay: {
-      fontSize: 40,
+      fontSize: 38,
       fontWeight: "700",
-      color: Neon.purple,
+      color: Accent.primary,
       fontVariant: ["tabular-nums"],
       fontFamily: "Menlo",
     },
-    timerCancelBtn: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    timerCancelText: { color: colors.textSecondary, fontWeight: "600" },
     timerStartBtn: {
-      backgroundColor: Neon.purple + "20",
+      backgroundColor: Accent.primary + "20",
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
       borderRadius: Radius.md,
     },
-    timerStartText: { color: Neon.purple, fontWeight: "600", fontSize: 15 },
+    timerStartText: { color: Accent.primary, fontWeight: "600", fontSize: 15 },
+    timerStopBtn: {
+      backgroundColor: Accent.destructive + "20",
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.md,
+    },
+    timerStopText: { color: Accent.destructive, fontWeight: "600", fontSize: 15 },
 
     navRow: {
       flexDirection: "row",
@@ -190,16 +173,16 @@ export default function CookModeScreen() {
       flex: 1,
       paddingVertical: 16,
       borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      backgroundColor: colors.card,
       alignItems: "center",
     },
-    navBtnText: { color: colors.textSecondary, fontWeight: "600", fontSize: 16 },
+    navBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },
+    navBtnDisabled: { opacity: 0.4 },
     nextBtn: {
-      flex: 2,
+      flex: 1,
       paddingVertical: 16,
       borderRadius: Radius.md,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       alignItems: "center",
     },
     nextBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
@@ -209,7 +192,7 @@ export default function CookModeScreen() {
     doneSubtext: { fontSize: 14, color: colors.textSecondary },
     doneBtn: {
       marginTop: Spacing.lg,
-      backgroundColor: Neon.purple,
+      backgroundColor: Accent.primary,
       paddingHorizontal: Spacing.xxxl,
       paddingVertical: 14,
       borderRadius: Radius.md,
@@ -230,71 +213,72 @@ export default function CookModeScreen() {
     );
   }
 
+  const progressWidth = progressWidthRef.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.headerBack}>✕</Text>
+          <Text style={styles.headerExit}>Exit</Text>
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{title ?? "Cook Mode"}</Text>
-        <View style={{ width: 28 }} />
+        <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {/* Progress bar */}
+      <View style={styles.progressBar}>
+        <Animated.View
+          style={[
+            styles.progressBarFilled,
+            {
+              width: progressWidth,
+            },
+          ]}
+        />
       </View>
 
       {!isDone ? (
         <View style={styles.stepContainer}>
-          {/* Step counter */}
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>Step {current + 1} of {totalSteps}</Text>
-          </View>
-
-          {/* Progress bar */}
-          <View style={styles.progressRow}>
-            {steps.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.progressDot,
-                  i < current && styles.progressDotDone,
-                  i === current && styles.progressDotActive,
-                ]}
-              />
-            ))}
+          {/* Step number */}
+          <View style={styles.stepNumber}>
+            <Text style={styles.stepNumberText}>{current + 1}</Text>
           </View>
 
           {/* Step text */}
           <Text style={styles.stepText}>{stepText}</Text>
 
           {/* Timer */}
-          {stepTimer && (
-            <View style={styles.timerSection}>
-              {timerActive ? (
-                <View style={styles.timerRow}>
-                  <Text style={styles.timerDisplay}>{formatTimer(timerRemaining)}</Text>
-                  <Pressable style={styles.timerCancelBtn} onPress={() => setTimerActive(false)}>
-                    <Text style={styles.timerCancelText}>Cancel</Text>
-                  </Pressable>
-                </View>
-              ) : timerRemaining === 0 ? (
-                <Pressable style={styles.timerStartBtn} onPress={startTimer}>
-                  <Text style={styles.timerStartText}>⏱ Start {formatTimer(stepTimer)} timer</Text>
+          <View style={styles.timerSection}>
+            {timerActive ? (
+              <>
+                <Text style={styles.timerDisplay}>{formatTimer(timerElapsed)}</Text>
+                <Pressable style={styles.timerStopBtn} onPress={stopTimer}>
+                  <Text style={styles.timerStopText}>Stop</Text>
                 </Pressable>
-              ) : null}
-            </View>
-          )}
+              </>
+            ) : (
+              <Pressable style={styles.timerStartBtn} onPress={startTimer}>
+                <Text style={styles.timerStartText}>⏱ Start Timer</Text>
+              </Pressable>
+            )}
+          </View>
 
           {/* Navigation */}
           <View style={styles.navRow}>
             <Pressable
-              style={[styles.navBtn, current === 0 && { opacity: 0.3 }]}
+              style={[styles.navBtn, current === 0 && styles.navBtnDisabled]}
               onPress={goPrev}
               disabled={current === 0}
             >
-              <Text style={styles.navBtnText}>‹ Back</Text>
+              <Text style={styles.navBtnText}>Previous</Text>
             </Pressable>
             <Pressable style={styles.nextBtn} onPress={goNext}>
               <Text style={styles.nextBtnText}>
-                {current === totalSteps - 1 ? "Finish" : "Next ›"}
+                {current === totalSteps - 1 ? "Done!" : "Next Step"}
               </Text>
             </Pressable>
           </View>

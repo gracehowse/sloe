@@ -1,21 +1,27 @@
 import { useEffect } from "react";
-import { Text, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import { Pressable, Text, View } from "react-native";
+import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
+  withDelay,
   Easing,
 } from "react-native-reanimated";
 
-import { Neon, Spacing } from "@/constants/theme";
+import { Accent, MacroColors } from "@/constants/theme";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const SIZE = 160;
-const STROKE = 12;
-const RADIUS = (SIZE - STROKE) / 2;
-const CIRC = 2 * Math.PI * RADIUS;
+const STROKE = 8;
+const MACRO_STROKE = 5;
+const CX = SIZE / 2;
+const R = (SIZE - STROKE) / 2 - 2;
+const MACRO_R = [R - 13, R - 24, R - 35];
+const CIRC = (r: number) => 2 * Math.PI * r;
+
+type DisplayMode = "remaining" | "consumed";
 
 type Props = {
   consumed: number;
@@ -23,7 +29,78 @@ type Props = {
   textColor: string;
   secondaryColor: string;
   trackColor: string;
+  /** Macro progress values 0-1 */
+  proteinPct?: number;
+  carbsPct?: number;
+  fatPct?: number;
+  /** Whether expanded state showing macro rings */
+  expanded?: boolean;
+  /** Toggle expanded */
+  onToggle?: () => void;
+  /** Show remaining or consumed calories */
+  displayMode?: DisplayMode;
+  /** Called when user long-presses to toggle display mode */
+  onToggleDisplayMode?: () => void;
 };
+
+function MacroRing({
+  radius,
+  pct,
+  color,
+  trackColor,
+  delay,
+}: {
+  radius: number;
+  pct: number;
+  color: string;
+  trackColor: string;
+  delay: number;
+}) {
+  const circ = CIRC(radius);
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withDelay(
+      delay,
+      withTiming(Math.min(pct, 0.999), {
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+  }, [pct]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circ * (1 - progress.value),
+  }));
+
+  return (
+    <G>
+      <Circle
+        cx={CX}
+        cy={CX}
+        r={radius}
+        fill="none"
+        stroke={trackColor}
+        strokeWidth={MACRO_STROKE}
+        opacity={0.4}
+      />
+      <AnimatedCircle
+        cx={CX}
+        cy={CX}
+        r={radius}
+        stroke={color}
+        strokeWidth={MACRO_STROKE}
+        fill="none"
+        strokeDasharray={`${circ}`}
+        animatedProps={animatedProps}
+        strokeLinecap="round"
+        rotation="-90"
+        origin={`${CX},${CX}`}
+      />
+    </G>
+  );
+}
 
 export default function CalorieRing({
   consumed,
@@ -31,12 +108,27 @@ export default function CalorieRing({
   textColor,
   secondaryColor,
   trackColor,
+  proteinPct = 0,
+  carbsPct = 0,
+  fatPct = 0,
+  expanded = false,
+  onToggle,
+  displayMode = "remaining",
+  onToggleDisplayMode,
 }: Props) {
-  const remaining = Math.round(goal - consumed);
-  const isOver = remaining < 0;
-  const displayConsumed = Math.round(consumed);
-  const displayGoal = Math.round(goal);
+  const diff = Math.round(goal - consumed);
+  const isOver = consumed > goal;
+  const centerValue = displayMode === "consumed"
+    ? Math.round(consumed)
+    : Math.abs(diff);
+  const centerLabel = displayMode === "consumed"
+    ? "LOGGED"
+    : isOver
+      ? "OVER"
+      : "UNDER";
+  const budgetLine = `of ${Math.round(goal)} kcal`;
   const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
+  const mainCirc = CIRC(R);
 
   const progress = useSharedValue(0);
 
@@ -49,14 +141,11 @@ export default function CalorieRing({
   }, [pct]);
 
   const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: CIRC * (1 - progress.value),
+    strokeDashoffset: mainCirc * (1 - progress.value),
   }));
 
-  const ringColor = isOver ? Neon.red : Neon.purple;
-
   return (
-    <View style={{ alignItems: "center", gap: Spacing.lg }}>
-      {/* Ring */}
+    <Pressable onPress={onToggle} onLongPress={onToggleDisplayMode} style={{ alignItems: "center" }}>
       <View
         style={{
           width: SIZE,
@@ -66,105 +155,96 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
+          {/* Main calorie ring track */}
           <Circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
+            cx={CX}
+            cy={CX}
+            r={R}
+            fill="none"
             stroke={trackColor}
             strokeWidth={STROKE}
-            fill="none"
           />
+          {/* Main calorie ring progress */}
           <AnimatedCircle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
-            stroke={ringColor}
+            cx={CX}
+            cy={CX}
+            r={R}
+            stroke={isOver ? Accent.destructive : Accent.success}
             strokeWidth={STROKE}
             fill="none"
-            strokeDasharray={`${CIRC}`}
+            strokeDasharray={`${mainCirc}`}
             animatedProps={animatedProps}
             strokeLinecap="round"
             rotation="-90"
-            origin={`${SIZE / 2},${SIZE / 2}`}
+            origin={`${CX},${CX}`}
           />
+          {/* Macro rings (shown when expanded) */}
+          {expanded && (
+            <MacroRing
+              radius={MACRO_R[0]}
+              pct={proteinPct}
+              color={MacroColors.protein}
+              trackColor={trackColor}
+              delay={80}
+  
+            />
+          )}
+          {expanded && (
+            <MacroRing
+              radius={MACRO_R[1]}
+              pct={carbsPct}
+              color={MacroColors.carbs}
+              trackColor={trackColor}
+              delay={160}
+  
+            />
+          )}
+          {expanded && (
+            <MacroRing
+              radius={MACRO_R[2]}
+              pct={fatPct}
+              color={MacroColors.fat}
+              trackColor={trackColor}
+              delay={240}
+  
+            />
+          )}
         </Svg>
+        {/* Center text */}
         <Text
           style={{
-            fontSize: 36,
-            fontWeight: "800",
-            color: isOver ? Neon.red : textColor,
+            fontSize: expanded ? 22 : 28,
+            fontWeight: "700",
+            color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
             fontVariant: ["tabular-nums"],
           }}
         >
-          {isOver ? `+${Math.abs(remaining)}` : remaining}
+          {centerValue}
         </Text>
         <Text
           style={{
-            fontSize: 11,
-            fontWeight: "600",
-            color: secondaryColor,
-            letterSpacing: 1,
-            marginTop: 2,
+            fontSize: 10,
+            fontWeight: "700",
+            color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
+            letterSpacing: 0.8,
+            marginTop: 1,
           }}
         >
-          {isOver ? "OVER" : "LEFT"}
+          {centerLabel}
         </Text>
+        {!expanded && (
+          <Text
+            style={{
+              fontSize: 8,
+              color: secondaryColor,
+              marginTop: 1,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {budgetLine}
+          </Text>
+        )}
       </View>
-
-      {/* Food / Goal / Remaining row */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-around",
-          width: "100%",
-        }}
-      >
-        <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: textColor,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {displayConsumed}
-          </Text>
-          <Text style={{ fontSize: 11, color: secondaryColor, marginTop: 2 }}>
-            Eaten
-          </Text>
-        </View>
-        <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: Neon.purple,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {displayGoal}
-          </Text>
-          <Text style={{ fontSize: 11, color: secondaryColor, marginTop: 2 }}>
-            Budget
-          </Text>
-        </View>
-        <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: isOver ? Neon.red : Neon.green,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {isOver ? `+${Math.abs(remaining)}` : remaining}
-          </Text>
-          <Text style={{ fontSize: 11, color: secondaryColor, marginTop: 2 }}>
-            {isOver ? "Over" : "Remaining"}
-          </Text>
-        </View>
-      </View>
-    </View>
+    </Pressable>
   );
 }

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Neon, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   searchFoods,
@@ -364,7 +364,7 @@ export default function FoodSearchModal({
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {item.verified && (
-                <Ionicons name="checkmark-circle" size={14} color={Neon.green} />
+                <Ionicons name="checkmark-circle" size={14} color={Accent.success} />
               )}
               <Text style={styles.resultName} numberOfLines={2}>
                 {item.name}
@@ -390,7 +390,7 @@ export default function FoodSearchModal({
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{cals}</Text>
           )}
           {isLoading ? (
-            <ActivityIndicator size="small" color={Neon.purple} />
+            <ActivityIndicator size="small" color={Accent.primary} />
           ) : (
             <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
           )}
@@ -494,7 +494,7 @@ export default function FoodSearchModal({
           >
             <View style={{
               backgroundColor: colors.card, borderRadius: Radius.lg,
-              borderWidth: 1, borderColor: Neon.green + "40",
+              borderWidth: 1, borderColor: Accent.success + "40",
               padding: Spacing.xl, gap: Spacing.md,
             }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{preview.name}</Text>
@@ -530,12 +530,12 @@ export default function FoodSearchModal({
                       style={{
                         paddingHorizontal: 14, paddingVertical: 8,
                         borderRadius: Radius.md, borderWidth: 1,
-                        borderColor: isActive ? Neon.green : colors.border,
-                        backgroundColor: isActive ? Neon.green + "15" : "transparent",
+                        borderColor: isActive ? Accent.success : colors.border,
+                        backgroundColor: isActive ? Accent.success + "15" : "transparent",
                         minWidth: 50, alignItems: "center",
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Neon.green : colors.text }}>
+                      <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
                         {p.label}
                       </Text>
                       {p.gramWeight !== 1 && (
@@ -619,7 +619,7 @@ export default function FoodSearchModal({
               </View>
               <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
                 <Pressable
-                  style={{ flex: 1, backgroundColor: Neon.green, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+                  style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
                   onPress={onConfirmPreview}
                 >
                   <Ionicons name="checkmark" size={18} color="#fff" />
@@ -638,7 +638,7 @@ export default function FoodSearchModal({
 
         {loading && results.length === 0 && !preview && (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Neon.purple} />
+            <ActivityIndicator size="large" color={Accent.primary} />
             <Text style={styles.hint}>Searching...</Text>
           </View>
         )}
