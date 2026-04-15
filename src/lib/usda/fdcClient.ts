@@ -138,7 +138,7 @@ export async function fdcFoodsSearch(
 export async function fdcFoodGet(cfg: FdcConfig, fdcId: number): Promise<FdcFood | null> {
   const url = new URL(`${API_BASE}/food/${fdcId}`);
   url.searchParams.set("api_key", cfg.apiKey);
-  // Request full nutrient set (we’ll pick what we need).
+  // Request full nutrient set (we'll pick what we need).
   const res = await fetch(url.toString(), {
     method: "GET",
     headers: { Accept: "application/json", "User-Agent": "SupprNutritionVerifier/1.0" },

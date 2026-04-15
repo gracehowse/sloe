@@ -12,8 +12,6 @@ export default function ResetPasswordPage() {
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    // The auth system sets a recovery session after the user clicks the email link.
-    // If it didn't, don't block the user, but show a helpful message.
     supabase.auth.getSession().then(() => setReady(true));
   }, []);
 
@@ -45,30 +43,70 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6">
-      <div className="w-full max-w-md backdrop-blur-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-8 shadow-2xl">
-        <h1 className="mb-2 text-slate-900 dark:text-white">Reset password</h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--background)" }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-8"
+        style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 4px 32px rgba(0,0,0,0.08)",
+        }}
+      >
+        <h1 className="mb-2 text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+          Reset password
+        </h1>
+        <p className="mb-6 text-sm" style={{ color: "var(--muted-foreground)" }}>
           Choose a new password for your account.
         </p>
 
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">New password</label>
+        <label className="block text-sm font-medium mb-2" style={{ color: "var(--foreground)" }}>
+          New password
+        </label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+          className="w-full px-4 py-3 rounded-xl transition-all outline-none"
+          style={{
+            background: "var(--input-background)",
+            border: "2px solid var(--border)",
+            color: "var(--foreground)",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--ring)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "var(--border)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
           placeholder="At least 8 characters"
         />
 
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4">
+        <label className="block text-sm font-medium mb-2 mt-4" style={{ color: "var(--foreground)" }}>
           Confirm password
         </label>
         <input
           type="password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+          className="w-full px-4 py-3 rounded-xl transition-all outline-none"
+          style={{
+            background: "var(--input-background)",
+            border: "2px solid var(--border)",
+            color: "var(--foreground)",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--ring)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "var(--border)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
           placeholder="Re-enter password"
         />
 
@@ -76,7 +114,12 @@ export default function ResetPasswordPage() {
           type="button"
           onClick={() => void submit()}
           disabled={working}
-          className="w-full mt-6 px-5 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+          className="w-full mt-6 px-5 py-3.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: "var(--primary)",
+            color: "var(--primary-foreground)",
+            boxShadow: "0 4px 16px color-mix(in srgb, var(--primary) 30%, transparent)",
+          }}
         >
           {working ? "Saving…" : "Update password"}
         </button>
@@ -84,4 +127,3 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
-

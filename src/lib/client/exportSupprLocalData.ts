@@ -1,9 +1,9 @@
 import { STORAGE_KEY } from "@/context/appData/persistence";
 
 const EXTRA_KEYS = [
-  "platemate-profile-v2",
-  "platemate-collections-v1",
-  "platemate-recent-foods-v1",
+  "suppr-profile-v2",
+  "suppr-collections-v1",
+  "suppr-recent-foods-v1",
 ] as const;
 
 export function buildLocalDataExport(): Record<string, unknown> {

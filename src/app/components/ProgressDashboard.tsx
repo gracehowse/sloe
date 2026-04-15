@@ -18,6 +18,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, type PlanPace } from "../../lib/nutrition/tdee.ts";
+import { calcGoalTimeline, projectWeight } from "../../lib/weightProjection.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
@@ -53,6 +54,7 @@ export function ProgressDashboard() {
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
+  const [userGoal, setUserGoal] = useState<string | null>(null);
 
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
@@ -76,7 +78,7 @@ export function ProgressDashboard() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -97,6 +99,7 @@ export function ProgressDashboard() {
       setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : DEFAULT_STEPS_GOAL);
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
+      setUserGoal((data as any).goal ?? null);
     }
     setLoading(false);
   }, [authedUserId]);
@@ -442,6 +445,74 @@ export function ProgressDashboard() {
           <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
+
+      {/* JOURNEY / WEIGHT PROJECTION */}
+      {weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
+        const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg, weightKgByDay });
+        const progressPct = Math.max(0, Math.min(100,
+          timeline.remainingKg > 0
+            ? ((Math.abs(weightKg - goalWeightKg) - timeline.remainingKg) / Math.abs(weightKg - goalWeightKg)) * 100
+            : 100
+        ));
+        // Recent 7-day average calories
+        const recentKeys = Object.keys(nutritionByDay).sort().slice(-7);
+        const daysWithFood = recentKeys.filter((k) => (nutritionByDay[k] ?? []).length > 0);
+        const avgRecentCals = daysWithFood.length > 0
+          ? Math.round(daysWithFood.reduce((s, k) => s + (nutritionByDay[k] ?? []).reduce((a, m) => a + m.calories, 0), 0) / daysWithFood.length)
+          : 0;
+        const dailyProjection = avgRecentCals > 0
+          ? projectWeight({ currentWeightKg: weightKg, todayCalories: avgRecentCals, targetCalories: targets.calories, goal: userGoal })
+          : null;
+
+        return (
+          <div className="rounded-xl bg-card border border-border p-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <IconBox size="sm" tone="success"><Icons.check /></IconBox>
+                <p className="text-sm font-semibold text-foreground">Journey</p>
+              </div>
+              {timeline.daysToGoal != null && (
+                <p className="text-right">
+                  <span className="text-[22px] font-bold text-primary tabular-nums">{timeline.daysToGoal}</span>
+                  <span className="text-xs text-muted-foreground ml-1">days to goal</span>
+                </p>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              {timeline.remainingKg > 0.1
+                ? `${timeline.remainingKg} kg to go until your ${formatWeight(goalWeightKg)} goal.`
+                : "You've reached your goal weight!"}
+              {timeline.weeklyRateKg !== 0 && ` Trending ${timeline.trendDirection} at ${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+            </p>
+
+            {/* Progress bar */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(weightKg)}</span>
+              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(progressPct, 3)}%`,
+                    background: progressPct >= 100 ? "var(--success)" : "var(--primary)",
+                  }}
+                />
+              </div>
+              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(goalWeightKg)}</span>
+            </div>
+
+            {/* Projection based on recent average */}
+            {dailyProjection && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Based on your recent average ({avgRecentCals.toLocaleString()} kcal/day), you could weigh{" "}
+                  <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in {dailyProjection.projectionWeeks} weeks.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* STEPS */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">

@@ -22,7 +22,7 @@ This repo is rebranded in code and docs. **You still need to update external sys
 
 ## Supabase & OAuth
 
-- Auth provider redirect URLs and any **custom scheme** callbacks: support **`suppr://`** (and keep **`platemate://`** during transition if you still ship builds that use it).
+- Auth provider redirect URLs and any **custom scheme** callbacks: **`suppr://`** only.
 - Email templates and auth email “from” branding if they mention the old name.
 
 ## Analytics & third parties
@@ -33,11 +33,11 @@ This repo is rebranded in code and docs. **You still need to update external sys
 ## Local dev (mobile)
 
 - Tunnel script log: `/tmp/suppr-expo-tunnel.log`.
-- Optional env: **`SUPPR_KEEP_METRO=1`** (legacy **`PLATEMATE_KEEP_METRO=1`** still works).
+- Optional env: **`SUPPR_KEEP_METRO=1`**.
 
 ## Storage keys (web) — intentional legacy
 
-Several **localStorage** keys still use the `platemate_*` prefix so existing browser data is not wiped. A future migration can copy keys once and remove the old prefix.
+All localStorage keys now use the `suppr-*` prefix. Rebrand complete.
 
 ## Package names
 

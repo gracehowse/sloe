@@ -294,7 +294,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       | (new (opts: { formats: string[] }) => { detect: (video: HTMLVideoElement) => Promise<{ rawValue?: string }[]> })
       | undefined;
     if (!BarcodeDetectorCtor) {
-      setScannerError("Barcode scanning isn’t supported in this browser. Paste the barcode instead.");
+      setScannerError("Barcode scanning isn't supported in this browser. Paste the barcode instead.");
       return;
     }
     const el = videoRef.current;
@@ -715,7 +715,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const saveRecipe = async (published: boolean) => {
     const effectivePublished = mode === "import" ? false : published;
     if (published && mode === "import") {
-      toast.error("Imported recipes stay in your library only—you can’t publish someone else’s content as your own.");
+      toast.error("Imported recipes stay in your library only—you can't publish someone else's content as your own.");
       return;
     }
     if (effectivePublished && mode === "create" && !attestOriginalWork) {
@@ -938,8 +938,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         </div>
         <p className="text-muted-foreground">
           {mode === "import"
-            ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don’t publish them as your own work."
-            : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it’s your content. Scanning a cookbook page you bought belongs under Import, not here."}
+            ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don't publish them as your own work."
+            : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it's your content. Scanning a cookbook page you bought belongs under Import, not here."}
         </p>
       </div>
 
@@ -947,8 +947,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         <div className="backdrop-blur-xl bg-primary/10 border border-primary/30 rounded-2xl p-5 mb-6 text-sm text-foreground">
           <p className="font-medium text-foreground mb-1">Not your original recipe?</p>
           <p className="mb-3">
-            Use Import for URLs, cookbook scans, or anything you didn’t write yourself—so your library stays honest and
-            imports aren’t offered as your creations.
+            Use Import for URLs, cookbook scans, or anything you didn't write yourself—so your library stays honest and
+            imports aren't offered as your creations.
           </p>
           <button
             type="button"
@@ -965,7 +965,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         <div className="backdrop-blur-xl bg-card/70 border border-border/60 rounded-2xl p-6 mb-6 shadow-lg">
           <h3 className="text-foreground mb-1">Ready to share?</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            When you go public, other people can discover and save this recipe. Only publish if it’s your original work.
+            When you go public, other people can discover and save this recipe. Only publish if it's your original work.
           </p>
           <GoPublicDialog
             recipeTitle={title.trim() || "Untitled recipe"}
@@ -1063,8 +1063,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         <label className="block mb-3 text-sm font-medium text-foreground">Recipe photo</label>
         <p className="text-xs text-muted-foreground mb-3">
           {mode === "import"
-            ? "Paste a screenshot or choose a file. If “Extract from image” is available, it can pull text from a cookbook or card photo—review, then save as an imported library copy."
-            : "Paste a screenshot or choose a file. If “Extract from image” is available, it can digitize your own handwritten or typed recipe."}
+            ? `Paste a screenshot or choose a file. If "Extract from image" is available, it can pull text from a cookbook or card photo—review, then save as an imported library copy.`
+            : `Paste a screenshot or choose a file. If "Extract from image" is available, it can digitize your own handwritten or typed recipe.`}
         </p>
         <div
           role="button"
@@ -1512,7 +1512,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         {nutritionPreview ? (
           <div className="mt-2 rounded-2xl border border-success/30 bg-success/10 p-5">
             {/**
-             * Display rounding only (don’t change stored values).
+             * Display rounding only (don't change stored values).
              * Whole-dish totals can be fractional due to summed per-line floats.
              */}
             {(() => {
@@ -1766,7 +1766,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       {mode === "import" ? (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Publishing isn’t available on this screen—imported copies are for your account only. To share original work
+            Publishing isn't available on this screen—imported copies are for your account only. To share original work
             with the community, use Create recipe.
           </p>
           <button

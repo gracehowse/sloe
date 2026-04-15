@@ -60,7 +60,7 @@ export function fdcFoodMacrosPer100g(food: FdcFood): VerifiedMacros {
     findAmount(food, (n) => n.includes("sugars"));
   const sodium = findAmount(food, (n) => n === "sodium, na" || n === "sodium");
 
-  // Energy is usually kcal in FDC ("KCAL"). If it’s kJ, convert.
+  // Energy is usually kcal in FDC ("KCAL"). If it's kJ, convert.
   let kcal = energy ? energy.amount : 0;
   const eu = energy?.unit?.toLowerCase() ?? "";
   if (eu === "kj") kcal = kcal / 4.184;

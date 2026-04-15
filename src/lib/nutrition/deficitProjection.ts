@@ -11,7 +11,7 @@ export function sumDayCalories(meals: LoggedMeal[] | undefined): number {
 
 /**
  * For each of the last `rollingDays` calendar days ending at `now`, compute (dailyTarget - intake)
- * for days with at least one logged meal. Used for “if this pace continued…” copy.
+ * for days with at least one logged meal. Used for "if this pace continued…" copy.
  */
 export function rollingDeficitStats(
   nutritionByDay: Record<string, LoggedMeal[]>,

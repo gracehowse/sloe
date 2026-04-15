@@ -38,10 +38,10 @@ import {
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try { ImagePicker = require("expo-image-picker"); } catch { /* native build only */ }
 
-type Extra = { supprApiUrl?: string; platemateApiUrl?: string };
+type Extra = { supprApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
-  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
 type ImportState = "idle" | "checking" | "importing" | "review" | "saving" | "success" | "error";
@@ -336,7 +336,7 @@ export default function ImportSharedScreen() {
   }, [authLoading, userId, routerUrl, runImportOnce]);
 
   /**
-   * No ?url= yet: read suppr:// or legacy platemate:// initial link, then clipboard (delayed retries for iOS pasteboard).
+   * No ?url= yet: read suppr:// initial link, then clipboard (delayed retries for iOS pasteboard).
    * https:// social opens are forwarded from root layout with params — avoids double import.
    */
   useEffect(() => {
@@ -389,7 +389,7 @@ export default function ImportSharedScreen() {
   useEffect(() => {
     if (authLoading || !userId) return;
     const sub = Linking.addEventListener("url", ({ url: href }) => {
-      if (!/^(platemate|suppr):/i.test(href)) return;
+      if (!/^suppr:/i.test(href)) return;
       const u = urlFromDeepLink(href);
       if (u) {
         setManualUrl(u);
@@ -412,7 +412,7 @@ export default function ImportSharedScreen() {
   const onPasteFromClipboard = async () => {
     const t = await safeGetClipboardString();
     if (!t) {
-      setError("Clipboard isn’t available in this build. Run a fresh native build (expo run:ios / run:android) or paste a URL manually.");
+      setError("Clipboard isn't available in this build. Run a fresh native build (expo run:ios / run:android) or paste a URL manually.");
       setState("error");
       return;
     }
@@ -425,7 +425,7 @@ export default function ImportSharedScreen() {
       return;
     }
     setManualUrl(t.trim());
-    setError("Clipboard doesn’t contain a link we can use.");
+    setError("Clipboard doesn't contain a link we can use.");
     setState("error");
   };
 
@@ -802,7 +802,7 @@ export default function ImportSharedScreen() {
             <ActivityIndicator size="large" color={Accent.primary} style={styles.loaderGap} />
             <Text style={styles.panelTitle}>Looking for a link…</Text>
             <Text style={styles.panelSub}>
-              Instagram, TikTok, or any recipe page — we’ll save it to your library.
+              Instagram, TikTok, or any recipe page — we'll save it to your library.
             </Text>
           </View>
         )}
@@ -974,7 +974,7 @@ export default function ImportSharedScreen() {
             <View style={styles.errorIconCircle}>
               <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
             </View>
-            <Text style={styles.panelTitle}>Couldn’t import</Text>
+            <Text style={styles.panelTitle}>Couldn't import</Text>
             <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
             <TextInput
               value={manualUrl}

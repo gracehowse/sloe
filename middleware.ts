@@ -4,6 +4,7 @@ import { projectId, publicAnonKey } from "./utils/supabase/info.tsx";
 
 const PUBLIC_ROUTES = new Set([
   "/login",
+  "/auth/callback",
   "/help",
   "/pricing",
   "/privacy",

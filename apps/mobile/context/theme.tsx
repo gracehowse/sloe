@@ -13,7 +13,7 @@ type ThemeContextValue = {
   setPreference: (pref: ThemePreference) => void;
 };
 
-const STORAGE_KEY = "platemate_theme";
+const STORAGE_KEY = "suppr_theme";
 
 const ThemeContext = createContext<ThemeContextValue>({
   preference: "auto",

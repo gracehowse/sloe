@@ -1,5 +1,5 @@
 /**
- * Per-view fuzzy QA (Midscene): placeholder / “coming soon” style checks after real login.
+ * Per-view fuzzy QA (Midscene): placeholder / "coming soon" style checks after real login.
  * Run nightly or pre-release: `npm run test:e2e:ai` with Midscene + E2E credentials.
  *
  * Requires: MIDSCENE_MODEL_API_KEY, MIDSCENE_MODEL_NAME, MIDSCENE_MODEL_FAMILY (and usually MIDSCENE_MODEL_BASE_URL).

@@ -35,9 +35,9 @@ export default function HelpPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Pricing</h2>
           <p>Features may change as we finalize pricing and plan options.</p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What’s coming (high level)</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What's coming (high level)</h2>
           <p>
-            We’re focused on making logging fast and planning feel effortless. Some larger features may appear later as
+            We're focused on making logging fast and planning feel effortless. Some larger features may appear later as
             we improve the core experience.
           </p>
 

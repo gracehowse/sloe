@@ -17,7 +17,7 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">The service</h2>
           <p>
-            Suppr is provided “as is” for personal nutrition and recipe planning. Nutrition estimates, barcode data,
+            Suppr is provided "as is" for personal nutrition and recipe planning. Nutrition estimates, barcode data,
             and third-party recipe imports may be incomplete or inaccurate. Always verify critical dietary or medical
             decisions with a professional. Optional AI-assisted features (for example photo or voice meal logging) rely
             on third-party models; see the{" "}
@@ -28,13 +28,13 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>
-            Do not misuse the service, attempt to scrape or overload APIs, or use the product to violate others’
+            Do not misuse the service, attempt to scrape or overload APIs, or use the product to violate others'
             rights. You are responsible for content you upload or import.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Subscriptions</h2>
           <p>
             Paid features may be billed through Stripe. Fees, renewals, and refunds follow the checkout flow and
-            Stripe’s policies unless your deployment states otherwise.
+            Stripe's policies unless your deployment states otherwise.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>

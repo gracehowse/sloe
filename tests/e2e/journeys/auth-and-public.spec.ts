@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../utils/a11y";
 
 /**
- * Human-style journeys: each step reads like “when I do X, I expect Y”.
+ * Human-style journeys: each step reads like "when I do X, I expect Y".
  * Prefer getByRole / getByLabel so behavior tracks what users see, not implementation details.
  */
 test.describe("Public auth journey", () => {

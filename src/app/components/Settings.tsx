@@ -11,7 +11,7 @@ import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
 } from "../../constants/dietaryPreferences.ts";
-import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportPlatemateLocalData.ts";
+import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -23,9 +23,9 @@ interface SettingsProps {
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
-  "platemate-profile-v2",
-  "platemate-collections-v1",
-  "platemate-recent-foods-v1",
+  "suppr-profile-v2",
+  "suppr-collections-v1",
+  "suppr-recent-foods-v1",
 ];
 
 export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
@@ -150,7 +150,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             type="text"
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="e.g. PLATEMATE_PRO"
+            placeholder="e.g. SUPPR_PRO"
             autoComplete="off"
             className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
@@ -175,7 +175,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                     invalid_or_expired: "That code is not valid or has expired.",
                     already_redeemed: "You have already redeemed this code.",
                     rpc_error: result.message ?? "Could not redeem code.",
-                    not_deployed: "Promo codes aren’t available in this build yet.",
+                    not_deployed: "Promo codes aren't available in this build yet.",
                   };
                   toast.error(messages[result.error] ?? "Could not redeem code.");
                 }

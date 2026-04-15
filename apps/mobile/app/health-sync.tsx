@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
@@ -22,14 +23,31 @@ export default function HealthSyncScreen() {
   const available = isHealthSyncAvailable();
 
   const handleConnect = useCallback(async () => {
+    if (Constants.appOwnership === "expo") {
+      Alert.alert(
+        "Expo Go",
+        "Apple Health isn’t available in Expo Go. Open this app from a development build (Xcode or `expo run:ios --device`).",
+      );
+      return;
+    }
+    if (!available) {
+      Alert.alert(
+        "Not available",
+        "The Health native module isn’t in this build. From apps/mobile run `npx expo prebuild --platform ios`, then rebuild and install on your iPhone.",
+      );
+      return;
+    }
     const granted = await requestHealthPermissions();
     if (granted) {
       setConnected(true);
       Alert.alert("Connected", "Health data sync is now enabled.");
     } else {
-      Alert.alert("Unavailable", "Health sync requires a native build. This feature is not available in Expo Go.");
+      Alert.alert(
+        "Permission or Health access",
+        "Apple didn’t grant access, or Health isn’t available on this device. Try again and tap Allow in the Health prompt. On Simulator, Health data is limited — use a real iPhone if it still fails.",
+      );
     }
-  }, []);
+  }, [available]);
 
   const handleSync = useCallback(async () => {
     if (!userId) return;
@@ -120,10 +138,14 @@ export default function HealthSyncScreen() {
       {!available && (
         <View style={[styles.card, { borderColor: Accent.warning + "40", gap: Spacing.sm }]}>
           <Text style={{ fontSize: 14, color: Accent.warning, fontWeight: "600" }}>
-            Health sync needs a dev or production build — not Expo Go.
+            {Constants.appOwnership === "expo"
+              ? "Apple Health isn’t available in Expo Go."
+              : "Apple Health isn’t available in this install."}
           </Text>
           <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-            Configure EAS for this app, run a development build for iOS or Android, install it on a real device, then open this screen again to grant Health permissions.
+            {Constants.appOwnership === "expo"
+              ? "Install the Suppr development build (not the Expo Go app), then return here."
+              : "Rebuild with native modules: from apps/mobile run `npx expo prebuild --platform ios`, open ios/Suppr.xcworkspace, build to your iPhone, and start Metro (`npx expo start` or `npm run ios:device:tunnel`)."}
           </Text>
         </View>
       )}

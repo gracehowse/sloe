@@ -3,7 +3,7 @@ import type { DayPlan, LibraryEntryKind, LoggedMeal, ShoppingItem } from "../../
 import { DEFAULT_MACRO_TARGETS, normalizeMacroTargets, type MacroTargets } from "../../types/profile.ts";
 import { DEFAULT_NOTIFICATION_PREFS, type AppNotification, type NotificationPrefs } from "../../types/notifications.ts";
 
-export const STORAGE_KEY = "platemate-app-v1";
+export const STORAGE_KEY = "suppr-app-v1";
 
 /** Default slot id for users without `mealPlanSlots` in localStorage yet. */
 export const DEFAULT_MEAL_PLAN_SLOT_ID = "plan-slot-default";

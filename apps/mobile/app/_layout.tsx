@@ -26,7 +26,7 @@ export const unstable_settings = {
 };
 
 /**
- * Android “Open with” / share targets often deliver an https:// Instagram (etc.) URL as the
+ * Android "Open with" / share targets often deliver an https:// Instagram (etc.) URL as the
  * launch URL. Expo Router would otherwise open the home tab and never pass the link to import.
  */
 function ForwardSocialSharesToImport() {
@@ -35,12 +35,12 @@ function ForwardSocialSharesToImport() {
   const forward = useCallback(
     (href: string) => {
       const t = href.trim();
-      if (/^(platemate|suppr):/i.test(t)) {
+      if (/^suppr:/i.test(t)) {
         const u = urlFromDeepLink(t);
         if (u) {
           router.replace({ pathname: "/import-shared", params: { url: u } });
         } else {
-          // Share-intent deep link (suppr://… legacy platemate://…) —
+          // Share-intent deep link (suppr://…) —
           // redirect home so expo-router doesn't show "Unmatched Route".
           // ForwardShareIntentToImport will pick up the data and navigate.
           router.replace("/");
@@ -102,7 +102,7 @@ function ForwardShareIntentToImport() {
 }
 
 /**
- * Share → “Open in Suppr” often returns to Discover with only the system pasteboard updated.
+ * Share → "Open in Suppr" often returns to Discover with only the system pasteboard updated.
  * import-shared never mounts, so we watch for resume + read clipboard here.
  */
 function ResumeClipboardToImport() {

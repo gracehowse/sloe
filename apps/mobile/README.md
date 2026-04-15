@@ -27,6 +27,22 @@ If Xcode says **`mobile.xcodeproj` couldn’t be opened**, or **Failed to load c
 
 **`PhaseScriptExecution` failed** on **hermes-engine**, **ReactNativeDependencies**, or **`EXConstants` → “Generate app.config for prebuilt Constants.manifest”:** (1) Xcode’s script phases often don’t see `node` on `PATH` — **`npx expo prebuild --platform ios`** refreshes **`ios/.xcode.env`** / **`.xcode.env.local`** (see `withXcodeNodeBinary.js`). (2) If the log shows **`PluginError: Failed to resolve plugin … withXcodeNodeBinary`**, local Expo config plugins must be **`.js`** (not `.ts`) so Xcode’s config step can load them. In Xcode: **Report navigator** (⌘9) → failed build → expand the red **Run script** row for the real stderr. Turn **User Script Sandboxing** **off** for **Debug** if it’s on (it blocks some RN/CocoaPods scripts).
 
+### Apple Health (`react-native-health`)
+
+The **`react-native-health`** Expo config plugin is listed in `app.json`. After changing it or if Health sync says the native module is missing, run **`npx expo prebuild --platform ios`** from **`apps/mobile`**, then rebuild in Xcode or `expo run:ios --device`. HealthKit still requires a **paid Apple Developer** team with HealthKit on the App ID (see below).
+
+### “No profiles … Automatic signing is disabled” (`expo run:ios --device`)
+
+Expo only passes **`-allowProvisioningUpdates`** when it thinks signing is not fully configured. **Manual** provisioning flags in `project.pbxproj` can block that and break CLI device installs.
+
+This repo includes **`withIosXcodeAutomaticSigning`** (see `app.config.ts`) so **`npx expo prebuild --platform ios`** resets **Suppr** and **ShareExtension** to **Automatic** signing and clears **PROVISIONING_PROFILE** entries. Then:
+
+1. **Xcode → Settings → Accounts** — sign in with the Apple ID that owns the team; **Download Manual Profiles** if needed.
+2. Open **`ios/Suppr.xcworkspace`** → each target (**Suppr**, **ShareExtension**) → **Signing & Capabilities** — pick the correct **Team** (paid team for HealthKit / push / Sign in with Apple).
+3. Re-run **`npm run ios:device:tunnel`** (or **Run** from Xcode).
+
+Set **`ios.appleTeamId`** in `app.json` to your [10-character Team ID](https://developer.apple.com/account) if Expo should stamp **DEVELOPMENT_TEAM** during prebuild.
+
 ### Physical iPhone (USB)
 
 1. Plug in the phone, unlock it, tap **Trust** if asked.
@@ -75,6 +91,10 @@ Use this once you are on the **$99/year** Apple Developer Program so **Sign in w
 **Personal Team only:** after `npm run prebuild:ios:personal`, open Xcode → **Signing & Capabilities** → choose your **Personal Team** so the app installs.
 
 **Install on device (any team):** from **`apps/mobile`**, `npm run ios:device`, or from the repo root `npm run mobile:ios:device`. Prefer **`npm run ios:device:tunnel`** / **`npm run mobile:ios:device:tunnel`** if you hit “Could not connect to development server”. On the phone, **Settings → Suppr → Local Network → On** when using LAN Metro; see the section below for tunnel vs Wi‑Fi.
+
+### “No script URL provided” / `unsanitizedScriptURLString = (null)`
+
+The native app started with **no Metro URL** (development builds load JS from the packager). Typical causes: **Metro is not running**, you **Run** from Xcode while nothing is listening on **8081**, or the dev client never received a bundler address. **Fix:** from **`apps/mobile`**, start the packager first (`npx expo start`, or **`npm run start:tunnel`** on a device), then open the app from the **Expo CLI** menu or use **`npm run ios:device:tunnel`** so install and bundler stay aligned. **Force-quit** the app and reopen after Metro is up. **Release** builds must embed a bundle (EAS/production pipeline); a dev build opened without Metro will show this or a red error screen.
 
 ### “Could not connect to development server” (real device)
 

@@ -34,6 +34,7 @@ import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { projectWeight } from "@/lib/weightProjection";
 
 type TrackerMacroTargets = Pick<
   NutritionDefaults,
@@ -106,6 +107,10 @@ export default function TrackerScreen() {
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
+  const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
+  const [profileGoalWeightKg, setProfileGoalWeightKg] = useState<number | null>(null);
+  const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -153,7 +158,7 @@ export default function TrackerScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, dob",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -202,6 +207,11 @@ export default function TrackerScreen() {
     if (data.week_start_day === "sunday" || data.week_start_day === "monday") {
       setWeekStartDay(data.week_start_day);
     }
+    const wk = d.weight_kg != null ? Number(d.weight_kg) : null;
+    setProfileWeightKg(Number.isFinite(wk) ? wk : null);
+    const gwk = d.goal_weight_kg != null ? Number(d.goal_weight_kg) : null;
+    setProfileGoalWeightKg(Number.isFinite(gwk) ? gwk : null);
+    setProfileGoal(d.goal ?? null);
   }, [userId]);
 
   const dayKey = dateKeyFromDate(selectedDate);
@@ -406,9 +416,9 @@ export default function TrackerScreen() {
 
       const ExpoConstants = (await import("expo-constants")).default;
       const extra = ExpoConstants.expoConfig?.extra as
-        | { supprApiUrl?: string; platemateApiUrl?: string }
+        | { supprApiUrl?: string }
         | undefined;
-      const apiBase = extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "";
+      const apiBase = extra?.supprApiUrl ?? "";
       const resp = await fetch(`${apiBase}/api/nutrition/photo-log`, {
         method: "POST",
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
@@ -496,8 +506,8 @@ export default function TrackerScreen() {
   const submitVoiceTranscript = useCallback(async (transcript: string) => {
     try {
       const Constants = (await import("expo-constants")).default;
-      const ex = Constants.expoConfig?.extra as { supprApiUrl?: string; platemateApiUrl?: string } | undefined;
-      const apiBase = ex?.supprApiUrl ?? ex?.platemateApiUrl ?? "";
+      const ex = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+      const apiBase = ex?.supprApiUrl ?? "";
 
       // Try the AI API first
       let data: any = null;
@@ -1538,7 +1548,101 @@ export default function TrackerScreen() {
           </View>
         )}
 
+        {/* Complete Day button — only when viewing today and there are logged meals */}
+        {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
+          <Pressable
+            onPress={() => setCompleteDayOpen(true)}
+            style={{
+              marginTop: Spacing.lg,
+              paddingVertical: 16,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.primary,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Complete Day</Text>
+          </Pressable>
+        )}
+
       </ScrollView>
+
+      {/* Complete Day Modal */}
+      <Modal visible={completeDayOpen} transparent animationType="slide" onRequestClose={() => setCompleteDayOpen(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }}
+            onPress={() => setCompleteDayOpen(false)}
+          />
+          <View style={{
+            backgroundColor: colors.card,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: Spacing.xl,
+            paddingBottom: insets.bottom + Spacing.xl,
+            paddingHorizontal: Spacing.xl,
+            alignItems: "center",
+          }}>
+            <Pressable onPress={() => setCompleteDayOpen(false)} style={{ position: "absolute", top: 16, left: 20 }}>
+              <Ionicons name="close" size={24} color={colors.textTertiary} />
+            </Pressable>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 24 }}>Diary complete!</Text>
+
+            {/* Checkmark circle */}
+            <View style={{
+              width: 80, height: 80, borderRadius: 40,
+              backgroundColor: Accent.primary + "18",
+              alignItems: "center", justifyContent: "center",
+              marginBottom: 24,
+            }}>
+              <Ionicons name="checkmark" size={40} color={Accent.primary} />
+            </View>
+
+            {/* Weight projection */}
+            {profileWeightKg != null && totals.calories > 0 ? (() => {
+              const prediction = projectWeight({
+                currentWeightKg: profileWeightKg,
+                todayCalories: totals.calories,
+                targetCalories: targets.calories,
+                goal: profileGoal,
+              });
+              return (
+                <>
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center", lineHeight: 26, marginBottom: 8 }}>
+                    If every day were like today, you could weigh{" "}
+                    <Text style={{ color: Accent.primary }}>{prediction.projectedWeightKg} kg</Text>
+                    {" "}in {prediction.projectionWeeks} weeks.
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginBottom: 24, paddingHorizontal: 20 }}>
+                    This is a rough estimate based on net calories for this day. Actual results may vary.
+                  </Text>
+                </>
+              );
+            })() : (
+              <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 24 }}>
+                Great work logging today! Set your weight in your profile to see weight projections here.
+              </Text>
+            )}
+
+            <Pressable
+              onPress={() => {
+                setCompleteDayOpen(false);
+                router.navigate("/(tabs)/progress" as any);
+              }}
+              style={{
+                width: "100%",
+                paddingVertical: 16,
+                borderRadius: Radius.md,
+                backgroundColor: Accent.primary,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>View my progress</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* FAB — always visible, opens bottom sheet */}
       {viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen && (

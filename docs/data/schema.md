@@ -106,7 +106,7 @@ promo_codes ──< promo_redemptions ──── auth.users
 
 ## Client-only Data (localStorage)
 
-Some state is stored **only** in the browser's `localStorage` (`platemate-app-v1` key) and is **not** synced to Supabase. This data will be lost when the user switches devices or clears browser storage.
+Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` key) and is **not** synced to Supabase. This data will be lost when the user switches devices or clears browser storage.
 
 | Data | Key in snapshot | Cross-device? | Notes |
 |------|----------------|---------------|-------|

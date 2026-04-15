@@ -1,6 +1,6 @@
 import { extractUrlFromShareText } from "@/lib/resolveImportUrl";
 
-/** Hosts we treat as “share sheet → import this link” (not generic https). */
+/** Hosts we treat as "share sheet → import this link" (not generic https). */
 export const SOCIAL_SHARE_URL_RE =
   /\b(instagram\.com|instagr\.am|l\.instagram\.com|tiktok\.com|vm\.tiktok|pinterest\.com|pin\.it)\b/i;
 

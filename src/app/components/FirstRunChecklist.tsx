@@ -7,7 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 
-const DISMISSED_KEY = "platemate-checklist-dismissed";
+const DISMISSED_KEY = "suppr-checklist-dismissed";
 
 interface FirstRunChecklistProps {
   onNavigate: (view: string) => void;
@@ -18,14 +18,14 @@ const STEPS = [
     id: "log",
     icon: Icons.target,
     label: "Start with your dashboard",
-    description: "Log food and water on the Tracker — that’s the daily home base; recipes and planning are extras when you want them",
+    description: "Log food and water on the Tracker — that's the daily home base; recipes and planning are extras when you want them",
     cta: "Open Tracker",
     view: "tracker",
   },
   {
     id: "plan",
     icon: Icons.plan,
-    label: "Plan meals when you’re ready",
+    label: "Plan meals when you're ready",
     description: "Generate a week that lines up with your calorie and macro targets",
     cta: "Open Planner",
     view: "planner",

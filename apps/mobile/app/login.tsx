@@ -126,7 +126,7 @@ export default function LoginScreen() {
   if (!hasSupabaseConfig()) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.title}>PLATEMATE</Text>
+        <Text style={styles.title}>SUPPR</Text>
         <Text style={styles.errorText}>
           {"Sign-in isn't configured for this build. Use the web app or contact support."}
         </Text>
@@ -214,7 +214,7 @@ export default function LoginScreen() {
         <View style={styles.brandCircle}>
           <Text style={styles.brandLetter}>P</Text>
         </View>
-        <Text style={styles.title}>PLATEMATE</Text>
+        <Text style={styles.title}>SUPPR</Text>
         <Text style={styles.tagline}>Meal plans that hit your macros</Text>
       </View>
 

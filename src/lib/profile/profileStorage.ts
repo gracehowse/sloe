@@ -1,8 +1,8 @@
 import { normalizeMacroTargets, type UserProfile } from "../../types/profile.ts";
 
-const KEY = "platemate-profile-v2";
+const KEY = "suppr-profile-v2";
 
-const LEGACY_KEY = "platemate-profile-v1";
+const LEGACY_KEY = "suppr-profile-v1";
 
 export function loadLocalProfile(expectedUserId?: string | null): UserProfile | null {
   try {

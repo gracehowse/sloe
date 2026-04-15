@@ -3,7 +3,7 @@ import type { DayPlan, DayPlanMeal } from "../../types/recipe.ts";
 const MIN = 0.5;
 const MAX = 8;
 
-/** Whole and half steps (0.5, 1, 1.5, …) for “me / us / family” style scaling. */
+/** Whole and half steps (0.5, 1, 1.5, …) for "me / us / family" style scaling. */
 export function clampPortionMultiplier(raw: number): number {
   if (!Number.isFinite(raw)) return 1;
   const stepped = Math.round(raw * 2) / 2;

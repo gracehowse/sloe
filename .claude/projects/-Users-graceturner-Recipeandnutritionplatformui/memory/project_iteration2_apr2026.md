@@ -10,7 +10,7 @@ type: project
 
 1. **CookMode meal logging bugs** — Was hardcoding "Dinner" and `portionMultiplier: 1`. Now infers meal name from recipe slots or time of day, scales macros by `servings / recipe.servings`.
 
-2. **FirstRunChecklist persistence** — Dismissed state now stored in localStorage (`platemate-checklist-dismissed`). Also tracks `onboarding_completed` and `first_run_step_completed` events.
+2. **FirstRunChecklist persistence** — Dismissed state now stored in localStorage (`suppr-checklist-dismissed`). Also tracks `onboarding_completed` and `first_run_step_completed` events.
 
 3. **5 dead analytics events wired** — Created `PageViewTracker.tsx` client component for SSR pages. All events now tracked: `empty_state_cta_clicked` (EmptyState), `first_run_step_completed` + `onboarding_completed` (FirstRunChecklist), `pricing_page_viewed` (pricing page), `recipe_page_viewed` (recipe page).
 

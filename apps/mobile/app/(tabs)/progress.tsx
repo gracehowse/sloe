@@ -12,6 +12,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import { calcGoalTimeline, projectWeight } from "@/lib/weightProjection";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -51,6 +52,7 @@ export default function ProgressScreen() {
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  const [userGoal, setUserGoal] = useState<string | null>(null);
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
@@ -61,7 +63,7 @@ export default function ProgressScreen() {
     // Profile targets + weight + steps
     const { data: profile } = await supabase
       .from("profiles")
-      .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day")
+      .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal")
       .eq("id", userId)
       .maybeSingle();
 
@@ -83,6 +85,7 @@ export default function ProgressScreen() {
       if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
         setWeekStartDay(profile.week_start_day);
       }
+      setUserGoal((profile as any).goal ?? null);
     }
 
     // Nutrition entries
@@ -359,6 +362,81 @@ export default function ProgressScreen() {
                 </Text>
               )}
             </View>
+          )}
+
+          {/* Weight Projection / Journey Card */}
+          {weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (
+            (() => {
+              const timeline = calcGoalTimeline({
+                currentWeightKg: weightKg,
+                goalWeightKg: goalWeightKg,
+                weightKgByDay,
+              });
+              const progressPct = Math.max(0, Math.min(100,
+                timeline.remainingKg > 0
+                  ? ((Math.abs(weightKg - goalWeightKg) - timeline.remainingKg) / Math.abs(weightKg - goalWeightKg)) * 100
+                  : 100
+              ));
+              // Also show daily projection based on average recent intake
+              const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
+              const recentDays = daysWithFood.slice(-7);
+              const avgCals = recentDays.length > 0
+                ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
+                : 0;
+              const dailyProjection = avgCals > 0 && weightKg
+                ? projectWeight({ currentWeightKg: weightKg, todayCalories: avgCals, targetCalories: targets.calories, goal: userGoal })
+                : null;
+
+              return (
+                <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <IconBox color={t.green} size={28}>
+                        <Ionicons name="flag-outline" size={14} color={t.green} />
+                      </IconBox>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Journey</Text>
+                    </View>
+                    {timeline.daysToGoal != null && (
+                      <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
+                        {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Progress description */}
+                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 12, lineHeight: 18 }}>
+                    {timeline.remainingKg > 0.1
+                      ? `${timeline.remainingKg} kg to go until your ${goalWeightKg} kg goal.`
+                      : "You've reached your goal weight!"}
+                    {timeline.weeklyRateKg !== 0 && ` Trending ${timeline.trendDirection} at ${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+                  </Text>
+
+                  {/* Progress bar */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{weightKg} kg</Text>
+                    <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: t.border }}>
+                      <View style={{
+                        width: `${Math.max(progressPct, 3)}%`,
+                        height: "100%",
+                        borderRadius: 4,
+                        backgroundColor: progressPct >= 100 ? t.green : t.accent,
+                      }} />
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{goalWeightKg} kg</Text>
+                  </View>
+
+                  {/* Daily projection based on recent average */}
+                  {dailyProjection && (
+                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
+                      <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                        Based on your recent average ({avgCals.toLocaleString()} kcal/day), you could weigh{" "}
+                        <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in {dailyProjection.projectionWeeks} weeks.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()
           )}
 
           {/* Weekly Insight */}

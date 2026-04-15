@@ -8,9 +8,12 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -39,8 +42,10 @@ const THEME_OPTIONS: { label: string; value: ThemePreference }[] = [
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
+  const authEmail = session?.user?.email ?? null;
   const colors = useThemeColors();
   const { preference, setPreference } = useTheme();
 
@@ -48,6 +53,9 @@ export default function SettingsScreen() {
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<string>("free");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoSubmitting, setPromoSubmitting] = useState(false);
 
   const styles = useMemo(
     () =>
@@ -146,6 +154,54 @@ export default function SettingsScreen() {
     };
   }, [userId]);
 
+  // Load user tier
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("user_tier")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const tier = (data as any)?.user_tier as string | null;
+        if (tier === "free" || tier === "base" || tier === "pro") setUserTier(tier);
+      });
+  }, [userId]);
+
+  const handleChangePassword = useCallback(async () => {
+    if (!authEmail) {
+      Alert.alert("Error", "No email on this account.");
+      return;
+    }
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(authEmail);
+    if (resetErr) Alert.alert("Error", resetErr.message);
+    else Alert.alert("Password Reset", "Check your inbox for a password reset link.");
+  }, [authEmail]);
+
+  const handleRedeemPromo = useCallback(async () => {
+    if (!userId || !promoCode.trim()) return;
+    setPromoSubmitting(true);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("redeem_promo_code", {
+        p_code: promoCode.trim(),
+      });
+      if (rpcErr) {
+        Alert.alert("Error", rpcErr.message || "Could not redeem code.");
+      } else if (data && typeof data === "object" && (data as any).ok) {
+        const tier = (data as any).tier ?? "pro";
+        setUserTier(tier);
+        setPromoCode("");
+        Alert.alert("Success", `Plan updated to ${tier}.`);
+      } else {
+        Alert.alert("Invalid Code", "That code is not valid or has expired.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not redeem code.");
+    } finally {
+      setPromoSubmitting(false);
+    }
+  }, [userId, promoCode]);
+
   const persist = useCallback(
     async (next: NotificationPrefs) => {
       if (!userId) return;
@@ -205,6 +261,87 @@ export default function SettingsScreen() {
               </Pressable>
             );
           })}
+        </View>
+
+        {/* Your Plan */}
+        <Text style={styles.sectionTitle}>Your Plan</Text>
+        <View style={styles.card}>
+          <View style={[styles.row, { justifyContent: "flex-start", gap: 12 }]}>
+            <View style={{
+              paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8,
+              backgroundColor: userTier === "pro" ? Accent.primary + "18" : userTier === "base" ? Accent.success + "18" : colors.border + "60",
+            }}>
+              <Text style={{
+                fontSize: 13, fontWeight: "700",
+                color: userTier === "pro" ? Accent.primary : userTier === "base" ? Accent.success : colors.textSecondary,
+              }}>
+                {userTier === "pro" ? "Pro" : userTier === "base" ? "Base" : "Free"}
+              </Text>
+            </View>
+            {authEmail ? <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>{authEmail}</Text> : null}
+          </View>
+          {userTier !== "pro" && (
+            <Pressable
+              style={[styles.row, styles.rowLast]}
+              onPress={() => router.push("/paywall" as any)}
+            >
+              <Text style={[styles.rowLabel, { color: Accent.success }]}>View plans</Text>
+              <Ionicons name="chevron-forward" size={16} color={Accent.success} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Promo Code */}
+        <Text style={styles.sectionTitle}>Promo Code</Text>
+        <View style={[styles.card, { padding: Spacing.lg }]}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 12 }}>
+            Redeem a code to upgrade your plan.
+          </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TextInput
+              value={promoCode}
+              onChangeText={setPromoCode}
+              placeholder="e.g. SUPPR_PRO"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              style={{
+                flex: 1, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12,
+                borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card,
+                color: colors.text, fontSize: 14,
+              }}
+            />
+            <Pressable
+              onPress={() => void handleRedeemPromo()}
+              disabled={promoSubmitting || !promoCode.trim()}
+              style={{
+                paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
+                backgroundColor: Accent.primary,
+                opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                {promoSubmitting ? "..." : "Apply"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Account */}
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => void handleChangePassword()}>
+            <Text style={styles.rowLabel}>Change Password</Text>
+            <Ionicons name="mail-outline" size={18} color={colors.textTertiary} />
+          </Pressable>
+          <Pressable
+            style={[styles.row, styles.rowLast]}
+            onPress={() => void supabase.auth.signOut()}
+          >
+            <Text style={[styles.rowLabel, { color: "#ef4444" }]}>Sign Out</Text>
+            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+          </Pressable>
         </View>
 
         {loading ? (
@@ -270,7 +407,7 @@ export default function SettingsScreen() {
                       .eq("id", userId)
                       .maybeSingle();
                     const payload = JSON.stringify({ profile, entries }, null, 2);
-                    await Share.share({ message: payload, title: "PlateMate Data Export" });
+                    await Share.share({ message: payload, title: "Suppr Data Export" });
                   } catch (e) {
                     Alert.alert("Export failed", e instanceof Error ? e.message : "Unknown error");
                   }

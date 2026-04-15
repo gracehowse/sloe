@@ -247,7 +247,7 @@ export default function OnboardingPage() {
 
     if (upsertError) {
       // Profile save failed (DB not configured or migration not applied).
-      // Don’t block the user — local profile is already saved above.
+      // Don't block the user — local profile is already saved above.
       console.warn("Profile upsert failed:", upsertError.message);
       toast.warning("Profile saved on this device. Cloud sync will activate when the database is ready.");
     }

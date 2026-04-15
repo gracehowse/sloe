@@ -57,7 +57,7 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
             </div>
             <p className="text-foreground font-semibold mb-1">All caught up</p>
             <p className="text-sm text-muted-foreground">
-              When creators you follow publish recipes or your meal plan is ready, you’ll see it here.
+              When creators you follow publish recipes or your meal plan is ready, you'll see it here.
             </p>
           </div>
         ) : (

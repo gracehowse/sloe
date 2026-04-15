@@ -3,7 +3,7 @@
 :root {
   --font-size: 16px;
 
-  /** Platemate v2: snappier easing — fast-in, gentle-out. */
+  /** Suppr v2: snappier easing — fast-in, gentle-out. */
   --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --pm-duration: 150ms;
   --pm-duration-sm: 120ms;

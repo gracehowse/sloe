@@ -83,7 +83,7 @@ export interface LoggedMeal {
   carbs: number;
   fat: number;
   /**
-   * How many “plates” / people this log represents (1 = solo, 2 = shared dinner, etc.).
+   * How many "plates" / people this log represents (1 = solo, 2 = shared dinner, etc.).
    * Macros on the row are already scaled; this is for display and analytics.
    */
   portionMultiplier?: number;

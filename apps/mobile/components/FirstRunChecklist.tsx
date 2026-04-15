@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
-const STORAGE_KEY = "platemate-checklist-dismissed";
+const STORAGE_KEY = "suppr-checklist-dismissed";
 
 type Props = {
   savedCount: number;

@@ -1,14 +1,14 @@
 ---
 name: Full product & technical audit (Apr 2026)
-description: Comprehensive audit of Platemate covering product strategy, code quality, UX, architecture, competitor benchmark, and prioritised roadmap
+description: Comprehensive audit of Suppr covering product strategy, code quality, UX, architecture, competitor benchmark, and prioritised roadmap
 type: project
 ---
 
-## Full Platemate Audit — 2026-04-10
+## Full Suppr Audit — 2026-04-10
 
 ### Rating: Promising prototype with strong product thinking, weak execution completeness
 
-**Product thesis is sharp:** Macro trackers have bad food discovery; recipe apps don't close the loop to macro budgets. Platemate targets the gap: targets -> plan -> shop -> cook -> log in one place.
+**Product thesis is sharp:** Macro trackers have bad food discovery; recipe apps don't close the loop to macro budgets. Suppr targets the gap: targets -> plan -> shop -> cook -> log in one place.
 
 **Stage:** Late prototype / early MVP. Core loop is functional. Monetisation infrastructure exists. Social features are schema-ready but UI-thin. Roughly 60-70% toward a launchable beta.
 

@@ -10,10 +10,10 @@ import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 
-const COLLECTIONS_KEY = "platemate-collections-v1";
-const HEARTS_KEY = "platemate-feed-hearts-v1";
-/** ISO timestamp: last time the user left the Discover view (used for “new from follows” banner). */
-const DISCOVER_LAST_LEFT_AT_KEY = "platemate-discover-last-left-at";
+const COLLECTIONS_KEY = "suppr-collections-v1";
+const HEARTS_KEY = "suppr-feed-hearts-v1";
+/** ISO timestamp: last time the user left the Discover view (used for "new from follows" banner). */
+const DISCOVER_LAST_LEFT_AT_KEY = "suppr-discover-last-left-at";
 
 type CollectionRow = { id: string; name: string; recipeIds: string[] };
 
@@ -446,7 +446,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               <p className="text-foreground font-medium mb-2">Nothing to show</p>
               <p className="text-sm text-muted-foreground mb-4">
                 {discoverRecipes.length === 0
-                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you’re setting up the app, publish a recipe with an author so community posts can appear here."
+                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you're setting up the app, publish a recipe with an author so community posts can appear here."
                   : feedScope === "following"
                     ? followedAuthorIds.size + followedCreatorIds.size === 0
                       ? "Open a recipe and follow the author to build your Following feed."

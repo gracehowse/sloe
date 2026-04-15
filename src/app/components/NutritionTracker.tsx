@@ -21,6 +21,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
+import { useAuthSession } from "../../context/AuthSessionContext.tsx";
+import { projectWeight } from "../../lib/weightProjection.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { fetchProductByBarcode } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
@@ -40,7 +43,7 @@ import { distributeMealBudget } from "../../lib/nutrition/mealBudget.ts";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
 
-const RECENT_BARCODE_KEY = "platemate-recent-foods-v1";
+const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 
 const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack", "Planned"];
 
@@ -177,6 +180,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   const [photoUploading, setPhotoUploading] = useState(false);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
+  const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  const { authedUserId } = useAuthSession();
+
+  useEffect(() => {
+    if (!authedUserId) return;
+    supabase
+      .from("profiles")
+      .select("weight_kg, goal")
+      .eq("id", authedUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        const w = data.weight_kg != null ? Number(data.weight_kg) : null;
+        setProfileWeightKg(Number.isFinite(w) ? w : null);
+        setProfileGoal((data as any).goal ?? null);
+      });
+  }, [authedUserId]);
   const [voiceText, setVoiceText] = useState("");
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" ? navigator.onLine : true,
@@ -768,6 +790,65 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           </div>
         </div>
       )}
+
+      {/* Complete Day */}
+      {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
+        <button
+          onClick={() => setCompleteDayOpen(true)}
+          className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+        >
+          Complete Day
+        </button>
+      )}
+
+      {/* Complete Day Dialog */}
+      <Dialog open={completeDayOpen} onOpenChange={setCompleteDayOpen}>
+        <DialogContent className="bg-card border-border text-center max-w-sm">
+          <div className="flex flex-col items-center py-4">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Diary complete!</DialogTitle>
+              <DialogDescription>Weight projection based on today's intake</DialogDescription>
+            </DialogHeader>
+            <p className="text-lg font-bold text-foreground mb-6">Diary complete!</p>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ background: "var(--primary-soft, rgba(76,108,224,0.12))" }}>
+              <Icons.check className="w-10 h-10 text-primary" />
+            </div>
+            {profileWeightKg != null && totals.calories > 0 ? (() => {
+              const prediction = projectWeight({
+                currentWeightKg: profileWeightKg,
+                todayCalories: totals.calories,
+                targetCalories: normalizeMacroTargets(nutritionTargets).calories,
+                goal: profileGoal,
+              });
+              return (
+                <>
+                  <p className="text-lg font-bold text-foreground leading-relaxed mb-2 px-4">
+                    If every day were like today, you could weigh{" "}
+                    <span className="text-primary">{prediction.projectedWeightKg} kg</span>{" "}
+                    in {prediction.projectionWeeks} weeks.
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-6 px-4">
+                    This is a rough estimate based on net calories for this day. Actual results may vary.
+                  </p>
+                </>
+              );
+            })() : (
+              <p className="text-sm text-muted-foreground mb-6 px-4">
+                Great work logging today! Set your weight in your profile to see weight projections here.
+              </p>
+            )}
+            <button
+              onClick={() => {
+                setCompleteDayOpen(false);
+                onOpenProgress?.();
+              }}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity"
+            >
+              View my progress
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={addOpen}

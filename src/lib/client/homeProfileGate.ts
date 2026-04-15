@@ -36,7 +36,7 @@ export function isProfileRowComplete(profile: ProfileGateRow): boolean {
   );
 }
 
-/** True when error likely means “retry” rather than “no profile row”. */
+/** True when error likely means "retry" rather than "no profile row". */
 export function isTransientProfileFetchError(message: string | undefined): boolean {
   const m = (message ?? "").toLowerCase();
   if (!m) return false;

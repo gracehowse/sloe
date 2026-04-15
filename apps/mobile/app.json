@@ -18,7 +18,8 @@
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
-      }
+      },
+      "appleTeamId": "H37U24NTP9"
     },
     "android": {
       "intentFilters": [
@@ -126,14 +127,21 @@
       "favicon": "./assets/images/favicon.png"
     },
     "extra": {
-      "supprWebUrl": "https://platemate-api.vercel.app",
-      "supprApiUrl": "https://platemate-api.vercel.app",
+      "supprWebUrl": "https://suppr-club.com",
+      "supprApiUrl": "https://suppr-club.com",
       "supabaseUrl": "https://fnfgxsignmuepshbebrl.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4"
     },
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Suppr reads your steps, weight, and activity data from Apple Health to keep your tracker in sync.",
+          "healthUpdatePermission": "Suppr only reads steps, weight, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
+        }
+      ],
       [
         "expo-notifications",
         {

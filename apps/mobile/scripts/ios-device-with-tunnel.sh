@@ -17,8 +17,8 @@ stop_8081() {
   fi
 }
 
-if [ "${SUPPR_KEEP_METRO:-${PLATEMATE_KEEP_METRO:-}}" = "1" ]; then
-  log "SUPPR_KEEP_METRO=1 (or PLATEMATE_KEEP_METRO=1) — not stopping existing Metro on 8081."
+if [ "${SUPPR_KEEP_METRO:-}" = "1" ]; then
+  log "SUPPR_KEEP_METRO=1 — not stopping existing Metro on 8081."
 else
   stop_8081
 fi

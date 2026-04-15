@@ -7,8 +7,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 function apiBase(): string {
-  const extra = Constants.expoConfig?.extra as { supprApiUrl?: string; platemateApiUrl?: string } | undefined;
-  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+  return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
 type Hit = { description?: string; fdcId?: number };
@@ -22,7 +22,7 @@ export default function SearchScreen() {
 
   const runSearch = async () => {
     if (!base) {
-      setErr("Food search isn’t available in this build yet.");
+      setErr("Food search isn't available in this build yet.");
       return;
     }
     setBusy(true);

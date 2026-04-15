@@ -11,6 +11,7 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
+import { isHealthSyncAvailable } from "@/lib/healthSync";
 
 /* ── Icon Box ── */
 function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -302,7 +303,7 @@ export default function ProfileScreen() {
         <SettingsRow icon="color-palette-outline" iconColor={t.accent} label="Appearance" sub="Theme & display settings" onPress={() => router.push("/(tabs)/settings" as any)} />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week Starts On" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
-        <SettingsRow icon="link-outline" iconColor={t.accent} label="Connected" sub="Not connected" />
+        <SettingsRow icon="link-outline" iconColor={t.accent} label="Connected" sub={isHealthSyncAvailable() ? "Apple Health" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow icon="time-outline" iconColor={t.accent} label="Notifications" sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"} onPress={() => router.push("/(tabs)/notifications" as any)} />
         <SettingsRow icon="download-outline" iconColor={t.accent} label="Export Data" sub="CSV download" />
         <SettingsRow icon="refresh-outline" iconColor={t.amber} label="Reset Plan" sub="Start fresh with new goals" onPress={() => setResetModalOpen(true)} />

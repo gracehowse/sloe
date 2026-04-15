@@ -5,10 +5,10 @@ import { authedFetch } from "./authedFetch";
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
 
-type Extra = { supprApiUrl?: string; platemateApiUrl?: string };
+type Extra = { supprApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;
-  return (extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "").replace(/\/$/, "");
+  return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
 export type MacrosPer100g = {

@@ -86,7 +86,7 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
     },
   });
 
-  // If the final URL after redirects is not Pinterest, we’re done.
+  // If the final URL after redirects is not Pinterest, we're done.
   const finalUrl = res.url;
   if (finalUrl && !isPinterestUrl(finalUrl)) {
     return finalUrl;
@@ -113,7 +113,7 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
     })
     .filter((h) => !isProbablyPinterestInternal(h));
 
-  // Heuristic: pick the first candidate that doesn’t look like an ad/analytics redirect.
+  // Heuristic: pick the first candidate that doesn't look like an ad/analytics redirect.
   const best =
     candidates.find((u) => {
       try {
@@ -352,15 +352,15 @@ export async function POST(req: Request) {
           status: res.status,
           message:
             res.status === 404
-              ? "We fetched the page but it didn’t contain a recipe. Double-check the URL (some sites use a different slug, e.g. ending in “-recipe”)."
-              : "We couldn’t fetch a recipe from this URL (some sites block automated imports). Try another URL or paste ingredients manually.",
+              ? `We fetched the page but it didn't contain a recipe. Double-check the URL (some sites use a different slug, e.g. ending in "-recipe").`
+              : "We couldn't fetch a recipe from this URL (some sites block automated imports). Try another URL or paste ingredients manually.",
         },
         { status: 502 },
       );
     }
     if (!isHtml) {
       return NextResponse.json(
-        { ok: false, error: "not_html", message: "This URL didn’t return HTML we can parse." },
+        { ok: false, error: "not_html", message: "This URL didn't return HTML we can parse." },
         { status: 422 },
       );
     }

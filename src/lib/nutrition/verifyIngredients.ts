@@ -59,7 +59,7 @@ export const MIN_MATCH_CONFIDENCE = 0.42;
 export const MIN_OFF_CONFIDENCE = 0.52;
 
 /**
- * Recipe verify UI: lines below this show “needs review” until the user confirms or picks a food.
+ * Recipe verify UI: lines below this show "needs review" until the user confirms or picks a food.
  * Above {@link MIN_MATCH_CONFIDENCE} so borderline auto-matches stay visually flagged.
  */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
