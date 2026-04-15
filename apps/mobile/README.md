@@ -58,7 +58,7 @@ Use this once you are on the **$99/year** Apple Developer Program so **Sign in w
    ```
 
    This applies `expo-apple-authentication`, `expo-notifications`, HealthKit from `app.json`, and the Sentry plugin.
-5. **Xcode signing** — Open **`ios/mobile.xcworkspace`** → target **mobile** → **Signing & Capabilities**:
+5. **Xcode signing** — Open **`ios/Suppr.xcworkspace`** → target **Suppr** → **Signing & Capabilities**:
    - **Team**: your paid team  
    - **Automatically manage signing**: on  
    - Confirm capabilities listed (Sign in with Apple, Push, HealthKit, etc.). Fix any red errors (usually enable the capability on the App ID in step 3, then **Download Manual Profiles** or toggle signing off/on).
