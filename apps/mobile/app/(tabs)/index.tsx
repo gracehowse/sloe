@@ -32,10 +32,21 @@ import { VOICE_LOG_NATIVE_BUILD_HINT } from "@/lib/voiceLog";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { subscribeOffline } from "@/lib/subscribeOffline";
-import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 
-const DEFAULT_TARGETS = NUTRITION_DEFAULTS;
+type TrackerMacroTargets = Pick<
+  NutritionDefaults,
+  "calories" | "protein" | "carbs" | "fat" | "fiber"
+>;
+
+const DEFAULT_TRACKER_TARGETS: TrackerMacroTargets = {
+  calories: NUTRITION_DEFAULTS.calories,
+  protein: NUTRITION_DEFAULTS.protein,
+  carbs: NUTRITION_DEFAULTS.carbs,
+  fat: NUTRITION_DEFAULTS.fat,
+  fiber: NUTRITION_DEFAULTS.fiber,
+};
 
 const MAX_JSONB_DAYS = 90;
 function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
@@ -64,7 +75,7 @@ export default function TrackerScreen() {
   const [fat, setFat] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [profileTargets, setProfileTargets] = useState(DEFAULT_TARGETS);
+  const [profileTargets, setProfileTargets] = useState(DEFAULT_TRACKER_TARGETS);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(false);
@@ -393,9 +404,11 @@ export default function TrackerScreen() {
         name: "meal.jpg",
       } as any);
 
-      const apiBase = (
-        (await import("expo-constants")).default.expoConfig?.extra as any
-      )?.supprApiUrl ?? (Constants.expoConfig?.extra as { platemateApiUrl?: string } | undefined)?.platemateApiUrl ?? "";
+      const ExpoConstants = (await import("expo-constants")).default;
+      const extra = ExpoConstants.expoConfig?.extra as
+        | { supprApiUrl?: string; platemateApiUrl?: string }
+        | undefined;
+      const apiBase = extra?.supprApiUrl ?? extra?.platemateApiUrl ?? "";
       const resp = await fetch(`${apiBase}/api/nutrition/photo-log`, {
         method: "POST",
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},

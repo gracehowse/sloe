@@ -12,6 +12,19 @@ npx expo start
 
 Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu.
 
+### Xcode and `ios/` (native project)
+
+The **`ios/`** folder is **gitignored** — it only exists after you generate it on your machine:
+
+```bash
+cd apps/mobile
+npx expo prebuild --platform ios
+```
+
+After prebuild, open **`ios/Suppr.xcworkspace`** (always the **workspace**, not `Suppr.xcodeproj` alone, so CocoaPods resolves). The main app target is **Suppr**.
+
+If Xcode says **`mobile.xcodeproj` couldn’t be opened**, you are opening an old **`mobile.xcworkspace`** from a previous template: remove **`ios/mobile.xcworkspace`** (and any **`mobile.xcodeproj`** if present) and use **`Suppr.xcworkspace`**, or run `npm run ios:xcode` from `apps/mobile`.
+
 ### Physical iPhone (USB)
 
 1. Plug in the phone, unlock it, tap **Trust** if asked.
