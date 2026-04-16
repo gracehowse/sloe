@@ -4,7 +4,7 @@
 
 ## Test Inventory
 
-### Unit Tests (17 files, 141 tests)
+### Unit Tests (20 files, 163 tests)
 
 | ID | File | Tests | Area | Priority |
 |----|------|-------|------|----------|
@@ -23,6 +23,9 @@
 | U13 | `stripeTier.test.ts` | 3 | Stripe → tier mapping | High |
 | U14 | `trackerStats.test.ts` | 3 | Tracker aggregation | High |
 | U15 | `imperial.test.ts` | 3 | Unit conversion | Medium |
+| U16 | `edamamClient.test.ts` | 4 | Edamam food/analysis macro extraction | Critical |
+| U17 | `getEffectiveTDEE.test.ts` | 5 | Adaptive vs static TDEE selection | Critical |
+| U18 | `verifyPipelineOrder.test.ts` | 5 | Nutrition pipeline source ordering & confidence | Critical |
 
 ### Integration Tests (2 files)
 
@@ -277,9 +280,39 @@
 7. Can quick-log a meal
 8. Shopping list loads (or shows empty state)
 
+### Mobile Maestro E2E Tests
+
+21 Maestro tests in `apps/mobile/.maestro/` cover the full mobile surface:
+
+| Test | What it covers |
+|------|---------------|
+| 00_connect | Connect to Expo dev server |
+| 01_navigation | All 5 tabs load and respond |
+| 02_today_screen | Calorie ring, macros, quick-log buttons, ring toggle |
+| 03_meal_plan | Generate plan, verify meals + macros, shopping list |
+| 04_profile_settings | Sections, targets, legal links, export |
+| 05_recipe_detail | Ingredients, Start Cooking, Log to journal |
+| 06_burn_detail | Burn card, calorie burn detail sections |
+| 07_progress | Stats grid, charts, weight journey |
+| 08_voice_log | Voice button → text input fallback |
+| 09_onboarding | Full wizard: goal → basic info → activity → plan → strategy → dietary → summary |
+| 10_search | Food search tab: query, USDA results |
+| 11_discover | Search, filter pills, import CTA, recipe cards |
+| 12_library | Saved recipes, sort, search, empty state |
+| 13_fasting | Timer ring, start/end fast, history |
+| 14_weight_tracker | Weight/steps/water/body fat inputs, journey chart |
+| 15_meal_nutrition | Macro breakdown for a logged meal |
+| 16_shopping | Shopping list items, check off |
+| 17_cook_mode | Step-by-step nav, timer, completion |
+| 18_macro_detail | Per-meal breakdown for a specific macro |
+| 19_paywall | Pro trial timeline, CTA, continue free |
+| 20_notifications | Inbox, mark all read, empty state |
+
+Run all: `maestro test apps/mobile/.maestro/`
+
 ## Regression Tests (run weekly)
 
-All unit tests (141) + integration tests (5) + E2E auth tests + all 8 smoke tests above.
+All unit tests (141) + integration tests (5) + E2E auth tests + all 8 smoke tests + all 21 Maestro mobile E2E tests above.
 
 ---
 

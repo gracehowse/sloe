@@ -17,7 +17,7 @@ import {
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { weeksToGoal, kgToLb, type PlanPace } from "../../lib/nutrition/tdee.ts";
+import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { calcGoalTimeline, projectWeight } from "../../lib/weightProjection.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
@@ -56,6 +56,12 @@ export function ProgressDashboard() {
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
+  // Adaptive TDEE state
+  const [staticTdee, setStaticTdee] = useState<number | null>(null);
+  const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
+  const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
+  const [isAdaptive, setIsAdaptive] = useState(false);
+
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
@@ -78,7 +84,7 @@ export function ProgressDashboard() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -100,6 +106,25 @@ export function ProgressDashboard() {
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
       setUserGoal((data as any).goal ?? null);
+
+      // Compute TDEE values
+      const sex = ((data as any).sex as Sex) ?? "unspecified";
+      const heightCm = Number((data as any).height_cm) || 170;
+      const age = Number((data as any).age) || 30;
+      const actLevel = ((data as any).activity_level as ActivityLevel) ?? "moderate";
+      const wForTdee = Number.isFinite(w) ? w! : 70;
+      const sTdee = calculateTDEE(sex, wForTdee, heightCm, age, actLevel);
+      setStaticTdee(sTdee);
+      const aTdee = (data as any).adaptive_tdee != null ? Number((data as any).adaptive_tdee) : null;
+      setAdaptiveTdee(Number.isFinite(aTdee) ? aTdee : null);
+      const aConf = ((data as any).adaptive_tdee_confidence as string) ?? null;
+      setAdaptiveConfidence(aConf);
+      const eff = getEffectiveTDEE({
+        adaptive_tdee: aTdee,
+        adaptive_tdee_confidence: aConf,
+        sex, weight_kg: wForTdee, height_cm: heightCm, age, activity_level: actLevel,
+      });
+      setIsAdaptive(eff.isAdaptive);
     }
     setLoading(false);
   }, [authedUserId]);
@@ -387,12 +412,12 @@ export function ProgressDashboard() {
           </div>
           <p className="text-xs text-foreground leading-relaxed">
             {proteinOnTarget >= 5
-              ? `Protein consistency is strong — ${proteinOnTarget} of 7 days on target.`
+              ? `Protein on target ${proteinOnTarget} of 7 days this week.`
               : proteinOnTarget > 0
-              ? `Protein hit ${proteinOnTarget} of 7 days this week.`
-              : "No protein targets hit this week — try logging more meals."}{" "}
+              ? `Protein on target ${proteinOnTarget} of 7 days this week.`
+              : "Protein target not reached on any tracked day this week."}{" "}
             Average intake is {avgCalories} kcal vs your {targets.calories.toLocaleString()} target.{" "}
-            {avgCalories <= targets.calories * 1.1 && avgCalories >= targets.calories * 0.9 ? "Right on track!" : avgCalories < targets.calories * 0.9 ? "You're under target — make sure you're eating enough." : "Slightly over target this week."}
+            {avgCalories <= targets.calories * 1.1 && avgCalories >= targets.calories * 0.9 ? "Calories within 10% of target this week." : avgCalories < targets.calories * 0.9 ? "Average intake below target this week." : "Average intake above target this week."}
           </p>
         </div>
       ) : (
@@ -404,6 +429,114 @@ export function ProgressDashboard() {
           <p className="text-xs text-foreground leading-relaxed">
             Log your meals on the Today tab to see weekly stats, macro adherence, and personalized insights here.
           </p>
+        </div>
+      )}
+
+      {/* ADAPTIVE TDEE INSIGHT */}
+      {staticTdee != null && (
+        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
+            <p className="text-sm font-semibold text-foreground">Your TDEE</p>
+            {isAdaptive && (
+              <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success">
+                Adaptive
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-6 mb-3">
+            <div className="text-center">
+              <p className={`text-[28px] font-bold tabular-nums ${isAdaptive ? "text-success" : "text-foreground"}`}>
+                {isAdaptive && adaptiveTdee ? adaptiveTdee.toLocaleString() : staticTdee.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isAdaptive ? "Adaptive TDEE" : "Estimated TDEE"}
+              </p>
+            </div>
+            {isAdaptive && adaptiveTdee && staticTdee && (
+              <div className="text-center">
+                <p className="text-[22px] font-bold text-muted-foreground tabular-nums">
+                  {staticTdee.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Formula estimate</p>
+              </div>
+            )}
+          </div>
+
+          {/* Confidence indicator */}
+          {adaptiveConfidence && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-muted-foreground">Confidence:</span>
+              <div className="flex gap-1">
+                {["low", "medium", "high"].map((level) => (
+                  <div
+                    key={level}
+                    className="h-1.5 rounded-full"
+                    style={{
+                      width: 24,
+                      background:
+                        (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? ""))
+                        || (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? ""))
+                        || (level === "high" && adaptiveConfidence === "high")
+                          ? "var(--success)"
+                          : "var(--muted)",
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-medium capitalize" style={{ color: adaptiveConfidence === "high" ? "var(--success)" : adaptiveConfidence === "medium" ? "var(--warning)" : "var(--muted-foreground)" }}>
+                {adaptiveConfidence}
+              </span>
+            </div>
+          )}
+
+          {/* Explanation */}
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {isAdaptive ? (
+              <>
+                Your TDEE is calculated from your actual intake and weight changes — more accurate than a formula estimate.
+                {adaptiveTdee && staticTdee && Math.abs(adaptiveTdee - staticTdee) >= 50 && (
+                  <> Your real expenditure is <strong className="text-foreground">{Math.abs(adaptiveTdee - staticTdee)} kcal {adaptiveTdee > staticTdee ? "higher" : "lower"}</strong> than the formula predicted.</>
+                )}
+              </>
+            ) : (
+              <>
+                Based on the Mifflin-St Jeor formula. Log meals and weigh in regularly to unlock your adaptive TDEE — calculated from your actual intake and weight trend.
+                {(() => {
+                  const weightDays = Object.keys(weightKgByDay).length;
+                  if (weightDays < 3) return <> You need at least 3 weigh-ins and 7 days of food logging to get started.</>;
+                  return <> Keep logging — your adaptive TDEE will activate once enough data accumulates.</>;
+                })()}
+              </>
+            )}
+          </p>
+
+          {/* Data progress for non-adaptive users */}
+          {!isAdaptive && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-muted-foreground">Weigh-ins</span>
+                    <span className="text-[10px] font-semibold tabular-nums text-foreground">{Object.keys(weightKgByDay).length}/7</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-muted-foreground">Logging days</span>
+                    <span className="text-[10px] font-semibold tabular-nums text-foreground">{Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k] ?? []).length > 0).length}/21</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k] ?? []).length > 0).length / 21) * 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -482,7 +615,7 @@ export function ProgressDashboard() {
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               {timeline.remainingKg > 0.1
                 ? `${timeline.remainingKg} kg to go until your ${formatWeight(goalWeightKg)} goal.`
-                : "You've reached your goal weight!"}
+                : "You\u2019ve reached your goal weight."}
               {timeline.weeklyRateKg !== 0 && ` Trending ${timeline.trendDirection} at ${Math.abs(timeline.weeklyRateKg)} kg/week.`}
             </p>
 

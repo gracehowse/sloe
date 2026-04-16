@@ -18,6 +18,7 @@ import {
   resolveLatestWeightKg,
   weightJourneyProgress,
 } from "@/lib/weightProjection";
+import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats } from "@/lib/progressWeekReport";
 
@@ -72,6 +73,12 @@ export default function ProgressScreen() {
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
+  // Adaptive TDEE
+  const [staticTdee, setStaticTdee] = useState<number | null>(null);
+  const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
+  const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
+  const [isAdaptiveTdee, setIsAdaptiveTdee] = useState(false);
+
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
   const latestWeightKg = useMemo(
@@ -88,7 +95,7 @@ export default function ProgressScreen() {
       isHealthSyncAvailable() ? syncHealthDataThrottled(userId).catch(() => {}) : Promise.resolve(),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence")
         .eq("id", userId)
         .maybeSingle(),
       supabase
@@ -117,6 +124,25 @@ export default function ProgressScreen() {
         setWeekStartDay(profile.week_start_day);
       }
       setUserGoal((profile as any).goal ?? null);
+
+      // Compute TDEE values
+      const sex = ((profile as any).sex as string) ?? "unspecified";
+      const heightCm = Number((profile as any).height_cm) || 170;
+      const ageVal = Number((profile as any).age) || 30;
+      const actLevel = ((profile as any).activity_level as string) ?? "moderate";
+      const wForTdee = Number.isFinite(w) ? w! : 70;
+      const sTdee = calculateTDEE(sex, wForTdee, heightCm, ageVal, actLevel);
+      setStaticTdee(sTdee);
+      const aTdee = (profile as any).adaptive_tdee != null ? Number((profile as any).adaptive_tdee) : null;
+      setAdaptiveTdee(Number.isFinite(aTdee) ? aTdee : null);
+      const aConf = ((profile as any).adaptive_tdee_confidence as string) ?? null;
+      setAdaptiveConfidence(aConf);
+      const eff = getEffectiveTDEE({
+        adaptive_tdee: aTdee,
+        adaptive_tdee_confidence: aConf,
+        sex, weight_kg: wForTdee, height_cm: heightCm, age: ageVal, activity_level: actLevel,
+      });
+      setIsAdaptiveTdee(eff.isAdaptive);
     }
 
     if (rows) {
@@ -198,13 +224,13 @@ export default function ProgressScreen() {
       <Text style={{ fontSize: 12, color: t.dim, marginTop: 1, marginBottom: 14 }}>Weekly report</Text>
 
       {!hasData ? (
-        <View style={{ padding: 24, borderRadius: 14, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
+        <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
           <IconBox color={t.accent} size={40}>
             <Ionicons name="bar-chart-outline" size={20} color={t.accent} />
           </IconBox>
-          <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, textAlign: "center" }}>No data yet</Text>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
           <Text style={{ fontSize: 13, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
-            Start logging meals on the Today tab to see your weekly progress, macro adherence, and trends here.
+            Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
           </Text>
         </View>
       ) : (
@@ -266,7 +292,7 @@ export default function ProgressScreen() {
               const shellStyle = {
                 width: "47%" as const,
                 padding: 14,
-                borderRadius: 14,
+                borderRadius: Radius.lg,
                 backgroundColor: t.elevated,
                 borderWidth: 1,
                 borderColor: t.border,
@@ -311,7 +337,7 @@ export default function ProgressScreen() {
           </View>
 
           {/* Daily Calories Bar Chart */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: 12 }}>Daily Calories</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 90 }}>
               {weekStats.days.map((d, i) => {
@@ -344,7 +370,7 @@ export default function ProgressScreen() {
           </View>
 
           {/* Macro Adherence */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: 12 }}>Macro Adherence</Text>
             <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
               Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
@@ -365,8 +391,99 @@ export default function ProgressScreen() {
             ))}
           </View>
 
+          {/* Adaptive TDEE Insight Card */}
+          {staticTdee != null && (
+            <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <IconBox color={t.accent} size={28}>
+                    <Ionicons name="flash-outline" size={14} color={t.accent} />
+                  </IconBox>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Your TDEE</Text>
+                </View>
+                {isAdaptiveTdee && (
+                  <View style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+                <Text style={{ fontSize: 32, fontWeight: "700", color: isAdaptiveTdee ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+                  {(isAdaptiveTdee && adaptiveTdee ? adaptiveTdee : staticTdee).toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
+              </View>
+
+              {isAdaptiveTdee && adaptiveTdee && staticTdee && (
+                <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
+                  Formula estimate: {staticTdee.toLocaleString()} kcal
+                  {Math.abs(adaptiveTdee - staticTdee) >= 50 && (
+                    <Text style={{ fontWeight: "600", color: t.text }}>
+                      {" "}({adaptiveTdee > staticTdee ? "+" : ""}{adaptiveTdee - staticTdee} actual)
+                    </Text>
+                  )}
+                </Text>
+              )}
+
+              {/* Confidence bars */}
+              {adaptiveConfidence && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
+                  <View style={{ flexDirection: "row", gap: 3 }}>
+                    {(["low", "medium", "high"] as const).map((level) => {
+                      const filled =
+                        (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                        (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                        (level === "high" && adaptiveConfidence === "high");
+                      return (
+                        <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
+                      );
+                    })}
+                  </View>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: adaptiveConfidence === "high" ? t.green : adaptiveConfidence === "medium" ? t.amber : t.dim, textTransform: "capitalize" }}>
+                    {adaptiveConfidence}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
+                {isAdaptiveTdee
+                  ? "Calculated from your actual intake and weight changes — more accurate than a formula."
+                  : "Based on the Mifflin-St Jeor formula. Log meals and weigh in regularly to unlock your personalised adaptive TDEE."
+                }
+              </Text>
+
+              {/* Data progress for non-adaptive users */}
+              {!isAdaptiveTdee && (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Weigh-ins</Text>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(weightKgByDay).length}/7</Text>
+                      </View>
+                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
+                        <View style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Log days</Text>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}/21</Text>
+                      </View>
+                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
+                        <View style={{ width: `${Math.min(100, (Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length / 21) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Steps Card */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <IconBox color={t.green} size={28}>
                 <Ionicons name="footsteps-outline" size={14} color={t.green} />
@@ -393,7 +510,7 @@ export default function ProgressScreen() {
               accessibilityHint="Opens weight graph and history"
               style={({ pressed }) => ({
                 backgroundColor: t.elevated,
-                borderRadius: 14,
+                borderRadius: Radius.lg,
                 borderWidth: 1,
                 borderColor: t.border,
                 padding: 16,
@@ -469,7 +586,7 @@ export default function ProgressScreen() {
                   accessibilityHint="Opens detailed weight progress"
                   style={({ pressed }) => ({
                     backgroundColor: t.elevated,
-                    borderRadius: 14,
+                    borderRadius: Radius.lg,
                     borderWidth: 1,
                     borderColor: t.border,
                     padding: 16,
@@ -527,11 +644,11 @@ export default function ProgressScreen() {
                   {dailyProjection && (
                     <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
                       <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                        Weekly trajectory: averaging {avgCals.toLocaleString()} kcal/day (target {targets.calories.toLocaleString()}) puts you on track for{" "}
+                        Your recent 7-day average is {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target, putting you on track for{" "}
                         <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
                       </Text>
                       <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
-                        Estimated at 7,700 kcal/kg. Actual rate depends on metabolism, activity, and consistency.
+                        Based on 7,700 kcal per kg. This uses your weekly average, so it may differ from single-day projections.
                       </Text>
                     </View>
                   )}
@@ -545,7 +662,7 @@ export default function ProgressScreen() {
           )}
 
           {/* Weekly Insight */}
-          <View style={{ padding: 14, borderRadius: 14, backgroundColor: t.accent + "08", borderWidth: 1, borderColor: t.accent + "22" }}>
+          <View style={{ padding: 14, borderRadius: Radius.lg, backgroundColor: t.accent + "08", borderWidth: 1, borderColor: t.accent + "22" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
               <IconBox color={t.accent} size={24}>
                 <Ionicons name="star-outline" size={12} color={t.accent} />
@@ -556,11 +673,11 @@ export default function ProgressScreen() {
               {weekStats.proteinOnTarget >= 5
                 ? `Protein consistency is strong — ${weekStats.proteinOnTarget} of 7 days on target.`
                 : weekStats.proteinOnTarget > 0
-                  ? `Protein on target ${weekStats.proteinOnTarget} of 7 days — aim for 5+ next week.`
+                  ? `Protein on target ${weekStats.proteinOnTarget} of 7 days.`
                   : "Start tracking protein to build your weekly insights."
               }
               {" "}Average intake is {weekStats.avgCalories.toLocaleString()} kcal vs your {targets.calories.toLocaleString()} target.
-              {streakDays > 0 ? ` ${streakDays}-day logging streak — keep it going!` : ""}
+              {streakDays > 0 ? ` ${streakDays}-day logging streak.` : ""}
             </Text>
           </View>
         </>

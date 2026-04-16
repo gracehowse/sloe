@@ -115,6 +115,7 @@ import {
   Shield,
   Monitor,
   LayoutGrid,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -233,6 +234,8 @@ export const Icons = {
   shield: Shield,
   monitor: Monitor,
   layoutGrid: LayoutGrid,
+  users: Users,
+  household: Users,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof Icons;

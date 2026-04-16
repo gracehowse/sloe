@@ -33,6 +33,10 @@ const ShoppingList = dynamic(
   () => import("./components/ShoppingList.tsx").then((m) => ({ default: m.ShoppingList })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading shopping list..." /> },
 );
+const HouseholdPanel = dynamic(
+  () => import("./components/HouseholdPanel.tsx").then((m) => ({ default: m.HouseholdPanel })),
+  { ssr: false },
+);
 const Settings = dynamic(
   () => import("./components/Settings.tsx").then((m) => ({ default: m.Settings })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading settings..." /> },
@@ -244,6 +248,7 @@ export default function App() {
                 </button>
               </div>
             </div>
+            <FeatureErrorBoundary feature="Household"><HouseholdPanel /></FeatureErrorBoundary>
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
@@ -323,7 +328,7 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Skip link for keyboard navigation */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg">
         Skip to content
       </a>
       {/* Header */}

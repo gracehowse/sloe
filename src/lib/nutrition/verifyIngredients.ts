@@ -1,6 +1,6 @@
 /**
  * Shared ingredient verification pipeline.
- * Tries: USDA → Open Food Facts → FatSecret → local estimation fallback.
+ * Tries: USDA → Open Food Facts → Edamam → FatSecret → local estimation fallback.
  * Used by both /api/nutrition/verify-recipe and /api/recipe-import.
  */
 
@@ -17,8 +17,10 @@ import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClie
 import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
 import { searchOffProducts } from "@/lib/openFoodFacts/searchProducts";
-import { hasFatSecretConfig, hasUsdaConfig } from "@/lib/server/serverEnv";
+import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g } from "@/lib/edamam/client";
+import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceConfig } from "@/lib/server/serverEnv";
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
+import { searchUserFoods } from "@/lib/nutrition/userFoodsLookup";
 
 export type VerifiedIngredient = {
   input: { name: string; amount: string; unit: string };
@@ -26,7 +28,7 @@ export type VerifiedIngredient = {
   fatSecretFoodId: string | null;
   matchedName: string | null;
   confidence: number;
-  source: "USDA" | "OFF" | "FatSecret" | "Estimated" | "Unverified";
+  source: "Suppr" | "USDA" | "Edamam" | "OFF" | "FatSecret" | "Estimated" | "Unverified";
   macros: VerifiedMacros | null;
 };
 
@@ -390,6 +392,7 @@ export async function verifyIngredients(opts: {
   const wantFatSecret = provider === "fatsecret" || provider === "auto";
 
   const usdaCfg = wantUsda && hasUsdaConfig() ? fdcConfigFromEnv() : null;
+  const edamamCfg = provider === "auto" && hasEdamamConfig() ? edamamConfigFromEnv() : null;
   const fatsecretCfg = wantFatSecret && hasFatSecretConfig() ? fatSecretConfigFromEnv() : null;
 
   const CONCURRENCY = 4;
@@ -437,7 +440,41 @@ export async function verifyIngredients(opts: {
       }
     }
 
-    // 2. USDA override or search
+    // 2. Suppr custom food database (user-contributed, verified entries first)
+    if (hasSupabaseServiceConfig()) {
+      try {
+        const userFoodHits = await searchUserFoods(query, { limit: 3 });
+        for (const uf of userFoodHits) {
+          const conf = confidenceForMatch(query, [uf.brand, uf.name].filter(Boolean).join(" "));
+          if (conf < MIN_MATCH_CONFIDENCE) continue;
+          const per100g = {
+            calories: uf.calories / (uf.servingSizeG / 100),
+            protein: uf.protein / (uf.servingSizeG / 100),
+            carbs: uf.carbs / (uf.servingSizeG / 100),
+            fat: uf.fat / (uf.servingSizeG / 100),
+            fiberG: uf.fiberG / (uf.servingSizeG / 100),
+            sugarG: uf.sugarG / (uf.servingSizeG / 100),
+            sodiumMg: uf.sodiumMg / (uf.servingSizeG / 100),
+          };
+          const supprMacros = scaleMacros(per100g, grams / 100);
+          if (!scaledMacrosPlausible(supprMacros)) continue;
+          // Verified entries get higher confidence boost
+          const confBoost = uf.verificationStatus === "verified" ? 0.08 : 0.03;
+          return {
+            input: raw, resolved,
+            fatSecretFoodId: uf.id,
+            matchedName: [uf.brand, uf.name].filter(Boolean).join(" · "),
+            confidence: Math.min(0.98, conf + confBoost),
+            source: "Suppr" as const,
+            macros: supprMacros,
+          };
+        }
+      } catch (e) {
+        console.error("[verifyIngredients] Suppr DB lookup failed for", query, ":", e instanceof Error ? e.message : e);
+      }
+    }
+
+    // 3. USDA override or search
     if (usdaCfg) {
       try {
         const usdaOverride = overrides.find((o) => o && o.index === idx && typeof o.fdcId === "number" && !o.barcode);
@@ -559,7 +596,34 @@ export async function verifyIngredients(opts: {
       }
     }
 
-    // 3. Open Food Facts search (worldwide — good for UK/EU products and local names)
+    // 4. Edamam Food Database (branded + restaurant coverage — 900K foods)
+    if (edamamCfg) {
+      try {
+        const edamamHits = await edamamFoodSearch(edamamCfg, query, { pageSize: 5 });
+        const edamamPrepQuery = normalizeQueryForUsda(applyNameAliases(query));
+        for (const hit of edamamHits) {
+          const label = [hit.food.brand, hit.food.label].filter(Boolean).join(" · ");
+          const conf = confidenceForMatch(query, label);
+          if (conf < MIN_MATCH_CONFIDENCE) continue;
+          if (preparationStateMismatch(edamamPrepQuery, label)) continue;
+          const per100g = edamamFoodMacrosPer100g(hit.food);
+          const edamamMacros = scaleMacros(per100g, grams / 100);
+          if (!scaledMacrosPlausible(edamamMacros)) continue;
+          return {
+            input: raw, resolved,
+            fatSecretFoodId: hit.food.foodId,
+            matchedName: label,
+            confidence: Math.min(0.92, conf),
+            source: "Edamam" as const,
+            macros: edamamMacros,
+          };
+        }
+      } catch (e) {
+        console.error("[verifyIngredients] Edamam lookup failed for", query, ":", e instanceof Error ? e.message : e);
+      }
+    }
+
+    // 5. Open Food Facts search (worldwide — good for UK/EU products and local names)
     {
       try {
         const offHits = await searchOffProducts(query, { pageSize: 5 });
@@ -598,7 +662,7 @@ export async function verifyIngredients(opts: {
       }
     }
 
-    // 4. FatSecret search
+    // 6. FatSecret search
     if (fatsecretCfg) {
       try {
         const results = await fatSecretFoodSearch(fatsecretCfg, query);
@@ -651,7 +715,7 @@ export async function verifyIngredients(opts: {
       }
     }
 
-    // 4. Local estimation fallback
+    // 7. Local estimation fallback
     const estimated = estimateLineMacros({
       name: resolved.name,
       amount: resolved.amount || "1",
@@ -709,7 +773,7 @@ export async function verifyIngredients(opts: {
   );
 
   // Pick the source that verified the most ingredients
-  const primarySource = (["USDA", "OFF", "FatSecret", "Estimated"] as const)
+  const primarySource = (["Suppr", "USDA", "Edamam", "OFF", "FatSecret", "Estimated"] as const)
     .filter((s) => (sourceCounts[s] ?? 0) > 0)
     .sort((a, b) => (sourceCounts[b] ?? 0) - (sourceCounts[a] ?? 0))[0]
     ?? "Unverified";

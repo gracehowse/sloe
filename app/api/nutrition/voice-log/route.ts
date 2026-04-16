@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,8 @@ export type VoiceLogItem = {
   protein: number;
   carbs: number;
   fat: number;
+  confidence?: number;
+  source?: string;
 };
 
 export type VoiceLogResponse = {
@@ -21,6 +24,7 @@ export type VoiceLogResponse = {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  confidenceTier: "high" | "medium" | "low";
 };
 
 export async function POST(req: Request) {
@@ -69,9 +73,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "missing_transcript" }, { status: 400 });
   }
 
-  const prompt = `You are a nutrition estimation assistant. The user described what they ate via voice.
-
-Parse the transcript into individual food items with estimated nutrition per item.
+  // ── Step 1: Use LLM to PARSE transcript into structured food items (not estimate nutrition) ──
+  const parsePrompt = `Parse this food description into individual food items with amounts and units.
 
 Transcript: "${transcript}"
 
@@ -79,22 +82,19 @@ Return a single JSON object (no markdown fences):
 {
   "items": [
     {
-      "name": "food item name",
-      "quantity": "estimated portion (e.g. '2 large', '1 cup', '200g')",
-      "calories": number,
-      "protein": number (grams),
-      "carbs": number (grams),
-      "fat": number (grams)
+      "name": "specific food name (e.g. 'scrambled eggs' not just 'eggs')",
+      "amount": "numeric amount as string (e.g. '2', '200', '1')",
+      "unit": "unit of measure (e.g. 'large', 'g', 'cup', 'slice', 'piece', 'medium')"
     }
   ]
 }
 
 Rules:
-- Parse natural language quantities ("two eggs" = 2 eggs, "a cup of rice" = 1 cup rice)
-- Use standard USDA-style nutrition values for common foods
-- Round all numbers to integers
-- If a food is ambiguous, use the most common preparation (e.g. "eggs" = large scrambled eggs)
-- If the transcript is unclear, make your best effort`;
+- Parse natural language quantities ("two eggs" = amount "2", unit "large", name "scrambled eggs")
+- "a cup of rice" = amount "1", unit "cup", name "cooked white rice"
+- Be specific about preparation when implied ("eggs" for breakfast = "scrambled eggs")
+- Separate compound items ("chicken and rice" = two items)
+- Do NOT estimate calories or macros — only parse foods and portions`;
 
   let res: Response;
   try {
@@ -108,7 +108,7 @@ Rules:
         model: "gpt-4o-mini",
         temperature: 0.2,
         max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: parsePrompt }],
       }),
     });
   } catch {
@@ -130,7 +130,7 @@ Rules:
   };
   const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-  let parsed: { items?: Array<{ name?: string; quantity?: string; calories?: number; protein?: number; carbs?: number; fat?: number }> };
+  let parsed: { items?: Array<{ name?: string; amount?: string; unit?: string }> };
   try {
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
     parsed = JSON.parse(cleaned) as typeof parsed;
@@ -141,27 +141,69 @@ Rules:
     );
   }
 
-  const items: VoiceLogItem[] = (parsed.items ?? []).map((item) => ({
+  const identified = (parsed.items ?? []).map((item) => ({
     name: String(item.name ?? "Unknown food").trim(),
-    quantity: String(item.quantity ?? "1 serving").trim(),
-    calories: Math.round(Number(item.calories) || 0),
-    protein: Math.round(Number(item.protein) || 0),
-    carbs: Math.round(Number(item.carbs) || 0),
-    fat: Math.round(Number(item.fat) || 0),
+    amount: String(item.amount ?? "1").trim(),
+    unit: String(item.unit ?? "serving").trim(),
   }));
 
-  const totalCalories = items.reduce((a, i) => a + i.calories, 0);
-  const totalProtein = items.reduce((a, i) => a + i.protein, 0);
-  const totalCarbs = items.reduce((a, i) => a + i.carbs, 0);
-  const totalFat = items.reduce((a, i) => a + i.fat, 0);
+  if (identified.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "no_food_parsed", message: "No food items could be parsed from the transcript. Try again with more detail." },
+      { status: 422 },
+    );
+  }
 
-  return NextResponse.json({
-    ok: true,
-    transcript,
-    items,
-    totalCalories,
-    totalProtein,
-    totalCarbs,
-    totalFat,
-  } satisfies VoiceLogResponse);
+  // ── Step 2: Run parsed foods through verified nutrition pipeline ──
+  try {
+    const result = await verifyIngredients({
+      ingredients: identified,
+      servings: 1,
+      provider: "auto",
+      overrides: [],
+    });
+
+    const items: VoiceLogItem[] = result.verified.map((ing) => ({
+      name: ing.matchedName ?? ing.resolved.name ?? "Unknown",
+      quantity: `${ing.resolved.amount ?? ""} ${ing.resolved.unit ?? ""}`.trim() || "1 serving",
+      calories: Math.round(ing.macros?.calories ?? 0),
+      protein: Math.round(ing.macros?.protein ?? 0),
+      carbs: Math.round(ing.macros?.carbs ?? 0),
+      fat: Math.round(ing.macros?.fat ?? 0),
+      confidence: ing.confidence,
+      source: ing.source,
+    }));
+
+    const totalCalories = items.reduce((a, i) => a + i.calories, 0);
+    const totalProtein = items.reduce((a, i) => a + i.protein, 0);
+    const totalCarbs = items.reduce((a, i) => a + i.carbs, 0);
+    const totalFat = items.reduce((a, i) => a + i.fat, 0);
+
+    const confidenceTier =
+      result.avgIngredientConfidence >= 0.75
+        ? "high"
+        : result.avgIngredientConfidence >= 0.5
+          ? "medium"
+          : "low";
+
+    return NextResponse.json({
+      ok: true,
+      transcript,
+      items,
+      totalCalories,
+      totalProtein,
+      totalCarbs,
+      totalFat,
+      confidenceTier,
+    } satisfies VoiceLogResponse);
+  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "verify_failed",
+        message: "Food was parsed but nutrition lookup failed. Please try again.",
+      },
+      { status: 502 },
+    );
+  }
 }

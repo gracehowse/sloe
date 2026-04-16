@@ -7,6 +7,8 @@ export const ServerEnv = {
   USDA_FDC_API_KEY: "USDA_FDC_API_KEY",
   FATSECRET_CONSUMER_KEY: "FATSECRET_CONSUMER_KEY",
   FATSECRET_CONSUMER_SECRET: "FATSECRET_CONSUMER_SECRET",
+  EDAMAM_APP_ID: "EDAMAM_APP_ID",
+  EDAMAM_APP_KEY: "EDAMAM_APP_KEY",
 } as const;
 
 export function hasEnv(name: string): boolean {
@@ -35,6 +37,10 @@ export function hasUsdaConfig(): boolean {
 
 export function hasFatSecretConfig(): boolean {
   return hasEnv(ServerEnv.FATSECRET_CONSUMER_KEY) && hasEnv(ServerEnv.FATSECRET_CONSUMER_SECRET);
+}
+
+export function hasEdamamConfig(): boolean {
+  return hasEnv(ServerEnv.EDAMAM_APP_ID) && hasEnv(ServerEnv.EDAMAM_APP_KEY);
 }
 
 /**

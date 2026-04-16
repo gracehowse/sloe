@@ -12,6 +12,8 @@ vi.mock("@/lib/openFoodFacts/searchProducts", () => ({
 vi.mock("@/lib/server/serverEnv", () => ({
   hasUsdaConfig: () => false,
   hasFatSecretConfig: () => false,
+  hasEdamamConfig: () => false,
+  hasSupabaseServiceConfig: () => false,
 }));
 
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";

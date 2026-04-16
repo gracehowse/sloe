@@ -91,6 +91,59 @@ export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
   };
 }
 
+/**
+ * Calculate TDEE using Mifflin-St Jeor (mirrors web src/lib/nutrition/tdee.ts).
+ */
+export function calculateTDEE(
+  sex: string,
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  activityLevel: string,
+): number {
+  const w = Math.max(30, Math.min(weightKg, 350));
+  const h = Math.max(100, Math.min(heightCm, 250));
+  const a = Math.max(13, Math.min(age, 100));
+  const base = 10 * w + 6.25 * h - 5 * a;
+  let bmr: number;
+  if (sex === "male") bmr = base + 5;
+  else if (sex === "female") bmr = base - 161;
+  else bmr = Math.round((base + 5 + (base - 161)) / 2);
+  return Math.round(bmr * (ACTIVITY_MULT[activityLevel] ?? 1.55));
+}
+
+/**
+ * Returns adaptive TDEE if available with sufficient confidence, else
+ * the static Mifflin-St Jeor estimate. Single source of truth for TDEE.
+ */
+export function getEffectiveTDEE(profile: {
+  adaptive_tdee?: number | null;
+  adaptive_tdee_confidence?: string | null;
+  sex: string;
+  weight_kg: number;
+  height_cm: number;
+  age: number;
+  activity_level: string;
+}): { tdee: number; isAdaptive: boolean } {
+  if (
+    profile.adaptive_tdee != null &&
+    profile.adaptive_tdee > 0 &&
+    (profile.adaptive_tdee_confidence === "medium" || profile.adaptive_tdee_confidence === "high")
+  ) {
+    return { tdee: profile.adaptive_tdee, isAdaptive: true };
+  }
+  return {
+    tdee: calculateTDEE(
+      profile.sex,
+      profile.weight_kg,
+      profile.height_cm,
+      profile.age,
+      profile.activity_level,
+    ),
+    isAdaptive: false,
+  };
+}
+
 /** Coerce PostgREST numeric / string JSON to a finite number, else null. */
 function nn(v: unknown): number | null {
   if (v == null) return null;

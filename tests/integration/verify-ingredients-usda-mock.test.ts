@@ -11,6 +11,8 @@ vi.mock("@/lib/openFoodFacts/searchProducts", () => ({
 vi.mock("@/lib/server/serverEnv", () => ({
   hasUsdaConfig: () => true,
   hasFatSecretConfig: () => false,
+  hasEdamamConfig: () => false,
+  hasSupabaseServiceConfig: () => false,
 }));
 
 const mockChickenFood = {

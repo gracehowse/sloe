@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ export type PhotoLogItem = {
   protein: number;
   carbs: number;
   fat: number;
+  confidence?: number;
+  source?: string;
 };
 
 export type PhotoLogResponse = {
@@ -22,6 +25,7 @@ export type PhotoLogResponse = {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  confidenceTier: "high" | "medium" | "low";
 };
 
 export async function POST(req: Request) {
@@ -78,30 +82,29 @@ export async function POST(req: Request) {
   const b64 = buf.toString("base64");
   const dataUrl = `data:${mime};base64,${b64}`;
 
-  const prompt = `You are a nutrition estimation assistant. Analyze this photo of a meal or food items.
+  // ── Step 1: Use GPT-4o to IDENTIFY foods and portions (not estimate nutrition) ──
+  const identifyPrompt = `Analyze this photo of a meal or food items.
 
-For each distinct food item visible, estimate the portion size and provide nutritional values.
+For each distinct food item visible, identify the food and estimate the portion size.
 
 Return a single JSON object (no markdown fences):
 {
   "items": [
     {
-      "name": "food item name",
-      "quantity": "estimated portion (e.g. '1 cup', '200g', '1 medium')",
-      "calories": number,
-      "protein": number (grams),
-      "carbs": number (grams),
-      "fat": number (grams)
+      "name": "specific food name (e.g. 'grilled chicken breast' not just 'chicken')",
+      "amount": "numeric amount (e.g. '200', '1', '2')",
+      "unit": "unit of measure (e.g. 'g', 'cup', 'medium', 'slice', 'piece')"
     }
   ]
 }
 
 Rules:
-- Be specific about food items (e.g. "grilled chicken breast" not just "chicken")
+- Be specific about food items (e.g. "grilled chicken breast" not "chicken")
 - Use reasonable portion estimates based on visual cues (plate size, utensils for scale)
-- Round all numbers to integers
-- If you cannot identify a food item, make your best estimate and note it in the name
-- Include condiments, sauces, and sides if visible`;
+- Separate amount and unit (amount should be a number, unit should be the measure)
+- Include condiments, sauces, and sides if visible
+- If you cannot identify a food item with reasonable confidence, include it with name prefixed with "unknown: "
+- Do NOT estimate calories or macros — only identify foods and portions`;
 
   let res: Response;
   try {
@@ -119,7 +122,7 @@ Rules:
           {
             role: "user",
             content: [
-              { type: "text", text: prompt },
+              { type: "text", text: identifyPrompt },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
@@ -134,7 +137,6 @@ Rules:
   }
 
   if (!res.ok) {
-    const errText = await res.text().catch(() => "");
     return NextResponse.json(
       { ok: false, error: "openai_http_error", status: res.status },
       { status: 502 },
@@ -146,7 +148,7 @@ Rules:
   };
   const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-  let parsed: { items?: Array<{ name?: string; quantity?: string; calories?: number; protein?: number; carbs?: number; fat?: number }> };
+  let parsed: { items?: Array<{ name?: string; amount?: string; unit?: string }> };
   try {
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
     parsed = JSON.parse(cleaned) as typeof parsed;
@@ -157,26 +159,69 @@ Rules:
     );
   }
 
-  const items: PhotoLogItem[] = (parsed.items ?? []).map((item) => ({
+  const identified = (parsed.items ?? []).map((item) => ({
     name: String(item.name ?? "Unknown food").trim(),
-    quantity: String(item.quantity ?? "1 serving").trim(),
-    calories: Math.round(Number(item.calories) || 0),
-    protein: Math.round(Number(item.protein) || 0),
-    carbs: Math.round(Number(item.carbs) || 0),
-    fat: Math.round(Number(item.fat) || 0),
+    amount: String(item.amount ?? "1").trim(),
+    unit: String(item.unit ?? "serving").trim(),
   }));
 
-  const totalCalories = items.reduce((a, i) => a + i.calories, 0);
-  const totalProtein = items.reduce((a, i) => a + i.protein, 0);
-  const totalCarbs = items.reduce((a, i) => a + i.carbs, 0);
-  const totalFat = items.reduce((a, i) => a + i.fat, 0);
+  if (identified.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "no_food_detected", message: "No food items detected in the photo. Try a clearer angle." },
+      { status: 422 },
+    );
+  }
 
-  return NextResponse.json({
-    ok: true,
-    items,
-    totalCalories,
-    totalProtein,
-    totalCarbs,
-    totalFat,
-  } satisfies PhotoLogResponse);
+  // ── Step 2: Run identified foods through verified nutrition pipeline ──
+  // This matches against USDA, Open Food Facts, FatSecret with confidence scoring
+  try {
+    const result = await verifyIngredients({
+      ingredients: identified,
+      servings: 1,
+      provider: "auto",
+      overrides: [],
+    });
+
+    const items: PhotoLogItem[] = result.verified.map((ing) => ({
+      name: ing.matchedName ?? ing.resolved.name ?? "Unknown",
+      quantity: `${ing.resolved.amount ?? ""} ${ing.resolved.unit ?? ""}`.trim() || "1 serving",
+      calories: Math.round(ing.macros?.calories ?? 0),
+      protein: Math.round(ing.macros?.protein ?? 0),
+      carbs: Math.round(ing.macros?.carbs ?? 0),
+      fat: Math.round(ing.macros?.fat ?? 0),
+      confidence: ing.confidence,
+      source: ing.source,
+    }));
+
+    const totalCalories = items.reduce((a, i) => a + i.calories, 0);
+    const totalProtein = items.reduce((a, i) => a + i.protein, 0);
+    const totalCarbs = items.reduce((a, i) => a + i.carbs, 0);
+    const totalFat = items.reduce((a, i) => a + i.fat, 0);
+
+    const confidenceTier =
+      result.avgIngredientConfidence >= 0.75
+        ? "high"
+        : result.avgIngredientConfidence >= 0.5
+          ? "medium"
+          : "low";
+
+    return NextResponse.json({
+      ok: true,
+      items,
+      totalCalories,
+      totalProtein,
+      totalCarbs,
+      totalFat,
+      confidenceTier,
+    } satisfies PhotoLogResponse);
+  } catch (e) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "verify_failed",
+        message: "Food was identified but nutrition lookup failed. Please try again.",
+      },
+      { status: 502 },
+    );
+  }
 }

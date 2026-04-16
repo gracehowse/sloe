@@ -23,6 +23,7 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+import { HouseholdCard } from "@/components/HouseholdCard";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -646,6 +647,9 @@ export default function PlannerScreen() {
           </Pressable>
         </View>
 
+        {/* Household shared meals */}
+        <HouseholdCard />
+
         {/* Day summary strip — compact row that fits on screen */}
         {plan && plan.length > 1 && planTargets && (
           <View style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}>
@@ -702,7 +706,7 @@ export default function PlannerScreen() {
                     onPress={() => {
                       if (locked) {
                         Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.", [
-                          { text: "Not now", style: "cancel" },
+                          { text: "Continue for free", style: "cancel" },
                           { text: "See plans", onPress: () => router.push("/paywall" as any) },
                         ]);
                         return;
