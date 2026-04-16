@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { Suspense, useEffect, useState } from "react";
 import App from "../src/app/App.tsx";
 import { AppLoadingSkeleton } from "../src/app/components/AppLoadingSkeleton.tsx";
@@ -11,7 +10,7 @@ function AuthedHome() {
   const { gate, errorMessage, retry } = useHomeProfileGate();
 
   if (gate === "loading") {
-    return <AppLoadingSkeleton label="Loading your profile…" />;
+    return <AppLoadingSkeleton label="Loading your profile\u2026" />;
   }
 
   if (gate === "error" && errorMessage) {
@@ -19,31 +18,35 @@ function AuthedHome() {
   }
 
   if (gate === "onboarding") {
-    return <AppLoadingSkeleton label="Redirecting…" />;
+    return <AppLoadingSkeleton label="Redirecting\u2026" />;
   }
 
   return (
-    <Suspense fallback={<AppLoadingSkeleton label="Loading app…" />}>
+    <Suspense fallback={<AppLoadingSkeleton label="Loading app\u2026" />}>
       <App />
     </Suspense>
   );
 }
 
-export function HomePageClient({ children }: { children: ReactNode }) {
+export function HomePageClient() {
   const [ready, setReady] = useState(false);
-  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) {
+      if (cancelled) return;
+      // Not authed — middleware will redirect to /login,
+      // but handle the edge case where middleware hasn't kicked in yet.
+      if (!data.session?.user) {
+        window.location.href = "/login";
         return;
       }
-      setAuthed(Boolean(data.session?.user));
       setReady(true);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthed(Boolean(session?.user));
+      if (!session?.user) {
+        window.location.href = "/login";
+      }
     });
     return () => {
       cancelled = true;
@@ -52,11 +55,7 @@ export function HomePageClient({ children }: { children: ReactNode }) {
   }, []);
 
   if (!ready) {
-    return <AppLoadingSkeleton label="Starting Suppr…" />;
-  }
-
-  if (!authed) {
-    return children;
+    return <AppLoadingSkeleton label="Starting Suppr\u2026" />;
   }
 
   return <AuthedHome />;

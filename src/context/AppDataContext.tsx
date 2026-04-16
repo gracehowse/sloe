@@ -1049,12 +1049,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (ml: number) => {
       const add = Math.max(0, Math.round(ml));
       if (add === 0) return;
-      setExtraWaterByDay((prev) => ({
-        ...prev,
-        [selectedDateKey]: (prev[selectedDateKey] ?? 0) + add,
-      }));
+      setExtraWaterByDay((prev) => {
+        const updated = { ...prev, [selectedDateKey]: (prev[selectedDateKey] ?? 0) + add };
+        // Persist to Supabase immediately (don't rely on debounce alone,
+        // which gets cancelled if the user switches views within 1.2s).
+        if (authedUserId && waterActivityLoadedRef.current) {
+          void supabase
+            .from("profiles")
+            .update({ extra_water_by_day: updated })
+            .eq("id", authedUserId);
+        }
+        return updated;
+      });
     },
-    [selectedDateKey],
+    [selectedDateKey, authedUserId],
   );
 
   // Sync water & activity burn data to Supabase (debounced).

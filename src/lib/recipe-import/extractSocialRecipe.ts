@@ -13,13 +13,15 @@
 
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
 
-export type SocialPlatform = "instagram" | "tiktok" | null;
+export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
 
 export function detectSocialPlatform(url: string): SocialPlatform {
   try {
-    const host = new URL(url).hostname.toLowerCase();
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
     if (host === "instagram.com" || host.endsWith(".instagram.com") || host === "instagr.am") return "instagram";
     if (host === "tiktok.com" || host.endsWith(".tiktok.com") || host === "vm.tiktok.com") return "tiktok";
+    if (host === "youtube.com" || host === "www.youtube.com" || host === "m.youtube.com" || host === "youtu.be") return "youtube";
     return null;
   } catch {
     return null;
@@ -155,6 +157,34 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   }
   if (platform === "tiktok") {
     authorDisplay = tiktokHandleFromPostUrl(url);
+    // TikTok oEmbed gives a clean thumbnail without the play-button overlay
+    try {
+      const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+      const oRes = await fetch(oembedUrl, {
+        signal: AbortSignal.timeout(5000),
+        headers: { Accept: "application/json" },
+      });
+      if (oRes.ok) {
+        const oData = await oRes.json() as { thumbnail_url?: string; author_name?: string };
+        if (typeof oData.thumbnail_url === "string" && oData.thumbnail_url.startsWith("http")) {
+          oembedImageUrl = oData.thumbnail_url;
+        }
+        if (!authorDisplay && typeof oData.author_name === "string" && oData.author_name.trim()) {
+          authorDisplay = oData.author_name.trim();
+        }
+      }
+    } catch { /* oEmbed optional */ }
+  }
+  if (platform === "youtube") {
+    // YouTube oEmbed gives us clean title + author
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+      const oRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+      if (oRes.ok) {
+        const oData = await oRes.json() as { title?: string; author_name?: string };
+        authorDisplay = oData.author_name ?? null;
+      }
+    } catch { /* oEmbed optional */ }
   }
 
   for (const ua of UA_ATTEMPTS) {
@@ -280,7 +310,7 @@ export function tiktokHandleFromPostUrl(postUrl: string): string | null {
  * Order: "recipe by @x" / first @handle in caption → `username` from `/username/reel/…` paths → site label.
  */
 export function socialImportSourceName(
-  platform: "instagram" | "tiktok",
+  platform: "instagram" | "tiktok" | "youtube",
   postUrl: string,
   authorDisplay: string | null,
   captionText: string,

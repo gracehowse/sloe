@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+name: "Profile & settings — sections, navigation, data export"
+---
+# Navigate to Profile/More
+- tapOn: "Profile"
+- assertVisible:
+    text: ".*"
+
+# Check reorganised sections exist
+- assertVisible: "Goals & Targets"
+- assertVisible: "Connections"
+- assertVisible: "Legal"
+
+# Daily Targets row
+- assertVisible: "Daily Targets"
+- assertVisible: "kcal"
+
+# Help link
+- assertVisible: "Help & Information"
+
+# Export Data
+- assertVisible: "Export Data"
+
+# Privacy Policy
+- scrollUntilVisible:
+    element: "Privacy Policy"
+    direction: DOWN
+- assertVisible: "Privacy Policy"
+
+# Terms
+- assertVisible: "Terms of Use"

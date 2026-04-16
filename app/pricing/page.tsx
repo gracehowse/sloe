@@ -112,6 +112,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageViewTracker event={AnalyticsEvents.pricing_page_viewed} />
+      <PageViewTracker event={AnalyticsEvents.paywall_viewed} />
 
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">

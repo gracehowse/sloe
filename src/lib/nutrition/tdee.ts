@@ -216,11 +216,11 @@ export const PACE_LABELS: Record<PlanPace, { title: string; desc: string }> = {
   vigorous: { title: "Vigorous", desc: "Our most intensive plan for fast results" },
 };
 
-export const STRATEGY_LABELS: Record<NutritionStrategy, { title: string; desc: string; emoji: string }> = {
-  balanced: { title: "Balanced", desc: "1.6 g/kg protein — well-rounded nutrition", emoji: "⚖️" },
-  high_protein: { title: "High Protein", desc: "2.2 g/kg protein — build or maintain muscle", emoji: "💪" },
-  high_satisfaction: { title: "High Satisfaction", desc: "1.8 g/kg protein + higher fibre for satiety", emoji: "⭐" },
-  low_carb: { title: "Low Carb", desc: "1.8 g/kg protein, 45% fat — reduce carbs", emoji: "🥑" },
+export const STRATEGY_LABELS: Record<NutritionStrategy, { title: string; desc: string }> = {
+  balanced: { title: "Balanced", desc: "1.6 g/kg protein — well-rounded nutrition" },
+  high_protein: { title: "High Protein", desc: "2.2 g/kg protein — build or maintain muscle" },
+  high_satisfaction: { title: "High Satisfaction", desc: "1.8 g/kg protein + higher fibre for satiety" },
+  low_carb: { title: "Low Carb", desc: "1.8 g/kg protein, 45% fat — reduce carbs" },
 };
 
 /**

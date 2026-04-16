@@ -129,6 +129,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | `foods`, `food_sources`, `barcode_mappings` | Migration `20260408170000` |
 | `food_reports` | Migration `20260408170000` |
 | `profiles.target_fiber_g`, `profiles.target_water_ml` | Migration `20260412100000` |
+| `profiles.tracked_macros`, `profiles.week_start_day` | Used by Settings and Today dashboard (added to generated types) |
 
 **To wire up**: apply all pending migrations to the remote DB, regenerate types, then add `<Database>` generic to `createBrowserClient` and `createClient` calls.
 

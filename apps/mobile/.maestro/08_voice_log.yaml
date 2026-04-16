@@ -1,0 +1,22 @@
+appId: host.exp.Exponent
+name: "Voice log — opens text input fallback"
+---
+# Navigate to Today
+- tapOn: "Today"
+- waitForAnimationToEnd
+
+# Tap Voice button
+- tapOn: "Voice"
+
+# Should show the voice log text input (fallback in Expo Go)
+- assertVisible:
+    text: "Voice Log|Describe what you ate"
+
+# Type something
+- tapOn:
+    text: "Type what you ate..."
+- inputText: "2 scrambled eggs and toast"
+
+# Close the sheet
+- tapOn:
+    text: "Cancel"

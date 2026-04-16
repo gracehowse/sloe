@@ -26,6 +26,11 @@ export default function TermsPage() {
             </Link>{" "}
             for how that processing works.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Eligibility</h2>
+          <p>
+            You must be at least 13 years old to use Suppr (or 16 in jurisdictions where GDPR applies without
+            parental consent). By creating an account, you confirm you meet this age requirement.
+          </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>
             Do not misuse the service, attempt to scrape or overload APIs, or use the product to violate others'
@@ -33,8 +38,19 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Subscriptions</h2>
           <p>
-            Paid features may be billed through Stripe. Fees, renewals, and refunds follow the checkout flow and
-            Stripe's policies unless your deployment states otherwise.
+            Paid features may be billed through Stripe (web) or Apple's App Store / Google Play (mobile). On
+            mobile, payment is processed by the respective app store. Prices are shown before purchase in your
+            local currency. Subscriptions auto-renew unless cancelled at least 24 hours before the end of the
+            current billing period. You can manage or cancel your subscription:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>iOS:</strong> Settings &gt; Apple ID &gt; Subscriptions</li>
+            <li><strong>Android:</strong> Google Play &gt; Payments &amp; subscriptions</li>
+            <li><strong>Web:</strong> Via the Stripe customer portal linked in your account settings</li>
+          </ul>
+          <p>
+            You can restore previous purchases at any time from the app's paywall or settings screen. Refund
+            policies follow the respective platform's guidelines (Apple, Google, or Stripe).
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>

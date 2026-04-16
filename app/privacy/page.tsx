@@ -1,6 +1,12 @@
 import Link from "next/link";
 
+const DEFAULT_PRIVACY_EMAIL = "privacy@suppr-club.com";
+
 export default function PrivacyPage() {
+  const privacyEmail =
+    process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim() || DEFAULT_PRIVACY_EMAIL;
+  const mailtoHref = `mailto:${encodeURIComponent(privacyEmail)}`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-2xl mx-auto px-6 py-12">
@@ -65,15 +71,45 @@ export default function PrivacyPage() {
             similar (errors, if enabled), and OpenAI (optional AI features). The exact list for your deployment should be
             confirmed with the operator of that environment.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your choices</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data retention</h2>
           <p>
-            You can export locally stored data from Settings (Download your data) and sign out at any time. For
-            data stored with your account online, use your account controls or contact the operator of your deployment.
+            We retain your account data for as long as your account is active. If you delete your account, we will
+            delete your personal data within 30 days, except where retention is required by law (e.g. billing records
+            may be retained for up to 7 years for tax compliance). Anonymised, aggregated analytics data that cannot
+            identify you may be retained indefinitely.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your rights and choices</h2>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Export your data:</strong> You can export locally stored data from Settings (Download your data).
+            </li>
+            <li>
+              <strong>Delete your account:</strong> You can permanently delete your account and all associated data
+              from Settings on web or mobile. Deletion is processed immediately for app data; billing records may be
+              retained for up to 7 years as required by law.
+            </li>
+            <li>
+              <strong>Withdraw consent:</strong> You can sign out at any time and disable optional analytics or
+              error reporting via your cookie preferences.
+            </li>
+            <li>
+              <strong>Access and correction:</strong> You can view and update your personal data in your profile at
+              any time, or request a copy by contacting support.
+            </li>
+            <li>
+              <strong>EU/UK residents:</strong> Under GDPR, you have the right to access, rectify, erase, restrict
+              processing, data portability, and to object to processing. To exercise these rights, contact the
+              support channel below.
+            </li>
+          </ul>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
-            Questions about this policy should go to the support channel for your Suppr deployment (e.g. the app
-            maintainer or organization).
+            For questions about this policy, data requests, or to exercise your rights, email us
+            at{" "}
+            <a href={mailtoHref} className="text-violet-600 dark:text-violet-400 underline">
+              {privacyEmail}
+            </a>.
+            We aim to respond within 14 days.
           </p>
         </div>
       </div>

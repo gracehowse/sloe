@@ -1,0 +1,25 @@
+appId: host.exp.Exponent
+name: "Burn detail — navigation and content"
+---
+# Navigate to Today
+- tapOn: "Today"
+- waitForAnimationToEnd
+
+# Scroll down to burn card (if Health data exists)
+- scrollUntilVisible:
+    element: "burned"
+    direction: DOWN
+
+# If burn card is visible, tap it
+- runFlow:
+    when:
+      visible: "burned"
+    commands:
+      - tapOn: "burned"
+      - assertVisible: "Calorie Burn"
+      - assertVisible:
+          text: "Active energy|Resting energy|Projected"
+          timeout: 3000
+      # Navigate back
+      - tapOn:
+          point: "5%,8%"

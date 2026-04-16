@@ -59,9 +59,9 @@ describe("measureToGrams — cup with food-specific density", () => {
     expect(g).toBeCloseTo(125, 0);
   });
 
-  it("1 cup with no gPerMl uses 0.55 default (~130g)", () => {
+  it("1 cup with no gPerMl uses 0.9 default (~213g)", () => {
     const g = measureToGrams({ name: "unknown", amount: 1, unit: "cup" });
-    expect(g).toBeCloseTo(130, 0);
+    expect(g).toBeCloseTo(213, 0);
   });
 });
 

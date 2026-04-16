@@ -1,0 +1,28 @@
+appId: host.exp.Exponent
+name: "Recipe detail — ingredients, nutrition, log"
+---
+# Navigate to Discover and tap a recipe
+- tapOn: "Discover"
+- waitForAnimationToEnd
+- tapOn:
+    index: 0
+
+# Recipe detail should show
+- assertVisible:
+    text: "Ingredients|Servings"
+
+# Should see Start Cooking button
+- assertVisible: "Start Cooking"
+
+# Should see Log to journal section
+- scrollUntilVisible:
+    element: "Log to journal"
+    direction: DOWN
+- assertVisible: "Log to journal"
+
+# Portion buttons should be visible
+- assertVisible: "1×"
+
+# Navigate back
+- tapOn:
+    point: "5%,8%"

@@ -50,9 +50,14 @@ describe("pepper disambiguation — weight (measureToGrams)", () => {
     expect(measureToGrams({ name: "red pepper", amount: 1, unit: "medium" })).toBe(110);
   });
 
-  it('"pepper" with no unit falls to spice weight (3g)', () => {
-    // When the parser doesn't assign a unit, measureToGrams gets unit=""
+  it('"pepper" with no unit and count >= 1 treated as vegetable (110g)', () => {
+    // "1 pepper" in a recipe context = bell pepper, not ground spice
     const grams = measureToGrams({ name: "pepper", amount: 1, unit: "" });
+    expect(grams).toBe(110);
+  });
+
+  it('"ground pepper" still treated as spice', () => {
+    const grams = measureToGrams({ name: "ground pepper", amount: 1, unit: "" });
     expect(grams).toBe(3);
   });
 

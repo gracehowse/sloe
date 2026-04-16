@@ -283,7 +283,7 @@ function getBasalEnergyBurnedPromise(
 type DietarySample = {
   value: number;
   startDate: string;
-  /** When present and after `startDate`, often holds the real meal time (e.g. MyFitnessPal). */
+  /** When present and after `startDate`, often holds the real meal time (e.g. third-party apps). */
   endDate?: string;
   /** HKQuantitySample UUID from HealthKit (react-native-health exposes as `id`). */
   id?: string;
@@ -534,7 +534,7 @@ function isOwnAppSample(s: DietarySample): boolean {
 
 /**
  * Many apps set `startDate` to midnight on the log day and `endDate` to actual consumption time.
- * MyFitnessPal often syncs several items with the same wall-clock `startDate` (bulk sync) — then
+ * third-party apps often syncs several items with the same wall-clock `startDate` (bulk sync) — then
  * `HKFoodMeal` metadata + this instant fix meal buckets and ordering.
  */
 function effectiveConsumptionInstant(sample: DietarySample): Date {
@@ -648,7 +648,7 @@ function longestPlausibleFoodMetadataValue(meta: Record<string, unknown>, source
 }
 
 /**
- * Many apps (e.g. MacroFactor) save `HKMetadataKeyFoodType` on the **food HKCorrelation** parent;
+ * Many apps (e.g. other apps) save `HKMetadataKeyFoodType` on the **food HKCorrelation** parent;
  * the child dietary-energy quantity sample can carry sparse metadata. Fill empty keys only.
  */
 function mergeCorrelationMetadataIntoSampleMetadata(
@@ -757,9 +757,13 @@ function resolveFoodLabelFromHealthMetadata(
     firstMetadataString(meta, [
       "HKFoodType",
       "HKMetadataKeyFoodType",
+      "HKFoodName",
+      "HKMetadataKeyFoodName",
       "foodName",
       "FoodName",
       "food_name",
+      "FoodItemName",
+      "foodItemName",
       "ITEM_NAME",
       "itemName",
       "productName",
@@ -769,6 +773,24 @@ function resolveFoodLabelFromHealthMetadata(
       "Title",
       "longDescription",
       "LongDescription",
+      "originalFoodName",
+      "OriginalFoodName",
+      "recipeName",
+      "RecipeName",
+      "entryName",
+      "EntryName",
+      "logName",
+      "LogName",
+      "userFoodName",
+      "UserFoodName",
+      "primaryFoodName",
+      "PrimaryFoodName",
+      "foodDescription",
+      "FoodDescription",
+      "HKFoodDescription",
+      "Notes",
+      "Note",
+      "note",
     ]) ?? null;
 
   let label: string | null = null;
@@ -779,6 +801,11 @@ function resolveFoodLabelFromHealthMetadata(
     const maybeName = firstMetadataString(meta, [
       "mealName",
       "HKFoodMealName",
+      "HKMetadataKeyMealName",
+      "mealTitle",
+      "MealTitle",
+      "loggedMealName",
+      "LoggedMealName",
       "name",
       "Name",
       "description",
@@ -1190,13 +1217,13 @@ export async function syncHealthDataThrottled(
  *
  * Strategy:
  * 1. Read energy consumed samples — each one is usually one food item from another app.
- * 2. Group all dietary quantities (MFP/Lose It–style panel) by effective minute + bundle id.
- * 3. Meal slot: prefer HealthKit `HKFoodMeal` / `HKMetadataKeyFoodMeal` (Lose It! / MFP); else local time.
- *    Food title: merge **food HKCorrelation** metadata onto the energy sample (MacroFactor / Lose It pattern),
+ * 2. Group all dietary quantities (third-party apps) by effective minute + bundle id.
+ * 3. Meal slot: prefer HealthKit `HKFoodMeal` / `HKMetadataKeyFoodMeal` (third-party apps); else local time.
+ *    Food title: merge **food HKCorrelation** metadata onto the energy sample (third-party app pattern),
  *    then HKFoodType + HKBrandName, other metadata strings, else "Food log (N kcal)".
  *    Optional `health_import_generic_labels` (AsyncStorage): skip names — use "Imported food (N kcal)" only.
  * 4. When `endDate` is later same calendar day as `startDate`, treat `endDate` as consumption time
- *    (common for MyFitnessPal day-anchored samples).
+ *    (common for third-party apps day-anchored samples).
  * 5. Each imported sample becomes its own nutrition_entry row; de-dupe via `health_sample_id` when present.
  * ─────────────────────────────────────────────────────────────────────────────*/
 

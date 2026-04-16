@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import {
   ActivityIndicator,
   Keyboard,
@@ -117,6 +119,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
         servingSizeG: grams,
         portionSummary,
       };
+      track(AnalyticsEvents.barcode_lookup, { barcode: scanned });
       onScan(scanned, scaledProduct);
       setScanned(null);
       setProduct(null);

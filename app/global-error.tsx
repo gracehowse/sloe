@@ -11,8 +11,15 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error("Global error boundary", error);
+    try {
+      const Sentry = (globalThis as Record<string, unknown>).Sentry as
+        | { captureException?: (e: Error) => void }
+        | undefined;
+      Sentry?.captureException?.(error);
+    } catch {
+      /* Sentry not loaded */
+    }
   }, [error]);
 
   return (

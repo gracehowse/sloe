@@ -11,8 +11,16 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error("Route error boundary", error);
+    // Report to Sentry if available
+    try {
+      const Sentry = (globalThis as Record<string, unknown>).Sentry as
+        | { captureException?: (e: Error) => void }
+        | undefined;
+      Sentry?.captureException?.(error);
+    } catch {
+      /* Sentry not loaded */
+    }
   }, [error]);
 
   return (

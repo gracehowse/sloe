@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+name: "Tab navigation — all 5 tabs load"
+---
+- launchApp
+- openLink: "exp://192.168.108.177:8081"
+
+# Wait for Suppr to load inside Expo Go
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# If on login screen, we can't test authenticated flows
+- runFlow:
+    when:
+      visible: "Today"
+    commands:
+      - assertVisible: "kcal"
+
+      - tapOn: "Discover"
+      - waitForAnimationToEnd
+
+      - tapOn: "Plan"
+      - assertVisible: "Meal Plan"
+
+      - tapOn: "Progress"
+      - assertVisible: "Progress"
+
+      - tapOn: "Profile"
+      - waitForAnimationToEnd
+
+      - tapOn: "Today"
+      - assertVisible: "kcal"

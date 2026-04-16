@@ -50,7 +50,10 @@ export function measureToGrams(input: MeasureInput): number {
 
   if (u === "tbsp") return amt * ML_PER_TBSP * gPerMl;
   if (u === "tsp") return amt * ML_PER_TSP * gPerMl;
-  if (u === "cup" || u === "mug") return amt * ML_PER_CUP_US * (input.gPerMl ?? 0.55);
+  // Default density 0.9 g/ml is a weighted average across common cup contents
+  // (liquids ~1.0, grains ~0.55–0.78, flour ~0.53). Previous 0.55 underestimated
+  // liquids by ~45%. Callers should pass gPerMl from STAPLES for precision.
+  if (u === "cup" || u === "mug") return amt * ML_PER_CUP_US * (input.gPerMl ?? 0.9);
 
   if (u === "g") return amt;
   if (u === "kg") return amt * 1000;
@@ -101,8 +104,15 @@ export function measureToGrams(input: MeasureInput): number {
     if (/steak/.test(name)) return amt * 225;
     if (/chop/.test(name)) return amt * 150;
     // Medium-sized whole produce
-    // Peppers: colour-qualified → vegetable (110g); bare "pepper" → spice (3g, handled below)
+    // Peppers: colour-qualified → vegetable (110g); bare "pepper(s)" plural → vegetable; singular "pepper" → spice (handled below)
     if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) {
+      return amt * COUNT_WEIGHT_G.medium;
+    }
+    // "peppers" (plural) likely means vegetable; bare "pepper" without spice qualifiers in countable context
+    if (/\bpeppers\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli)\b/.test(name)) {
+      return amt * COUNT_WEIGHT_G.medium;
+    }
+    if (/\bpepper\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli|ground|cracked)\b/.test(name) && amt >= 1) {
       return amt * COUNT_WEIGHT_G.medium;
     }
     if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {

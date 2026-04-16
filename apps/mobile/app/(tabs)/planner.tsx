@@ -39,10 +39,10 @@ function stripMidnight(d: Date): Date {
   return x;
 }
 
-/** Calendar date for plan row at index `idx` (ordered days; anchored to “today” like the header range). */
-function planCalendarDateForIndex(idx: number): Date {
+/** Calendar date for plan row at index `idx`, offset from today by `offset` days. */
+function planCalendarDateForIndex(idx: number, offset: number = 0): Date {
   const d = stripMidnight(new Date());
-  d.setDate(d.getDate() + idx);
+  d.setDate(d.getDate() + idx + offset);
   return d;
 }
 
@@ -55,6 +55,7 @@ type PlanMeal = {
   protein: number;
   carbs: number;
   fat: number;
+  fiberG?: number;
   portionMultiplier?: number;
   isPlaceholder?: boolean;
 };
@@ -78,6 +79,7 @@ export default function PlannerScreen() {
   const [plan, setPlan] = useState<DayPlan[] | null>(null);
   const [generating, setGenerating] = useState(false);
   const [days, setDays] = useState<1 | 3 | 7>(1);
+  const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
   // Load user tier from profile
@@ -99,7 +101,7 @@ export default function PlannerScreen() {
   }, [userId]);
 
   const isFree = userTier === "free";
-  const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number; fiber?: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
@@ -116,50 +118,89 @@ export default function PlannerScreen() {
   }, [userId, plan]);
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
-    // Filter recipes that fit this slot
-    const fits = savedRecipes.filter((r) => {
+    const allPool = [...savedRecipes, ...discoverRecipes];
+    const fits = allPool.filter((r) => {
       const tags = r.mealSlots ?? [];
       return tags.length === 0 || tags.some((t: string) => t.toLowerCase() === slotName.toLowerCase());
     });
     if (fits.length === 0) {
-      Alert.alert("No alternatives", "Save more recipes tagged as " + slotName + " to swap.");
+      Alert.alert("No alternatives", "Save more recipes to swap.");
       return;
     }
-    const options = fits.slice(0, 8).map((r) => r.title);
+
+    // Sort by calorie closeness to target slot budget
+    const slotTarget = planTargets ? planTargets.calories * (slotName.toLowerCase() === "breakfast" ? 0.25 : slotName.toLowerCase() === "lunch" ? 0.3 : slotName.toLowerCase() === "dinner" ? 0.35 : 0.1) : 400;
+    const sorted = [...fits].sort((a, b) => Math.abs(a.calories - slotTarget) - Math.abs(b.calories - slotTarget));
+
+    const options = sorted.slice(0, 10).map((r) => `${r.title} (${r.calories} kcal)`);
     options.push("Cancel");
-    Alert.alert("Swap " + slotName, "Pick a replacement:", options.map((label, idx) => ({
-      text: label,
-      style: idx === options.length - 1 ? "cancel" as const : "default" as const,
-      onPress: idx === options.length - 1 ? undefined : () => {
-        const picked = fits[idx];
-        if (!picked || !plan) return;
-        setPlan((prev) => {
-          if (!prev) return prev;
-          return prev.map((dp, di) => {
-            if (di !== dayIndex) return dp;
-            const newMeals = dp.meals.map((m, mi) => {
-              if (mi !== mealIndex) return m;
-              return {
-                ...m,
-                recipeTitle: picked.title,
-                recipeId: picked.id,
-                calories: picked.calories,
-                protein: picked.protein,
-                carbs: picked.carbs,
-                fat: picked.fat,
-                portionMultiplier: undefined,
-              };
+
+    Alert.alert(
+      `Swap ${slotName}`,
+      `Target: ~${Math.round(slotTarget)} kcal for this slot`,
+      options.map((label, idx) => ({
+        text: label,
+        style: idx === options.length - 1 ? "cancel" as const : "default" as const,
+        onPress: idx === options.length - 1 ? undefined : () => {
+          const picked = sorted[idx];
+          if (!picked || !plan) return;
+
+          // Calculate ideal portion to hit slot target
+          const idealMult = picked.calories > 0 ? Math.round((slotTarget / picked.calories) * 4) / 4 : 1;
+          const mult = Math.max(0.25, Math.min(2, idealMult));
+          const scaledCals = Math.round(picked.calories * mult);
+
+          // Compute new day total
+          const currentDay = plan[dayIndex];
+          if (!currentDay) return;
+          const otherMealsCals = currentDay.meals.reduce((s, m, mi) => mi === mealIndex ? s : s + m.calories, 0);
+          const newDayTotal = otherMealsCals + scaledCals;
+          const dayTarget = planTargets?.calories ?? 2000;
+
+          const doSwap = () => {
+            setPlan((prev) => {
+              if (!prev) return prev;
+              return prev.map((dp, di) => {
+                if (di !== dayIndex) return dp;
+                const newMeals = dp.meals.map((m, mi) => {
+                  if (mi !== mealIndex) return m;
+                  return {
+                    ...m,
+                    recipeTitle: picked.title,
+                    recipeId: picked.id,
+                    calories: Math.round(picked.calories * mult),
+                    protein: Math.round(picked.protein * mult),
+                    carbs: Math.round(picked.carbs * mult),
+                    fat: Math.round(picked.fat * mult),
+                    portionMultiplier: mult !== 1 ? mult : undefined,
+                  };
+                });
+                const totals = newMeals.reduce(
+                  (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+                  { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                );
+                return { ...dp, meals: newMeals, totals };
+              });
             });
-            const totals = newMeals.reduce(
-              (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          };
+
+          // Warn if >10% over target
+          if (newDayTotal > dayTarget * 1.1) {
+            Alert.alert(
+              "Over calorie target",
+              `This swap puts the day at ${newDayTotal.toLocaleString()} kcal (target: ${dayTarget.toLocaleString()}).\n\nPortion: ${mult}x = ${scaledCals} kcal`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Swap anyway", onPress: doSwap },
+              ],
             );
-            return { ...dp, meals: newMeals, totals };
-          });
-        });
-      },
-    })));
-  }, [savedRecipes, plan]);
+          } else {
+            doSwap();
+          }
+        },
+      })),
+    );
+  }, [savedRecipes, discoverRecipes, plan, planTargets]);
 
   const toggleSlot = useCallback((slot: string) => {
     setEnabledSlots((prev) => {
@@ -192,10 +233,12 @@ export default function PlannerScreen() {
 
   // Determine progress bar color based on calorie percentage vs target
   const getProgressColor = (cals: number, target: number) => {
-    const pct = target > 0 ? (cals / target) * 100 : 0;
-    if (pct >= 90) return Accent.success;
-    if (pct >= 50) return Accent.warning;
-    return colors.border;
+    if (target <= 0) return colors.border;
+    const pct = (cals / target) * 100;
+    if (pct > 105) return Accent.destructive; // Over target
+    if (pct >= 95 && pct <= 105) return Accent.success; // Within ±5%
+    if (pct >= 50) return Accent.warning; // Under but getting there
+    return colors.border; // Way under
   };
 
   const styles = useMemo(
@@ -332,7 +375,7 @@ export default function PlannerScreen() {
         mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
         mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
         mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
-        mealLogBtn: { paddingVertical: 6, paddingHorizontal: 4, minWidth: 56, alignItems: "flex-end" },
+        mealLogBtn: { paddingVertical: 12, paddingHorizontal: 10, minWidth: 64, alignItems: "flex-end" },
         mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
         mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
@@ -450,8 +493,8 @@ export default function PlannerScreen() {
   }, [userId]);
 
   const generatePlan = useCallback(async () => {
-    if (savedRecipes.length === 0) {
-      Alert.alert("Save recipes first", "Save at least 1 recipe from Discover to generate a plan.");
+    if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
+      Alert.alert("No recipes available", "Save at least 1 recipe from Discover to generate a plan.");
       return;
     }
 
@@ -460,7 +503,7 @@ export default function PlannerScreen() {
     // Smart macro-aware plan generation
     {
       // Load targets from user profile
-      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat };
+      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber };
       if (userId) {
         const { data } = await supabase
           .from("profiles")
@@ -481,7 +524,7 @@ export default function PlannerScreen() {
               age: d.age != null ? Number(d.age) : null,
             },
           );
-          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat };
+          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
         }
       }
 
@@ -490,20 +533,39 @@ export default function PlannerScreen() {
         protein: resolved.protein,
         carbs: resolved.carbs,
         fat: resolved.fat,
-        calorieBandPct: 12,
-        carbFatBandPct: 18,
+        calorieBandPct: 5,
+        carbFatBandPct: 15,
       };
+      if (__DEV__) console.log("[planner] targets:", targets);
 
-      const rawPlan = generateSmartPlan({
-        recipes: savedRecipes.map((r) => ({
+      // Use saved recipes first, then fill with discover recipes if the user doesn't
+      // have enough variety to populate all meal slots.
+      const savedPool = savedRecipes.map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: (r as any).fiber_g ?? (r as any).fiberG ?? 0,
+        mealType: r.mealSlots ?? null,
+      }));
+      const discoverPool = discoverRecipes
+        .filter((r) => !savedRecipes.some((s) => s.id === r.id))
+        .map((r) => ({
           id: r.id,
           title: r.title,
           calories: r.calories,
           protein: r.protein,
           carbs: r.carbs,
           fat: r.fat,
-          mealType: r.mealSlots ?? null,
-        })),
+          mealType: (r as any).mealSlots ?? null,
+        }));
+      const fullPool = [...savedPool, ...discoverPool];
+      const recipePool = savedPool.length >= 6 ? savedPool : fullPool;
+
+      const rawPlan = generateSmartPlan({
+        recipes: recipePool,
         targets,
         days,
         slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
@@ -578,88 +640,47 @@ export default function PlannerScreen() {
             <Text style={styles.headerTitle}>Meal Plan</Text>
             {plan && <Text style={styles.headerSubtitle}>{getDateRange()}</Text>}
           </View>
-          <Pressable style={styles.autoFillBtn} onPress={generatePlan} disabled={generating || !plan}>
-            <Ionicons name="sparkles" size={14} color={Accent.primary} />
-            <Text style={styles.autoFillBtnText}>AI Auto-fill</Text>
+          <Pressable style={styles.autoFillBtn} onPress={generatePlan} disabled={generating}>
+            <Ionicons name="refresh-outline" size={14} color={Accent.primary} />
+            <Text style={styles.autoFillBtnText}>{plan ? "Regenerate" : "Generate Plan"}</Text>
           </Pressable>
         </View>
 
-        {/* Day summary strip: full width for 1-day plans; horizontal scroll for multi-day */}
-        {plan && plan.length > 0 && planTargets && (
-          plan.length === 1 ? (
-            <View style={styles.dayCardsSingleWrap}>
-              {plan.map((dp, idx) => {
-                const cal = planCalendarDateForIndex(idx);
-                const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
-                const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
-                const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
-                return (
-                  <View key={dp.day} style={[styles.dayCard, styles.dayCardFull, isTodayCard && styles.dayCardToday]}>
-                    <Text style={[styles.dayCardName, isTodayCard && styles.dayCardNameToday]}>
-                      {WEEKDAY_SHORT[cal.getDay()]}
-                    </Text>
-                    <View style={styles.dayCardMeals}>
-                      {dp.meals.map((m, mi) => (
-                        <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
-                          {truncateMealName(m.recipeTitle)}
-                        </Text>
-                      ))}
-                    </View>
-                    <View style={styles.dayCardProgressBar}>
-                      <View
-                        style={[
-                          styles.dayCardProgressFill,
-                          { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.dayCardCalories}>
-                      {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
-                    </Text>
+        {/* Day summary strip — compact row that fits on screen */}
+        {plan && plan.length > 1 && planTargets && (
+          <View style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}>
+            {plan.map((dp, idx) => {
+              const cal = planCalendarDateForIndex(idx, startOffset);
+              const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
+              const progressPct = planTargets.calories > 0 ? Math.min((dp.totals.calories / planTargets.calories) * 100, 100) : 0;
+              const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
+              return (
+                <View
+                  key={dp.day}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isTodayCard ? Accent.primary + "08" : colors.card,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor: isTodayCard ? Accent.primary : colors.border,
+                    padding: 8,
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: isTodayCard ? Accent.primary : colors.text }}>
+                    {WEEKDAY_SHORT[cal.getDay()]}
+                  </Text>
+                  <View style={{ width: "100%", height: 3, borderRadius: 1.5, backgroundColor: colors.border }}>
+                    <View style={{ width: `${progressPct}%` as any, height: 3, borderRadius: 1.5, backgroundColor: progressColor }} />
                   </View>
-                );
-              })}
-            </View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayCardsScroll}
-              scrollEventThrottle={16}
-            >
-              {plan.map((dp, idx) => {
-                const cal = planCalendarDateForIndex(idx);
-                const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
-                const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
-                const progressPct = planTargets.calories > 0 ? (dp.totals.calories / planTargets.calories) * 100 : 0;
-                return (
-                  <View key={dp.day} style={[styles.dayCard, isTodayCard && styles.dayCardToday]}>
-                    <Text style={[styles.dayCardName, isTodayCard && styles.dayCardNameToday]}>
-                      {WEEKDAY_SHORT[cal.getDay()]}
-                    </Text>
-                    <View style={styles.dayCardMeals}>
-                      {dp.meals.map((m, mi) => (
-                        <Text key={mi} style={styles.dayCardMeal} numberOfLines={1}>
-                          {truncateMealName(m.recipeTitle)}
-                        </Text>
-                      ))}
-                    </View>
-                    <View style={styles.dayCardProgressBar}>
-                      <View
-                        style={[
-                          styles.dayCardProgressFill,
-                          { width: `${Math.min(progressPct, 100)}%`, backgroundColor: progressColor },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.dayCardCalories}>
-                      {Math.round(dp.totals.calories)} / {Math.round(planTargets.calories)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          )
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                    {Math.round(dp.totals.calories)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         )}
 
         {/* Generate controls */}
@@ -695,6 +716,26 @@ export default function PlannerScreen() {
                   </Pressable>
                 );
               })}
+            </View>
+
+            {/* Start date */}
+            <Text style={styles.sectionLabel}>Start from</Text>
+            <View style={styles.daysRow}>
+              {([
+                { val: 0 as const, label: "Today" },
+                { val: 1 as const, label: "Tomorrow" },
+                { val: 7 as const, label: "Next week" },
+              ]).map((o) => (
+                <Pressable
+                  key={o.val}
+                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  onPress={() => setStartOffset(o.val)}
+                >
+                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>
+                    {o.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             {/* Meal slot toggles */}
@@ -739,7 +780,7 @@ export default function PlannerScreen() {
         {plan && plan.length > 0 && (
           <Text style={styles.sectionLabel}>
             {plan.length === 1
-              ? `${WEEKDAY_LONG[planCalendarDateForIndex(0).getDay()]}'s plan`
+              ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
               : `Your ${plan.length}-day plan`}
           </Text>
         )}
@@ -757,6 +798,7 @@ export default function PlannerScreen() {
                   { label: "P", val: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
                   { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
                   { label: "F", val: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
+                  { label: "Fi", val: Math.round(dp.meals.reduce((s, m) => s + (m.fiberG ?? 0), 0) * 10) / 10, target: planTargets.fiber ?? 28, color: Accent.success },
                 ] as const).map(({ label, val, target, color }) => {
                   const diff = val - target;
                   const pct = target > 0 ? Math.abs(diff) / target : 0;
@@ -782,20 +824,66 @@ export default function PlannerScreen() {
               <Pressable
                 key={i}
                 style={styles.mealRow}
-                onLongPress={() => swapMeal(dayIdx, i, meal.name)}
                 onPress={() => {
-                  const id =
-                    meal.recipeId ??
-                    savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ??
-                    discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
-                  if (id) {
-                    const mult = meal.portionMultiplier ?? 1;
-                    router.push(`/recipe/${id}?portion=${mult}`);
-                    return;
-                  }
+                  const currentMult = meal.portionMultiplier ?? 1;
                   Alert.alert(
-                    "Recipe unavailable",
-                    "This planned meal no longer matches a recipe in your library. Generate a new plan from saved recipes.",
+                    meal.recipeTitle,
+                    `${Math.round(meal.calories)} kcal · ${currentMult}x portion`,
+                    [
+                      {
+                        text: "Swap meal",
+                        onPress: () => swapMeal(dayIdx, i, meal.name),
+                      },
+                      {
+                        text: "Adjust portion",
+                        onPress: () => {
+                          Alert.alert("Portion", "Choose a portion size:", [
+                            ...[0.5, 0.75, 1, 1.25, 1.5, 2].map((mult) => ({
+                              text: `${mult}x (${Math.round(meal.calories / currentMult * mult)} kcal)`,
+                              onPress: () => {
+                                setPlan((prev) => {
+                                  if (!prev) return prev;
+                                  return prev.map((dp, di) => {
+                                    if (di !== dayIdx) return dp;
+                                    const baseCals = meal.calories / currentMult;
+                                    const basePro = meal.protein / currentMult;
+                                    const baseCarbs = meal.carbs / currentMult;
+                                    const baseFat = meal.fat / currentMult;
+                                    const baseFiber = (meal.fiberG ?? 0) / currentMult;
+                                    const newMeals = dp.meals.map((m, mi) => {
+                                      if (mi !== i) return m;
+                                      return {
+                                        ...m,
+                                        calories: Math.round(baseCals * mult),
+                                        protein: Math.round(basePro * mult),
+                                        carbs: Math.round(baseCarbs * mult),
+                                        fat: Math.round(baseFat * mult),
+                                        fiberG: Math.round(baseFiber * mult * 10) / 10,
+                                        portionMultiplier: mult !== 1 ? mult : undefined,
+                                      };
+                                    });
+                                    const totals = newMeals.reduce(
+                                      (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+                                      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                                    );
+                                    return { ...dp, meals: newMeals, totals };
+                                  });
+                                });
+                              },
+                            })),
+                            { text: "Cancel", style: "cancel" },
+                          ]);
+                        },
+                      },
+                      {
+                        text: "View recipe",
+                        onPress: () => {
+                          const id = meal.recipeId ?? savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ?? discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
+                          if (id) router.push(`/recipe/${id}?portion=${currentMult}`);
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
                   );
                 }}
               >
@@ -842,7 +930,7 @@ export default function PlannerScreen() {
                 >
                   <Text style={styles.mealLogBtnText}>Log today</Text>
                 </Pressable>
-                <Text style={styles.mealChevron}>›</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </Pressable>
             ))}
           </View>
@@ -874,28 +962,37 @@ export default function PlannerScreen() {
                 if (!userId || !plan) return;
                 setGenerating(true);
                 try {
-                  // Collect recipe IDs — resolve by title if ID is missing (older plans)
+                  // Collect recipe IDs from plan meals
                   const allRecipes = [...savedRecipes, ...discoverRecipes];
-                  const recipeIds = [...new Set(
-                    plan.flatMap((dp) => dp.meals.map((m) => {
-                      if (m.recipeId) return m.recipeId;
-                      return allRecipes.find((r) => r.title === m.recipeTitle)?.id;
-                    }).filter(Boolean)) as string[],
-                  )];
+                  const recipeIds: string[] = [];
+                  for (const dp of plan) {
+                    for (const m of dp.meals) {
+                      const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
+                      if (rid && !recipeIds.includes(rid)) recipeIds.push(rid);
+                    }
+                  }
+                  if (__DEV__) console.log("[shopping] Recipe IDs from plan:", recipeIds.length, recipeIds);
                   if (recipeIds.length === 0) {
-                    Alert.alert("No recipes found", "Try generating a new plan first — your current plan may have been created before recipes were linked.");
+                    const mealTitles = plan.flatMap((dp) => dp.meals.map((m) => `${m.recipeTitle} (id: ${m.recipeId ?? "none"})`));
+                    Alert.alert("No recipe IDs found", `Meals in plan:\n${mealTitles.join("\n")}\n\nGenerate a new plan to fix this.`);
                     setGenerating(false);
                     return;
                   }
 
                   // Fetch ingredients for all planned recipes
-                  const { data: ingredients } = await supabase
+                  const { data: ingredients, error: ingErr } = await supabase
                     .from("recipe_ingredients")
                     .select("name, amount, unit, recipe_id")
                     .in("recipe_id", recipeIds);
 
+                  if (__DEV__) console.log("[shopping] Ingredients fetched:", ingredients?.length ?? 0, ingErr?.message ?? "ok");
+                  if (ingErr) {
+                    Alert.alert("Error", "Couldn't fetch ingredients: " + ingErr.message);
+                    setGenerating(false);
+                    return;
+                  }
                   if (!ingredients || ingredients.length === 0) {
-                    Alert.alert("No ingredients", "Couldn't find ingredients for the planned recipes.");
+                    Alert.alert("No ingredients found", `Looked up ${recipeIds.length} recipe(s) but none had ingredient data.\n\nThis can happen with community recipes that haven't been verified yet. Try re-importing or verifying the recipes first.`);
                     setGenerating(false);
                     return;
                   }
@@ -942,46 +1039,66 @@ export default function PlannerScreen() {
                     return "Fruit & Veg";
                   };
 
-                  const items = [...merged.values()].map((item, i) => ({
-                    id: String(i),
+                  const items = [...merged.values()].map((item) => ({
                     name: item.name,
                     amount: item.amount % 1 === 0 ? String(item.amount) : item.amount.toFixed(1),
                     unit: item.unit,
                     category: categorise(item.name),
                     checked: false,
-                    from: [...item.from].filter(Boolean).join(", "),
+                    source: [...item.from].filter(Boolean).join(", "),
                   }));
 
-                  // Sort by category
                   items.sort((a, b) => a.category.localeCompare(b.category));
+                  if (__DEV__) console.log("[shopping] Merged items:", items.length, items.slice(0, 3));
 
-                  // Try relational table, fall back to legacy
+                  // Build inserts — omit id so Supabase auto-generates UUIDs
                   const inserts = items.map((item) => ({
-                    id: item.id,
                     user_id: userId,
                     name: item.name,
                     amount: item.amount,
                     unit: item.unit,
                     category: item.category,
                     checked: item.checked,
-                    source: item.from,
+                    source: item.source,
                   }));
                   // Clear existing then insert
+                  // Clear existing items then insert new ones
                   const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId!);
                   if (delErr) {
+                    console.log("[planner] shopping_items delete failed, trying legacy:", delErr.message);
+                    // Relational table doesn't exist — try legacy JSONB fallback
                     const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId!, items);
-                    if (upErr) {
-                      throw new Error(upErr.message);
-                    }
+                    if (upErr) throw new Error(upErr.message);
                   } else if (inserts.length > 0) {
-                    await supabase.from("shopping_items").insert(inserts);
+                    // Insert in batches of 50 to avoid payload limits
+                    for (let i = 0; i < inserts.length; i += 50) {
+                      const batch = inserts.slice(i, i + 50);
+                      const { error: insErr } = await supabase.from("shopping_items").insert(batch);
+                      if (insErr) {
+                        console.error("[planner] shopping_items insert failed:", insErr.message, JSON.stringify(batch[0]));
+                        throw new Error(insErr.message);
+                      }
+                    }
                   }
 
+                  if (inserts.length === 0) {
+                    Alert.alert("Empty list", "Ingredients were found but none had quantities to add to a shopping list.");
+                    setGenerating(false);
+                    return;
+                  }
+                  setShoppingItemCount(inserts.length);
                   setGenerating(false);
-                  router.push("/shopping");
-                } catch {
+                  Alert.alert(
+                    "Shopping list ready",
+                    `${inserts.length} item${inserts.length !== 1 ? "s" : ""} from ${plan.flatMap(d => d.meals).length} meals.`,
+                    [
+                      { text: "View list", onPress: () => router.push("/shopping") },
+                      { text: "Stay here", style: "cancel" },
+                    ],
+                  );
+                } catch (e) {
                   setGenerating(false);
-                  Alert.alert("Error", "Failed to generate shopping list.");
+                  Alert.alert("Error", `Failed to generate shopping list: ${e instanceof Error ? e.message : "Unknown error"}`);
                 }
               }}
               disabled={generating}

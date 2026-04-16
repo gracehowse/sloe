@@ -35,6 +35,18 @@ line(
 );
 line(has(supabaseUrl), "NEXT_PUBLIC_SUPABASE_URL");
 line(has(serviceRole), "SUPABASE_SERVICE_ROLE_KEY");
+const privacyEmail = process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim();
+console.log(
+  `[--] NEXT_PUBLIC_PRIVACY_EMAIL — ${
+    privacyEmail ? `set (${privacyEmail})` : "unset; /privacy defaults to privacy@suppr-club.com"
+  }`,
+);
+
+if (!has(serviceRole)) {
+  console.log(
+    "[!!] Account deletion: without SUPABASE_SERVICE_ROLE_KEY, DELETE /api/account/delete returns 503.",
+  );
+}
 
 if (has(stripeSecret) && !has(stripeWebhook)) {
   console.log(

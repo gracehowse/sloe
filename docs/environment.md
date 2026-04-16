@@ -11,11 +11,17 @@ Reference for **local dev**, **CI**, and **production** (e.g. Vercel). Values ar
 
 Without these, auth and data sync will not work.
 
+## Public: privacy contact
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_PRIVACY_EMAIL` | Shown on `/privacy` for data-rights contact. If unset, defaults to `privacy@suppr-club.com`. Set on Vercel to the mailbox you actually monitor. |
+
 ## Server-only (API routes, webhooks)
 
 | Variable | Purpose |
 |----------|---------|
-| `SUPABASE_SERVICE_ROLE_KEY` | Tier-gated APIs (`profiles.user_tier`), Stripe webhook profile updates, other privileged server ops (keep secret) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Tier-gated APIs (`profiles.user_tier`), Stripe webhook profile updates, **`DELETE /api/account/delete`** (auth user removal), other privileged server ops (keep secret) |
 | `STRIPE_SECRET_KEY` | Checkout session creation |
 | `STRIPE_WEBHOOK_SECRET` | Verify Stripe webhook signatures |
 | `STRIPE_PRICE_BASE_MONTHLY` | Stripe Price ID for Base tier |

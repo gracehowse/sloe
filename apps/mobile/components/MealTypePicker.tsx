@@ -1,12 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const MEAL_OPTIONS = [
-  { value: "breakfast", label: "Breakfast", emoji: "\u2600\uFE0F" },
-  { value: "lunch", label: "Lunch", emoji: "\uD83C\uDF1E" },
-  { value: "dinner", label: "Dinner", emoji: "\uD83C\uDF19" },
-  { value: "snack", label: "Snacks", emoji: "\uD83C\uDF7F" },
+  { value: "breakfast", label: "Breakfast", icon: "sunny-outline" as const },
+  { value: "lunch", label: "Lunch", icon: "restaurant-outline" as const },
+  { value: "dinner", label: "Dinner", icon: "moon-outline" as const },
+  { value: "snack", label: "Snacks", icon: "cafe-outline" as const },
 ] as const;
 
 type Props = {
@@ -48,7 +49,7 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
                 },
               ]}
             >
-              <Text style={{ fontSize: 14 }}>{opt.emoji}</Text>
+              <Ionicons name={opt.icon} size={14} color={active ? Accent.primary : colors.textSecondary} />
               <Text
                 style={{
                   fontSize: 13,

@@ -40,9 +40,16 @@ describe("measureToGrams", () => {
 
   it("cup with default density", () => {
     const g = measureToGrams({ name: "flour", amount: 1, unit: "cup" });
-    // 236.588 ml × 0.55 default density ≈ 130g
+    // 236.588 ml × 0.9 default density ≈ 213g
+    expect(g).toBeGreaterThan(200);
+    expect(g).toBeLessThan(225);
+  });
+
+  it("cup with explicit density override", () => {
+    // Flour: 0.53 g/ml → 236.588 × 0.53 ≈ 125g
+    const g = measureToGrams({ name: "flour", amount: 1, unit: "cup", gPerMl: 0.53 });
     expect(g).toBeGreaterThan(120);
-    expect(g).toBeLessThan(140);
+    expect(g).toBeLessThan(135);
   });
 
   it("ml", () => {

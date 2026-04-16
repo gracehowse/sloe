@@ -1,9 +1,11 @@
+import 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';
@@ -187,11 +189,12 @@ function RootLayoutInner() {
   const { resolved } = useTheme();
 
   return (
-    <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
-      <ForwardSocialSharesToImport />
-      <ForwardShareIntentToImport />
-      <ResumeClipboardToImport />
-      <Stack
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
+        <ForwardSocialSharesToImport />
+        <ForwardShareIntentToImport />
+        <ResumeClipboardToImport />
+        <Stack
         screenOptions={({ route }) => ({
           headerShown: !STACK_HEADER_HIDDEN.has(route.name),
           // Avoid "< (tabs)" / long parent labels on iOS back button
@@ -211,9 +214,10 @@ function RootLayoutInner() {
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
-    </ThemeProvider>
+        </Stack>
+        <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

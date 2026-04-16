@@ -46,7 +46,13 @@ export async function POST(req: Request) {
 
   try {
     const result = await verifyIngredients({ ingredients, servings, provider, overrides });
-    return NextResponse.json({ ok: true, ...result });
+    const confidenceTier =
+      result.avgIngredientConfidence >= 0.75
+        ? "high"
+        : result.avgIngredientConfidence >= 0.5
+          ? "medium"
+          : "low";
+    return NextResponse.json({ ok: true, confidenceTier, ...result });
   } catch (e) {
     return NextResponse.json(
       {

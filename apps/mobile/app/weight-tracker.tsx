@@ -426,9 +426,8 @@ export default function ProgressScreen() {
         },
         headerTitle: {
           fontSize: 22,
-          fontWeight: "800",
-          color: Accent.primary,
-          letterSpacing: 3,
+          fontWeight: "700",
+          color: colors.text,
         },
         card: {
           backgroundColor: colors.card,
@@ -527,7 +526,7 @@ export default function ProgressScreen() {
           <Pressable onPress={goBack} hitSlop={12}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>WEIGHT & TRENDS</Text>
+          <Text style={styles.headerTitle}>Weight &amp; Trends</Text>
         </View>
 
         {/* Time range selector */}
@@ -623,8 +622,10 @@ export default function ProgressScreen() {
                     Tap the chart to see weight on that day.
                   </Text>
                   <TrendLine
+                    key={range}
                     data={weightData}
                     projectedData={weightProjection}
+                    height={200}
                     goalValue={
                       goalWeightKg != null
                         ? isImperial
@@ -771,6 +772,7 @@ export default function ProgressScreen() {
 
               {stepsData.length >= 2 && (
                 <MiniBarChart
+                  key={`steps-${range}`}
                   data={stepsData}
                   goalLine={dailyStepsGoal}
                   color={Accent.success}
@@ -779,26 +781,9 @@ export default function ProgressScreen() {
                   goalColor={Accent.success}
                 />
               )}
-
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Steps today"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="number-pad"
-                  value={stepsInput}
-                  onChangeText={(t) => {
-                    stepsInputUserEdited.current = true;
-                    setStepsInput(t);
-                  }}
-                />
-                <Pressable
-                  style={[styles.btn, { paddingHorizontal: Spacing.xl }]}
-                  onPress={() => void saveSteps()}
-                >
-                  <Text style={styles.btnText}>Save</Text>
-                </Pressable>
-              </View>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm }}>
+                Steps sync automatically from Apple Health.
+              </Text>
             </View>
 
             {/* WATER */}
@@ -806,6 +791,7 @@ export default function ProgressScreen() {
               <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Water</Text>
                 <MiniBarChart
+                  key={`water-${range}`}
                   data={waterData}
                   goalLine={waterGoalMl}
                   color={MacroColors.water}

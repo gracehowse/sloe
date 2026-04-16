@@ -49,7 +49,7 @@ export type DailyProjection = {
  * @param targetCalories   - Daily calorie target (approximation of adjusted TDEE)
  * @param maintenanceTdee  - Estimated maintenance TDEE (if available). Falls back to target + 500 for "lose" goal.
  * @param goal             - User's goal: "lose", "gain", or "maintain"
- * @param weeksOut         - How many weeks to project (default 5, like MFP)
+ * @param weeksOut         - How many weeks to project (default 5)
  */
 export function projectWeight(opts: {
   currentWeightKg: number;

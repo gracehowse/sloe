@@ -18,7 +18,7 @@
 | `RecipeUpload` | Create/import recipe wizard (manual, URL, image) |
 | `CookMode` | Step-by-step fullscreen cooking instructions with timer |
 | `ShoppingList` | Shopping list with category grouping and check-off |
-| `Settings` | App settings — theme, notifications, data export |
+| `Settings` | App settings — theme, activity-adjusted goals, dashboard widget picker, week start, measurement system, dietary restrictions, notifications, data export |
 | `TodayAtAGlance` | Dashboard widget showing today's macro progress |
 | `GoPublicDialog` | Dialog to publish a private recipe to community |
 | `NotificationsCenter` | Full notifications panel |

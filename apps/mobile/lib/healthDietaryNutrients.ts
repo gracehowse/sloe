@@ -1,12 +1,14 @@
 /**
  * Apple Health dietary import: permission keys (react-native-health / HealthKit),
  * conversion from HK sample units into `nutrition_micros` JSON, and journal display.
- * Goal: parity with typical MyFitnessPal / Lose It! → Health exports (macros + full micro panel).
+ * Goal: parity with typical third-party apps / other apps → Health exports (macros + full micro panel).
  */
 
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
+  humanizeNutrientKey,
+  listMicroNutrientsCompleteDisplay,
   listMicroNutrientsForDisplay,
   mealContributedFiberG,
   round1,
@@ -19,6 +21,8 @@ import {
 export {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
+  humanizeNutrientKey,
+  listMicroNutrientsCompleteDisplay,
   listMicroNutrientsForDisplay,
   mealContributedFiberG,
   round1,

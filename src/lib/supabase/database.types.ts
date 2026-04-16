@@ -646,7 +646,9 @@ export type Database = {
           target_fiber_g: number | null
           target_protein: number | null
           target_water_ml: number | null
+          tracked_macros: string[] | null
           user_tier: string
+          week_start_day: string | null
           weight_kg: number | null
           weight_kg_by_day: Json
           workouts_by_day: Json | null
@@ -688,7 +690,9 @@ export type Database = {
           target_fiber_g?: number | null
           target_protein?: number | null
           target_water_ml?: number | null
+          tracked_macros?: string[] | null
           user_tier?: string
+          week_start_day?: string | null
           weight_kg?: number | null
           weight_kg_by_day?: Json
           workouts_by_day?: Json | null
@@ -733,7 +737,9 @@ export type Database = {
           target_fiber_g?: number | null
           target_protein?: number | null
           target_water_ml?: number | null
+          tracked_macros?: string[] | null
           user_tier?: string
+          week_start_day?: string | null
           weight_kg?: number | null
           weight_kg_by_day?: Json
           workouts_by_day?: Json | null

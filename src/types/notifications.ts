@@ -1,6 +1,7 @@
 import type { WeekSummaryMode } from "../lib/nutrition/weekSummaryWindow";
 
 export type NotificationPrefs = {
+  showMealTimestamps: boolean;
   newRecipes: boolean;
   mealReminders: boolean;
   weeklyReport: boolean;
@@ -10,6 +11,7 @@ export type NotificationPrefs = {
 };
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  showMealTimestamps: false,
   newRecipes: true,
   mealReminders: false,
   weeklyReport: true,

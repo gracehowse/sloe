@@ -32,7 +32,7 @@
 
   /** Radius — larger, more refined */
   --radius: 0.75rem;         /* 12px base */
-  --radius-card: 0.875rem;   /* 14px cards */
+  --radius-card: 1rem;        /* 16px cards — matches mobile Radius.lg */
 
   /** ── LIGHT MODE PALETTE ──
    *  Icon-driven & Structured: cool grays, blue accent, green success.

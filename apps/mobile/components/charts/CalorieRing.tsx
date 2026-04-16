@@ -26,6 +26,8 @@ type DisplayMode = "remaining" | "consumed";
 type Props = {
   consumed: number;
   goal: number;
+  /** The base goal before activity bonus (used to show bonus segment in a different colour) */
+  baseGoal?: number;
   textColor: string;
   secondaryColor: string;
   trackColor: string;
@@ -105,15 +107,16 @@ function MacroRing({
 export default function CalorieRing({
   consumed,
   goal,
+  baseGoal,
   textColor,
   secondaryColor,
   trackColor,
   proteinPct = 0,
   carbsPct = 0,
   fatPct = 0,
-  expanded = false,
+  expanded = true,
   onToggle,
-  displayMode = "remaining",
+  displayMode = "consumed",
   onToggleDisplayMode,
 }: Props) {
   const diff = Math.round(goal - consumed);
@@ -235,7 +238,7 @@ export default function CalorieRing({
         {!expanded && (
           <Text
             style={{
-              fontSize: 8,
+              fontSize: 10,
               color: secondaryColor,
               marginTop: 1,
               fontVariant: ["tabular-nums"],

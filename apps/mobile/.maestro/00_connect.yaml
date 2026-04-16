@@ -1,0 +1,17 @@
+appId: host.exp.Exponent
+name: "Connect to Expo dev server"
+---
+- launchApp
+
+# Tap "Enter URL manually"
+- tapOn: "Enter URL manually"
+- waitForAnimationToEnd
+
+# Type the Metro URL
+- inputText: "exp://192.168.108.177:8081"
+- pressKey: Enter
+
+# Wait for the app to bundle and load
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd

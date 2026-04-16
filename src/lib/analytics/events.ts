@@ -19,6 +19,8 @@ export const AnalyticsEvents = {
   pricing_page_viewed: "pricing_page_viewed",
   recipe_page_viewed: "recipe_page_viewed",
   onboarding_completed: "onboarding_completed",
+  onboarding_step_completed: "onboarding_step_completed",
+  paywall_viewed: "paywall_viewed",
   first_run_checklist_completed: "first_run_checklist_completed",
 } as const;
 

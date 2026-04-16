@@ -545,7 +545,7 @@ export async function verifyIngredients(opts: {
                 input: raw, resolved,
                 fatSecretFoodId: String(hit.fdcId),
                 matchedName: hit.description,
-                confidence: Math.min(0.95, conf + 0.1),
+                confidence: Math.min(0.98, conf + 0.03),
                 source: "USDA",
                 macros: usdaMacros,
               };
@@ -587,7 +587,7 @@ export async function verifyIngredients(opts: {
               input: raw, resolved,
               fatSecretFoodId: hit.code,
               matchedName: label,
-              confidence: Math.min(0.85, conf),
+              confidence: Math.min(0.90, conf - 0.03),
               source: "OFF",
               macros: offMacros,
             };
@@ -661,7 +661,7 @@ export async function verifyIngredients(opts: {
       input: raw, resolved,
       fatSecretFoodId: null,
       matchedName: resolved.name,
-      confidence: 0.32,
+      confidence: estimated.isDefaultFallback ? 0.15 : 0.35,
       source: "Estimated",
       macros: {
         calories: estimated.calories,

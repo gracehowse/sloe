@@ -273,6 +273,16 @@ export default function OnboardingPage() {
 
   const [wizardStep, setWizardStep] = useState(0);
   const WIZARD_STEPS = ["About you", "Goal & Activity", "Plan & Strategy", "Review targets"];
+
+  const advanceStep = () => {
+    if (!canAdvance) return;
+    const nextStep = wizardStep + 1;
+    track(AnalyticsEvents.onboarding_step_completed, {
+      step: wizardStep,
+      step_name: WIZARD_STEPS[wizardStep],
+    });
+    setWizardStep(nextStep);
+  };
   const wizardProgress = ((wizardStep + 1) / WIZARD_STEPS.length) * 100;
 
   const canAdvance = (() => {
@@ -596,7 +606,7 @@ export default function OnboardingPage() {
           {wizardStep < WIZARD_STEPS.length - 1 ? (
             <button
               type="button"
-              onClick={() => canAdvance && setWizardStep((s) => s + 1)}
+              onClick={advanceStep}
               disabled={!canAdvance}
               className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-xl hover:shadow-violet-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >

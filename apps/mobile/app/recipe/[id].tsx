@@ -87,6 +87,8 @@ type Ingredient = {
   fiber_g?: number;
   sugar_g?: number;
   sodium_mg?: number;
+  confidence?: number | null;
+  source?: string | null;
 };
 
 function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelColor }: { value: number; goal: number; color: string; label: string; size?: number; ringBgColor: string; labelColor: string }) {
@@ -249,11 +251,17 @@ export default function RecipeDetailScreen() {
       }).eq("id", recipeId);
 
       // Reload
-      const ingRes = await supabase
+      let reloadRes = await supabase
         .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
         .eq("recipe_id", recipeId);
-      if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
+      if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
+        reloadRes = await supabase
+          .from("recipe_ingredients")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+          .eq("recipe_id", recipeId) as any;
+      }
+      if (reloadRes.data) setIngredients(reloadRes.data as Ingredient[]);
       setRecipe((prev) => prev ? { ...prev, calories: Math.round(perServing.calories), protein: Math.round(perServing.protein), carbs: Math.round(perServing.carbs), fat: Math.round(perServing.fat) } : prev);
 
       Alert.alert("Re-verified", `Nutrition updated for ${ingredients.length} ingredients.`);
@@ -285,10 +293,17 @@ export default function RecipeDetailScreen() {
           .eq("id", recipeId)
           .maybeSingle();
       }
-      const ingRes = await supabase
+      // Try with confidence/source columns, fall back without if columns don't exist yet
+      let ingRes = await supabase
         .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
         .eq("recipe_id", recipeId);
+      if (ingRes.error && String(ingRes.error.message).includes("column")) {
+        ingRes = await supabase
+          .from("recipe_ingredients")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+          .eq("recipe_id", recipeId) as any;
+      }
       if (cancelled) return;
       if (recipeRes.data) {
         const row = recipeRes.data as Record<string, unknown>;
@@ -576,11 +591,9 @@ export default function RecipeDetailScreen() {
 
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
     headerBtn: {
-      position: "absolute",
-      top: Spacing.lg,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: "#000000aa",
       justifyContent: "center",
       alignItems: "center",
@@ -667,15 +680,15 @@ export default function RecipeDetailScreen() {
     },
     sourceLinkText: { color: Accent.primary, fontSize: 14, fontWeight: "600" },
 
-    actionsRow: { gap: Spacing.md, paddingBottom: 40 },
+    actionsRow: { gap: Spacing.sm, paddingBottom: 20 },
     actionBtn: {
       flexDirection: "row",
       borderRadius: Radius.md,
-      paddingVertical: 16,
+      paddingVertical: 12,
       alignItems: "center",
       justifyContent: "center",
     },
-    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
     infoRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg },
     infoItem: { alignItems: "center", flex: 1 },
@@ -711,7 +724,7 @@ export default function RecipeDetailScreen() {
     progressBar: { height: 4, borderRadius: 2, overflow: "hidden", backgroundColor: colors.border },
     progressBarFill: { height: "100%", backgroundColor: Accent.primary },
     microValue: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, width: 50, textAlign: "right" },
-  }), [colors]);
+  }), [colors, insets.top]);
 
   if (loading) {
     return (
@@ -737,16 +750,19 @@ export default function RecipeDetailScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero image */}
+        {/* Hero image — full bleed, buttons handle their own safe area */}
         <View>
           <Image source={{ uri: heroImageUrl }} style={styles.hero} />
-          <Pressable style={[styles.headerBtn, { left: Spacing.lg }]} onPress={goBack}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
-          </Pressable>
+          {/* Header buttons row */}
+          <View style={{ position: "absolute", top: insets.top + Spacing.sm, left: Spacing.md, right: Spacing.md, flexDirection: "row", justifyContent: "space-between" }}>
+            <Pressable style={styles.headerBtn} onPress={goBack}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </Pressable>
+            <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable
-            style={[styles.headerBtn, { right: Spacing.lg + 50 }]}
+            style={styles.headerBtn}
             onPress={() => {
               const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
               const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
@@ -760,7 +776,7 @@ export default function RecipeDetailScreen() {
             <Ionicons name="share-social-outline" size={20} color="#fff" />
           </Pressable>
           <Pressable
-            style={[styles.headerBtn, { right: Spacing.lg }]}
+            style={styles.headerBtn}
             onPress={() => toggleSave(recipeId)}
           >
             <Ionicons
@@ -769,6 +785,8 @@ export default function RecipeDetailScreen() {
               color={saved ? Accent.success : "#fff"}
             />
           </Pressable>
+            </View>
+          </View>
         </View>
 
         <View style={styles.body}>
@@ -822,18 +840,18 @@ export default function RecipeDetailScreen() {
                 }}
                 style={styles.infoItem}
                 accessibilityRole="button"
-                accessibilityLabel="Yield"
+                accessibilityLabel="Servings"
                 accessibilityHint="Opens editor to change how many portions the full recipe makes"
               >
                 <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
                 <Text style={styles.infoValue}>{recipe.servings}</Text>
-                <Text style={styles.infoLabel}>Yield</Text>
+                <Text style={styles.infoLabel}>Servings</Text>
               </Pressable>
             ) : (
               <View style={styles.infoItem}>
                 <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
                 <Text style={styles.infoValue}>{recipe.servings}</Text>
-                <Text style={styles.infoLabel}>Yield</Text>
+                <Text style={styles.infoLabel}>Servings</Text>
               </View>
             )}
             <View style={styles.infoItem}>
@@ -975,16 +993,9 @@ export default function RecipeDetailScreen() {
             <View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
                 <Text style={styles.cardTitle}>Ingredients</Text>
-                <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-                  <Pressable disabled={reverifying} onPress={() => void reverifyNutrition()}>
-                    <Text style={{ color: Accent.success, fontSize: 13, fontWeight: "600", opacity: reverifying ? 0.5 : 1 }}>
-                      {reverifying ? "Verifying…" : "Re-verify"}
-                    </Text>
-                  </Pressable>
-                  <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
-                    <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>Edit</Text>
-                  </Pressable>
-                </View>
+                <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
+                  <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                </Pressable>
               </View>
               {ingredients.map((ing, i) => {
                 const totalMacros = ing.protein + ing.carbs + ing.fat;
@@ -992,28 +1003,58 @@ export default function RecipeDetailScreen() {
                 const carbsPct = totalMacros > 0 ? (ing.carbs / totalMacros) * 100 : 0;
                 const fatPct = totalMacros > 0 ? (ing.fat / totalMacros) * 100 : 0;
 
-                // Confidence color (placeholder - would come from API)
-                const confidence = 0.85; // placeholder
-                const confidenceColor = confidence >= 0.8 ? Accent.success : confidence >= 0.6 ? Accent.warning : "#ef4444";
+                const conf = ing.confidence != null ? Number(ing.confidence) : null;
+                const confPct = conf != null && Number.isFinite(conf) ? Math.round(conf * 100) : null;
+                const confColor = confPct != null
+                  ? confPct >= 75 ? Accent.success : confPct >= 50 ? Accent.warning : Accent.destructive
+                  : colors.textTertiary;
+                const confLabel = confPct != null
+                  ? confPct >= 75 ? "Verified" : confPct >= 50 ? "Partial match" : "Estimated"
+                  : "Unverified";
+                const sourceLabel = ing.source ?? "Local estimate";
 
                 return (
-                  <View key={i} style={styles.ingredientRowNew}>
-                    <View style={[styles.confidenceDot, { backgroundColor: confidenceColor }]} />
+                  <Pressable
+                    key={i}
+                    onPress={() => {
+                      Alert.alert(
+                        `${decodeEntities(ing.name)}`,
+                        `Confidence: ${confPct != null ? `${confPct}% — ${confLabel}` : "Not scored"}\n` +
+                        `Source: ${sourceLabel}\n\n` +
+                        `${Math.round(ing.calories)} kcal · P ${Math.round(ing.protein)}g · C ${Math.round(ing.carbs)}g · F ${Math.round(ing.fat)}g\n\n` +
+                        (confPct != null && confPct < 75
+                          ? "This ingredient had a weaker match. The macros may be approximate. You can edit this recipe to improve accuracy."
+                          : confPct != null
+                            ? "This ingredient was matched to a verified food database entry."
+                            : "This ingredient was estimated from our staples database and hasn't been verified against external sources."),
+                      );
+                    }}
+                    style={styles.ingredientRowNew}
+                  >
+                    {/* Confidence dot */}
+                    {confPct != null && (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: confColor, marginTop: 6, marginRight: 8 }} />
+                    )}
                     <View style={styles.ingredientNameAndCal}>
                       <View style={styles.ingredientNameRow}>
                         <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
                         <Text style={styles.ingredientCalories}>{Math.round(ing.calories)} kcal</Text>
                       </View>
-                      <Text style={styles.ingredientQty}>
-                        {ing.amount != null ? `${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""}` : "as needed"}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={styles.ingredientQty}>
+                          {ing.amount != null ? `${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""}` : "as needed"}
+                        </Text>
+                        {confPct != null && (
+                          <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>{confPct}%</Text>
+                        )}
+                      </View>
                       <View style={styles.macroBar}>
                         {proteinPct > 0 && <View style={{ flex: proteinPct, backgroundColor: MacroColors.protein }} />}
                         {carbsPct > 0 && <View style={{ flex: carbsPct, backgroundColor: MacroColors.carbs }} />}
                         {fatPct > 0 && <View style={{ flex: fatPct, backgroundColor: MacroColors.fat }} />}
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -1110,53 +1151,50 @@ export default function RecipeDetailScreen() {
 
           {/* Log to journal — portion vs one recipe serving */}
           {userId && (
-            <View style={[styles.card, { gap: Spacing.md }]}>
-              <Text style={styles.cardTitle}>Log to today&apos;s journal</Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-                One database serving = the macros above. Adjust if you ate more or less.
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary }}>Portion</Text>
+            <View style={[styles.card, { gap: Spacing.sm }]}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Log to journal</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Pressable
                   onPress={() => setLogPortion((p) => Math.max(0.125, Math.round((p - 0.25) * 1000) / 1000))}
-                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
                 >
-                  <Ionicons name="remove" size={20} color={colors.text} />
+                  <Ionicons name="remove" size={16} color={colors.text} />
                 </Pressable>
-                <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, minWidth: 52, textAlign: "center", fontVariant: ["tabular-nums"] }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, minWidth: 40, textAlign: "center", fontVariant: ["tabular-nums"] }}>
                   {(Math.round(logPortion * 1000) / 1000).toString()}×
                 </Text>
                 <Pressable
                   onPress={() => setLogPortion((p) => Math.min(24, Math.round((p + 0.25) * 1000) / 1000))}
-                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
                 >
-                  <Ionicons name="add" size={20} color={colors.text} />
+                  <Ionicons name="add" size={16} color={colors.text} />
                 </Pressable>
+                <View style={{ flex: 1 }} />
+                <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                  {scaledForLog.calories} kcal
+                </Text>
               </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                {([0.5, 0.75, 1, 1.25, 1.5, 2] as const).map((p) => {
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
+                {([0.5, 0.75, 1, 1.5, 2] as const).map((p) => {
                   const active = Math.abs(logPortion - p) < 1e-6;
                   return (
                     <Pressable
                       key={p}
                       onPress={() => setLogPortion(p)}
                       style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
                         borderRadius: Radius.sm,
                         backgroundColor: active ? Accent.primary : colors.inputBg,
                         borderWidth: 1,
                         borderColor: active ? Accent.primary : colors.border,
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#fff" : colors.text }}>{p}×</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : colors.text }}>{p}×</Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-                {scaledForLog.calories} kcal · P {scaledForLog.protein}g · C {scaledForLog.carbs}g · F {scaledForLog.fat}g
-              </Text>
               <Pressable
                 disabled={loggingJournal}
                 onPress={() => void addRecipeToTodayJournal()}
@@ -1164,8 +1202,8 @@ export default function RecipeDetailScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
-                  paddingVertical: 14,
+                  gap: 6,
+                  paddingVertical: 10,
                   borderRadius: Radius.md,
                   backgroundColor: Accent.primary,
                   opacity: loggingJournal ? 0.6 : 1,
@@ -1175,34 +1213,22 @@ export default function RecipeDetailScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="nutrition-outline" size={20} color="#fff" />
-                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Add to today</Text>
+                    <Ionicons name="add-circle-outline" size={16} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Log</Text>
                   </>
                 )}
               </Pressable>
             </View>
           )}
 
-          {/* Action buttons */}
+          {/* Action button */}
           <View style={styles.actionsRow}>
             <Pressable
-              style={[styles.actionBtn, { backgroundColor: Accent.primary }]}
+              style={[styles.actionBtn, { backgroundColor: Accent.primary, flex: 1 }]}
               onPress={() => { setCookStep(0); setCookMode(true); }}
             >
               <Ionicons name="restaurant-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.actionBtnText}>Start Cooking</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.actionBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
-              onPress={() => {
-                Alert.alert("Recipe Completed!", "Mark this recipe as made?", [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Confirm", onPress: () => { /* Log completion */ } },
-                ]);
-              }}
-            >
-              <Ionicons name="checkmark-done" size={18} color={colors.text} style={{ marginRight: 6 }} />
-              <Text style={[styles.actionBtnText, { color: colors.text }]}>I Made This</Text>
             </Pressable>
           </View>
         </View>
@@ -1228,7 +1254,7 @@ export default function RecipeDetailScreen() {
               gap: Spacing.sm,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>Recipe yield</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>Servings</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
               Portions the full dish makes (1–48). Macros per portion update automatically.
             </Text>

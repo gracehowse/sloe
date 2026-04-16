@@ -1,5 +1,5 @@
 /**
- * Shared micronutrient labels + formatting (MFP/Lose It–style density).
+ * Shared micronutrient labels + formatting (surplus-only density display).
  * Used by web tracker, mobile tracker, meal detail, and Health import mapping.
  */
 
@@ -77,6 +77,13 @@ const MICRO_LINES: MicroLine[] = [
 
 export type MicroNutrientDisplayRow = { key: string; label: string; value: string };
 
+/** Turn a raw `nutrition_micros` key into a short human label when we do not have a curated row. */
+export function humanizeNutrientKey(key: string): string {
+  if (!key) return key;
+  const spaced = key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /** Ordered micro rows for list UIs (same ordering as `formatMealNutritionMultiline`). */
 export function listMicroNutrientsForDisplay(micros: Record<string, number> | null | undefined): MicroNutrientDisplayRow[] {
   const ms = micros ?? {};
@@ -90,8 +97,37 @@ export function listMicroNutrientsForDisplay(micros: Record<string, number> | nu
   for (const [k, v] of Object.entries(ms)) {
     if (MICRO_LINES.some((r) => r.key === k)) continue;
     if (typeof v === "number" && Number.isFinite(v) && v !== 0) {
-      rows.push({ key: k, label: k, value: `${round1(v)}` });
+      rows.push({ key: k, label: humanizeNutrientKey(k), value: `${round1(v)}` });
     }
+  }
+  return rows;
+}
+
+/**
+ * Full micronutrient table for a single entry: every curated line in `MICRO_LINES` (with "—" when zero),
+ * then any extra keys present in `micros` that are not in the curated list.
+ */
+export function listMicroNutrientsCompleteDisplay(micros: Record<string, number> | null | undefined): MicroNutrientDisplayRow[] {
+  const ms = micros ?? {};
+  const rows: MicroNutrientDisplayRow[] = [];
+  for (const row of MICRO_LINES) {
+    const v = ms[row.key];
+    const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+    rows.push({
+      key: row.key,
+      label: row.label,
+      value: n > 0 ? row.format(n) : "—",
+    });
+  }
+  const curated = new Set(MICRO_LINES.map((r) => r.key));
+  for (const [k, v] of Object.entries(ms)) {
+    if (curated.has(k)) continue;
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    rows.push({
+      key: k,
+      label: humanizeNutrientKey(k),
+      value: v !== 0 ? `${round1(v)}` : "—",
+    });
   }
   return rows;
 }

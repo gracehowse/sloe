@@ -1,5 +1,5 @@
 /**
- * Derive MFP-style serving choices from Open Food Facts product fields.
+ * Derive standard serving choices from Open Food Facts product fields.
  * OFF lists `serving_size` as free text (e.g. "4 dumplings (82 g)"); we expose label + gram weight for per-100g scaling.
  */
 

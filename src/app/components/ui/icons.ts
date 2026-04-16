@@ -113,6 +113,8 @@ import {
   Printer,
   Ticket,
   Shield,
+  Monitor,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 
@@ -229,6 +231,8 @@ export const Icons = {
   badgeCheck: BadgeCheck,
   ticket: Ticket,
   shield: Shield,
+  monitor: Monitor,
+  layoutGrid: LayoutGrid,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof Icons;

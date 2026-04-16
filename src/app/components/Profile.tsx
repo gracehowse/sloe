@@ -318,19 +318,17 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
-          {/* Connected Row */}
+          {/* Connected Row — non-interactive on web */}
           <div
-            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() => alert("Apple Health & nutrition import/export are available on the Suppr iOS app. Steps, weight, active energy, and meals from other apps (like MacroFactor or Lose It!) sync automatically.")}
+            className="flex items-center gap-4 px-4 py-3 border-b border-border opacity-60"
           >
             <IconBox tone="primary" size="sm" className="w-7 h-7">
               <Icons.link className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Connected</p>
-              <p className="text-xs text-muted-foreground truncate">Available on iOS app</p>
+              <p className="text-sm font-medium text-foreground">Apple Health</p>
+              <p className="text-xs text-muted-foreground">Syncs steps, weight, and activity on iOS. Not available on web.</p>
             </div>
-            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
           {/* Notifications Row */}

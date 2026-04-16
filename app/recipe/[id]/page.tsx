@@ -25,6 +25,8 @@ interface RecipeRow {
   fiber_g: number | null;
   sugar_g: number | null;
   sodium_mg: number | null;
+  verified_confidence: number | null;
+  source_name: string | null;
   author: { display_name: string | null } | null;
 }
 
@@ -47,7 +49,7 @@ async function fetchRecipe(id: string) {
   const { data: row } = await sb
     .from("recipes")
     .select(
-      "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, author:profiles!author_id(display_name)",
+      "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, verified_confidence, source_name, author:profiles!author_id(display_name)",
     )
     .eq("id", id)
     .eq("published", true)
@@ -81,6 +83,8 @@ async function fetchRecipe(id: string) {
       sugarG: row.sugar_g,
       sodiumMg: row.sodium_mg,
       authorName: row.author?.display_name ?? "Community",
+      verifiedConfidence: row.verified_confidence,
+      sourceName: row.source_name,
     },
     ingredients: (ingredientRows ?? []).map((i) => ({
       name: i.name,
@@ -124,6 +128,27 @@ export default async function RecipePage({ params }: Props) {
   if (!data) notFound();
 
   const { recipe, ingredients, instructions } = data;
+
+  const confidenceTier =
+    recipe.verifiedConfidence != null
+      ? recipe.verifiedConfidence >= 0.75
+        ? "high"
+        : recipe.verifiedConfidence >= 0.5
+          ? "medium"
+          : "low"
+      : null;
+
+  const confidenceLabel = {
+    high: "Verified",
+    medium: "Mostly verified",
+    low: "Estimated",
+  } as const;
+
+  const confidenceColor = {
+    high: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
+    medium: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
+    low: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800",
+  } as const;
 
   const macroCards = [
     { label: "Calories", value: `${Math.round(recipe.calories)}`, unit: "kcal" },
@@ -212,10 +237,11 @@ export default async function RecipePage({ params }: Props) {
         )}
 
         {/* Macro cards */}
-        <div className="grid gap-3 mb-8 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid gap-3 mb-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4" role="list" aria-label="Nutrition per serving">
           {macroCards.map((m) => (
             <div
               key={m.label}
+              role="listitem"
               className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm"
             >
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{m.label}</p>
@@ -226,6 +252,24 @@ export default async function RecipePage({ params }: Props) {
             </div>
           ))}
         </div>
+
+        {/* Nutrition confidence badge */}
+        {confidenceTier && (
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium mb-8 ${confidenceColor[confidenceTier]}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              confidenceTier === "high" ? "bg-green-500" : confidenceTier === "medium" ? "bg-amber-500" : "bg-red-500"
+            }`} />
+            Nutrition: {confidenceLabel[confidenceTier]}
+            {recipe.verifiedConfidence != null && (
+              <span className="opacity-60">({Math.round(recipe.verifiedConfidence * 100)}%)</span>
+            )}
+          </div>
+        )}
+        {!confidenceTier && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-8">
+            Nutrition values are from the recipe source and have not been independently verified.
+          </p>
+        )}
 
         {/* Ingredients */}
         {ingredients.length > 0 && (

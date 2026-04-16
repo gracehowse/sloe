@@ -1,0 +1,26 @@
+appId: host.exp.Exponent
+name: "Meal plan — generate, view, shopping list"
+---
+# Navigate to Plan
+- tapOn: "Plan"
+- assertVisible: "Meal Plan"
+
+# Generate button should be visible
+- assertVisible:
+    text: "Generate Plan|Regenerate"
+
+# Tap generate
+- tapOn:
+    text: "Generate Plan|Regenerate"
+- waitForAnimationToEnd
+
+# After generating, should see day cards with macros
+- assertVisible:
+    text: "kcal"
+
+# Should see meal slot labels
+- assertVisible:
+    text: "Breakfast|Lunch|Dinner"
+
+# Shopping list button should appear
+- assertVisible: "Shopping List"

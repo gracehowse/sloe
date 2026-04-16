@@ -17,6 +17,10 @@ export type MacroBreakdown = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** True when the ingredient could not be matched to any known staple and
+   *  fell back to the generic default (150 kcal/100g). UI should surface this
+   *  so users know the estimate may be unreliable. */
+  isDefaultFallback?: boolean;
 };
 
 type StapleMacros = Omit<MacroBreakdown, "sugarG" | "sodiumMg"> & {
@@ -63,7 +67,7 @@ const STAPLES: Record<string, Staple> = {
   tomato: { per100g: { calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiberG: 1.2 } },
   potato: { per100g: { calories: 77, protein: 2, carbs: 17, fat: 0.1, fiberG: 2.2 } },
   milk: { per100g: { calories: 42, protein: 3.4, carbs: 5, fat: 1, fiberG: 0, sugarG: 5 }, gPerMl: 1.03 },
-  cream: { per100g: { calories: 340, protein: 2.8, carbs: 2.8, fat: 36, fiberG: 0 } },
+  cream: { per100g: { calories: 340, protein: 2.8, carbs: 2.8, fat: 36, fiberG: 0 }, gPerMl: 0.99 },
   egg: { per100g: { calories: 143, protein: 13, carbs: 1.1, fat: 9.5, fiberG: 0 } },
   cheese: { per100g: { calories: 350, protein: 23, carbs: 1, fat: 28, fiberG: 0, sodiumMg: 621 } },
   salmon: { per100g: { calories: 208, protein: 20, carbs: 0, fat: 13, fiberG: 0 } },
@@ -73,8 +77,8 @@ const STAPLES: Record<string, Staple> = {
   lemon: { per100g: { calories: 29, protein: 1.1, carbs: 9, fat: 0.3, fiberG: 2.8 } },
   lime: { per100g: { calories: 30, protein: 0.7, carbs: 11, fat: 0.2, fiberG: 2.8 } },
   honey: { per100g: { calories: 304, protein: 0.3, carbs: 82, fat: 0, fiberG: 0.2, sugarG: 82 }, gPerMl: 1.42 },
-  stock: { per100g: { calories: 5, protein: 0.5, carbs: 0.5, fat: 0.2, fiberG: 0, sodiumMg: 300 } },
-  wine: { per100g: { calories: 83, protein: 0.1, carbs: 2.6, fat: 0, fiberG: 0 } },
+  stock: { per100g: { calories: 5, protein: 0.5, carbs: 0.5, fat: 0.2, fiberG: 0, sodiumMg: 300 }, gPerMl: 1.0 },
+  wine: { per100g: { calories: 83, protein: 0.1, carbs: 2.6, fat: 0, fiberG: 0 }, gPerMl: 0.99 },
   "beef mince": { per100g: { calories: 250, protein: 26, carbs: 0, fat: 17, fiberG: 0 } },
   mince: { per100g: { calories: 250, protein: 26, carbs: 0, fat: 17, fiberG: 0 } },
   "tomato purée": { per100g: { calories: 82, protein: 4.3, carbs: 16, fat: 0.5, fiberG: 3.9 } },
@@ -103,10 +107,10 @@ const STAPLES: Record<string, Staple> = {
   zucchini: { per100g: { calories: 17, protein: 1.2, carbs: 3.1, fat: 0.3, fiberG: 1 } },
   cucumber: { per100g: { calories: 15, protein: 0.7, carbs: 3.6, fat: 0.1, fiberG: 0.5 } },
   "soy sauce": { per100g: { calories: 53, protein: 8, carbs: 4.9, fat: 0.6, fiberG: 0.8 } },
-  yogurt: { per100g: { calories: 59, protein: 10, carbs: 3.6, fat: 0.4, fiberG: 0 } },
+  yogurt: { per100g: { calories: 59, protein: 10, carbs: 3.6, fat: 0.4, fiberG: 0 }, gPerMl: 1.04 },
   oats: { per100g: { calories: 389, protein: 17, carbs: 66, fat: 7, fiberG: 10.6 }, gPerMl: 0.34 },
-  lentil: { per100g: { calories: 116, protein: 9, carbs: 20, fat: 0.4, fiberG: 7.9 } },
-  chickpea: { per100g: { calories: 164, protein: 8.9, carbs: 27, fat: 2.6, fiberG: 7.6 } },
+  lentil: { per100g: { calories: 116, protein: 9, carbs: 20, fat: 0.4, fiberG: 7.9 }, gPerMl: 0.80 },
+  chickpea: { per100g: { calories: 164, protein: 8.9, carbs: 27, fat: 2.6, fiberG: 7.6 }, gPerMl: 0.80 },
   // ── Nuts & seeds ─────────────────────────────────────────────
   almond: { per100g: { calories: 579, protein: 21, carbs: 22, fat: 50, fiberG: 12.5 } },
   walnut: { per100g: { calories: 654, protein: 15, carbs: 14, fat: 65, fiberG: 6.7 } },
@@ -122,10 +126,10 @@ const STAPLES: Record<string, Staple> = {
   "coconut milk": { per100g: { calories: 230, protein: 2.3, carbs: 6, fat: 24, fiberG: 2.2 }, gPerMl: 1.0 },
   "coconut oil": { per100g: { calories: 862, protein: 0, carbs: 0, fat: 100, fiberG: 0 }, gPerMl: 0.92 },
   // ── Grains & legumes ─────────────────────────────────────────
-  quinoa: { per100g: { calories: 120, protein: 4.4, carbs: 21, fat: 1.9, fiberG: 2.8 } },
-  couscous: { per100g: { calories: 112, protein: 3.8, carbs: 23, fat: 0.2, fiberG: 1.4 } },
-  "black bean": { per100g: { calories: 132, protein: 8.9, carbs: 24, fat: 0.5, fiberG: 8.7 } },
-  "kidney bean": { per100g: { calories: 127, protein: 8.7, carbs: 23, fat: 0.5, fiberG: 6.4 } },
+  quinoa: { per100g: { calories: 120, protein: 4.4, carbs: 21, fat: 1.9, fiberG: 2.8 }, gPerMl: 0.72 },
+  couscous: { per100g: { calories: 112, protein: 3.8, carbs: 23, fat: 0.2, fiberG: 1.4 }, gPerMl: 0.63 },
+  "black bean": { per100g: { calories: 132, protein: 8.9, carbs: 24, fat: 0.5, fiberG: 8.7 }, gPerMl: 0.77 },
+  "kidney bean": { per100g: { calories: 127, protein: 8.7, carbs: 23, fat: 0.5, fiberG: 6.4 }, gPerMl: 0.77 },
   bread: { per100g: { calories: 265, protein: 9, carbs: 49, fat: 3.2, fiberG: 2.7 } },
   tortilla: { per100g: { calories: 312, protein: 8, carbs: 52, fat: 8, fiberG: 3.4 } },
   noodle: { per100g: { calories: 138, protein: 4.5, carbs: 25, fat: 2.1, fiberG: 1.2 } },
@@ -134,8 +138,8 @@ const STAPLES: Record<string, Staple> = {
   "cream cheese": { per100g: { calories: 342, protein: 6, carbs: 4, fat: 34, fiberG: 0 } },
   mozzarella: { per100g: { calories: 280, protein: 28, carbs: 3.1, fat: 17, fiberG: 0 } },
   parmesan: { per100g: { calories: 431, protein: 38, carbs: 4, fat: 29, fiberG: 0 } },
-  "sour cream": { per100g: { calories: 193, protein: 2.1, carbs: 4.6, fat: 20, fiberG: 0 } },
-  "greek yogurt": { per100g: { calories: 97, protein: 9, carbs: 3.6, fat: 5, fiberG: 0 } },
+  "sour cream": { per100g: { calories: 193, protein: 2.1, carbs: 4.6, fat: 20, fiberG: 0 }, gPerMl: 1.01 },
+  "greek yogurt": { per100g: { calories: 97, protein: 9, carbs: 3.6, fat: 5, fiberG: 0 }, gPerMl: 1.06 },
   ricotta: { per100g: { calories: 174, protein: 11, carbs: 3, fat: 13, fiberG: 0 } },
   feta: { per100g: { calories: 264, protein: 14, carbs: 4, fat: 21, fiberG: 0 } },
   // ── Vegetables ───────────────────────────────────────────────
@@ -163,8 +167,8 @@ const STAPLES: Record<string, Staple> = {
   peach: { per100g: { calories: 39, protein: 0.9, carbs: 10, fat: 0.3, fiberG: 1.5 } },
   // ── Condiments & sauces ──────────────────────────────────────
   vinegar: { per100g: { calories: 18, protein: 0, carbs: 0.6, fat: 0, fiberG: 0 }, gPerMl: 1.01 },
-  mayonnaise: { per100g: { calories: 680, protein: 1, carbs: 1, fat: 75, fiberG: 0 } },
-  ketchup: { per100g: { calories: 112, protein: 1.7, carbs: 26, fat: 0.3, fiberG: 0.3, sugarG: 22, sodiumMg: 907 } },
+  mayonnaise: { per100g: { calories: 680, protein: 1, carbs: 1, fat: 75, fiberG: 0 }, gPerMl: 0.91 },
+  ketchup: { per100g: { calories: 112, protein: 1.7, carbs: 26, fat: 0.3, fiberG: 0.3, sugarG: 22, sodiumMg: 907 }, gPerMl: 1.15 },
   mustard: { per100g: { calories: 60, protein: 4, carbs: 6, fat: 3, fiberG: 3 } },
   tahini: { per100g: { calories: 595, protein: 17, carbs: 21, fat: 54, fiberG: 9 } },
   "maple syrup": { per100g: { calories: 260, protein: 0, carbs: 67, fat: 0, fiberG: 0, sugarG: 60 }, gPerMl: 1.33 },
@@ -179,14 +183,14 @@ const STAPLES: Record<string, Staple> = {
 /* COUNT_WEIGHT_G and unit conversion constants live in measureToGrams.ts
  * (single source of truth). This file only handles STAPLES macros + scaling. */
 
-function stapleForName(name: string): Staple {
+function stapleForName(name: string): { staple: Staple; isDefault: boolean } {
   const n = name.toLowerCase().trim();
-  if (!n) return STAPLES.default;
+  if (!n) return { staple: STAPLES.default, isDefault: true };
   const keys = Object.keys(STAPLES).filter((k) => k !== "default").sort((a, b) => b.length - a.length);
   for (const k of keys) {
-    if (n.includes(k)) return STAPLES[k]!;
+    if (n.includes(k)) return { staple: STAPLES[k]!, isDefault: false };
   }
-  return STAPLES.default;
+  return { staple: STAPLES.default, isDefault: true };
 }
 
 function parseAmountNumeric(amount: string): number {
@@ -222,7 +226,7 @@ export function estimateLineMacros(input: {
   unit: string;
 }): MacroBreakdown {
   const name = input.name.trim() || "ingredient";
-  const staple = stapleForName(name);
+  const { staple, isDefault } = stapleForName(name);
   const amt = parseAmountNumeric(input.amount);
   const u = input.unit.trim().toLowerCase();
 
@@ -244,6 +248,7 @@ export function estimateLineMacros(input: {
     fiberG: Math.max(0, Math.round(scaled.fiberG * 10) / 10),
     sugarG: Math.max(0, Math.round(scaled.sugarG * 10) / 10),
     sodiumMg: Math.max(0, Math.round(scaled.sodiumMg)),
+    ...(isDefault ? { isDefaultFallback: true } : {}),
   };
 }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -108,6 +109,7 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("free");
+  const [activityAdjust, setActivityAdjust] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
 
@@ -120,7 +122,7 @@ export default function SettingsScreen() {
           paddingBottom: 120,
           gap: Spacing.md,
         },
-        title: { fontSize: 28, fontWeight: "800", color: colors.text },
+        title: { fontSize: 22, fontWeight: "700", color: colors.text },
         sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
         center: { paddingVertical: 40, alignItems: "center" },
@@ -189,7 +191,7 @@ export default function SettingsScreen() {
     (async () => {
       const { data, error: qErr } = await supabase
         .from("profiles")
-        .select("notification_prefs")
+        .select("notification_prefs, prefer_activity_adjusted_calories")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
@@ -202,6 +204,7 @@ export default function SettingsScreen() {
           merged.weekSummaryMode = normalizeWeekSummaryMode(merged.weekSummaryMode);
           setPrefs(merged);
         }
+        setActivityAdjust(Boolean((data as any)?.prefer_activity_adjusted_calories));
       }
       setLoading(false);
     })();
@@ -320,7 +323,7 @@ export default function SettingsScreen() {
       >
         <Text style={styles.title}>Settings</Text>
         <Text style={styles.sub}>
-          Plan & promo, appearance, notifications, and account — all in one place.
+          Plan, appearance, and notifications.
         </Text>
 
         {/* Plan + promo first (not grouped under appearance / theme) */}
@@ -441,6 +444,24 @@ export default function SettingsScreen() {
                 styles={styles}
                 colors={colors}
               />
+              <View style={[styles.row, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowLabel}>Adjust goal for activity</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
+                    Adds bonus calories when Apple Health shows you burned more than your estimated maintenance.
+                  </Text>
+                </View>
+                <Switch
+                  value={activityAdjust}
+                  onValueChange={async (v) => {
+                    setActivityAdjust(v);
+                    if (userId) {
+                      await supabase.from("profiles").update({ prefer_activity_adjusted_calories: v }).eq("id", userId);
+                    }
+                  }}
+                  trackColor={{ true: Accent.primary }}
+                />
+              </View>
               <View style={[styles.row, styles.rowLast, { flexDirection: "column", alignItems: "stretch", gap: 10 }]}>
                 <Text style={styles.rowLabel}>Burn / deficit summary window</Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
@@ -578,7 +599,7 @@ function Row(props: {
         onValueChange={() => props.onToggle()}
         disabled={props.disabled}
         trackColor={{ false: props.colors.border, true: Accent.primary + "99" }}
-        thumbColor={props.value ? props.colors.text : props.colors.textTertiary}
+        thumbColor={Platform.OS === "android" ? (props.value ? "#fff" : props.colors.textTertiary) : undefined}
         ios_backgroundColor={props.colors.border}
       />
     </View>

@@ -3,7 +3,7 @@ import { Skeleton } from "./ui/skeleton.tsx";
 /** Full-screen loading placeholder for auth / profile gates. */
 export function AppLoadingSkeleton({ label }: { label?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 bg-background" aria-busy="true" aria-label={label || "Loading"}>
       <div className="flex w-full max-w-md flex-col gap-3">
         <Skeleton className="h-10 w-3/4" />
         <Skeleton className="h-4 w-full" />

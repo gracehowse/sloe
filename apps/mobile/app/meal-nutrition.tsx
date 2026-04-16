@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { listMicroNutrientsForDisplay } from "@/lib/healthDietaryNutrients";
+import { listMicroNutrientsCompleteDisplay, mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson, type JournalMeal } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
@@ -105,7 +105,8 @@ export default function MealNutritionScreen() {
     void load();
   }, [load]);
 
-  const microRows = useMemo(() => listMicroNutrientsForDisplay(meal?.micros ?? null), [meal?.micros]);
+  const microRows = useMemo(() => listMicroNutrientsCompleteDisplay(meal?.micros ?? null), [meal?.micros]);
+  const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
   const split = useMemo(
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
@@ -186,35 +187,36 @@ export default function MealNutritionScreen() {
           <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={MacroColors.fat} textColor={colors.text} />
         </View>
 
-        {(meal.fiberG != null && meal.fiberG > 0) || (meal.waterMl != null && meal.waterMl > 0) ? (
-          <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
-            {meal.fiberG != null && meal.fiberG > 0 ? (
-              <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-                Fiber <Text style={{ fontWeight: "700", color: colors.text }}>{meal.fiberG}g</Text>
-              </Text>
-            ) : null}
-            {meal.waterMl != null && meal.waterMl > 0 ? (
-              <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-                Water <Text style={{ fontWeight: "700", color: colors.text }}>{Math.round(meal.waterMl)} ml</Text>
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
+          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+            Fiber{" "}
+            <Text style={{ fontWeight: "700", color: colors.text }}>
+              {fiberDisplay > 0 ? `${Math.round(fiberDisplay * 10) / 10}g` : "—"}
+            </Text>
+          </Text>
+          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+            Water{" "}
+            <Text style={{ fontWeight: "700", color: colors.text }}>
+              {meal.waterMl != null && meal.waterMl > 0 ? `${Math.round(meal.waterMl)} ml` : "—"}
+            </Text>
+          </Text>
+        </View>
       </View>
 
-      {microRows.length > 0 ? (
-        <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Micronutrients</Text>
-          {microRows.map((row) => (
-            <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
-              <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
-                {row.label}
-              </Text>
-              <Text style={[styles.microValue, { color: colors.textSecondary }]}>{row.value}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Vitamins, minerals & more</Text>
+        <Text style={[styles.sectionSub, { color: colors.textTertiary }]}>
+          Every field we store for this entry; values reflect portion ×{portionLabel}.
+        </Text>
+        {microRows.map((row) => (
+          <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
+            <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
+              {row.label}
+            </Text>
+            <Text style={[styles.microValue, { color: colors.textSecondary }]}>{row.value}</Text>
+          </View>
+        ))}
+      </View>
 
       <Pressable
         onPress={openEditOnToday}
@@ -226,7 +228,7 @@ export default function MealNutritionScreen() {
       </Pressable>
 
       <Text style={[styles.hint, { color: colors.textTertiary }]}>
-        On Today, long-press a meal for quick delete or edit from the menu.
+        On Today, tap a meal for this screen; long-press for quick delete or edit.
       </Text>
     </ScrollView>
   );
@@ -273,7 +275,8 @@ const styles = StyleSheet.create({
   macroCell: { flex: 1 },
   extras: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
   extraLine: { fontSize: 14, marginTop: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: Spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  sectionSub: { fontSize: 12, lineHeight: 17, marginBottom: Spacing.sm },
   microRow: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -70,3 +70,21 @@ jobs:
         run: grep -q 'from "../../../src/lib/recipe-import/classifyMealType"' lib/classifyMealType.ts
       - name: Shared refreshAdaptiveTdee re-export path
         run: grep -q 'from "../../../src/lib/nutrition/refreshAdaptiveTdee"' lib/refreshAdaptiveTdee.ts
+      - name: Verify all cross-boundary imports from web src/ resolve
+        run: |
+          echo "Checking that all ../../../../src/ imports in mobile resolve to real files..."
+          FAIL=0
+          grep -roh 'from "../../../../src/[^"]*"' app/ lib/ --include='*.ts' --include='*.tsx' | \
+            sed 's/from "//;s/"//' | sort -u | while read -r imp; do
+              # Resolve relative to apps/mobile
+              FILE="../..${imp#../../../..}"
+              # Try .ts and .tsx extensions
+              if [ ! -f "${FILE}.ts" ] && [ ! -f "${FILE}.tsx" ] && [ ! -f "${FILE}/index.ts" ] && [ ! -f "${FILE}/index.tsx" ] && [ ! -f "${FILE}" ]; then
+                echo "MISSING: $imp (resolved to $FILE)"
+                FAIL=1
+              fi
+            done
+          if [ "$FAIL" = "1" ]; then exit 1; fi
+          echo "All cross-boundary imports resolved."
+      - name: Mobile unit tests
+        run: npm test

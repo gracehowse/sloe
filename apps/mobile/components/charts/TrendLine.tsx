@@ -17,6 +17,7 @@ type Props = {
   goalValue?: number;
   projectedData?: DataPoint[];
   color: string;
+  /** Chart height in px. Default 180. */
   height?: number;
   labelColor: string;
   goalColor?: string;
@@ -30,7 +31,7 @@ export default function TrendLine({
   goalValue,
   projectedData,
   color,
-  height = 140,
+  height = 180,
   labelColor,
   goalColor,
   trackColor,
@@ -56,8 +57,12 @@ export default function TrendLine({
     ...(projectedData?.map((d) => d.value) ?? []),
     ...(goalValue != null ? [goalValue] : []),
   ];
-  const minVal = Math.min(...allValues) * 0.98;
-  const maxVal = Math.max(...allValues) * 1.02;
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
+  // Ensure at least 2 units of visible range so small changes don't look exaggerated
+  const padding = Math.max((rawMax - rawMin) * 0.08, 1);
+  const minVal = rawMin - padding;
+  const maxVal = rawMax + padding;
   const range = maxVal - minVal || 1;
 
   const chartH = height - 24;
@@ -173,7 +178,7 @@ export default function TrendLine({
                 x1={selX}
                 y1={0}
                 x2={selX}
-                y2={chartH}
+                y2={height}
                 stroke={trackColor}
                 strokeWidth={1}
                 opacity={0.65}
@@ -227,6 +232,8 @@ export default function TrendLine({
           fontWeight: "700",
           color,
           marginTop: 6,
+          height: 20,
+          lineHeight: 20,
           fontVariant: ["tabular-nums"],
         }}
         numberOfLines={1}
@@ -235,26 +242,29 @@ export default function TrendLine({
       </Text>
 
       {/* X-axis labels */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          paddingTop: 4,
-        }}
-      >
-        <Text style={{ fontSize: 9, color: labelColor }}>
-          {data[0].label}
-        </Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 4 }}>
+        <Text style={{ fontSize: 11, color: labelColor }}>{data[0].label}</Text>
         {projectedData && projectedData.length > 0 ? (
-          <Text style={{ fontSize: 9, color: labelColor }}>
-            {projectedData[projectedData.length - 1].label}
-          </Text>
+          <Text style={{ fontSize: 11, color: labelColor }}>{projectedData[projectedData.length - 1].label}</Text>
         ) : (
-          <Text style={{ fontSize: 9, color: labelColor }}>
-            {data[data.length - 1].label}
-          </Text>
+          <Text style={{ fontSize: 11, color: labelColor }}>{data[data.length - 1].label}</Text>
         )}
       </View>
+      {/* Y-axis context */}
+      {data.length >= 2 && (
+        <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 2 }}>
+          <Text style={{ fontSize: 10, color: labelColor }}>
+            Range: {formatValue ? formatValue(Math.min(...data.map(d => d.value))) : Math.round(Math.min(...data.map(d => d.value)) * 10) / 10}
+            {" – "}
+            {formatValue ? formatValue(Math.max(...data.map(d => d.value))) : Math.round(Math.max(...data.map(d => d.value)) * 10) / 10}
+          </Text>
+          {goalValue != null && (
+            <Text style={{ fontSize: 10, color: goalColor ?? Accent.success }}>
+              Goal: {formatValue ? formatValue(goalValue) : goalValue}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }

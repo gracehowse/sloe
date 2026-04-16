@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -310,9 +310,13 @@ export default function ProfileScreen() {
       {/* Avatar + Name */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
         <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.accent + "10", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: t.accent }}>
-            {(session?.user?.email?.[0] ?? "P").toUpperCase()}
-          </Text>
+          {session?.user?.email ? (
+            <Text style={{ fontSize: 18, fontWeight: "700", color: t.accent }}>
+              {session.user.email[0].toUpperCase()}
+            </Text>
+          ) : (
+            <Ionicons name="person-outline" size={20} color={t.accent} />
+          )}
         </View>
         <View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
@@ -351,7 +355,10 @@ export default function ProfileScreen() {
         ] as [string, string, string, (() => void) | null][]).map(([v, l, c, onPress]) => (
           <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{l}{onPress ? " ⓘ" : ""}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
+              <Text style={{ fontSize: 10, color: colors.textTertiary }}>{l}</Text>
+              {onPress ? <Ionicons name="information-circle-outline" size={12} color={colors.textTertiary} /> : null}
+            </View>
           </Pressable>
         ))}
       </View>
@@ -378,8 +385,8 @@ export default function ProfileScreen() {
         </Pressable>
       ) : null}
 
-      {/* Settings Section */}
-      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Settings</Text>
+      {/* Goals & Targets */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Goals &amp; Targets</Text>
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow
           icon="flame-outline"
@@ -398,31 +405,76 @@ export default function ProfileScreen() {
           }
           onPress={() => router.push("/profile" as any)}
         />
-        <SettingsRow
-          icon="color-palette-outline"
-          iconColor={t.accent}
-          label="Appearance & settings"
-          sub="Plan, promo, theme, notifications"
-          onPress={() => router.push("/(tabs)/settings" as any)}
-        />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week Starts On" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
-        <SettingsRow icon="link-outline" iconColor={t.accent} label="Connected" sub={isHealthSyncAvailable() ? "Apple Health" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
-        <SettingsRow
-          icon="time-outline"
-          iconColor={t.accent}
-          label="Notifications"
-          sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"}
-          onPress={() => router.push("/(tabs)/settings" as any)}
-        />
+      </View>
+
+      {/* Connections */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Connections</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="heart-outline" iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow
           icon="notifications-outline"
           iconColor={t.accent}
-          label="Alerts inbox"
-          sub="Recipe updates & messages"
+          label="Notifications"
+          sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"}
           onPress={() => router.push("/(tabs)/notifications" as any)}
         />
-        <SettingsRow icon="download-outline" iconColor={t.accent} label="Export Data" sub="CSV download" />
+      </View>
+
+      {/* Recipes */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Recipes</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="add-circle-outline" iconColor={t.green} label="Create Recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
+      </View>
+
+      {/* App */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>App</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow
+          icon="color-palette-outline"
+          iconColor={t.accent}
+          label="Appearance"
+          sub="Theme and display"
+          onPress={() => router.push("/(tabs)/settings" as any)}
+        />
+        <SettingsRow
+          icon="download-outline"
+          iconColor={t.accent}
+          label="Export Data"
+          sub="Download all your data as JSON"
+          onPress={async () => {
+            if (!userId) return;
+            try {
+              const [{ data: profile }, { data: entries }, { data: recipes }] = await Promise.all([
+                supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+                supabase.from("nutrition_entries").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+                supabase.from("saves").select("recipe_id").eq("user_id", userId),
+              ]);
+              const payload = JSON.stringify({ exportedAt: new Date().toISOString(), profile, entries, savedRecipeIds: recipes?.map((r: any) => r.recipe_id) ?? [] }, null, 2);
+              await Share.share({ message: payload, title: "Suppr Data Export" });
+            } catch (e) {
+              Alert.alert("Export failed", e instanceof Error ? e.message : "Unknown error");
+            }
+          }}
+        />
+        <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help & Information" sub="How it works, disclaimers, sources" onPress={() => {
+          const base = getSupprWebBase();
+          if (base) void Linking.openURL(`${base}/help`).catch(() => {});
+          else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
+        }} />
+      </View>
+
+      {/* Legal */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Legal</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+        <SettingsRow icon="document-text-outline" iconColor={t.accent} label="Privacy Policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
+        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
+      </View>
+
+      {/* Danger zone */}
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Danger Zone</Text>
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow
           icon="refresh-outline"
           iconColor={t.amber}
@@ -430,25 +482,6 @@ export default function ProfileScreen() {
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
-        <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help" sub="FAQs and support" onPress={() => {
-          const base = getSupprWebBase();
-          if (base) void Linking.openURL(`${base}/help`).catch(() => {});
-        }} />
-      </View>
-
-      {/* Creator Tools */}
-      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Creator Tools</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="create-outline" iconColor={t.green} label="Published Recipes" sub={`${profileData.savedCount} recipes saved`} onPress={() => router.push("/create-recipe" as any)} />
-        <SettingsRow icon="bar-chart-outline" iconColor={t.green} label="Analytics" sub={`${profileData.savedCount} recipes · ${profileData.streak} day streak`} />
-        <SettingsRow icon="add-circle-outline" iconColor={t.green} label="Publish New" sub="Share with the community" onPress={() => router.push("/create-recipe" as any)} />
-      </View>
-
-      {/* Legal */}
-      <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Legal</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="document-text-outline" iconColor={t.accent} label="Privacy Policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
-        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
       <Pressable
@@ -557,6 +590,52 @@ export default function ProfileScreen() {
               <Text style={{ color: t.red, fontWeight: "700", fontSize: 15 }}>Erase all app data</Text>
               <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2, textAlign: "center", paddingHorizontal: 12 }}>
                 Journal, library, plans, shopping, private recipes, notifications
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  "Delete your account?",
+                  "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete Account",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const token = sessionData?.session?.access_token;
+                          const base = getSupprWebBase();
+                          if (!base) {
+                            Alert.alert("Error", "API URL not configured. Please contact support.");
+                            return;
+                          }
+                          const res = await fetch(`${base}/api/account/delete`, {
+                            method: "DELETE",
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          const json = await res.json();
+                          if (json.ok) {
+                            await supabase.auth.signOut();
+                            Alert.alert("Account deleted", "Your account has been permanently deleted.");
+                          } else {
+                            Alert.alert("Deletion failed", json.error || "Please try again.");
+                          }
+                        } catch {
+                          Alert.alert("Deletion failed", "Please try again later.");
+                        }
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={{ paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text style={{ color: t.red, fontWeight: "800", fontSize: 15 }}>Delete my account permanently</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2, textAlign: "center", paddingHorizontal: 12 }}>
+                Removes your account, all data, and signs you out
               </Text>
             </Pressable>
 

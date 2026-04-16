@@ -80,8 +80,8 @@ describe("generateSmartPlan", () => {
     // All multipliers must be within bounds
     for (const meal of plan[0].meals) {
       if (meal.portionMultiplier != null) {
-        expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.5);
-        expect(meal.portionMultiplier).toBeLessThanOrEqual(2);
+        expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.2);
+        expect(meal.portionMultiplier).toBeLessThanOrEqual(2.5);
       }
     }
   });

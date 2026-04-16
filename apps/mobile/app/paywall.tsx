@@ -26,6 +26,8 @@ import {
 } from "@/lib/purchases";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 const TIMELINE = [
   { icon: "checkmark-circle" as const, color: Accent.success, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
@@ -46,6 +48,7 @@ export default function PaywallScreen() {
   const [offeringsReady, setOfferingsReady] = useState(false);
 
   useEffect(() => {
+    track(AnalyticsEvents.paywall_viewed);
     void (async () => {
       await ensurePurchasesUser(userId);
       const pkgs = await getOfferings();

@@ -1,0 +1,35 @@
+# Shrinks `vercel deploy` uploads: Next.js builds from repo root via `npm ci` + `next build`.
+# Do not list anything the build must read (app/, src/, public/, configs, package-lock.json, …).
+
+# Dependencies & caches (installed fresh on Vercel)
+node_modules
+apps/mobile/node_modules
+
+# Next / tooling output
+.next
+.turbo
+dist
+coverage
+
+# Playwright / Vitest artifacts (CI-only; not part of Next bundle)
+test-results
+playwright-report
+blob-report
+
+# Expo / React Native native trees (hundreds of MB; not used by web build)
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/.expo
+apps/mobile/build
+
+# Repo content not imported by `next build`
+tests
+docs
+scripts
+supabase
+
+# Local / Vercel metadata
+.git
+.vercel
+.cursor
+.DS_Store

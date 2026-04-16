@@ -34,12 +34,18 @@ const GOAL_ADJ: Record<string, number> = {
   gain: 300,
 };
 
-/** DB + legacy goal strings → kcal adjustment vs TDEE */
-function goalCalorieAdjustment(goal: string | null | undefined): number {
+/** DB + legacy goal strings → kcal adjustment vs TDEE (exported for activity / burn math on Today). */
+export function goalCalorieAdjustment(goal: string | null | undefined): number {
   const g = (goal ?? "maintain").trim().toLowerCase();
   if (g === "cut" || g === "lose") return -500;
   if (g === "bulk" || g === "gain" || g === "strength") return 300;
   return GOAL_ADJ[g] ?? 0;
+}
+
+/** Approximate maintenance intake (TDEE) implied by saved calorie target and goal, e.g. lose 1,800 → ~2,300 TDEE. */
+export function maintenanceIntakeFromTargetCalories(targetCalories: number, goal: string | null | undefined): number {
+  if (!Number.isFinite(targetCalories) || targetCalories <= 0) return 0;
+  return Math.max(0, Math.round(targetCalories - goalCalorieAdjustment(goal)));
 }
 
 /**

@@ -5,6 +5,7 @@ import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
+import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import {
   Dialog,
@@ -43,6 +44,7 @@ import {
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
 import NutritionSourceBadge from "../../components/NutritionSourceBadge.tsx";
+import { FastingTimer } from "./FastingTimer.tsx";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
@@ -217,13 +219,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
   const { authedUserId } = useAuthSession();
 
   useEffect(() => {
     if (!authedUserId) return;
     supabase
       .from("profiles")
-      .select("weight_kg, goal")
+      .select("weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee")
       .eq("id", authedUserId)
       .maybeSingle()
       .then(({ data }) => {
@@ -231,6 +234,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         const w = data.weight_kg != null ? Number(data.weight_kg) : null;
         setProfileWeightKg(Number.isFinite(w) ? w : null);
         setProfileGoal((data as any).goal ?? null);
+        // Compute maintenance TDEE for surplus-only activity adjustment.
+        // Prefer adaptive TDEE if available (more accurate), else compute from profile.
+        const adaptive = Number(data.adaptive_tdee);
+        if (Number.isFinite(adaptive) && adaptive > 0) {
+          setProfileMaintenanceTdee(Math.round(adaptive));
+        } else {
+          const sex = data.sex ?? "female";
+          const age = Number(data.age);
+          const hCm = Number(data.height_cm);
+          const wKg = Number(data.weight_kg);
+          const act = data.activity_level ?? "moderate";
+          if (Number.isFinite(age) && Number.isFinite(hCm) && Number.isFinite(wKg) && age > 0 && hCm > 0 && wKg > 0) {
+            setProfileMaintenanceTdee(calculateTDEE(sex, wKg, hCm, age, act));
+          }
+        }
       });
   }, [authedUserId]);
   const [voiceText, setVoiceText] = useState("");
@@ -338,23 +356,28 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           recognition.lang = "en-US";
           recognition.interimResults = false;
           recognition.maxAlternatives = 1;
+          let gotResult = false;
           recognition.onresult = (event: any) => {
+            gotResult = true;
             resolve(event.results[0][0].transcript);
           };
           recognition.onerror = (event: any) => reject(new Error(event.error));
-          recognition.onend = () => resolve("");
+          recognition.onend = () => {
+            if (!gotResult) reject(new Error("no-speech"));
+          };
           recognition.start();
           toast.info("Listening... Describe what you ate.");
         });
         if (transcript.trim()) {
           await submitVoiceTranscriptWeb(transcript);
+          return;
         }
-        return;
       } catch {
-        // Speech recognition failed, fall through to text dialog
+        // Speech recognition failed or returned empty — fall through to text dialog
       }
     }
 
+    // Always fall through to text dialog if speech didn't produce a result
     setVoiceDialogOpen(true);
   };
 
@@ -425,14 +448,38 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   const targets = normalizeMacroTargets(nutritionTargets);
   const baseCalorieTarget = targets.calories;
-  const activityAdjustment = preferActivityAdjustedCalories ? activityBurnForSelectedDay : 0;
-  const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
-  const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
   // Burn data for the selected day
   const dayWorkouts = workoutsByDay[selectedDateKey] ?? [];
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
   const totalBurnKcal = activityBurnForSelectedDay + basalBurnKcal;
+
+  // Activity adjustment — surplus-only "Activity Bonus":
+  //
+  // Only add bonus calories when actual total burn exceeds estimated maintenance.
+  //   bonus = max(0, (resting + active) − maintenance_TDEE)
+  //
+  // This avoids double-counting: the user's baseCalorieTarget already includes an
+  // estimated activity level (e.g. "moderate" = BMR × 1.55), so adding raw active
+  // burn would overcount. The bonus only rewards burn ABOVE what was expected.
+  //
+  // Fallback when resting energy isn't available from Health: use active energy
+  // from logged workouts only (intentional exercise, not incidental movement).
+  const activityAdjustment = (() => {
+    if (!preferActivityAdjustedCalories || activityBurnForSelectedDay === 0) return 0;
+    const maintenance = profileMaintenanceTdee ?? baseCalorieTarget;
+    if (basalBurnKcal > 0) {
+      // Best case: we have resting + active from Health.
+      // Bonus = how much actual burn exceeds estimated maintenance.
+      return Math.max(0, Math.round(totalBurnKcal - maintenance));
+    }
+    // No resting data from Health: use logged workout calories only.
+    // This is conservative but safe — avoids adding incidental movement.
+    const workoutBurn = dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0);
+    return Math.max(0, Math.round(workoutBurn));
+  })();
+  const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
+  const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
   const hasBurnData = activityBurnForSelectedDay > 0 || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
   const getProgress = (current: number, target: number) => {
@@ -584,7 +631,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           onToggle={() => setRingExpanded((v) => !v)}
         />
         <p className="text-xs text-muted-foreground mt-3">
-          {ringExpanded ? "Showing macro breakdown" : "Tap for macro breakdown"}
+          {ringExpanded ? "Tap to hide macros" : "Tap to show macros"}
         </p>
       </div>
 
@@ -723,7 +770,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                           <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
                           {meal.source && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">{meal.source}</span>
+                            <NutritionSourceBadge source={meal.source} />
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -867,12 +914,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </div>
       )}
 
-      {/* Calorie Burn Bonus */}
+      {/* Activity Bonus */}
       {hasBurnData && (
         <div className="rounded-xl border border-border bg-card p-4 mt-4">
           <div className="flex items-center gap-2 mb-3">
             <Icons.calories className="h-5 w-5 text-warning" />
-            <h3 className="text-sm font-bold text-foreground">Calorie Burn Bonus</h3>
+            <h3 className="text-sm font-bold text-foreground">Activity Bonus</h3>
           </div>
 
           {/* Summary row */}
@@ -977,15 +1024,20 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </button>
       )}
 
+      {/* Fasting Timer */}
+      <div className="mt-4">
+        <FastingTimer />
+      </div>
+
       {/* Complete Day Dialog */}
       <Dialog open={completeDayOpen} onOpenChange={setCompleteDayOpen}>
         <DialogContent className="bg-card border-border text-center max-w-sm">
           <div className="flex flex-col items-center py-4">
             <DialogHeader className="sr-only">
-              <DialogTitle>Diary complete!</DialogTitle>
+              <DialogTitle>Day logged!</DialogTitle>
               <DialogDescription>Weight projection based on today's intake</DialogDescription>
             </DialogHeader>
-            <p className="text-lg font-bold text-foreground mb-6">Diary complete!</p>
+            <p className="text-lg font-bold text-foreground mb-6">Day logged!</p>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ background: "var(--primary-soft, rgba(76,108,224,0.12))" }}>
               <Icons.check className="w-10 h-10 text-primary" />
             </div>
@@ -999,7 +1051,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               return (
                 <>
                   <p className="text-lg font-bold text-foreground leading-relaxed mb-2 px-4">
-                    If every day were like today, you could weigh{" "}
+                    At today's pace, your projected weight in 5 weeks is{" "}
                     <span className="text-primary">{prediction.projectedWeightKg} kg</span>{" "}
                     in {prediction.projectionWeeks} weeks.
                   </p>

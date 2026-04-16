@@ -141,7 +141,7 @@ export default function FastingScreen() {
         container: { flex: 1, backgroundColor: colors.background },
         header: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
         backBtn: { padding: 4 },
-        title: { flex: 1, fontSize: 20, fontWeight: "800", color: colors.text, textAlign: "center" },
+        title: { flex: 1, fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center" },
         card: {
           marginHorizontal: Spacing.xl,
           backgroundColor: colors.card,

@@ -25,12 +25,12 @@ describe("servingMassGrams", () => {
     expect(servingMassGrams({} as any)).toBeNull();
   });
 
-  it("parses '1 cup' from serving_description (~130g at default density)", () => {
+  it("parses '1 cup' from serving_description (~213g at default density)", () => {
     const result = servingMassGrams({
       serving_description: "1 cup",
     } as any);
     expect(result).not.toBeNull();
-    expect(result).toBeCloseTo(130, 0); // 236.6 * 0.55
+    expect(result).toBeCloseTo(213, 0); // 236.6 * 0.9
   });
 
   it("parses '2 oz' from serving_description (~57g)", () => {

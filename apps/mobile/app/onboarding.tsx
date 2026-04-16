@@ -49,6 +49,8 @@ import {
   type NutritionStrategy,
 } from "@/lib/tdee";
 import { ageFromIsoDateString, displayNameFromAuthUser } from "../../../src/lib/profile/onboardingHydration";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -326,6 +328,10 @@ export default function OnboardingScreen() {
 
   const goNext = useCallback(() => {
     if (step < STEP_ORDER.length - 1) {
+      track(AnalyticsEvents.onboarding_step_completed, {
+        step,
+        step_name: STEP_ORDER[step],
+      });
       animateTransition(1);
       setStep((s) => s + 1);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -746,7 +752,7 @@ export default function OnboardingScreen() {
             <Text style={styles.heading}>Pick your nutrition strategy</Text>
             <Text style={styles.subheading}>This determines your protein, carb, and fat targets.</Text>
             <View style={{ gap: Spacing.md }}>
-              {(Object.entries(STRATEGY_LABELS) as [NutritionStrategy, { title: string; desc: string; emoji: string }][]).map(([key, val]) => {
+              {(Object.entries(STRATEGY_LABELS) as [NutritionStrategy, { title: string; desc: string; emoji?: string }][]).map(([key, val]) => {
                 const m = calculateMacros(budget, key, weightKg);
                 return (
                   <Pressable
@@ -754,7 +760,7 @@ export default function OnboardingScreen() {
                     style={[styles.optionBtn, data.strategy === key && styles.optionBtnActive]}
                     onPress={() => { update("strategy", key); goNext(); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                   >
-                    <Text style={[styles.optionText, data.strategy === key && styles.optionTextActive]}>{val.emoji} {val.title}</Text>
+                    <Text style={[styles.optionText, data.strategy === key && styles.optionTextActive]}>{val.title}</Text>
                     <Text style={styles.optionDesc}>{val.desc}</Text>
                     <Text style={[styles.optionDesc, { marginTop: 2 }]}>P: {m.protein}g  C: {m.carbs}g  F: {m.fat}g  Fi: {m.fiber}g</Text>
                   </Pressable>

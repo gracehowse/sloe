@@ -7,6 +7,7 @@ import { AppDataProvider } from "../src/context/AppDataContext.tsx";
 import { AuthSessionProvider } from "../src/context/AuthSessionContext.tsx";
 import { NotificationProvider } from "../src/context/NotificationContext.tsx";
 import { Toaster } from "../src/app/components/ui/sonner.tsx";
+import { CookieConsent } from "../src/app/components/CookieConsent.tsx";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: ReactNode }) {
             <AppDataProvider>
               {children}
               <Toaster richColors position="top-center" />
+              <CookieConsent />
             </AppDataProvider>
           </NotificationProvider>
         </AuthSessionProvider>

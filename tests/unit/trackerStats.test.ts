@@ -121,6 +121,6 @@ describe("computeWeekFiberWaterHits", () => {
     const today = dateKeyFromDate(now);
     const byDay = { [today]: [meal(500, { fiberG: 30 } as any)] };
     const result = computeWeekFiberWaterHits(byDay, undefined, 25, 2000, now);
-    expect(result.fiberDaysMet).toBeGreaterThanOrEqual(0); // Depends on sumFiber implementation
+    expect(result.fiberDaysMet).toBeGreaterThanOrEqual(1);
   });
 });

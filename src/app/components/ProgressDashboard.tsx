@@ -304,7 +304,7 @@ export function ProgressDashboard() {
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
           </div>
           <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
-          <p className="text-[11px] text-muted-foreground">protein goal</p>
+          <p className="text-[11px] text-muted-foreground">logging streak</p>
         </div>
         <div className="rounded-xl bg-card border border-border p-3">
           <div className="flex items-center gap-1.5 mb-2">
@@ -505,8 +505,8 @@ export function ProgressDashboard() {
             {dailyProjection && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Based on your recent average ({avgRecentCals.toLocaleString()} kcal/day), you could weigh{" "}
-                  <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in {dailyProjection.projectionWeeks} weeks.
+                  Weekly trajectory: averaging {avgRecentCals.toLocaleString()} kcal/day puts you on track for{" "}
+                  <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
                 </p>
               </div>
             )}

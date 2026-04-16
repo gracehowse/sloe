@@ -105,7 +105,7 @@ export default function LibraryScreen() {
     headerTitle: {
       fontSize: 22,
       fontWeight: "700",
-      color: Accent.primary,
+      color: colors.text,
     },
     countBadge: {
       backgroundColor: Accent.primary + "15",
@@ -172,12 +172,12 @@ export default function LibraryScreen() {
     },
     macroChipText: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
     removeBtn: {
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.lg,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.md,
     },
     logBtn: {
       paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.lg,
+      paddingVertical: Spacing.md,
       justifyContent: "center",
     },
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -220,20 +220,15 @@ export default function LibraryScreen() {
           <Image source={{ uri: item.image }} style={styles.cardImage} />
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-            <View style={styles.macroRow}>
-              <View style={[styles.macroChip, { borderColor: MacroColors.calories + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.calories }]}>{Math.round(item.calories)} kcal</Text>
-              </View>
-              <View style={[styles.macroChip, { borderColor: MacroColors.protein + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.protein }]}>P {Math.round(item.protein)}g</Text>
-              </View>
-              <View style={[styles.macroChip, { borderColor: MacroColors.carbs + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.carbs }]}>C {Math.round(item.carbs)}g</Text>
-              </View>
-              <View style={[styles.macroChip, { borderColor: MacroColors.fat + "60" }]}>
-                <Text style={[styles.macroChipText, { color: MacroColors.fat }]}>F {Math.round(item.fat)}g</Text>
-              </View>
-            </View>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+              <Text style={{ color: MacroColors.calories, fontWeight: "600" }}>{Math.round(item.calories)}</Text>
+              <Text> kcal  </Text>
+              <Text style={{ color: MacroColors.protein, fontWeight: "600" }}>P {Math.round(item.protein)}g</Text>
+              <Text>  </Text>
+              <Text style={{ color: MacroColors.carbs, fontWeight: "600" }}>C {Math.round(item.carbs)}g</Text>
+              <Text>  </Text>
+              <Text style={{ color: MacroColors.fat, fontWeight: "600" }}>F {Math.round(item.fat)}g</Text>
+            </Text>
           </View>
         </Pressable>
         <Pressable
@@ -242,7 +237,7 @@ export default function LibraryScreen() {
           hitSlop={8}
           accessibilityLabel={`Log ${item.title} to journal`}
         >
-          <Ionicons name="nutrition-outline" size={22} color={Accent.primary} />
+          <Ionicons name="nutrition-outline" size={18} color={Accent.primary} />
         </Pressable>
         <Pressable
           onPress={() => confirmRemove(item)}
@@ -250,7 +245,7 @@ export default function LibraryScreen() {
           style={styles.removeBtn}
           accessibilityLabel={`Remove ${item.title} from library`}
         >
-          <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+          <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
         </Pressable>
       </View>
     ),

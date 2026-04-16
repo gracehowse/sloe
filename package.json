@@ -19,6 +19,7 @@
     "test:e2e:ai": "playwright test tests/e2e/ai",
     "delete:seeded-recipes": "node --import tsx scripts/delete-seeded-recipes.ts",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
+    "prelaunch:checklist": "node --import tsx scripts/prelaunch-checklist.ts",
     "smoke:production": "node --import tsx scripts/production-smoke.ts",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:tunnel": "npm run start:tunnel --prefix apps/mobile",

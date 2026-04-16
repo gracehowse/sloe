@@ -26,6 +26,11 @@ function isPrivateHost(hostname: string): boolean {
   if (h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("fc")) return true;
   // Metadata endpoints (cloud providers)
   if (h === "metadata.google.internal" || h === "169.254.169.254") return true;
+  // IPv6-mapped IPv4 private addresses (e.g. ::ffff:10.0.0.1, ::ffff:169.254.169.254)
+  if (/^::ffff:/.test(h)) {
+    const mapped = h.replace("::ffff:", "");
+    if (/^10\./.test(mapped) || /^172\.(1[6-9]|2\d|3[01])\./.test(mapped) || /^192\.168\./.test(mapped) || /^169\.254\./.test(mapped) || mapped === "127.0.0.1") return true;
+  }
   return false;
 }
 
@@ -182,9 +187,92 @@ export async function POST(req: Request) {
       }
 
       const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
-      const recipe = await extractRecipeFromCaption(captionText, openaiKey, meta.imageUrl);
+      let recipe = await extractRecipeFromCaption(captionText, openaiKey, meta.imageUrl);
 
+      // Fallback: if caption has no recipe, look for a URL in the caption and scrape the website
       if (!recipe.ingredients.length && !recipe.steps.length) {
+        const urlMatch = captionText.match(/https?:\/\/[^\s"'<>]+/i)
+          ?? meta.caption?.match(/https?:\/\/[^\s"'<>]+/i);
+        let websiteRecipe: ReturnType<typeof parseRecipeFromHtml> = null;
+        if (urlMatch) {
+          try {
+            const linkUrl = urlMatch[0].replace(/[.,;!?)]+$/, "");
+            if (isAllowedUrl(linkUrl)) {
+              const linkRes = await fetch(linkUrl, {
+                signal: ac.signal,
+                headers: {
+                  Accept: "text/html",
+                  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
+                },
+                redirect: "follow",
+              });
+              if (linkRes.ok) {
+                const html = await linkRes.text();
+                websiteRecipe = parseRecipeFromHtml(html);
+              }
+            }
+          } catch { /* link fetch failed — continue to error */ }
+        }
+
+        if (websiteRecipe && websiteRecipe.ingredients?.length) {
+          // Successfully scraped from linked website — use it
+          const ingList = Array.isArray(websiteRecipe.ingredients) ? websiteRecipe.ingredients.map(String) : [];
+          const srv = websiteRecipe.servings ?? 1;
+          const parsedIngs = parseRawIngredients(ingList);
+          let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
+          try {
+            nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
+          } catch { /* verification optional */ }
+
+          const mealType = classifyMealType({
+            title: websiteRecipe.title,
+            ingredients: ingList,
+            caloriesPerServing: websiteRecipe.siteNutrition?.calories ?? null,
+            caption: captionText,
+          });
+
+          return NextResponse.json({
+            ok: true,
+            recipe: {
+              title: websiteRecipe.title,
+              description: websiteRecipe.description,
+              ingredients: ingList,
+              instructions: websiteRecipe.instructions ?? [],
+              servings: srv,
+              prepTimeMin: websiteRecipe.prepTimeMin,
+              cookTimeMin: websiteRecipe.cookTimeMin,
+              imageUrl: meta.imageUrl ?? websiteRecipe.imageUrl,
+              sourceUrl: trimmed,
+              sourceName: websiteRecipe.sourceName ?? siteNameFromUrl(trimmed),
+              mealType,
+              calories: nutrition?.perServing.calories ?? websiteRecipe.siteNutrition?.calories ?? 0,
+              protein: nutrition?.perServing.protein ?? websiteRecipe.siteNutrition?.protein ?? 0,
+              carbs: nutrition?.perServing.carbs ?? websiteRecipe.siteNutrition?.carbs ?? 0,
+              fat: nutrition?.perServing.fat ?? websiteRecipe.siteNutrition?.fat ?? 0,
+              fiberG: nutrition?.perServing.fiberG ?? websiteRecipe.siteNutrition?.fiberG ?? 0,
+              sugarG: nutrition?.perServing.sugarG ?? 0,
+              sodiumMg: nutrition?.perServing.sodiumMg ?? 0,
+              ingredientMacros: nutrition?.verified.map((v) => ({
+                name: v.input.name,
+                amount: v.resolved.amount,
+                unit: v.resolved.unit,
+                calories: v.macros?.calories ?? 0,
+                protein: v.macros?.protein ?? 0,
+                carbs: v.macros?.carbs ?? 0,
+                fat: v.macros?.fat ?? 0,
+                fiberG: v.macros?.fiberG ?? 0,
+                sugarG: v.macros?.sugarG ?? 0,
+                sodiumMg: v.macros?.sodiumMg ?? 0,
+                source: v.source,
+                confidence: v.confidence,
+                matchedName: v.matchedName ?? null,
+              })) ?? [],
+              primarySource: nutrition?.primarySource ?? "Unverified",
+              importedFromWebsite: true,
+            },
+          });
+        }
+
         return NextResponse.json(
           {
             ok: false,
@@ -245,6 +333,8 @@ export async function POST(req: Request) {
             sugarG: v.macros?.sugarG ?? 0,
             sodiumMg: v.macros?.sodiumMg ?? 0,
             source: v.source,
+            confidence: v.confidence,
+            matchedName: v.matchedName ?? null,
           })) ?? [],
           primarySource: nutrition?.primarySource ?? "Unverified",
         },
@@ -269,11 +359,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
     }
 
+    // Rotate user agents to reduce Cloudflare bot-detection blocks on production IPs
+    const userAgents = [
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+    ];
     const fetchHeaders = {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "User-Agent": userAgents[Math.floor(Math.random() * userAgents.length)],
     };
     // Follow redirects manually to re-validate each hop against the SSRF allowlist
     let currentUrl = effectiveUrl;
@@ -348,6 +443,8 @@ export async function POST(req: Request) {
             sugarG: v.macros?.sugarG ?? 0,
             sodiumMg: v.macros?.sodiumMg ?? 0,
             source: v.source,
+            confidence: v.confidence,
+            matchedName: v.matchedName ?? null,
           }));
           (parsed as any).primarySource = nutrition.primarySource;
         } catch (e) {
@@ -406,9 +503,15 @@ export async function POST(req: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.includes("abort")) {
-      return NextResponse.json({ ok: false, error: "timeout" }, { status: 504 });
+      return NextResponse.json(
+        { ok: false, error: "timeout", message: "The recipe page took too long to load. The site may be slow or blocking imports. Try again, or paste the recipe manually." },
+        { status: 504 },
+      );
     }
-    return NextResponse.json({ ok: false, error: "import_failed", message: msg }, { status: 502 });
+    return NextResponse.json(
+      { ok: false, error: "import_failed", message: `Import failed: ${msg}. Try a different URL or paste ingredients manually.` },
+      { status: 502 },
+    );
   } finally {
     clearTimeout(t);
   }

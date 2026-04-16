@@ -83,20 +83,20 @@ export default function ProgressScreen() {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
 
-    if (isHealthSyncAvailable()) {
-      try {
-        await syncHealthDataThrottled(userId);
-      } catch {
-        // HealthKit unavailable or denied — continue with DB-only data
-      }
-    }
-
-    // Profile targets + weight + steps
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal")
-      .eq("id", userId)
-      .maybeSingle();
+    // Run Health sync and DB queries in parallel for faster loading
+    const [, { data: profile }, { data: rows }] = await Promise.all([
+      isHealthSyncAvailable() ? syncHealthDataThrottled(userId).catch(() => {}) : Promise.resolve(),
+      supabase
+        .from("profiles")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("nutrition_entries")
+        .select("date_key, calories, protein, carbs, fat")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true }),
+    ]);
 
     if (profile) {
       setTargets({
@@ -118,13 +118,6 @@ export default function ProgressScreen() {
       }
       setUserGoal((profile as any).goal ?? null);
     }
-
-    // Nutrition entries
-    const { data: rows } = await supabase
-      .from("nutrition_entries")
-      .select("date_key, calories, protein, carbs, fat")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
 
     if (rows) {
       const loaded: ByDay = {};
@@ -228,9 +221,9 @@ export default function ProgressScreen() {
               ],
               [
                 "Protein Hit",
-                `${weekStats.proteinOnTarget}/7`,
-                "days on target",
-                weekStats.proteinOnTarget >= 5 ? t.green : t.amber,
+                `${weekStats.proteinOnTarget}/${weekStats.daysWithFood || 0}`,
+                `day${weekStats.daysWithFood !== 1 ? "s" : ""} on target`,
+                weekStats.daysWithFood > 0 && weekStats.proteinOnTarget >= weekStats.daysWithFood * 0.7 ? t.green : t.amber,
                 "checkmark-circle-outline",
               ],
               [
@@ -264,14 +257,14 @@ export default function ProgressScreen() {
                     <IconBox color={color as string} size={24}>
                       <Ionicons name={iconName as any} size={12} color={color as string} />
                     </IconBox>
-                    <Text style={{ fontSize: 10, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
+                    <Text style={{ fontSize: 11, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
                   </View>
                   <Text style={{ fontSize: 22, fontWeight: "700", color: color as string, fontVariant: ["tabular-nums"] }}>{val}</Text>
-                  <Text style={{ fontSize: 11, color: t.sub, marginTop: 2 }}>{sub}</Text>
+                  <Text style={{ fontSize: 12, color: t.sub, marginTop: 2 }}>{sub}</Text>
                 </>
               );
               const shellStyle = {
-                width: "48.5%" as const,
+                width: "47%" as const,
                 padding: 14,
                 borderRadius: 14,
                 backgroundColor: t.elevated,
@@ -309,7 +302,7 @@ export default function ProgressScreen() {
                 >
                   {tileBody}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent }}>{footerLabel}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: t.accent }}>{footerLabel}</Text>
                     <Ionicons name="chevron-forward" size={12} color={t.accent} />
                   </View>
                 </Pressable>
@@ -336,7 +329,7 @@ export default function ProgressScreen() {
                     }}
                     style={{ flex: 1, alignItems: "center", gap: 4 }}
                   >
-                    <Text style={{ fontSize: 9, color: t.dim, fontVariant: ["tabular-nums"] }}>
+                    <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
                       {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
                     </Text>
                     <View style={{ width: "100%", height: barH, borderRadius: 5, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.75 }} />
@@ -428,7 +421,7 @@ export default function ProgressScreen() {
                   {weightTrend.diff > 0 ? "+" : ""}{weightTrend.diff} kg overall trend
                 </Text>
               )}
-              <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for graph & log weight</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for graph & log weight</Text>
             </Pressable>
           )}
 
@@ -502,37 +495,50 @@ export default function ProgressScreen() {
                   </View>
 
                   {/* Progress description */}
-                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 12, lineHeight: 18 }}>
+                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
                     {timeline.remainingKg > 0.1
-                      ? `${timeline.remainingKg} kg to go until your ${goalWeightKg} kg goal.`
+                      ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
                       : "You've reached your goal weight!"}
-                    {timeline.weeklyRateKg !== 0 && ` Trending ${timeline.trendDirection} at ${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+                    {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
                   </Text>
 
-                  {/* Progress bar */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{latestWeightKg} kg</Text>
-                    <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: t.border }}>
-                      <View style={{
-                        width: `${Math.max(progressPct, 3)}%`,
-                        height: "100%",
-                        borderRadius: 4,
-                        backgroundColor: progressPct >= 100 ? t.green : t.accent,
-                      }} />
-                    </View>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, fontVariant: ["tabular-nums"] }}>{goalWeightKg} kg</Text>
-                  </View>
-
-                  {/* Daily projection based on recent average */}
-                  {dailyProjection && (
-                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
-                      <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                        Based on your recent average ({avgCals.toLocaleString()} kcal/day), you could weigh{" "}
-                        <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in {dailyProjection.projectionWeeks} weeks.
+                  {/* Progress bar with start weight label */}
+                  {journeyProg && (
+                    <View style={{ marginBottom: 4 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
+                      </View>
+                      <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
+                        <View style={{
+                          width: `${Math.max(progressPct, 3)}%` as any,
+                          height: "100%",
+                          borderRadius: 3,
+                          backgroundColor: progressPct >= 100 ? t.green : t.accent,
+                        }} />
+                      </View>
+                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}>
+                        Now: {latestWeightKg} kg ({progressPct}% of the way)
                       </Text>
                     </View>
                   )}
-                  <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for full weight analytics</Text>
+
+                  {/* Daily projection */}
+                  {dailyProjection && (
+                    <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                      <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                        Weekly trajectory: averaging {avgCals.toLocaleString()} kcal/day (target {targets.calories.toLocaleString()}) puts you on track for{" "}
+                        <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
+                      </Text>
+                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
+                        Estimated at 7,700 kcal/kg. Actual rate depends on metabolism, activity, and consistency.
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
+                    <Ionicons name="chevron-forward" size={12} color={t.accent} />
+                  </View>
                 </Pressable>
               );
             })()

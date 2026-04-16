@@ -1,0 +1,24 @@
+appId: host.exp.Exponent
+name: "Progress screen — stats, charts, weight journey"
+---
+# Navigate to Progress
+- tapOn: "Progress"
+- assertVisible: "Progress"
+- assertVisible: "Weekly report"
+
+# Should see stat tiles (or empty state)
+- assertVisible:
+    text: "Avg Calories|No data yet"
+
+# If data exists, check key elements
+- runFlow:
+    when:
+      visible: "Avg Calories"
+    commands:
+      - assertVisible: "Protein Hit"
+      - assertVisible: "Streak"
+      # Scroll to see more
+      - scrollUntilVisible:
+          element: "Weight"
+          direction: DOWN
+          timeout: 5000

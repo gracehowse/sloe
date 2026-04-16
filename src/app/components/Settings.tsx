@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
@@ -14,6 +15,31 @@ import {
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
+
+const THEME_OPTIONS = [
+  { value: "system", label: "Auto" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+] as const;
+
+const WIDGET_MACRO_OPTIONS = [
+  { key: "protein", label: "Protein", color: "#5B8DEF" },
+  { key: "carbs", label: "Carbs", color: "#F5A623" },
+  { key: "fat", label: "Fat", color: "#E05C5C" },
+  { key: "fiber", label: "Fiber", color: "#22c55e" },
+  { key: "sugar", label: "Sugar", color: "#D87FE8" },
+  { key: "sodium", label: "Sodium", color: "#7FB5E8" },
+  { key: "water", label: "Water", color: "#4FC3F7" },
+] as const;
+
+/** Human-readable labels for notification toggle keys, matching mobile. */
+const NOTIFICATION_LABELS: Record<string, string> = {
+  showMealTimestamps: "Show meal timestamps",
+  newRecipes: "New recipes from people you follow",
+  mealReminders: "Meal plan ready",
+  weeklyReport: "Weekly summary",
+  creatorUpdates: "Your recipe publish updates",
+};
 
 interface SettingsProps {
   userTier: "free" | "base" | "pro";
@@ -31,12 +57,19 @@ const LOCAL_CLEAR_KEYS = [
 ];
 
 export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
-  const { signOut, profileDisplayName, redeemPromoCode, notificationPrefs, setNotificationPrefs } = useAppData();
+  const {
+    signOut,
+    profileDisplayName,
+    redeemPromoCode,
+    notificationPrefs,
+    setNotificationPrefs,
+    preferActivityAdjustedCalories,
+    setPreferActivityAdjustedCalories,
+  } = useAppData();
+  const { theme, setTheme } = useTheme();
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
-  // Stripe checkout is now handled via /pricing page
-
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -51,6 +84,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
 
   const [dietary, setDietary] = useState<string[]>([]);
   const [measurementSystem, setMeasurementSystem] = useState("metric");
+  const [trackedMacros, setTrackedMacros] = useState<string[]>(["protein", "carbs", "fat"]);
+  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
   useEffect(() => {
     let cancelled = false;
@@ -60,13 +95,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("dietary, measurement_system")
+        .select("dietary, measurement_system, tracked_macros, week_start_day")
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
       if (profile.dietary) setDietary(normaliseDietaryFromProfile(profile.dietary));
       if (profile.measurement_system === "metric" || profile.measurement_system === "imperial") {
         setMeasurementSystem(profile.measurement_system);
+      }
+      if (profile.tracked_macros && Array.isArray(profile.tracked_macros) && profile.tracked_macros.length > 0) {
+        setTrackedMacros(profile.tracked_macros as string[]);
+      }
+      if (profile.week_start_day === "monday" || profile.week_start_day === "sunday") {
+        setWeekStartDay(profile.week_start_day);
       }
     })();
     return () => { cancelled = true; };
@@ -298,6 +339,118 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               })}
             </div>
           </div>
+          {/* Activity toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 mr-4">
+              <label className="block text-sm font-medium text-foreground">Adjust goal for activity</label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Adds bonus calories when you burn more than your estimated maintenance
+              </p>
+            </div>
+            <label className="relative cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preferActivityAdjustedCalories}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setPreferActivityAdjustedCalories(v);
+                  void savePref({ prefer_activity_adjusted_calories: v });
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
+              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+
+          {/* Theme picker */}
+          <div>
+            <label className="block mb-3 text-sm font-medium text-foreground">Theme</label>
+            <div className="flex gap-0 rounded-xl border-2 border-border overflow-hidden">
+              {THEME_OPTIONS.map((opt) => {
+                const isActive = theme === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTheme(opt.value)}
+                    className={`flex-1 px-4 py-3 transition-all text-sm font-semibold ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Week start picker */}
+          <div>
+            <label className="block mb-3 text-sm font-medium text-foreground">Week starts on</label>
+            <div className="flex gap-3">
+              {(["monday", "sunday"] as const).map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => {
+                    setWeekStartDay(day);
+                    void savePref({ week_start_day: day });
+                  }}
+                  className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+                    weekStartDay === day
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/30 text-foreground"
+                  }`}
+                >
+                  {day === "monday" ? "Monday" : "Sunday"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dashboard widgets (tracked macros) */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-foreground">Dashboard Widgets</label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Choose which nutrients appear on your Today screen
+            </p>
+            <div className="space-y-2">
+              {WIDGET_MACRO_OPTIONS.map(({ key, label, color }) => {
+                const isActive = trackedMacros.includes(key);
+                return (
+                  <label
+                    key={key}
+                    className="flex items-center gap-3 cursor-pointer group px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="flex-1 text-sm text-foreground">{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={() => {
+                        setTrackedMacros((prev) => {
+                          const next = isActive
+                            ? prev.filter((m) => m !== key)
+                            : [...prev, key];
+                          if (next.length === 0) return prev;
+                          void savePref({ tracked_macros: next });
+                          return next;
+                        });
+                      }}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
@@ -334,8 +487,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             .filter((e): e is [keyof NotificationPrefs, boolean] => typeof e[1] === "boolean")
             .map(([key, value]) => (
             <label key={key} className="flex items-center justify-between cursor-pointer group">
-              <span className="text-foreground capitalize">
-                {key.replace(/([A-Z])/g, ' $1').trim()}
+              <span className="text-foreground">
+                {NOTIFICATION_LABELS[key] ?? key}
               </span>
               <div className="relative">
                 <input
@@ -367,13 +520,42 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <button
             type="button"
             onClick={() => {
-              try {
-                const data = buildLocalDataExport();
-                downloadJsonFile(`suppr-export-${new Date().toISOString().slice(0, 10)}.json`, data);
-                toast.success("Download started.");
-              } catch {
-                toast.error("Could not build export.");
-              }
+              void (async () => {
+                try {
+                  const localData = buildLocalDataExport();
+
+                  const { data: session } = await supabase.auth.getSession();
+                  const uid = session.session?.user.id;
+
+                  let profile: Record<string, unknown> | null = null;
+                  let nutritionEntries: unknown[] = [];
+                  let saves: unknown[] = [];
+
+                  if (uid) {
+                    const [profileRes, entriesRes, savesRes] = await Promise.all([
+                      supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
+                      supabase.from("nutrition_entries").select("*").eq("user_id", uid),
+                      supabase.from("saves").select("recipe_id").eq("user_id", uid),
+                    ]);
+                    profile = profileRes.data ?? null;
+                    nutritionEntries = entriesRes.data ?? [];
+                    saves = savesRes.data ?? [];
+                  }
+
+                  const exportData = {
+                    ...localData,
+                    profile,
+                    nutritionEntries,
+                    saves,
+                    exportedAt: new Date().toISOString(),
+                  };
+
+                  downloadJsonFile(`suppr-export-${new Date().toISOString().slice(0, 10)}.json`, exportData);
+                  toast.success("Download started.");
+                } catch {
+                  toast.error("Could not build export.");
+                }
+              })();
             }}
             className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
@@ -423,6 +605,51 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-600 dark:text-red-400"
           >
             Delete local data &amp; sign out
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                typeof window !== "undefined" &&
+                !window.confirm(
+                  "This will permanently delete your account and all associated data. This action cannot be undone. Continue?",
+                )
+              ) {
+                return;
+              }
+              if (
+                !window.confirm(
+                  "Are you sure? Your recipes, logs, meal plans, and profile will be permanently deleted.",
+                )
+              ) {
+                return;
+              }
+              void (async () => {
+                try {
+                  const { data: sessionData } = await supabase.auth.getSession();
+                  const token = sessionData?.session?.access_token;
+                  const res = await fetch("/api/account/delete", {
+                    method: "DELETE",
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  });
+                  const json = await res.json();
+                  if (json.ok) {
+                    for (const k of LOCAL_CLEAR_KEYS) {
+                      try { localStorage.removeItem(k); } catch { /* ignore */ }
+                    }
+                    toast.success("Account deleted.");
+                    window.location.href = "/login";
+                  } else {
+                    toast.error(json.error || "Account deletion failed. Please try again.");
+                  }
+                } catch {
+                  toast.error("Account deletion failed. Please try again.");
+                }
+              })();
+            }}
+            className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-700 dark:text-red-300 font-medium"
+          >
+            Delete my account permanently
           </button>
         </div>
       </div>

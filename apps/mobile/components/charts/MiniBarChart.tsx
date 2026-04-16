@@ -79,12 +79,9 @@ export default function MiniBarChart({
     goalLine ?? 0,
   );
   const chartH = height - 20;
-  const barGap = 3;
-  const totalWidth = 100;
-  const barW = Math.max(
-    4,
-    (totalWidth - barGap * (data.length - 1)) / data.length,
-  );
+  const barGap = 2;
+  const barW = Math.max(4, Math.min(12, 200 / data.length));
+  const totalWidth = data.length * (barW + barGap) - barGap;
 
   const goalY =
     goalLine != null && maxVal > 0

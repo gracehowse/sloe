@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: "Today screen — ring, macros, quick-log buttons"
+---
+# Calorie ring visible
+- assertVisible: "kcal"
+
+# Macro cards visible (at least one)
+- assertVisible:
+    text: "Protein|Carbs|Fat"
+
+# Quick-log buttons visible
+- assertVisible: "Photo"
+- assertVisible: "Voice"
+- assertVisible: "Search"
+- assertVisible: "Scan"
+
+# Tap to show macros
+- tapOn: "Tap to show macros"
+- assertVisible: "Tap to hide macros"
+
+# Tap to hide macros
+- tapOn: "Tap to hide macros"
+- assertVisible: "Tap to show macros"

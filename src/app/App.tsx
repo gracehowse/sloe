@@ -43,6 +43,7 @@ const RecipeUpload = dynamic(
 );
 import { useAppData } from "../context/AppDataContext.tsx";
 import { FirstRunChecklist } from "./components/FirstRunChecklist.tsx";
+import { FeatureErrorBoundary } from "./components/FeatureErrorBoundary.tsx";
 
 type View =
   | "today"
@@ -197,7 +198,7 @@ export default function App() {
   const renderView = () => {
     switch (currentView) {
       case "today":
-        return <NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} />;
+        return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
       case "discover":
         return (
           <DiscoverFeed
@@ -244,7 +245,7 @@ export default function App() {
               </div>
             </div>
             {plannerMobileTab === "plan" ? (
-              <MealPlanner
+              <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
                 onUpgrade={openUpgradePromo}
                 onNavigate={(view) => navigateToView(view)}
@@ -258,14 +259,14 @@ export default function App() {
                   router.replace(`/?${params.toString()}`, { scroll: false });
                   setCurrentView("discover");
                 }}
-              />
+              /></FeatureErrorBoundary>
             ) : (
-              <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} />
+              <FeatureErrorBoundary feature="Shopping List"><ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} /></FeatureErrorBoundary>
             )}
           </>
         );
       case "progress":
-        return <ProgressDashboard />;
+        return <FeatureErrorBoundary feature="Progress"><ProgressDashboard /></FeatureErrorBoundary>;
       case "profile":
         return (
           <Profile
@@ -294,29 +295,37 @@ export default function App() {
         return <NotificationsCenter onOpenRecipe={openRecipeById} />;
       case "create":
         return (
-          <RecipeUpload
-            userTier={userTier}
-            onUpgrade={openUpgradePromo}
-            mode="create"
-            onSwitchToImport={() => navigateToView("import")}
-          />
+          <FeatureErrorBoundary feature="Recipe Editor">
+            <RecipeUpload
+              userTier={userTier}
+              onUpgrade={openUpgradePromo}
+              mode="create"
+              onSwitchToImport={() => navigateToView("import")}
+            />
+          </FeatureErrorBoundary>
         );
       case "import":
         return (
-          <RecipeUpload
-            userTier={userTier}
-            onUpgrade={openUpgradePromo}
-            mode="import"
-            onSwitchToCreate={() => navigateToView("create")}
-          />
+          <FeatureErrorBoundary feature="Recipe Import">
+            <RecipeUpload
+              userTier={userTier}
+              onUpgrade={openUpgradePromo}
+              mode="import"
+              onSwitchToCreate={() => navigateToView("create")}
+            />
+          </FeatureErrorBoundary>
         );
       default:
-        return <NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} />;
+        return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
     }
   };
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      {/* Skip link for keyboard navigation */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg">
+        Skip to content
+      </a>
       {/* Header */}
       <header className="px-5 py-3 flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <h1 className="text-lg font-bold text-foreground tracking-tight">Suppr</h1>
@@ -329,61 +338,33 @@ export default function App() {
       </header>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-auto pb-20">{renderView()}</main>
+      <main id="main-content" className="flex-1 overflow-auto pb-20" role="main">{renderView()}</main>
 
       {/* Bottom tabs */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
-        <div className="flex">
-          <button
-            type="button"
-            onClick={() => navigateToView("today")}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              currentView === "today" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icons.home className="w-5 h-5" />
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateToView("discover")}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              currentView === "discover" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icons.discover className="w-5 h-5" />
-            Discover
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateToView("plan")}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              currentView === "plan" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icons.plan className="w-5 h-5" />
-            Plan
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateToView("progress")}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              currentView === "progress" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icons.sparkles className="w-5 h-5" />
-            Progress
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateToView("profile")}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              currentView === "profile" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icons.user className="w-5 h-5" />
-            Profile
-          </button>
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <div className="flex" role="tablist">
+          {([
+            { view: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
+            { view: "discover" as const, icon: <Icons.discover className="w-5 h-5" />, label: "Discover" },
+            { view: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
+            { view: "progress" as const, icon: <Icons.sparkles className="w-5 h-5" />, label: "Progress" },
+            { view: "profile" as const, icon: <Icons.user className="w-5 h-5" />, label: "Profile" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.view}
+              type="button"
+              role="tab"
+              aria-selected={currentView === tab.view}
+              aria-current={currentView === tab.view ? "page" : undefined}
+              onClick={() => navigateToView(tab.view)}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
+                currentView === tab.view ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
       </nav>
 
