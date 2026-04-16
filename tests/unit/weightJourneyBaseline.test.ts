@@ -6,7 +6,7 @@ import {
   weightJourneyProgress,
   weightsInLookbackKg,
   WEIGHT_JOURNEY_LOOKBACK_DAYS,
-} from "../../apps/mobile/lib/weightProjection.ts";
+} from "../../src/lib/weightProjection.ts";
 
 describe("weight journey baseline", () => {
   afterEach(() => {
