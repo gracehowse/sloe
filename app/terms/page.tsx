@@ -5,7 +5,10 @@ export default function TermsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-2xl mx-auto px-6 py-12">
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="text-violet-600 dark:text-violet-400 hover:underline">
+          <Link
+            href="/"
+            className="text-violet-600 dark:text-violet-400 underline underline-offset-2 hover:text-violet-700 dark:hover:text-violet-300"
+          >
             ← Back to app
           </Link>
         </p>
@@ -21,7 +24,10 @@ export default function TermsPage() {
             and third-party recipe imports may be incomplete or inaccurate. Always verify critical dietary or medical
             decisions with a professional. Optional AI-assisted features (for example photo or voice meal logging) rely
             on third-party models; see the{" "}
-            <Link href="/privacy" className="text-violet-600 dark:text-violet-400 hover:underline">
+            <Link
+              href="/privacy"
+              className="text-violet-600 dark:text-violet-400 underline underline-offset-2 font-medium hover:text-violet-700 dark:hover:text-violet-300"
+            >
               Privacy policy
             </Link>{" "}
             for how that processing works.

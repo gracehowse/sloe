@@ -70,13 +70,13 @@ test.describe("Public auth journey", () => {
 test.describe("Unauthenticated app shell", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("when I visit home without a session I see the marketing landing", async ({ page }) => {
+  test("when I visit home without a session I am sent to sign in", async ({ page }) => {
     await test.step("I open the app root", async () => {
       await page.goto("/");
     });
-    await test.step("I expect the public marketing hero and primary CTA", async () => {
-      await expect(page.getByRole("heading", { name: /Cook what you discover/i })).toBeVisible();
-      await expect(page.getByRole("link", { name: /Get started/i }).first()).toBeVisible();
+    await test.step("I expect the login gate (middleware + client shell)", async () => {
+      await page.waitForURL("**/login**");
+      await expect(page.getByPlaceholder("you@domain.com")).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
   });

@@ -12,7 +12,7 @@ test.describe("Public pages", () => {
     await page.goto("/help");
     await expect(page.getByRole("heading", { name: /help & information/i })).toBeVisible();
     await expect(page.getByText(/mifflin-st jeor/i)).toBeVisible();
-    await expect(page.getByText(/usda fooddata central/i)).toBeVisible();
+    await expect(page.getByText(/usda fooddata central/i).first()).toBeVisible();
     await expect(page.getByText(/not medical advice/i)).toBeVisible();
   });
 
@@ -20,14 +20,14 @@ test.describe("Public pages", () => {
     await page.goto("/privacy");
     await expect(page.getByRole("heading", { name: /privacy policy/i })).toBeVisible();
     await expect(page.getByText(/data retention/i)).toBeVisible();
-    await expect(page.getByText(/delete your account/i)).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: /delete your account/i })).toBeVisible();
   });
 
   test("terms page loads with eligibility section", async ({ page }) => {
     await page.goto("/terms");
     await expect(page.getByRole("heading", { name: /terms of service/i })).toBeVisible();
     await expect(page.getByText(/13 years old/i)).toBeVisible();
-    await expect(page.getByText(/subscriptions/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Subscriptions$/ })).toBeVisible();
   });
 
   test("pricing page loads and shows tiers", async ({ page }) => {
