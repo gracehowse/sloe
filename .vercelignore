@@ -26,7 +26,9 @@ apps/mobile/build
 tests
 docs
 scripts
-supabase
+# Root-only: CLI migrations. A bare `supabase` matches *any* path segment and would
+# strip `src/lib/supabase/` (breaks `@/lib/supabase/serverAnonClient` on Vercel).
+/supabase/
 
 # Local / Vercel metadata
 .git
