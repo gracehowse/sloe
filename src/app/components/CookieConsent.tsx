@@ -49,7 +49,7 @@ export function CookieConsent() {
       <div className="max-w-lg mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-5 pointer-events-auto">
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">
           We use cookies for essential functionality and optional analytics to improve Suppr. See our{" "}
-          <Link href="/privacy" className="text-violet-600 dark:text-violet-400 underline">
+          <Link href="/privacy" className="text-primary dark:text-primary underline">
             privacy policy
           </Link>{" "}
           for details.
@@ -57,7 +57,7 @@ export function CookieConsent() {
         <div className="flex items-center gap-3">
           <button
             onClick={accept}
-            className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
+            className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
           >
             Accept all
           </button>

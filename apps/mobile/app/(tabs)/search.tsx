@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Constants from "expo-constants";
 import { authedFetch } from "@/lib/authedFetch";
 import { effectiveFoodSearchQuery } from "../../../../src/lib/nutrition/foodSearchQuery";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { Accent, Spacing, Radius } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
@@ -15,6 +15,7 @@ function apiBase(): string {
 type Hit = { description?: string; fdcId?: number };
 
 export default function SearchScreen() {
+  const colors = useThemeColors();
   const base = apiBase();
   const [q, setQ] = useState("apple");
   const [busy, setBusy] = useState(false);
@@ -52,62 +53,73 @@ export default function SearchScreen() {
     }
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, padding: Spacing.xl, gap: Spacing.sm, backgroundColor: colors.background },
+    title: { fontSize: 22, fontWeight: "700", color: colors.text },
+    sub: { fontSize: 14, color: colors.textSecondary },
+    row: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      color: colors.text,
+      backgroundColor: colors.inputBg,
+    },
+    btn: {
+      backgroundColor: Accent.primary,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.md,
+      justifyContent: "center",
+      minWidth: 88,
+      alignItems: "center",
+    },
+    btnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+    err: { color: Accent.warning, fontSize: 13 },
+    list: { marginTop: Spacing.md, gap: Spacing.sm },
+    item: {
+      padding: Spacing.md,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      backgroundColor: colors.card,
+    },
+    itemText: { fontSize: 14, color: colors.text },
+    meta: { fontSize: 12, color: colors.textTertiary, marginTop: Spacing.xs },
+  }), [colors]);
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Food search</ThemedText>
-      <ThemedText style={styles.sub}>Search foods and log portions.</ThemedText>
+    <View style={styles.container}>
+      <Text style={styles.title}>Food search</Text>
+      <Text style={styles.sub}>Search foods and log portions.</Text>
 
       <View style={styles.row}>
-        <TextInput value={q} onChangeText={setQ} placeholder="e.g. chicken breast" style={styles.input} />
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="e.g. chicken breast"
+          placeholderTextColor={colors.textTertiary}
+          style={styles.input}
+        />
         <Pressable style={styles.btn} onPress={() => void runSearch()}>
-          {busy ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.btnText}>Search</ThemedText>}
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Search</Text>}
         </Pressable>
       </View>
 
-      {err ? <ThemedText style={styles.err}>{err}</ThemedText> : null}
+      {err ? <Text style={styles.err}>{err}</Text> : null}
 
       <View style={styles.list}>
         {hits.map((h, i) => (
           <View key={`${h.fdcId ?? i}`} style={styles.item}>
-            <ThemedText>{h.description ?? "(no name)"}</ThemedText>
+            <Text style={styles.itemText}>{h.description ?? "(no name)"}</Text>
             {h.fdcId != null ? (
-              <ThemedText style={styles.meta}>FDC {h.fdcId}</ThemedText>
+              <Text style={styles.meta}>FDC {h.fdcId}</Text>
             ) : null}
           </View>
         ))}
       </View>
-    </ThemedView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 10 },
-  sub: { opacity: 0.85 },
-  row: { flexDirection: "row", gap: 8, marginTop: 8 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  btn: {
-    backgroundColor: "#4f46e5",
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    justifyContent: "center",
-    minWidth: 88,
-    alignItems: "center",
-  },
-  btnText: { color: "#fff", fontWeight: "600" },
-  err: { color: "#b45309" },
-  list: { marginTop: 12, gap: 8 },
-  item: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  meta: { fontSize: 12, opacity: 0.6, marginTop: 4 },
-});

@@ -1,6 +1,11 @@
 appId: host.exp.Exponent
 name: "Today screen — ring, macros, quick-log buttons"
 ---
+- runFlow: shared/login.yaml
+
+- tapOn: "Today"
+- waitForAnimationToEnd
+
 # Calorie ring visible
 - assertVisible: "kcal"
 

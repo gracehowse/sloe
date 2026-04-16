@@ -826,9 +826,9 @@ export default function OnboardingScreen() {
             {data.goalType === "lose" && projectedDate ? (
               <>
                 <Text style={styles.heading}>
-                  {"You'll reach "}
+                  {"You could reach "}
                   {formatWeight(goalWeightKg, data.weightUnit)}
-                  {" on"}
+                  {" by"}
                 </Text>
                 <Text style={styles.projDate}>
                   {projectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
@@ -850,7 +850,7 @@ export default function OnboardingScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={80} color={Accent.success} />
-                <Text style={styles.heading}>{"You're all set!"}</Text>
+                <Text style={styles.heading}>{"Your targets are set"}</Text>
               </>
             )}
             <View style={{ width: "100%", gap: Spacing.md }}>
@@ -885,7 +885,7 @@ export default function OnboardingScreen() {
         return (
           <View style={[styles.stepContent, { alignItems: "center" }]}>
             <Ionicons name="sparkles" size={60} color={Accent.success} />
-            <Text style={styles.heading}>{"You're all set up"}</Text>
+            <Text style={styles.heading}>{"Suppr is ready"}</Text>
             <Text style={styles.subheading}>
               {
                 "Suppr is ready. Import recipes from Instagram, TikTok, or any recipe site — we'll break down the macros automatically. Adjust your targets anytime in Profile & Targets."

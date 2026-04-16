@@ -1,7 +1,8 @@
 appId: host.exp.Exponent
 name: "Recipe detail — ingredients, nutrition, log"
 ---
-# Navigate to Discover and tap a recipe
+- runFlow: shared/login.yaml
+
 - tapOn: "Discover"
 - waitForAnimationToEnd
 - tapOn:

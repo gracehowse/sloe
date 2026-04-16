@@ -1,0 +1,62 @@
+appId: host.exp.Exponent
+name: "Launch app and login with test account"
+---
+- launchApp
+- openLink: "exp://192.168.108.177:8081"
+
+# If Expo Go shows the recently opened list, tap Suppr
+- runFlow:
+    when:
+      visible: "Recently opened"
+    commands:
+      - tapOn: "Suppr"
+
+# Wait for the app to bundle and load
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# If timed out / errored, retry
+- runFlow:
+    when:
+      visible: "Go Home"
+    commands:
+      - tapOn: "Go Home"
+      - waitForAnimationToEnd
+      - tapOn: "Suppr"
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+
+# If already authenticated (tab bar visible), done
+- runFlow:
+    when:
+      visible: "Today"
+    commands:
+      - tapOn: "Today"
+
+# If on login screen, sign in with test account
+- runFlow:
+    when:
+      visible: "Sign In"
+    commands:
+      # Email field
+      - tapOn: "Email input"
+      - eraseText: 50
+      - inputText: "gracemturner@hotmail.co.uk"
+
+      # Password field — use accessibilityLabel
+      - tapOn: "Password input"
+      - eraseText: 50
+      - inputText: "testing123"
+
+      # Submit
+      - tapOn: "Sign In"
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd

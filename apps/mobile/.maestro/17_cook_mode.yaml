@@ -1,0 +1,55 @@
+appId: host.exp.Exponent
+name: "Cook mode — step navigation, timer, completion"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Discover"
+- waitForAnimationToEnd
+
+# Tap the first recipe card
+- tapOn:
+    index: 0
+- waitForAnimationToEnd
+
+# Look for Start Cooking button
+- scrollUntilVisible:
+    element: "Start Cooking"
+    direction: DOWN
+
+- runFlow:
+    when:
+      visible: "Start Cooking"
+    commands:
+      - tapOn: "Start Cooking"
+      - waitForAnimationToEnd
+
+      # Cook mode screen should show
+      - assertVisible: "Exit"
+      - assertVisible:
+          text: "Step \\d+ of \\d+"
+
+      # Timer controls
+      - assertVisible:
+          text: "Start Timer"
+
+      # Tap Start Timer
+      - tapOn: "Start Timer"
+      - waitForAnimationToEnd
+      - assertVisible: "Stop Timer"
+      - tapOn: "Stop Timer"
+
+      # Navigation buttons
+      - assertVisible: "Next"
+      - tapOn: "Next"
+      - waitForAnimationToEnd
+
+      # Should advance to step 2
+      - assertVisible:
+          text: "Step 2 of"
+
+      # Previous button should now work
+      - assertVisible: "Previous"
+
+      # Exit cook mode
+      - tapOn: "Exit"
+      - waitForAnimationToEnd

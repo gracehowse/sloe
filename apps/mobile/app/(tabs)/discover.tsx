@@ -20,7 +20,7 @@ import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForw
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { Ionicons } from "@expo/vector-icons";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors } from "@/constants/theme";
+import { Accent, MacroColors, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
 const FILTERS = ["For You", "Popular", "Quick", "High Protein", "Low Carb"];
@@ -132,7 +132,7 @@ export default function DiscoverScreen() {
           onPress={() => router.push(`/recipe/${item.id}`)}
           style={{
             width: cardWidth,
-            borderRadius: 14,
+            borderRadius: Radius.lg,
             backgroundColor: colors.card,
             borderWidth: 1,
             borderColor: colors.cardBorder,
@@ -266,7 +266,7 @@ export default function DiscoverScreen() {
                 alignItems: "center",
                 gap: 12,
                 padding: 14,
-                borderRadius: 14,
+                borderRadius: Radius.lg,
                 backgroundColor: t.accent + "08",
                 borderWidth: 1,
                 borderColor: t.accent + "22",
@@ -291,7 +291,7 @@ export default function DiscoverScreen() {
                 alignItems: "center",
                 gap: 12,
                 padding: 14,
-                borderRadius: 14,
+                borderRadius: Radius.lg,
                 backgroundColor: colors.card,
                 borderWidth: 1,
                 borderColor: colors.cardBorder,

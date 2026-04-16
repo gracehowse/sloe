@@ -1,14 +1,15 @@
 appId: host.exp.Exponent
 name: "Progress screen — stats, charts, weight journey"
 ---
-# Navigate to Progress
+- runFlow: shared/login.yaml
+
 - tapOn: "Progress"
 - assertVisible: "Progress"
 - assertVisible: "Weekly report"
 
 # Should see stat tiles (or empty state)
 - assertVisible:
-    text: "Avg Calories|No data yet"
+    text: "Avg Calories|Your progress will appear here"
 
 # If data exists, check key elements
 - runFlow:
@@ -21,4 +22,3 @@ name: "Progress screen — stats, charts, weight journey"
       - scrollUntilVisible:
           element: "Weight"
           direction: DOWN
-          timeout: 5000

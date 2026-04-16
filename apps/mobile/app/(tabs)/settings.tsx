@@ -530,7 +530,7 @@ export default function SettingsScreen() {
                 colors={colors}
               />
               <Row
-                label="Your recipe publish updates"
+                label="Updates on your published recipes"
                 value={prefs.creatorUpdates}
                 onToggle={() => toggle("creatorUpdates")}
                 disabled={saving}
@@ -541,7 +541,7 @@ export default function SettingsScreen() {
                 style={[styles.row, styles.rowLast]}
                 onPress={() => router.push("/(tabs)/notifications" as any)}
               >
-                <Text style={styles.rowLabel}>Open alerts inbox</Text>
+                <Text style={styles.rowLabel}>Open notifications</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </Pressable>
             </View>
@@ -549,6 +549,27 @@ export default function SettingsScreen() {
 
             <Text style={styles.sectionTitle}>Data</Text>
             <View style={styles.card}>
+              <Pressable
+                style={styles.row}
+                onPress={async () => {
+                  if (!userId) return;
+                  try {
+                    const { nutritionEntriesToCsv } = await import("@/lib/exportCsv");
+                    const { data: entries } = await supabase
+                      .from("nutrition_entries")
+                      .select("date_key, name, recipe_title, calories, protein, carbs, fat, fiber_g, source, time_label")
+                      .eq("user_id", userId)
+                      .order("date_key", { ascending: true });
+                    const csv = nutritionEntriesToCsv(entries ?? []);
+                    await Share.share({ message: csv, title: "Suppr Nutrition Export.csv" });
+                  } catch (e) {
+                    Alert.alert("Export failed", e instanceof Error ? e.message : "Unknown error");
+                  }
+                }}
+              >
+                <Text style={styles.rowLabel}>Export nutrition log (CSV)</Text>
+                <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>Export</Text>
+              </Pressable>
               <Pressable
                 style={[styles.row, styles.rowLast]}
                 onPress={async () => {
@@ -571,7 +592,7 @@ export default function SettingsScreen() {
                   }
                 }}
               >
-                <Text style={styles.rowLabel}>Export my data (JSON)</Text>
+                <Text style={styles.rowLabel}>Export all data (JSON)</Text>
                 <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>Export</Text>
               </Pressable>
             </View>

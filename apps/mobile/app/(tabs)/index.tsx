@@ -305,18 +305,20 @@ export default function TrackerScreen() {
     });
     const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
     setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
-    // Only overwrite water/activity state on initial load — subsequent tab focuses
-    // must not clobber locally-added water that hasn't finished persisting yet.
+    // Water: only overwrite on initial load — subsequent tab focuses must not
+    // clobber locally-added water that hasn't finished persisting yet.
     if (!waterActivityInitialLoadDone.current) {
       setExtraWaterByDay(parseByDayNumberMap(data.extra_water_by_day));
-      setStepsByDay(parseByDayNumberMap(data.steps_by_day));
-      setActivityBurnByDay(parseByDayNumberMap(data.activity_burn_by_day));
-      if (d.workouts_by_day && typeof d.workouts_by_day === "object" && !Array.isArray(d.workouts_by_day)) {
-        setWorkoutsByDay(d.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
-      }
-      setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
       waterActivityInitialLoadDone.current = true;
     }
+    // Burn maps, steps, and workouts come from HealthKit sync and are never
+    // edited locally, so always refresh them to keep past-day data current.
+    setStepsByDay(parseByDayNumberMap(data.steps_by_day));
+    setActivityBurnByDay(parseByDayNumberMap(data.activity_burn_by_day));
+    if (d.workouts_by_day && typeof d.workouts_by_day === "object" && !Array.isArray(d.workouts_by_day)) {
+      setWorkoutsByDay(d.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
+    }
+    setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
     setPreferActivityAdjustedCalories(Boolean(d.prefer_activity_adjusted_calories));
     const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
     setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
@@ -1744,7 +1746,9 @@ export default function TrackerScreen() {
                     <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
                       <View style={{ width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`, height: "100%", borderRadius: 2, backgroundColor: m.color }} />
                     </View>
-                    <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>of {m.tgt}{m.unit}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>
+                      {m.cur < m.tgt ? `${Math.round(m.tgt - m.cur)}${m.unit} left` : `of ${m.tgt}${m.unit}`}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -1780,13 +1784,13 @@ export default function TrackerScreen() {
 
         {/* Streak insight card — prototype style (after meals) */}
         {viewMode === "day" && streakDays > 0 && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, backgroundColor: Accent.success + "0A", borderWidth: 1, borderColor: Accent.success + "22" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: Spacing.lg, borderRadius: Radius.lg, backgroundColor: Accent.success + "08", borderWidth: 1, borderColor: Accent.success + "18" }}>
             <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Accent.success + "18", alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="flame" size={18} color={Accent.success} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>{streakDays}-day logging streak</Text>
-              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>You’ve logged meals on consecutive days. Keep it going.</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>You&apos;ve logged meals {streakDays} days in a row.</Text>
             </View>
           </View>
         )}
@@ -1846,7 +1850,7 @@ export default function TrackerScreen() {
               Snack: MacroColors.fat,
             }[s] ?? Accent.primary);
           return (
-            <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+            <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: Spacing.lg }}>
               {MEAL_SLOTS.map((slot) => {
                 const meals = mealGroups[slot] ?? [];
                 const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
@@ -2216,7 +2220,7 @@ export default function TrackerScreen() {
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
                   {totalBurnKcal.toLocaleString()}
                 </Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>Total burn</Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{isToday ? "Burn so far" : "Total burn"}</Text>
               </View>
               <View style={{ width: 1, backgroundColor: colors.border }} />
               <View style={{ alignItems: "center", flex: 1 }}>
@@ -2270,7 +2274,7 @@ export default function TrackerScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="flame-outline" size={14} color={Accent.warning} />
                     <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                      {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal burned
+                      {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal {isToday ? "burned so far" : "burned"}
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", gap: Spacing.md }}>
@@ -2410,7 +2414,7 @@ export default function TrackerScreen() {
             <Pressable onPress={() => setCompleteDayOpen(false)} style={{ position: "absolute", top: 16, left: 20 }}>
               <Ionicons name="close" size={24} color={colors.textTertiary} />
             </Pressable>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 24 }}>Day logged!</Text>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 24 }}>{isToday ? "Day logged!" : "Day complete"}</Text>
 
             {/* Checkmark circle */}
             <View style={{
@@ -2433,12 +2437,14 @@ export default function TrackerScreen() {
               return (
                 <>
                   <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center", lineHeight: 26, marginBottom: 8 }}>
-                    Today&apos;s trajectory:{" "}
+                    {isToday ? "Today\u2019s trajectory" : "This day\u2019s trajectory"}:{" "}
                     <Text style={{ color: Accent.primary }}>{prediction.projectedWeightKg} kg</Text>
                     {" "}in ~{prediction.projectionWeeks} weeks
                   </Text>
                   <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginBottom: 24, paddingHorizontal: 20 }}>
-                    Estimated from today&apos;s net calories using 7,700 kcal/kg. Your actual rate depends on metabolism, activity, and consistency.
+                    {isToday
+                      ? "Based on today\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). Your Journey page uses your 7-day average, so the number there may differ."
+                      : "Based on this day\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). Your Journey page uses your 7-day average, so the number there may differ."}
                   </Text>
                 </>
               );
@@ -2527,6 +2533,7 @@ export default function TrackerScreen() {
             {/* Primary actions */}
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
               {[
+                { icon: "time-outline" as const, label: "Previous", onPress: () => { setFabSheetOpen(false); setShowPrevious(true); } },
                 { icon: "search" as const, label: "Search", onPress: () => { setFabSheetOpen(false); setSearchOpen(true); } },
                 { icon: "barcode-outline" as const, label: "Scan", onPress: () => { setFabSheetOpen(false); setBarcodeOpen(true); } },
                 { icon: "add-circle-outline" as const, label: "Quick Add", onPress: () => { setFabSheetOpen(false); setAddOpen(true); } },
@@ -2556,7 +2563,6 @@ export default function TrackerScreen() {
               {[
                 { icon: "camera-outline" as const, label: "Photo (AI)", onPress: () => { setFabSheetOpen(false); handlePhotoLog(); } },
                 { icon: "mic-outline" as const, label: "Voice", onPress: () => { setFabSheetOpen(false); handleVoiceLog(); } },
-                { icon: "time-outline" as const, label: "Previous", onPress: () => { setFabSheetOpen(false); setShowPrevious(true); } },
               ].map((item) => (
                 <Pressable
                   key={item.label}

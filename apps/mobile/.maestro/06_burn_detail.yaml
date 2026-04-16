@@ -1,7 +1,8 @@
 appId: host.exp.Exponent
 name: "Burn detail — navigation and content"
 ---
-# Navigate to Today
+- runFlow: shared/login.yaml
+
 - tapOn: "Today"
 - waitForAnimationToEnd
 
@@ -19,7 +20,6 @@ name: "Burn detail — navigation and content"
       - assertVisible: "Calorie Burn"
       - assertVisible:
           text: "Active energy|Resting energy|Projected"
-          timeout: 3000
       # Navigate back
       - tapOn:
           point: "5%,8%"

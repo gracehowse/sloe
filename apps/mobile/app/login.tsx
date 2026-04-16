@@ -259,6 +259,8 @@ export default function LoginScreen() {
       {/* Form */}
       <View style={styles.form}>
         <TextInput
+          testID="login-email"
+          accessibilityLabel="Email input"
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="Email"
@@ -268,6 +270,8 @@ export default function LoginScreen() {
           style={styles.input}
         />
         <TextInput
+          testID="login-password"
+          accessibilityLabel="Password input"
           placeholder="Password"
           placeholderTextColor={colors.tabIconDefault}
           value={password}

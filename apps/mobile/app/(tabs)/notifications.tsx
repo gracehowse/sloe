@@ -313,7 +313,7 @@ export default function NotificationsScreen() {
         <View style={{ flex: 1, paddingRight: 8 }}>
           <Text style={styles.title}>Notifications</Text>
           <Text style={styles.sub}>
-            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+            {unreadCount > 0 ? `${unreadCount} unread` : "No unread notifications"}
           </Text>
         </View>
         <Pressable
@@ -351,9 +351,9 @@ export default function NotificationsScreen() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.emptyTitle}>Nothing here yet</Text>
               <Text style={styles.sub}>
-                {"When something important happens, you'll see it here."}
+                {"Notifications about recipes you follow and weekly reports will appear here."}
               </Text>
             </View>
           }

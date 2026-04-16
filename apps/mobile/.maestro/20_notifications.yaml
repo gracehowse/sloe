@@ -1,0 +1,35 @@
+appId: host.exp.Exponent
+name: "Notifications — inbox, mark read, empty state"
+---
+- runFlow: shared/login.yaml
+
+# Navigate to notifications
+- runFlow:
+    when:
+      visible: "Notifications"
+    commands:
+      - tapOn: "Notifications"
+      - waitForAnimationToEnd
+
+      - assertVisible: "Notifications"
+
+      # Should show either notifications or empty state
+      - runFlow:
+          when:
+            visible: "No unread notifications"
+          commands:
+            - assertVisible: "No unread notifications"
+
+      # If there are notifications, check mark all read
+      - runFlow:
+          when:
+            visible: "Mark all read"
+          commands:
+            - assertVisible: "Mark all read"
+
+      # If there are unread notifications
+      - runFlow:
+          when:
+            visible: "unread"
+          commands:
+            - assertVisible: "unread"

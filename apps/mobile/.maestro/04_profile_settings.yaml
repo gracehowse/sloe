@@ -1,10 +1,10 @@
 appId: host.exp.Exponent
 name: "Profile & settings — sections, navigation, data export"
 ---
-# Navigate to Profile/More
+- runFlow: shared/login.yaml
+
 - tapOn: "Profile"
-- assertVisible:
-    text: ".*"
+- waitForAnimationToEnd
 
 # Check reorganised sections exist
 - assertVisible: "Goals & Targets"

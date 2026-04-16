@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
+import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 
 export default function BurnDetailScreen() {
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
@@ -34,23 +35,30 @@ export default function BurnDetailScreen() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("profiles")
-      .select("activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal")
-      .eq("id", userId)
-      .maybeSingle()
-      .then(({ data: profile }) => {
-        if (!profile) return;
-        const p = profile as any;
-        const targetCal = Number(p.target_calories) || 0;
-        setData({
-          activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
-          restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
-          steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
-          maintenanceKcal: maintenanceIntakeFromTargetCalories(targetCal, p.goal),
-          workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
-        });
+    let cancelled = false;
+    (async () => {
+      // Ensure HealthKit data is synced to Supabase before reading
+      if (isHealthSyncAvailable()) {
+        try { await syncHealthDataThrottled(userId); } catch { /* ignore */ }
+      }
+      if (cancelled) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled || !profile) return;
+      const p = profile as any;
+      const targetCal = Number(p.target_calories) || 0;
+      setData({
+        activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
+        restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
+        steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
+        maintenanceKcal: maintenanceIntakeFromTargetCalories(targetCal, p.goal),
+        workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
       });
+    })();
+    return () => { cancelled = true; };
   }, [userId, viewKey]);
 
   const totals = useMemo(() => {
@@ -86,7 +94,7 @@ export default function BurnDetailScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>Activity Bonus</Text>
+          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>{isPast ? "Activity Summary" : "Activity Bonus"}</Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{formatDateLabel(viewKey)}</Text>
         </View>
       </View>
@@ -121,7 +129,7 @@ export default function BurnDetailScreen() {
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Estimated remaining</Text>
                   <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{totals.futureBurn.toLocaleString()}</Text>
                 </View>
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>Projected burn for the rest of today</Text>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>Based on your resting rate so far today</Text>
               </View>
             )}
 
@@ -153,7 +161,7 @@ export default function BurnDetailScreen() {
               <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, gap: 10 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                    {isPast ? "Total burn" : "Projected total"}
+                    {isPast ? "Final burn" : "Projected total"}
                   </Text>
                   <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>{totals.total.toLocaleString()}</Text>
                 </View>
@@ -180,8 +188,8 @@ export default function BurnDetailScreen() {
 
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.lg, lineHeight: 16 }}>
               {isPast
-                ? "Bonus calories were added to your food budget when your total burn exceeded your maintenance estimate."
-                : "Bonus calories are added to your food budget when your projected total burn exceeds your maintenance estimate. This prevents double-counting since your calorie target already includes estimated daily activity."}
+                ? "Any burn above your maintenance estimate was added to your food budget for this day."
+                : "When your projected burn exceeds maintenance, the extra calories are added to your daily food budget. Your calorie target already accounts for typical daily activity, so only the surplus counts."}
             </Text>
           </>
         )}

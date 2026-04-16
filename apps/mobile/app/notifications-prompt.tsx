@@ -38,7 +38,7 @@ export default function NotificationsPromptScreen() {
           "Notifications are off",
           "You can turn them on any time in Settings → Suppr → Notifications.",
           [
-            { text: "Not now", style: "cancel" },
+            { text: "Skip", style: "cancel" },
             { text: "Open Settings", onPress: () => void Linking.openSettings() },
           ],
         );
@@ -110,7 +110,7 @@ export default function NotificationsPromptScreen() {
         <Text style={styles.enableBtnText}>Turn on notifications</Text>
       </Pressable>
       <Pressable style={styles.skipBtn} onPress={onSkip}>
-        <Text style={styles.skipText}>No thanks</Text>
+        <Text style={styles.skipText}>Skip</Text>
       </Pressable>
     </View>
   );

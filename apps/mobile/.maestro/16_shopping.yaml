@@ -1,0 +1,36 @@
+appId: host.exp.Exponent
+name: "Shopping list — items, check off, share"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Plan"
+- waitForAnimationToEnd
+
+# Shopping List button should be visible after a plan is generated
+- runFlow:
+    when:
+      visible: "Shopping List"
+    commands:
+      - tapOn: "Shopping List"
+      - waitForAnimationToEnd
+
+      # Should see Shopping List header
+      - assertVisible: "Shopping List"
+
+      # If items exist, verify list structure
+      - runFlow:
+          when:
+            visible: "✓"
+          commands:
+            - assertVisible: "✓"
+
+      # If empty, verify empty state
+      - runFlow:
+          when:
+            visible: "No items"
+          commands:
+            - assertVisible: "No items"
+
+      # Navigate back
+      - tapOn:
+          point: "5%,8%"

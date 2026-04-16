@@ -1,0 +1,54 @@
+appId: host.exp.Exponent
+name: "Fasting — timer ring, start/end, history"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Look for fasting link in profile/settings
+- scrollUntilVisible:
+    element: "Fasting"
+    direction: DOWN
+
+- tapOn: "Fasting"
+- waitForAnimationToEnd
+
+# Header
+- assertVisible: "Intermittent Fasting"
+
+# Timer ring area — should show current state
+- assertVisible:
+    text: "Ready when you are|FASTING|FAST COMPLETE"
+
+# Window label (e.g., 16:8)
+- assertVisible:
+    text: "16:8|18:6|20:4"
+
+# Start/End button
+- assertVisible:
+    text: "Start Fast|End Fast|Complete Fast"
+
+# If not fasting, start a fast
+- runFlow:
+    when:
+      visible: "Start Fast"
+    commands:
+      - tapOn: "Start Fast"
+      - waitForAnimationToEnd
+      - assertVisible: "FASTING"
+      - assertVisible: "End Fast"
+
+      # End the fast immediately
+      - tapOn: "End Fast"
+      - waitForAnimationToEnd
+      - assertVisible: "Start Fast"
+
+# History section (if any completed sessions)
+- scrollUntilVisible:
+    element: "History"
+    direction: DOWN
+
+# Navigate back
+- tapOn:
+    point: "5%,8%"

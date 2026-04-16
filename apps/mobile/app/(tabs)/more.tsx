@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { useAuth } from "@/context/auth";
@@ -309,7 +309,7 @@ export default function ProfileScreen() {
     >
       {/* Avatar + Name */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.accent + "10", alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: 48, height: 48, borderRadius: Radius.lg, backgroundColor: t.accent + "10", alignItems: "center", justifyContent: "center" }}>
           {session?.user?.email ? (
             <Text style={{ fontSize: 18, fontWeight: "700", color: t.accent }}>
               {session.user.email[0].toUpperCase()}
@@ -350,7 +350,7 @@ export default function ProfileScreen() {
             + "• Logging streak — log meals consistently to build your streak (up to 40 pts)\n"
             + "• Saved recipes — save recipes to your library (up to 30 pts)\n"
             + "• Active account — you get 30 pts just for being here\n\n"
-            + "Keep logging and saving recipes to hit 100!"
+            + "Your score reflects how actively you use Suppr."
           )],
         ] as [string, string, string, (() => void) | null][]).map(([v, l, c, onPress]) => (
           <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
@@ -369,7 +369,7 @@ export default function ProfileScreen() {
           onPress={() => router.push("/paywall" as any)}
           style={{
             flexDirection: "row", alignItems: "center", gap: 12,
-            backgroundColor: Accent.primary + "14", borderRadius: 14,
+            backgroundColor: Accent.primary + "14", borderRadius: Radius.lg,
             borderWidth: 1, borderColor: Accent.primary + "30",
             paddingVertical: 14, paddingHorizontal: 16, marginBottom: 16,
           }}
@@ -379,7 +379,7 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Upgrade to Pro</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>Multi-day plans, advanced analytics & more</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>Multi-day plans, adaptive TDEE, and AI logging</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
         </Pressable>
@@ -387,7 +387,7 @@ export default function ProfileScreen() {
 
       {/* Goals & Targets */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Goals &amp; Targets</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow
           icon="flame-outline"
           iconColor={t.accent}
@@ -411,7 +411,7 @@ export default function ProfileScreen() {
 
       {/* Connections */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Connections</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow icon="heart-outline" iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow
           icon="notifications-outline"
@@ -424,13 +424,13 @@ export default function ProfileScreen() {
 
       {/* Recipes */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Recipes</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow icon="add-circle-outline" iconColor={t.green} label="Create Recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
       </View>
 
       {/* App */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>App</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow
           icon="color-palette-outline"
           iconColor={t.accent}
@@ -467,14 +467,14 @@ export default function ProfileScreen() {
 
       {/* Legal */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Legal</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow icon="document-text-outline" iconColor={t.accent} label="Privacy Policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
         <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
       {/* Danger zone */}
       <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Danger Zone</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
         <SettingsRow
           icon="refresh-outline"
           iconColor={t.amber}
@@ -488,7 +488,7 @@ export default function ProfileScreen() {
         onPress={() => setResetModalOpen(true)}
         style={{
           paddingVertical: 14,
-          borderRadius: 14,
+          borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: t.red + "55",
           backgroundColor: t.red + "0c",
@@ -505,7 +505,7 @@ export default function ProfileScreen() {
       {/* Sign Out */}
       <Pressable
         onPress={() => void supabase.auth.signOut()}
-        style={{ paddingVertical: 16, borderRadius: 14, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 12 }}
+        style={{ paddingVertical: 16, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 12 }}
       >
         <Text style={{ color: t.red, fontWeight: "600", fontSize: 15 }}>Sign Out</Text>
       </Pressable>
@@ -536,7 +536,7 @@ export default function ProfileScreen() {
           >
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
-              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.amber + "18", alignItems: "center", justifyContent: "center", marginBottom: Spacing.md }}>
+              <View style={{ width: 48, height: 48, borderRadius: Radius.lg, backgroundColor: t.amber + "18", alignItems: "center", justifyContent: "center", marginBottom: Spacing.md }}>
                 <Ionicons name="refresh" size={24} color={t.amber} />
               </View>
               <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center" }}>Reset or start over</Text>
@@ -657,13 +657,13 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Dashboard Widgets</Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>Choose which nutrients appear on your Today screen</Text>
             {([
-              { key: "protein", label: "Protein", color: "#5B8DEF" },
-              { key: "carbs", label: "Carbs", color: "#F5A623" },
-              { key: "fat", label: "Fat", color: "#E05C5C" },
-              { key: "fiber", label: "Fiber", color: Accent.success },
-              { key: "sugar", label: "Sugar", color: "#D87FE8" },
-              { key: "sodium", label: "Sodium", color: "#7FB5E8" },
-              { key: "water", label: "Water", color: "#4FC3F7" },
+              { key: "protein", label: "Protein", color: MacroColors.protein },
+              { key: "carbs", label: "Carbs", color: MacroColors.carbs },
+              { key: "fat", label: "Fat", color: MacroColors.fat },
+              { key: "fiber", label: "Fiber", color: MacroColors.fiber },
+              { key: "sugar", label: "Sugar", color: MacroColors.sugar },
+              { key: "sodium", label: "Sodium", color: MacroColors.sodium },
+              { key: "water", label: "Water", color: MacroColors.water },
             ] as const).map(({ key, label, color }) => {
               const isActive = trackedMacros.includes(key);
               return (

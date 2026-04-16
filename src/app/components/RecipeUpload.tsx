@@ -63,7 +63,7 @@ function MacroWheel(props: {
 }) {
   const fallback = [{ name: "—", value: 1, color: "rgba(16,185,129,0.15)" }];
   const data = [
-    { name: "Protein", value: Math.max(0, props.proteinG), color: "#7c3aed" }, // violet
+    { name: "Protein", value: Math.max(0, props.proteinG), color: "#4c6ce0" }, // violet
     { name: "Carbs", value: Math.max(0, props.carbsG), color: "#f59e0b" }, // amber
     { name: "Fat", value: Math.max(0, props.fatG), color: "#22c55e" }, // green
   ].filter((d) => d.value > 0);
@@ -92,7 +92,7 @@ function MacroWheel(props: {
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-success/80">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#7c3aed" }} />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#4c6ce0" }} />
             Protein
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.proteinG * 10) / 10}g</span>

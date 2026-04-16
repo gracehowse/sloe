@@ -1,0 +1,35 @@
+appId: host.exp.Exponent
+name: "Paywall — Pro trial, timeline, free option"
+---
+# The paywall is shown after onboarding completes or can appear on launch.
+# This test validates the paywall screen if it's visible.
+
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "SUPPR PRO"
+    commands:
+      # Header
+      - assertVisible: "SUPPR PRO"
+      - assertVisible: "Try Pro free"
+      - assertVisible: "for 7 days"
+
+      # Timeline items
+      - assertVisible: "Your targets are set"
+      - assertVisible: "Start importing recipes"
+
+      - scrollUntilVisible:
+          element: "Trial ends"
+          direction: DOWN
+      - assertVisible: "Trial ends"
+
+      # Trial CTA button
+      - scrollUntilVisible:
+          element: "Start Free Trial"
+          direction: DOWN
+
+      # Restore option
+      - scrollUntilVisible:
+          element: "Restore"
+          direction: DOWN

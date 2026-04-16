@@ -6,6 +6,8 @@ import {
   fetchSocialPostMeta,
   extractRecipeFromCaption,
   socialImportSourceName,
+  extractCommentsFromHtml,
+  transcribeVideoAudio,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
@@ -134,6 +136,9 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
   return best ?? null;
 }
 
+// Vercel serverless: allow up to 50s for social imports with video transcription
+export const maxDuration = 50;
+
 export async function POST(req: Request) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
@@ -160,11 +165,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_url" }, { status: 400 });
   }
 
+  const socialPlatform = detectSocialPlatform(trimmed);
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 20000);
+  // Social imports need more headroom for video download + Whisper transcription
+  const t = setTimeout(() => ac.abort(), socialPlatform ? 45000 : 20000);
   try {
     // Instagram / TikTok: extract caption via meta tags, then parse recipe with OpenAI.
-    const socialPlatform = detectSocialPlatform(trimmed);
     if (socialPlatform) {
       const openaiKey = process.env.OPENAI_API_KEY?.trim();
       if (!openaiKey) {
@@ -189,7 +195,29 @@ export async function POST(req: Request) {
       const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
       let recipe = await extractRecipeFromCaption(captionText, openaiKey, meta.imageUrl);
 
-      // Fallback: if caption has no recipe, look for a URL in the caption and scrape the website
+      // Tier 2: Try augmenting with Instagram comments from embedded HTML
+      if (!recipe.ingredients.length && !recipe.steps.length) {
+        if (meta.platform === "instagram" && meta.rawHtml) {
+          const commentText = extractCommentsFromHtml(meta.rawHtml);
+          if (commentText) {
+            const augmentedCaption = captionText + "\n\n--- Comments ---\n" + commentText;
+            recipe = await extractRecipeFromCaption(augmentedCaption, openaiKey, meta.imageUrl);
+          }
+        }
+      }
+
+      // Tier 3: Try video audio transcription via Whisper
+      if (!recipe.ingredients.length && !recipe.steps.length) {
+        if (meta.videoUrl) {
+          const transcript = await transcribeVideoAudio(meta.videoUrl, openaiKey, ac.signal);
+          if (transcript && transcript.length > 50) {
+            const combinedText = captionText + "\n\n--- Video transcript ---\n" + transcript;
+            recipe = await extractRecipeFromCaption(combinedText, openaiKey);
+          }
+        }
+      }
+
+      // Tier 4: If still no recipe, look for a URL in the caption and scrape the website
       if (!recipe.ingredients.length && !recipe.steps.length) {
         const urlMatch = captionText.match(/https?:\/\/[^\s"'<>]+/i)
           ?? meta.caption?.match(/https?:\/\/[^\s"'<>]+/i);

@@ -1,7 +1,8 @@
 appId: host.exp.Exponent
 name: "Voice log — opens text input fallback"
 ---
-# Navigate to Today
+- runFlow: shared/login.yaml
+
 - tapOn: "Today"
 - waitForAnimationToEnd
 

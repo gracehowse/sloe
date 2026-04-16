@@ -1,0 +1,48 @@
+appId: host.exp.Exponent
+name: "Create test account"
+---
+- launchApp
+- openLink: "exp://192.168.108.177:8081"
+
+- runFlow:
+    when:
+      visible: "Recently opened"
+    commands:
+      - tapOn: "Suppr"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Today"
+    commands:
+      - tapOn: "Today"
+
+- runFlow:
+    when:
+      visible: "Sign In"
+    commands:
+      # Switch to sign-up mode
+      - tapOn:
+          text: ".*Create.*"
+      - waitForAnimationToEnd
+
+      # Fill in email
+      - tapOn: "Email"
+      - inputText: "gracemturner@hotmail.co.uk"
+
+      # Fill in password
+      - tapOn: "Password"
+      - inputText: "testing123"
+
+      # Tap Create Account
+      - tapOn: "Create Account"
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd

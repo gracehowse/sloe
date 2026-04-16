@@ -32,8 +32,8 @@ import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 const TIMELINE = [
   { icon: "checkmark-circle" as const, color: Accent.success, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
   { icon: "restaurant" as const, color: Accent.primary, title: "Today: Start importing recipes", desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition." },
-  { icon: "analytics" as const, color: Accent.info, title: "This week: Build your library", desc: "Save, verify, and plan meals that hit your macros." },
-  { icon: "flag" as const, color: Accent.warning, title: "Day 7: Trial ends", desc: "Keep going with Pro, or continue with the free plan. We'll remind you before." },
+  { icon: "analytics" as const, color: Accent.info, title: "This week: Save and plan", desc: "Save recipes, verify nutrition, and start a meal plan." },
+  { icon: "flag" as const, color: Accent.warning, title: "Day 7: Trial ends", desc: "Your trial ends. Continue with Pro or switch to the free plan." },
 ];
 
 export default function PaywallScreen() {
@@ -193,7 +193,7 @@ export default function PaywallScreen() {
         {/* Free confirmation */}
         <View style={styles.freeRow}>
           <Ionicons name="checkmark-circle" size={18} color={Accent.success} />
-          <Text style={styles.freeText}>No Payment Due Now</Text>
+          <Text style={styles.freeText}>No charge today</Text>
         </View>
 
         <Text style={styles.priceText}>

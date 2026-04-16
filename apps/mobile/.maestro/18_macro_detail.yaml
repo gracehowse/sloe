@@ -1,0 +1,29 @@
+appId: host.exp.Exponent
+name: "Macro detail — breakdown by meal"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Today"
+- waitForAnimationToEnd
+
+# Tap on a macro card (Protein, Carbs, or Fat)
+- runFlow:
+    when:
+      visible: "Protein"
+    commands:
+      - tapOn: "Protein"
+      - waitForAnimationToEnd
+
+      # Should see macro detail screen
+      - assertVisible: "Protein"
+
+      # If meals are logged, should show per-meal breakdown
+      - runFlow:
+          when:
+            visible: "kcal"
+          commands:
+            - assertVisible: "kcal"
+
+      # Navigate back
+      - tapOn:
+          point: "5%,8%"

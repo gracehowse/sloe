@@ -1139,7 +1139,7 @@ export default function RecipeDetailScreen() {
           {recipe.source_url && (
             <View style={styles.sourceCard}>
               <Text style={styles.sourceLabel}>SOURCE</Text>
-              <Text style={styles.sourceName}>{recipe.source_name ?? "Original recipe"}</Text>
+              <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
               <Pressable
                 style={styles.sourceLinkBtn}
                 onPress={() => Linking.openURL(recipe.source_url!)}

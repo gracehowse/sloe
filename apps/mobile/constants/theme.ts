@@ -113,6 +113,15 @@ export const Radius = {
   full: 9999,
 };
 
+/** Semantic font weight scale — use these instead of raw weight strings */
+export const FontWeight = {
+  regular: '400' as const,
+  medium: '500' as const,
+  semibold: '600' as const,
+  bold: '700' as const,
+  heavy: '800' as const,
+};
+
 export const Fonts = Platform.select({
   ios: {
     sans: 'System',

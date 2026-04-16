@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+name: "Meal nutrition detail — macros, micro breakdown"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Today"
+- waitForAnimationToEnd
+
+# Scroll to find a logged meal entry
+- runFlow:
+    when:
+      visible: "Breakfast|Lunch|Dinner|Snack"
+    commands:
+      # Tap the first meal entry to open detail
+      - tapOn:
+          text: "Breakfast|Lunch|Dinner|Snack"
+          index: 0
+      - waitForAnimationToEnd
+
+      # If we land on the meal nutrition screen, verify content
+      - runFlow:
+          when:
+            visible: "Protein"
+          commands:
+            - assertVisible: "Protein"
+            - assertVisible: "Carbs"
+            - assertVisible: "Fat"
+
+            # Navigate back
+            - tapOn:
+                point: "5%,8%"

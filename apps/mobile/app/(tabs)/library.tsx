@@ -308,10 +308,10 @@ export default function LibraryScreen() {
                 </Text>
                 <View style={styles.emptyActions}>
                   <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/discover")}>
-                    <Text style={styles.ctaBtnText}>Browse Discover</Text>
+                    <Text style={styles.ctaBtnText}>Go to Discover</Text>
                   </Pressable>
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
-                    <Text style={styles.ctaBtnSecondaryText}>Paste a recipe URL</Text>
+                    <Text style={styles.ctaBtnSecondaryText}>Import a recipe</Text>
                   </Pressable>
                 </View>
               </View>

@@ -1,7 +1,8 @@
 appId: host.exp.Exponent
 name: "Meal plan — generate, view, shopping list"
 ---
-# Navigate to Plan
+- runFlow: shared/login.yaml
+
 - tapOn: "Plan"
 - assertVisible: "Meal Plan"
 

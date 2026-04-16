@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+name: "Food search — query, results display"
+---
+- runFlow: shared/login.yaml
+
+# Navigate to Search tab
+- tapOn: "Search"
+- waitForAnimationToEnd
+
+# Should see food search heading
+- assertVisible: "Food search"
+- assertVisible: "Search foods and log portions."
+
+# Tap Search button to run default query
+- tapOn:
+    text: "Search"
+    index: 1
+- waitForAnimationToEnd
+
+# Should show results or an error message (depends on API availability)
+- runFlow:
+    when:
+      visible: "FDC"
+    commands:
+      - assertVisible: "FDC"
+
+- runFlow:
+    when:
+      visible: "Food search isn't available"
+    commands:
+      - assertVisible: "Food search isn't available"

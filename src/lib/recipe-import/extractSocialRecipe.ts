@@ -35,6 +35,10 @@ export interface SocialPostMeta {
   title: string | null;
   /** Creator display (e.g. Instagram oEmbed author_name, TikTok @handle) — not a nutrition database label. */
   authorDisplay: string | null;
+  /** Raw HTML from the fetched page — used for comment extraction without a second fetch. */
+  rawHtml?: string;
+  /** Video URL from og:video meta tags or embedded JSON — used for audio transcription fallback. */
+  videoUrl?: string | null;
 }
 
 /**
@@ -103,7 +107,7 @@ const UA_ATTEMPTS = [
  * Instagram embeds post data in <script type="application/ld+json"> or
  * window.__additionalDataLoaded / window._sharedData structures.
  */
-function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: string | null } | null {
+function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: string | null; videoUrl: string | null } | null {
   // Try JSON-LD first (Instagram sometimes includes this)
   const ldMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
   for (const m of ldMatches) {
@@ -112,7 +116,7 @@ function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: str
       const desc = (data.articleBody ?? data.description ?? data.caption ?? "") as string;
       const img = (data.image ?? data.thumbnailUrl ?? "") as string;
       if (desc && desc.length > 20) {
-        return { caption: desc, imageUrl: typeof img === "string" ? img : null };
+        return { caption: desc, imageUrl: typeof img === "string" ? img : null, videoUrl: null };
       }
     } catch { /* continue */ }
   }
@@ -131,7 +135,12 @@ function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: str
         if (imgMatch?.[1]) {
           try { imgUrl = JSON.parse(`"${imgMatch[1]}"`); } catch { /* ignore */ }
         }
-        return { caption: decoded, imageUrl: imgUrl };
+        const vidMatch = script.match(/"video_url"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        let vidUrl: string | null = null;
+        if (vidMatch?.[1]) {
+          try { vidUrl = JSON.parse(`"${vidMatch[1]}"`); } catch { /* ignore */ }
+        }
+        return { caption: decoded, imageUrl: imgUrl, videoUrl: vidUrl };
       } catch { /* continue */ }
     }
   }
@@ -225,6 +234,12 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       extractMetaContent(html, "twitter:title") ||
       null;
 
+    const ogVideo =
+      extractMetaContent(html, "og:video:url") ||
+      extractMetaContent(html, "og:video") ||
+      extractMetaContent(html, "og:video:secure_url") ||
+      null;
+
     if (caption || title) {
       if (platform === "tiktok" && !authorDisplay) {
         authorDisplay = guessTikTokAuthorDisplay(caption, title);
@@ -233,7 +248,7 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
         const h = caption.match(/@([a-z0-9._]{2,30})\b/i);
         if (h) authorDisplay = `@${h[1]}`;
       }
-      return { platform, caption, imageUrl, title, authorDisplay };
+      return { platform, caption, imageUrl, title, authorDisplay, rawHtml: html, videoUrl: ogVideo };
     }
 
     // Strategy 2: Embedded JSON data in the page
@@ -252,6 +267,8 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
         imageUrl: oembedImageUrl ?? embedded.imageUrl,
         title: null,
         authorDisplay,
+        rawHtml: html,
+        videoUrl: ogVideo ?? embedded.videoUrl,
       };
     }
   }
@@ -407,6 +424,150 @@ export function parsePrepCookMinutesFromCaption(text: string): { prepTimeMin: nu
   }
 
   return { prepTimeMin, cookTimeMin };
+}
+
+/**
+ * Best-effort extraction of Instagram comments from embedded GraphQL JSON.
+ * Instagram embeds initial top-level comments in <script> tags as serialized
+ * GraphQL data (edge_media_to_parent_comment / edge_media_to_comment).
+ * Returns concatenated comment texts, or null if none found.
+ * Never throws — Instagram changes their embedded structure frequently.
+ */
+export function extractCommentsFromHtml(html: string): string | null {
+  try {
+    const scriptMatches = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+    const commentTexts: string[] = [];
+
+    for (const m of scriptMatches) {
+      const script = m[1] ?? "";
+      // Look for comment edge structures in serialized GraphQL data
+      if (
+        !script.includes("edge_media_to_parent_comment") &&
+        !script.includes("edge_media_to_comment")
+      ) {
+        continue;
+      }
+
+      // Extract individual comment text nodes from the edges array.
+      // The structure is: "edges":[{"node":{"text":"..."}}, ...]
+      // We use a targeted regex rather than full JSON parsing because
+      // the surrounding structure may be incomplete or very large.
+      const nodeMatches = script.matchAll(
+        /"node"\s*:\s*\{[^}]*?"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g,
+      );
+      for (const nm of nodeMatches) {
+        if (!nm[1] || nm[1].length < 15) continue; // skip emoji-only / short reactions
+        try {
+          const decoded = JSON.parse(`"${nm[1]}"`) as string;
+          // Skip very short comments and duplicate caption text
+          if (decoded.length >= 15) {
+            commentTexts.push(decoded);
+          }
+        } catch {
+          /* skip malformed */
+        }
+      }
+    }
+
+    if (commentTexts.length === 0) return null;
+    // Deduplicate and take up to 10 comments
+    const unique = [...new Set(commentTexts)].slice(0, 10);
+    return unique.join("\n\n");
+  } catch {
+    return null;
+  }
+}
+
+const WHISPER_MAX_BYTES = 25 * 1024 * 1024; // 25 MB — OpenAI Whisper file size limit
+
+/**
+ * Download a video and transcribe its audio using OpenAI Whisper.
+ * Returns the transcript text, or null if download/transcription fails.
+ * Never throws — callers treat null as "skip to next tier."
+ */
+export async function transcribeVideoAudio(
+  videoUrl: string,
+  openaiKey: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    // --- Download video with size guard ---
+    const downloadSignal = AbortSignal.any
+      ? AbortSignal.any([AbortSignal.timeout(15_000), ...(signal ? [signal] : [])])
+      : AbortSignal.timeout(15_000);
+
+    const res = await fetch(videoUrl, {
+      signal: downloadSignal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      },
+      redirect: "follow",
+    });
+
+    if (!res.ok || !res.body) return null;
+
+    // Check Content-Length if available
+    const cl = res.headers.get("content-length");
+    if (cl && parseInt(cl, 10) > WHISPER_MAX_BYTES) {
+      console.error("[recipe-import] Video too large for transcription:", cl, "bytes");
+      return null;
+    }
+
+    // Stream body with size guard
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > WHISPER_MAX_BYTES) {
+        reader.cancel();
+        console.error("[recipe-import] Video exceeded 25MB during download, aborting");
+        return null;
+      }
+      chunks.push(value);
+    }
+
+    if (totalBytes < 1000) return null; // too small to be a real video
+
+    // Combine chunks into a single buffer
+    const videoBuffer = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      videoBuffer.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    // --- Transcribe with Whisper ---
+    const whisperSignal = AbortSignal.any
+      ? AbortSignal.any([AbortSignal.timeout(30_000), ...(signal ? [signal] : [])])
+      : AbortSignal.timeout(30_000);
+
+    const form = new FormData();
+    form.append("file", new Blob([videoBuffer], { type: "video/mp4" }), "video.mp4");
+    form.append("model", "whisper-1");
+    form.append("response_format", "text");
+
+    const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: form,
+      signal: whisperSignal,
+    });
+
+    if (!whisperRes.ok) {
+      console.error("[recipe-import] Whisper API error:", whisperRes.status);
+      return null;
+    }
+
+    const transcript = (await whisperRes.text()).trim();
+    return transcript.length > 0 ? transcript : null;
+  } catch (e) {
+    console.error("[recipe-import] transcribeVideoAudio failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 /**

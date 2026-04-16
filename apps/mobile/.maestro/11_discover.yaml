@@ -1,0 +1,49 @@
+appId: host.exp.Exponent
+name: "Discover — search, filters, import CTA, recipe cards"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Discover"
+- waitForAnimationToEnd
+
+# Header and subtitle
+- assertVisible: "Discover"
+- assertVisible: "Recipes that fit your macros"
+
+# Search bar
+- assertVisible: "Search or paste a link..."
+
+# Filter pills visible
+- assertVisible: "For You"
+- assertVisible: "Popular"
+- assertVisible: "Quick"
+- assertVisible: "High Protein"
+
+# Import CTA
+- assertVisible: "Import from TikTok, Instagram..."
+
+# My Library CTA
+- assertVisible: "My Library"
+- assertVisible: "Saved and imported recipes"
+
+# If recipes are loaded, verify card elements
+- runFlow:
+    when:
+      visible: "kcal"
+    commands:
+      - assertVisible: "kcal"
+      - assertVisible: "saves"
+
+# Tap a filter pill
+- tapOn: "High Protein"
+- waitForAnimationToEnd
+
+# Tap back to "For You"
+- tapOn: "For You"
+- waitForAnimationToEnd
+
+# Try search
+- tapOn: "Search or paste a link..."
+- inputText: "chicken"
+- waitForAnimationToEnd
+- hideKeyboard

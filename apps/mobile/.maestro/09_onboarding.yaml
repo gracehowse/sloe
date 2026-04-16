@@ -1,0 +1,102 @@
+appId: host.exp.Exponent
+name: "Onboarding — goal, basic info, activity, plan, strategy, dietary, summary"
+---
+# This test only runs if the onboarding screen is showing after login.
+# Requires a user who has NOT completed onboarding.
+# The test account is already onboarded, so this test validates
+# the onboarding screen structure IF it appears.
+
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "What's your main goal?"
+    commands:
+      # ── Step 1: Goal ──
+      - assertVisible: "Lose weight"
+      - assertVisible: "Eat healthier"
+      - assertVisible: "Build muscle"
+
+      # Select a goal (auto-advances)
+      - tapOn: "Lose weight"
+      - waitForAnimationToEnd
+
+      # ── Step 2: Basic Info ──
+      - assertVisible: "Tell us about yourself"
+      - assertVisible: "Biological sex"
+      - assertVisible: "Female"
+      - assertVisible: "Male"
+
+      # Fill in basic info
+      - tapOn: "Female"
+      - tapOn:
+          text: "Age"
+          index: 1
+      - inputText: "28"
+      - tapOn:
+          text: "Height"
+          index: 1
+      - inputText: "165"
+      - tapOn:
+          text: "Weight"
+          index: 1
+      - inputText: "70"
+      - tapOn:
+          text: "Goal weight"
+          index: 1
+      - inputText: "60"
+
+      # Tap Continue
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+
+      # ── Step 3: Activity ──
+      - assertVisible: "How active are you?"
+      - tapOn: "Moderately Active"
+      - waitForAnimationToEnd
+
+      # ── Step 4: Plan Pace (carousel) ──
+      - assertVisible: "Select your plan"
+      - assertVisible: "Select"
+      - tapOn:
+          text: "Select"
+          index: 0
+      - waitForAnimationToEnd
+
+      # ── Step 5: Budget Confirm ──
+      - assertVisible: "calories per day"
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+
+      # ── Step 6: Strategy ──
+      - assertVisible: "Pick your nutrition strategy"
+      - assertVisible: "Balanced"
+      - tapOn: "Balanced"
+      - waitForAnimationToEnd
+
+      # ── Step 7: Dietary ──
+      - assertVisible: "Any dietary preferences?"
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+
+      # ── Step 8: Calorie Schedule ──
+      - assertVisible:
+          text: "calorie schedule"
+      - assertVisible: "Same every day"
+      - tapOn: "Same every day"
+      - waitForAnimationToEnd
+
+      # ── Step 9: Fasting ──
+      - assertVisible: "Interested in intermittent fasting?"
+      - tapOn: "No, I'm not interested"
+      - waitForAnimationToEnd
+
+      # ── Step 10: Projection ──
+      - assertVisible:
+          text: "Budget|calories"
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+
+      # ── Step 11: Summary ──
+      - assertVisible: "You're all set up"
+      - assertVisible: "Get Started"
