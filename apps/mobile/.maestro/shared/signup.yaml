@@ -2,7 +2,7 @@ appId: host.exp.Exponent
 name: "Create test account"
 ---
 - launchApp
-- openLink: "exp://192.168.108.177:8081"
+- openLink: ${EXPO_DEV_SERVER_URL}
 
 - runFlow:
     when:
@@ -31,13 +31,13 @@ name: "Create test account"
           text: ".*Create.*"
       - waitForAnimationToEnd
 
-      # Fill in email
+      # Fill in email (use a fresh address for signup; can match E2E_EMAIL if testing login-only elsewhere)
       - tapOn: "Email"
-      - inputText: "gracemturner@hotmail.co.uk"
+      - inputText: ${E2E_EMAIL}
 
       # Fill in password
       - tapOn: "Password"
-      - inputText: "testing123"
+      - inputText: ${E2E_PASSWORD}
 
       # Tap Create Account
       - tapOn: "Create Account"

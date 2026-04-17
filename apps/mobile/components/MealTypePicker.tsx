@@ -4,9 +4,9 @@ import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const MEAL_OPTIONS = [
-  { value: "breakfast", label: "Breakfast", icon: "sunny-outline" as const },
-  { value: "lunch", label: "Lunch", icon: "restaurant-outline" as const },
-  { value: "dinner", label: "Dinner", icon: "moon-outline" as const },
+  { value: "breakfast", label: "Breakfast", icon: "cafe-outline" as const },
+  { value: "lunch", label: "Lunch", icon: "sunny-outline" as const },
+  { value: "dinner", label: "Dinner", icon: "restaurant-outline" as const },
   { value: "snack", label: "Snacks", icon: "cafe-outline" as const },
 ] as const;
 

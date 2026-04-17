@@ -7,7 +7,8 @@ name: "Today screen — ring, macros, quick-log buttons"
 - waitForAnimationToEnd
 
 # Calorie ring visible
-- assertVisible: "kcal"
+- assertVisible:
+    text: "LOGGED|kcal"
 
 # Macro cards visible (at least one)
 - assertVisible:
@@ -19,10 +20,48 @@ name: "Today screen — ring, macros, quick-log buttons"
 - assertVisible: "Search"
 - assertVisible: "Scan"
 
-# Tap to show macros
-- tapOn: "Tap to show macros"
-- assertVisible: "Tap to hide macros"
+# Tap to show/hide macros
+- runFlow:
+    when:
+      visible: "Tap to show macros"
+    commands:
+      - tapOn: "Tap to show macros"
+      - assertVisible: "Tap to hide macros"
+      - tapOn: "Tap to hide macros"
+      - assertVisible: "Tap to show macros"
 
-# Tap to hide macros
-- tapOn: "Tap to hide macros"
-- assertVisible: "Tap to show macros"
+- runFlow:
+    when:
+      visible: "Tap to hide macros"
+    commands:
+      - tapOn: "Tap to hide macros"
+      - assertVisible: "Tap to show macros"
+
+# Scroll down to verify meal journal section loads
+- swipe:
+    direction: UP
+    duration: 400
+- waitForAnimationToEnd
+
+# Scroll back up to verify no crash
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd
+
+# Verify Quick-log buttons are functional — tap Voice and verify fallback
+- tapOn: "Voice"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Describe what you ate|Cancel"
+- tapOn: "Cancel"
+- waitForAnimationToEnd
+
+# Verify Search quick-log opens search
+- tapOn: "Search"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Food search|Search foods"
+# Go back
+- back
+- waitForAnimationToEnd

@@ -47,3 +47,41 @@ name: "Discover — search, filters, import CTA, recipe cards"
 - inputText: "chicken"
 - waitForAnimationToEnd
 - hideKeyboard
+
+# Verify search results or empty state
+- runFlow:
+    when:
+      visible: "kcal"
+    commands:
+      - assertVisible: "kcal"
+
+- runFlow:
+    when:
+      visible: "No recipes found"
+    commands:
+      - assertVisible: "No recipes found"
+
+# Clear search
+- tapOn: "Search or paste a link..."
+- eraseText: 7
+- hideKeyboard
+
+# Scroll down to verify recipe grid loads more content
+- swipe:
+    direction: UP
+    duration: 400
+- waitForAnimationToEnd
+
+# Scroll back up
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd
+
+# Verify import button navigates
+- tapOn: "Import from TikTok, Instagram..."
+- waitForAnimationToEnd
+- assertVisible:
+    text: "IMPORT|Paste a recipe link|Looking for a link"
+- tapOn: "Back"
+- waitForAnimationToEnd

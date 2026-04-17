@@ -92,7 +92,7 @@
 # Unit + integration
 npm test
 
-# E2E (requires built app + env vars)
+# E2E (local: Playwright starts dev server; CI uses build + start — see tests/e2e/README.md)
 npm run test:e2e
 
 # Type checking

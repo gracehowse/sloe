@@ -81,11 +81,11 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">Library</h1>
+          <h1 className="text-foreground">Library</h1>
           <div className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border bg-muted text-foreground border-border">
             {savedCount} recipe{savedCount === 1 ? "" : "s"}
           </div>
@@ -156,11 +156,10 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
       {filteredRecipes.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRecipes.map((recipe) => (
-            <button
+            <div
               key={recipe.id}
-              type="button"
+              className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg cursor-pointer"
               onClick={() => setSelectedRecipe(recipe)}
-              className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg"
             >
               <div className="relative overflow-hidden">
                 <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -181,7 +180,15 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
               <div className="p-5">
-                <h4 className="mb-3 text-foreground group-hover:text-primary transition-colors">{recipe.title}</h4>
+                <h4 className="mb-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
+                    className="text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+                  >
+                    {recipe.title}
+                  </button>
+                </h4>
                 {entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid) === "created" &&
                 recipe.isPublished === false ? (
                   <button
@@ -229,7 +236,7 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                   <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">F: {recipe.fat}g</span>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

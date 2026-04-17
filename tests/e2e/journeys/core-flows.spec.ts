@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
  * Core user journeys — these test real browser interaction.
  * Requires:
  *   - E2E_EMAIL and E2E_PASSWORD env vars for authenticated tests
- *   - Dev server running at PLAYWRIGHT_BASE_URL
+ *   - Local: Playwright starts `npm run dev` (see playwright.config.ts). CI uses `next start` from ci.yml.
  */
 
 test.describe("Public pages", () => {
@@ -60,6 +60,11 @@ test.describe("Authenticated flows", () => {
     // Wait for app to load
     await page.waitForURL("/?**");
     await page.waitForTimeout(2000);
+    // Dismiss cookie consent banner if visible
+    const acceptBtn = page.getByRole("button", { name: /accept all/i });
+    if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await acceptBtn.click();
+    }
   });
 
   test("Today view shows calorie ring and macro cards", async ({ page }) => {
@@ -70,20 +75,20 @@ test.describe("Authenticated flows", () => {
   });
 
   test("can navigate between tabs", async ({ page }) => {
-    // Click Discover
-    await page.getByRole("tab", { name: /discover/i }).click();
+    // Click Discover (force: true to bypass Next.js dev overlay in dev mode)
+    await page.getByRole("tab", { name: /discover/i }).click({ force: true });
     await page.waitForTimeout(500);
     // Click Plan
-    await page.getByRole("tab", { name: /plan/i }).click();
+    await page.getByRole("tab", { name: /plan/i }).click({ force: true });
     await page.waitForTimeout(500);
     // Click Progress
-    await page.getByRole("tab", { name: /progress/i }).click();
+    await page.getByRole("tab", { name: /progress/i }).click({ force: true });
     await page.waitForTimeout(500);
     // Click Profile
-    await page.getByRole("tab", { name: /profile/i }).click();
+    await page.getByRole("tab", { name: /profile/i }).click({ force: true });
     await page.waitForTimeout(500);
     // Back to Today
-    await page.getByRole("tab", { name: /today/i }).click();
+    await page.getByRole("tab", { name: /today/i }).click({ force: true });
     await expect(page.getByText(/kcal/i).first()).toBeVisible();
   });
 
@@ -105,7 +110,9 @@ test.describe("Authenticated flows", () => {
     await page.goto(`/?${params.toString()}`);
     await page.waitForTimeout(2000);
     // Should see a URL input
-    const urlInput = page.getByPlaceholder(/paste a recipe url/i).or(page.getByPlaceholder(/url/i));
+    const urlInput = page.getByPlaceholder(/paste a recipe url/i)
+      .or(page.getByPlaceholder(/https:\/\/example\.com\/recipe/i))
+      .or(page.getByPlaceholder(/paste a (recipe )?link/i));
     await expect(urlInput.first()).toBeVisible();
   });
 });

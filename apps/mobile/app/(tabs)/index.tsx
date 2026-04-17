@@ -94,6 +94,23 @@ function formatMealMacroDetail(m: JournalMeal): string {
   });
 }
 
+/** Compact source line under a meal title (matches web NutritionSourceBadge intent). */
+function formatMealSourceLabelForRow(source: string | null | undefined): string | null {
+  if (source == null || !String(source).trim()) return null;
+  const s = String(source).trim();
+  const low = s.toLowerCase();
+  if (low.includes("open food facts") && low.includes("adjusted")) return "OFF · adjusted";
+  if (low.includes("open food facts")) return "Open Food Facts";
+  if (low.includes("usda")) return "USDA";
+  if (low.includes("ai photo")) return "AI photo";
+  if (low.includes("ai voice")) return "AI voice";
+  if (low.includes("quick entry")) return "Quick entry";
+  if (low === "manual" || low.includes("manual")) return "Manual";
+  if (low.includes("meal plan")) return "Meal plan";
+  if (s.length <= 24) return s;
+  return `${s.slice(0, 22)}…`;
+}
+
 /** Supabase JSONB sometimes arrives as a string; normalize to a day → number map. */
 function parseByDayNumberMap(raw: unknown): Record<string, number> {
   let obj: Record<string, unknown> | null = null;
@@ -1838,8 +1855,8 @@ export default function TrackerScreen() {
               Breakfast: "cafe-outline",
               Lunch: "sunny-outline",
               Dinner: "restaurant-outline",
-              Snacks: "star-outline",
-              Snack: "star-outline",
+              Snacks: "cafe-outline",
+              Snack: "cafe-outline",
             }[s] ?? "restaurant-outline") as any;
           const slotColor = (s: string) =>
             ({
@@ -1958,6 +1975,11 @@ export default function TrackerScreen() {
                                   <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 12 }}>{ts}</Text>
                                 ) : null;
                               })()
+                            ) : null}
+                            {formatMealSourceLabelForRow(m.source) ? (
+                              <Text style={{ fontSize: 9, color: colors.textTertiary, marginLeft: 12, fontWeight: "500" }}>
+                                {formatMealSourceLabelForRow(m.source)}
+                              </Text>
                             ) : null}
                           </View>
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

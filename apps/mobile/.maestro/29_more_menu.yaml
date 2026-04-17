@@ -1,0 +1,113 @@
+appId: host.exp.Exponent
+name: "More/Profile tab — full settings verification, sign out, danger zone"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Verify avatar/name area
+- assertVisible:
+    text: "Free|Pro|Base"
+
+# Verify stat pills (Recipes, Streak, Score)
+- assertVisible: "Recipes"
+- assertVisible: "Streak"
+- assertVisible: "Score"
+
+# Verify Goals & Targets section
+- assertVisible: "Goals & Targets"
+- assertVisible: "Daily Targets"
+- assertVisible: "Dashboard Widgets"
+- assertVisible: "Week Starts On"
+
+# Verify Connections section
+- assertVisible: "Connections"
+- assertVisible: "Apple Health"
+- assertVisible: "Notifications"
+
+# Verify Recipes section
+- scrollUntilVisible:
+    element: "Create Recipe"
+    direction: DOWN
+- assertVisible: "Create Recipe"
+
+# Verify App section
+- scrollUntilVisible:
+    element: "Appearance"
+    direction: DOWN
+- assertVisible: "Appearance"
+- assertVisible: "Export Data"
+- assertVisible: "Help & Information"
+
+# Verify Legal section
+- scrollUntilVisible:
+    element: "Legal"
+    direction: DOWN
+- assertVisible: "Privacy Policy"
+- assertVisible: "Terms of Use"
+
+# Verify Danger Zone
+- scrollUntilVisible:
+    element: "Danger Zone"
+    direction: DOWN
+- assertVisible: "Danger Zone"
+- assertVisible: "Reset or erase everything"
+
+# Verify Sign Out button
+- scrollUntilVisible:
+    element: "Sign Out"
+    direction: DOWN
+- assertVisible: "Sign Out"
+
+# Verify "Erase all app data" button
+- assertVisible: "Erase all app data"
+
+# Test Dashboard Widgets picker
+- scrollUntilVisible:
+    element: "Dashboard Widgets"
+    direction: UP
+- tapOn: "Dashboard Widgets"
+- waitForAnimationToEnd
+- assertVisible: "Protein"
+- assertVisible: "Carbs"
+- assertVisible: "Fat"
+- assertVisible: "Fiber"
+- assertVisible: "Done"
+- tapOn: "Done"
+- waitForAnimationToEnd
+
+# Test Week Start Day picker
+- tapOn: "Week Starts On"
+- waitForAnimationToEnd
+- assertVisible: "Monday"
+- assertVisible: "Sunday"
+# Tap current selection to dismiss
+- tapOn: "Monday"
+- waitForAnimationToEnd
+
+# Test Reset modal opens
+- scrollUntilVisible:
+    element: "Reset or erase everything"
+    direction: DOWN
+- tapOn: "Reset or erase everything"
+- waitForAnimationToEnd
+- assertVisible: "Reset or start over"
+- assertVisible: "Reset Plan (Keep My Data)"
+- assertVisible: "Erase all app data"
+- assertVisible: "Delete my account permanently"
+- assertVisible: "Cancel"
+# Dismiss
+- tapOn: "Cancel"
+- waitForAnimationToEnd
+
+# Verify upgrade banner for free users
+- scrollUntilVisible:
+    element: "Goals & Targets"
+    direction: UP
+- runFlow:
+    when:
+      visible: "Upgrade to Pro"
+    commands:
+      - assertVisible: "Upgrade to Pro"
+      - assertVisible: "Multi-day plans"

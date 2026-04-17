@@ -1,0 +1,70 @@
+appId: host.exp.Exponent
+name: "Progress Metric Detail — calorie/protein/streak deep dive"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Progress"
+- waitForAnimationToEnd
+
+# The progress screen shows stat tiles; tap one to open metric detail
+# Look for Avg Calories or Protein Hit or Streak tile
+- runFlow:
+    when:
+      visible: "Avg Calories"
+    commands:
+      - tapOn: "Avg Calories"
+      - waitForAnimationToEnd
+
+      # Verify metric detail loaded
+      - assertVisible:
+          text: "Calories|calories"
+
+      # Verify day breakdown is present
+      - assertVisible:
+          text: "Mon|Tue|Wed|Thu|Fri|Sat|Sun"
+
+      # Go back
+      - back
+      - waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Protein Hit"
+    commands:
+      - tapOn: "Protein Hit"
+      - waitForAnimationToEnd
+
+      # Verify protein metric detail
+      - assertVisible:
+          text: "Protein|protein"
+
+      # Go back
+      - back
+      - waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Streak"
+    commands:
+      - tapOn: "Streak"
+      - waitForAnimationToEnd
+
+      # Verify streak detail
+      - assertVisible:
+          text: "Streak|streak|days"
+
+      # Go back
+      - back
+      - waitForAnimationToEnd
+
+# If no stat tiles (empty state), verify the empty progress UI
+- runFlow:
+    when:
+      notVisible: "Avg Calories"
+    commands:
+      - runFlow:
+          when:
+            notVisible: "Protein Hit"
+          commands:
+            - assertVisible:
+                text: "Progress|Weekly|report"

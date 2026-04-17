@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import {
@@ -22,7 +23,9 @@ import { calcGoalTimeline, projectWeight } from "../../lib/weightProjection.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
-import type { LoggedMeal } from "../../types/recipe.ts";
+import { todayKey } from "../../lib/nutrition/trackerDate.ts";
+import { buildWeekStats } from "../../lib/nutrition/progressWeekReport.ts";
+import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -42,7 +45,15 @@ function coercePace(v: string | null | undefined): PlanPace {
   return (PACES as string[]).includes(s) ? (s as PlanPace) : "steady";
 }
 
-export function ProgressDashboard() {
+function coerceProgressMetric(v: string | null): ProgressMetric | null {
+  if (v === "calories" || v === "protein" || v === "streak") return v;
+  return null;
+}
+
+function ProgressDashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const metricParam = coerceProgressMetric(searchParams.get("metric"));
   const { authedUserId } = useAuthSession();
   const { profileMeasurementSystem, nutritionByDay, nutritionTargets } = useAppData();
 
@@ -66,14 +77,7 @@ export function ProgressDashboard() {
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
   const [range, setRange] = useState<"1W" | "1M" | "3M" | "6M" | "All">("3M");
-
-  const todayKey = useMemo(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    return `${y}-${mo}-${da}`;
-  }, []);
+  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
   const load = useCallback(async () => {
     if (!authedUserId) {
@@ -84,7 +88,7 @@ export function ProgressDashboard() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, week_start_day",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -106,6 +110,8 @@ export function ProgressDashboard() {
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
       setUserGoal((data as any).goal ?? null);
+      const wsd = String((data as { week_start_day?: string }).week_start_day ?? "").toLowerCase();
+      setWeekStartDay(wsd === "sunday" ? "sunday" : "monday");
 
       // Compute TDEE values
       const sex = ((data as any).sex as Sex) ?? "unspecified";
@@ -152,7 +158,7 @@ export function ProgressDashboard() {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }, [weeksToGoalVal]);
 
-  const todaySteps = stepsByDay[todayKey] ?? 0;
+  const todaySteps = stepsByDay[todayKey()] ?? 0;
 
   const rangeDays = range === "1W" ? 7 : range === "1M" ? 30 : range === "3M" ? 90 : range === "6M" ? 180 : 9999;
 
@@ -195,21 +201,23 @@ export function ProgressDashboard() {
     const v = Number.parseFloat(weightInput.replace(",", "."));
     if (!Number.isFinite(v) || v <= 0) return;
     const kg = profileMeasurementSystem === "imperial" ? v / 2.20462 : v;
-    const nextMap = { ...weightKgByDay, [todayKey]: kg };
+    const tk = todayKey();
+    const nextMap = { ...weightKgByDay, [tk]: kg };
     setWeightKgByDay(nextMap);
     setWeightKg(kg);
     setWeightInput("");
     await persistProfilePatch({ weight_kg: kg, weight_kg_by_day: nextMap });
-  }, [weightInput, profileMeasurementSystem, weightKgByDay, todayKey, persistProfilePatch]);
+  }, [weightInput, profileMeasurementSystem, weightKgByDay, persistProfilePatch]);
 
   const saveTodaySteps = useCallback(async () => {
     const v = Math.round(Number.parseFloat(stepsInput.replace(",", ".")));
     if (!Number.isFinite(v) || v < 0) return;
-    const nextMap = { ...stepsByDay, [todayKey]: v };
+    const tk = todayKey();
+    const nextMap = { ...stepsByDay, [tk]: v };
     setStepsByDay(nextMap);
     setStepsInput("");
     await persistProfilePatch({ steps_by_day: nextMap });
-  }, [stepsInput, stepsByDay, todayKey, persistProfilePatch]);
+  }, [stepsInput, stepsByDay, persistProfilePatch]);
 
   const saveStepsGoal = useCallback(
     async (next: number) => {
@@ -231,9 +239,53 @@ export function ProgressDashboard() {
   const formatWeight = (kg: number) =>
     profileMeasurementSystem === "imperial" ? `${Math.round(kgToLb(kg) * 10) / 10} lb` : `${Math.round(kg * 10) / 10} kg`;
 
+  const formatRatePerWeek = (rateKgPerWeek: number) => {
+    const v = Math.abs(rateKgPerWeek);
+    if (profileMeasurementSystem === "imperial") {
+      const lb = kgToLb(v);
+      return `${Math.round(lb * 10) / 10} lb/week`;
+    }
+    return `${Math.round(v * 100) / 100} kg/week`;
+  };
+
+  const targets = normalizeMacroTargets(nutritionTargets);
+  const weekStatsBundle = useMemo(
+    () => buildWeekStats(nutritionByDay, targets, weekStartDay),
+    [nutritionByDay, targets, weekStartDay],
+  );
+
+  const dailyCaloriesData = weekStatsBundle.days.map((d) => ({
+    day: d.label,
+    calories: Math.round(d.calories),
+    target: targets.calories,
+  }));
+  const proteinAdherence = weekStatsBundle.proteinAdherence;
+  const carbsAdherence = weekStatsBundle.carbsAdherence;
+  const fatAdherence = weekStatsBundle.fatAdherence;
+
+  const avgCalories = weekStatsBundle.avgCalories;
+  const proteinOnTarget = weekStatsBundle.proteinOnTarget;
+  const streakDays = computeLoggingStreak(nutritionByDay);
+
+  const openMetric = useCallback(
+    (m: ProgressMetric) => {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("view", "progress");
+      p.set("metric", m);
+      router.replace(`/?${p.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const closeMetric = useCallback(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("metric");
+    router.replace(`/?${p.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
   if (!authedUserId) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">
+      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">
         Sign in to track progress.
       </div>
     );
@@ -241,96 +293,64 @@ export function ProgressDashboard() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-pm-6 py-pm-8 text-muted-foreground">Loading progress…</div>
+      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">Loading progress…</div>
     );
+  }
+
+  if (metricParam) {
+    return <ProgressMetricDetail metric={metricParam} weekStartDay={weekStartDay} onClose={closeMetric} />;
   }
 
   const goalWeightChart = goalWeightKg != null
     ? profileMeasurementSystem === "imperial" ? Math.round(kgToLb(goalWeightKg) * 10) / 10 : Math.round(goalWeightKg * 10) / 10
     : undefined;
 
-  // Compute real weekly data from nutritionByDay
-  const targets = normalizeMacroTargets(nutritionTargets);
-  const weeklyStats = useMemo(() => {
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const today = new Date();
-    const dailyCals: { day: string; calories: number; target: number }[] = [];
-    let totalProtein = 0, totalCarbs = 0, totalFat = 0;
-    let targetProteinTotal = 0, targetCarbsTotal = 0, targetFatTotal = 0;
-    let proteinDaysHit = 0;
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const meals: LoggedMeal[] = nutritionByDay[key] ?? [];
-      const dayCal = meals.reduce((s, m) => s + m.calories, 0);
-      const dayP = meals.reduce((s, m) => s + m.protein, 0);
-      const dayC = meals.reduce((s, m) => s + m.carbs, 0);
-      const dayF = meals.reduce((s, m) => s + m.fat, 0);
-
-      dailyCals.push({ day: dayNames[d.getDay()], calories: Math.round(dayCal), target: targets.calories });
-      totalProtein += dayP;
-      totalCarbs += dayC;
-      totalFat += dayF;
-      targetProteinTotal += targets.protein;
-      targetCarbsTotal += targets.carbs;
-      targetFatTotal += targets.fat;
-      if (meals.length > 0 && dayP >= targets.protein * 0.9) proteinDaysHit++;
-    }
-
-    const proteinAdh = targetProteinTotal > 0 ? Math.round((totalProtein / targetProteinTotal) * 100) : 0;
-    const carbsAdh = targetCarbsTotal > 0 ? Math.round((totalCarbs / targetCarbsTotal) * 100) : 0;
-    const fatAdh = targetFatTotal > 0 ? Math.round((totalFat / targetFatTotal) * 100) : 0;
-
-    return { dailyCals, proteinAdh, carbsAdh, fatAdh, proteinDaysHit };
-  }, [nutritionByDay, targets]);
-
-  const dailyCaloriesData = weeklyStats.dailyCals;
-  const proteinAdherence = weeklyStats.proteinAdh;
-  const carbsAdherence = weeklyStats.carbsAdh;
-  const fatAdherence = weeklyStats.fatAdh;
-
-  const avgCalories = dailyCaloriesData.length > 0
-    ? Math.round(dailyCaloriesData.reduce((sum, d) => sum + d.calories, 0) / dailyCaloriesData.length)
-    : 0;
-  const proteinOnTarget = weeklyStats.proteinDaysHit;
-  const streakDays = computeLoggingStreak(nutritionByDay);
-
   return (
-    <div className="max-w-4xl mx-auto px-pm-6 py-pm-8">
+    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
       {/* HEADER */}
-      <div className="mb-8">
+      <div className="mb-4">
         <h1 className="text-[22px] font-bold text-foreground mb-1">Progress</h1>
         <p className="text-sm text-muted-foreground">Weekly report</p>
       </div>
 
       {/* 2x2 STAT GRID */}
       <div className="grid grid-cols-2 gap-2 mb-6">
-        <div className="rounded-xl bg-card border border-border p-3">
+        <button
+          type="button"
+          onClick={() => openMetric("calories")}
+          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+        >
           <div className="flex items-center gap-1.5 mb-2">
             <IconBox size="sm" tone="warning"><Icons.calories /></IconBox>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Calories</span>
           </div>
           <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
           <p className="text-[11px] text-muted-foreground">vs {targets.calories.toLocaleString()} target</p>
-        </div>
-        <div className="rounded-xl bg-card border border-border p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => openMetric("protein")}
+          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+        >
           <div className="flex items-center gap-1.5 mb-2">
             <IconBox size="sm" tone="success"><Icons.check /></IconBox>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Protein Hit</span>
           </div>
           <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{proteinOnTarget}/7</p>
           <p className="text-[11px] text-muted-foreground">days on target</p>
-        </div>
-        <div className="rounded-xl bg-card border border-border p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => openMetric("streak")}
+          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+        >
           <div className="flex items-center gap-1.5 mb-2">
             <IconBox size="sm" tone="success"><Icons.trophy /></IconBox>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
           </div>
           <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
           <p className="text-[11px] text-muted-foreground">logging streak</p>
-        </div>
+        </button>
         <div className="rounded-xl bg-card border border-border p-3">
           <div className="flex items-center gap-1.5 mb-2">
             <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
@@ -614,9 +634,10 @@ export function ProgressDashboard() {
 
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               {timeline.remainingKg > 0.1
-                ? `${timeline.remainingKg} kg to go until your ${formatWeight(goalWeightKg)} goal.`
+                ? `${formatWeight(timeline.remainingKg)} to go until your ${formatWeight(goalWeightKg)} goal.`
                 : "You\u2019ve reached your goal weight."}
-              {timeline.weeklyRateKg !== 0 && ` Trending ${timeline.trendDirection} at ${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+              {timeline.weeklyRateKg !== 0 &&
+                ` Trending ${timeline.trendDirection} at ${formatRatePerWeek(timeline.weeklyRateKg)}.`}
             </p>
 
             {/* Progress bar */}
@@ -652,7 +673,7 @@ export function ProgressDashboard() {
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
           <div className="text-center">
-            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey] ?? 0).toLocaleString()}</p>
+            <p className="text-[22px] font-bold text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
           </div>
           <div className="text-center">
@@ -701,5 +722,15 @@ export function ProgressDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function ProgressDashboard() {
+  return (
+    <Suspense
+      fallback={<div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">Loading progress…</div>}
+    >
+      <ProgressDashboardContent />
+    </Suspense>
   );
 }

@@ -35,7 +35,12 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     try {
       const params = new URLSearchParams(window.location.search);
       if (params.get("error") === "oauth") {
-        setMessage("Sign-in with Apple didn’t complete. Try again or use email.");
+        const desc = params.get("error_description");
+        setMessage(
+          desc
+            ? `Sign-in with Apple failed: ${desc}`
+            : "Sign-in with Apple didn’t complete. Try again or use email.",
+        );
         setStatus("error");
         window.history.replaceState({}, "", "/login");
       }

@@ -2,16 +2,42 @@
 
 ## Run locally
 
+**Naming:** at the **repo root**, `npm run test:e2e` is **Playwright (web)**. `npm run test:e2e:watch` is **mobile Maestro** (watches `.maestro/**/*.yaml` and re-runs the suite); same as `npm run mobile:test:e2e:watch`. There is no Playwright file-watcher script in this repo — use `npm run test:e2e:ui` for the Playwright UI.
+
 ```bash
 npm ci
 npx playwright install chromium
-npm run build
-npm run start
-# other terminal:
 npm run test:e2e
 ```
 
-Optional: `PLAYWRIGHT_BASE_URL=http://localhost:3000` if your dev server uses another origin.
+`npm run test:e2e` runs **`scripts/e2e-preflight.mjs`** first (disk warning; optional reachability check — see below), then Playwright.
+
+Playwright starts **`npm run dev`** automatically (waits on `http://127.0.0.1:3000` by default) when you are **not** in CI. If you already have a dev server on that origin, it is reused.
+
+- Point tests at another origin: `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100` and start the app yourself, then set **`PLAYWRIGHT_SKIP_WEB_SERVER=1`** so Playwright does not spawn a second process. With **`PLAYWRIGHT_SKIP_WEB_SERVER`**, the preflight script **must** get HTTP 200 from `PLAYWRIGHT_BASE_URL` or it exits before tests (avoids long `page.goto` timeouts when nothing is listening).
+- Match CI exactly (production server): `npm run build && npm run start -- --port 3100` in one terminal, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 PLAYWRIGHT_SKIP_WEB_SERVER=1 npm run test:e2e` in another.
+
+### Reliable local run (same shape as CI)
+
+If Playwright’s auto-started `next dev` is slow or appears hung, use **`next start`** and point Playwright at it:
+
+```bash
+npm run build
+PORT=3100 npm run start -- --port 3100 &
+npx wait-on http://127.0.0.1:3100/login -t 120000
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 PLAYWRIGHT_SKIP_WEB_SERVER=1 npm run test:e2e
+```
+
+Stop the server when finished (foreground **Ctrl+C** or `kill` the background PID).
+
+## Troubleshooting
+
+| Symptom | What to check |
+|--------|------------------|
+| Every test fails with **`page.goto` timeout** to `localhost:3000` | Nothing healthy on port 3000: run `npm run dev` manually and open the URL in a browser. Free the port if a zombie Node process is bound. |
+| **`ENOSPC`** / write errors from Next or Expo | Disk full — free space (`df -h .`); sub‑512 MiB on the volume triggers a **preflight warning**. |
+| Playwright “reuses” server but pages never load | Another process may be bound to 3000 without serving Next; kill it or change `PLAYWRIGHT_BASE_URL`. |
+| Auth / Supabase errors during E2E | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be set for the same project as `E2E_EMAIL` / `E2E_PASSWORD`. |
 
 ## Environment variables
 

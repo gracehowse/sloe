@@ -23,16 +23,19 @@ User logs food throughout the day, tracks progress against their calorie and mac
 │  CARBS    █████░░░ 80g/124g │
 │  FATS     ████░░░░ 30g/41g  │
 ├─────────────────────────────┤
+│  💧 Water  750 / 2500 ml    │  ← hydration card with progress bar
+│  ██████░░░░  [+250] [+500]  │  ← quick-add buttons (both platforms)
+├─────────────────────────────┤
 │  Goal - Food = Remaining    │  ← calorie math (shows "Over" in red)
 ├─────────────────────────────┤
-│  Breakfast                  │
-│  ├─ Protein Oats  506 kcal  │  ← long-press to delete
+│  Breakfast  ▾  120 kcal     │  ← tap header to collapse/expand
+│  ├─ Protein Oats  506 kcal  │  ← click delete icon to remove (with confirmation)
 │  └─ [ADD FOOD]              │  ← opens quick-log for Breakfast slot
-│  Lunch                      │
+│  Lunch  ▾                   │
 │  └─ [ADD FOOD]              │
-│  Dinner                     │
+│  Dinner  ▾                  │
 │  └─ [ADD FOOD]              │
-│  Snack                      │
+│  Snack  ▾                   │
 │  └─ [ADD FOOD]              │
 ├─────────────────────────────┤
 │  [+ Quick Add] [Search]    │
@@ -61,9 +64,16 @@ User logs food throughout the day, tracks progress against their calorie and mac
 - Shows up to 20 unique meals from journal history
 - Tap to re-log to today under active slot
 
+### Collapsing Meal Sections
+- Tap/click any meal header (Breakfast, Lunch, etc.) to collapse or expand that section
+- Collapsed sections still show the total kcal in the header
+- A chevron indicator rotates to show collapsed/expanded state
+- Both web and mobile support this behaviour
+
 ### Deleting Food
-Long-press any logged entry → confirmation dialog → removes from journal.
-Both web and mobile issue a `DELETE` against `nutrition_entries` so the removal persists across sessions and devices.
+- **Mobile:** Long-press any logged entry -> confirmation dialog -> removes from journal
+- **Web:** Click the trash icon on any logged entry -> `window.confirm()` dialog -> removes from journal
+- Both platforms issue a `DELETE` against `nutrition_entries` so the removal persists across sessions and devices.
 
 ### Date Navigation
 - `‹` and `›` arrows to move between days

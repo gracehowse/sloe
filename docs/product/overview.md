@@ -87,6 +87,7 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 - Mobile paywall UI (IAP integration pending)
 
 ## Related Documents
+- [Web / mobile parity & navigation scope](./web-mobile-parity-scope.md) — Discover / Plan / Profile audit, photo/voice scope, Library tab decision
 - [Technical Architecture](../technical/architecture.md)
 - [User Journeys](../journeys/)
 - [API Reference](../api/)

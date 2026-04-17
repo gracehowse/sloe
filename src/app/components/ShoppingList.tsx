@@ -165,16 +165,16 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 print:max-w-none print:px-4 print:py-4">
+    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5 print:max-w-none print:px-4 print:py-4">
       {/* Header */}
-      <div className="mb-8 print:mb-4">
+      <div className="mb-4 print:mb-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-primary rounded-xl print:hidden">
                 <Icons.shopping className="w-5 h-5 text-white" />
               </div>
-              <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent print:text-foreground print:bg-none">
+              <h1 className="text-foreground">
                 Shopping List
               </h1>
             </div>
@@ -235,7 +235,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       ) : null}
 
       {/* Progress */}
-      <div className="backdrop-blur-xl bg-primary/10 border-2 border-primary/30 rounded-2xl p-6 mb-8 shadow-xl print:hidden">
+      <div className="bg-card border border-border rounded-xl p-4 mb-4 print:hidden">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-foreground">Shopping Progress</h3>
           <span className="text-lg font-bold text-primary">

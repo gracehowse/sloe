@@ -282,22 +282,22 @@
 
 ### Mobile Maestro E2E Tests
 
-21 Maestro tests in `apps/mobile/.maestro/` cover the full mobile surface:
+30 Maestro tests in `apps/mobile/.maestro/` cover the full mobile surface:
 
 | Test | What it covers |
 |------|---------------|
 | 00_connect | Connect to Expo dev server |
-| 01_navigation | All 5 tabs load and respond |
-| 02_today_screen | Calorie ring, macros, quick-log buttons, ring toggle |
+| 01_navigation | All 5 tabs load and respond; rapid tab switching regression |
+| 02_today_screen | Calorie ring, macros, quick-log buttons, ring toggle, scroll, voice/search quick-log |
 | 03_meal_plan | Generate plan, verify meals + macros, shopping list |
 | 04_profile_settings | Sections, targets, legal links, export |
-| 05_recipe_detail | Ingredients, Start Cooking, Log to journal |
+| 05_recipe_detail | Ingredients, macros, portions, save, Start Cooking, Log to journal |
 | 06_burn_detail | Burn card, calorie burn detail sections |
-| 07_progress | Stats grid, charts, weight journey |
+| 07_progress | Stats grid, charts, weight journey, time range selector, empty state |
 | 08_voice_log | Voice button → text input fallback |
 | 09_onboarding | Full wizard: goal → basic info → activity → plan → strategy → dietary → summary |
 | 10_search | Food search tab: query, USDA results |
-| 11_discover | Search, filter pills, import CTA, recipe cards |
+| 11_discover | Search, filter pills, import CTA, recipe cards, scroll, import navigation |
 | 12_library | Saved recipes, sort, search, empty state |
 | 13_fasting | Timer ring, start/end fast, history |
 | 14_weight_tracker | Weight/steps/water/body fat inputs, journey chart |
@@ -307,12 +307,24 @@
 | 18_macro_detail | Per-meal breakdown for a specific macro |
 | 19_paywall | Pro trial timeline, CTA, continue free |
 | 20_notifications | Inbox, mark all read, empty state |
+| 21_create_recipe | Create recipe: form fields, image, ingredients, meal type, publish toggle |
+| 22_barcode_scanner | Barcode scanner: permission prompt, scanner UI |
+| 23_nutrition_sources | Nutrition sources info: USDA, Open Food Facts, FatSecret, disclaimer |
+| 24_health_sync | Health sync: feature list, nutrition import/export, connect button |
+| 25_import_shared | Import shared recipe: idle state, URL input, source grid |
+| 26_recipe_verify | Recipe verify: ingredient list, nutrition facts, confirm |
+| 27_progress_metric | Progress metric detail: calorie/protein/streak deep dive |
+| 28_notifications_prompt | Notification prompt: enable/skip flow |
+| 29_more_menu | Profile/More: all settings sections, widget picker, week start, reset modal |
 
-Run all: `maestro test apps/mobile/.maestro/`
+**In default suite (config.yaml):** 01–22, 24–25, 27, 29 (24 flows).
+**Manual only:** 00_connect, 09_onboarding, 19_paywall, 23_nutrition_sources, 26_recipe_verify, 28_notifications_prompt.
+
+Run all (from `apps/mobile`, with Metro URL + test user): `E2E_EMAIL=… E2E_PASSWORD=… npm run test:e2e` — see `apps/mobile/.maestro/README.md` (`EXPO_DEV_SERVER_URL` defaults to `exp://127.0.0.1:8081` in the npm script).
 
 ## Regression Tests (run weekly)
 
-All unit tests (141) + integration tests (5) + E2E auth tests + all 8 smoke tests + all 21 Maestro mobile E2E tests above.
+All unit tests (141) + integration tests (5) + E2E auth tests + all 8 smoke tests + all 30 Maestro mobile E2E tests above.
 
 ---
 

@@ -75,6 +75,8 @@
   --macro-fat: #e04888;
   --macro-fat-soft: #e0488812;
   --macro-calories: #22a860;
+  --macro-water: #06b6d4;
+  --macro-water-soft: #06b6d412;
 
   /** Confidence colours */
   --confidence-high: #22a860;
@@ -160,6 +162,8 @@
   --macro-fat: #ff7eb3;
   --macro-fat-soft: #ff7eb315;
   --macro-calories: #4cd080;
+  --macro-water: #22d3ee;
+  --macro-water-soft: #22d3ee15;
 
   /** Confidence colours — dark */
   --confidence-high: #4cd080;
@@ -237,6 +241,8 @@
   --color-macro-fat: var(--macro-fat);
   --color-macro-fat-soft: var(--macro-fat-soft);
   --color-macro-calories: var(--macro-calories);
+  --color-macro-water: var(--macro-water);
+  --color-macro-water-soft: var(--macro-water-soft);
 
   /* Confidence */
   --color-confidence-high: var(--confidence-high);

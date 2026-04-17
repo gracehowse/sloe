@@ -7,8 +7,8 @@ name: "Connect to Expo dev server"
 - tapOn: "Enter URL manually"
 - waitForAnimationToEnd
 
-# Type the Metro URL
-- inputText: "exp://192.168.108.177:8081"
+# Type the Metro URL (pass -e EXPO_DEV_SERVER_URL=... when running the parent flow, or edit for one-off)
+- inputText: ${EXPO_DEV_SERVER_URL}
 - pressKey: Enter
 
 # Wait for the app to bundle and load

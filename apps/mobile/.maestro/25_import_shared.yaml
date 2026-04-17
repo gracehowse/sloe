@@ -1,0 +1,57 @@
+appId: host.exp.Exponent
+name: "Import Shared Recipe — idle state, URL input, source grid"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Discover"
+- waitForAnimationToEnd
+
+# Tap the import CTA on Discover (if visible)
+- runFlow:
+    when:
+      visible: "Import"
+    commands:
+      - tapOn: "Import"
+      - waitForAnimationToEnd
+
+# Verify import screen loaded
+- runFlow:
+    when:
+      visible: "IMPORT"
+    commands:
+      # Verify the screen header
+      - assertVisible: "IMPORT"
+
+      # Verify idle state UI — the paste card
+      - assertVisible:
+          text: "Paste a recipe link|Looking for a link"
+
+      # Verify source grid buttons (Import From section)
+      - runFlow:
+          when:
+            visible: "IMPORT FROM"
+          commands:
+            - assertVisible: "TikTok"
+            - assertVisible: "Instagram"
+            - assertVisible: "YouTube"
+            - assertVisible: "Website"
+
+      # Verify clipboard button
+      - runFlow:
+          when:
+            visible: "Use clipboard"
+          commands:
+            - assertVisible: "Use clipboard"
+
+      # Verify Import button
+      - runFlow:
+          when:
+            visible:
+              text: "Import"
+              index: 1
+          commands:
+            - assertVisible: "Import"
+
+      # Go back
+      - tapOn: "Back"
+      - waitForAnimationToEnd

@@ -10,6 +10,10 @@ npm install
 npx expo start
 ```
 
+If **new native/JS changes look missing** (widgets, sources, etc.), restart Metro with a clean cache: `npx expo start --clear`, or from the repo root: `npm run mobile:dev:clear`.
+
+If **`ENOSPC: no space left on device`** appears during prebuild or when Metro writes cache, free disk on that volume (`df -h .`). **`npm run test:e2e`** (Maestro runner) warns when free space is critically low.
+
 Then open the **development build** (simulator, device, or Xcode) from the Expo CLI menu.
 
 ### Xcode and `ios/` (native project)

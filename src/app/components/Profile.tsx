@@ -245,7 +245,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
       {/* Header: Avatar + Name + Tier Side by Side */}
       <div className="flex items-center gap-3.5 mb-4">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -291,7 +291,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       </div>
 
       {/* Settings Section */}
-      <div className="mb-8">
+      <div className="mb-4">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Settings</p>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {/* Daily Targets Row */}
@@ -370,7 +370,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       </div>
 
       {/* Creator Tools Section */}
-      <div className="mb-8">
+      <div className="mb-4">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Creator Tools</p>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {/* Published Recipes Row */}
@@ -412,7 +412,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       </div>
 
       {/* Legal Section — matches mobile */}
-      <div className="mb-8">
+      <div className="mb-4">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Legal</p>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
@@ -433,14 +433,14 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           void supabase.auth.signOut();
           toast.success("Signed out");
         }}
-        className="w-full py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors mb-8"
+        className="w-full py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors mb-4"
       >
         Sign Out
       </button>
 
       {/* Tabs */}
       <div className="border-t border-border pt-8">
-        <div className="flex gap-6 mb-8">
+        <div className="flex gap-6 mb-4">
           <button
             onClick={() => setActiveTab("targets")}
             className={`pb-3 border-b-2 transition-colors font-medium ${
@@ -467,7 +467,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       {activeTab === "targets" && (
         <div className="space-y-8">
           {/* Macro Calculator */}
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-6">
               <IconBox tone="primary" size="md">
                 <Icons.target className="w-5 h-5" />
@@ -651,17 +651,15 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           {/* Calculated Targets */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg">
-            <div className="bg-primary/10 px-6 py-4 border-b border-primary/30">
-              <div className="flex items-center gap-2">
-                <IconBox tone="primary" size="md">
-                  <Icons.trendUp className="w-5 h-5" />
-                </IconBox>
-                <h3 className="text-foreground">Your Daily Targets</h3>
-              </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+              <IconBox tone="primary" size="sm">
+                <Icons.trendUp className="w-4 h-4" />
+              </IconBox>
+              <h3 className="text-sm font-semibold text-foreground">Your Daily Targets</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-border">
-              <div className="px-6 py-6 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -670,11 +668,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.calories}</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.calories}</p>
                 )}
                 <p className="text-sm text-muted-foreground">Calories</p>
               </div>
-              <div className="px-6 py-6 text-center">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -683,12 +681,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.protein}g</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.protein}g</p>
                 )}
                 <p className="text-sm text-muted-foreground">Protein</p>
                 <p className="text-xs text-muted-foreground mt-1">2.2g per kg</p>
               </div>
-              <div className="px-6 py-6 text-center">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -697,12 +695,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.carbs}g</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.carbs}g</p>
                 )}
                 <p className="text-sm text-muted-foreground">Carbs</p>
                 <p className="text-xs text-muted-foreground mt-1">Remainder</p>
               </div>
-              <div className="px-6 py-6 text-center">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -711,12 +709,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.fat}g</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.fat}g</p>
                 )}
                 <p className="text-sm text-muted-foreground">Fat</p>
                 <p className="text-xs text-muted-foreground mt-1">25% of kcal</p>
               </div>
-              <div className="px-6 py-6 text-center">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -725,11 +723,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.fiber}g</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.fiber}g</p>
                 )}
                 <p className="text-sm text-muted-foreground">Fiber</p>
               </div>
-              <div className="px-6 py-6 text-center">
+              <div className="px-4 py-4 text-center">
                 {isEditingTargets ? (
                   <input
                     type="number"
@@ -738,7 +736,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
                     className="w-full text-center text-3xl font-bold bg-transparent focus:outline-none"
                   />
                 ) : (
-                  <p className="text-4xl font-bold text-foreground mb-2">{displayTargets.waterMl}</p>
+                  <p className="text-[22px] font-bold text-foreground mb-1">{displayTargets.waterMl}</p>
                 )}
                 <p className="text-sm text-muted-foreground">Water (ml)</p>
               </div>
@@ -802,7 +800,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
 
       {activeTab === "progress" && (
         <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <IconBox tone="primary" size="md">
                 <Icons.activity className="w-5 h-5" />
@@ -823,7 +821,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+            <div className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <IconBox tone="success" size="sm">
                   <Icons.target className="w-5 h-5" />
@@ -833,7 +831,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
               <p className="text-4xl font-bold text-foreground">{loggingStats.daysWithLogs}</p>
               <p className="text-xs text-muted-foreground mt-2">Distinct days in your nutrition journal</p>
             </div>
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+            <div className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <IconBox tone="primary" size="sm">
                   <Icons.dinner className="w-5 h-5" />
@@ -845,7 +843,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+          <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h3 className="text-foreground">Recent days</h3>
               {onOpenNutrition ? (

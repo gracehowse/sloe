@@ -1,0 +1,31 @@
+# Ordered suite for `maestro test .maestro/` (not every YAML in the folder — see flows not listed below).
+# Omitted by design: 00_connect (manual Expo URL), 09_onboarding (long wizard), 19_paywall (gated / flaky),
+#   23_nutrition_sources (requires external link), 26_recipe_verify (requires specific recipe state),
+#   28_notifications_prompt (post-onboarding only).
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01_navigation.yaml
+    - 02_today_screen.yaml
+    - 03_meal_plan.yaml
+    - 04_profile_settings.yaml
+    - 05_recipe_detail.yaml
+    - 06_burn_detail.yaml
+    - 07_progress.yaml
+    - 08_voice_log.yaml
+    - 10_search.yaml
+    - 11_discover.yaml
+    - 12_library.yaml
+    - 13_fasting.yaml
+    - 14_weight_tracker.yaml
+    - 15_meal_nutrition.yaml
+    - 16_shopping.yaml
+    - 17_cook_mode.yaml
+    - 18_macro_detail.yaml
+    - 20_notifications.yaml
+    - 21_create_recipe.yaml
+    - 22_barcode_scanner.yaml
+    - 24_health_sync.yaml
+    - 25_import_shared.yaml
+    - 27_progress_metric.yaml
+    - 29_more_menu.yaml

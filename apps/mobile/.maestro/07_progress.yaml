@@ -1,5 +1,5 @@
 appId: host.exp.Exponent
-name: "Progress screen — stats, charts, weight journey"
+name: "Progress screen — stats, charts, weight journey, time range"
 ---
 - runFlow: shared/login.yaml
 
@@ -11,14 +11,36 @@ name: "Progress screen — stats, charts, weight journey"
 - assertVisible:
     text: "Avg Calories|Your progress will appear here"
 
-# If data exists, check key elements
+# If data exists, verify full stat grid and charts
 - runFlow:
     when:
       visible: "Avg Calories"
     commands:
       - assertVisible: "Protein Hit"
       - assertVisible: "Streak"
-      # Scroll to see more
+
+      # Scroll to weight section
       - scrollUntilVisible:
           element: "Weight"
           direction: DOWN
+      - assertVisible: "Weight"
+
+      # Verify time range selector if present
+      - runFlow:
+          when:
+            visible: "7D"
+          commands:
+            - assertVisible: "7D"
+            - assertVisible: "30D"
+
+      # Scroll back to top
+      - scrollUntilVisible:
+          element: "Weekly report"
+          direction: UP
+
+# If empty state, verify guidance text
+- runFlow:
+    when:
+      visible: "Your progress will appear here"
+    commands:
+      - assertVisible: "Your progress will appear here"

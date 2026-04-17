@@ -134,6 +134,9 @@ export default function App() {
       setCurrentView(view);
       const params = new URLSearchParams(searchParams.toString());
       params.set("view", view);
+      if (view !== "progress") {
+        params.delete("metric");
+      }
       // Keep deep-linked recipe query if present.
       const q = params.toString();
       router.replace(q ? `/?${q}` : "/", { scroll: false });
@@ -334,12 +337,23 @@ export default function App() {
       {/* Header */}
       <header className="px-5 py-3 flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <h1 className="text-lg font-bold text-foreground tracking-tight">Suppr</h1>
-        <NotificationsBell
-          onOpenRecipe={openRecipeById}
-          onOpenAll={() => {
-            navigateToView("notifications");
-          }}
-        />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigateToView("library")}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
+            aria-label="Recipe library"
+            title="Library"
+          >
+            <Icons.recipe className="w-5 h-5" />
+          </button>
+          <NotificationsBell
+            onOpenRecipe={openRecipeById}
+            onOpenAll={() => {
+              navigateToView("notifications");
+            }}
+          />
+        </div>
       </header>
 
       {/* Content Area */}

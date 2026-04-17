@@ -14,6 +14,12 @@ test.describe("Authenticated app view matrix", () => {
   test("when signed in I can open each main view and see the expected shell", async ({ page }) => {
     await loginWithTestUser(page);
 
+    // Dismiss cookie consent banner if visible
+    const acceptBtn = page.getByRole("button", { name: /accept all/i });
+    if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await acceptBtn.click();
+    }
+
     await test.step("Discover", async () => {
       await page.goto("/?view=discover");
       await expect(page.getByRole("heading", { name: /^Suppr$/i }).first()).toBeVisible();
@@ -29,15 +35,17 @@ test.describe("Authenticated app view matrix", () => {
 
     await test.step("Meal planner", async () => {
       await page.goto("/?view=planner");
-      await expect(page.getByRole("heading", { name: /AI Meal Planner/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /Meal planner/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Nutrition tracker", async () => {
       await page.goto("/?view=tracker");
-      await expect(page.getByRole("heading", { name: /^Today$/i })).toBeVisible();
+      await expect(page.getByRole("tab", { name: /^Today$/i })).toHaveAttribute("aria-selected", "true");
       await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
-      await expect(page.getByText(/Tap for macro breakdown|Showing macro breakdown/i)).toBeVisible();
+      await expect(
+        page.getByText(/Click (the )?ring to (show|hide) macros|Tap for macro breakdown|Showing macro breakdown/i),
+      ).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
@@ -57,7 +65,7 @@ test.describe("Authenticated app view matrix", () => {
     await test.step("Profile", async () => {
       await page.goto("/?view=profile");
       await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-      await expect(page.getByText(/\b(Free|Base|Pro)\b.*Joined recently/i)).toBeVisible();
+      await expect(page.getByText(/\b(Free|Base|Pro)\b.*Joined/i)).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 

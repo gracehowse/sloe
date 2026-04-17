@@ -153,6 +153,7 @@ export const Icons = {
   protein: Beef,
   carbs: Wheat,
   fat: Droplets,
+  water: Droplets,
   food: Apple,
   scale: Scale,
   target: Target,

@@ -1,22 +1,45 @@
 appId: host.exp.Exponent
-name: "Tab navigation — all 5 tabs load"
+name: "Tab navigation — all 5 tabs load and respond"
 ---
 - runFlow: shared/login.yaml
 
-# Verify all tabs
-- assertVisible: "kcal"
+# Verify Today screen loaded with key content
+- assertVisible:
+    text: "Today"
+- assertVisible:
+    text: "LOGGED|kcal"
 
+# Discover tab — verify content loads
 - tapOn: "Discover"
 - waitForAnimationToEnd
+- assertVisible: "Discover"
+- assertVisible: "Recipes that fit your macros"
 
+# Plan tab — verify content loads
 - tapOn: "Plan"
 - assertVisible: "Meal Plan"
+- assertVisible:
+    text: "Generate Plan|Regenerate"
 
+# Progress tab — verify content loads
 - tapOn: "Progress"
 - assertVisible: "Progress"
+- assertVisible: "Weekly report"
 
+# Profile tab — verify content loads
 - tapOn: "Profile"
 - waitForAnimationToEnd
+- assertVisible: "Goals & Targets"
 
+# Return to Today — round-trip complete
 - tapOn: "Today"
-- assertVisible: "kcal"
+- assertVisible: "Today"
+
+# Rapid tab switching — regression test for crash/flicker
+- tapOn: "Discover"
+- tapOn: "Plan"
+- tapOn: "Progress"
+- tapOn: "Profile"
+- tapOn: "Today"
+- waitForAnimationToEnd
+- assertVisible: "Today"

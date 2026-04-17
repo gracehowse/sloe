@@ -17,7 +17,7 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 | **Destructive** | `#e04848` | `Accent.destructive` | `--destructive` | Errors, dangerous actions only — never for over-budget |
 | **Destructive light** | `#ff6c6c` | `Accent.destructiveLight` | `--destructive` (dark) | Dark mode destructive tint |
 | **Magenta** | `#e04888` | `Accent.magenta` | `--macro-fat` | Fat macro, gradient accent — not for standalone body UI |
-| **Cyan** | `#06b6d4` | `Accent.cyan` | n/a | Water tracking, exercise/activity |
+| **Cyan** | `#06b6d4` | `Accent.cyan` | `--macro-water` | Water tracking, exercise/activity |
 | **Orange** | `#f97316` | `Accent.orange` | n/a | Sodium macro |
 | **Info** | `#0ea5e9` | `Accent.info` | n/a | Informational accents |
 

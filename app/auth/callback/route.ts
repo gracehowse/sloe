@@ -5,16 +5,28 @@ import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 
 /**
  * Completes Supabase OAuth / magic-link PKCE: exchanges `?code=` for a session cookie.
- * Add this URL to Supabase → Authentication → URL Configuration → Redirect URLs, e.g.
- * `http://localhost:3000/auth/callback` and `https://your-domain.com/auth/callback`.
+ *
+ * REQUIRED Supabase dashboard config (Authentication → URL Configuration):
+ *   Site URL:       https://suppr-club.com
+ *   Redirect URLs:  https://suppr-club.com/auth/callback
+ *                   http://localhost:3000/auth/callback   (for local dev)
  */
-export async function GET(request: Request) {
+async function handleCallback(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next")?.trim() || "/";
 
-  if (!code) {
-    return NextResponse.redirect(new URL("/login", requestUrl.origin));
+  // Handle OAuth errors (e.g. user cancelled Apple Sign In, provider misconfiguration)
+  const oauthError = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+  if (oauthError || !code) {
+    console.error("[auth/callback] OAuth error:", oauthError, errorDescription);
+    const login = new URL("/login", requestUrl.origin);
+    login.searchParams.set("error", "oauth");
+    if (errorDescription) {
+      login.searchParams.set("error_description", errorDescription);
+    }
+    return NextResponse.redirect(login);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
@@ -40,11 +52,23 @@ export async function GET(request: Request) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
+    console.error("[auth/callback] Code exchange failed:", error.message);
     const login = new URL("/login", requestUrl.origin);
     login.searchParams.set("error", "oauth");
+    login.searchParams.set("error_description", error.message);
     return NextResponse.redirect(login);
   }
 
   const safePath = next.startsWith("/") ? next : "/";
   return NextResponse.redirect(new URL(safePath, requestUrl.origin));
+}
+
+export async function GET(request: Request) {
+  return handleCallback(request);
+}
+
+// Apple Sign In can use form_post response mode which may result in
+// Supabase redirecting via POST in some edge cases.
+export async function POST(request: Request) {
+  return handleCallback(request);
 }

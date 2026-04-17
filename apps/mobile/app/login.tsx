@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,6 +49,8 @@ export default function LoginScreen() {
   const { session, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -259,23 +261,34 @@ export default function LoginScreen() {
       {/* Form */}
       <View style={styles.form}>
         <TextInput
+          ref={emailRef}
           testID="login-email"
           accessibilityLabel="Email input"
+          autoFocus
           autoCapitalize="none"
           keyboardType="email-address"
+          textContentType="none"
+          autoComplete="off"
+          returnKeyType="next"
           placeholder="Email"
           placeholderTextColor={colors.tabIconDefault}
           value={email}
           onChangeText={setEmail}
+          onSubmitEditing={() => passwordRef.current?.focus()}
           style={styles.input}
         />
         <TextInput
+          ref={passwordRef}
           testID="login-password"
           accessibilityLabel="Password input"
+          textContentType="none"
+          autoComplete="off"
+          returnKeyType="go"
           placeholder="Password"
           placeholderTextColor={colors.tabIconDefault}
           value={password}
           onChangeText={setPassword}
+          onSubmitEditing={() => void onSubmit()}
           secureTextEntry
           style={styles.input}
         />

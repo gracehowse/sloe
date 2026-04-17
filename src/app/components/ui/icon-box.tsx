@@ -28,6 +28,7 @@ const iconBoxVariants = cva(
         protein: "bg-macro-protein-soft text-macro-protein",
         carbs: "bg-macro-carbs-soft text-macro-carbs",
         fat: "bg-macro-fat-soft text-macro-fat",
+        water: "bg-macro-water-soft text-macro-water",
         muted: "bg-muted text-muted-foreground",
         ghost: "bg-transparent text-foreground",
       },

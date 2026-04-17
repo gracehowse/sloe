@@ -1,0 +1,61 @@
+appId: host.exp.Exponent
+name: "Health Sync — screen layout, feature list, connect button"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Navigate to Health Sync via Apple Health row in Connections
+- scrollUntilVisible:
+    element: "Apple Health"
+    direction: DOWN
+- tapOn: "Apple Health"
+- waitForAnimationToEnd
+
+# Verify screen title
+- assertVisible: "Health Sync"
+
+# Verify the Apple Health / Health Connect card
+- assertVisible: "Apple Health"
+
+# Verify feature list items
+- assertVisible: "Daily step count"
+- assertVisible: "Weight measurements"
+- assertVisible: "Active energy burned"
+- scrollUntilVisible:
+    element: "Resting energy burned"
+    direction: DOWN
+- assertVisible: "Resting energy burned"
+- assertVisible: "Workouts"
+
+# Verify Nutrition Sync card
+- scrollUntilVisible:
+    element: "Nutrition Sync"
+    direction: DOWN
+- assertVisible: "Nutrition Sync"
+- assertVisible: "Import meals from Health"
+- assertVisible: "Share meals to Health"
+
+# Verify "Clear all imported data" destructive action
+- scrollUntilVisible:
+    element: "Clear all imported data"
+    direction: DOWN
+- assertVisible: "Clear all imported data"
+
+# Verify Connect button OR Expo Go warning
+- runFlow:
+    when:
+      visible: "Connect Health Data"
+    commands:
+      - assertVisible: "Connect Health Data"
+
+- runFlow:
+    when:
+      visible: "Apple Health isn't available"
+    commands:
+      - assertVisible: "Apple Health isn't available"
+
+# Go back
+- back
+- waitForAnimationToEnd

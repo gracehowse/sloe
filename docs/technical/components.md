@@ -12,7 +12,7 @@
 | `DiscoverFeed` | Masonry grid of public community recipes with search/filter |
 | `Library` | Personal saved recipe grid with sort/filter |
 | `MealPlanner` | Drag-and-drop weekly meal planner calendar |
-| `NutritionTracker` | Daily macro diary with food logging and progress rings |
+| `NutritionTracker` | Daily macro diary with food logging, progress rings, and water/hydration tracking card |
 | `FoodSearch` | USDA/OFF food search panel for ingredient verification |
 | `Profile` | User profile editor — body stats, goals, macro targets |
 | `RecipeUpload` | Create/import recipe wizard (manual, URL, image) |

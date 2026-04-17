@@ -13,6 +13,8 @@ import { cn } from "../ui/utils";
  * the mobile CalorieRing component.
  */
 
+export type CalorieRingDisplayMode = "remaining" | "consumed";
+
 interface DailyRingProps extends React.ComponentProps<"div"> {
   consumed: number;
   target: number;
@@ -26,6 +28,8 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   expanded?: boolean;
   /** Toggle expanded */
   onToggle?: () => void;
+  /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
+  displayMode?: CalorieRingDisplayMode;
 }
 
 function DailyRing({
@@ -39,6 +43,7 @@ function DailyRing({
   fatPct = 0,
   expanded = false,
   onToggle,
+  displayMode = "remaining",
   ...props
 }: DailyRingProps) {
   const cx = size / 2;
@@ -47,6 +52,24 @@ function DailyRing({
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
   const offset = circumference * (1 - pct);
   const remaining = Math.max(Math.round(target - consumed), 0);
+  const isOverBudget = consumed > target;
+  const ringColor =
+    displayMode === "consumed"
+      ? isOverBudget
+        ? "var(--destructive)"
+        : "var(--success)"
+      : isOverBudget
+        ? "var(--destructive)"
+        : "var(--macro-calories)";
+  const centerValue = displayMode === "consumed" ? Math.round(consumed) : remaining;
+  const centerLabel =
+    displayMode === "consumed"
+      ? "LOGGED"
+      : isOverBudget
+        ? "Over budget"
+        : "kcal left";
+  const centerValueColor = isOverBudget ? "var(--destructive)" : undefined;
+  const centerLabelColor = isOverBudget ? "var(--destructive)" : undefined;
 
   const macroStroke = 5;
   const macroRadii = [radius - 13, radius - 24, radius - 35];
@@ -88,7 +111,7 @@ function DailyRing({
           cy={cx}
           r={radius}
           fill="none"
-          stroke="var(--macro-calories)"
+          stroke={ringColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -135,14 +158,25 @@ function DailyRing({
       {/* Centre text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span
-          className="tabular-nums font-bold leading-none transition-[font-size] duration-300"
-          style={{ fontSize: expanded ? "22px" : "var(--text-display)" }}
+          className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
+          style={{
+            fontSize: expanded ? "22px" : "var(--text-display)",
+            color: centerValueColor,
+          }}
         >
-          {remaining}
+          {centerValue}
         </span>
-        <span className="text-[9px] font-semibold text-muted-foreground mt-0.5 uppercase tracking-wider">
-          kcal left
+        <span
+          className="text-[11px] font-semibold mt-0.5 uppercase tracking-wider"
+          style={{ color: centerLabelColor ?? "var(--muted-foreground)" }}
+        >
+          {centerLabel}
         </span>
+        {!expanded && (
+          <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+            of {Math.round(target)} kcal
+          </span>
+        )}
       </div>
     </div>
   );
