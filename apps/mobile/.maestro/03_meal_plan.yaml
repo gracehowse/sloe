@@ -1,27 +1,27 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Meal plan — generate, view, shopping list"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Plan"
-- assertVisible: "Meal Plan"
+- tapOn: ".*Plan.*"
+- assertVisible: ".*Meal Plan.*"
 
 # Generate button should be visible
 - assertVisible:
-    text: "Generate Plan|Regenerate"
+    text: ".*(?:Generate Plan|Regenerate).*"
 
 # Tap generate
 - tapOn:
-    text: "Generate Plan|Regenerate"
+    text: ".*(?:Generate Plan|Regenerate).*"
 - waitForAnimationToEnd
 
 # After generating, should see day cards with macros
 - assertVisible:
-    text: "kcal"
+    text: ".*kcal.*"
 
 # Should see meal slot labels
 - assertVisible:
-    text: "Breakfast|Lunch|Dinner"
+    text: ".*(?:Breakfast|Lunch|Dinner).*"
 
 # Shopping list button should appear
-- assertVisible: "Shopping List"
+- assertVisible: ".*Shopping List.*"

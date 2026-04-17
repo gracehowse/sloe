@@ -1,25 +1,25 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Burn detail — navigation and content"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Today"
+- tapOn: ".*Today.*"
 - waitForAnimationToEnd
 
 # Scroll down to burn card (if Health data exists)
 - scrollUntilVisible:
-    element: "burned"
+    element: ".*burned.*"
     direction: DOWN
 
 # If burn card is visible, tap it
 - runFlow:
     when:
-      visible: "burned"
+      visible: ".*burned.*"
     commands:
-      - tapOn: "burned"
-      - assertVisible: "Calorie Burn"
+      - tapOn: ".*burned.*"
+      - assertVisible: ".*Calorie Burn.*"
       - assertVisible:
-          text: "Active energy|Resting energy|Projected"
+          text: ".*(?:Active energy|Resting energy|Projected).*"
       # Navigate back
       - tapOn:
           point: "5%,8%"

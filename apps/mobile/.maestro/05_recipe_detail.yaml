@@ -1,9 +1,9 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Recipe detail — ingredients, nutrition, portions, cook, log"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
 
 # Tap the first recipe card
@@ -12,44 +12,44 @@ name: "Recipe detail — ingredients, nutrition, portions, cook, log"
 
 # Recipe detail should show key sections
 - assertVisible:
-    text: "Ingredients|Servings"
+    text: ".*(?:Ingredients|Servings).*"
 
 # Should see macros
 - assertVisible:
-    text: "kcal|Protein|Carbs|Fat"
+    text: ".*(?:kcal|Protein|Carbs|Fat).*"
 
 # Should see Start Cooking button
-- assertVisible: "Start Cooking"
+- assertVisible: ".*Start Cooking.*"
 
 # Should see Log to journal section
 - scrollUntilVisible:
-    element: "Log to journal"
+    element: ".*Log to journal.*"
     direction: DOWN
-- assertVisible: "Log to journal"
+- assertVisible: ".*Log to journal.*"
 
 # Portion buttons should be visible
-- assertVisible: "1×"
+- assertVisible: ".*1×.*"
 
 # Test portion adjustment — tap 2× if visible
 - runFlow:
     when:
-      visible: "2×"
+      visible: ".*2×.*"
     commands:
-      - tapOn: "2×"
+      - tapOn: ".*2×.*"
       - waitForAnimationToEnd
       # Macros should still be visible (doubled)
-      - assertVisible: "kcal"
+      - assertVisible: ".*kcal.*"
       # Reset to 1×
-      - tapOn: "1×"
+      - tapOn: ".*1×.*"
 
 # Scroll back up to verify recipe title area
 - scrollUntilVisible:
-    element: "Ingredients"
+    element: ".*Ingredients.*"
     direction: UP
 
 # Verify save/unsave button exists
 - assertVisible:
-    text: "Save|Saved|Unsave"
+    text: ".*(?:Save|Saved|Unsave).*"
 
 # Navigate back
 - tapOn:

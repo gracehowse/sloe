@@ -1,52 +1,52 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Fasting — timer ring, start/end, history"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
 # Look for fasting link in profile/settings
 - scrollUntilVisible:
-    element: "Fasting"
+    element: ".*Fasting.*"
     direction: DOWN
 
-- tapOn: "Fasting"
+- tapOn: ".*Fasting.*"
 - waitForAnimationToEnd
 
 # Header
-- assertVisible: "Intermittent Fasting"
+- assertVisible: ".*Intermittent Fasting.*"
 
 # Timer ring area — should show current state
 - assertVisible:
-    text: "Ready when you are|FASTING|FAST COMPLETE"
+    text: ".*(?:Ready when you are|FASTING|FAST COMPLETE).*"
 
 # Window label (e.g., 16:8)
 - assertVisible:
-    text: "16:8|18:6|20:4"
+    text: ".*(?:16:8|18:6|20:4).*"
 
 # Start/End button
 - assertVisible:
-    text: "Start Fast|End Fast|Complete Fast"
+    text: ".*(?:Start Fast|End Fast|Complete Fast).*"
 
 # If not fasting, start a fast
 - runFlow:
     when:
-      visible: "Start Fast"
+      visible: ".*Start Fast.*"
     commands:
-      - tapOn: "Start Fast"
+      - tapOn: ".*Start Fast.*"
       - waitForAnimationToEnd
-      - assertVisible: "FASTING"
-      - assertVisible: "End Fast"
+      - assertVisible: ".*FASTING.*"
+      - assertVisible: ".*End Fast.*"
 
       # End the fast immediately
-      - tapOn: "End Fast"
+      - tapOn: ".*End Fast.*"
       - waitForAnimationToEnd
-      - assertVisible: "Start Fast"
+      - assertVisible: ".*Start Fast.*"
 
 # History section (if any completed sessions)
 - scrollUntilVisible:
-    element: "History"
+    element: ".*History.*"
     direction: DOWN
 
 # Navigate back

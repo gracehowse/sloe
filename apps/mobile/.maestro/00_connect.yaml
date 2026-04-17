@@ -1,10 +1,10 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Connect to Expo dev server"
 ---
 - launchApp
 
 # Tap "Enter URL manually"
-- tapOn: "Enter URL manually"
+- tapOn: ".*Enter URL manually.*"
 - waitForAnimationToEnd
 
 # Type the Metro URL (pass -e EXPO_DEV_SERVER_URL=... when running the parent flow, or edit for one-off)

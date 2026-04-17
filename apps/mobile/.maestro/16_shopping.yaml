@@ -1,35 +1,35 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Shopping list — items, check off, share"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Plan"
+- tapOn: ".*Plan.*"
 - waitForAnimationToEnd
 
 # Shopping List button should be visible after a plan is generated
 - runFlow:
     when:
-      visible: "Shopping List"
+      visible: ".*Shopping List.*"
     commands:
-      - tapOn: "Shopping List"
+      - tapOn: ".*Shopping List.*"
       - waitForAnimationToEnd
 
       # Should see Shopping List header
-      - assertVisible: "Shopping List"
+      - assertVisible: ".*Shopping List.*"
 
       # If items exist, verify list structure
       - runFlow:
           when:
-            visible: "✓"
+            visible: ".*✓.*"
           commands:
-            - assertVisible: "✓"
+            - assertVisible: ".*✓.*"
 
       # If empty, verify empty state
       - runFlow:
           when:
-            visible: "No items"
+            visible: ".*No items.*"
           commands:
-            - assertVisible: "No items"
+            - assertVisible: ".*No items.*"
 
       # Navigate back
       - tapOn:

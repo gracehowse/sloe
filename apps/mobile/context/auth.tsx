@@ -17,10 +17,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // Initial session load
+    // Initial session load with timeout — prevents infinite spinner
+    // if the Supabase call hangs (e.g., slow network on simulator).
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 10000);
+
     supabase.auth.getSession().then(({ data }) => {
       if (!cancelled) {
+        clearTimeout(timeout);
         setSession(data.session);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        clearTimeout(timeout);
         setLoading(false);
       }
     });

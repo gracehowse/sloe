@@ -1,13 +1,13 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Barcode Scanner — permission screen, UI elements"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Today"
+- tapOn: ".*Today.*"
 - waitForAnimationToEnd
 
 # Tap the Scan quick-log button on the Today screen
-- tapOn: "Scan"
+- tapOn: ".*Scan.*"
 - waitForAnimationToEnd
 
 # The barcode screen should show either:
@@ -17,19 +17,19 @@ name: "Barcode Scanner — permission screen, UI elements"
 # Check for permission prompt first
 - runFlow:
     when:
-      visible: "Grant Permission"
+      visible: ".*Grant Permission.*"
     commands:
-      - assertVisible: "camera"
-      - assertVisible: "Grant Permission"
+      - assertVisible: ".*camera.*"
+      - assertVisible: ".*Grant Permission.*"
 
 # If scanner loaded directly (permissions already granted), verify UI
 - runFlow:
     when:
-      visible: "Barcode Scanner"
+      visible: ".*Barcode Scanner.*"
     commands:
-      - assertVisible: "Barcode Scanner"
-      - assertVisible: "Point at a product barcode"
+      - assertVisible: ".*Barcode Scanner.*"
+      - assertVisible: ".*Point at a product barcode.*"
 
 # Navigate back to Today
-- tapOn: "Today"
+- tapOn: ".*Today.*"
 - waitForAnimationToEnd

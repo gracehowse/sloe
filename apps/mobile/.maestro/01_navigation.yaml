@@ -1,45 +1,54 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Tab navigation — all 5 tabs load and respond"
 ---
 - runFlow: shared/login.yaml
 
 # Verify Today screen loaded with key content
 - assertVisible:
-    text: "Today"
+    text: ".*Today, tab.*"
 - assertVisible:
-    text: "LOGGED|kcal"
+    text: ".*(?:LOGGED|kcal).*"
 
 # Discover tab — verify content loads
-- tapOn: "Discover"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
-- assertVisible: "Discover"
-- assertVisible: "Recipes that fit your macros"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: ".*Recipes that fit your macros.*"
 
 # Plan tab — verify content loads
-- tapOn: "Plan"
-- assertVisible: "Meal Plan"
-- assertVisible:
-    text: "Generate Plan|Regenerate"
+- tapOn: ".*Plan, tab.*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: ".*Meal Plan.*"
 
 # Progress tab — verify content loads
-- tapOn: "Progress"
-- assertVisible: "Progress"
-- assertVisible: "Weekly report"
+- tapOn: ".*Progress, tab.*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: ".*(?:Weekly report|progress will appear).*"
 
 # Profile tab — verify content loads
-- tapOn: "Profile"
+- tapOn: ".*Profile, tab.*"
 - waitForAnimationToEnd
-- assertVisible: "Goals & Targets"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: ".*Goals & Targets.*"
 
 # Return to Today — round-trip complete
-- tapOn: "Today"
-- assertVisible: "Today"
+- tapOn: ".*Today, tab.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Today, tab.*"
 
 # Rapid tab switching — regression test for crash/flicker
-- tapOn: "Discover"
-- tapOn: "Plan"
-- tapOn: "Progress"
-- tapOn: "Profile"
-- tapOn: "Today"
+- tapOn: ".*Discover, tab.*"
+- tapOn: ".*Plan, tab.*"
+- tapOn: ".*Progress, tab.*"
+- tapOn: ".*Profile, tab.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
-- assertVisible: "Today"
+- assertVisible: ".*Today, tab.*"

@@ -1,0 +1,109 @@
+appId: com.supprclub.supprapp
+name: "Login — form validation, error states, successful auth"
+---
+# Launch native app
+- launchApp:
+    clearState: false
+
+- extendedWaitUntil:
+    visible: ".*(?:Sign In|Today).*"
+    timeout: 90000
+
+# If already authenticated, sign out first via Profile > More
+- runFlow:
+    when:
+      visible: ".*Today.*"
+    commands:
+      - tapOn: ".*Profile.*"
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element: ".*Sign Out.*"
+          direction: DOWN
+      - tapOn: ".*Sign Out.*"
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible: "Sign In"
+          timeout: 15000
+
+# --- Now on the login screen ---
+- assertVisible: ".*SUPPR.*"
+- assertVisible: ".*Meal plans that hit your macros.*"
+
+# Verify form fields are present
+- assertVisible:
+    id: "login-email"
+- assertVisible:
+    id: "login-password"
+- assertVisible:
+    id: "login-submit"
+
+# Test 1: Submit with empty fields — should show error
+- tapOn:
+    id: "login-submit"
+- waitForAnimationToEnd
+- assertVisible: ".*Enter your email and password.*"
+
+# Test 2: Submit with invalid credentials
+- tapOn:
+    id: "login-email"
+    retryTapIfNoChange: true
+- inputText: "invalid@test.example"
+- tapOn:
+    id: "login-password"
+    retryTapIfNoChange: true
+- inputText: "wrongpassword123"
+- tapOn:
+    point: "50%,15%"
+- waitForAnimationToEnd
+- tapOn:
+    id: "login-submit"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+# Should show an error message (no account or invalid)
+- extendedWaitUntil:
+    visible: ".*(?:No account found|Invalid|error|failed|couldn't|sign up).*"
+    timeout: 15000
+
+# Test 3: Toggle to Create Account mode
+- tapOn: ".*Create one.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Create Account.*"
+- assertVisible: ".*Already have an account.*"
+
+# Toggle back to Sign In mode
+- tapOn: ".*Sign in.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Sign In.*"
+
+# Test 4: Sign in with valid credentials
+# Clear the email field first
+- tapOn:
+    id: "login-email"
+    retryTapIfNoChange: true
+- eraseText: 50
+- inputText: ${E2E_EMAIL}
+- tapOn:
+    id: "login-password"
+    retryTapIfNoChange: true
+- eraseText: 50
+- inputText: ${E2E_PASSWORD}
+- tapOn:
+    point: "50%,15%"
+- waitForAnimationToEnd
+- tapOn:
+    id: "login-submit"
+    retryTapIfNoChange: true
+
+# Wait for successful navigation — Today screen or onboarding
+- extendedWaitUntil:
+    visible: ".*(?:LOGGED|Today|Enter your|What should we call you|Welcome).*"
+    timeout: 60000
+
+# Dismiss any system dialogs
+- runFlow:
+    when:
+      visible: ".*Not Now.*"
+    commands:
+      - tapOn: ".*Not Now.*"
+      - waitForAnimationToEnd

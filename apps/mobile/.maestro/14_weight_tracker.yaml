@@ -1,48 +1,48 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Weight tracker — sections, input, charts"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Progress"
+- tapOn: ".*Progress.*"
 - waitForAnimationToEnd
 
 # Scroll to find weight entry point
 - scrollUntilVisible:
-    element: "Weight"
+    element: ".*Weight.*"
     direction: DOWN
 
 # Tap into weight tracker
-- tapOn: "Weight"
+- tapOn: ".*Weight.*"
 - waitForAnimationToEnd
 
 # Weight tracker screen sections
-- assertVisible: "Weight"
+- assertVisible: ".*Weight.*"
 
 # Should see input field for weight
 - assertVisible:
-    text: "Weight \\(kg\\)|Weight \\(lb\\)"
+    text: ".*(?:Weight \\(kg\\)|Weight \\(lb\\)).*"
 
 # Save button
-- assertVisible: "Save"
+- assertVisible: ".*Save.*"
 
 # Journey section
 - scrollUntilVisible:
-    element: "Journey"
+    element: ".*Journey.*"
     direction: DOWN
 
 # Steps section
 - scrollUntilVisible:
-    element: "Steps"
+    element: ".*Steps.*"
     direction: DOWN
 
 # Water section
 - scrollUntilVisible:
-    element: "Water"
+    element: ".*Water.*"
     direction: DOWN
 
 # Body Fat section
 - scrollUntilVisible:
-    element: "Body Fat"
+    element: ".*Body Fat.*"
     direction: DOWN
 
 # Navigate back

@@ -1,0 +1,72 @@
+appId: com.supprclub.supprapp
+name: "Food search modal — search, results, portion selection"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: ".*Today, tab.*"
+- waitForAnimationToEnd
+
+# Open food search via the Search quick-log button
+- tapOn: ".*Search.*"
+- waitForAnimationToEnd
+
+# Verify food search screen/modal loaded
+- assertVisible:
+    text: ".*(?:Food search|Search foods).*"
+
+# Type a common food item
+- tapOn:
+    text: ".*(?:Search foods|Search).*"
+    index: 0
+- inputText: "chicken breast"
+- waitForAnimationToEnd
+
+# Tap search or submit
+- runFlow:
+    when:
+      visible:
+        id: "food-search-submit"
+    commands:
+      - tapOn:
+          id: "food-search-submit"
+
+- runFlow:
+    when:
+      notVisible:
+        id: "food-search-submit"
+    commands:
+      - pressKey: Enter
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Should show results or API unavailable message
+- runFlow:
+    when:
+      visible: ".*(?:FDC|chicken|Chicken|breast|Breast|kcal|cal).*"
+    commands:
+      # Results are showing — verify result items have nutrition info
+      - assertVisible:
+          text: ".*(?:kcal|cal|Calories).*"
+      # Tap the first result to see detail/portion selection
+      - tapOn:
+          text: ".*(?:chicken|Chicken).*"
+          index: 0
+      - waitForAnimationToEnd
+      # Should show portion or quantity selection
+      - assertVisible:
+          text: ".*(?:Serving|Amount|Portion|Log|Add|g |oz).*"
+      # Go back without logging
+      - back
+      - waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: ".*Food search isn't available.*"
+    commands:
+      - assertVisible: ".*Food search isn't available.*"
+
+# Go back to Today
+- back
+- waitForAnimationToEnd

@@ -1,0 +1,61 @@
+appId: com.supprclub.supprapp
+name: "Profile & targets — nutrition goals, dietary prefs, body stats"
+---
+- runFlow: shared/login.yaml
+
+# Navigate to Profile tab
+- tapOn: ".*Profile, tab.*"
+- waitForAnimationToEnd
+
+# Tap Daily Targets to open the profile editor
+- tapOn: ".*Daily Targets.*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify the profile/targets screen loaded
+- assertVisible:
+    text: ".*(?:Goals & Targets|Daily Targets|Calories|Profile).*"
+
+# Verify calorie/macro targets are visible
+- assertVisible:
+    text: ".*(?:Calories|kcal).*"
+- assertVisible:
+    text: ".*(?:Protein|protein).*"
+- assertVisible:
+    text: ".*(?:Carbs|carbs).*"
+- assertVisible:
+    text: ".*(?:Fat|fat).*"
+
+# Look for body stats section
+- scrollUntilVisible:
+    element: ".*(?:Body stats|Weight|Height|Activity).*"
+    direction: DOWN
+
+# Verify body stat fields are present
+- assertVisible:
+    text: ".*(?:Weight|kg|lbs).*"
+
+# Look for goal selector
+- scrollUntilVisible:
+    element: ".*(?:Goal|Lose|Maintain|Gain).*"
+    direction: DOWN
+- assertVisible:
+    text: ".*(?:Lose|Maintain|Gain).*"
+
+# Look for activity level
+- runFlow:
+    when:
+      visible: ".*(?:Activity|Sedentary|Lightly|Moderately|Very|Extra).*"
+    commands:
+      - assertVisible:
+          text: ".*(?:Activity|Sedentary|Lightly|Moderately|Very|Extra).*"
+
+# Scroll back to top
+- scrollUntilVisible:
+    element: ".*(?:Calories|kcal).*"
+    direction: UP
+
+# Navigate back
+- tapOn:
+    point: "5%,8%"
+- waitForAnimationToEnd

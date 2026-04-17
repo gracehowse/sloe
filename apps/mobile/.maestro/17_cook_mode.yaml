@@ -1,9 +1,9 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Cook mode — step navigation, timer, completion"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
 
 # Tap the first recipe card
@@ -13,43 +13,43 @@ name: "Cook mode — step navigation, timer, completion"
 
 # Look for Start Cooking button
 - scrollUntilVisible:
-    element: "Start Cooking"
+    element: ".*Start Cooking.*"
     direction: DOWN
 
 - runFlow:
     when:
-      visible: "Start Cooking"
+      visible: ".*Start Cooking.*"
     commands:
-      - tapOn: "Start Cooking"
+      - tapOn: ".*Start Cooking.*"
       - waitForAnimationToEnd
 
       # Cook mode screen should show
-      - assertVisible: "Exit"
+      - assertVisible: ".*Exit.*"
       - assertVisible:
-          text: "Step \\d+ of \\d+"
+          text: ".*Step \\d+ of \\d+.*"
 
       # Timer controls
       - assertVisible:
-          text: "Start Timer"
+          text: ".*Start Timer.*"
 
       # Tap Start Timer
-      - tapOn: "Start Timer"
+      - tapOn: ".*Start Timer.*"
       - waitForAnimationToEnd
-      - assertVisible: "Stop Timer"
-      - tapOn: "Stop Timer"
+      - assertVisible: ".*Stop Timer.*"
+      - tapOn: ".*Stop Timer.*"
 
       # Navigation buttons
-      - assertVisible: "Next"
-      - tapOn: "Next"
+      - assertVisible: ".*Next.*"
+      - tapOn: ".*Next.*"
       - waitForAnimationToEnd
 
       # Should advance to step 2
       - assertVisible:
-          text: "Step 2 of"
+          text: ".*Step 2 of.*"
 
       # Previous button should now work
-      - assertVisible: "Previous"
+      - assertVisible: ".*Previous.*"
 
       # Exit cook mode
-      - tapOn: "Exit"
+      - tapOn: ".*Exit.*"
       - waitForAnimationToEnd

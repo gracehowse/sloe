@@ -1,4 +1,4 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Paywall — Pro trial, timeline, free option"
 ---
 # The paywall is shown after onboarding completes or can appear on launch.
@@ -8,28 +8,28 @@ name: "Paywall — Pro trial, timeline, free option"
 
 - runFlow:
     when:
-      visible: "SUPPR PRO"
+      visible: ".*SUPPR PRO.*"
     commands:
       # Header
-      - assertVisible: "SUPPR PRO"
-      - assertVisible: "Try Pro free"
-      - assertVisible: "for 7 days"
+      - assertVisible: ".*SUPPR PRO.*"
+      - assertVisible: ".*Try Pro free.*"
+      - assertVisible: ".*for 7 days.*"
 
       # Timeline items
-      - assertVisible: "Your targets are set"
-      - assertVisible: "Start importing recipes"
+      - assertVisible: ".*Your targets are set.*"
+      - assertVisible: ".*Start importing recipes.*"
 
       - scrollUntilVisible:
-          element: "Trial ends"
+          element: ".*Trial ends.*"
           direction: DOWN
-      - assertVisible: "Trial ends"
+      - assertVisible: ".*Trial ends.*"
 
       # Trial CTA button
       - scrollUntilVisible:
-          element: "Start Free Trial"
+          element: ".*Start Free Trial.*"
           direction: DOWN
 
       # Restore option
       - scrollUntilVisible:
-          element: "Restore"
+          element: ".*Restore.*"
           direction: DOWN

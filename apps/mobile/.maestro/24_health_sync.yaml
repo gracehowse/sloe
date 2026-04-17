@@ -1,60 +1,60 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Health Sync — screen layout, feature list, connect button"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
 # Navigate to Health Sync via Apple Health row in Connections
 - scrollUntilVisible:
-    element: "Apple Health"
+    element: ".*Apple Health.*"
     direction: DOWN
-- tapOn: "Apple Health"
+- tapOn: ".*Apple Health.*"
 - waitForAnimationToEnd
 
 # Verify screen title
-- assertVisible: "Health Sync"
+- assertVisible: ".*Health Sync.*"
 
 # Verify the Apple Health / Health Connect card
-- assertVisible: "Apple Health"
+- assertVisible: ".*Apple Health.*"
 
 # Verify feature list items
-- assertVisible: "Daily step count"
-- assertVisible: "Weight measurements"
-- assertVisible: "Active energy burned"
+- assertVisible: ".*Daily step count.*"
+- assertVisible: ".*Weight measurements.*"
+- assertVisible: ".*Active energy burned.*"
 - scrollUntilVisible:
-    element: "Resting energy burned"
+    element: ".*Resting energy burned.*"
     direction: DOWN
-- assertVisible: "Resting energy burned"
-- assertVisible: "Workouts"
+- assertVisible: ".*Resting energy burned.*"
+- assertVisible: ".*Workouts.*"
 
 # Verify Nutrition Sync card
 - scrollUntilVisible:
-    element: "Nutrition Sync"
+    element: ".*Nutrition Sync.*"
     direction: DOWN
-- assertVisible: "Nutrition Sync"
-- assertVisible: "Import meals from Health"
-- assertVisible: "Share meals to Health"
+- assertVisible: ".*Nutrition Sync.*"
+- assertVisible: ".*Import meals from Health.*"
+- assertVisible: ".*Share meals to Health.*"
 
 # Verify "Clear all imported data" destructive action
 - scrollUntilVisible:
-    element: "Clear all imported data"
+    element: ".*Clear all imported data.*"
     direction: DOWN
-- assertVisible: "Clear all imported data"
+- assertVisible: ".*Clear all imported data.*"
 
 # Verify Connect button OR Expo Go warning
 - runFlow:
     when:
-      visible: "Connect Health Data"
+      visible: ".*Connect Health Data.*"
     commands:
-      - assertVisible: "Connect Health Data"
+      - assertVisible: ".*Connect Health Data.*"
 
 - runFlow:
     when:
-      visible: "Apple Health isn't available"
+      visible: ".*Apple Health isn't available.*"
     commands:
-      - assertVisible: "Apple Health isn't available"
+      - assertVisible: ".*Apple Health isn't available.*"
 
 # Go back
 - back

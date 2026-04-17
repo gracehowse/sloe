@@ -1,0 +1,90 @@
+appId: com.supprclub.supprapp
+name: "Settings hub — sections, navigation, profile info"
+---
+- runFlow: shared/login.yaml
+
+# Navigate to Profile/More tab
+- tapOn: ".*Profile, tab.*"
+- waitForAnimationToEnd
+
+# Verify profile header — avatar initial and email or name
+- assertVisible:
+    text: ".*(?:Your Profile|@).*"
+
+# Verify stat pills
+- assertVisible: ".*Recipes.*"
+- assertVisible: ".*Streak.*"
+- assertVisible: ".*Score.*"
+
+# Verify Goals & Targets section
+- assertVisible: ".*Goals & Targets.*"
+- assertVisible: ".*Daily Targets.*"
+- assertVisible: ".*Dashboard Widgets.*"
+- assertVisible: ".*Week Starts On.*"
+
+# Verify Connections section
+- scrollUntilVisible:
+    element: ".*Connections.*"
+    direction: DOWN
+- assertVisible: ".*Apple Health.*"
+- assertVisible: ".*Notifications.*"
+
+# Verify Recipes section
+- scrollUntilVisible:
+    element: ".*Create Recipe.*"
+    direction: DOWN
+- assertVisible: ".*Create Recipe.*"
+
+# Verify App section
+- scrollUntilVisible:
+    element: ".*Appearance.*"
+    direction: DOWN
+- assertVisible: ".*Appearance.*"
+- assertVisible: ".*Export Data.*"
+- assertVisible: ".*Help & Information.*"
+
+# Verify Legal section
+- scrollUntilVisible:
+    element: ".*Legal.*"
+    direction: DOWN
+- assertVisible: ".*Privacy Policy.*"
+- assertVisible: ".*Terms of Use.*"
+
+# Verify Danger Zone
+- scrollUntilVisible:
+    element: ".*Danger Zone.*"
+    direction: DOWN
+- assertVisible: ".*Reset or erase everything.*"
+
+# Navigate into Daily Targets (profile editor)
+- scrollUntilVisible:
+    element: ".*Daily Targets.*"
+    direction: UP
+- tapOn: ".*Daily Targets.*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify profile editor loaded
+- assertVisible:
+    text: ".*(?:Goals & Targets|Daily Targets|Calories|Profile).*"
+
+# Navigate back
+- tapOn:
+    point: "5%,8%"
+- waitForAnimationToEnd
+
+# Navigate into Appearance (settings)
+- scrollUntilVisible:
+    element: ".*Appearance.*"
+    direction: DOWN
+- tapOn: ".*Appearance.*"
+- waitForAnimationToEnd
+
+# Verify settings screen loaded
+- assertVisible:
+    text: ".*(?:Theme|Automatic|Light|Dark|Appearance).*"
+
+# Navigate back to Profile tab
+- tapOn:
+    point: "5%,8%"
+- waitForAnimationToEnd

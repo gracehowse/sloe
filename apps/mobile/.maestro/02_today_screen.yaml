@@ -1,41 +1,41 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Today screen — ring, macros, quick-log buttons"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Today"
+- tapOn: ".*Today.*"
 - waitForAnimationToEnd
 
 # Calorie ring visible
 - assertVisible:
-    text: "LOGGED|kcal"
+    text: ".*(?:LOGGED|kcal).*"
 
 # Macro cards visible (at least one)
 - assertVisible:
-    text: "Protein|Carbs|Fat"
+    text: ".*(?:Protein|Carbs|Fat).*"
 
 # Quick-log buttons visible
-- assertVisible: "Photo"
-- assertVisible: "Voice"
-- assertVisible: "Search"
-- assertVisible: "Scan"
+- assertVisible: ".*Photo.*"
+- assertVisible: ".*Voice.*"
+- assertVisible: ".*Search.*"
+- assertVisible: ".*Scan.*"
 
 # Tap to show/hide macros
 - runFlow:
     when:
-      visible: "Tap to show macros"
+      visible: ".*Tap to show macros.*"
     commands:
-      - tapOn: "Tap to show macros"
-      - assertVisible: "Tap to hide macros"
-      - tapOn: "Tap to hide macros"
-      - assertVisible: "Tap to show macros"
+      - tapOn: ".*Tap to show macros.*"
+      - assertVisible: ".*Tap to hide macros.*"
+      - tapOn: ".*Tap to hide macros.*"
+      - assertVisible: ".*Tap to show macros.*"
 
 - runFlow:
     when:
-      visible: "Tap to hide macros"
+      visible: ".*Tap to hide macros.*"
     commands:
-      - tapOn: "Tap to hide macros"
-      - assertVisible: "Tap to show macros"
+      - tapOn: ".*Tap to hide macros.*"
+      - assertVisible: ".*Tap to show macros.*"
 
 # Scroll down to verify meal journal section loads
 - swipe:
@@ -50,18 +50,18 @@ name: "Today screen — ring, macros, quick-log buttons"
 - waitForAnimationToEnd
 
 # Verify Quick-log buttons are functional — tap Voice and verify fallback
-- tapOn: "Voice"
+- tapOn: ".*Voice.*"
 - waitForAnimationToEnd
 - assertVisible:
-    text: "Describe what you ate|Cancel"
-- tapOn: "Cancel"
+    text: ".*(?:Describe what you ate|Cancel).*"
+- tapOn: ".*Cancel.*"
 - waitForAnimationToEnd
 
 # Verify Search quick-log opens search
-- tapOn: "Search"
+- tapOn: ".*Search.*"
 - waitForAnimationToEnd
 - assertVisible:
-    text: "Food search|Search foods"
+    text: ".*(?:Food search|Search foods).*"
 # Go back
 - back
 - waitForAnimationToEnd

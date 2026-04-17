@@ -48,6 +48,9 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { session, loading } = useAuth();
   const [email, setEmail] = useState("");
+  // Refs track native text that Maestro's inputText may set without triggering onChangeText.
+  const emailNativeRef = useRef("");
+  const passwordNativeRef = useRef("");
   const [password, setPassword] = useState("");
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -182,7 +185,13 @@ export default function LoginScreen() {
 
   async function onSubmit() {
     setMessage(null);
-    if (!email.trim() || !password) {
+    // Read native text from TextInput refs as fallback (Maestro's inputText
+    // can set native text without triggering React's onChangeText).
+    const nativeEmail = (emailRef.current as any)?.props?.value ?? "";
+    const nativePassword = (passwordRef.current as any)?.props?.value ?? "";
+    const resolvedEmail = email.trim() || emailNativeRef.current.trim() || nativeEmail.trim();
+    const resolvedPassword = password || passwordNativeRef.current || nativePassword;
+    if (!resolvedEmail || !resolvedPassword) {
       setMessage("Enter your email and password.");
       return;
     }
@@ -190,14 +199,14 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
+          email: resolvedEmail,
+          password: resolvedPassword,
         });
         if (error) setMessage(formatAuthError(error));
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+          email: resolvedEmail,
+          password: resolvedPassword,
         });
         if (error) {
           if (error.message.includes("Invalid login")) {
@@ -272,8 +281,8 @@ export default function LoginScreen() {
           returnKeyType="next"
           placeholder="Email"
           placeholderTextColor={colors.tabIconDefault}
-          value={email}
-          onChangeText={setEmail}
+          defaultValue={email}
+          onChangeText={(t) => { setEmail(t); emailNativeRef.current = t; }}
           onSubmitEditing={() => passwordRef.current?.focus()}
           style={styles.input}
         />
@@ -286,14 +295,15 @@ export default function LoginScreen() {
           returnKeyType="go"
           placeholder="Password"
           placeholderTextColor={colors.tabIconDefault}
-          value={password}
-          onChangeText={setPassword}
+          defaultValue={password}
+          onChangeText={(t) => { setPassword(t); passwordNativeRef.current = t; }}
           onSubmitEditing={() => void onSubmit()}
           secureTextEntry
           style={styles.input}
         />
 
         <Pressable
+          testID="login-submit"
           style={[styles.btn, busy && styles.btnDisabled]}
           onPress={() => void onSubmit()}
           disabled={busy}

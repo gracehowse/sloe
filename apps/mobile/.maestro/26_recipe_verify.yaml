@@ -1,64 +1,64 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Recipe Verify — ingredient list, nutrition facts, confirm button"
 ---
 - runFlow: shared/login.yaml
 
 # Navigate to a recipe detail first, then to verify
 # Go to Discover → tap first recipe → look for verify/review link
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
 
 # Tap the first recipe card
 - runFlow:
     when:
-      visible: "kcal"
+      visible: ".*kcal.*"
     commands:
       - tapOn:
-          text: "kcal"
+          text: ".*kcal.*"
           index: 0
       - waitForAnimationToEnd
 
       # On recipe detail, look for a "Review ingredients" or verify link
       - runFlow:
           when:
-            visible: "Review ingredients"
+            visible: ".*Review ingredients.*"
           commands:
             - scrollUntilVisible:
-                element: "Review ingredients"
+                element: ".*Review ingredients.*"
                 direction: DOWN
-            - tapOn: "Review ingredients"
+            - tapOn: ".*Review ingredients.*"
             - waitForAnimationToEnd
 
             # Verify the verify screen loaded
-            - assertVisible: "VERIFY"
+            - assertVisible: ".*VERIFY.*"
 
             # Verify totals card
-            - assertVisible: "calories per serving"
+            - assertVisible: ".*calories per serving.*"
 
             # Verify per-serving macros
-            - assertVisible: "protein"
-            - assertVisible: "carbs"
-            - assertVisible: "fat"
+            - assertVisible: ".*protein.*"
+            - assertVisible: ".*carbs.*"
+            - assertVisible: ".*fat.*"
 
             # Verify Confirm button at bottom
             - scrollUntilVisible:
-                element: "Confirm All|Save Changes"
+                element: ".*(?:Confirm All|Save Changes).*"
                 direction: DOWN
             - assertVisible:
-                text: "Confirm All|Save Changes"
+                text: ".*(?:Confirm All|Save Changes).*"
 
             # Go back
-            - tapOn: "Back"
+            - tapOn: ".*Back.*"
             - waitForAnimationToEnd
 
       # If no review link, navigate back
       - runFlow:
           when:
-            notVisible: "Review ingredients"
+            notVisible: ".*Review ingredients.*"
           commands:
             - back
             - waitForAnimationToEnd
 
 # Navigate back to home
-- tapOn: "Today"
+- tapOn: ".*Today.*"
 - waitForAnimationToEnd

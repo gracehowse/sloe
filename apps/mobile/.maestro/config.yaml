@@ -5,15 +5,20 @@
 executionOrder:
   continueOnFailure: true
   flowsOrder:
+    - 30_login_auth.yaml
     - 01_navigation.yaml
     - 02_today_screen.yaml
+    - 33_meal_journal.yaml
     - 03_meal_plan.yaml
     - 04_profile_settings.yaml
+    - 31_settings_hub.yaml
+    - 34_profile_targets.yaml
     - 05_recipe_detail.yaml
     - 06_burn_detail.yaml
     - 07_progress.yaml
     - 08_voice_log.yaml
     - 10_search.yaml
+    - 32_food_search_modal.yaml
     - 11_discover.yaml
     - 12_library.yaml
     - 13_fasting.yaml

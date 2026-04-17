@@ -1,4 +1,4 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Create test account"
 ---
 - launchApp
@@ -6,9 +6,9 @@ name: "Create test account"
 
 - runFlow:
     when:
-      visible: "Recently opened"
+      visible: ".*Recently opened.*"
     commands:
-      - tapOn: "Suppr"
+      - tapOn: ".*Suppr.*"
 
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -18,13 +18,13 @@ name: "Create test account"
 
 - runFlow:
     when:
-      visible: "Today"
+      visible: ".*Today.*"
     commands:
-      - tapOn: "Today"
+      - tapOn: ".*Today.*"
 
 - runFlow:
     when:
-      visible: "Sign In"
+      visible: ".*Sign In.*"
     commands:
       # Switch to sign-up mode
       - tapOn:
@@ -32,15 +32,15 @@ name: "Create test account"
       - waitForAnimationToEnd
 
       # Fill in email (use a fresh address for signup; can match E2E_EMAIL if testing login-only elsewhere)
-      - tapOn: "Email"
+      - tapOn: ".*Email.*"
       - inputText: ${E2E_EMAIL}
 
       # Fill in password
-      - tapOn: "Password"
+      - tapOn: ".*Password.*"
       - inputText: ${E2E_PASSWORD}
 
       # Tap Create Account
-      - tapOn: "Create Account"
+      - tapOn: ".*Create Account.*"
       - waitForAnimationToEnd
       - waitForAnimationToEnd
       - waitForAnimationToEnd

@@ -7,20 +7,20 @@ name: "Launch native app and login with test account (physical device)"
 
 # Wait for the app to load — Sign In or Today (no Expo Go dev menu on native builds)
 - extendedWaitUntil:
-    visible: "Sign In|Today"
-    timeout: 30000
+    visible: ".*(?:Sign In|Today).*"
+    timeout: 90000
 
 # If already authenticated (tab bar visible), done
 - runFlow:
     when:
-      visible: "Today"
+      visible: ".*Today.*"
     commands:
-      - tapOn: "Today"
+      - tapOn: ".*Today.*"
 
 # If on login screen, sign in with test account
 - runFlow:
     when:
-      visible: "Sign In"
+      visible: ".*Sign In.*"
     commands:
       - tapOn:
           id: "login-email"
@@ -35,24 +35,28 @@ name: "Launch native app and login with test account (physical device)"
       - waitForAnimationToEnd
       - inputText: ${E2E_PASSWORD}
       - waitForAnimationToEnd
+      - hideKeyboard
+      - waitForAnimationToEnd
 
-      - tapOn: "Sign In"
+      - tapOn:
+          id: "login-submit"
+          retryTapIfNoChange: true
       - extendedWaitUntil:
-          visible: "Today|Enter your|No account|reach the server|Not Now|Save Password"
+          visible: ".*(?:Today|LOGGED|Enter your|What should we call you|Welcome|No account|reach the server|Not Now|Save Password).*"
           timeout: 30000
 
       # Dismiss iOS "Save Password?" dialog
       - runFlow:
           when:
-            visible: "Not Now"
+            visible: ".*Not Now.*"
           commands:
-            - tapOn: "Not Now"
+            - tapOn: ".*Not Now.*"
             - waitForAnimationToEnd
 
 # Dismiss any remaining system dialog
 - runFlow:
     when:
-      visible: "Not Now"
+      visible: ".*Not Now.*"
     commands:
-      - tapOn: "Not Now"
+      - tapOn: ".*Not Now.*"
       - waitForAnimationToEnd

@@ -1,45 +1,45 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Nutrition Sources — info screen with all data sources"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
 # Navigate to Help & Information, or directly to nutrition sources
 # Nutrition sources is accessible from various paths; go via profile
 - scrollUntilVisible:
-    element: "Help & Information"
+    element: ".*Help & Information.*"
     direction: DOWN
-- tapOn: "Help & Information"
+- tapOn: ".*Help & Information.*"
 - waitForAnimationToEnd
 
 # If Help opens in-app (the screen exists), verify content
 # Otherwise the external link opens — skip gracefully
 - runFlow:
     when:
-      visible: "About nutrition data"
+      visible: ".*About nutrition data.*"
     commands:
       # Verify screen header
-      - assertVisible: "About nutrition data"
+      - assertVisible: ".*About nutrition data.*"
 
       # Verify all three data sources are listed
-      - assertVisible: "USDA FoodData Central"
+      - assertVisible: ".*USDA FoodData Central.*"
       - scrollUntilVisible:
-          element: "Open Food Facts"
+          element: ".*Open Food Facts.*"
           direction: DOWN
-      - assertVisible: "Open Food Facts"
+      - assertVisible: ".*Open Food Facts.*"
       - scrollUntilVisible:
-          element: "FatSecret Platform API"
+          element: ".*FatSecret Platform API.*"
           direction: DOWN
-      - assertVisible: "FatSecret Platform API"
+      - assertVisible: ".*FatSecret Platform API.*"
 
       # Verify disclaimer text
       - scrollUntilVisible:
-          element: "Nutrition values are estimates"
+          element: ".*Nutrition values are estimates.*"
           direction: DOWN
-      - assertVisible: "Nutrition values are estimates"
+      - assertVisible: ".*Nutrition values are estimates.*"
 
       # Go back
-      - tapOn: "Back"
+      - tapOn: ".*Back.*"
       - waitForAnimationToEnd

@@ -1,23 +1,46 @@
-appId: host.exp.Exponent
-name: "Voice log — opens text input fallback"
+appId: com.supprclub.supprapp
+name: "Voice log — text input fallback, submit, cancel"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Today"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
 # Tap Voice button
-- tapOn: "Voice"
+- tapOn: ".*Voice.*"
+- waitForAnimationToEnd
 
 # Should show the voice log text input (fallback in Expo Go)
 - assertVisible:
-    text: "Voice Log|Describe what you ate"
+    text: ".*(?:Voice Log|Describe what you ate).*"
 
-# Type something
-- tapOn:
-    text: "Type what you ate..."
-- inputText: "2 scrambled eggs and toast"
+# Verify the text input placeholder
+- assertVisible:
+    text: ".*Type what you ate.*"
 
-# Close the sheet
+# Verify Cancel button
+- assertVisible: ".*Cancel.*"
+
+# Type a food description
 - tapOn:
-    text: "Cancel"
+    text: ".*Type what you ate.*"
+- inputText: "2 scrambled eggs and toast with butter"
+- waitForAnimationToEnd
+
+# Verify the submit/log button is present
+- assertVisible:
+    text: ".*(?:Log|Submit|Done|Save).*"
+
+# Cancel instead of submitting (don't create test data)
+- tapOn: ".*Cancel.*"
+- waitForAnimationToEnd
+
+# Verify we're back on Today screen
+- assertVisible:
+    text: ".*(?:LOGGED|kcal).*"
+
+# Re-open and immediately cancel to test dismiss
+- tapOn: ".*Voice.*"
+- waitForAnimationToEnd
+- tapOn: ".*Cancel.*"
+- waitForAnimationToEnd

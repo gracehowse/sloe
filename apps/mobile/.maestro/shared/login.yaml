@@ -1,78 +1,29 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Launch app and login with test account"
 ---
-# Requires: maestro ... -e EXPO_DEV_SERVER_URL=exp://HOST:PORT (from Metro / Expo CLI banner)
-#           -e E2E_EMAIL= -e E2E_PASSWORD= (same names as web Playwright; never commit real secrets)
-- stopApp
-- openLink: ${EXPO_DEV_SERVER_URL}
+# Launch native Suppr build. clearState: false keeps auth session
+# so the app skips login on subsequent flows.
+- launchApp:
+    clearState: false
 
-# Wait for the app to fully load — Continue (dev menu), Sign In, Today,
-# or "Open in Expo Go?" dialog on fresh simulators
+# Wait for the app to load past the auth spinner.
+# The auth provider has a 10s timeout so this should resolve.
 - extendedWaitUntil:
-    visible: "Continue|Sign In|Today|Open in"
-    timeout: 180000
+    visible: ".*(?:Sign In|Today).*"
+    timeout: 30000
 
-# Dismiss "Open in Expo Go?" system dialog on fresh simulators (may appear twice)
+# If already authenticated (tab bar visible), navigate to Today
 - runFlow:
     when:
-      visible: "Open in"
+      visible: ".*Today.*"
     commands:
-      - tapOn:
-          text: "Open"
-          index: 0
-      - waitForAnimationToEnd
-      - runFlow:
-          when:
-            visible: "Open in"
-          commands:
-            - tapOn:
-                text: "Open"
-                index: 0
-            - waitForAnimationToEnd
-      - extendedWaitUntil:
-          visible: "Continue|Sign In|Today"
-          timeout: 180000
-
-# Let the Expo Go dev menu finish animating in (it can appear after "Sign In"
-# is already rendered, causing a race where the "Continue" check below fires
-# before the sheet is visible).
-- waitForAnimationToEnd
-- waitForAnimationToEnd
-
-# Dismiss Expo Go dev menu — it always appears on first cold launch
-- runFlow:
-    when:
-      visible: "Continue"
-    commands:
-      - tapOn: "Continue"
-      - waitForAnimationToEnd
-
-# After dismissing dev menu, wait for the actual app screen
-- extendedWaitUntil:
-    visible: "Sign In|Today"
-    timeout: 15000
-
-# If already authenticated (tab bar visible), done
-- runFlow:
-    when:
-      visible: "Today"
-    commands:
-      - tapOn: "Today"
+      - tapOn: ".*Today.*"
 
 # If on login screen, sign in with test account
 - runFlow:
     when:
-      visible: "Sign In"
+      visible: ".*Sign In.*"
     commands:
-      # Dev menu can re-appear after the initial dismiss — catch it again
-      - runFlow:
-          when:
-            visible: "Continue"
-          commands:
-            - tapOn: "Continue"
-            - waitForAnimationToEnd
-
-      # Tap email field to ensure focus
       - tapOn:
           id: "login-email"
           retryTapIfNoChange: true
@@ -81,7 +32,6 @@ name: "Launch app and login with test account"
       - inputText: ${E2E_EMAIL}
       - waitForAnimationToEnd
 
-      # Tap password field directly instead of relying on Enter→focus
       - tapOn:
           id: "login-password"
           retryTapIfNoChange: true
@@ -90,24 +40,25 @@ name: "Launch app and login with test account"
       - inputText: ${E2E_PASSWORD}
       - waitForAnimationToEnd
 
-      # Submit via the Sign In button (more reliable than pressKey Enter)
-      - tapOn: "Sign In"
+      # Submit via keyboard return key
+      - pressKey: Enter
+
       - extendedWaitUntil:
-          visible: "Today|Enter your|No account|reach the server|Network request|Not Now|Save Password"
+          visible: ".*(?:Today|LOGGED|Enter your|What should we call you|Welcome|No account|reach the server|Not Now|Save Password).*"
           timeout: 45000
 
-      # Dismiss iOS "Save Password?" or "weak password" dialog if it appeared
+      # Dismiss iOS "Save Password?" dialog
       - runFlow:
           when:
-            visible: "Not Now"
+            visible: ".*Not Now.*"
           commands:
-            - tapOn: "Not Now"
+            - tapOn: ".*Not Now.*"
             - waitForAnimationToEnd
 
-# Dismiss iOS system dialog if it appears after login flow
+# Dismiss any remaining system dialog
 - runFlow:
     when:
-      visible: "Not Now"
+      visible: ".*Not Now.*"
     commands:
-      - tapOn: "Not Now"
+      - tapOn: ".*Not Now.*"
       - waitForAnimationToEnd

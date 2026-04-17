@@ -1,80 +1,80 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Create Recipe — form fields, ingredient add, totals, validation"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
 # Navigate to Create Recipe via the settings row
 - scrollUntilVisible:
-    element: "Create Recipe"
+    element: ".*Create Recipe.*"
     direction: DOWN
-- tapOn: "Create Recipe"
+- tapOn: ".*Create Recipe.*"
 - waitForAnimationToEnd
 
 # Verify screen header
-- assertVisible: "CREATE"
+- assertVisible: ".*CREATE.*"
 
 # Verify Cancel button
-- assertVisible: "Cancel"
+- assertVisible: ".*Cancel.*"
 
 # Verify image placeholder
-- assertVisible: "Add photo"
+- assertVisible: ".*Add photo.*"
 
 # Verify form fields are present
-- assertVisible: "Recipe name"
-- assertVisible: "Servings"
-- assertVisible: "Ingredients"
+- assertVisible: ".*Recipe name.*"
+- assertVisible: ".*Servings.*"
+- assertVisible: ".*Ingredients.*"
 
 # Verify the Add ingredient button is visible
 - scrollUntilVisible:
-    element: "Add ingredient"
+    element: ".*Add ingredient.*"
     direction: DOWN
-- assertVisible: "Add ingredient"
+- assertVisible: ".*Add ingredient.*"
 
 # Verify Save button is visible at the bottom
-- assertVisible: "Save Recipe"
+- assertVisible: ".*Save Recipe.*"
 
 # Verify instructions field exists
 - scrollUntilVisible:
-    element: "Instructions (optional)"
+    element: ".*Instructions (optional).*"
     direction: DOWN
-- assertVisible: "Instructions (optional)"
+- assertVisible: ".*Instructions (optional).*"
 
 # Verify publish toggle
 - scrollUntilVisible:
-    element: "Publish to community"
+    element: ".*Publish to community.*"
     direction: DOWN
-- assertVisible: "Publish to community"
+- assertVisible: ".*Publish to community.*"
 
 # Verify meal type picker is present
 - assertVisible:
-    text: "MEAL TYPE"
+    text: ".*MEAL TYPE.*"
 
 # Fill in a recipe name
 - scrollUntilVisible:
-    element: "Recipe name"
+    element: ".*Recipe name.*"
     direction: UP
 - tapOn:
-    text: "e.g. Chicken stir-fry"
+    text: ".*e.g. Chicken stir-fry.*"
 - inputText: "Test Recipe"
 
 # Tap Add ingredient to open food search modal
 - scrollUntilVisible:
-    element: "Add ingredient"
+    element: ".*Add ingredient.*"
     direction: DOWN
-- tapOn: "Add ingredient"
+- tapOn: ".*Add ingredient.*"
 - waitForAnimationToEnd
 
 # Food search modal should open
 - assertVisible:
-    text: "Search|food|ingredient"
+    text: ".*(?:Search|food|ingredient).*"
 
 # Close the search modal
-- tapOn: "Cancel"
+- tapOn: ".*Cancel.*"
 - waitForAnimationToEnd
 
 # Cancel creation — go back
-- tapOn: "Cancel"
+- tapOn: ".*Cancel.*"
 - waitForAnimationToEnd

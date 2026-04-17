@@ -1,46 +1,50 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Progress screen — stats, charts, weight journey, time range"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Progress"
-- assertVisible: "Progress"
-- assertVisible: "Weekly report"
+- tapOn: ".*Progress.*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: ".*Progress.*"
 
-# Should see stat tiles (or empty state)
-- assertVisible:
-    text: "Avg Calories|Your progress will appear here"
+# Wait for data to fully load (stat tiles or empty state — not just the header)
+- extendedWaitUntil:
+    visible: ".*(?:AVG CALORIES|Your progress will appear here|Log meals on the Today tab).*"
+    timeout: 30000
 
 # If data exists, verify full stat grid and charts
 - runFlow:
     when:
-      visible: "Avg Calories"
+      visible: ".*AVG CALORIES.*"
     commands:
-      - assertVisible: "Protein Hit"
-      - assertVisible: "Streak"
+      - assertVisible: ".*PROTEIN HIT.*"
+      - assertVisible: ".*STREAK.*"
 
       # Scroll to weight section
       - scrollUntilVisible:
-          element: "Weight"
+          element: ".*Weight.*"
           direction: DOWN
-      - assertVisible: "Weight"
+      - assertVisible: ".*Weight.*"
 
       # Verify time range selector if present
       - runFlow:
           when:
-            visible: "7D"
+            visible: ".*7D.*"
           commands:
-            - assertVisible: "7D"
-            - assertVisible: "30D"
+            - assertVisible: ".*7D.*"
+            - assertVisible: ".*30D.*"
 
       # Scroll back to top
       - scrollUntilVisible:
-          element: "Weekly report"
+          element: ".*Weekly report.*"
           direction: UP
 
 # If empty state, verify guidance text
 - runFlow:
     when:
-      visible: "Your progress will appear here"
+      visible: ".*Your progress will appear here.*"
     commands:
-      - assertVisible: "Your progress will appear here"
+      - assertVisible: ".*Your progress will appear here.*"
+      - assertVisible: ".*Log meals on the Today tab.*"

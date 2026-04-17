@@ -1,4 +1,4 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Notifications Prompt — enable/skip flow"
 ---
 # This screen appears after onboarding; we test it in isolation by navigating directly
@@ -10,28 +10,28 @@ name: "Notifications Prompt — enable/skip flow"
 # If we can navigate to it via deep link or it's visible, test it
 - runFlow:
     when:
-      visible: "Stay on top of your meals"
+      visible: ".*Stay on top of your meals.*"
     commands:
       # Verify heading
-      - assertVisible: "Stay on top of your meals"
+      - assertVisible: ".*Stay on top of your meals.*"
 
       # Verify description text
       - assertVisible:
-          text: "nudge|log meals|meal plan"
+          text: ".*(?:nudge|log meals|meal plan).*"
 
       # Verify enable button
-      - assertVisible: "Turn on notifications"
+      - assertVisible: ".*Turn on notifications.*"
 
       # Verify skip option
-      - assertVisible: "Skip"
+      - assertVisible: ".*Skip.*"
 
       # Tap Skip (don't trigger actual notification permission in tests)
-      - tapOn: "Skip"
+      - tapOn: ".*Skip.*"
       - waitForAnimationToEnd
 
 # If the prompt isn't showing (user already past onboarding), that's fine
 - runFlow:
     when:
-      notVisible: "Stay on top of your meals"
+      notVisible: ".*Stay on top of your meals.*"
     commands:
-      - assertVisible: "Today"
+      - assertVisible: ".*Today.*"

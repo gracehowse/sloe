@@ -20,9 +20,9 @@ module.exports = {
     'ios.release': {
       type: 'ios.app',
       binaryPath:
-        'ios/build/Build/Products/Release-iphonesimulator/Suppr.app',
+        '/Users/graceturner/Library/Developer/Xcode/DerivedData/Suppr-ghqeqxquekvtgkbebzlhdorlyumf/Build/Products/Release-iphonesimulator/Suppr.app',
       build:
-        'SENTRY_DISABLE_AUTO_UPLOAD=true xcodebuild -workspace ios/Suppr.xcworkspace -scheme Suppr -configuration Release -sdk iphonesimulator -derivedDataPath ios/build -quiet',
+        'SENTRY_DISABLE_AUTO_UPLOAD=true npx expo run:ios --no-install --no-bundler --configuration Release',
     },
   },
   devices: {

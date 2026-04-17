@@ -1,42 +1,42 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Library — header, search, sort, empty state"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
 
 # Tap My Library CTA
-- tapOn: "My Library"
+- tapOn: ".*My Library.*"
 - waitForAnimationToEnd
 
 # Library screen should load
-- assertVisible: "Library"
+- assertVisible: ".*Library.*"
 
 # Sort button should be visible
 - assertVisible:
-    text: "Recent|Calories|Protein"
+    text: ".*(?:Recent|Calories|Protein).*"
 
 # Search input
-- assertVisible: "Search your recipes"
+- assertVisible: ".*Search your recipes.*"
 
 # If there are saved recipes, verify card structure
 - runFlow:
     when:
-      visible: "kcal"
+      visible: ".*kcal.*"
     commands:
-      - assertVisible: "kcal"
+      - assertVisible: ".*kcal.*"
 
 # If library is empty, verify empty state
 - runFlow:
     when:
-      visible: "No saved recipes"
+      visible: ".*No saved recipes.*"
     commands:
-      - assertVisible: "No saved recipes"
-      - assertVisible: "Go to Discover"
-      - assertVisible: "Import a recipe"
+      - assertVisible: ".*No saved recipes.*"
+      - assertVisible: ".*Go to Discover.*"
+      - assertVisible: ".*Import a recipe.*"
 
 # Test sort cycling
 - tapOn:
-    text: "Recent|Calories|Protein"
+    text: ".*(?:Recent|Calories|Protein).*"
 - waitForAnimationToEnd

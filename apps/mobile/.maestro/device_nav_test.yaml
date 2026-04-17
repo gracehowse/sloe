@@ -1,22 +1,22 @@
 appId: com.supprclub.supprapp
 name: "Device — quick navigation test"
 ---
-- runFlow: shared/login-device.yaml
+- runFlow: shared/login.yaml
 
-- assertVisible: "Today"
+- assertVisible: ".*Today.*"
 
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
-- assertVisible: "Discover"
+- assertVisible: ".*Discover.*"
 
-- tapOn: "Plan"
-- assertVisible: "Meal Plan"
+- tapOn: ".*Plan.*"
+- assertVisible: ".*Meal Plan.*"
 
-- tapOn: "Progress"
-- assertVisible: "Progress"
+- tapOn: ".*Progress.*"
+- assertVisible: ".*Progress.*"
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
-- tapOn: "Today"
-- assertVisible: "Today"
+- tapOn: ".*Today.*"
+- assertVisible: ".*Today.*"

@@ -1,4 +1,4 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Notifications — inbox, mark read, empty state"
 ---
 - runFlow: shared/login.yaml
@@ -6,30 +6,30 @@ name: "Notifications — inbox, mark read, empty state"
 # Navigate to notifications
 - runFlow:
     when:
-      visible: "Notifications"
+      visible: ".*Notifications.*"
     commands:
-      - tapOn: "Notifications"
+      - tapOn: ".*Notifications.*"
       - waitForAnimationToEnd
 
-      - assertVisible: "Notifications"
+      - assertVisible: ".*Notifications.*"
 
       # Should show either notifications or empty state
       - runFlow:
           when:
-            visible: "No unread notifications"
+            visible: ".*No unread notifications.*"
           commands:
-            - assertVisible: "No unread notifications"
+            - assertVisible: ".*No unread notifications.*"
 
       # If there are notifications, check mark all read
       - runFlow:
           when:
-            visible: "Mark all read"
+            visible: ".*Mark all read.*"
           commands:
-            - assertVisible: "Mark all read"
+            - assertVisible: ".*Mark all read.*"
 
       # If there are unread notifications
       - runFlow:
           when:
-            visible: "unread"
+            visible: ".*unread.*"
           commands:
-            - assertVisible: "unread"
+            - assertVisible: ".*unread.*"

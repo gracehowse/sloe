@@ -1,31 +1,31 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Profile & settings — sections, navigation, data export"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Profile"
+- tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
 # Check reorganised sections exist
-- assertVisible: "Goals & Targets"
-- assertVisible: "Connections"
-- assertVisible: "Legal"
+- assertVisible: ".*Goals & Targets.*"
+- assertVisible: ".*Connections.*"
+- assertVisible: ".*Legal.*"
 
 # Daily Targets row
-- assertVisible: "Daily Targets"
-- assertVisible: "kcal"
+- assertVisible: ".*Daily Targets.*"
+- assertVisible: ".*kcal.*"
 
 # Help link
-- assertVisible: "Help & Information"
+- assertVisible: ".*Help & Information.*"
 
 # Export Data
-- assertVisible: "Export Data"
+- assertVisible: ".*Export Data.*"
 
 # Privacy Policy
 - scrollUntilVisible:
-    element: "Privacy Policy"
+    element: ".*Privacy Policy.*"
     direction: DOWN
-- assertVisible: "Privacy Policy"
+- assertVisible: ".*Privacy Policy.*"
 
 # Terms
-- assertVisible: "Terms of Use"
+- assertVisible: ".*Terms of Use.*"

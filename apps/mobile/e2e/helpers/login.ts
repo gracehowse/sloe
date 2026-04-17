@@ -13,7 +13,13 @@ export async function loginTestAccount() {
     throw new Error('E2E_EMAIL and E2E_PASSWORD must be set');
   }
 
-  await device.launchApp({ newInstance: true });
+  // React Native keeps the run loop busy with timers/animations, which
+  // blocks Detox's synchronization indefinitely. Pass launchArgs to
+  // disable sync from the start, then use explicit waitFor timeouts.
+  await device.launchApp({
+    newInstance: true,
+    launchArgs: { detoxEnableSynchronization: 0 },
+  });
 
   // Wait for either the login screen or the Today tab to appear
   try {
@@ -28,7 +34,7 @@ export async function loginTestAccount() {
     await element(by.id('login-password')).typeText(password);
 
     // Dismiss keyboard and tap Sign In
-    await element(by.text('Sign In')).tap();
+    await element(by.id('login-submit')).tap();
 
     // Wait for the Today tab to appear (successful login)
     await waitFor(element(by.text('Today')))

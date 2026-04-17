@@ -1,70 +1,72 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Discover — search, filters, import CTA, recipe cards"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: "Discover"
+- tapOn: ".*Discover.*"
 - waitForAnimationToEnd
 
 # Header and subtitle
-- assertVisible: "Discover"
-- assertVisible: "Recipes that fit your macros"
+- assertVisible: ".*Discover.*"
+- assertVisible: ".*Recipes that fit your macros.*"
 
 # Search bar
-- assertVisible: "Search or paste a link..."
+- assertVisible: ".*Search or paste a link....*"
 
 # Filter pills visible
-- assertVisible: "For You"
-- assertVisible: "Popular"
-- assertVisible: "Quick"
-- assertVisible: "High Protein"
+- assertVisible: ".*For You.*"
+- assertVisible: ".*Popular.*"
+- assertVisible: ".*Quick.*"
+- assertVisible: ".*High Protein.*"
 
 # Import CTA
-- assertVisible: "Import from TikTok, Instagram..."
+- assertVisible: ".*Import from TikTok, Instagram....*"
 
 # My Library CTA
-- assertVisible: "My Library"
-- assertVisible: "Saved and imported recipes"
+- assertVisible: ".*My Library.*"
+- assertVisible: ".*Saved and imported recipes.*"
 
 # If recipes are loaded, verify card elements
 - runFlow:
     when:
-      visible: "kcal"
+      visible: ".*kcal.*"
     commands:
-      - assertVisible: "kcal"
-      - assertVisible: "saves"
+      - assertVisible: ".*kcal.*"
+      - assertVisible: ".*saves.*"
 
 # Tap a filter pill
-- tapOn: "High Protein"
+- tapOn: ".*High Protein.*"
 - waitForAnimationToEnd
 
 # Tap back to "For You"
-- tapOn: "For You"
+- tapOn: ".*For You.*"
 - waitForAnimationToEnd
 
 # Try search
-- tapOn: "Search or paste a link..."
+- tapOn: ".*Search or paste a link....*"
 - inputText: "chicken"
 - waitForAnimationToEnd
-- hideKeyboard
+- tapOn:
+    point: "50%,15%"
 
 # Verify search results or empty state
 - runFlow:
     when:
-      visible: "kcal"
+      visible: ".*kcal.*"
     commands:
-      - assertVisible: "kcal"
+      - assertVisible: ".*kcal.*"
 
 - runFlow:
     when:
-      visible: "No recipes found"
+      visible: ".*No recipes found.*"
     commands:
-      - assertVisible: "No recipes found"
+      - assertVisible: ".*No recipes found.*"
 
 # Clear search
-- tapOn: "Search or paste a link..."
+- tapOn: ".*Search or paste a link....*"
 - eraseText: 7
-- hideKeyboard
+- tapOn:
+    point: "50%,15%"
 
 # Scroll down to verify recipe grid loads more content
 - swipe:
@@ -79,9 +81,9 @@ name: "Discover — search, filters, import CTA, recipe cards"
 - waitForAnimationToEnd
 
 # Verify import button navigates
-- tapOn: "Import from TikTok, Instagram..."
+- tapOn: ".*Import from TikTok, Instagram....*"
 - waitForAnimationToEnd
 - assertVisible:
-    text: "IMPORT|Paste a recipe link|Looking for a link"
-- tapOn: "Back"
+    text: ".*(?:IMPORT|Paste a recipe link|Looking for a link).*"
+- tapOn: ".*Back.*"
 - waitForAnimationToEnd

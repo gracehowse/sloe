@@ -1,0 +1,75 @@
+appId: com.supprclub.supprapp
+name: "Meal journal — day strip, logged meals, long-press actions"
+---
+- runFlow: shared/login.yaml
+
+- tapOn: ".*Today, tab.*"
+- waitForAnimationToEnd
+
+# Verify calorie ring is present
+- assertVisible:
+    text: ".*(?:LOGGED|kcal).*"
+
+# Verify the day strip / date navigation is present
+- assertVisible:
+    text: ".*(?:Today|Mon|Tue|Wed|Thu|Fri|Sat|Sun).*"
+
+# Scroll down to journal section
+- swipe:
+    direction: UP
+    duration: 400
+- waitForAnimationToEnd
+
+# Check for meal slots (Breakfast, Lunch, Dinner, Snack)
+- assertVisible:
+    text: ".*(?:Breakfast|Lunch|Dinner|Snack|No meals logged|Add food).*"
+
+# If meals are logged, verify meal card content
+- runFlow:
+    when:
+      visible: ".*(?:Breakfast|Lunch|Dinner).*"
+    commands:
+      # Meal cards should show recipe name or food name
+      - assertVisible:
+          text: ".*(?:kcal|cal|P |C |F ).*"
+
+# Test the log food button (+) if visible
+- runFlow:
+    when:
+      visible: ".*(?:Log food|Add food).*"
+    commands:
+      - tapOn:
+          text: ".*(?:Log food|Add food).*"
+          index: 0
+      - waitForAnimationToEnd
+      # Should open food logging modal/sheet
+      - assertVisible:
+          text: ".*(?:Search|Voice|Photo|Scan|Log|food).*"
+      # Dismiss
+      - runFlow:
+          when:
+            visible: ".*(?:Cancel|Dismiss|Close).*"
+          commands:
+            - tapOn:
+                text: ".*(?:Cancel|Dismiss|Close).*"
+                index: 0
+            - waitForAnimationToEnd
+
+      - runFlow:
+          when:
+            notVisible: ".*(?:Cancel|Dismiss|Close).*"
+          commands:
+            - back
+            - waitForAnimationToEnd
+
+# Scroll back up
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd
+
+# Verify quick-log buttons are still accessible
+- assertVisible: ".*Photo.*"
+- assertVisible: ".*Voice.*"
+- assertVisible: ".*Search.*"
+- assertVisible: ".*Scan.*"

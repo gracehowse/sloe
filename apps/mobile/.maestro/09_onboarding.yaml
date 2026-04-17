@@ -1,4 +1,4 @@
-appId: host.exp.Exponent
+appId: com.supprclub.supprapp
 name: "Onboarding — goal, basic info, activity, plan, strategy, dietary, summary"
 ---
 # This test only runs if the onboarding screen is showing after login.
@@ -10,93 +10,93 @@ name: "Onboarding — goal, basic info, activity, plan, strategy, dietary, summa
 
 - runFlow:
     when:
-      visible: "What's your main goal?"
+      visible: ".*What's your main goal?.*"
     commands:
       # ── Step 1: Goal ──
-      - assertVisible: "Lose weight"
-      - assertVisible: "Eat healthier"
-      - assertVisible: "Build muscle"
+      - assertVisible: ".*Lose weight.*"
+      - assertVisible: ".*Eat healthier.*"
+      - assertVisible: ".*Build muscle.*"
 
       # Select a goal (auto-advances)
-      - tapOn: "Lose weight"
+      - tapOn: ".*Lose weight.*"
       - waitForAnimationToEnd
 
       # ── Step 2: Basic Info ──
-      - assertVisible: "Tell us about yourself"
-      - assertVisible: "Biological sex"
-      - assertVisible: "Female"
-      - assertVisible: "Male"
+      - assertVisible: ".*Tell us about yourself.*"
+      - assertVisible: ".*Biological sex.*"
+      - assertVisible: ".*Female.*"
+      - assertVisible: ".*Male.*"
 
       # Fill in basic info
-      - tapOn: "Female"
+      - tapOn: ".*Female.*"
       - tapOn:
-          text: "Age"
+          text: ".*Age.*"
           index: 1
       - inputText: "28"
       - tapOn:
-          text: "Height"
+          text: ".*Height.*"
           index: 1
       - inputText: "165"
       - tapOn:
-          text: "Weight"
+          text: ".*Weight.*"
           index: 1
       - inputText: "70"
       - tapOn:
-          text: "Goal weight"
+          text: ".*Goal weight.*"
           index: 1
       - inputText: "60"
 
       # Tap Continue
-      - tapOn: "Continue"
+      - tapOn: ".*Continue.*"
       - waitForAnimationToEnd
 
       # ── Step 3: Activity ──
-      - assertVisible: "How active are you?"
-      - tapOn: "Moderately Active"
+      - assertVisible: ".*How active are you?.*"
+      - tapOn: ".*Moderately Active.*"
       - waitForAnimationToEnd
 
       # ── Step 4: Plan Pace (carousel) ──
-      - assertVisible: "Select your plan"
-      - assertVisible: "Select"
+      - assertVisible: ".*Select your plan.*"
+      - assertVisible: ".*Select.*"
       - tapOn:
-          text: "Select"
+          text: ".*Select.*"
           index: 0
       - waitForAnimationToEnd
 
       # ── Step 5: Budget Confirm ──
-      - assertVisible: "calories per day"
-      - tapOn: "Continue"
+      - assertVisible: ".*calories per day.*"
+      - tapOn: ".*Continue.*"
       - waitForAnimationToEnd
 
       # ── Step 6: Strategy ──
-      - assertVisible: "Pick your nutrition strategy"
-      - assertVisible: "Balanced"
-      - tapOn: "Balanced"
+      - assertVisible: ".*Pick your nutrition strategy.*"
+      - assertVisible: ".*Balanced.*"
+      - tapOn: ".*Balanced.*"
       - waitForAnimationToEnd
 
       # ── Step 7: Dietary ──
-      - assertVisible: "Any dietary preferences?"
-      - tapOn: "Continue"
+      - assertVisible: ".*Any dietary preferences?.*"
+      - tapOn: ".*Continue.*"
       - waitForAnimationToEnd
 
       # ── Step 8: Calorie Schedule ──
       - assertVisible:
-          text: "calorie schedule"
-      - assertVisible: "Same every day"
-      - tapOn: "Same every day"
+          text: ".*calorie schedule.*"
+      - assertVisible: ".*Same every day.*"
+      - tapOn: ".*Same every day.*"
       - waitForAnimationToEnd
 
       # ── Step 9: Fasting ──
-      - assertVisible: "Interested in intermittent fasting?"
-      - tapOn: "No, I'm not interested"
+      - assertVisible: ".*Interested in intermittent fasting?.*"
+      - tapOn: ".*No, I'm not interested.*"
       - waitForAnimationToEnd
 
       # ── Step 10: Projection ──
       - assertVisible:
-          text: "Budget|calories"
-      - tapOn: "Continue"
+          text: ".*(?:Budget|calories).*"
+      - tapOn: ".*Continue.*"
       - waitForAnimationToEnd
 
       # ── Step 11: Summary ──
-      - assertVisible: "You're all set up"
-      - assertVisible: "Get Started"
+      - assertVisible: ".*You're all set up.*"
+      - assertVisible: ".*Get Started.*"
