@@ -72,38 +72,52 @@ export const Brand = {
   pink: Accent.magenta,
 };
 
-/** Dark-first color system */
+/**
+ * Dark-first color system.
+ *
+ * Cross-platform alignment (2026-04-18):
+ *   - Foreground / border / input-bg hexes mirror `src/styles/theme.css`
+ *     so a side-by-side comparison of mobile and web doesn't betray
+ *     two different hue families (slate vs neutral-zinc).
+ *   - **Background** stays divergent on purpose — mobile keeps pure
+ *     white in light mode and `#0a0a0f` (OLED-friendly black) in dark
+ *     mode, while web uses `#f4f5f7` / `#101014` (slightly off-white +
+ *     slightly raised black) for desktop eye-comfort. Documented in
+ *     `PARITY_AUDIT.md` "Token alignment".
+ *   - Card colour follows the same logic — mobile cards sit on the
+ *     OLED-black background, web cards on the raised dark background.
+ */
 export const Colors = {
   light: {
-    text: '#0f172a',
+    text: '#111118',                // ↔ web --foreground
     textSecondary: '#475569',
     textTertiary: '#94a3b8',
-    background: '#ffffff',
+    background: '#ffffff',          // intentional divergence (see header)
     backgroundSecondary: '#f8fafc',
     card: '#ffffff',
-    cardBorder: '#e2e8f0',
-    border: '#e2e8f0',
+    cardBorder: '#e4e4ec',          // ↔ web --border
+    border: '#e4e4ec',              // ↔ web --border
     tint: Accent.primary,
-    icon: '#64748b',
+    icon: '#6b6b78',                // ↔ web --fg-muted
     tabIconDefault: '#94a3b8',
     tabIconSelected: Accent.primary,
-    inputBg: '#f1f5f9',
+    inputBg: '#ededf2',             // ↔ web --input-background
     overlay: '#00000088',
   },
   dark: {
-    text: '#f8fafc',
+    text: '#e4e4e8',                // ↔ web --foreground (dark)
     textSecondary: '#94a3b8',
     textTertiary: '#64748b',
-    background: '#0a0a0f',
+    background: '#0a0a0f',          // intentional divergence — OLED-friendly
     backgroundSecondary: '#111118',
-    card: '#16161e',
-    cardBorder: '#2a2a3a',
-    border: '#1e1e2a',
+    card: '#16161e',                // intentional — sits on OLED-black bg
+    cardBorder: '#282830',          // ↔ web --border (dark)
+    border: '#282830',              // ↔ web --border (dark)
     tint: Accent.primaryLight,
-    icon: '#94a3b8',
+    icon: '#7a7a88',                // ↔ web --fg-muted (dark)
     tabIconDefault: '#4a4a5a',
     tabIconSelected: Accent.primaryLight,
-    inputBg: '#1e1e2a',
+    inputBg: '#202028',             // ↔ web --input-background (dark)
     overlay: '#000000aa',
   },
 };

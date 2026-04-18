@@ -389,7 +389,20 @@ export default function ProgressScreen() {
         weekStartDay,
       });
       if (scheduled) {
-        track(AnalyticsEvents.weekly_recap_push_sent, { weekKey: currentWeekKey });
+        // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. The old
+        // `weekly_recap_push_sent` conflated scheduling with delivery — new
+        // canonical `_scheduled` event fires here. A matching `_delivered`
+        // event will fire from a notification-received listener once one is
+        // added (see TODO below). Until then the scheduling-site dual-emit
+        // is the only "push sent" signal. See plan doc §4.
+        const pushPayload = { weekKey: currentWeekKey };
+        track(AnalyticsEvents.weekly_recap_push_sent, pushPayload);
+        track(AnalyticsEvents.weekly_recap_push_scheduled, pushPayload);
+        // TODO(2026-05-18): wire `weekly_recap_push_delivered` from a
+        // `Notifications.addNotificationReceivedListener` in
+        // `apps/mobile/app/_layout.tsx` (match by
+        // `data.kind === "weekly_recap"`). Until then, delivery rate is
+        // inferred from the scheduled-vs-opened funnel.
       }
     })();
   }, [userId, recapPushEnabled, weekStartDay, currentWeekKey]);
@@ -595,37 +608,84 @@ export default function ProgressScreen() {
             })}
           </View>
 
-          {/* Daily Calories Bar Chart */}
+          {/* Daily Calories Bar Chart
+              TestFlight `AISAWnLgU9cjRBOuEY-HuJU` (2026-04-18) — tester
+              said "not intuitive". The bars were green/amber with no
+              intake-target line on the chart itself + no legend for what
+              the colours meant. Added: (a) dashed target line across the
+              full chart at `targets.calories`, with its value labelled
+              at the right edge; (b) a one-line legend under the chart
+              stating exactly what each colour means. */}
           <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: 12 }}>Daily Calories</Text>
-            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 90 }}>
-              {weekStats.days.map((d, i) => {
-                const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
-                const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * 70) : 4;
-                const overTarget = d.calories > targets.calories;
-                const isDayToday = d.key === todayKey;
-                return (
-                  <Pressable
-                    key={d.key}
-                    onPress={() => {
-                      // Navigate to Today tab with this date selected
-                      // Include a timestamp to force the effect to re-fire even if date is the same
-                      router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
-                    }}
-                    style={{ flex: 1, alignItems: "center", gap: 4 }}
-                  >
-                    <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
-                      {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
-                    </Text>
-                    <View style={{ width: "100%", height: barH, borderRadius: 5, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.75 }} />
-                    <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
-                  </Pressable>
-                );
-              })}
+            {(() => {
+              const chartHeight = 90;
+              const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
+              const barMax = chartHeight * 0.78; // leaves room above for value labels
+              const targetY = maxCal > 0 ? (targets.calories / (maxCal * 1.15)) * barMax : 0;
+              return (
+                <View style={{ height: chartHeight }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
+                    {weekStats.days.map((d) => {
+                      const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
+                      const overTarget = d.calories > targets.calories;
+                      const isDayToday = d.key === todayKey;
+                      return (
+                        <Pressable
+                          key={d.key}
+                          onPress={() => {
+                            router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
+                          }}
+                          style={{ flex: 1, alignItems: "center", gap: 4 }}
+                        >
+                          <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
+                            {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
+                          </Text>
+                          <View style={{ width: "100%", height: barH, borderRadius: 5, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.75 }} />
+                          <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    {/* Dashed target line — positioned from the bar base up
+                        to the target y. Pointer-events off so the bars stay
+                        tappable. */}
+                    {targets.calories > 0 && maxCal > 0 && (
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: 16 /* room for day label */ + targetY,
+                          height: 1,
+                          borderTopWidth: 1,
+                          borderStyle: "dashed",
+                          borderColor: t.accent,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
+                  </View>
+                </View>
+              );
+            })()}
+            {/* Legend + target label */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, flexWrap: "wrap", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>At or under target</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>Over target</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 10, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.accent }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>Target {targets.calories.toLocaleString()} kcal</Text>
+                </View>
+              </View>
             </View>
-            <Text style={{ fontSize: 10, color: t.dim, textAlign: "right", marginTop: 6 }}>
-              Daily goal: {targets.calories.toLocaleString()} kcal
-            </Text>
           </View>
 
           {/* Macro Adherence */}

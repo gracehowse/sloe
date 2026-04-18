@@ -1,0 +1,100 @@
+import { NextResponse } from "next/server";
+import {
+  edamamConfigFromEnv,
+  edamamFoodMacrosPer100g,
+  edamamFoodSearch,
+} from "@/lib/edamam/client";
+import { rateLimit } from "@/lib/server/rateLimit";
+import { hasEdamamConfig } from "@/lib/server/serverEnv";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+
+/**
+ * GET /api/edamam/search?q=<query>&mode=<foods|meals>
+ *
+ * Wraps Edamam's food-database v2 parser to expose search hits to our
+ * authenticated clients. TestFlight build 7 `AOI9xgY88Dx-uphiXI8IzEk`
+ * (2026-04-18): tester expected restaurant meals to show up alongside
+ * USDA foods when they searched "eggs benedict" — Edamam is our
+ * restaurant + branded source.
+ *
+ * Modes:
+ *   - `foods` (default) — general food search; mixes generic + branded + meal results.
+ *   - `meals` — restaurant + prepared-meal focus; filters to `Generic meals` /
+ *     `Packaged` categories client-side for the Discovery "Eating out" row.
+ *
+ * Envelope matches `/api/usda/search` so `searchFoods()` can merge hits uniformly.
+ */
+export async function GET(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const rl = await rateLimit({ keyPrefix: "api:edamam-search", limit: 30, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") ?? "").trim();
+  if (!q) return NextResponse.json({ ok: false, error: "missing_q" }, { status: 400 });
+  const mode = searchParams.get("mode") === "meals" ? "meals" : "foods";
+
+  if (!hasEdamamConfig()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "server_misconfigured",
+        message: "EDAMAM_APP_ID and EDAMAM_APP_KEY must be set server-side.",
+      },
+      { status: 503 },
+    );
+  }
+
+  const cfg = edamamConfigFromEnv();
+  if (!cfg) {
+    return NextResponse.json(
+      { ok: false, error: "server_misconfigured" },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const raw = await edamamFoodSearch(cfg, q, { pageSize: mode === "meals" ? 20 : 12 });
+    const filtered = mode === "meals"
+      ? raw.filter((h) => {
+          const cat = h.food.category?.toLowerCase() ?? "";
+          return cat.includes("meal") || cat.includes("packaged") || Boolean(h.food.brand);
+        })
+      : raw;
+    const hits = filtered.map((h) => {
+      const m = edamamFoodMacrosPer100g(h.food);
+      return {
+        foodId: h.food.foodId,
+        label: h.food.label,
+        category: h.food.category,
+        categoryLabel: h.food.categoryLabel,
+        brand: h.food.brand ?? null,
+        imageUrl: h.food.image ?? null,
+        /** per 100 g — matches the USDA envelope shape. */
+        calories: m.calories,
+        protein: m.protein,
+        carbs: m.carbs,
+        fat: m.fat,
+        fiberG: m.fiberG,
+        sugarG: m.sugarG,
+        sodiumMg: m.sodiumMg,
+        servingSizes: h.food.servingSizes ?? [],
+      };
+    });
+    return NextResponse.json({ ok: true, mode, hits });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: "edamam_failed", message: e instanceof Error ? e.message : "Edamam request failed" },
+      { status: 502 },
+    );
+  }
+}

@@ -1,8 +1,36 @@
 # TestFlight build 7 — remaining open items
 
 **Date:** 2026-04-18
-**Source:** ASC feedback batch (`../testflight-feedback/data/feedback-2026-04-18.json`), 14 items after subtracting `../testflight-feedback/resolved.md`.
+**Source:** ASC feedback batch (`../testflight-feedback/data/feedback-2026-04-18.json`).
 **Scope:** mobile-first unless noted. Items already in `resolved.md` are not repeated here.
+
+**Status (end of 2026-04-18 pass):** every TestFlight item has been actioned in `resolved.md`. The two items below are **post-pass release-gate tasks** — they unblock the live trial flow and the Edamam quota — neither was a tester-blocker for a code fix in this pass.
+
+---
+
+## Release-gate tasks
+
+### RG-1 · Provision App Store Connect IAP + RevenueCat dashboard offerings
+
+- **Why:** the mobile paywall code path is now safe — when no offerings load it surfaces an explicit "Subscriptions not available" alert with a Continue-free option (TestFlight `AFE6h9Tlq0bUCugLAJfVGx8`, see `resolved.md`). But the live trial flow still won't run end-to-end until App Store Connect has IAP products and RevenueCat's dashboard has matching offerings published.
+- **What:**
+  1. **App Store Connect → Features → In-App Purchases**: create the subscription product(s) for the Pro tier (id should match what RevenueCat dashboard expects — `pro_annual` is the convention used in `apps/mobile/app/paywall.tsx:annualPkg`). Set price tier, free-trial length, localised metadata.
+  2. **RevenueCat dashboard**: attach the new product to the `pro` entitlement under the `current` offering. Confirm the dashboard shows the package as "Available".
+  3. **Sandbox**: create a sandbox tester in App Store Connect, sign in on device under Settings → App Store → Sandbox account.
+  4. **TestFlight verify**: run `npx vitest run apps/mobile/tests/unit/expoPushToken.test.ts` (sanity), then load the app, hit a Pro-gated surface (voice log / photo log), tap **Start trial**. Apple's pay sheet must appear (not the alert). Complete the sandbox purchase. `profiles.user_tier` should sync to `pro` via `syncTierToSupabase`.
+- **Owner:** Grace (App Store Connect + RevenueCat dashboard access)
+- **Severity:** Release-gate (blocks the monetisation milestone, not the next TestFlight build)
+- **Effort:** S (config only; no code change)
+- **Acceptance:** Sandbox purchase from a clean install grants Pro entitlement and unlocks the gated features; the in-app `Restore` button restores the same entitlement on a second device.
+
+### RG-2 · Provision Edamam dashboard credentials on prod (if not already)
+
+- **Why:** mobile + web Discover/Search now both call `/api/edamam/search`, which falls through with empty hits (silent) when `EDAMAM_APP_ID` / `EDAMAM_APP_KEY` aren't set on the deployed Vercel env. Local dev works because `.env.local` carries them.
+- **What:** Vercel → Project → Settings → Environment Variables — confirm both vars are set for **Production** (and Preview if you want PR previews to call Edamam too).
+- **Owner:** Grace (Vercel access)
+- **Severity:** Release-gate
+- **Effort:** S
+- **Acceptance:** in production web `/discover`, typing 3+ chars surfaces the "Eating out" carousel with at least one result for a common query like "burger".
 
 ---
 
@@ -12,10 +40,10 @@ These items must not be planned until we have more information.
 
 | ID | Feedback | Blocker |
 |----|----------|---------|
-| `AMsdTaWai1sJijvuX1VQJg4` | "Not sure if this feature is working at all" | No screenshot, no feature name. Request tester follow-up before triaging. |
-| `AISAWnLgU9cjRBOuEY-HuJU` | "Not intuitive" | No screenshot, no screen identified. Logged in `resolved.md` as open but untriaged. Same request. |
-| `AFE6h9Tlq0bUCugLAJfVGx8` | "None of the trial/payments stuff is hooked up" | Intentional — paywall is a known placeholder per project memory. No work until monetisation milestone is approved. |
-| `ABwH6OVJ-kJxC5LdcL3iEzc` | Imported recipe has inaccurate nutrition | No recipe ID, no import URL. Without a specific recipe the failure mode cannot be determined (import parsing bug vs USDA match vs serving-size error). Request reproduction steps. |
+| `AMsdTaWai1sJijvuX1VQJg4` | "Not sure if this feature is working at all" | ~~No screenshot~~ Resolved post-pass (screenshot fetched 2026-04-18 — was the weekly-recap toggle save error, fixed by schema reconcile). See `resolved.md`. |
+| `AISAWnLgU9cjRBOuEY-HuJU` | "Not intuitive" | ~~No screenshot~~ Resolved post-pass — Progress Daily Calories chart got a target line + legend. See `resolved.md`. |
+| `AFE6h9Tlq0bUCugLAJfVGx8` | "None of the trial/payments stuff is hooked up" | Code fix shipped (silent fall-through removed). Live trial still needs RG-1 above. |
+| `ABwH6OVJ-kJxC5LdcL3iEzc` | Imported recipe has inaccurate nutrition | ~~No recipe ID~~ Resolved post-pass — screenshot showed it was the MFP duplicate-macros bug, fixed by P0-2 HealthKit correlation. See `resolved.md`. |
 
 ---
 

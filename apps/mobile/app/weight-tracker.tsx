@@ -299,6 +299,43 @@ export default function ProgressScreen() {
     }));
   }, [weightKgByDay, range, isImperial]);
 
+  // Range delta — prominent "↑ 1.4 kg past three months" header stat.
+  // TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` (2026-04-18): tester attached
+  // LoseIt-style references showing this delta in the chart-card corner.
+  // Direction arrow is purely informational; no colour cue (matches the
+  // factual-only copy rule in `docs/ux/brand-guidelines.md`).
+  const rangeDelta = useMemo(() => {
+    const filtered = filterByRange(weightKgByDay, range);
+    const entries = Object.entries(filtered).sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+    if (entries.length < 2) return null;
+    const firstKg = entries[0][1];
+    const lastKg = entries[entries.length - 1][1];
+    const deltaKg = lastKg - firstKg;
+    const sinceKey = entries[0][0];
+    const rangeLabel: Record<TimeRange, string> = {
+      "1W": "past week",
+      "1M": "past month",
+      "3M": "past 3 months",
+      "6M": "past 6 months",
+      "9M": "past 9 months",
+      "12M": "past year",
+      "All": `since ${formatShortDate(sinceKey)}`,
+    };
+    const displayDelta = isImperial
+      ? Math.abs(kgToLb(deltaKg))
+      : Math.abs(Math.round(deltaKg * 10) / 10);
+    const unit = isImperial ? "lb" : "kg";
+    const arrow = Math.abs(deltaKg) < 0.05 ? "→" : deltaKg > 0 ? "↑" : "↓";
+    return {
+      arrow,
+      magnitude: displayDelta,
+      unit,
+      label: rangeLabel[range] ?? "",
+    };
+  }, [weightKgByDay, range, isImperial]);
+
   const weightProjection = useMemo(() => {
     if (!goalWeightKg || latestKg == null || weightData.length < 2)
       return undefined;
@@ -598,7 +635,38 @@ export default function ProgressScreen() {
           <>
             {/* WEIGHT */}
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Weight</Text>
+              {/* Title row: "Weight" on the left, range delta on the right.
+                  TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` (2026-04-18). */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text style={styles.sectionTitle}>Weight</Text>
+                {rangeDelta && (
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: colors.text,
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {rangeDelta.arrow} {rangeDelta.magnitude}
+                      <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textSecondary }}>
+                        {" "}
+                        {rangeDelta.unit}
+                      </Text>
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                      {rangeDelta.label}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.row}>
                 <View style={styles.stat}>
                   <Text style={styles.statValue}>
@@ -671,13 +739,62 @@ export default function ProgressScreen() {
             {journey && (
               <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Journey</Text>
-                <View style={styles.journeyBar}>
-                  <View
-                    style={[
-                      styles.journeyFill,
-                      { width: `${Math.round(journey.pct * 100)}%` },
-                    ]}
-                  />
+                {/* Start-of-journey + goal anchors with pill amounts either
+                    side of the fill bar — mirrors the LoseIt reference in
+                    TestFlight `AF7bS2DQrH_wZWxGosBJ3K8`. Emoji-only so no
+                    asset pipeline is needed. */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: Spacing.sm,
+                    marginTop: Spacing.xs,
+                  }}
+                >
+                  <View style={{ alignItems: "center", width: 52 }}>
+                    <Text style={{ fontSize: 20 }}>{"\u26FA"}</Text>
+                    <View
+                      style={{
+                        marginTop: 2,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 8,
+                        backgroundColor: Accent.success + "22",
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.success }}>
+                        0 {isImperial ? "lb" : "kg"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.journeyBar, { flex: 1 }]}>
+                    <View
+                      style={[
+                        styles.journeyFill,
+                        { width: `${Math.round(journey.pct * 100)}%` },
+                      ]}
+                    />
+                  </View>
+                  <View style={{ alignItems: "center", width: 52 }}>
+                    <Text style={{ fontSize: 20 }}>
+                      {journey.pct >= 1 ? "\uD83C\uDFC6" : "\uD83C\uDFC1"}
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 2,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 8,
+                        backgroundColor: colors.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary }}>
+                        {isImperial
+                          ? `${Math.round(kgToLb(journey.totalToLose) * 10) / 10} lb`
+                          : `${Math.round(journey.totalToLose * 10) / 10} kg`}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <View
                   style={{

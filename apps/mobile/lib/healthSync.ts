@@ -18,6 +18,7 @@ import {
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
 import {
+  bucketEnergyShares,
   buildQuantityIdToCorrelationId,
   detectBulkSync,
   dietaryCorrelationKeyForSample,
@@ -1414,6 +1415,20 @@ export async function syncNutritionFromHealth(
     );
   }
 
+  // MFP bulk-sync macro mitigation (TestFlight build 7 follow-up,
+  // 2026-04-18): when multiple energy samples share a *legacy*
+  // `minute|bundle` bucket (no HKCorrelationUUID parent), the bucket's
+  // macros must be split proportionally by kcal across the samples
+  // instead of duplicated to all of them. See
+  // `healthSyncCorrelation.bucketEnergyShares` for the rationale.
+  const energyShares = bucketEnergyShares(extEnergy, quantityIdToCorrelationId);
+  if (energyShares.legacyAmbiguousBuckets > 0) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[healthSync] proportional macro split applied to ${energyShares.legacyAmbiguousBuckets} legacy-fallback bucket(s) holding multiple energy samples`,
+    );
+  }
+
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
   const imported: ImportedMeal[] = [];
@@ -1490,8 +1505,19 @@ export async function syncNutritionFromHealth(
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
-    const inner = correlated.get(dietaryCorrelationKey(sample, quantityIdToCorrelationId));
-    const totals = totalsRecordFromInner(inner);
+    const correlationKey = dietaryCorrelationKey(sample, quantityIdToCorrelationId);
+    const inner = correlated.get(correlationKey);
+    const rawTotals = totalsRecordFromInner(inner);
+    // Apply proportional share so the bucket's macros are split by kcal
+    // when multiple energy samples share a legacy `minute|bundle` bucket
+    // (MFP bulk-sync mitigation, 2026-04-18). Single-sample buckets get
+    // share=1, so the existing single-meal pathway is unaffected.
+    const share = energyShares.shareForSample(sample.id, correlationKey);
+    const totals: typeof rawTotals = share === 1
+      ? rawTotals
+      : Object.fromEntries(
+          Object.entries(rawTotals).map(([k, v]) => [k, (v ?? 0) * share]),
+        ) as typeof rawTotals;
     const { fiberG, micros: builtMicros } = buildFiberAndMicrosFromHealthTotals(totals);
     const microsJson = builtMicros;
 

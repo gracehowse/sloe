@@ -14,8 +14,8 @@ Create these once the project receives production traffic:
 
 1. **Funnel — core loop:** `recipe_saved` → `meal_plan_generated` → `shopping_list_generated`.
 2. **Nutrition:** `food_logged` volume; breakdown by `fromPlanner` if you pass it in properties.
-3. **Imports:** `recipe_import_url`, `recipe_import_image`, `barcode_lookup` (filter on `ok: true` where applicable).
-4. **Monetization:** `checkout_started`, `checkout_completed_return` (from Settings/checkout flow).
+3. **Imports:** `recipe_imported { source: "url" | "image" }` (dual-emitted alongside the legacy `recipe_import_url` / `recipe_import_image` until 2026-05-18 — post-ship #1 rename cycle), `barcode_lookup` (filter on `ok: true` where applicable).
+4. **Monetization:** `checkout_started`, `checkout_completed` (rename target for `checkout_completed_return`, dual-emitted until 2026-05-18; no emit site wired yet — Stripe return flow owed).
 5. **Profile:** `profile_targets_saved` (includes whether activity-adjusted calories preference is on).
 6. **Planner extras:** `smart_suggestion_saved` when users add catalog suggestions from the planner.
 

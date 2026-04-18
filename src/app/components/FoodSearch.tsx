@@ -47,13 +47,17 @@ type FoodPortion = { label: string; gramWeight: number; amount: number };
 type SearchResult = {
   key: string;
   name: string;
+  /** Restaurant / brand byline shown beneath the title — set for Edamam restaurant + branded hits. */
+  subtitle?: string;
   calsPer100g?: number;
   macrosPer100g?: MacrosPer100g;
   verified?: boolean;
   imageUrl?: string | null;
-  _source: "USDA" | "OFF" | "CUSTOM";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   _fdcId?: number;
   _offCode?: string;
+  /** Edamam food identifier (string, not numeric). */
+  _edamamFoodId?: string;
   /** Populated for `_source === "CUSTOM"` rows so edit/delete can act on the underlying row. */
   _custom?: CustomFood;
 };
@@ -215,6 +219,56 @@ async function searchOff(query: string): Promise<SearchResult[]> {
       })
       .filter((r: SearchResult) => r.calsPer100g && r.calsPer100g > 0);
   } catch { return []; }
+}
+
+/**
+ * Search Edamam (restaurant + branded foods) via our auth-gated API route.
+ * Mirrors the mobile `searchEdamam` helper — same `/api/edamam/search`
+ * envelope, same UnifiedSearchResult-shaped output. TestFlight
+ * `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). Empty on network / server /
+ * rate-limit errors so it never blocks USDA / OFF from rendering.
+ */
+async function searchEdamam(query: string): Promise<SearchResult[]> {
+  const q = effectiveFoodSearchQuery(query);
+  if (!q.trim()) return [];
+  try {
+    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}`);
+    const json = await res.json();
+    if (!json.ok || !Array.isArray(json.hits)) return [];
+    return (json.hits as Array<{
+      foodId: string; label: string; brand: string | null;
+      category: string; categoryLabel: string; imageUrl: string | null;
+      calories: number; protein: number; carbs: number; fat: number;
+      fiberG: number; sugarG: number; sodiumMg: number;
+    }>).map((h) => {
+      const brand = h.brand ? titleCase(h.brand) : "";
+      const label = titleCase(h.label);
+      const displayName = brand ? `${brand} · ${label}` : label;
+      const isMeal =
+        h.category?.toLowerCase().includes("meal") ||
+        Boolean(h.brand && h.category?.toLowerCase().includes("packaged"));
+      return {
+        key: `edamam-${h.foodId}`,
+        name: displayName,
+        subtitle: isMeal ? (brand ? `Restaurant · ${brand}` : "Restaurant meal") : undefined,
+        calsPer100g: h.calories,
+        macrosPer100g: {
+          calories: h.calories,
+          protein: h.protein,
+          carbs: h.carbs,
+          fat: h.fat,
+          fiberG: h.fiberG,
+          sugarG: h.sugarG,
+          sodiumMg: h.sodiumMg,
+        },
+        imageUrl: h.imageUrl,
+        _source: "Edamam" as const,
+        _edamamFoodId: h.foodId,
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 async function fetchUsdaDetail(fdcId: number): Promise<{ macrosPer100g: MacrosPer100g; portions: FoodPortion[] } | null> {
@@ -384,15 +438,18 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
               initialQuery,
             )
           : Promise.resolve([] as CustomFood[]);
-        Promise.all([searchUsda(initialQuery), searchOff(initialQuery), customPromise]).then(
-          ([usda, off, custom]) => {
-            const rankQ = effectiveFoodSearchQuery(initialQuery);
-            const merged = mergeAndDedup(rankQ, usda, off, custom);
-            setResults(merged);
-            setLoading(false);
-            backfillMissingMacros(merged);
-          },
-        );
+        Promise.all([
+          searchUsda(initialQuery),
+          searchOff(initialQuery),
+          searchEdamam(initialQuery),
+          customPromise,
+        ]).then(([usda, off, edamam, custom]) => {
+          const rankQ = effectiveFoodSearchQuery(initialQuery);
+          const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
+          setResults(merged);
+          setLoading(false);
+          backfillMissingMacros(merged);
+        });
       }
     }
   }, [open, initialQuery, backfillMissingMacros, customEnabled, refreshCustomLibrary, supabase, userId]);
@@ -417,8 +474,13 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
             q,
           )
         : Promise.resolve([] as CustomFood[]);
-      const [usda, off, custom] = await Promise.all([searchUsda(q), searchOff(q), customPromise]);
-      const merged = mergeAndDedup(rankQ, usda, off, custom);
+      const [usda, off, edamam, custom] = await Promise.all([
+        searchUsda(q),
+        searchOff(q),
+        searchEdamam(q),
+        customPromise,
+      ]);
+      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
       setResults(merged);
       setLoading(false);
       backfillMissingMacros(merged);
@@ -429,6 +491,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     q: string,
     usda: SearchResult[],
     off: SearchResult[],
+    edamam: SearchResult[] = [],
     customs: CustomFood[] = [],
   ): SearchResult[] {
     // Custom foods always surface first, ranked by the same relevance
@@ -437,13 +500,13 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     const customResults = customs
       .map((c) => ({ ...customFoodToSearchResult(c), _rel: searchRelevance(q, c.name) }))
       .sort((a, b) => b._rel - a._rel);
-    const external = [...usda, ...off]
+    const external = [...usda, ...off, ...edamam]
       .map((r) => ({ ...r, _rel: searchRelevance(q, r.name) }))
       .sort((a, b) => b._rel - a._rel);
     const seen = new Set<string>();
     const deduped: SearchResult[] = [];
     for (const r of [...customResults, ...external]) {
-      // Don't collapse custom rows into USDA/OFF rows even when names
+      // Don't collapse custom rows into USDA/OFF/Edamam rows even when names
       // collide — the user explicitly saved the custom version.
       const norm = r._source === "CUSTOM"
         ? `custom:${r._custom?.id ?? r.key}`
@@ -497,6 +560,15 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else if (item._source === "OFF" && item.macrosPer100g) {
+      setLoadingKey(null);
+      const portions = buildPortions([]);
+      const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);
+      setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
+    } else if (item._source === "Edamam" && item.macrosPer100g) {
+      // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
+      // 2026-04-18. Macros come back per-100 g already inline so the tap
+      // path mirrors OFF — no extra fetch. The OFF preview source value
+      // is reused so the existing log path doesn't need a new branch.
       setLoadingKey(null);
       const portions = buildPortions([]);
       const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);

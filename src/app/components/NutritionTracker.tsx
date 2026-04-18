@@ -50,6 +50,8 @@ import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroRing } from "./suppr/today-hero-ring";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
+import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
+import { CalorieDeficitInsight } from "./CalorieDeficitInsight.tsx";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayStreakInsightCard } from "./suppr/today-streak-insight-card";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -416,7 +418,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       /* storage denied — UI still hides for the session */
     }
     try {
-      track(AnalyticsEvents.streak_freeze_earned_seen, { earnedAt: newestFreezeEarnedAt });
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. The "_seen"
+      // suffix is inconsistent with the rest of the registry — new
+      // canonical name is `streak_freeze_earned_acknowledged`. See plan doc §4.
+      const seenPayload = { earnedAt: newestFreezeEarnedAt };
+      track(AnalyticsEvents.streak_freeze_earned_seen, seenPayload);
+      track(AnalyticsEvents.streak_freeze_earned_acknowledged, seenPayload);
     } catch {
       /* noop */
     }
@@ -1019,7 +1026,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     // currently have voice via the server's existing Base+ check, but the
     // product spec gates on Pro specifically.
     if (userTier !== "pro") {
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
       track(AnalyticsEvents.voice_log_paywalled);
+      track(AnalyticsEvents.ai_voice_log_paywalled);
       setAiPaywallFeature("voice_log");
       return;
     }
@@ -1518,19 +1527,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         />
       )}
 
+      {/* Fasting status pill — under the date header so an active fast
+          is visible at the top of Today, not buried at the bottom.
+          Mobile parity (`apps/mobile/app/(tabs)/index.tsx` 2664). */}
+      {viewMode === "day" && activeFast ? (
+        <TodayFastingPill activeFastElapsedLabel={fastingElapsedLabel} />
+      ) : null}
+
       {viewMode === "day" && (
       <>
-      {/* Eat again — one-tap re-log of the most recent meal in the slot
-          matching the current clock time. Dismissible per day. */}
-      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
-        <TodayEatAgainBanner
-          suggestion={eatAgainSuggestion}
-          slot={currentSlotFromTime}
-          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-          onDismiss={dismissEatAgain}
-        />
-      )}
-
       {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
           Desktop (>= 768px) renders stats beside the ring; mobile-web
           shows just the ring. Canonical copy + deficit/surplus detail
@@ -1590,32 +1595,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onAddWaterMl={addWaterMlForSelectedDay}
       />
 
-      {/* Steps & activity (manual steps; water total above).
-          Audit M4 (2026-04-18): gated until any steps OR activity burn has
-          been recorded. First-run fallback is a small "Connect health"
-          link that expands the card so the user can log steps manually. */}
-      {showStepsCard ? (
-        <TodayStepsCard
-          stepsForSelectedDay={stepsForSelectedDay}
-          dailyStepsGoal={dailyStepsGoal}
-          stepsDayInput={stepsDayInput}
-          onStepsDayInputChange={setStepsDayInput}
-          onSaveSteps={() => void saveStepsForSelectedDay()}
-        />
-      ) : (
-        <div className="mb-3 text-center">
-          <button
-            type="button"
-            onClick={() => setStepsManualExpanded(true)}
-            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
-            aria-expanded={false}
-            aria-controls="today-steps-card"
-          >
-            Connect health
-          </button>
-        </div>
-      )}
-
       {dayNutrientDetailRows.length > 0 ? (
         <div className="mb-3">
           <p className="text-xs font-semibold text-muted-foreground mb-2">Nutrients</p>
@@ -1644,6 +1623,50 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onOpenBarcode={() => setBarcodeOpen(true)}
       />
 
+      {/* Streak insight — moved here (was after meals) to match
+          mobile order (`apps/mobile/app/(tabs)/index.tsx` 2787). The
+          card is short and sits well between the quick-log strip and
+          the deficit insight that follows. */}
+      <TodayStreakInsightCard
+        streakDays={streakDays}
+        freezesAvailableToday={freezesAvailableToday}
+        hasUnseenFreezeEarned={hasUnseenFreezeEarned}
+        onDismissFreezeEarned={dismissFreezeEarned}
+      />
+
+      {/* Deficit insight — only on today + when there's calorie
+          headroom left, matching mobile (`TodayDeficitInsight`,
+          `apps/mobile/app/(tabs)/index.tsx` 2799). Web component
+          additionally surfaces 7-day rolling pace + projected weekly
+          deficit when there's enough data. Headline + Net detail use
+          the canonical `todayBalanceHeadline` / `NET_DEFICIT_LABEL`
+          from `src/lib/copy/today.ts`. */}
+      {selectedDateKey === todayKey() &&
+        Math.max(0, Math.round(effectiveCalorieTarget - totals.calories)) > 0 ? (
+        <CalorieDeficitInsight
+          nutritionByDay={nutritionByDay}
+          selectedDateKey={selectedDateKey}
+          caloriesEatenToday={Math.round(totals.calories)}
+          netCalorieGoal={Math.round(effectiveCalorieTarget)}
+          baseCalorieGoal={Math.round(targets.calories)}
+          preferActivityAdjusted={preferActivityAdjustedCalories}
+          activityBurnKcal={Math.round(activityBurnForSelectedDay)}
+        />
+      ) : null}
+
+      {/* Eat again — moved here (was above the hero ring) to match
+          mobile placement (`TodayEatAgainBanner`,
+          `apps/mobile/app/(tabs)/index.tsx` 2820): right above the
+          quick add CTA + meals section, where the suggested meal
+          will be inserted. */}
+      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
+        <TodayEatAgainBanner
+          suggestion={eatAgainSuggestion}
+          slot={currentSlotFromTime}
+          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
+          onDismiss={dismissEatAgain}
+        />
+      )}
 
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
@@ -1735,13 +1758,60 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onAcceptUsualMealHint={acceptUsualMealHint}
       />
 
-      {/* 6. Streak Insight Card */}
-      <TodayStreakInsightCard
-        streakDays={streakDays}
-        freezesAvailableToday={freezesAvailableToday}
-        hasUnseenFreezeEarned={hasUnseenFreezeEarned}
-        onDismissFreezeEarned={dismissFreezeEarned}
-      />
+      {/* Planned meals — show meals from today's plan so the user can
+          one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).
+          Renders only when there's a plan with at least one meal for
+          today (mobile parity:
+          `apps/mobile/app/(tabs)/index.tsx` 2920). */}
+      {mealPlan && mealPlan.length > 0 && (mealPlan[0]?.meals ?? []).length > 0 ? (
+        <TodayPlannedMealsCard
+          plannedMeals={mealPlan[0]!.meals}
+          onLogPlannedMealWithPortion={(meal, portion) => {
+            const mult = Math.max(0.125, Math.min(24, portion));
+            addLoggedMealForDate(
+              selectedDateKey,
+              {
+                name: normalizeJournalSlotName(meal.name),
+                recipeTitle: meal.recipeTitle,
+                time: normalizeJournalSlotName(meal.name),
+                calories: Math.round((meal.calories ?? 0) * mult),
+                protein: Math.round((meal.protein ?? 0) * mult * 10) / 10,
+                carbs: Math.round((meal.carbs ?? 0) * mult * 10) / 10,
+                fat: Math.round((meal.fat ?? 0) * mult * 10) / 10,
+                source: "Meal plan",
+              },
+              "planner",
+            );
+          }}
+        />
+      ) : null}
+
+      {/* Steps & activity card — moved here (was between macro tiles
+          and the quick-log strip) to match mobile order
+          (`apps/mobile/app/(tabs)/index.tsx` 2960): meals → steps →
+          activity bonus. Gated by `showStepsCard` (Audit M4); the
+          "Connect health" link is the first-run fallback. */}
+      {showStepsCard ? (
+        <TodayStepsCard
+          stepsForSelectedDay={stepsForSelectedDay}
+          dailyStepsGoal={dailyStepsGoal}
+          stepsDayInput={stepsDayInput}
+          onStepsDayInputChange={setStepsDayInput}
+          onSaveSteps={() => void saveStepsForSelectedDay()}
+        />
+      ) : (
+        <div className="mb-3 text-center">
+          <button
+            type="button"
+            onClick={() => setStepsManualExpanded(true)}
+            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+            aria-expanded={false}
+            aria-controls="today-steps-card"
+          >
+            Connect health
+          </button>
+        </div>
+      )}
 
       {/* Activity Bonus */}
       <TodayActivityBonusCard
@@ -1818,8 +1888,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </button>
       )}
 
-      {/* Fasting — full timer on /fasting */}
-      <TodayFastingPill activeFastElapsedLabel={activeFast ? fastingElapsedLabel : null} />
       </>
       )}
 

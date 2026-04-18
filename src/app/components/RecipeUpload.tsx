@@ -409,7 +409,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         toast.error(data.message ?? "Could not extract text from this image.");
         return;
       }
-      track(AnalyticsEvents.recipe_import_image, { ingredientCount: data.ingredients?.length ?? 0 });
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
+      // `recipe_import_image` is retired in favour of the consolidated
+      // `recipe_imported { source: "image" }`. See plan doc §4.
+      {
+        const importImagePayload = { ingredientCount: data.ingredients?.length ?? 0 };
+        track(AnalyticsEvents.recipe_import_image, importImagePayload);
+        track(AnalyticsEvents.recipe_imported, { ...importImagePayload, source: "image" as const });
+      }
       if (data.title) setTitle(data.title);
       if (data.ingredients?.length) {
         setIngredients(
@@ -490,10 +497,18 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
       }
       toast.success("Imported — review amounts and nutrition before publishing");
-      try {
-        track(AnalyticsEvents.recipe_import_url, { host: new URL(u).hostname });
-      } catch {
-        track(AnalyticsEvents.recipe_import_url, { host: "invalid" });
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
+      // `recipe_import_url` is retired in favour of the consolidated
+      // `recipe_imported { source: "url" }`. See plan doc §4.
+      {
+        let importUrlPayload: { host: string };
+        try {
+          importUrlPayload = { host: new URL(u).hostname };
+        } catch {
+          importUrlPayload = { host: "invalid" };
+        }
+        track(AnalyticsEvents.recipe_import_url, importUrlPayload);
+        track(AnalyticsEvents.recipe_imported, { ...importUrlPayload, source: "url" as const });
       }
     } catch {
       toast.error("Import failed — check the URL or paste a screenshot.");

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Mobile `HydrationStimulantsCard` — parity render test (post-ship #3,
  * 2026-04-18). Mirrors the shape of the shared

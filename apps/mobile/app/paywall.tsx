@@ -93,7 +93,21 @@ export default function PaywallScreen() {
   async function onStartTrial() {
     const pkg = annualPkg ?? packages[0];
     if (!pkg) {
-      router.replace("/notifications-prompt");
+      // TestFlight `AFE6h9Tlq0bUCugLAJfVGx8` (2026-04-18) — previously
+      // this silently advanced to the next screen, making the trial look
+      // free + automatic. That's misleading. Now we surface the actual
+      // state so the user (or the tester) knows in-app purchases aren't
+      // available yet — and they can still continue on the free tier.
+      Alert.alert(
+        "Subscriptions not available",
+        isPurchasesApiKeyPresent()
+          ? "We couldn't load any plans from the App Store right now. Try again in a moment, or continue on the free plan."
+          : "Subscriptions aren't enabled in this build. Continue on the free plan.",
+        [
+          { text: "Continue free", onPress: () => router.replace("/notifications-prompt") },
+          { text: "OK", style: "cancel" },
+        ],
+      );
       return;
     }
     setPurchasing(true);
@@ -101,7 +115,16 @@ export default function PaywallScreen() {
       const { success, customerInfo } = await purchasePackage(pkg);
       if (success && customerInfo) {
         if (userId) void syncTierToSupabase(customerInfo, supabase, userId);
-        router.replace("/notifications-prompt");
+        // Only advance when entitlement is actually granted — sync above
+        // can race; check the local CustomerInfo before celebrating.
+        if (isProEntitled(customerInfo)) {
+          router.replace("/notifications-prompt");
+        } else {
+          Alert.alert(
+            "Almost there",
+            "Your purchase went through but the subscription hasn't activated yet. Please wait a moment and try Restore.",
+          );
+        }
       }
     } catch {
       Alert.alert("Purchase failed", "Please try again later.");

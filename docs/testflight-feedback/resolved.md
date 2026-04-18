@@ -2,6 +2,61 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-04-18 — Trial / payments "not hooked up" (mobile paywall silent fall-through)
+
+- **ASC feedback id:** `AFE6h9Tlq0bUCugLAJfVGx8` — "None of the trial/payments stuff is hooked up".
+- **Cause:** `apps/mobile/app/paywall.tsx:onStartTrial` had `if (!pkg) router.replace("/notifications-prompt")` — when RevenueCat returned no offerings (TestFlight + App Store Connect IAP not yet provisioned, or sandbox account not signed in), tapping **Start trial** silently routed to the next onboarding screen as if the purchase succeeded. From the tester's POV nothing happened — no Apple pay sheet, no error, no entitlement. Looked entirely unhooked.
+- **Fix:** the `!pkg` branch now surfaces a labelled `Alert.alert` ("Subscriptions not available" + reason — "couldn't load any plans" vs "subscriptions aren't enabled in this build" depending on `isPurchasesApiKeyPresent()`) with two buttons: "Continue free" (explicit) and "OK" (stay on the screen). On a successful `purchasePackage` we now also verify `isProEntitled(customerInfo)` before advancing — a transaction can return `success:true` before the entitlement propagates, and we don't want to celebrate a non-entitled state.
+- **Verify:** in TestFlight without provisioned IAP, tapping Start trial now shows the alert (no silent route). Once App Store Connect IAP products + RevenueCat dashboard offerings are configured, the alert path is bypassed automatically (a non-empty `packages` array triggers the real purchase sheet).
+- **Out of scope (config, not code):** App Store Connect IAP product IDs + RevenueCat dashboard offerings still need to be provisioned for the live trial flow. That's a release-gate task for the monetisation milestone, not a TestFlight bug.
+
+## 2026-04-18 — Edamam restaurant + branded foods integration
+
+- **ASC feedback id:** `AOI9xgY88Dx-uphiXI8IzEk` — "Unclear if edamam is integrated yet? I would expect meals to show here from restaurants etc."
+- **Cause:** `src/lib/edamam/client.ts` existed (configured server-side via `EDAMAM_APP_ID` / `EDAMAM_APP_KEY`) but it was only used inside `verifyIngredients` for ingredient-line resolution. There was no client-callable surface that exposed the food / restaurant database, and neither the Today food search nor Discover surfaced any Edamam content.
+- **Fix:** wired Edamam into both surfaces the user asked for.
+  - **API route** `app/api/edamam/search/route.ts` — auth-gated, rate-limited (30/min), wraps `edamamFoodSearch` and returns a `{ foodId, label, brand, calories, protein, … }` envelope shaped to match `/api/usda/search` so the mobile merger can absorb it. Supports `mode=foods` (general) and `mode=meals` (filters to restaurant + packaged categories for Discover).
+  - **Today Add Meal (mobile)** — new `searchEdamam()` helper in `apps/mobile/lib/verifyRecipe.ts` runs in parallel with USDA + OpenFoodFacts; `searchFoods()` streams partial results as each source resolves so USDA stays instant. New `Edamam` source variant in `UnifiedSearchResult`; `FoodSearchModal` picks it up via the inline-macros tap branch (no extra fetch). Restaurant rows get a "Restaurant · {brand}" subtitle.
+  - **Discover (mobile)** — new "Eating out" horizontal carousel above the recipe grid; only renders when the search query is ≥ 3 chars (debounced 350ms so each keystroke doesn't burn quota). Each card shows brand + label + per-100g kcal/protein. Tapping bridges to Today with the search prefilled. Empty / loading states are first-class.
+- **Verify:** in TestFlight, open Today → Add Meal → search "eggs benedict" — Egg, Benedict (USDA generic) appears alongside any restaurant matches from Edamam. Open Discover → type "burger" — the "Eating out" row appears with brand-tagged restaurant items.
+- **Web parity:** landed in the same pass (2026-04-18). `src/app/components/FoodSearch.tsx` now imports a `searchEdamam()` helper that calls the same `/api/edamam/search` route in parallel with USDA + OFF; merger widened to take a fourth source array. `src/app/components/DiscoverFeed.tsx` adds the same "Eating out" horizontal scroll row (debounced 350ms, hidden until the query is ≥ 3 chars). Mobile + web are now feature-equivalent for this surface.
+
+## 2026-04-18 — Progress Daily Calories chart "not intuitive"
+
+- **ASC feedback id:** `AISAWnLgU9cjRBOuEY-HuJU` — Progress tab "not intuitive" (screenshot retrieved 2026-04-18, showed bars in green/amber with no intake-target line and no legend).
+- **Cause:** the bar colours encoded "at/under target" vs "over target" but there was no on-chart reference to show where the target sat, and no legend to explain the colours. Users couldn't read the chart without inspecting every bar.
+- **Fix:** added (a) a dashed accent-coloured target line drawn across the full chart at `targets.calories`, positioned absolutely over the bar grid (`pointerEvents=none` so bars stay tappable); (b) an inline legend under the chart — green swatch "At or under target", amber swatch "Over target", dashed line "Target {N} kcal". `apps/mobile/app/(tabs)/progress.tsx`. The "Daily goal" text-only line below the chart is replaced by the legend.
+
+## 2026-04-18 — Weight section: start-of-range callout + milestone-tent journey bar (follow-on)
+
+- **ASC feedback id:** `AF7bS2DQrH_wZWxGosBJ3K8` (cosmetic polish, follow-on to the same item logged below).
+- **Fix:** in `apps/mobile/components/charts/TrendLine.tsx`, added a start-of-range callout pill rendered next to the leftmost data point (label uses the same `formatValue` formatter as the rest of the chart). In `apps/mobile/app/weight-tracker.tsx`, replaced the bare progress bar in the Journey card with a tent (⛺) → bar → flag/trophy (🏁/🏆) anchored layout, with start-pill ("0 kg") and end-pill (total to lose) bracketing the fill — closer to the LoseIt reference. Tent emoji ⛺, finish flag 🏁 (or trophy 🏆 when goal hit) — emoji-only so no asset pipeline change.
+
+## 2026-04-18 — Macro Detail "duplicate 79.4g" MFP rows
+
+- **ASC feedback id:** `ABwH6OVJ-kJxC5LdcL3iEzc`. Screenshot: "Protein · Yesterday · 204.3g" split as Dinner 79.4g / Snacks 79.4g / Breakfast 45.5g — Dinner and Snacks showed **identical** numbers from the same MFP sync.
+- **Cause:** the MFP bulk-sync collapse bug documented under "HealthKit macro inflation" below — multiple foods flushed at the same `startDate`/`endDate` were being summed into one entry, then the same summed value was being attached to different meal slots by the day-level breakdown.
+- **Fix:** implicitly resolved by the P0-2 correlation-UUID fix in `apps/mobile/lib/healthSyncCorrelation.ts` (same pass, 2026-04-18). Once each energy sample gets its own correlation parent, the macro values attach to the right food and the breakdown no longer shows duplicate 79.4g rows.
+- **Verify:** re-import a multi-meal MFP day from HealthKit; open Macro Detail → Protein for that day; each meal row should carry its own macro value matching what MFP showed, not duplicates.
+
+## 2026-04-18 — Weekly-recap toggle "could not save"
+
+- **ASC feedback id:** `AMsdTaWai1sJijvuX1VQJg4`. Screenshot: Settings → Weekly recap bottom sheet → "Could not save · We couldn't save your preference. Please try again." alert.
+- **Cause:** same schema-drift family as the earlier alcohol-limit save failure. The toggle writes `profiles.weekly_recap_push_enabled` (shipped in migration `20260421170000_streak_freeze_weekly_recap.sql`) but the column was missing on prod when the tester submitted, so the update call errored.
+- **Fix:** the 2026-04-18 `supabase db push --linked` through `20260421180000` applied that migration. Verified on prod: `select column_name from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='weekly_recap_push_enabled';` returns one row.
+- **Verify:** Settings → Weekly recap → toggle on/off → no "Could not save" alert; state persists across force-quit.
+
+## 2026-04-18 — Weight section: delta stat + goal-line label
+
+- **ASC feedback id:** `AF7bS2DQrH_wZWxGosBJ3K8` (5 screenshots — LoseIt references).
+- **Cause:** The existing `apps/mobile/app/weight-tracker.tsx` showed current + goal as side-by-side stats but no **directional delta** (e.g. "↑ 1.4 kg past 3 months") in the chart-card header, and the dashed goal line on the chart carried no inline numeric label — both of which the tester's reference screenshots made prominent.
+- **Fix (narrow):**
+  - Added a `rangeDelta` memo to `weight-tracker.tsx` that computes `last − first` over the selected `TimeRange` and produces `{ arrow, magnitude, unit, label }`. Arrow is `↑ / ↓ / →`; label resolves to "past week / past month / past 3 months / past 6 months / past 9 months / past year / since <first date>".
+  - Rendered the delta in the Weight card header, right-aligned next to the title.
+  - Added an inline numeric goal label at the right edge of the dashed goal line inside `apps/mobile/components/charts/TrendLine.tsx` (new `SvgText` node) so the goal number is legible on the chart itself, not only in the legend underneath.
+- **Deferred (logged, not shipped):** start-of-range callout pill ("54.1") at the leftmost chart point; milestone-tent progress bar in the Journey card. Both cosmetic polish; kept in `docs/planning/testflight-build-7-remaining.md` under P1-2 as follow-on polish.
+- **Screenshots:** archived under `docs/testflight-feedback/data/screenshots/AF7bS2DQrH_wZWxGosBJ3K8/weight_{1..5}.jpg` (gitignored along with the rest of `data/`). Force-add if you want to preserve a snapshot for a design review.
+
 ## 2026-04-18 — APNs push token registration
 
 - **ASC feedback ids:** `AOjQg5DGBZqS5qNJ1Rqu960`, `APdpODtJDL8q2JhtGup6DK0`. Both: iOS notification prompt re-fires every cold launch and no notifications ever deliver.

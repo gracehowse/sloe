@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Mobile `FoodSearchModal` fit-this-in reactivity test (post-ship #3,
  * 2026-04-18).

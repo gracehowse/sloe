@@ -89,7 +89,7 @@ type SupabaseLike = { from: (table: string) => unknown };
  *  We don't widen the shared type because verifyRecipe.ts lives under
  *  src/lib and other call sites assume only USDA/OFF results. */
 type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
-  _source: "USDA" | "OFF" | "CUSTOM";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   _custom?: CustomFood;
 };
 
@@ -413,6 +413,22 @@ export default function FoodSearchModal({
           quantity,
           quantityText: String(quantity),
           barcode: item._offCode,
+        });
+      } else if (item._source === "Edamam" && item.macrosPer100g) {
+        // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
+        // 2026-04-18. Macros come back per-100 g already inline so the
+        // tap path is the same shape as OFF — no extra fetch.
+        setLoadingKey(null);
+        const allPortions = buildPortionList([]);
+        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "OFF", // re-uses the OFF preview rendering path; full Edamam-branded UI is a follow-up
+          macrosPer100g: item.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
         });
       } else if (item._source === "CUSTOM" && item._custom) {
         setLoadingKey(null);

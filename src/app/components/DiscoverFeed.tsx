@@ -114,6 +114,43 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  // Eating-out row — Edamam restaurant + branded results, debounced 350ms.
+  // Surfaces only when the query is ≥ 3 chars to avoid noisy/empty calls.
+  // TestFlight `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). Mirrors mobile Discover.
+  type EatingOutHit = { foodId: string; label: string; brand: string | null; calories: number; protein: number };
+  const [eatingOut, setEatingOut] = useState<EatingOutHit[]>([]);
+  const [eatingOutLoading, setEatingOutLoading] = useState(false);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      setEatingOut([]);
+      setEatingOutLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEatingOutLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q)}&mode=meals`);
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.ok && Array.isArray(json.hits)) {
+          setEatingOut((json.hits as EatingOutHit[]).slice(0, 12));
+        } else {
+          setEatingOut([]);
+        }
+      } catch {
+        if (!cancelled) setEatingOut([]);
+      } finally {
+        if (!cancelled) setEatingOutLoading(false);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      setEatingOutLoading(false);
+    };
+  }, [searchQuery]);
   const [filters, setFilters] = useState({
     verified: false,
     maxCalories: "",
@@ -419,6 +456,48 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           </div>
         </div>
 
+        {/* Eating out — Edamam restaurant + branded meals. Renders only
+            when the user has typed at least 3 characters; collapsed
+            otherwise. TestFlight `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
+        {(eatingOutLoading || eatingOut.length > 0) && (
+          <div className="mt-4 px-4">
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Eating out
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {eatingOutLoading
+                  ? "Searching…"
+                  : `${eatingOut.length} restaurant ${eatingOut.length === 1 ? "match" : "matches"}`}
+              </p>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {eatingOut.map((m) => (
+                <button
+                  key={m.foodId}
+                  type="button"
+                  onClick={() => onViewTracker?.()}
+                  className="shrink-0 w-44 p-3 rounded-xl border border-border bg-card text-left hover:bg-muted transition-colors"
+                  title={m.label}
+                >
+                  {m.brand ? (
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-primary mb-1 truncate">
+                      {m.brand}
+                    </p>
+                  ) : null}
+                  <p className="text-xs font-semibold text-foreground line-clamp-2 mb-2">
+                    {m.label}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground tabular-nums">
+                    {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
+                  </p>
+                  <p className="text-[9px] text-muted-foreground/70 mt-0.5">per 100 g</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Import CTA card */}
         <div
           role="button"
@@ -443,6 +522,32 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           <Icons.forward className="w-4 h-4 text-muted-foreground" />
         </div>
 
+        {/* My Library CTA — parity with mobile
+            (`apps/mobile/app/(tabs)/discover.tsx` 369). Mobile shows
+            this immediately after the Import CTA so users discover the
+            saved-recipes shortcut without leaving Discover. Same `view`
+            URL trick the Import card uses. */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("view", "library");
+            window.history.pushState({}, "", url.toString());
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+          className="mx-4 mt-3 rounded-xl border border-border bg-card p-3.5 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
+        >
+          <IconBox size="lg" tone="success">
+            <Icons.save />
+          </IconBox>
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-foreground">My Library</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Saved and imported recipes</p>
+          </div>
+          <Icons.forward className="w-4 h-4 text-muted-foreground" />
+        </div>
 
         {/* Feed — 2-column grid */}
         <div className="mt-8">

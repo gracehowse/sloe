@@ -63,10 +63,13 @@ function reactNativeShimPlugin() {
  * from app code; they only apply during test runs.
  *
  * Logic-only tests (the pre-existing `*.test.ts` files under
- * `tests/unit/`) continue to run under the `node` environment; the
- * render-test files are `*.test.tsx` and pick up the jsdom environment
- * (needed for `@testing-library/jest-dom`-style assertions, even though
- * we use RNTL's host-tree queries) via `environmentMatchGlobs`.
+ * `tests/unit/`) run under the default `node` environment. Render-test
+ * files (`*.test.tsx`) need a DOM-like global for RNTL's scheduler +
+ * `react-test-renderer`, so they each opt in via a per-file
+ * `// @vitest-environment jsdom` directive at the top. We dropped the
+ * older `environmentMatchGlobs` config (deprecated in vitest 3, removed
+ * in 4) — per-file directives are the official replacement and keep
+ * this config flat. If you add a new render test, copy the directive.
  */
 export default defineConfig({
   plugins: [reactNativeShimPlugin()],
@@ -88,13 +91,10 @@ export default defineConfig({
     // (Flow syntax → `Unexpected token 'typeof'`). All module resolution
     // goes through our aliases.
     pool: "vmThreads",
+    // Default env is `node`. Render tests (`*.test.tsx`) opt into jsdom
+    // via a per-file `// @vitest-environment jsdom` directive so this
+    // config stays flat and free of the deprecated `environmentMatchGlobs`.
     environment: "node",
-    environmentMatchGlobs: [
-      // Render tests mount React trees; jsdom gives us `window` / `document`
-      // so `react-test-renderer` + RNTL's scheduler don't complain, even
-      // though queries run against the RTR host tree, not the DOM.
-      ["tests/**/*.test.tsx", "jsdom"],
-    ],
     setupFiles: ["./tests/setup.ts"],
     include: [
       "tests/**/*.test.ts",

@@ -1,0 +1,70 @@
+/**
+ * todayPlannedMealsCard — web parity for the mobile component
+ * `apps/mobile/components/today/TodayPlannedMealsCard.tsx`. Renders
+ * the user's plan-for-today rows with a portion picker so the user
+ * can one-tap log them at ½ / 1 / 1½ / 2× the planned serving.
+ */
+
+import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+
+import { TodayPlannedMealsCard } from "../../src/app/components/suppr/today-planned-meals-card";
+import type { DayPlanMeal } from "../../src/types/recipe";
+
+const MEALS: DayPlanMeal[] = [
+  { name: "Breakfast", recipeTitle: "Greek yogurt bowl", calories: 320, protein: 28, carbs: 35, fat: 8 },
+  { name: "Lunch", recipeTitle: "Sheet-pan chicken", calories: 620, protein: 55, carbs: 40, fat: 22 },
+];
+
+describe("TodayPlannedMealsCard", () => {
+  it("renders the planned section header and one row per planned meal", () => {
+    render(<TodayPlannedMealsCard plannedMeals={MEALS} onLogPlannedMealWithPortion={() => {}} />);
+    expect(screen.getByText("Planned")).toBeDefined();
+    expect(screen.getByText("Greek yogurt bowl")).toBeDefined();
+    expect(screen.getByText("Sheet-pan chicken")).toBeDefined();
+  });
+
+  it("formats the macro detail line with kcal + P/C/F", () => {
+    render(<TodayPlannedMealsCard plannedMeals={[MEALS[0]!]} onLogPlannedMealWithPortion={() => {}} />);
+    // "320 kcal · P 28g · C 35g · F 8g"
+    const text = document.body.textContent ?? "";
+    expect(text).toMatch(/320 kcal/);
+    expect(text).toMatch(/P 28g/);
+    expect(text).toMatch(/C 35g/);
+    expect(text).toMatch(/F 8g/);
+  });
+
+  it("opens the portion picker when 'Log today' is clicked", () => {
+    render(<TodayPlannedMealsCard plannedMeals={[MEALS[0]!]} onLogPlannedMealWithPortion={() => {}} />);
+    expect(screen.queryByRole("group", { name: /Choose portion/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Log today" }));
+    expect(screen.getByRole("group", { name: /Choose portion/ })).toBeDefined();
+    // The four portion buttons.
+    expect(screen.getByRole("button", { name: "½×" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "1×" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "1½×" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "2×" })).toBeDefined();
+  });
+
+  it("calls onLogPlannedMealWithPortion with the meal + chosen portion, then closes the picker", () => {
+    const onLog = vi.fn();
+    render(<TodayPlannedMealsCard plannedMeals={[MEALS[1]!]} onLogPlannedMealWithPortion={onLog} />);
+    fireEvent.click(screen.getByRole("button", { name: "Log today" }));
+    fireEvent.click(screen.getByRole("button", { name: "1½×" }));
+    expect(onLog).toHaveBeenCalledTimes(1);
+    expect(onLog).toHaveBeenCalledWith(MEALS[1], 1.5);
+    // Picker closes after a portion is chosen.
+    expect(screen.queryByRole("group", { name: /Choose portion/ })).toBeNull();
+    // Back to the "Log today" button.
+    expect(screen.getByRole("button", { name: "Log today" })).toBeDefined();
+  });
+
+  it("Cancel button on the picker closes it without calling the callback", () => {
+    const onLog = vi.fn();
+    render(<TodayPlannedMealsCard plannedMeals={[MEALS[0]!]} onLogPlannedMealWithPortion={onLog} />);
+    fireEvent.click(screen.getByRole("button", { name: "Log today" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onLog).not.toHaveBeenCalled();
+    expect(screen.queryByRole("group", { name: /Choose portion/ })).toBeNull();
+  });
+});

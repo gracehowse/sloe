@@ -15,6 +15,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  bucketEnergyShares,
   buildQuantityIdToCorrelationId,
   detectBulkSync,
   dietaryCorrelationKeyForSample,
@@ -274,5 +275,95 @@ describe("detectBulkSync", () => {
     const energyB = energySample("e-b", 200, { HKCorrelationUUID: "food-b" }, "2026-04-17T13:30:00Z");
     const result = detectBulkSync([energyA, energyB], null);
     expect(result.detected).toBe(false);
+  });
+});
+
+describe("bucketEnergyShares — proportional macro split (MFP bulk-sync mitigation)", () => {
+  it("returns share=1 for a single-sample bucket (back-compat unchanged path)", () => {
+    const e = energySample("e-1", 600);
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares([e], null);
+    const key = dietaryCorrelationKeyForSample(e, null).key;
+    expect(shareForSample("e-1", key)).toBe(1);
+    expect(legacyAmbiguousBuckets).toBe(0);
+  });
+
+  it("splits two same-minute legacy-bucket samples by their kcal ratio", () => {
+    // Reproduction of the production bug we hit on 2026-04-17: Dinner 828 +
+    // Snacks 545 both at the same minute (no HKCorrelationUUID metadata, no
+    // food-correlation parent map) ended up sharing a `minute|bundle` bucket.
+    const dinner = energySample("e-dinner", 828);
+    const snacks = energySample("e-snacks", 545);
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares(
+      [dinner, snacks],
+      null,
+    );
+    const key = dietaryCorrelationKeyForSample(dinner, null).key;
+    // Both samples must hash to the same bucket — sanity check.
+    expect(dietaryCorrelationKeyForSample(snacks, null).key).toBe(key);
+    expect(legacyAmbiguousBuckets).toBe(1);
+
+    const dinnerShare = shareForSample("e-dinner", key);
+    const snacksShare = shareForSample("e-snacks", key);
+    expect(dinnerShare).toBeCloseTo(828 / (828 + 545), 5);
+    expect(snacksShare).toBeCloseTo(545 / (828 + 545), 5);
+    // Shares must sum to 1 — preserves the bucket's total macros.
+    expect(dinnerShare + snacksShare).toBeCloseTo(1, 5);
+  });
+
+  it("does not split when samples have correlation parents (real per-meal grouping)", () => {
+    // When MFP (or another writer) DID emit food-correlation parents and
+    // each meal has its own bucket, every sample is alone in its bucket
+    // and the share stays 1 — proportional split is a no-op for the
+    // correctly-correlated path.
+    const dinner = energySample("e-dinner", 828, { HKCorrelationUUID: "food-dinner" });
+    const snacks = energySample("e-snacks", 545, { HKCorrelationUUID: "food-snacks" });
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares(
+      [dinner, snacks],
+      null,
+    );
+    const dinnerKey = dietaryCorrelationKeyForSample(dinner, null).key;
+    const snacksKey = dietaryCorrelationKeyForSample(snacks, null).key;
+    expect(dinnerKey).not.toBe(snacksKey);
+    expect(shareForSample("e-dinner", dinnerKey)).toBe(1);
+    expect(shareForSample("e-snacks", snacksKey)).toBe(1);
+    expect(legacyAmbiguousBuckets).toBe(0);
+  });
+
+  it("falls back to 1/n share when bucket totalKcal is zero (defensive)", () => {
+    // Edge case: a malformed sample with non-positive value lands in a
+    // bucket with another zero-value sample. Avoid division by zero.
+    const a = energySample("e-a", 0);
+    const b = energySample("e-b", 0);
+    const { shareForSample } = bucketEnergyShares([a, b], null);
+    const key = dietaryCorrelationKeyForSample(a, null).key;
+    expect(shareForSample("e-a", key)).toBeCloseTo(0.5, 5);
+    expect(shareForSample("e-b", key)).toBeCloseTo(0.5, 5);
+  });
+
+  it("returns 0 for a sample with no id (cannot match its own kcal in the bucket)", () => {
+    // Conservative: if the energy sample has no id, we can't look up its
+    // own kcal contribution, so we drop its macros (share=0) rather than
+    // assume the full bucket. Single-sample buckets still return 1
+    // because that branch fires before we ever ask for kcal.
+    const a = energySample("e-a", 500);
+    const orphan = { ...energySample("__placeholder", 300), id: undefined };
+    const { shareForSample } = bucketEnergyShares([a, orphan], null);
+    const key = dietaryCorrelationKeyForSample(a, null).key;
+    expect(shareForSample(undefined, key)).toBe(0);
+    expect(shareForSample("e-a", key)).toBeCloseTo(500 / 800, 5);
+  });
+
+  it("splits across three+ samples in the same legacy bucket", () => {
+    // The real production day had two ambiguous samples; the algorithm
+    // generalises to N>2 — guard with a 3-sample case.
+    const a = energySample("a", 300);
+    const b = energySample("b", 200);
+    const c = energySample("c", 100);
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares([a, b, c], null);
+    const key = dietaryCorrelationKeyForSample(a, null).key;
+    expect(shareForSample("a", key)).toBeCloseTo(0.5, 5);
+    expect(shareForSample("b", key)).toBeCloseTo(1 / 3, 5);
+    expect(shareForSample("c", key)).toBeCloseTo(1 / 6, 5);
+    expect(legacyAmbiguousBuckets).toBe(1);
   });
 });

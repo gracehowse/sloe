@@ -75,14 +75,16 @@ Thresholds: first log → create ≥ 20% at D14; create → relog ≥ 50%; relog
 
 ## 4. Event-name hygiene issues (rename with 30-day dual-emit)
 
-1. **Cook-mode event sprawl** — `cook_mode_opened` vs `cook_mode_started` vs `cook_mode_completed` vs `cook_mode_meal_logged`. Rename `cook_mode_started` → `cook_mode_first_step_advanced`.
-2. **First-run dupes** — `first_run_step_completed` vs `onboarding_step_completed`. Keep only `onboarding_step_completed` + `onboarding_checklist_completed`.
-3. **`checkout_completed_return`** — rename to `checkout_completed` (drop return suffix).
-4. **Recipe import split** — collapse `recipe_import_url` / `recipe_import_image` into `recipe_imported { source: "url" | "image" }`.
-5. **Voice vs photo prefix asymmetry** — `voice_log_*` → `ai_voice_log_*` OR `ai_photo_log_*` → `photo_log_*`. Prefer `ai_voice_log_*` + `ai_photo_log_*` (both clearly AI-gated).
-6. **`streak_freeze_earned_seen`** — rename to `streak_freeze_earned_acknowledged`.
-7. **`weekly_recap_push_sent`** — split into `_scheduled` (local trigger registered) and `_delivered` (OS fired).
-8. **Casing** — lock camelCase in `docs/data/schema.md`; current events consistent, keep discipline.
+**Dual-emit started 2026-04-18 (post-ship #1). Retire legacy names 2026-05-18.** Every legacy event continues to fire alongside its canonical replacement at identical payload shape, so existing PostHog dashboards keep reporting during the migration. On 2026-05-18, the retirement PR drops the legacy names from `src/lib/analytics/events.ts` and every dual-emit `track()` line (grep `RENAME-CYCLE-RETIRE-2026-05-18` in `events.ts`).
+
+1. **Cook-mode event sprawl** — `cook_mode_opened` vs `cook_mode_started` vs `cook_mode_completed` vs `cook_mode_meal_logged`. Rename `cook_mode_started` → `cook_mode_first_step_advanced`. **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — web `CookMode.tsx` dual-emits at the same mount site; mobile never had a `cook_mode_started` emit site so no change there.
+2. **First-run dupes** — `first_run_step_completed` vs `onboarding_step_completed`. Keep only `onboarding_step_completed` + `onboarding_checklist_completed`. **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — web `FirstRunChecklist.tsx` dual-emits both; mobile `onboarding.tsx` already emitted the canonical `onboarding_step_completed` so no change there.
+3. **`checkout_completed_return`** — rename to `checkout_completed` (drop return suffix). **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — both names registered; **no existing emit site** (the Stripe-return handler never wired the call), so this rename is a registry-only no-op today. Flagged in the post-ship #1 report: whoever wires the Stripe return flow must fire both names until 2026-05-18.
+4. **Recipe import split** — collapse `recipe_import_url` / `recipe_import_image` into `recipe_imported { source: "url" | "image" }`. **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — web `RecipeUpload.tsx` dual-emits at both sites (URL import path + image OCR import path). Mobile has no recipe-import emit sites today — nothing to dual-emit.
+5. **Voice vs photo prefix asymmetry** — `voice_log_*` → `ai_voice_log_*` OR `ai_photo_log_*` → `photo_log_*`. Prefer `ai_voice_log_*` + `ai_photo_log_*` (both clearly AI-gated). **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — web `voice-log-dialog.tsx` + `NutritionTracker.tsx` and mobile `VoiceLogSheet.tsx` + `(tabs)/index.tsx` all dual-emit the three events.
+6. **`streak_freeze_earned_seen`** — rename to `streak_freeze_earned_acknowledged`. **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — web `NutritionTracker.tsx` + mobile `(tabs)/index.tsx` both dual-emit.
+7. **`weekly_recap_push_sent`** — split into `_scheduled` (local trigger registered) and `_delivered` (OS fired). **IN PROGRESS (dual-emit started 2026-04-18, retire 2026-05-18)** — mobile `(tabs)/progress.tsx` dual-emits `weekly_recap_push_sent` + `weekly_recap_push_scheduled` at the scheduling site. `weekly_recap_push_delivered` is registered but not yet emitted — **no delivery listener exists today**; a TODO at the emit site points whoever wires `Notifications.addNotificationReceivedListener` (in `apps/mobile/app/_layout.tsx`) to fire it.
+8. **Casing** — lock camelCase in `docs/data/schema.md`; current events consistent, keep discipline. No action — hygiene check only.
 
 ---
 

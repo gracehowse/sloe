@@ -374,7 +374,7 @@ export type UnifiedSearchResult = {
   key: string;
   name: string;
   subtitle?: string;
-  /** per 100g macros (available immediately for OFF; fetched on tap for USDA) */
+  /** per 100g macros (available immediately for OFF/Edamam; fetched on tap for USDA) */
   macrosPer100g?: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
   /** Quick calorie display (per 100g) */
   calsPer100g?: number;
@@ -382,10 +382,59 @@ export type UnifiedSearchResult = {
   /** Trusted source (USDA Foundation/SR Legacy/Survey) */
   verified?: boolean;
   /** Internal: source type for fetching full data on tap */
-  _source: "USDA" | "OFF";
+  _source: "USDA" | "OFF" | "Edamam";
   _fdcId?: number;
   _offCode?: string;
+  /** Edamam food identifier — stable string, not numeric. */
+  _edamamFoodId?: string;
 };
+
+/** Edamam hit shape returned by `/api/edamam/search`. */
+export type EdamamSearchResult = {
+  foodId: string;
+  label: string;
+  category: string;
+  categoryLabel: string;
+  brand: string | null;
+  imageUrl: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
+};
+
+/**
+ * Search Edamam (restaurant + branded foods) via our Next.js API route.
+ * Empty on network / server / rate-limit errors so it never blocks
+ * USDA / OFF from rendering. TestFlight `AOI9xgY88Dx-uphiXI8IzEk`.
+ */
+export async function searchEdamam(
+  query: string,
+  opts?: { mode?: "foods" | "meals" },
+): Promise<EdamamSearchResult[]> {
+  const base = apiBase();
+  const q = effectiveFoodSearchQuery(query);
+  if (!base || !q.trim()) return [];
+  const mode = opts?.mode ?? "foods";
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12000);
+    const res = await authedFetch(
+      `${base}/api/edamam/search?q=${encodeURIComponent(q.trim())}&mode=${mode}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(t);
+    const json = await res.json();
+    if (!json.ok || !Array.isArray(json.hits)) return [];
+    return json.hits as EdamamSearchResult[];
+  } catch (e) {
+    console.error("[searchEdamam] failed:", e instanceof Error ? e.message : e);
+    return [];
+  }
+}
 
 /** Simple word-overlap relevance score for ranking */
 function searchRelevance(query: string, name: string): number {
@@ -403,7 +452,10 @@ function searchRelevance(query: string, name: string): number {
   return recall * 0.7 + recall * brevity * 0.3;
 }
 
-/** Search all sources in parallel, return unified ranked list. */
+/** Search all sources in parallel, return unified ranked list.
+ *  Sources: USDA FDC (verified generic foods), OpenFoodFacts (branded /
+ *  barcode products), Edamam food DB (branded + restaurant meals —
+ *  TestFlight `AOI9xgY88Dx-uphiXI8IzEk`, 2026-04-18). */
 export async function searchFoods(
   query: string,
   onPartial?: (results: UnifiedSearchResult[]) => void,
@@ -412,28 +464,38 @@ export async function searchFoods(
   if (!t) return [];
   const qRank = effectiveFoodSearchQuery(t);
   if (!qRank.trim()) return [];
-  // Run both searches in parallel; deliver partial results as each resolves
   const usdaP = searchUsda(t);
   const offP = searchOpenFoodFacts(t);
+  const edamamP = searchEdamam(t);
 
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
+  let eda: EdamamSearchResult[] = [];
 
-  // If a callback is provided, deliver whichever source responds first
   if (onPartial) {
-    const first = await Promise.race([
-      offP.then((r) => { off = r; return "off" as const; }),
-      usdaP.then((r) => { usda = r; return "usda" as const; }),
+    // Stream: deliver whichever source responds first, then keep appending
+    // as the others resolve. Users see USDA / OFF hits instantly without
+    // waiting for Edamam's network round-trip.
+    const usdaLabelled = usdaP.then((r) => { usda = r; return "usda" as const; });
+    const offLabelled = offP.then((r) => { off = r; return "off" as const; });
+    const edaLabelled = edamamP.then((r) => { eda = r; return "edamam" as const; });
+    const pending = new Set<Promise<"usda" | "off" | "edamam">>([
+      usdaLabelled,
+      offLabelled,
+      edaLabelled,
     ]);
-    onPartial(mergeResults(qRank, usda, off));
-    // Now wait for the other
-    if (first === "off") usda = await usdaP;
-    else off = await offP;
+    while (pending.size > 0) {
+      const done = await Promise.race(pending);
+      pending.delete(
+        done === "usda" ? usdaLabelled : done === "off" ? offLabelled : edaLabelled,
+      );
+      onPartial(mergeResults(qRank, usda, off, eda));
+    }
   } else {
-    [usda, off] = await Promise.all([usdaP, offP]);
+    [usda, off, eda] = await Promise.all([usdaP, offP, edamamP]);
   }
 
-  return mergeResults(qRank, usda, off);
+  return mergeResults(qRank, usda, off, eda);
 }
 
 /** Convert ALL CAPS or all-lowercase to Title Case */
@@ -451,6 +513,7 @@ function mergeResults(
   query: string,
   usda: FoodSearchResult[],
   off: OffSearchResult[],
+  edamam: EdamamSearchResult[] = [],
 ): UnifiedSearchResult[] {
   const results: (UnifiedSearchResult & { _relevance: number })[] = [];
 
@@ -501,6 +564,34 @@ function mergeResults(
     });
   }
 
+  for (const item of edamam) {
+    const brand = item.brand ? titleCase(item.brand) : "";
+    const cleanLabel = titleCase(item.label);
+    const displayName = brand ? `${brand} · ${cleanLabel}` : cleanLabel;
+    const isMeal =
+      item.category?.toLowerCase().includes("meal") ||
+      Boolean(item.brand && item.category?.toLowerCase().includes("packaged"));
+    results.push({
+      key: `edamam-${item.foodId}`,
+      name: displayName,
+      subtitle: isMeal ? (brand ? `Restaurant · ${brand}` : "Restaurant meal") : undefined,
+      calsPer100g: item.calories,
+      macrosPer100g: {
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiberG: item.fiberG,
+        sugarG: item.sugarG,
+        sodiumMg: item.sodiumMg,
+      },
+      imageUrl: item.imageUrl,
+      _source: "Edamam",
+      _edamamFoodId: item.foodId,
+      _relevance: searchRelevance(query, displayName),
+    });
+  }
+
   results.sort((a, b) => b._relevance - a._relevance);
 
   // Deduplicate — skip items with same normalized name
@@ -511,7 +602,7 @@ function mergeResults(
     if (seen.has(norm)) continue;
     seen.add(norm);
     deduped.push(r);
-    if (deduped.length >= 20) break;
+    if (deduped.length >= 24) break;
   }
 
   return deduped;

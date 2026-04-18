@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from "react-native";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 
 import { Accent } from "@/constants/theme";
@@ -158,18 +158,34 @@ export default function TrendLine({
             height={height}
             viewBox={`0 0 ${viewW} ${height}`}
           >
-            {/* Goal line */}
+            {/* Goal line + inline goal value label at the right edge.
+                The label mirrors LoseIt's reference (see TestFlight
+                `AF7bS2DQrH_wZWxGosBJ3K8`, 2026-04-18) so the goal
+                number is legible on the chart itself, not only in the
+                legend underneath. */}
             {goalY != null && (
-              <Line
-                x1={0}
-                y1={goalY}
-                x2={viewW}
-                y2={goalY}
-                stroke={goalColor ?? Accent.success}
-                strokeWidth={1}
-                strokeDasharray="4,3"
-                opacity={0.5}
-              />
+              <>
+                <Line
+                  x1={0}
+                  y1={goalY}
+                  x2={viewW}
+                  y2={goalY}
+                  stroke={goalColor ?? Accent.success}
+                  strokeWidth={1}
+                  strokeDasharray="4,3"
+                  opacity={0.5}
+                />
+                <SvgText
+                  x={viewW - 2}
+                  y={goalY - 4}
+                  fontSize={10}
+                  fontWeight="700"
+                  textAnchor="end"
+                  fill={goalColor ?? Accent.success}
+                >
+                  {formatValue ? formatValue(goalValue!) : String(goalValue)}
+                </SvgText>
+              </>
             )}
 
             {/* Vertical guide at selected historical point */}
@@ -184,6 +200,42 @@ export default function TrendLine({
                 opacity={0.65}
               />
             )}
+
+            {/* Start-of-range callout pill — mirrors LoseIt reference in
+                TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` so the user can see
+                both ends of the range without tapping. Only renders when
+                the range spans at least 2 points. */}
+            {data.length >= 2 && (() => {
+              const firstPt = data[0];
+              const firstX = paddingX;
+              const firstY = toY(firstPt.value);
+              const label = formatValue
+                ? formatValue(firstPt.value)
+                : String(firstPt.value);
+              // Approximate pill width from label character count.
+              const pillW = Math.max(32, 8 + label.length * 6);
+              const pillH = 14;
+              const pillX = Math.min(viewW - pillW - 2, Math.max(0, firstX - 6));
+              const pillY = Math.min(
+                chartH - pillH - 2,
+                Math.max(2, firstY - pillH - 4),
+              );
+              return (
+                <>
+                  <SvgText
+                    x={pillX + pillW / 2}
+                    y={pillY + 10}
+                    fontSize={10}
+                    fontWeight="700"
+                    textAnchor="middle"
+                    fill={color}
+                  >
+                    {label}
+                  </SvgText>
+                  <Circle cx={firstX} cy={firstY} r={3} fill={color} />
+                </>
+              );
+            })()}
 
             {/* Main line */}
             <Polyline

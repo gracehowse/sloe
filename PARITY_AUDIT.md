@@ -204,6 +204,50 @@ Retired phrasings (enforced by `tests/unit/todayCopyParity.test.ts`):
 
 Below `lg:` the sidebar is hidden and the bottom tab bar remains — same tab order as the mobile app (`Today / Discover / Plan / Progress / Profile`). This is the deliberate 2026-04-18 decision: *mobile-web should feel like the native mobile app*, desktop-web gets a first-class desktop layout.
 
+### Today composition order (Pass 1, 2026-04-18)
+
+Web `NutritionTracker.tsx` now renders sub-components in the **same order** as mobile `apps/mobile/app/(tabs)/index.tsx`. This is the canonical Today flow on every platform; a divergence here is a bug.
+
+| # | Component | Gating |
+|---|---|---|
+| 1 | `TodayDateHeader` (with embedded `DayStrip`) | always |
+| 2 | `TodayFastingPill` | day mode + active fast |
+| 3 | `TodayWeekView` | week mode |
+| 4 | `TodayHeroStats` (web desktop) / `TodayHeroRing` (mobile-web + native) | day mode |
+| 5 | `RemainingMacrosBar` | day mode |
+| 6 | `TodayDashboardMacroTiles` | day mode |
+| 7 | nutrient detail rows (web inline grid; mobile uses a "View all nutrients (N)" link → modal — **intentional divergence**, web has the screen real estate to show inline) | when ≥1 micro present |
+| 8 | `TodayQuickLogStrip` | day mode |
+| 9 | `TodayStreakInsightCard` | day mode |
+| 10 | `CalorieDeficitInsight` (web) / `TodayDeficitInsight` (mobile) | isToday + remaining > 0 |
+| 11 | `TodayEatAgainBanner` | isToday + suggestion + not dismissed today |
+| 12 | `QuickAddPanel` (collapsed CTA above) | day mode |
+| 13 | `TodayMealsSection` | day mode |
+| 14 | `TodayPlannedMealsCard` | day mode + plan exists for today + ≥1 meal |
+| 15 | `TodayStepsCard` (or "Connect health" link first-run fallback) | day mode |
+| 16 | `TodayActivityBonusCard` | day mode + (hasBurnData OR isToday) |
+| 17 | `HydrationStimulantsCard` (or "Track hydration?" link first-run fallback) | water target > 0 OR any logged |
+
+### Token alignment (Pass 3, 2026-04-18)
+
+Cross-platform comparison of `apps/mobile/constants/theme.ts` vs `src/styles/theme.css`:
+
+**Aligned hexes** — these MUST stay byte-identical between platforms; align both when changing:
+- All `Accent.*` (primary / success / warning / destructive / cyan / orange / magenta / info)
+- All `MacroColors.*` (calories / protein / carbs / fat / fiber / sugar / sodium / water)
+- All `StimulantColors.*` (caffeine / alcohol)
+- Foreground text: light `#111118`, dark `#e4e4e8`
+- Border + cardBorder: light `#e4e4ec`, dark `#282830`
+- Input background: light `#ededf2`, dark `#202028`
+- Muted icon colour: light `#6b6b78`, dark `#7a7a88`
+- Spacing scale: `xs:4 sm:8 md:12 lg:16 xl:20 xxl:24 xxxl:32` ↔ `--spacing-pm-1 … --spacing-pm-10`
+- Radius scale: `sm:8 md:12 lg:16 xl:20` ↔ `--radius:12 --radius-card:16`
+
+**Intentional cross-platform divergence** — do NOT "fix" without revising this section first:
+- **Background**: mobile keeps pure white (`#ffffff`) and OLED-friendly black (`#0a0a0f`); web uses slightly off-white (`#f4f5f7`) and slightly-raised black (`#101014`) for desktop eye-comfort and to avoid LCD halation.
+- **Card (dark)**: mobile `#16161e`, web `#18181c` — each card sits the same amount above its platform's background.
+- **Nutrient detail UI**: mobile uses a "View all nutrients (N)" link → modal because of small-screen scannability; web shows the full grid inline because the screen real estate is there.
+
 ### Parity tests added this batch
 
 - `tests/unit/todayCopyParity.test.ts` — 15 tests. Asserts canonical module outputs and scans web + mobile + landing for forbidden phrases.

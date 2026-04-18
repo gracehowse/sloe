@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Mobile `DuplicateDaySheet` render test (post-ship #3, 2026-04-18).
  *

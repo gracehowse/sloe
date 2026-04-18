@@ -81,7 +81,11 @@ export function VoiceLogDialog({
       setItems([]);
       setError(null);
       setIsRecording(false);
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
+      // `voice_log_*` retires in favour of `ai_voice_log_*` (prefix
+      // symmetry with `ai_photo_log_*`). See plan doc §4.
       track(AnalyticsEvents.voice_log_started);
+      track(AnalyticsEvents.ai_voice_log_started);
     }
   }, [open]);
 
@@ -234,10 +238,13 @@ export function VoiceLogDialog({
   const handleLogAll = () => {
     if (items.length === 0) return;
     onCommit(items);
-    track(AnalyticsEvents.voice_log_committed, {
+    // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
+    const committedPayload = {
       itemCount: items.length,
       avgConfidence: averageConfidence(items),
-    });
+    };
+    track(AnalyticsEvents.voice_log_committed, committedPayload);
+    track(AnalyticsEvents.ai_voice_log_committed, committedPayload);
     onOpenChange(false);
   };
 

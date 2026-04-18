@@ -250,6 +250,26 @@ Both events carry `savedMealId: string` so F3 (habit loop) can join create → l
 ### `first_log_at` — person property (G2)
 Not an event. Set on the first `food_logged` per user via `posthog.setPersonProperties({}, { first_log_at })` (web, `$set_once` idempotent) or `identify(distinctId, { first_log_at })` (mobile, AsyncStorage-gated). Helper: `src/lib/analytics/firstLog.ts`.
 
+### Rename cycle (post-ship #1, 2026-04-18 → retire 2026-05-18)
+
+Eight event names are being renamed for consistency per `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4. Every legacy name continues to fire **alongside** its canonical replacement during the 30-day migration window so PostHog dashboards and funnels can be re-pointed without a reporting gap. Retirement is scheduled for 2026-05-18 — on that date, the retirement PR deletes the legacy entries from `events.ts` and every dual-emit `track()` line (grep marker in the registry: `RENAME-CYCLE-RETIRE-2026-05-18`). Payload shapes are unchanged except rename #4, which adds a `source` property on the consolidated event.
+
+| # | Legacy name (retires 2026-05-18) | Canonical name | Payload change | Emit site(s) |
+|---|---|---|---|---|
+| 1 | `cook_mode_started` | `cook_mode_first_step_advanced` | none | web `CookMode.tsx` |
+| 2a | `first_run_step_completed` | `onboarding_step_completed` | none | web `FirstRunChecklist.tsx` |
+| 2b | `first_run_checklist_completed` | `onboarding_checklist_completed` | none | web `FirstRunChecklist.tsx` |
+| 3 | `checkout_completed_return` | `checkout_completed` | none | **none today** (registry-only) |
+| 4a | `recipe_import_url` | `recipe_imported` | adds `source: "url"` | web `RecipeUpload.tsx` |
+| 4b | `recipe_import_image` | `recipe_imported` | adds `source: "image"` | web `RecipeUpload.tsx` |
+| 5a | `voice_log_started` | `ai_voice_log_started` | none | web `voice-log-dialog.tsx`, mobile `VoiceLogSheet.tsx` |
+| 5b | `voice_log_committed` | `ai_voice_log_committed` | none | web `voice-log-dialog.tsx`, mobile `VoiceLogSheet.tsx` |
+| 5c | `voice_log_paywalled` | `ai_voice_log_paywalled` | none | web `NutritionTracker.tsx`, mobile `(tabs)/index.tsx` |
+| 6 | `streak_freeze_earned_seen` | `streak_freeze_earned_acknowledged` | none | web `NutritionTracker.tsx`, mobile `(tabs)/index.tsx` |
+| 7 | `weekly_recap_push_sent` | `weekly_recap_push_scheduled` + `weekly_recap_push_delivered` (split) | none | scheduled: mobile `(tabs)/progress.tsx`. delivered: **not yet wired** — pending `Notifications.addNotificationReceivedListener` in `apps/mobile/app/_layout.tsx`. |
+
+Exported helper type: `RecipeImportedSource = "url" \| "image"`. Collision / drop regressions are guarded by `tests/unit/analyticsEvents.test.ts`' `rename-cycle dual-emit` `describe` block.
+
 ## Related Documents
 - [Technical Architecture](../technical/architecture.md)
 - [API Reference](../api/endpoints.md)

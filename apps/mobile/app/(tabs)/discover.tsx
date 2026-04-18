@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   View,
@@ -18,6 +18,7 @@ import { useRouter, type Href } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
+import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Ionicons } from "@expo/vector-icons";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
@@ -66,6 +67,34 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
+
+  // Eating-out row — Edamam restaurant + branded results, surfaced when
+  // the user has typed a search query. TestFlight `AOI9xgY88Dx-uphiXI8IzEk`
+  // (2026-04-18). Debounced 350ms so each keystroke doesn't burn quota.
+  const [eatingOut, setEatingOut] = useState<EdamamSearchResult[]>([]);
+  const [eatingOutLoading, setEatingOutLoading] = useState(false);
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 3) {
+      setEatingOut([]);
+      setEatingOutLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEatingOutLoading(true);
+    const t = setTimeout(async () => {
+      const hits = await searchEdamam(q, { mode: "meals" });
+      if (!cancelled) {
+        setEatingOut(hits.slice(0, 12));
+        setEatingOutLoading(false);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      setEatingOutLoading(false);
+    };
+  }, [search]);
 
   /**
    * Instagram → Copy link or share often leaves the URL on the pasteboard; read on Discover focus.
@@ -257,6 +286,60 @@ export default function DiscoverScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+
+            {/* Eating out — Edamam restaurant + branded meals. Only renders
+                when the user has typed at least 3 characters; collapsed
+                when no hits so we don't waste vertical space. TestFlight
+                `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
+            {(eatingOutLoading || eatingOut.length > 0) && (
+              <View style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.4, textTransform: "uppercase" }}>
+                    Eating out
+                  </Text>
+                  {eatingOutLoading ? (
+                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>Searching…</Text>
+                  ) : (
+                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                      {eatingOut.length} restaurant {eatingOut.length === 1 ? "match" : "matches"}
+                    </Text>
+                  )}
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8 }}
+                >
+                  {eatingOut.map((m) => (
+                    <Pressable
+                      key={m.foodId}
+                      onPress={() => router.push({ pathname: "/(tabs)" as any, params: { search: m.label } })}
+                      style={{
+                        width: 160,
+                        padding: 10,
+                        borderRadius: Radius.md,
+                        backgroundColor: colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.cardBorder,
+                      }}
+                    >
+                      {m.brand ? (
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent, marginBottom: 2 }} numberOfLines={1}>
+                          {m.brand.toUpperCase()}
+                        </Text>
+                      ) : null}
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginBottom: 6 }} numberOfLines={2}>
+                        {m.label}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                        {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
+                      </Text>
+                      <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Import CTA */}
             <Pressable

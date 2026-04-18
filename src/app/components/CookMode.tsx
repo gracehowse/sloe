@@ -115,7 +115,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
       recipeId: recipe.id,
       stepCount: totalSteps,
     });
-    track(AnalyticsEvents.cook_mode_started, { recipeTitle: recipe.title, steps: totalSteps });
+    // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. The old
+    // `cook_mode_started` name is ambiguous alongside `cook_mode_opened`;
+    // `cook_mode_first_step_advanced` is the canonical name going forward.
+    // See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4.
+    const cookModeStartedPayload = { recipeTitle: recipe.title, steps: totalSteps };
+    track(AnalyticsEvents.cook_mode_started, cookModeStartedPayload);
+    track(AnalyticsEvents.cook_mode_first_step_advanced, cookModeStartedPayload);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wake Lock with visibility-change re-acquire.

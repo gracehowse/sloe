@@ -1541,7 +1541,10 @@ export default function TrackerScreen() {
       await AsyncStorage.setItem("suppr-last-seen-freeze-earned-at", newestFreezeEarnedAt);
     } catch { /* noop */ }
     try {
-      track(AnalyticsEvents.streak_freeze_earned_seen, { earnedAt: newestFreezeEarnedAt });
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
+      const seenPayload = { earnedAt: newestFreezeEarnedAt };
+      track(AnalyticsEvents.streak_freeze_earned_seen, seenPayload);
+      track(AnalyticsEvents.streak_freeze_earned_acknowledged, seenPayload);
     } catch { /* noop */ }
   }, [newestFreezeEarnedAt]);
 
@@ -1648,7 +1651,9 @@ export default function TrackerScreen() {
   // inside the sheet on mount.
   const handleOpenVoiceLog = useCallback(() => {
     if (userTier !== "pro") {
+      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
       track(AnalyticsEvents.voice_log_paywalled);
+      track(AnalyticsEvents.ai_voice_log_paywalled);
       setAiPaywall({ open: true, feature: "voice_log" });
       return;
     }

@@ -1,19 +1,44 @@
 /** Stable event names for PostHog / product analytics. */
 export const AnalyticsEvents = {
   checkout_started: "checkout_started",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+  // `checkout_completed`. Drop the `_return` suffix once dashboards have
+  // migrated. See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4.
   checkout_completed_return: "checkout_completed_return",
+  /** Canonical checkout success event (rename-cycle target for the legacy
+   *  `checkout_completed_return`). Added 2026-04-18 alongside the 30-day
+   *  dual-emit. Retire the old name 2026-05-18. */
+  checkout_completed: "checkout_completed",
   recipe_saved: "recipe_saved",
   food_logged: "food_logged",
   barcode_lookup: "barcode_lookup",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+  // `recipe_imported { source: "url" }`. Collapsed event lands in the
+  // registry below.
   recipe_import_url: "recipe_import_url",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+  // `recipe_imported { source: "image" }`.
   recipe_import_image: "recipe_import_image",
+  /** Canonical recipe-import event (rename-cycle target for
+   *  `recipe_import_url` / `recipe_import_image`). Payload:
+   *  `{ source: "url" | "image"; ...originalPayload }`. Retire the two
+   *  legacy events on 2026-05-18. */
+  recipe_imported: "recipe_imported",
   meal_plan_generated: "meal_plan_generated",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
   profile_targets_saved: "profile_targets_saved",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Ambiguous vs
+  // `cook_mode_opened` — fires alongside `cook_mode_first_step_advanced`.
   cook_mode_started: "cook_mode_started",
+  /** Canonical cook-mode engagement event (rename target for
+   *  `cook_mode_started`). Same payload shape. Retire old name 2026-05-18. */
+  cook_mode_first_step_advanced: "cook_mode_first_step_advanced",
   cook_mode_completed: "cook_mode_completed",
   cook_mode_meal_logged: "cook_mode_meal_logged",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+  // `onboarding_step_completed` — drop the `first_run_` prefix so
+  // onboarding events are consistent.
   first_run_step_completed: "first_run_step_completed",
   empty_state_cta_clicked: "empty_state_cta_clicked",
   pricing_page_viewed: "pricing_page_viewed",
@@ -21,7 +46,13 @@ export const AnalyticsEvents = {
   onboarding_completed: "onboarding_completed",
   onboarding_step_completed: "onboarding_step_completed",
   paywall_viewed: "paywall_viewed",
+  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+  // `onboarding_checklist_completed`.
   first_run_checklist_completed: "first_run_checklist_completed",
+  /** Canonical onboarding-checklist completion event (rename target for
+   *  `first_run_checklist_completed`). Same payload shape. Retire old
+   *  name 2026-05-18. */
+  onboarding_checklist_completed: "onboarding_checklist_completed",
   meal_copied: "meal_copied",
   day_duplicated: "day_duplicated",
   /** Water logged via quick-add chip or manual entry (Batch 2.5). */
@@ -84,8 +115,16 @@ export const AnalyticsEvents = {
    * streak insight card (Batch 4.11 — 2026-04-18 audit H7). Payload:
    * `{ earnedAt }` — the ISO timestamp of the earned entry that was
    * acknowledged. One event per earned moment per user. Tracks that the
-   * celebratory surface was actually seen, not just fired in analytics. */
+   * celebratory surface was actually seen, not just fired in analytics.
+   *
+   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+   * `streak_freeze_earned_acknowledged` — "_seen" is inconsistent
+   * suffix. See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4. */
   streak_freeze_earned_seen: "streak_freeze_earned_seen",
+  /** Canonical acknowledgement event (rename target for
+   *  `streak_freeze_earned_seen`). Same payload `{ earnedAt }`. Retire
+   *  old name 2026-05-18. */
+  streak_freeze_earned_acknowledged: "streak_freeze_earned_acknowledged",
   /** Weekly recap card appeared on the Progress dashboard (Batch 4.11).
    * Payload: `{ weekKey }`. Fires once per week per platform load. */
   weekly_recap_shown: "weekly_recap_shown",
@@ -96,8 +135,26 @@ export const AnalyticsEvents = {
   weekly_recap_shared: "weekly_recap_shared",
   /** Weekly recap push notification was scheduled or delivered (Batch 4.11).
    * Fires when the local notification is scheduled (mobile) or when the
-   * server-side push is deferred (web). Payload: `{ weekKey }`. */
+   * server-side push is deferred (web). Payload: `{ weekKey }`.
+   *
+   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] The old name
+   * conflates scheduling with delivery. Split into
+   * `weekly_recap_push_scheduled` (local trigger registered) and
+   * `weekly_recap_push_delivered` (OS fired). Dual-emit continues
+   * firing the legacy `weekly_recap_push_sent` at the scheduling site
+   * for the 30-day migration window. */
   weekly_recap_push_sent: "weekly_recap_push_sent",
+  /** Canonical scheduling event (rename target — split #1 for
+   *  `weekly_recap_push_sent`). Fires when the OS-level local
+   *  notification has been successfully registered. Payload:
+   *  `{ weekKey }`. Retire old name 2026-05-18. */
+  weekly_recap_push_scheduled: "weekly_recap_push_scheduled",
+  /** Canonical delivery event (rename target — split #2 for
+   *  `weekly_recap_push_sent`). Fires when the OS delivers the recap
+   *  push to the device (not yet wired — no delivery listener exists
+   *  today, see TODO in `apps/mobile/app/_layout.tsx`). Payload:
+   *  `{ weekKey }`. */
+  weekly_recap_push_delivered: "weekly_recap_push_delivered",
   /** User flipped the Settings toggle controlling `profiles.weekly_recap_push_enabled`
    * (web `Settings` / mobile `more.tsx`). Fires once per committed change, never on
    * initial hydration from Supabase, never on dialog-cancel no-ops. Payload:
@@ -123,16 +180,36 @@ export const AnalyticsEvents = {
    * Mobile-only. */
   siri_action_invoked: "siri_action_invoked",
   /** User opened the voice-log modal (Batch 5.13). Mic pressed or text
-   * fallback launched. No payload — funnel entry. */
+   * fallback launched. No payload — funnel entry.
+   *
+   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+   * `ai_voice_log_started` — prefix asymmetry vs `ai_photo_log_*`
+   * (both are Pro AI surfaces). See plan doc §4. */
   voice_log_started: "voice_log_started",
   /** User tapped "Log all" on the voice-log review sheet (Batch 5.13).
    * Payload: `{ itemCount, avgConfidence }` — avgConfidence is the mean
-   * of the committed items' confidence values, 0–1. */
+   * of the committed items' confidence values, 0–1.
+   *
+   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+   * `ai_voice_log_committed`. */
   voice_log_committed: "voice_log_committed",
   /** Free-tier user tapped the voice-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. Separate event from
-   * `paywall_viewed` so we can measure conversion per feature. */
+   * `paywall_viewed` so we can measure conversion per feature.
+   *
+   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
+   * `ai_voice_log_paywalled`. */
   voice_log_paywalled: "voice_log_paywalled",
+  /** Canonical voice-log-started event (rename target — prefix
+   *  symmetry with `ai_photo_log_started`). Same payload shape. Retire
+   *  old name 2026-05-18. */
+  ai_voice_log_started: "ai_voice_log_started",
+  /** Canonical voice-log-committed event (rename target for
+   *  `voice_log_committed`). Same payload shape. Retire 2026-05-18. */
+  ai_voice_log_committed: "ai_voice_log_committed",
+  /** Canonical voice-log-paywalled event (rename target for
+   *  `voice_log_paywalled`). Same payload shape. Retire 2026-05-18. */
+  ai_voice_log_paywalled: "ai_voice_log_paywalled",
   /** User opened the AI photo-log modal (Batch 5.13). No payload. */
   ai_photo_log_started: "ai_photo_log_started",
   /** User tapped "Log all" on the photo-log review sheet (Batch 5.13).
@@ -269,3 +346,35 @@ export type PaywallViewedFrom =
  *  (L6 G4). Mirrors `classifyConfidence` in
  *  `src/lib/nutrition/aiLogging.ts` — do not duplicate thresholds. */
 export type ConfidenceBucket = "high" | "medium" | "low";
+
+/** Canonical `source` of a `recipe_imported` event (post-ship #1,
+ *  2026-04-18 rename cycle). Collapses the legacy
+ *  `recipe_import_url` / `recipe_import_image` split into one event
+ *  with a `source` property. */
+export type RecipeImportedSource = "url" | "image";
+
+// -- TODO 2026-05-18: retirement of rename-cycle legacy names --------
+//
+// The following legacy event names are being dual-emitted alongside
+// their canonical replacements during the 2026-04-18 → 2026-05-18
+// rename cycle (post-ship #1). On 2026-05-18, delete the legacy
+// entries from this registry AND delete every caller's dual-emit
+// line. The grep-friendly marker below is what the retirement PR
+// searches for.
+//
+// RENAME-CYCLE-RETIRE-2026-05-18:
+//   - `checkout_completed_return` → `checkout_completed`
+//   - `recipe_import_url` / `recipe_import_image` → `recipe_imported { source }`
+//   - `cook_mode_started` → `cook_mode_first_step_advanced`
+//   - `first_run_step_completed` → `onboarding_step_completed`
+//   - `first_run_checklist_completed` → `onboarding_checklist_completed`
+//   - `streak_freeze_earned_seen` → `streak_freeze_earned_acknowledged`
+//   - `voice_log_started` → `ai_voice_log_started`
+//   - `voice_log_committed` → `ai_voice_log_committed`
+//   - `voice_log_paywalled` → `ai_voice_log_paywalled`
+//   - `weekly_recap_push_sent` → `weekly_recap_push_scheduled`
+//     (+ `weekly_recap_push_delivered` once a delivery listener lands).
+//
+// See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4 and
+// `decisions_event_name_rename_cycle_2026_04_18.md` in product-memory
+// for the full retirement checklist.
