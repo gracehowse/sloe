@@ -15,7 +15,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_NO_METRO_WORKSPACE_ROOT": "1"
+      }
     }
   },
   "submit": {
