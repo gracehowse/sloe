@@ -4,6 +4,19 @@ import { toast } from "sonner";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog";
+import { Badge } from "./suppr/badge";
+import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import { TextPromptDialog } from "./suppr/text-prompt-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -115,6 +128,26 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
   // Batch 3.10 — drag-drop source pointer. `null` outside any drag.
   const [dragSource, setDragSource] = useState<{ day: number; slotIndex: number } | null>(null);
+
+  // Audit M7 (2026-04-18) — themed dialogs replacing the prior
+  // `window.prompt` / `window.confirm` call sites inside MealPlanner.
+  const [newPlanOpen, setNewPlanOpen] = useState(false);
+  const [renamePlanOpen, setRenamePlanOpen] = useState(false);
+  const [deletePlanOpen, setDeletePlanOpen] = useState(false);
+  /** Pending template apply (non-destructive confirm — overwrites the current week). */
+  const [applyTemplatePending, setApplyTemplatePending] = useState<PlanTemplate | null>(null);
+  /** Pending swap that would remove `count` leftover children; confirm before swapping. */
+  const [swapLeftoverConfirm, setSwapLeftoverConfirm] = useState<
+    | { day: number; mealIndex: number; leftoverCount: number }
+    | null
+  >(null);
+  /** Pending keyboard-accessible "Move" fallback. */
+  const [movePrompt, setMovePrompt] = useState<
+    | { day: number; slotIndex: number }
+    | null
+  >(null);
+  const [moveDay, setMoveDay] = useState("");
+  const [moveSlot, setMoveSlot] = useState("");
 
   const refreshPlanTemplates = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -246,18 +279,29 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     [generatedPlan, mealPlan],
   );
 
+  // Audit M7 (2026-04-18) — Apply Template used to confirm via
+  // `window.confirm`. It now opens a themed `DestructiveConfirmDialog`
+  // (destructive variant because applying overwrites the current
+  // week). The actual apply runs from `commitApplyTemplate` once the
+  // user confirms.
   const handleApplyTemplate = useCallback(
     (templateId: string) => {
       const tmpl = planTemplates.find((t) => t.id === templateId);
       if (!tmpl) return;
-      if (!window.confirm(`Replace this week's plan with "${tmpl.name}"?`)) return;
+      setApplyTemplatePending(tmpl);
+    },
+    [planTemplates],
+  );
+
+  const commitApplyTemplate = useCallback(
+    (tmpl: PlanTemplate) => {
       const next = applyTemplateToWeek(tmpl);
       setMealPlan(next);
       track(AnalyticsEvents.plan_template_applied, { dayCount: tmpl.dayCount, slotCount: tmpl.slots.length });
       toast.success(`Applied "${tmpl.name}"`);
       setTemplatesOpen(false);
     },
-    [planTemplates, setMealPlan],
+    [setMealPlan],
   );
 
   const handleDeleteTemplate = useCallback(
@@ -293,40 +337,10 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     });
   };
 
-  const swapMeal = (day: number, mealIndex: number) => {
-    const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
-    const curMeal = dp?.meals[mealIndex];
-    if (
-      curMeal &&
-      isMealPlanPlaceholderLikeTitle(curMeal.recipeTitle, { isPlaceholder: curMeal.isPlaceholder })
-    ) {
-      toast.error("Save recipes to enable swapping");
-      return;
-    }
-    // Batch 3.10 — if this meal is the parent of downstream leftovers,
-    // warn and confirm before wiping them. No shame copy — factual count.
-    const prevPlan = generatedPlan ?? mealPlan;
-    const curRecipeId = (curMeal as (typeof curMeal & { recipeId?: string }) | undefined)?.recipeId;
-    if (prevPlan && curRecipeId) {
-      const leftoverCount = countLeftoversOfRecipe(prevPlan, curRecipeId);
-      if (leftoverCount > 0) {
-        const confirmed = window.confirm(
-          `This will remove ${leftoverCount} leftover meal${leftoverCount === 1 ? "" : "s"}. Continue?`,
-        );
-        if (!confirmed) return;
-        // Pre-clear leftovers BEFORE running the swap so totals stay right.
-        setMealPlan((prev) => {
-          if (!prev) return prev;
-          const dayIdx = prev.findIndex((d) => d.day === day);
-          const { plan: cleaned } = markLeftoversOnSwap(prev, {
-            dayIndex: dayIdx,
-            slot: curMeal?.name ?? "",
-            previousRecipeId: curRecipeId,
-          });
-          return cleaned;
-        });
-      }
-    }
+  /** Actual swap logic. Safe to call after any leftover-confirmation
+   * has already cleared. Split out (audit M7, 2026-04-18) so the
+   * destructive-confirm dialog can defer back to it. */
+  const performSwap = (day: number, mealIndex: number) => {
     const pool = savedRecipesForLibrary.map((r) => r.title);
     setMealPlan((prev) => {
       if (!prev) return prev;
@@ -376,6 +390,58 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       toast.success("Swapped meal");
       return prev.map((x) => (x.day === day ? nextDp : x));
     });
+  };
+
+  /** Entry point: if swapping this meal would drop `N` downstream
+   * leftover children, open a themed destructive-confirm dialog
+   * before running the swap. Otherwise run immediately. Audit M7
+   * (2026-04-18) — replaces the prior `window.confirm` blocking
+   * call. */
+  const swapMeal = (day: number, mealIndex: number) => {
+    const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
+    const curMeal = dp?.meals[mealIndex];
+    if (
+      curMeal &&
+      isMealPlanPlaceholderLikeTitle(curMeal.recipeTitle, { isPlaceholder: curMeal.isPlaceholder })
+    ) {
+      toast.error("Save recipes to enable swapping");
+      return;
+    }
+    const prevPlan = generatedPlan ?? mealPlan;
+    const curRecipeId = (curMeal as (typeof curMeal & { recipeId?: string }) | undefined)?.recipeId;
+    if (prevPlan && curRecipeId) {
+      const leftoverCount = countLeftoversOfRecipe(prevPlan, curRecipeId);
+      if (leftoverCount > 0) {
+        setSwapLeftoverConfirm({ day, mealIndex, leftoverCount });
+        return;
+      }
+    }
+    performSwap(day, mealIndex);
+  };
+
+  /** Commits a swap after the leftover-confirm dialog accepts. Clears
+   * the downstream leftover children first so totals stay consistent,
+   * then runs the normal swap logic. */
+  const commitSwapWithLeftoverClear = (
+    day: number,
+    mealIndex: number,
+  ) => {
+    const dp = (generatedPlan ?? mealPlan)?.find((x) => x.day === day);
+    const curMeal = dp?.meals[mealIndex];
+    const curRecipeId = (curMeal as (typeof curMeal & { recipeId?: string }) | undefined)?.recipeId;
+    if (curRecipeId) {
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        const dayIdx = prev.findIndex((d) => d.day === day);
+        const { plan: cleaned } = markLeftoversOnSwap(prev, {
+          dayIndex: dayIdx,
+          slot: curMeal?.name ?? "",
+          previousRecipeId: curRecipeId,
+        });
+        return cleaned;
+      });
+    }
+    performSwap(day, mealIndex);
   };
 
   const logPlannedMeal = (day: number, mealIndex: number) => {
@@ -626,12 +692,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           </select>
           <button
             type="button"
-            onClick={() => {
-              const name = window.prompt("New plan name", "");
-              if (name === null) return;
-              createMealPlanSlot(name);
-              toast.success("Created plan");
-            }}
+            onClick={() => setNewPlanOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-primary/30 text-primary text-sm font-medium hover:bg-primary/10 transition-pm"
           >
             <Icons.add className="w-4 h-4" />
@@ -639,12 +700,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           </button>
           <button
             type="button"
-            onClick={() => {
-              const cur = mealPlanSlots.find((s) => s.id === activeMealPlanSlotId);
-              const name = window.prompt("Rename this plan", cur?.name ?? "");
-              if (name === null || !name.trim()) return;
-              renameMealPlanSlot(activeMealPlanSlotId, name.trim());
-            }}
+            onClick={() => setRenamePlanOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted/80 transition-pm"
             aria-label="Rename plan"
           >
@@ -654,11 +710,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           <button
             type="button"
             disabled={mealPlanSlots.length <= 1}
-            onClick={() => {
-              if (!window.confirm("Delete this named plan? This cannot be undone.")) return;
-              deleteMealPlanSlot(activeMealPlanSlotId);
-              toast.message("Plan removed");
-            }}
+            onClick={() => setDeletePlanOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 disabled:opacity-40 disabled:pointer-events-none transition-pm"
             aria-label="Delete plan"
           >
@@ -1221,10 +1273,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                       } rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg cursor-grab active:cursor-grabbing`}
                     >
                       {isLeftover ? (
-                        <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold">
-                          <span aria-hidden>🍱</span>
-                          <span>Leftover of {meal.recipeTitle}</span>
-                        </div>
+                        <Badge
+                          variant="leftover"
+                          ariaLabel={`Leftover of ${meal.recipeTitle}`}
+                          icon={<span aria-hidden>🍱</span>}
+                          className="mb-3"
+                        >
+                          Leftover of {meal.recipeTitle}
+                        </Badge>
                       ) : null}
                       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
                         <div>
@@ -1272,25 +1328,17 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                           >
                             Swap
                           </button>
-                          {/* Batch 3.10 — keyboard-accessible move fallback for drag-drop. */}
+                          {/* Batch 3.10 — keyboard-accessible move fallback
+                              for drag-drop. Audit M7 (2026-04-18): opens a
+                              themed day/slot dialog instead of
+                              `window.prompt`. */}
                           <button
                             type="button"
                             aria-label="Move meal to another slot or day"
                             onClick={() => {
-                              const total = generatedPlan?.length ?? 1;
-                              const input = window.prompt(
-                                `Move to which day (1-${total}) and slot index (0-based)? Format: day,slot (e.g. 2,1)`,
-                                `${dp.day},${index}`,
-                              );
-                              if (!input) return;
-                              const [dStr, sStr] = input.split(",").map((s) => s.trim());
-                              const d = Number(dStr);
-                              const s = Number(sStr);
-                              if (!Number.isInteger(d) || !Number.isInteger(s)) {
-                                toast.error("Invalid move target");
-                                return;
-                              }
-                              handleMoveMeal({ day: dp.day, slotIndex: index }, { day: d, slotIndex: s });
+                              setMovePrompt({ day: dp.day, slotIndex: index });
+                              setMoveDay(String(dp.day));
+                              setMoveSlot(String(index));
                             }}
                             className="px-4 py-2 bg-muted hover:bg-primary/10 text-foreground hover:text-primary rounded-xl transition-all font-medium border border-border hover:border-primary/30"
                           >
@@ -1368,6 +1416,150 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           })}
         </div>
       ) : null}
+
+      {/* Audit M7 (2026-04-18) — themed replacements for the prior
+          `window.prompt` / `window.confirm` call sites on this page. */}
+      <TextPromptDialog
+        open={newPlanOpen}
+        onOpenChange={setNewPlanOpen}
+        title="New plan"
+        description="Create a new named meal plan slot."
+        inputLabel="Plan name"
+        placeholder="e.g. Cut week"
+        confirmLabel="Create"
+        onConfirm={(name) => {
+          createMealPlanSlot(name);
+          toast.success("Created plan");
+        }}
+      />
+      <TextPromptDialog
+        open={renamePlanOpen}
+        onOpenChange={setRenamePlanOpen}
+        title="Rename plan"
+        inputLabel="Plan name"
+        placeholder="e.g. Cut week"
+        currentValue={
+          mealPlanSlots.find((s) => s.id === activeMealPlanSlotId)?.name ?? ""
+        }
+        confirmLabel="Save"
+        onConfirm={(name) => {
+          renameMealPlanSlot(activeMealPlanSlotId, name);
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={deletePlanOpen}
+        onOpenChange={setDeletePlanOpen}
+        title="Delete this named plan?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          deleteMealPlanSlot(activeMealPlanSlotId);
+          toast.message("Plan removed");
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={applyTemplatePending != null}
+        onOpenChange={(o) => {
+          if (!o) setApplyTemplatePending(null);
+        }}
+        title={
+          applyTemplatePending
+            ? `Replace this week's plan with "${applyTemplatePending.name}"?`
+            : "Replace this week's plan?"
+        }
+        description="The current week will be overwritten with the template."
+        confirmLabel="Apply"
+        onConfirm={async () => {
+          if (applyTemplatePending) commitApplyTemplate(applyTemplatePending);
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={swapLeftoverConfirm != null}
+        onOpenChange={(o) => {
+          if (!o) setSwapLeftoverConfirm(null);
+        }}
+        title={
+          swapLeftoverConfirm
+            ? `This will remove ${swapLeftoverConfirm.leftoverCount} leftover meal${
+                swapLeftoverConfirm.leftoverCount === 1 ? "" : "s"
+              }. Continue?`
+            : "Continue?"
+        }
+        description="Downstream leftovers of this meal will be cleared."
+        confirmLabel="Continue"
+        onConfirm={async () => {
+          if (swapLeftoverConfirm) {
+            commitSwapWithLeftoverClear(
+              swapLeftoverConfirm.day,
+              swapLeftoverConfirm.mealIndex,
+            );
+          }
+        }}
+      />
+      <Dialog
+        open={movePrompt != null}
+        onOpenChange={(o) => {
+          if (!o) setMovePrompt(null);
+        }}
+      >
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Move meal</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {`Pick a day (1–${generatedPlan?.length ?? 1}) and a 0-based slot index.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <label className="grid gap-1.5">
+              <span className="text-sm font-medium text-foreground">Day</span>
+              <Input
+                type="number"
+                min={1}
+                max={generatedPlan?.length ?? 1}
+                value={moveDay}
+                onChange={(e) => setMoveDay(e.target.value)}
+                aria-label="Target day"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-sm font-medium text-foreground">Slot index</span>
+              <Input
+                type="number"
+                min={0}
+                value={moveSlot}
+                onChange={(e) => setMoveSlot(e.target.value)}
+                aria-label="Target slot index"
+                inputMode="numeric"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMovePrompt(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const d = Number(moveDay);
+                const s = Number(moveSlot);
+                if (!Number.isInteger(d) || !Number.isInteger(s)) {
+                  toast.error("Invalid move target");
+                  return;
+                }
+                if (movePrompt) {
+                  handleMoveMeal(
+                    { day: movePrompt.day, slotIndex: movePrompt.slotIndex },
+                    { day: d, slotIndex: s },
+                  );
+                }
+                setMovePrompt(null);
+              }}
+            >
+              Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

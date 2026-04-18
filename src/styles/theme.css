@@ -78,6 +78,13 @@
   --macro-water: #06b6d4;
   --macro-water-soft: #06b6d412;
 
+  /** Stimulant tracker colours (Batch 2.5 hydration & stimulants).
+   *  Caffeine: violet (not a macro role). Alcohol: amber — intentionally
+   *  shares the --warning hue because "approaching weekly limit" is the
+   *  same semantic category. Documented in docs/ux/brand-tokens.md. */
+  --stimulant-caffeine: #8b5cf6;
+  --stimulant-alcohol: #f59e0b;
+
   /** Confidence colours */
   --confidence-high: #22a860;
   --confidence-med: #e8a020;
@@ -164,6 +171,12 @@
   --macro-calories: #4cd080;
   --macro-water: #22d3ee;
   --macro-water-soft: #22d3ee15;
+
+  /** Stimulant tracker colours — dark. Kept at the same hex as light
+   *  for now; the hydration cards render chips on a --muted surface so
+   *  the violet/amber tones hold up against dark backgrounds. */
+  --stimulant-caffeine: #8b5cf6;
+  --stimulant-alcohol: #f59e0b;
 
   /** Confidence colours — dark */
   --confidence-high: #4cd080;

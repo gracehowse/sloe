@@ -11,7 +11,10 @@ import {
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
 import type { UserTier } from "../../types/recipe.ts";
-import { EmptyState } from "./EmptyState.tsx";
+import { EmptyState } from "./suppr/empty-state.tsx";
+import { Button } from "./ui/button.tsx";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 
 interface ShoppingListProps {
   userTier: UserTier;
@@ -277,11 +280,24 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       {/* Empty State */}
       {shoppingItems.length === 0 && (
         <EmptyState
-          icon={Icons.plan}
+          icon={<Icons.plan />}
           title="Your shopping list is empty"
           description="Generate a meal plan first, then build your shopping list from it. You can also add custom items manually above."
-          ctaLabel="Go to Meal Planner"
-          onCtaClick={() => onNavigate?.("planner")}
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                track(AnalyticsEvents.empty_state_cta_clicked, {
+                  title: "Your shopping list is empty",
+                  ctaLabel: "Go to Meal Planner",
+                });
+                onNavigate?.("planner");
+              }}
+            >
+              Go to Meal Planner
+            </Button>
+          }
         />
       )}
 

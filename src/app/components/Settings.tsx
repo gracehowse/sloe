@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Icons } from "./ui/icons";
+import { Switch } from "./ui/switch";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -14,7 +15,14 @@ import {
 } from "../../constants/dietaryPreferences.ts";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
+import {
+  loadWeekStartDay,
+  saveWeekStartDay,
+} from "../../lib/nutrition/weekStartDayClient.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
+import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -74,6 +82,16 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
+  // Themed destructive-confirm dialogs (audit M7, 2026-04-18). Replaces
+  // three `window.confirm` calls with `DestructiveConfirmDialog`.
+  // `accountDeletionStage`: "idle" -> "first" (initial warning) ->
+  // "second" (type-nothing final confirm) -> "idle". Two stages mirror
+  // the pre-M7 double-confirm UX so a stray click can't drop the
+  // account.
+  const [clearLocalOpen, setClearLocalOpen] = useState(false);
+  const [accountDeletionStage, setAccountDeletionStage] = useState<
+    "idle" | "first" | "second"
+  >("idle");
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -92,6 +110,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [caffeineInput, setCaffeineInput] = useState<string>(String(targetCaffeineMg));
   const [alcoholInput, setAlcoholInput] = useState<string>(String(targetAlcoholGWeekly));
+  /** Weekly recap push (Batch 4.11, H6 audit 2026-04-18).
+   * Default true until hydrated from Supabase. Treated as server-owned —
+   * the web has no scheduler to cancel; the mobile Progress-visit effect
+   * uses the same column. */
+  const [weeklyRecapPushEnabled, setWeeklyRecapPushEnabled] = useState<boolean>(true);
 
   // Keep inputs in sync when the context value changes (e.g. after initial load).
   useEffect(() => {
@@ -107,11 +130,32 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       const { data: session } = await supabase.auth.getSession();
       const uid = session.session?.user.id;
       if (!uid || cancelled) return;
-      const { data: profile } = await supabase
+      // Fetch with `weekly_recap_push_enabled` first (migration 20260421170000);
+      // fall back to the pre-4.11 column set on older environments so the
+      // settings screen still loads if the migration has not yet landed.
+      let resp = await supabase
         .from("profiles")
-        .select("dietary, measurement_system, tracked_macros, week_start_day")
+        .select(
+          "dietary, measurement_system, tracked_macros, week_start_day, weekly_recap_push_enabled",
+        )
         .eq("id", uid)
         .maybeSingle();
+      if (resp.error) {
+        resp = await supabase
+          .from("profiles")
+          .select("dietary, measurement_system, tracked_macros, week_start_day")
+          .eq("id", uid)
+          .maybeSingle();
+      }
+      const profile = resp.data as
+        | (Record<string, unknown> & {
+            dietary?: unknown;
+            measurement_system?: unknown;
+            tracked_macros?: unknown;
+            week_start_day?: unknown;
+            weekly_recap_push_enabled?: unknown;
+          })
+        | null;
       if (!profile || cancelled) return;
       if (profile.dietary) setDietary(normaliseDietaryFromProfile(profile.dietary));
       if (profile.measurement_system === "metric" || profile.measurement_system === "imperial") {
@@ -122,6 +166,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       }
       if (profile.week_start_day === "monday" || profile.week_start_day === "sunday") {
         setWeekStartDay(profile.week_start_day);
+      }
+      // Default to true when the column is absent on older DBs — matches
+      // the migration default so the UI never shows "off" misleadingly.
+      if (profile.weekly_recap_push_enabled !== undefined) {
+        setWeeklyRecapPushEnabled(profile.weekly_recap_push_enabled !== false);
       }
     })();
     return () => { cancelled = true; };
@@ -410,8 +459,31 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   key={day}
                   type="button"
                   onClick={() => {
+                    // Only fire analytics on an actual change — hydration
+                    // from Supabase and no-op re-taps must stay silent.
+                    if (day === weekStartDay) return;
+                    const previous = weekStartDay;
                     setWeekStartDay(day);
-                    void savePref({ week_start_day: day });
+                    // Route through the shared helper so the exact
+                    // `profiles.update({ week_start_day }).eq("id", uid)`
+                    // shape is locked in by unit tests (G8, M11 audit)
+                    // and stays in sync with mobile.
+                    void (async () => {
+                      const { data: session } = await supabase.auth.getSession();
+                      const uid = session.session?.user.id;
+                      if (!uid) return;
+                      try {
+                        await saveWeekStartDay(supabase, uid, day);
+                      } catch {
+                        toast.error("Failed to save preference");
+                        setWeekStartDay(previous);
+                        return;
+                      }
+                      track(AnalyticsEvents.week_start_day_changed, {
+                        from: previous,
+                        to: day,
+                      });
+                    })();
                   }}
                   className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                     weekStartDay === day
@@ -583,6 +655,59 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               </div>
             </label>
           ))}
+          {/* Weekly recap push (Batch 4.11 toggle — H6 audit fix, 2026-04-18).
+            * Controls `profiles.weekly_recap_push_enabled`. On mobile the
+            * Progress-visit scheduler reads the same column and cancels /
+            * reinstalls the local WEEKLY push accordingly. Web has no push
+            * yet so the toggle only controls the mobile behaviour — still
+            * surfaced on web so the user can opt out from any device. */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <label
+                htmlFor="weekly-recap-push-toggle"
+                className="block text-foreground cursor-pointer"
+              >
+                Weekly recap
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">
+                {weekStartDay === "monday"
+                  ? "Sunday 18:00 (respects your week start)."
+                  : "Saturday 18:00 (respects your week start)."}
+              </p>
+            </div>
+            <Switch
+              id="weekly-recap-push-toggle"
+              aria-label="Weekly recap push notifications"
+              checked={weeklyRecapPushEnabled}
+              onCheckedChange={(next) => {
+                const previous = weeklyRecapPushEnabled;
+                if (previous === next) return;
+                setWeeklyRecapPushEnabled(next);
+                void (async () => {
+                  const { data: session } = await supabase.auth.getSession();
+                  const uid = session.session?.user.id;
+                  if (!uid) {
+                    // No session — revert and surface the problem.
+                    setWeeklyRecapPushEnabled(previous);
+                    toast.error("Sign in to change this preference.");
+                    return;
+                  }
+                  const { error } = await supabase
+                    .from("profiles")
+                    .update({ weekly_recap_push_enabled: next })
+                    .eq("id", uid);
+                  if (error) {
+                    setWeeklyRecapPushEnabled(previous);
+                    toast.error("Failed to save preference");
+                    return;
+                  }
+                  track(AnalyticsEvents.weekly_recap_push_enabled_toggled, {
+                    enabled: next,
+                  });
+                })();
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -662,78 +787,88 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </Link>
           <button
             type="button"
-            onClick={() => {
-              if (
-                typeof window !== "undefined" &&
-                !window.confirm(
-                  "This will sign you out and remove Suppr data stored on this device. Continue?",
-                )
-              ) {
-                return;
-              }
-              for (const k of LOCAL_CLEAR_KEYS) {
-                try {
-                  localStorage.removeItem(k);
-                } catch {
-                  /* ignore */
-                }
-              }
-              void signOut().then(() => {
-                toast.success("Local data cleared. Signed out.");
-                window.location.href = "/login";
-              });
-            }}
+            onClick={() => setClearLocalOpen(true)}
             className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-600 dark:text-red-400"
           >
             Delete local data &amp; sign out
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (
-                typeof window !== "undefined" &&
-                !window.confirm(
-                  "This will permanently delete your account and all associated data. This action cannot be undone. Continue?",
-                )
-              ) {
-                return;
-              }
-              if (
-                !window.confirm(
-                  "Are you sure? Your recipes, logs, meal plans, and profile will be permanently deleted.",
-                )
-              ) {
-                return;
-              }
-              void (async () => {
-                try {
-                  const { data: sessionData } = await supabase.auth.getSession();
-                  const token = sessionData?.session?.access_token;
-                  const res = await fetch("/api/account/delete", {
-                    method: "DELETE",
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                  });
-                  const json = await res.json();
-                  if (json.ok) {
-                    for (const k of LOCAL_CLEAR_KEYS) {
-                      try { localStorage.removeItem(k); } catch { /* ignore */ }
-                    }
-                    toast.success("Account deleted.");
-                    window.location.href = "/login";
-                  } else {
-                    toast.error(json.error || "Account deletion failed. Please try again.");
-                  }
-                } catch {
-                  toast.error("Account deletion failed. Please try again.");
-                }
-              })();
-            }}
+            onClick={() => setAccountDeletionStage("first")}
             className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-700 dark:text-red-300 font-medium"
           >
             Delete my account permanently
           </button>
         </div>
       </div>
+
+      {/* Themed destructive-confirm dialogs (audit M7, 2026-04-18).
+          Replace three native `window.confirm` calls. Account deletion
+          keeps its two-stage pattern so a careless tap cannot wipe the
+          account: first dialog warns about permanence, second dialog
+          reiterates what will be deleted. */}
+      <DestructiveConfirmDialog
+        open={clearLocalOpen}
+        onOpenChange={setClearLocalOpen}
+        title="Delete local data & sign out?"
+        description="This will sign you out and remove Suppr data stored on this device."
+        confirmLabel="Delete & sign out"
+        onConfirm={async () => {
+          for (const k of LOCAL_CLEAR_KEYS) {
+            try {
+              localStorage.removeItem(k);
+            } catch {
+              /* ignore */
+            }
+          }
+          await signOut();
+          toast.success("Local data cleared. Signed out.");
+          window.location.href = "/login";
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={accountDeletionStage === "first"}
+        onOpenChange={(o) => {
+          if (!o) setAccountDeletionStage("idle");
+        }}
+        title="Delete your account?"
+        description="This will permanently delete your account and all associated data. This action cannot be undone."
+        confirmLabel="Continue"
+        onConfirm={async () => {
+          setAccountDeletionStage("second");
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={accountDeletionStage === "second"}
+        onOpenChange={(o) => {
+          if (!o) setAccountDeletionStage("idle");
+        }}
+        title="Are you sure?"
+        description="Your recipes, logs, meal plans, and profile will be permanently deleted."
+        confirmLabel="Delete account"
+        onConfirm={async () => {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            const res = await fetch("/api/account/delete", {
+              method: "DELETE",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            const json = await res.json();
+            if (json.ok) {
+              for (const k of LOCAL_CLEAR_KEYS) {
+                try { localStorage.removeItem(k); } catch { /* ignore */ }
+              }
+              toast.success("Account deleted.");
+              window.location.href = "/login";
+            } else {
+              toast.error(json.error || "Account deletion failed. Please try again.");
+            }
+          } catch {
+            toast.error("Account deletion failed. Please try again.");
+          }
+        }}
+      />
     </div>
   );
 });

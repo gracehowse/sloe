@@ -29,6 +29,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Icons } from "../ui/icons";
 import { ConfidenceDot } from "./confidence-dot";
+import { Badge } from "./badge";
 import {
   aggregateTotals,
   averageConfidence,
@@ -261,9 +262,13 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <ConfidenceDot level={level} showLabel />
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <Icons.sparkles className="size-3" aria-hidden /> AI estimate
-                      </span>
+                      <Badge
+                        variant="ai"
+                        ariaLabel="AI estimated nutrition"
+                        icon={<Icons.sparkles />}
+                      >
+                        AI estimate
+                      </Badge>
                     </div>
                     <button
                       type="button"

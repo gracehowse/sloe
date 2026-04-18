@@ -16,11 +16,20 @@ type Props = {
   selectedDateKey: string;
   weekStartDay: "monday" | "sunday";
   loggedDays: ReadonlySet<string>;
+  /**
+   * Date keys where a streak freeze was consumed to absorb a zero-meal
+   * day (2026-04-18 audit H7). Additive to the `loggedDays` styling —
+   * tiles still render with the regular dot / active / today chrome;
+   * the freeze glyph sits in the corner so the user learns the feature
+   * actually worked ("Freeze used (Tue)"). Derived from
+   * `computeProtectedStreak(...).protectedDateKeys` by the parent.
+   */
+  protectedDateKeys?: ReadonlySet<string>;
   onSelectDateKey: (key: string) => void;
   onOpenCalendar: () => void;
 };
 
-export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, onSelectDateKey, onOpenCalendar }: Props) {
+export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedDateKeys, onSelectDateKey, onOpenCalendar }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const [pagerW, setPagerW] = useState(0);
@@ -137,6 +146,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, onSelectDa
                   const isSelected = dk === selectedDk;
                   const isToday = dk === todayDk;
                   const hasLogs = loggedDays.has(dk);
+                  const isProtected = protectedDateKeys?.has(dk) ?? false;
                   const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
                   return (
                     <button
@@ -144,6 +154,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, onSelectDa
                       type="button"
                       disabled={outOfRange}
                       onClick={() => onSelectDateKey(dateKeyFromDate(clampJournalDate(date)))}
+                      aria-label={isProtected ? `Freeze used on ${dk}` : undefined}
                       className={`flex-1 flex flex-col items-center gap-1 py-1 ${outOfRange ? "opacity-35" : ""}`}
                     >
                       <span
@@ -155,7 +166,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, onSelectDa
                       </span>
                       <div
                         className={[
-                          "w-[30px] h-[30px] rounded-full flex items-center justify-center text-[13px] font-extrabold tabular-nums border-2 transition-colors",
+                          "relative w-[30px] h-[30px] rounded-full flex items-center justify-center text-[13px] font-extrabold tabular-nums border-2 transition-colors",
                           isSelected
                             ? "bg-primary text-primary-foreground border-transparent"
                             : hasLogs
@@ -169,6 +180,12 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, onSelectDa
                         ) : (
                           date.getDate()
                         )}
+                        {isProtected ? (
+                          <Icons.streakFreeze
+                            aria-hidden
+                            className="absolute -top-1 -right-1 w-3 h-3 text-[color:var(--macro-water)] drop-shadow"
+                          />
+                        ) : null}
                       </div>
                     </button>
                   );

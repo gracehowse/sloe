@@ -134,6 +134,32 @@ export function useNutritionJournalState(opts: {
     return () => { cancelled = true; };
   }, [authedUserId, dbNutritionEnabled, dbNutritionWarned]);
 
+  /**
+   * Build a `nutrition_entries` insert row from a LoggedMeal + known dayKey.
+   * Shared between the single-meal `addLoggedMealForDate` and the bulk
+   * `addLoggedMealsForDate` so the row shape cannot drift between paths.
+   */
+  const buildNutritionEntryRow = useCallback(
+    (dayKey: string, meal: LoggedMeal, userId: string) => ({
+      id: meal.id,
+      user_id: userId,
+      date_key: dayKey,
+      name: meal.name,
+      recipe_title: meal.recipeTitle,
+      time_label: meal.time,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      fiber_g: meal.fiberG ?? null,
+      water_ml: meal.waterMl ?? null,
+      portion_multiplier: meal.portionMultiplier ?? 1,
+      nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
+      source: meal.source ?? null,
+    }),
+    [],
+  );
+
   const addLoggedMealForDate = useCallback((dayKey: string, meal: Omit<LoggedMeal, "id">) => {
     const id = newId("meal");
     const newMeal = { ...meal, id };
@@ -146,23 +172,7 @@ export function useNutritionJournalState(opts: {
     if (authedUserId && dbNutritionEnabled) {
       supabase
         .from("nutrition_entries")
-        .insert({
-          id,
-          user_id: authedUserId,
-          date_key: dayKey,
-          name: meal.name,
-          recipe_title: meal.recipeTitle,
-          time_label: meal.time,
-          calories: meal.calories,
-          protein: meal.protein,
-          carbs: meal.carbs,
-          fat: meal.fat,
-          fiber_g: meal.fiberG ?? null,
-          water_ml: meal.waterMl ?? null,
-          portion_multiplier: meal.portionMultiplier ?? 1,
-          nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
-          source: meal.source ?? null,
-        })
+        .insert(buildNutritionEntryRow(dayKey, newMeal, authedUserId))
         .then(({ error }) => {
           if (error) {
             const msg = error.message ?? "";
@@ -181,7 +191,58 @@ export function useNutritionJournalState(opts: {
       calories: meal.calories,
       fromPlanner: meal.time === "Planned",
     });
-  }, [authedUserId, dbNutritionEnabled]);
+  }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow]);
+
+  /**
+   * Bulk insert variant used by `duplicateDay` / `duplicateDayToDateRange`
+   * / `copyMealToDateRange` so a 7-day × 4-meal duplicate collapses from
+   * 28 sequential single-row inserts into a single `insert([...rows])`
+   * call (audit M3, 2026-04-18).
+   *
+   * Shape: one call = one Supabase insert = one `food_logged` event from
+   * the caller. This primitive itself does NOT fire analytics — callers
+   * fire their own batch event (`meal_copied`, `day_duplicated`, or
+   * `food_logged { count }`) so the event taxonomy isn't duplicated.
+   *
+   * On error the optimistic rows are rolled back, matching the mobile
+   * `insertClonedRowsIntoDay` semantics.
+   *
+   * Returns the array of inserted rows with their fresh ids.
+   */
+  const addLoggedMealsForDate = useCallback(
+    async (
+      dayKey: string,
+      meals: ReadonlyArray<Omit<LoggedMeal, "id">>,
+    ): Promise<LoggedMeal[]> => {
+      if (meals.length === 0) return [];
+      const withIds: LoggedMeal[] = meals.map((m) => ({ ...m, id: newId("meal") } as LoggedMeal));
+      setNutritionByDay((prev) => {
+        const day = prev[dayKey] ?? [];
+        return { ...prev, [dayKey]: [...day, ...withIds] };
+      });
+      if (!authedUserId || !dbNutritionEnabled) return withIds;
+
+      const rows = withIds.map((m) => buildNutritionEntryRow(dayKey, m, authedUserId));
+      const { error } = await supabase.from("nutrition_entries").insert(rows);
+      if (error) {
+        const msg = error.message ?? "";
+        if (looksLikeMissingTableError(msg)) {
+          setDbNutritionEnabled(false);
+          return withIds;
+        }
+        // Roll back the optimistic add so the UI matches persisted state.
+        setNutritionByDay((prev) => ({
+          ...prev,
+          [dayKey]: (prev[dayKey] ?? []).filter((m) => !withIds.some((w) => w.id === m.id)),
+        }));
+        toast.error(syncFailedRetryMessage("nutrition log", msg));
+        return [];
+      }
+      void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+      return withIds;
+    },
+    [authedUserId, dbNutritionEnabled, buildNutritionEntryRow],
+  );
 
   const addLoggedMeal = useCallback(
     (meal: Omit<LoggedMeal, "id">) => {
@@ -241,7 +302,12 @@ export function useNutritionJournalState(opts: {
   /**
    * Copy a single logged meal to many target days. The source day is
    * excluded and duplicates are dropped, both via `sanitizeCopyTargets`.
-   * Fires exactly one `meal_copied` analytics event covering the batch.
+   * Fires exactly one `meal_copied` analytics event covering the batch
+   * and one `food_logged { count, batched: true }` event for the whole
+   * batch (audit M3, 2026-04-18 — not N events).
+   *
+   * Uses `addLoggedMealsForDate` per target day so each day is a single
+   * Supabase insert rather than N sequential single-row inserts.
    */
   const copyMealToDateRange = useCallback(
     async (sourceDayKey: string, mealId: string, targetDayKeys: string[]): Promise<void> => {
@@ -251,22 +317,36 @@ export function useNutritionJournalState(opts: {
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       const meal = sourceDay.find((m) => m.id === mealId);
       if (!meal) return;
+      let totalInserted = 0;
       for (const target of cleanTargets) {
         const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
-        addLoggedMealForDate(target, cloned);
+        const inserted = await addLoggedMealsForDate(target, [cloned]);
+        totalInserted += inserted.length;
       }
       track(AnalyticsEvents.meal_copied, {
         source: "copy_meal",
         batchSize: 1,
         targetDayCount: cleanTargets.length,
       });
+      if (totalInserted > 0) {
+        track(AnalyticsEvents.food_logged, {
+          count: totalInserted,
+          batched: true,
+          source: "copy_meal",
+        });
+      }
     },
-    [nutritionByDay, addLoggedMealForDate],
+    [nutritionByDay, addLoggedMealsForDate],
   );
 
   /**
    * Duplicate every meal from `sourceDayKey` into `targetDayKey`.
    * No-op when the source day has no meals, or when source === target.
+   *
+   * Uses `addLoggedMealsForDate` so the whole day lands in ONE Supabase
+   * insert rather than N single-row inserts (audit M3, 2026-04-18). Fires
+   * a single `food_logged { count, batched: true }` for the batch, not N
+   * `food_logged` events.
    */
   const duplicateDay = useCallback(
     async (sourceDayKey: string, targetDayKey: string): Promise<void> => {
@@ -274,22 +354,31 @@ export function useNutritionJournalState(opts: {
       if (sourceDayKey === targetDayKey) return;
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       if (sourceDay.length === 0) return;
-      for (const meal of sourceDay) {
-        const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
-        addLoggedMealForDate(targetDayKey, cloned);
-      }
+      const clones = sourceDay.map(
+        (meal) => cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+      );
+      const inserted = await addLoggedMealsForDate(targetDayKey, clones);
       track(AnalyticsEvents.day_duplicated, {
         source: "duplicate_day",
         batchSize: sourceDay.length,
         targetDayCount: 1,
       });
+      if (inserted.length > 0) {
+        track(AnalyticsEvents.food_logged, {
+          count: inserted.length,
+          batched: true,
+          source: "duplicate_day",
+        });
+      }
     },
-    [nutritionByDay, addLoggedMealForDate],
+    [nutritionByDay, addLoggedMealsForDate],
   );
 
   /**
    * Duplicate every meal from `sourceDayKey` into each target day.
    * Uses `sanitizeCopyTargets` to drop the source day and dedupe.
+   * One Supabase insert per target day (audit M3, 2026-04-18), and a
+   * single `food_logged { count, batched: true }` for the whole batch.
    */
   const duplicateDayToDateRange = useCallback(
     async (sourceDayKey: string, targetDayKeys: string[]): Promise<void> => {
@@ -298,24 +387,34 @@ export function useNutritionJournalState(opts: {
       if (cleanTargets.length === 0) return;
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       if (sourceDay.length === 0) return;
+      let totalInserted = 0;
       for (const target of cleanTargets) {
-        for (const meal of sourceDay) {
-          const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
-          addLoggedMealForDate(target, cloned);
-        }
+        const clones = sourceDay.map(
+          (meal) => cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+        );
+        const inserted = await addLoggedMealsForDate(target, clones);
+        totalInserted += inserted.length;
       }
       track(AnalyticsEvents.day_duplicated, {
         source: "duplicate_day",
         batchSize: sourceDay.length,
         targetDayCount: cleanTargets.length,
       });
+      if (totalInserted > 0) {
+        track(AnalyticsEvents.food_logged, {
+          count: totalInserted,
+          batched: true,
+          source: "duplicate_day",
+        });
+      }
     },
-    [nutritionByDay, addLoggedMealForDate],
+    [nutritionByDay, addLoggedMealsForDate],
   );
 
   return {
     nutritionByDay,
     addLoggedMealForDate,
+    addLoggedMealsForDate,
     addLoggedMeal,
     removeLoggedMeal,
     mealsForSelectedDate,

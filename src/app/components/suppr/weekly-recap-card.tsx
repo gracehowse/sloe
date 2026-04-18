@@ -74,7 +74,7 @@ export function WeeklyRecapCard({ recap, onDismiss, className }: WeeklyRecapCard
     <section
       aria-labelledby="weekly-recap-heading"
       className={cn(
-        "relative rounded-2xl border border-border bg-card p-5 mb-5",
+        "relative rounded-card border border-border bg-card p-5 mb-5",
         "shadow-sm",
         className,
       )}
@@ -180,7 +180,7 @@ function Stat({
   muted?: boolean;
 }) {
   return (
-    <div className="rounded-lg bg-muted/30 border border-border/60 p-3">
+    <div className="rounded-card bg-muted/30 border border-border/60 p-3">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
         {label}
       </p>

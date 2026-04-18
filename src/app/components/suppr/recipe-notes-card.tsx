@@ -168,7 +168,7 @@ export function RecipeNotesCard({ recipeId, userId }: RecipeNotesCardProps) {
   // Unauthenticated — friendly prompt, no interactive controls.
   if (!userId) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+      <div className="rounded-card border border-border bg-card p-5 text-sm text-muted-foreground">
         Sign in to save personal notes and a private rating for this recipe.
       </div>
     );
@@ -177,7 +177,7 @@ export function RecipeNotesCard({ recipeId, userId }: RecipeNotesCardProps) {
   return (
     <section
       aria-labelledby="recipe-notes-heading"
-      className="rounded-2xl border border-border bg-card p-5 space-y-4"
+      className="rounded-card border border-border bg-card p-5 space-y-4"
     >
       <div className="flex items-center justify-between">
         <h3

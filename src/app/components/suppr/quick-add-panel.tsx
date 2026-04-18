@@ -23,6 +23,7 @@ import {
   computeFrequentMeals,
   computeRecentMeals,
   foodHistoryKey,
+  isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
   type FoodHistoryMealLike,
 } from "../../../lib/nutrition/foodHistory";
@@ -35,7 +36,6 @@ import {
   type FavoriteFoodInput,
 } from "../../../lib/nutrition/favoriteFoods";
 import {
-  createSavedMeal,
   deleteSavedMeal,
   incrementLogCount,
   listSavedMeals,
@@ -46,7 +46,10 @@ import {
 import { track } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { SavedMealsTab } from "./saved-meals-tab";
-import { SaveMealDialog } from "./save-meal-dialog";
+import { Badge } from "./badge";
+import { EmptyState } from "./empty-state";
+import { RenameSavedMealDialog } from "./rename-saved-meal-dialog";
+import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 
 type Tab = "favourites" | "frequent" | "recent" | "saved";
 
@@ -66,6 +69,21 @@ export interface QuickAddPanelProps {
    * `meal.items` into individual journal entries (e.g. via
    * `buildMealEntriesFromSavedMeal`) so this panel stays presentation-only. */
   onLogSavedMeal?: (meal: SavedMeal, slot: string) => void;
+  /** Request that the host open the `SaveMealDialog` pre-filled with
+   * `seedItems` for `slot`. Replaces the Batch 2.6 custom-event bridge
+   * (audit H4, 2026-04-18). The host owns the dialog so the flow is
+   * prop-driven and testable. Called by the panel when any internal UI
+   * requests the dialog; today the trigger lives on the parent's
+   * meal-slot header so this prop is part of the public API for parity
+   * + future use. */
+  onOpenSaveCombo?: (
+    slot?: string,
+    seedItems?: Array<Omit<SavedMealItem, "id" | "position">>,
+  ) => void;
+  /** Bump this number after a new saved-meal is persisted by the host to
+   * trigger a refetch + auto-switch to the "My meals" tab, preserving the
+   * post-save UX from Batch 2.6. */
+  savedMealsRefreshToken?: number;
   /** Optional initial tab — defaults to Recent (matches prior mobile behaviour). */
   defaultTab?: Tab;
   className?: string;
@@ -84,10 +102,25 @@ const TAB_LABELS: Record<Tab, string> = {
   saved: "My meals",
 };
 
-const EMPTY_COPY: Record<Exclude<Tab, "saved">, string> = {
-  favourites: "Star meals you log often for one-tap re-logging.",
-  frequent: "Your most-logged meals will show up here after a few days of tracking.",
-  recent: "Nothing to re-log yet. Start logging meals to build your history.",
+/**
+ * Empty-state copy per non-saved tab. Strings preserved from before
+ * audit M5 (2026-04-18) — only the rendering was moved into the shared
+ * `<EmptyState />` primitive. Split into `title` + `description` where
+ * the original already read as two factual sentences; otherwise the
+ * whole string stays in `title`. Mirrors mobile
+ * `apps/mobile/components/QuickAddPanel.tsx`.
+ */
+const EMPTY_COPY: Record<Exclude<Tab, "saved">, { title: string; description?: string }> = {
+  favourites: {
+    title: "Star meals you log often for one-tap re-logging.",
+  },
+  frequent: {
+    title: "Your most-logged meals will show up here after a few days of tracking.",
+  },
+  recent: {
+    title: "Nothing to re-log yet.",
+    description: "Start logging meals to build your history.",
+  },
 };
 
 export function QuickAddPanel({
@@ -97,9 +130,18 @@ export function QuickAddPanel({
   userId,
   onLog,
   onLogSavedMeal,
+  onOpenSaveCombo: _onOpenSaveCombo,
+  savedMealsRefreshToken,
   defaultTab = "recent",
   className,
 }: QuickAddPanelProps) {
+  // `onOpenSaveCombo` is part of the panel's public API (audit H4) so the
+  // host can be the single owner of `SaveMealDialog`. The panel itself has
+  // no save-combo trigger today — the "Save combo" chip lives on the
+  // parent's meal-slot header — so the prop is currently unused internally.
+  // We reference it via `_onOpenSaveCombo` to keep TypeScript / ESLint happy.
+  void _onOpenSaveCombo;
+
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [favorites, setFavorites] = useState<FavoriteFood[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
@@ -109,8 +151,13 @@ export function QuickAddPanel({
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [savedMealsLoading, setSavedMealsLoading] = useState(false);
   const [savedPendingIds, setSavedPendingIds] = useState<Set<string>>(new Set());
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [saveDialogItems, setSaveDialogItems] = useState<Array<Omit<SavedMealItem, "id" | "position">>>([]);
+
+  // Rename + delete dialog state (audit M7, 2026-04-18). The dialogs
+  // replace the previous `window.prompt` / `window.confirm` calls so
+  // themed + focus-trapped + screen-reader-friendly alternatives are
+  // used everywhere on web.
+  const [renameTarget, setRenameTarget] = useState<SavedMeal | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SavedMeal | null>(null);
 
   // Load favourites on mount and whenever the user changes.
   useEffect(() => {
@@ -132,7 +179,8 @@ export function QuickAddPanel({
     };
   }, [supabase, userId]);
 
-  // Load saved meals.
+  // Load saved meals on mount, userId change, and whenever the host bumps
+  // `savedMealsRefreshToken` after persisting a new combo (audit H4).
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
@@ -150,7 +198,20 @@ export function QuickAddPanel({
     return () => {
       cancelled = true;
     };
-  }, [supabase, userId]);
+  }, [supabase, userId, savedMealsRefreshToken]);
+
+  // Jump to the "My meals" tab whenever the host signals a new combo was
+  // saved. Skip the initial mount so users aren't yanked off the default
+  // tab the first time the panel renders.
+  const [didMountForRefresh, setDidMountForRefresh] = useState(false);
+  useEffect(() => {
+    if (!didMountForRefresh) {
+      setDidMountForRefresh(true);
+      return;
+    }
+    if (savedMealsRefreshToken == null) return;
+    setTab("saved");
+  }, [savedMealsRefreshToken, didMountForRefresh]);
 
   const frequent = useMemo(() => computeFrequentMeals(byDay, 20), [byDay]);
   const recent = useMemo(() => computeRecentMeals(byDay, 20), [byDay]);
@@ -251,62 +312,12 @@ export function QuickAddPanel({
   );
 
   // -- Saved meals actions (Batch 2.6) --
-
-  /** Called from parent NutritionTracker when the user taps
-   * "Save these as a meal". Flipping this open hands the items to the
-   * dialog via `initialItems`. */
-  const openSaveDialog = useCallback(
-    (items: Array<Omit<SavedMealItem, "id" | "position">>) => {
-      if (!userId) {
-        toast.info("Sign in to save meal combos.");
-        return;
-      }
-      if (items.length < 2) {
-        toast.info("Log 2 or more items first, then save the combo.");
-        return;
-      }
-      setSaveDialogItems(items);
-      setSaveDialogOpen(true);
-    },
-    [userId],
-  );
-
-  const handleCreate = useCallback(
-    async (payload: { name: string; defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks"; items: Array<Omit<SavedMealItem, "id" | "position">> }) => {
-      if (!userId) return;
-      const tempId = `temp-${Date.now()}`;
-      const optimistic: SavedMeal = {
-        id: tempId,
-        name: payload.name,
-        items: payload.items.map((it, i) => ({ position: i, ...it })),
-        createdAt: new Date().toISOString(),
-        logCount: 0,
-        ...(payload.defaultMealSlot ? { defaultMealSlot: payload.defaultMealSlot } : {}),
-      };
-      setSavedMeals((prev) => [optimistic, ...prev]);
-      try {
-        const created = await createSavedMeal(supabase, userId, payload);
-        setSavedMeals((prev) => [created, ...prev.filter((m) => m.id !== tempId)]);
-        try {
-          track(AnalyticsEvents.saved_meal_created, {
-            itemCount: payload.items.length,
-            defaultMealSlot: payload.defaultMealSlot,
-          });
-        } catch {
-          /* analytics is fire-and-forget */
-        }
-        toast.success(`Saved "${payload.name}".`);
-        // Jump to the My meals tab so the user sees the new row.
-        setTab("saved");
-      } catch (err) {
-        setSavedMeals((prev) => prev.filter((m) => m.id !== tempId));
-        toast.error("Couldn't save that combo. Try again.");
-        // eslint-disable-next-line no-console
-        console.error("QuickAddPanel saved-meal create failed", err);
-      }
-    },
-    [supabase, userId],
-  );
+  //
+  // Note: creation (`handleCreate`) and the `SaveMealDialog` it feeds were
+  // lifted to the host `NutritionTracker` as part of audit H4 (2026-04-18)
+  // to replace the save-combo CustomEvent bridge with direct props. The
+  // panel refetches `listSavedMeals` via `savedMealsRefreshToken` when
+  // the host persists a new combo.
 
   const handleLogSaved = useCallback(
     async (meal: SavedMeal) => {
@@ -357,18 +368,28 @@ export function QuickAddPanel({
     [activeSlot, onLogSavedMeal, savedPendingIds, supabase, userId],
   );
 
+  // Opens the themed rename dialog. The dialog itself calls
+  // `commitRename` with the validated + trimmed name when the user
+  // taps Save.
   const handleRename = useCallback(
-    async (meal: SavedMeal) => {
+    (meal: SavedMeal) => {
       if (!userId) return;
-      if (typeof window === "undefined") return;
-      const next = window.prompt("Rename meal", meal.name);
-      if (next == null) return; // cancelled
-      const trimmed = next.trim();
-      if (!trimmed || trimmed === meal.name) return;
+      setRenameTarget(meal);
+    },
+    [userId],
+  );
+
+  const commitRename = useCallback(
+    async (meal: SavedMeal, nextName: string) => {
+      if (!userId) return;
+      // The dialog already runs `normaliseSavedMealName`, so `nextName`
+      // is trimmed + clipped to SAVED_MEAL_NAME_MAX_LENGTH. Still guard
+      // against a no-op for safety.
+      if (nextName === meal.name) return;
       const snapshot = savedMeals;
-      setSavedMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, name: trimmed } : m)));
+      setSavedMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, name: nextName } : m)));
       try {
-        await renameSavedMeal(supabase, userId, meal.id, trimmed);
+        await renameSavedMeal(supabase, userId, meal.id, nextName);
         toast.success("Renamed.");
       } catch (err) {
         setSavedMeals(snapshot);
@@ -380,10 +401,19 @@ export function QuickAddPanel({
     [savedMeals, supabase, userId],
   );
 
+  // Opens the themed destructive-confirm dialog. The dialog itself
+  // calls `commitDelete` when the user taps the red Delete button.
   const handleDelete = useCallback(
+    (meal: SavedMeal) => {
+      if (!userId) return;
+      setDeleteTarget(meal);
+    },
+    [userId],
+  );
+
+  const commitDelete = useCallback(
     async (meal: SavedMeal) => {
       if (!userId) return;
-      if (typeof window !== "undefined" && !window.confirm(`Delete "${meal.name}"?`)) return;
       const snapshot = savedMeals;
       setSavedMeals((prev) => prev.filter((m) => m.id !== meal.id));
       try {
@@ -458,9 +488,10 @@ export function QuickAddPanel({
           )}
 
           {rows.length === 0 && !(tab === "favourites" && favoritesLoading) && (
-            <p className="px-3.5 py-6 text-xs text-muted-foreground text-center">
-              {EMPTY_COPY[tab as Exclude<Tab, "saved">]}
-            </p>
+            <EmptyState
+              title={EMPTY_COPY[tab as Exclude<Tab, "saved">].title}
+              description={EMPTY_COPY[tab as Exclude<Tab, "saved">].description}
+            />
           )}
 
           {rows.map((row) => {
@@ -468,28 +499,22 @@ export function QuickAddPanel({
             const starred = Boolean(row.favoriteId);
             const pending = pendingKeys.has(favoriteKey(row.recipeTitle, row.calories));
             // Batch 5.13 — subtle AI badge for entries logged via voice or photo.
-            // Matches the strings written by the NutritionTracker commit path
-            // ("AI voice" / "AI photo") and by the mobile Today tab.
-            const sourceLc = (row.source ?? "").toLowerCase();
-            const isAiSourced =
-              sourceLc.includes("ai voice") ||
-              sourceLc.includes("ai photo") ||
-              sourceLc === "voice" ||
-              sourceLc === "ai_photo" ||
-              sourceLc === "ai_voice";
+            // Detection lives in `src/lib/nutrition/foodHistory.ts` so web +
+            // mobile cannot drift (audit H1, 2026-04-18).
+            const isAiSourced = isAiSourcedFoodHistoryItem(row);
             return (
               <div key={rowKey} className="flex items-center gap-2 px-3.5 py-2.5">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground truncate flex items-center gap-1.5">
                     {row.recipeTitle}
                     {isAiSourced && (
-                      <span
-                        className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
-                        aria-label="AI estimated nutrition"
+                      <Badge
+                        variant="ai"
+                        ariaLabel="AI estimated nutrition"
                         title="This entry was logged with AI-estimated nutrition"
                       >
                         AI
-                      </span>
+                      </Badge>
                     )}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
@@ -525,49 +550,34 @@ export function QuickAddPanel({
         </div>
       )}
 
-      <SaveMealDialog
-        open={saveDialogOpen}
-        onOpenChange={setSaveDialogOpen}
-        initialItems={saveDialogItems}
-        defaultSlot={
-          activeSlot === "Breakfast" || activeSlot === "Lunch" || activeSlot === "Dinner" || activeSlot === "Snacks"
-            ? (activeSlot as "Breakfast" | "Lunch" | "Dinner" | "Snacks")
-            : undefined
-        }
-        onSave={handleCreate}
-        suggestedName={`My ${activeSlot.toLowerCase()} combo`}
+      {/* Rename + delete confirmations (audit M7, 2026-04-18). Rendered
+          unconditionally so the dialogs can animate close when the
+          target is cleared; Radix handles the portal so they escape the
+          panel's overflow-hidden shell. */}
+      <RenameSavedMealDialog
+        open={renameTarget != null}
+        onOpenChange={(o) => {
+          if (!o) setRenameTarget(null);
+        }}
+        currentName={renameTarget?.name ?? ""}
+        onConfirm={async (nextName) => {
+          if (renameTarget) await commitRename(renameTarget, nextName);
+        }}
       />
-      {/* Re-expose the open trigger via a global window event so the
-          host NutritionTracker can open the dialog when the user taps
-          "Save these as a meal" without dragging the panel ref through
-          props. Avoids prop-drilling a ref on an existing public API. */}
-      <SaveMealDialogTrigger onOpen={openSaveDialog} />
+      <DestructiveConfirmDialog
+        open={deleteTarget != null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteTarget(null);
+        }}
+        title={deleteTarget ? `Delete "${deleteTarget.name}"?` : "Delete meal?"}
+        description="This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (deleteTarget) await commitDelete(deleteTarget);
+        }}
+      />
     </div>
   );
-}
-
-/** Invisible event listener — lets the host component (NutritionTracker
- * web, tracker screen mobile) open the save-meal dialog without the
- * `QuickAddPanel` having to expose a ref API. The host dispatches a
- * `CustomEvent("suppr:open-save-meal-dialog", { detail: { items } })`
- * and this listener forwards the payload to `onOpen`. Using an event
- * keeps the panel's public props unchanged. */
-function SaveMealDialogTrigger({
-  onOpen,
-}: {
-  onOpen: (items: Array<Omit<SavedMealItem, "id" | "position">>) => void;
-}) {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ items: Array<Omit<SavedMealItem, "id" | "position">> }>;
-      const items = ce?.detail?.items;
-      if (Array.isArray(items)) onOpen(items);
-    };
-    window.addEventListener("suppr:open-save-meal-dialog", handler);
-    return () => window.removeEventListener("suppr:open-save-meal-dialog", handler);
-  }, [onOpen]);
-  return null;
 }
 
 export default QuickAddPanel;

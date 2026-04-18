@@ -11,6 +11,7 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import type { PlanTemplate } from "../../../lib/nutrition/planTemplates";
+import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 
 type Mode = "save" | "list";
 
@@ -55,6 +56,9 @@ export function PlanTemplatesDialog({
   const [dayCount, setDayCount] = useState<number>(clampedMax);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Audit M7 (2026-04-18) — themed destructive-confirm dialog
+  // replaces the prior `window.confirm` call for template deletion.
+  const [deleteTarget, setDeleteTarget] = useState<PlanTemplate | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -200,11 +204,7 @@ export function PlanTemplatesDialog({
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={async () => {
-                        if (!window.confirm(`Delete template "${t.name}"?`)) return;
-                        const res = await onDelete(t.id);
-                        if (!res.ok) setError(res.error ?? "Could not delete template.");
-                      }}
+                      onClick={() => setDeleteTarget(t)}
                       aria-label={`Delete ${t.name}`}
                     >
                       Delete
@@ -222,6 +222,22 @@ export function PlanTemplatesDialog({
           </div>
         )}
       </DialogContent>
+      <DestructiveConfirmDialog
+        open={deleteTarget != null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget ? `Delete template "${deleteTarget.name}"?` : "Delete template?"
+        }
+        description="This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          const res = await onDelete(deleteTarget.id);
+          if (!res.ok) setError(res.error ?? "Could not delete template.");
+        }}
+      />
     </Dialog>
   );
 }

@@ -24,6 +24,7 @@ import {
 } from "../ui/dropdown-menu";
 import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
+import { EmptyState } from "./empty-state";
 
 export type SavedMealsTabProps = {
   meals: SavedMeal[];
@@ -68,19 +69,23 @@ export function SavedMealsTab({
 
   if (!signedIn) {
     return (
-      <p className="px-3.5 py-6 text-xs text-muted-foreground text-center">
-        Sign in to save meal combos for one-tap re-logging.
-      </p>
+      <EmptyState title="Sign in to save meal combos for one-tap re-logging." />
     );
   }
 
   if (meals.length === 0) {
+    // Copy preserved verbatim from before audit M5 (2026-04-18);
+    // only the rendering moved into the shared <EmptyState /> primitive.
     return (
-      <p className="px-3.5 py-6 text-xs text-muted-foreground text-center">
-        Log 2 or more items in a slot, then tap{" "}
-        <span className="font-medium text-foreground">Save these as a meal</span> to
-        re-log the combo in one tap.
-      </p>
+      <EmptyState
+        title={
+          <>
+            Log 2 or more items in a slot, then tap{" "}
+            <span className="font-medium text-foreground">Save these as a meal</span> to
+            re-log the combo in one tap.
+          </>
+        }
+      />
     );
   }
 

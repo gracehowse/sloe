@@ -19,15 +19,24 @@
  */
 
 import * as React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { MoreHorizontal } from "lucide-react";
 import {
   ALCOHOL_QUICK_ADDS,
   CAFFEINE_QUICK_ADDS,
   WATER_QUICK_ADDS_ML,
+  formatWaterAmount,
+  imperialWaterQuickAdds,
   isOverTarget,
   weeklyAlcoholG,
   type StimulantTargets,
 } from "../../../lib/nutrition/hydrationStimulants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { cn } from "../ui/utils";
 
 export interface HydrationStimulantsCardProps {
@@ -48,13 +57,11 @@ export interface HydrationStimulantsCardProps {
 }
 
 function formatWater(ml: number, imperial: boolean): string {
-  if (imperial) {
-    const floz = ml / 29.5735;
-    if (ml >= 946) return `${(floz / 32).toFixed(1).replace(/\.0$/, "")} qt`;
-    return `${Math.round(floz)} fl oz`;
-  }
-  if (ml >= 1000) return `${(ml / 1000).toFixed(1).replace(/\.0$/, "")}L`;
-  return `${ml}ml`;
+  const { value, unit } = formatWaterAmount(
+    ml,
+    imperial ? "imperial" : "metric",
+  );
+  return `${value} ${unit}`;
 }
 
 function Row({
@@ -80,14 +87,17 @@ function Row({
   children: React.ReactNode;
   onReset: () => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Theme tokens: --macro-water (cyan), --stimulant-caffeine (violet),
+  // --stimulant-alcohol (amber). See src/styles/theme.css and
+  // docs/ux/brand-tokens.md. No hex at this call-site — if you need to
+  // change a colour, update the token.
   const barColor =
     tone === "water"
-      ? "var(--macro-water, #06b6d4)"
+      ? "var(--macro-water)"
       : tone === "caffeine"
-      ? "#8b5cf6"
-      : "#f59e0b";
-  const overlay = "var(--warning, #e8a020)";
+      ? "var(--stimulant-caffeine)"
+      : "var(--stimulant-alcohol)";
+  const overlay = "var(--warning)";
   return (
     <div className="py-2.5 first:pt-0 last:pb-0 border-b border-border last:border-b-0">
       <div className="flex items-start justify-between gap-3">
@@ -95,7 +105,10 @@ function Row({
           <span
             aria-hidden
             className="h-7 w-7 rounded-lg flex items-center justify-center text-[13px]"
-            style={{ backgroundColor: `${barColor}22`, color: barColor }}
+            style={{
+              backgroundColor: `color-mix(in oklab, ${barColor} 15%, transparent)`,
+              color: barColor,
+            }}
           >
             {icon}
           </span>
@@ -106,37 +119,27 @@ function Row({
             <span className="text-sm font-bold tabular-nums text-foreground leading-tight">
               {valueLine}
             </span>
-            <div className="relative">
-              <button
-                type="button"
-                aria-label={`${label} row more options`}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
-                className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground"
-              >
-                <span aria-hidden>…</span>
-              </button>
-              {menuOpen && (
-                <div
-                  role="menu"
-                  onMouseLeave={() => setMenuOpen(false)}
-                  className="absolute right-0 top-7 z-10 min-w-[140px] rounded-lg border border-border bg-card shadow-lg p-1"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`${label} row more options`}
+                  className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground"
                 >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onReset();
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-xs text-foreground rounded hover:bg-muted"
-                  >
-                    Reset today
-                  </button>
-                </div>
-              )}
-            </div>
+                  <MoreHorizontal className="w-3.5 h-3.5" aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onReset();
+                  }}
+                >
+                  Reset today
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div
             className="w-full max-w-[220px] h-1.5 rounded-full bg-muted overflow-hidden"
@@ -223,7 +226,7 @@ export function HydrationStimulantsCard({
   return (
     <section
       className={cn(
-        "rounded-xl bg-card border border-border p-3 mb-4",
+        "rounded-card bg-card border border-border p-3 mb-4",
         className,
       )}
       aria-label="Hydration and stimulants"
@@ -250,15 +253,22 @@ export function HydrationStimulantsCard({
         overCopy=""
         onReset={() => onReset("water")}
       >
-        {WATER_QUICK_ADDS_ML.map((ml) => (
+        {(imperial
+          ? imperialWaterQuickAdds()
+          : WATER_QUICK_ADDS_ML.map((ml) => ({ ml, label: `${ml} ml` }))
+        ).map((chip) => (
           <button
-            key={ml}
+            key={chip.ml}
             type="button"
-            onClick={() => onAddWater(ml)}
-            aria-label={`Add ${ml} millilitres water`}
+            onClick={() => onAddWater(chip.ml)}
+            aria-label={
+              imperial
+                ? `Add ${chip.label} water`
+                : `Add ${chip.ml} millilitres water`
+            }
             className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
           >
-            +{ml}ml
+            +{chip.label}
           </button>
         ))}
       </Row>
@@ -280,7 +290,14 @@ export function HydrationStimulantsCard({
             type="button"
             onClick={() => handleAddCaffeine(preset.mg, preset.label)}
             aria-label={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[color-mix(in_oklab,#8b5cf6_15%,transparent)] text-[#8b5cf6] border border-[#8b5cf6]/30 hover:bg-[#8b5cf6]/20 transition-colors"
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--stimulant-caffeine) 15%, transparent)",
+              color: "var(--stimulant-caffeine)",
+              borderColor:
+                "color-mix(in oklab, var(--stimulant-caffeine) 30%, transparent)",
+            }}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
           >
             +{preset.label} ({preset.mg}mg)
           </button>
@@ -305,7 +322,14 @@ export function HydrationStimulantsCard({
               type="button"
               onClick={() => handleAddAlcohol(preset.grams, preset.label)}
               aria-label={`Add ${preset.label}: ${preset.grams} grams alcohol`}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[color-mix(in_oklab,#f59e0b_15%,transparent)] text-[#f59e0b] border border-[#f59e0b]/30 hover:bg-[#f59e0b]/20 transition-colors"
+              style={{
+                backgroundColor:
+                  "color-mix(in oklab, var(--stimulant-alcohol) 15%, transparent)",
+                color: "var(--stimulant-alcohol)",
+                borderColor:
+                  "color-mix(in oklab, var(--stimulant-alcohol) 30%, transparent)",
+              }}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
             >
               +{preset.label} ({preset.grams}g)
             </button>

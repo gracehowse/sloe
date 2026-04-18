@@ -13,6 +13,7 @@ import { ConfidenceDot } from "./suppr/confidence-dot";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
+import { Badge } from "./suppr/badge";
 import {
   effectiveMacros,
   hasOverride,
@@ -50,7 +51,14 @@ async function shareRecipeDeepLink(recipeId: string) {
     await navigator.clipboard.writeText(url);
     toast.success("Share link copied");
   } catch {
-    window.prompt("Copy this link:", url);
+    // Audit M7 (2026-04-18) — the prior `window.prompt("Copy this link:", url)`
+    // fallback was an unthemed native dialog. Surface the link via a
+    // persistent toast instead so the user can long-press / select the URL
+    // and copy it themselves without the browser prompt.
+    toast.message("Copy this link", {
+      description: url,
+      duration: 15000,
+    });
   }
 }
 
@@ -1259,20 +1267,20 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
                           {rowHasOverride ? (
-                            <span
-                              className="shrink-0 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning"
+                            <Badge
+                              variant="override"
                               title="Manual macro override is pinned on this row."
                             >
                               Override
-                            </span>
+                            </Badge>
                           ) : null}
                           {rowAddedByUser ? (
-                            <span
-                              className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary"
+                            <Badge
+                              variant="added"
                               title="Added by you after import."
                             >
                               Added
-                            </span>
+                            </Badge>
                           ) : null}
                         </div>
                         <p className="text-[11px] text-muted-foreground">
@@ -1422,6 +1430,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       <FoodSearch
         open={verifySearchOpen}
         onClose={() => { setVerifySearchOpen(false); setVerifyIndex(null); }}
+        supabase={supabase}
+        userId={authUserId}
         initialQuery={verifyIndex != null ? ingredients[verifyIndex]?.name ?? "" : ""}
         initialAmount={verifyIndex != null ? dbIngredients[verifyIndex]?.amount : null}
         initialUnit={verifyIndex != null ? dbIngredients[verifyIndex]?.unit : null}

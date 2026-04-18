@@ -1,72 +1,44 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { WifiOff } from "lucide-react";
 import { Icons } from "./ui/icons";
-import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
-import { calculateTDEE, kgToLb } from "../../lib/nutrition/tdee.ts";
+import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog.tsx";
-import { Button } from "./ui/button.tsx";
-import { Checkbox } from "./ui/checkbox.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { projectWeight } from "../../lib/weightProjection.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
-import {
-  fetchProductByBarcode,
-  type OffProductMacros,
-} from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
-import { scaleFromPer100gGrams } from "../../lib/openFoodFacts/scaleFromPer100g.ts";
+import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import {
   computeLoggingStreak,
   computeWeekFiberWaterHits,
 } from "../../lib/nutrition/trackerStats.ts";
 import {
   availableFreezes,
+  computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
 } from "../../lib/nutrition/streakFreeze.ts";
-import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
-  weekSummaryHeading,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
-import NutritionSourceBadge from "../../components/NutritionSourceBadge.tsx";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
-  isMealPlanPlaceholderLikeTitle,
   scaledMacro,
 } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
-import { distributeMealBudget } from "../../lib/nutrition/mealBudget.ts";
 import {
   buildDayNutrientDetailRows,
   mealContributedFiberG,
   sumMicrosFromLoggedMeals,
 } from "../../lib/nutrition/microNutrientDisplay.ts";
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
-import { DailyRing, type CalorieRingDisplayMode } from "./suppr/daily-ring";
-import { MacroCard } from "./suppr/macro-card";
+import { type CalorieRingDisplayMode } from "./suppr/daily-ring";
 import { RemainingMacrosBar } from "./suppr/remaining-macros-bar";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
@@ -75,11 +47,39 @@ import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
-import type { AiLoggedItem } from "../../lib/nutrition/aiLogging";
+import { TodayHeroRing } from "./suppr/today-hero-ring";
+import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
+import { TodayStreakInsightCard } from "./suppr/today-streak-insight-card";
+import { TodayFastingPill } from "./suppr/today-fasting-pill";
+import { TodayStepsCard } from "./suppr/today-steps-card";
+import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
+import { TodayWeekView } from "./suppr/today-week-view";
+import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
+import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
+import { TodayMealsSection } from "./suppr/today-meals-section";
+import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
+import { TodayAddMealDialog, type UsdaHit, type UsdaFoodDetails } from "./suppr/today-add-meal-dialog";
+import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
+import { TodayDateHeader } from "./suppr/today-date-header";
+import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import { computeEatAgainForSlot, type FoodHistoryItem } from "../../lib/nutrition/foodHistory";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
-import type { SavedMeal, SavedMealItem } from "../../lib/nutrition/savedMeals";
-import { DayStrip } from "./DayStrip.tsx";
+import {
+  createSavedMeal,
+  type SavedMeal,
+  type SavedMealItem,
+} from "../../lib/nutrition/savedMeals";
+import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import {
+  LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
+  STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
+  readDismissState as readEatAgainDismiss,
+  recordDismiss as recordEatAgainDismiss,
+  serialiseDismissState as serialiseEatAgainDismiss,
+  shouldShowEatAgain,
+  type DismissState as EatAgainDismissState,
+} from "../../lib/nutrition/eatAgainDismiss";
+import { SaveMealDialog } from "./suppr/save-meal-dialog";
 import {
   parseDateKey,
   shiftDateKey,
@@ -88,6 +88,13 @@ import {
   clampDateKey,
 } from "../../lib/nutrition/trackerDate.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
+import {
+  QUICK_ADD_COLLAPSED_STORAGE_KEY,
+  isHydrationCardVisible,
+  isStepsCardVisible,
+  parseQuickAddCollapsed,
+  serializeQuickAddCollapsed,
+} from "../../lib/nutrition/todayProgressiveDisclosure.ts";
 
 export {
   parseDateKey,
@@ -152,60 +159,9 @@ function dayActivityBudgetAddonWeb(
   return Math.max(0, workouts.reduce((s, w) => s + (w.calories ?? 0), 0));
 }
 
-function MacroBarRowWeb({
-  label,
-  current,
-  goal,
-  colorVar,
-}: {
-  label: string;
-  current: number;
-  goal: number;
-  colorVar: string;
-}) {
-  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
-  return (
-    <div className="flex items-center gap-2 py-1.5">
-      <span className="w-16 text-[10px] font-bold tracking-wide text-muted-foreground">{label}</span>
-      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: colorVar }} />
-      </div>
-      <span className="w-14 text-right text-[11px] font-semibold tabular-nums text-muted-foreground">
-        {Math.round(current)} / {goal}
-      </span>
-    </div>
-  );
-}
-
-type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string };
-type UsdaFoodDetails = {
-  fdcId: number;
-  description: string;
-  macrosPer100g: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiberG: number;
-    sugarG: number;
-    sodiumMg: number;
-  };
-};
-
 interface NutritionTrackerProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
-}
-
-function barcodePortionLabel(product: OffProductMacros, grams: number): string {
-  const hit = product.servingOptions.find((o) => Math.abs(o.grams - grams) < 0.51);
-  return hit?.label ?? `${Math.round(grams * 10) / 10} g`;
-}
-
-function parseNonnegNumber(raw: string): number | null {
-  const n = Number.parseFloat(raw.replace(",", ".").trim());
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
 }
 
 function loadRecentFoods(): string[] {
@@ -367,6 +323,56 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     () => availableFreezes(freezeLedger, freezeBudgetMax),
     [freezeLedger, freezeBudgetMax],
   );
+  // 2026-04-18 audit H7 — `DayStrip` renders a ❄ glyph on each tile whose
+  // date was absorbed by a freeze. The parent computes the set once so
+  // both DayStrip instances (day + week view) read the same value.
+  const protectedDateKeys = useMemo(() => {
+    // Cast mirrors `ProgressDashboard`'s consumption of the same shared
+    // helper — `LoggedMeal` satisfies the pure `StreakMeal` union via
+    // its `.calories` field; the cast just silences the structural
+    // widening without changing the runtime contract.
+    const info = computeProtectedStreak(nutritionByDay as never, freezeLedger, freezeBudgetMax);
+    return new Set(info.protectedDateKeys);
+  }, [nutritionByDay, freezeLedger, freezeBudgetMax]);
+  // 2026-04-18 audit H7 — "You earned a freeze" row. Newest earnedAt ISO
+  // from the ledger; the row shows once until the user taps "Got it",
+  // which writes today's timestamp to localStorage. No migration.
+  const newestFreezeEarnedAt = useMemo(() => {
+    if (!Array.isArray(freezeLedger.earnedAt) || freezeLedger.earnedAt.length === 0) return null;
+    let newest = "";
+    for (const entry of freezeLedger.earnedAt) {
+      if (typeof entry?.earnedAt === "string" && entry.earnedAt > newest) newest = entry.earnedAt;
+    }
+    return newest || null;
+  }, [freezeLedger]);
+  const [lastSeenFreezeEarnedAt, setLastSeenFreezeEarnedAt] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem("suppr-last-seen-freeze-earned-at");
+    } catch {
+      return null;
+    }
+  });
+  const hasUnseenFreezeEarned =
+    freezesAvailableToday > 0 &&
+    newestFreezeEarnedAt !== null &&
+    (lastSeenFreezeEarnedAt === null || newestFreezeEarnedAt > lastSeenFreezeEarnedAt);
+  const dismissFreezeEarned = useCallback(() => {
+    if (!newestFreezeEarnedAt) return;
+    setLastSeenFreezeEarnedAt(newestFreezeEarnedAt);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("suppr-last-seen-freeze-earned-at", newestFreezeEarnedAt);
+      }
+    } catch {
+      /* storage denied — UI still hides for the session */
+    }
+    try {
+      track(AnalyticsEvents.streak_freeze_earned_seen, { earnedAt: newestFreezeEarnedAt });
+    } catch {
+      /* noop */
+    }
+  }, [newestFreezeEarnedAt]);
   const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
@@ -375,6 +381,35 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
   const calendarInputRef = useRef<HTMLInputElement>(null);
   const { authedUserId } = useAuthSession();
+
+  // Audit M4 (2026-04-18) — Today progressive disclosure on web.
+  // Matches mobile. Persists the Quick Add collapsed pref via localStorage
+  // under `QUICK_ADD_COLLAPSED_STORAGE_KEY`. Manual expanders let a user
+  // reveal the Hydration / Steps cards on first run without waiting for
+  // gate conditions to unlock them.
+  const [quickAddCollapsed, setQuickAddCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return parseQuickAddCollapsed(window.localStorage.getItem(QUICK_ADD_COLLAPSED_STORAGE_KEY));
+    } catch {
+      return true;
+    }
+  });
+  const [hydrationManualExpanded, setHydrationManualExpanded] = useState(false);
+  const [stepsManualExpanded, setStepsManualExpanded] = useState(false);
+  const toggleQuickAddCollapsed = useCallback(() => {
+    setQuickAddCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(QUICK_ADD_COLLAPSED_STORAGE_KEY, serializeQuickAddCollapsed(next));
+        } catch {
+          /* best-effort */
+        }
+      }
+      return next;
+    });
+  }, []);
 
   /** Infer the default meal slot from local clock time for Eat-again /
    * Quick Add defaults. Mirrors the mobile rule of thumb in
@@ -386,10 +421,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     if (h < 17) return "Snacks";
     return "Dinner";
   }, []);
-  const [eatAgainDismissedKey, setEatAgainDismissedKey] = useState<string | null>(() => {
+  // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
+  // `{ dateKey, dismissedAt }` so a device clock rollback can't
+  // resurrect the banner on the same real-world day. Reads migrate
+  // v1 on the fly; writes always use v2.
+  const [eatAgainDismissState, setEatAgainDismissState] = useState<EatAgainDismissState | null>(() => {
     if (typeof window === "undefined") return null;
     try {
-      return window.localStorage.getItem("suppr-eat-again-dismissed");
+      return readEatAgainDismiss(
+        window.localStorage.getItem(EAT_AGAIN_STORAGE_KEY),
+        window.localStorage.getItem(EAT_AGAIN_LEGACY_KEY_V1),
+        new Date(),
+      );
     } catch {
       return null;
     }
@@ -452,12 +495,57 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [addLoggedMealForDate, selectedDateKey],
   );
 
-  /** "Save these as a meal" — gather the items in the active slot and
-   * dispatch a CustomEvent the QuickAddPanel listens for. Keeps the
-   * panel's prop API unchanged. Batch 2.6. */
+  // -- Save-combo dialog (audit H4, 2026-04-18) --
+  //
+  // `SaveMealDialog` and its creation flow were lifted out of
+  // `QuickAddPanel` so the host is the single owner of the dialog.
+  // Replaces the prior save-combo CustomEvent bridge with a plain prop
+  // callback (`onOpenSaveCombo`) + a refresh token the panel watches to
+  // refetch `listSavedMeals`.
+  const [saveComboOpen, setSaveComboOpen] = useState(false);
+  const [saveComboSeedItems, setSaveComboSeedItems] = useState<
+    Array<Omit<SavedMealItem, "id" | "position">>
+  >([]);
+  const [saveComboDefaultSlot, setSaveComboDefaultSlot] = useState<
+    "Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined
+  >(undefined);
+  const [saveComboSuggestedName, setSaveComboSuggestedName] = useState<string>("");
+  const [savedMealsRefreshToken, setSavedMealsRefreshToken] = useState(0);
+
+  /** Open the save-combo dialog with pre-filled `seedItems` + optional
+   * default `slot`. Wired to both the meal-slot header chip (directly)
+   * and to the `QuickAddPanel` via the `onOpenSaveCombo` prop so the
+   * panel can request the dialog without touching the global event bus. */
+  const handleOpenSaveCombo = useCallback(
+    (
+      slot?: string,
+      seedItems?: Array<Omit<SavedMealItem, "id" | "position">>,
+    ) => {
+      if (!authedUserId) {
+        toast.info("Sign in to save meal combos.");
+        return;
+      }
+      const items = seedItems ?? [];
+      if (items.length < 2) {
+        toast.info("Log 2 or more items first, then save the combo.");
+        return;
+      }
+      setSaveComboSeedItems(items);
+      // Canonical slot via shared guard (audit L5, 2026-04-18).
+      const normalisedSlot: MealSlot | undefined = isMealSlot(slot) ? slot : undefined;
+      setSaveComboDefaultSlot(normalisedSlot);
+      setSaveComboSuggestedName(
+        slot ? `My ${slot.toLowerCase()} combo` : `My ${mealSlot.toLowerCase()} combo`,
+      );
+      setSaveComboOpen(true);
+    },
+    [authedUserId, mealSlot],
+  );
+
+  /** Gather the items in `slotName` from the active day and open the
+   * save-combo dialog. Called from the per-slot "Save combo" chip. */
   const openSaveMealDialog = useCallback(
     (slotName: string) => {
-      if (typeof window === "undefined") return;
       const slotMeals = mealsForSelectedDate.filter(
         (m) => normalizeJournalSlotName(m.name ?? "") === slotName,
       );
@@ -480,25 +568,54 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         if (m.source) item.source = m.source;
         return item;
       });
-      window.dispatchEvent(
-        new CustomEvent("suppr:open-save-meal-dialog", { detail: { items } }),
-      );
+      handleOpenSaveCombo(slotName, items);
     },
-    [mealsForSelectedDate],
+    [handleOpenSaveCombo, mealsForSelectedDate],
+  );
+
+  /** Persist a new saved-meal combo from the lifted `SaveMealDialog`,
+   * then bump `savedMealsRefreshToken` so `QuickAddPanel` refetches its
+   * "My meals" tab and jumps to it (preserves Batch 2.6 post-save UX). */
+  const handleCreateSavedMeal = useCallback(
+    async (payload: {
+      name: string;
+      defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
+      items: Array<Omit<SavedMealItem, "id" | "position">>;
+    }) => {
+      if (!authedUserId) return;
+      try {
+        await createSavedMeal(supabase, authedUserId, payload);
+        try {
+          track(AnalyticsEvents.saved_meal_created, {
+            itemCount: payload.items.length,
+            defaultMealSlot: payload.defaultMealSlot,
+          });
+        } catch {
+          /* analytics is fire-and-forget */
+        }
+        toast.success(`Saved "${payload.name}".`);
+        setSavedMealsRefreshToken((n) => n + 1);
+      } catch (err) {
+        toast.error("Couldn't save that combo. Try again.");
+        // eslint-disable-next-line no-console
+        console.error("NutritionTracker saved-meal create failed", err);
+      }
+    },
+    [authedUserId],
   );
 
   const dismissEatAgain = useCallback(() => {
-    const key = todayKey();
-    setEatAgainDismissedKey(key);
+    const state = recordEatAgainDismiss(new Date());
+    setEatAgainDismissState(state);
     if (typeof window !== "undefined") {
       try {
-        window.localStorage.setItem("suppr-eat-again-dismissed", key);
+        window.localStorage.setItem(EAT_AGAIN_STORAGE_KEY, serialiseEatAgainDismiss(state));
       } catch {
         /* noop */
       }
     }
   }, []);
-  const eatAgainDismissedForToday = eatAgainDismissedKey === todayKey();
+  const eatAgainDismissedForToday = !shouldShowEatAgain(eatAgainDismissState, new Date());
 
   useEffect(() => {
     const id = setInterval(() => setFastingNowTick(Date.now()), 60_000);
@@ -632,7 +749,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           protein: Math.round(item.protein),
           carbs: Math.round(item.carbs),
           fat: Math.round(item.fat),
-          source: item.source === "voice" ? "AI voice" : "AI photo",
+          source: aiLoggingSourceLabel(item.source),
         });
       }
       const label = items[0]?.source === "voice" ? "voice" : "photo";
@@ -879,6 +996,28 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
+  // Audit M4 (2026-04-18) — Today progressive disclosure gates.
+  // Same rules as mobile via shared `todayProgressiveDisclosure` helpers.
+  // Sticky once open: a returning user who has ever set a water target or
+  // synced Health will keep seeing these cards.
+  const hydrationCardGateOpen = useMemo(
+    () =>
+      isHydrationCardVisible({
+        waterTargetMl: targets.waterMl,
+        extraWaterByDay,
+        waterFromMealsMl: Math.max(0, totalWaterMl - extraWaterMlForSelectedDay),
+        extraCaffeineByDay: _extraCaffeineByDay,
+        extraAlcoholGByDay,
+      }),
+    [targets.waterMl, extraWaterByDay, totalWaterMl, extraWaterMlForSelectedDay, _extraCaffeineByDay, extraAlcoholGByDay],
+  );
+  const stepsCardGateOpen = useMemo(
+    () => isStepsCardVisible({ stepsByDay, activityBurnByDay }),
+    [stepsByDay, activityBurnByDay],
+  );
+  const showHydrationCard = hydrationCardGateOpen || hydrationManualExpanded;
+  const showStepsCard = stepsCardGateOpen || stepsManualExpanded;
+
   const activeFast = useMemo(() => fastingSessions.find((s) => s.end === null), [fastingSessions]);
   const fastingElapsedLabel = useMemo(() => {
     if (!activeFast) return null;
@@ -1043,305 +1182,53 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
       />
 
-      <div className="mb-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <button
-              type="button"
-              aria-label={viewMode === "week" ? "Previous week" : "Previous day"}
-              onClick={() => (viewMode === "week" ? navigateWeek(-1) : navigateDay(-1))}
-              className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
-            >
-              <Icons.back className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="text-center min-w-0 flex-1"
-              onClick={() => {
-                setSelectedDateKey(todayKey());
-                setViewMode("day");
-              }}
-            >
-              <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium truncate">
-                {viewMode === "week"
-                  ? weekData.label
-                  : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
-              </p>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
-                {viewMode === "week" ? "This week" : formatDateLabel(selectedDate)}
-              </h1>
-            </button>
-            <button
-              type="button"
-              aria-label={viewMode === "week" ? "Next week" : "Next day"}
-              onClick={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
-              disabled={viewMode === "day" && selectedDateKey === todayKey()}
-              className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Icons.forward className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode("day")}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
-                  viewMode === "day" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                Day
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("week")}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
-                  viewMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                Week
-              </button>
-            </div>
-            <div className="w-9 h-9 rounded-[10px] bg-primary/10 flex items-center justify-center text-sm font-bold text-primary" aria-hidden>
-              {avatarLetter}
-            </div>
-          </div>
-        </div>
-
-        {viewMode === "day" ? (
-          <DayStrip
-            selectedDateKey={selectedDateKey}
-            weekStartDay={weekStartDay}
-            loggedDays={loggedDays}
-            onSelectDateKey={setSelectedDateKey}
-            onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
-          />
-        ) : (
-          <DayStrip
-            selectedDateKey={selectedDateKey}
-            weekStartDay={weekStartDay}
-            loggedDays={loggedDays}
-            onSelectDateKey={(k) => {
-              setSelectedDateKey(k);
-              setViewMode("day");
-            }}
-            onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
-          />
-        )}
-      </div>
+      <TodayDateHeader
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        selectedDate={selectedDate}
+        selectedDateKey={selectedDateKey}
+        onSelectDateKey={setSelectedDateKey}
+        weekLabel={weekData.label}
+        weekStartDay={weekStartDay}
+        loggedDays={loggedDays}
+        protectedDateKeys={protectedDateKeys}
+        avatarLetter={avatarLetter}
+        onNavigatePrev={() => (viewMode === "week" ? navigateWeek(-1) : navigateDay(-1))}
+        onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
+        onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
+      />
 
       {viewMode === "week" && (
-        <div className="flex flex-col gap-4 mb-4">
-          <div className="rounded-xl bg-card border border-border p-4">
-            <p className="text-sm font-semibold text-foreground mb-3">Weekly calories</p>
-            <div className="flex justify-between items-end gap-1 h-36">
-              {weekData.days.map((day) => {
-                const dayGoal =
-                  targets.calories +
-                  dayActivityBudgetAddonWeb(
-                    preferActivityAdjustedCalories,
-                    day.key,
-                    maintenanceForWeek,
-                    activityBurnByDay,
-                    basalBurnByDay,
-                    workoutsByDay,
-                  );
-                const maxCal = Math.max(
-                  1,
-                  ...weekData.days.map((d) =>
-                    Math.max(
-                      d.totals.calories,
-                      targets.calories +
-                        dayActivityBudgetAddonWeb(
-                          preferActivityAdjustedCalories,
-                          d.key,
-                          maintenanceForWeek,
-                          activityBurnByDay,
-                          basalBurnByDay,
-                          workoutsByDay,
-                        ),
-                    ),
-                  ),
-                );
-                const barH = maxCal > 0 ? Math.max(4, (day.totals.calories / maxCal) * 110) : 4;
-                const over = day.totals.calories > dayGoal;
-                const isCurrentDay = day.key === todayKey();
-                return (
-                  <button
-                    key={day.key}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDateKey(day.key);
-                      setViewMode("day");
-                    }}
-                    className="flex flex-col items-center flex-1 gap-1 min-w-0"
-                  >
-                    <span className="text-[10px] text-muted-foreground tabular-nums h-4">
-                      {day.totals.calories > 0 ? Math.round(day.totals.calories) : ""}
-                    </span>
-                    <div
-                      className="w-full max-w-[28px] rounded-md transition-colors mx-auto"
-                      style={{
-                        height: barH,
-                        backgroundColor: over ? "var(--destructive)" : day.totals.calories > 0 ? "var(--primary)" : "var(--muted)",
-                      }}
-                    />
-                    <span
-                      className={`text-[11px] font-semibold ${isCurrentDay ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      {day.short}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-muted-foreground text-right mt-1">
-              {preferActivityAdjustedCalories
-                ? `Goal: ${targets.calories} kcal base + activity bonus when over maintenance (~${maintenanceForWeek} kcal)`
-                : `Daily goal: ${targets.calories} kcal`}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-4">
-            <p className="text-sm font-semibold text-foreground mb-2">Steps & water</p>
-            <p className="text-[10px] text-muted-foreground mb-3">Each column: steps vs goal (top), water vs goal (bottom). Tap a day to open it.</p>
-            <div className="flex gap-1 items-end">
-              {weekData.days.map((day) => {
-                const stepPct =
-                  day.steps != null && dailyStepsGoal > 0 ? Math.min(100, (day.steps / dailyStepsGoal) * 100) : 0;
-                const waterPct =
-                  targets.waterMl > 0 ? Math.min(100, (day.waterMl / targets.waterMl) * 100) : 0;
-                const isCurrentDay = day.key === todayKey();
-                return (
-                  <button
-                    key={`sw-${day.key}`}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDateKey(day.key);
-                      setViewMode("day");
-                    }}
-                    className="flex-1 flex flex-col items-center gap-1.5 min-w-0"
-                  >
-                    <div className="w-full max-w-[28px] flex flex-col justify-end gap-1 h-[52px] mx-auto">
-                      <div className="relative h-[22px] w-full rounded bg-muted overflow-hidden">
-                        <div
-                          className="absolute bottom-0 left-0 right-0 rounded transition-all"
-                          style={{
-                            height: `${stepPct}%`,
-                            minHeight: day.steps != null && day.steps > 0 ? 3 : 0,
-                            backgroundColor:
-                              day.steps != null && day.steps >= dailyStepsGoal ? "var(--success)" : "var(--primary)",
-                          }}
-                        />
-                      </div>
-                      <div className="relative h-[22px] w-full rounded bg-muted overflow-hidden">
-                        <div
-                          className="absolute bottom-0 left-0 right-0 rounded bg-macro-water transition-all"
-                          style={{
-                            height: `${waterPct}%`,
-                            minHeight: day.waterMl > 0 ? 3 : 0,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[10px] font-semibold ${isCurrentDay ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      {day.short}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-4">
-            <p className="text-sm font-semibold text-foreground mb-3">Weekly summary</p>
-            <div className="flex justify-around text-center">
-              <div>
-                <p className="text-2xl font-extrabold text-foreground tabular-nums">
-                  {Math.round(weekData.weekTotals.calories)}
-                </p>
-                <p className="text-[11px] text-muted-foreground">Total kcal</p>
-              </div>
-              <div>
-                <p className="text-2xl font-extrabold text-primary tabular-nums">
-                  {Math.round(weekData.weekAvg.calories)}
-                </p>
-                <p className="text-[11px] text-muted-foreground">Daily avg</p>
-              </div>
-              <div>
-                {(() => {
-                  const under = weekEffectiveCalorieBudget > weekData.weekTotals.calories;
-                  const diff = Math.round(Math.abs(weekEffectiveCalorieBudget - weekData.weekTotals.calories));
-                  return (
-                    <>
-                      <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-destructive"}`}>
-                        {diff}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">{under ? "Under budget" : "Over budget"}</p>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-4">
-            <p className="text-sm font-semibold text-foreground mb-1">Daily averages</p>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Based on {weekData.loggedDaysInWeek} day{weekData.loggedDaysInWeek !== 1 ? "s" : ""} with logged food
-            </p>
-            <MacroBarRowWeb label="PROTEIN" current={weekData.weekAvg.protein} goal={targets.protein} colorVar="var(--macro-protein)" />
-            <MacroBarRowWeb label="CARBS" current={weekData.weekAvg.carbs} goal={targets.carbs} colorVar="var(--macro-carbs)" />
-            <MacroBarRowWeb label="FATS" current={weekData.weekAvg.fat} goal={targets.fat} colorVar="var(--macro-fat)" />
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-4">
-            <p className="text-sm font-semibold text-foreground mb-2">Macro breakdown</p>
-            <div className="flex flex-col gap-2 mt-2">
-              {weekData.days.map((day) => (
-                <button
-                  key={day.key}
-                  type="button"
-                  onClick={() => {
-                    setSelectedDateKey(day.key);
-                    setViewMode("day");
-                  }}
-                  className="flex items-center gap-2 w-full text-left"
-                >
-                  <span className="w-8 text-[11px] font-semibold text-muted-foreground">{day.short}</span>
-                  <div className="flex-1 flex h-3.5 rounded overflow-hidden bg-muted">
-                    {day.totals.calories > 0 && (() => {
-                      const total = day.totals.protein + day.totals.carbs + day.totals.fat || 1;
-                      return (
-                        <>
-                          <div style={{ width: `${(day.totals.protein / total) * 100}%`, background: "var(--macro-protein)" }} />
-                          <div style={{ width: `${(day.totals.carbs / total) * 100}%`, background: "var(--macro-carbs)" }} />
-                          <div style={{ width: `${(day.totals.fat / total) * 100}%`, background: "var(--macro-fat)" }} />
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <span className="w-11 text-right text-[11px] text-muted-foreground tabular-nums">
-                    {day.totals.calories > 0 ? Math.round(day.totals.calories) : "—"}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[var(--macro-protein)]" /> Protein
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[var(--macro-carbs)]" /> Carbs
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[var(--macro-fat)]" /> Fat
-              </span>
-            </div>
-          </div>
-        </div>
+        <TodayWeekView
+          days={weekData.days}
+          weekTotals={weekData.weekTotals}
+          weekAvg={weekData.weekAvg}
+          loggedDaysInWeek={weekData.loggedDaysInWeek}
+          weekEffectiveCalorieBudget={weekEffectiveCalorieBudget}
+          calorieTarget={targets.calories}
+          proteinTarget={targets.protein}
+          carbsTarget={targets.carbs}
+          fatTarget={targets.fat}
+          waterMlTarget={targets.waterMl}
+          dailyStepsGoal={dailyStepsGoal}
+          preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+          maintenanceForWeek={maintenanceForWeek}
+          dayGoals={weekData.days.map((day) =>
+            targets.calories +
+            dayActivityBudgetAddonWeb(
+              preferActivityAdjustedCalories,
+              day.key,
+              maintenanceForWeek,
+              activityBurnByDay,
+              basalBurnByDay,
+              workoutsByDay,
+            ),
+          )}
+          onSelectDayKey={(key) => {
+            setSelectedDateKey(key);
+            setViewMode("day");
+          }}
+        />
       )}
 
       {viewMode === "day" && (
@@ -1349,66 +1236,26 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {/* Eat again — one-tap re-log of the most recent meal in the slot
           matching the current clock time. Dismissible per day. */}
       {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
-        <div className="mb-3 rounded-card border border-primary/30 bg-primary/5 px-3.5 py-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eat again</p>
-            <p className="text-[13px] font-semibold text-foreground truncate">{eatAgainSuggestion.recipeTitle}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {Math.round(eatAgainSuggestion.calories)} kcal · P {Math.round(eatAgainSuggestion.protein)}g · C {Math.round(eatAgainSuggestion.carbs)}g · F {Math.round(eatAgainSuggestion.fat)}g · into {currentSlotFromTime}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-            className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-primary text-primary-foreground hover:opacity-90"
-            aria-label={`Log ${eatAgainSuggestion.recipeTitle} to ${currentSlotFromTime}`}
-          >
-            Log
-          </button>
-          <button
-            type="button"
-            onClick={dismissEatAgain}
-            className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
-            aria-label="Dismiss Eat again suggestion"
-            title="Dismiss"
-          >
-            <span aria-hidden>×</span>
-          </button>
-        </div>
+        <TodayEatAgainBanner
+          suggestion={eatAgainSuggestion}
+          slot={currentSlotFromTime}
+          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
+          onDismiss={dismissEatAgain}
+        />
       )}
 
       {/* Daily ring — tap to expand macro rings */}
-      <div className="flex flex-col items-center mb-4">
-        <DailyRing
-          consumed={totals.calories}
-          target={effectiveCalorieTarget}
-          size={160}
-          strokeWidth={10}
-          proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
-          carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
-          fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
-          expanded={ringExpanded}
-          onToggle={() => setRingExpanded((v) => !v)}
-          displayMode={ringDisplayMode}
-        />
-        <p className="text-xs text-muted-foreground mt-3">
-          {ringExpanded ? "Click the ring to hide macros" : "Click the ring to show macros"}
-        </p>
-        <div className="flex justify-center gap-1 mt-2" role="group" aria-label="Calorie ring display">
-          {(["remaining", "consumed"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setRingDisplayMode(mode)}
-              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                ringDisplayMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {mode === "remaining" ? "Remaining" : "Consumed"}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TodayHeroRing
+        consumed={totals.calories}
+        target={effectiveCalorieTarget}
+        proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
+        carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
+        fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
+        expanded={ringExpanded}
+        onToggleExpanded={() => setRingExpanded((v) => !v)}
+        displayMode={ringDisplayMode}
+        onDisplayModeChange={setRingDisplayMode}
+      />
 
       {/* Remaining macros — kcal / P / C / F (and fiber when tracked) left today. */}
       <RemainingMacrosBar
@@ -1430,187 +1277,87 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       />
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings), same keys as mobile */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {trackedDashboardMacros.map((macroKey) => {
-          if (macroKey === "protein") {
-            return (
-              <MacroCard
-                key="protein"
-                className="min-w-[92px] flex-1"
-                macro="protein"
-                value={totals.protein}
-                target={targets.protein}
-              />
-            );
-          }
-          if (macroKey === "carbs") {
-            return (
-              <MacroCard key="carbs" className="min-w-[92px] flex-1" macro="carbs" value={totals.carbs} target={targets.carbs} />
-            );
-          }
-          if (macroKey === "fat") {
-            return (
-              <MacroCard key="fat" className="min-w-[92px] flex-1" macro="fat" value={totals.fat} target={targets.fat} />
-            );
-          }
-          if (macroKey === "fiber") {
-            const cur = totals.fiber;
-            const tgt = targets.fiber;
-            const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-            return (
-              <div key="fiber" className="flex-1 min-w-[92px] flex flex-col rounded-xl bg-card p-2.5 border border-border">
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="h-2 w-2 rounded-sm bg-[var(--success)]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fiber</span>
-                </div>
-                <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur * 10) / 10}g</div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--success)]" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">of {tgt}g</span>
-              </div>
-            );
-          }
-          if (macroKey === "sugar") {
-            const cur = dayMicroSumForTracker.sugarG;
-            const tgt = REF_SUGAR_G;
-            const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-            return (
-              <div key="sugar" className="flex-1 min-w-[92px] flex flex-col rounded-xl bg-card p-2.5 border border-border">
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="h-2 w-2 rounded-sm bg-[var(--warning)]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sugar</span>
-                </div>
-                <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur * 10) / 10}g</div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--warning)]" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">ref {tgt}g</span>
-              </div>
-            );
-          }
-          if (macroKey === "sodium") {
-            const cur = dayMicroSumForTracker.sodiumMg;
-            const tgt = REF_SODIUM_MG;
-            const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-            return (
-              <div key="sodium" className="flex-1 min-w-[92px] flex flex-col rounded-xl bg-card p-2.5 border border-border">
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="h-2 w-2 rounded-sm bg-[var(--destructive)]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sodium</span>
-                </div>
-                <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur)}mg</div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--destructive)]" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">ref {tgt}mg</span>
-              </div>
-            );
-          }
-          if (macroKey === "water") {
-            const cur = totalWaterMl;
-            const tgt = targets.waterMl;
-            const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-            return (
-              <div key="water" className="flex-1 min-w-[92px] flex flex-col rounded-xl bg-card p-2.5 border border-border">
-                <div className="flex items-center gap-1 mb-1">
-                  <Icons.water className="h-3 w-3 shrink-0 text-macro-water" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Water</span>
-                </div>
-                <div className="text-sm font-bold tabular-nums text-foreground leading-tight">{formatWaterLine(cur)}</div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-macro-water" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground mt-0.5">of {formatWaterLine(tgt)}</span>
-                <div className="flex gap-1 mt-2">
-                  {([250, 500] as const).map((ml) => (
-                    <button
-                      key={ml}
-                      type="button"
-                      onClick={() => addWaterMlForSelectedDay(ml)}
-                      className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
-                    >
-                      +{ml}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })}
-      </div>
+      <TodayDashboardMacroTiles
+        trackedMacros={trackedDashboardMacros}
+        proteinCurrent={totals.protein}
+        proteinTarget={targets.protein}
+        carbsCurrent={totals.carbs}
+        carbsTarget={targets.carbs}
+        fatCurrent={totals.fat}
+        fatTarget={targets.fat}
+        fiberCurrent={totals.fiber}
+        fiberTarget={targets.fiber}
+        sugarG={dayMicroSumForTracker.sugarG}
+        sodiumMg={dayMicroSumForTracker.sodiumMg}
+        waterCurrentMl={totalWaterMl}
+        waterTargetMl={targets.waterMl}
+        formatWaterLine={formatWaterLine}
+        onAddWaterMl={addWaterMlForSelectedDay}
+      />
 
       {/* Hydration & stimulants card (Batch 2.5).
-          Replaces the old water-only tile. Always renders so caffeine +
-          alcohol are reachable even when "water" is already a dashboard
-          widget (the widget shows daily water; this card adds quick-add
-          chips + stimulant rows). */}
-      <HydrationStimulantsCard
-        selectedDateKey={selectedDateKey}
-        weekStartDay={weekStartDay}
-        targets={{
-          waterMl: targets.waterMl,
-          caffeineMg: targetCaffeineMg,
-          alcoholGWeekly: targetAlcoholGWeekly,
-        }}
-        waterTotalMl={totalWaterMl}
-        waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-        caffeineTotalMg={extraCaffeineMgForSelectedDay}
-        alcoholByDayG={extraAlcoholGByDay}
-        measurementSystem={profileMeasurementSystem}
-        onAddWater={addWaterMlForSelectedDay}
-        onAddCaffeine={addCaffeineMgForSelectedDay}
-        onAddAlcohol={addAlcoholGForSelectedDay}
-        onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
-      />
-      {/* End hydration & stimulants card */}
-
-      {/* Steps & activity (manual steps; water total above) */}
-      <div className="rounded-xl bg-card border border-border p-3 mb-4">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <IconBox size="sm" tone="primary">
-              <Icons.activity />
-            </IconBox>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-foreground">Steps & activity</span>
-              <span className="text-[11px] tabular-nums text-muted-foreground truncate">
-                {stepsForSelectedDay != null
-                  ? `${stepsForSelectedDay.toLocaleString()} / ${dailyStepsGoal.toLocaleString()} steps`
-                  : "No steps logged for this day"}
-              </span>
-            </div>
-          </div>
-        </div>
-        {stepsForSelectedDay != null && dailyStepsGoal > 0 && (
-          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-2">
-            <div
-              className="h-full rounded-full transition-all bg-primary"
-              style={{ width: `${Math.min((stepsForSelectedDay / dailyStepsGoal) * 100, 100)}%` }}
-            />
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            placeholder="Steps"
-            inputMode="numeric"
-            value={stepsDayInput}
-            onChange={(e) => setStepsDayInput(e.target.value)}
-          />
+          Audit M4 (2026-04-18): gated behind a water target > 0 OR any
+          water / caffeine / alcohol logged. First-run fallback is a tiny
+          "Track hydration?" link. */}
+      {showHydrationCard ? (
+        <HydrationStimulantsCard
+          selectedDateKey={selectedDateKey}
+          weekStartDay={weekStartDay}
+          targets={{
+            waterMl: targets.waterMl,
+            caffeineMg: targetCaffeineMg,
+            alcoholGWeekly: targetAlcoholGWeekly,
+          }}
+          waterTotalMl={totalWaterMl}
+          waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+          caffeineTotalMg={extraCaffeineMgForSelectedDay}
+          alcoholByDayG={extraAlcoholGByDay}
+          measurementSystem={profileMeasurementSystem}
+          onAddWater={addWaterMlForSelectedDay}
+          onAddCaffeine={addCaffeineMgForSelectedDay}
+          onAddAlcohol={addAlcoholGForSelectedDay}
+          onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+        />
+      ) : (
+        <div className="mb-3 text-center">
           <button
             type="button"
-            onClick={() => void saveStepsForSelectedDay()}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+            onClick={() => setHydrationManualExpanded(true)}
+            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+            aria-expanded={false}
+            aria-controls="today-hydration-card"
           >
-            Save
+            Track hydration?
           </button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          Daily step goal ({dailyStepsGoal.toLocaleString()}) is stored on your profile. You can also log steps from Progress.
-        </p>
-      </div>
+      )}
+      {/* End hydration & stimulants card */}
+
+      {/* Steps & activity (manual steps; water total above).
+          Audit M4 (2026-04-18): gated until any steps OR activity burn has
+          been recorded. First-run fallback is a small "Connect health"
+          link that expands the card so the user can log steps manually. */}
+      {showStepsCard ? (
+        <TodayStepsCard
+          stepsForSelectedDay={stepsForSelectedDay}
+          dailyStepsGoal={dailyStepsGoal}
+          stepsDayInput={stepsDayInput}
+          onStepsDayInputChange={setStepsDayInput}
+          onSaveSteps={() => void saveStepsForSelectedDay()}
+        />
+      ) : (
+        <div className="mb-3 text-center">
+          <button
+            type="button"
+            onClick={() => setStepsManualExpanded(true)}
+            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+            aria-expanded={false}
+            aria-controls="today-steps-card"
+          >
+            Connect health
+          </button>
+        </div>
+      )}
 
       {dayNutrientDetailRows.length > 0 ? (
         <div className="mb-3">
@@ -1629,448 +1376,122 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </div>
       ) : null}
 
-      {/* 4. Quick Log Strip: 5 action chips — Search, Voice (Pro), Snap (Pro),
-          Scan, Photo (legacy free). Voice + Snap are gated; free-tier users
-          see a lock icon and tapping opens the factual Pro paywall
-          (Batch 5.13). */}
-      <div className="flex gap-2 mb-5">
-        {/* Search chip */}
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-warning/40 transition-colors flex"
-        >
-          <IconBox size="sm" tone="warning">
-            <Icons.search />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground">Search</span>
-        </button>
-
-        {/* Voice chip (Pro) */}
-        <button
-          type="button"
-          onClick={handleVoiceLog}
-          aria-label={userTier === "pro" ? "Open voice log" : "Voice log — Pro feature"}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-success/40 transition-colors flex relative"
-        >
-          <IconBox size="sm" tone="success">
-            <Icons.mic />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-            Voice
-            {userTier !== "pro" && (
-              <Icons.lock className="size-2.5" aria-hidden />
-            )}
-          </span>
-        </button>
-
-        {/* Snap chip (Pro — AI photo logging) */}
-        <button
-          type="button"
-          onClick={handlePhotoLogClick}
-          aria-label={userTier === "pro" ? "Open AI photo log" : "AI photo log — Pro feature"}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors flex relative"
-        >
-          <IconBox size="sm" tone="primary">
-            <Icons.camera />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-            Snap
-            {userTier !== "pro" && (
-              <Icons.lock className="size-2.5" aria-hidden />
-            )}
-          </span>
-        </button>
-
-        {/* Scan chip */}
-        <button
-          type="button"
-          onClick={() => setBarcodeOpen(true)}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-fat/40 transition-colors flex"
-        >
-          <IconBox size="sm" tone="fat">
-            <Icons.scan />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground">Scan</span>
-        </button>
-      </div>
+      {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
+          Snap are gated; free-tier users see a lock icon and tapping
+          opens the factual Pro paywall (Batch 5.13). */}
+      <TodayQuickLogStrip
+        userTier={userTier}
+        onOpenSearch={() => setAddOpen(true)}
+        onOpenVoiceLog={handleVoiceLog}
+        onOpenPhotoLog={handlePhotoLogClick}
+        onOpenBarcode={() => setBarcodeOpen(true)}
+      />
 
 
       {/* Quick add panel — Favourites / Frequent / Recent / My meals tabs
-          with one-tap log. Batch 2.6 adds "My meals" for saved combos. */}
-      <QuickAddPanel
-        className="mb-4"
-        byDay={nutritionByDay}
-        activeSlot={mealSlot}
-        supabase={supabase}
-        userId={authedUserId ?? ""}
-        onLog={(item) => logHistoryItem(item, mealSlot)}
-        onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
-      />
-
-      {/* 5. Meals Section */}
+          with one-tap log. Batch 2.6 adds "My meals" for saved combos.
+          Audit H4 (2026-04-18) lifted `SaveMealDialog` up to this host
+          and wires opening via `onOpenSaveCombo` instead of the previous
+          `window.dispatchEvent` bridge.
+          Audit M4 (2026-04-18): collapsed behind a single "Quick add" CTA
+          above Meals. Default collapsed on first run; user's last choice
+          persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Meals</h3>
-          {mealsForSelectedDate.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setDuplicateDayOpen(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
-              aria-label="Duplicate this day to another day"
-            >
-              <Icons.copyPlus className="w-3.5 h-3.5" />
-              Duplicate day…
-            </button>
-          )}
-        </div>
-        <div className="rounded-card bg-card border border-border overflow-hidden">
-          {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
-            const consumed: Record<string, number> = {};
-            for (const gm of mealsGrouped) {
-              const cals = gm.meals.reduce((a, m) => a + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0);
-              if (cals > 0) consumed[gm.name] = cals;
-            }
-            const budgets = distributeMealBudget(effectiveCalorieTarget, targets.fiber, consumed);
-            const slotBudget = budgets.find((b) => b.slot === sectionName);
-
-            // Meal icon selection — matches mobile prototype
-            const getMealIcon = (name: string) => {
-              if (name === "Breakfast") return { icon: Icons.breakfast, tone: "warning" as const };
-              if (name === "Lunch") return { icon: Icons.lunch, tone: "success" as const };
-              if (name === "Dinner") return { icon: Icons.dinner, tone: "primary" as const };
-              if (name === "Snacks") return { icon: Icons.snack, tone: "fat" as const };
-              return { icon: Icons.add, tone: "primary" as const };
-            };
-
-            const mealIconInfo = getMealIcon(sectionName);
-
-            return (
-              <div key={sectionName} className="border-b border-border last:border-b-0">
-                {/* Meal header row */}
-                <div
-                  className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border cursor-pointer select-none"
-                  onClick={() => toggleSlot(sectionName)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSlot(sectionName); } }}
-                  aria-expanded={!collapsedSlots.has(sectionName)}
-                >
-                  <IconBox size="sm" tone={mealIconInfo.tone}>
-                    <mealIconInfo.icon />
-                  </IconBox>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-foreground">{sectionName}</p>
-                    <p className="text-[11px] text-muted-foreground">{sectionMeals.length} item{sectionMeals.length !== 1 ? "s" : ""}</p>
-                  </div>
-                  <span className="text-sm font-bold text-foreground tabular-nums">
-                    {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
-                  {/* Batch 2.6 — "Save these as a meal" when the slot has 2+ items. */}
-                  {sectionMeals.length >= 2 && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); openSaveMealDialog(sectionName); }}
-                      className="mr-1 inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:border-primary/40"
-                      aria-label={`Save ${sectionName} items as a meal combo`}
-                      title="Save these as a meal"
-                    >
-                      Save combo
-                    </button>
-                  )}
-                  <Icons.down className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`} />
-                </div>
-
-                {/* Expanded meal items */}
-                {!collapsedSlots.has(sectionName) && sectionMeals.length > 0 && (
-                  <div>
-                    {sectionMeals.map((meal) => (
-                      <div key={meal.id} className="flex items-center justify-between px-4 py-2.5 border-b border-border/10" style={{ paddingLeft: 56 }}>
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-                          <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
-                          {meal.source && (
-                            <NutritionSourceBadge source={meal.source} />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="text-xs text-muted-foreground tabular-nums">{Math.round(meal.calories)}</span>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground px-1"
-                                aria-label={`More actions for ${meal.recipeTitle}`}
-                              >
-                                <Icons.more className="w-3.5 h-3.5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={() => setCopyMealTargetId(meal.id)}
-                              >
-                                Copy to another day…
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={() => { if (window.confirm(`Remove "${meal.recipeTitle}"?`)) removeLoggedMeal(meal.id); }}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty meal: dimmed slot with "Tap to add" matching mobile */}
-                {!collapsedSlots.has(sectionName) && sectionMeals.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMealSlot(sectionName);
-                      setAddOpen(true);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-3 opacity-45 hover:opacity-70 transition-opacity"
-                  >
-                    <span className="size-7 rounded-lg bg-muted flex items-center justify-center">
-                      <Icons.add className="size-3.5 text-muted-foreground" />
-                    </span>
-                    <span className="text-xs text-muted-foreground">Tap to add</span>
-                  </button>
-                )}
-              </div>
-            );
-          })}
-
-          {mealsForSelectedDate.length === 0 && (
-            <div className="py-8">
-              {/* Quick-log from plan if plan exists for day 1 */}
-              {mealPlan &&
-              mealPlan.length > 0 &&
-              mealPlan[0]!.meals.filter(
-                (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-              ).length > 0 ? (
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Log from today&apos;s plan</p>
-                  <div className="space-y-2">
-                    {mealPlan[0]!.meals
-                      .filter(
-                        (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-                      )
-                      .map((meal, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          addLoggedMealForDate(selectedDateKey, {
-                            name: normalizeJournalSlotName(meal.name),
-                            recipeTitle: meal.recipeTitle,
-                            time: normalizeJournalSlotName(meal.name),
-                            calories: meal.calories,
-                            protein: meal.protein,
-                            carbs: meal.carbs,
-                            fat: meal.fat,
-                            source: "Meal plan",
-                          });
-                          toast.success(`Logged ${meal.recipeTitle}`);
-                        }}
-                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:border-primary/30 transition-colors text-left"
-                      >
-                        <div>
-                          <span className="text-xs font-medium text-primary">{meal.name}</span>
-                          <p className="text-sm font-medium text-foreground">{meal.recipeTitle}</p>
-                        </div>
-                        <span className="text-xs font-mono tabular-nums text-muted-foreground">{Math.round(meal.calories)} kcal</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="text-center">
-                <p className="mb-4 text-muted-foreground">
-                  {mealPlan && mealPlan.length > 0 ? "Or add a custom meal" : "No meals logged on this day"}
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setAddOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-pm hover:bg-primary/90"
-                  >
-                    <Icons.add className="h-5 w-5" />
-                    {mealPlan && mealPlan.length > 0 ? "Add custom meal" : "Log your first meal"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePhotoLogClick}
-                    aria-label={
-                      userTier === "pro"
-                        ? "AI photo log — snap a meal for nutrition estimates"
-                        : "AI photo log — Pro feature"
-                    }
-                    title="Photos are sent to our servers and processed with AI to estimate nutrition. Pro only."
-                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Icons.camera className="h-5 w-5" />
-                    Photo log
-                    {userTier !== "pro" && (
-                      <Icons.lock className="h-3.5 w-3.5" aria-hidden />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleVoiceLog}
-                    aria-label={
-                      userTier === "pro" ? "Record voice log" : "Voice log — Pro feature"
-                    }
-                    title="Voice and typed descriptions are processed with AI on our servers. Pro only."
-                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Icons.mic className="h-5 w-5" />
-                    Voice log
-                    {userTier !== "pro" && (
-                      <Icons.lock className="h-3.5 w-3.5" aria-hidden />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={toggleQuickAddCollapsed}
+          aria-expanded={!quickAddCollapsed}
+          aria-controls="today-quick-add-panel"
+          className="w-full flex items-center justify-between gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <Icons.energy className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span className="text-sm font-bold text-foreground">Quick add</span>
+            <span className="text-xs text-muted-foreground truncate">
+              Favourites, frequent, recent, my meals
+            </span>
+          </span>
+          <Icons.down
+            className={`h-4 w-4 text-muted-foreground transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
+            aria-hidden="true"
+          />
+        </button>
+        {!quickAddCollapsed && (
+          <div id="today-quick-add-panel" className="mt-2">
+            <QuickAddPanel
+              byDay={nutritionByDay}
+              activeSlot={mealSlot}
+              supabase={supabase}
+              userId={authedUserId ?? ""}
+              onLog={(item) => logHistoryItem(item, mealSlot)}
+              onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
+              onOpenSaveCombo={handleOpenSaveCombo}
+              savedMealsRefreshToken={savedMealsRefreshToken}
+            />
+          </div>
+        )}
       </div>
 
+      {/* 5. Meals Section */}
+      <TodayMealsSection
+        mealsGrouped={mealsGrouped}
+        mealsForSelectedDate={mealsForSelectedDate}
+        effectiveCalorieTarget={effectiveCalorieTarget}
+        fiberTarget={targets.fiber}
+        collapsedSlots={collapsedSlots}
+        onToggleSlot={toggleSlot}
+        onOpenAddForSlot={(slot) => {
+          setMealSlot(slot);
+          setAddOpen(true);
+        }}
+        onOpenSaveCombo={openSaveMealDialog}
+        onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
+        onRequestCopyMeal={setCopyMealTargetId}
+        onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
+        mealPlanFirstDay={mealPlan && mealPlan.length > 0 ? mealPlan[0]! : null}
+        onLogPlanMeal={(meal) => {
+          addLoggedMealForDate(selectedDateKey, {
+            name: normalizeJournalSlotName(meal.name),
+            recipeTitle: meal.recipeTitle,
+            time: normalizeJournalSlotName(meal.name),
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            source: "Meal plan",
+          });
+        }}
+        onOpenAddCustom={() => setAddOpen(true)}
+        onOpenPhotoLog={handlePhotoLogClick}
+        onOpenVoiceLog={handleVoiceLog}
+        userTier={userTier}
+      />
+
       {/* 6. Streak Insight Card */}
-      {streakDays > 0 && (
-        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-success/20 bg-success-soft">
-          <IconBox size="lg" tone="success">
-            <Icons.streak />
-          </IconBox>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-success">
-              {streakDays}-day logging streak
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              You&apos;ve logged meals {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
-            </p>
-            {freezesAvailableToday > 0 ? (
-              <p
-                className="text-[11px] text-primary mt-0.5 inline-flex items-center gap-1"
-                aria-label={`${freezesAvailableToday} streak freeze${freezesAvailableToday === 1 ? "" : "s"} available`}
-              >
-                <Icons.streakFreeze className="h-3 w-3" aria-hidden />
-                {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
-              </p>
-            ) : null}
-          </div>
-        </div>
-      )}
+      <TodayStreakInsightCard
+        streakDays={streakDays}
+        freezesAvailableToday={freezesAvailableToday}
+        hasUnseenFreezeEarned={hasUnseenFreezeEarned}
+        onDismissFreezeEarned={dismissFreezeEarned}
+      />
 
       {/* Activity Bonus */}
-      {hasBurnData && (
-        <div className="rounded-xl border border-border bg-card p-4 mt-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Icons.calories className="h-5 w-5 text-warning" />
-            <h3 className="text-sm font-bold text-foreground">Activity Bonus</h3>
-          </div>
-
-          {/* Summary row */}
-          <div className="grid grid-cols-3 gap-2 text-center mb-3">
-            <div>
-              <p className="text-lg font-extrabold text-foreground tabular-nums">{totalBurnKcal.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground">Total burn</p>
-            </div>
-            <div className="border-x border-border">
-              <p className="text-lg font-extrabold text-foreground tabular-nums">{effectiveCalorieTarget > 0 ? effectiveCalorieTarget.toLocaleString() : "—"}</p>
-              <p className="text-[10px] text-muted-foreground">Target intake</p>
-            </div>
-            <div>
-              {(() => {
-                const deficit = totalBurnKcal - totals.calories;
-                const isDeficit = deficit >= 0;
-                return (
-                  <>
-                    <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(deficit).toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">{isDeficit ? "Under" : "Over"}</p>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Burn breakdown */}
-          <div className="space-y-1 mb-3 text-xs">
-            {basalBurnKcal > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Resting energy</span>
-                <span className="font-semibold text-foreground tabular-nums">{basalBurnKcal.toLocaleString()} kcal</span>
-              </div>
-            )}
-            {activityBurnForSelectedDay > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Active energy</span>
-                <span className="font-semibold text-foreground tabular-nums">{activityBurnForSelectedDay.toLocaleString()} kcal</span>
-              </div>
-            )}
-          </div>
-
-          {/* Workouts */}
-          {dayWorkouts.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-foreground">Workouts</p>
-              {dayWorkouts.map((w, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs py-0.5">
-                  <Icons.dumbbell className="h-4 w-4 text-primary" />
-                  <span className="flex-1 text-foreground">{w.type}</span>
-                  {w.minutes > 0 && <span className="text-muted-foreground tabular-nums">{w.minutes} min</span>}
-                  {w.calories > 0 && <span className="font-semibold text-warning tabular-nums">{w.calories} kcal</span>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Weekly deficit summary */}
-          {(() => {
-            let weekBurn = 0;
-            let weekConsumed = 0;
-            for (const dk of trackerWeekSummaryKeys) {
-              const activeKcal =
-                activityBurnByDay[dk] ?? (dk === selectedDateKey ? activityBurnKcal : 0);
-              weekBurn += activeKcal + (basalBurnByDay[dk] ?? 0);
-              const dayMeals = nutritionByDay[dk] ?? [];
-              weekConsumed += dayMeals.reduce((s, m) => s + Math.max(0, m.calories ?? 0), 0);
-            }
-            if (weekBurn === 0) return null;
-            const weekDeficit = weekBurn - weekConsumed;
-            const dailyAvgDeficit = Math.round(weekDeficit / 7);
-            const weeklyKgRate = (Math.abs(weekDeficit) / 3500) * 0.4536;
-            const weeklyMassLabel =
-              profileMeasurementSystem === "imperial"
-                ? `${(Math.round(kgToLb(weeklyKgRate) * 10) / 10).toFixed(1)} lb`
-                : `${weeklyKgRate.toFixed(2)} kg`;
-            const isDeficit = weekDeficit >= 0;
-            return (
-              <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
-                <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Avg daily {isDeficit ? "deficit" : "surplus"}</span>
-                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Weekly {isDeficit ? "deficit" : "surplus"}</span>
-                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Projected weekly {isDeficit ? "loss" : "gain"}</span>
-                  <span className={`font-semibold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{weeklyMassLabel}</span>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+      <TodayActivityBonusCard
+        hasBurnData={hasBurnData}
+        totalBurnKcal={totalBurnKcal}
+        effectiveCalorieTarget={effectiveCalorieTarget}
+        consumedCalories={totals.calories}
+        basalBurnKcal={basalBurnKcal}
+        activityBurnForSelectedDay={activityBurnForSelectedDay}
+        workouts={dayWorkouts}
+        weekSummaryMode={weekSummaryMode}
+        weekSummaryKeys={trackerWeekSummaryKeys}
+        activityBurnByDay={activityBurnByDay}
+        basalBurnByDay={basalBurnByDay}
+        nutritionByDay={nutritionByDay}
+        selectedDateKey={selectedDateKey}
+        profileMeasurementSystem={profileMeasurementSystem}
+      />
 
       {/* Complete Day */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
@@ -2083,78 +1504,26 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       )}
 
       {/* Fasting — full timer on /fasting */}
-      <div className="mt-4 flex flex-col items-center gap-2">
-        {activeFast && fastingElapsedLabel ? (
-          <Link
-            href="/fasting"
-            className="inline-flex flex-row items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm text-primary bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-colors"
-          >
-            <Icons.timer className="w-4 h-4 shrink-0" aria-hidden />
-            Fasting — {fastingElapsedLabel}
-          </Link>
-        ) : (
-          <Link href="/fasting" className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">
-            Intermittent fasting timer
-          </Link>
-        )}
-      </div>
+      <TodayFastingPill activeFastElapsedLabel={activeFast ? fastingElapsedLabel : null} />
       </>
       )}
 
       {/* Complete Day Dialog */}
-      <Dialog open={completeDayOpen} onOpenChange={setCompleteDayOpen}>
-        <DialogContent className="bg-card border-border text-center max-w-sm">
-          <div className="flex flex-col items-center py-4">
-            <DialogHeader className="sr-only">
-              <DialogTitle>Day logged!</DialogTitle>
-              <DialogDescription>Weight projection based on today's intake</DialogDescription>
-            </DialogHeader>
-            <p className="text-lg font-bold text-foreground mb-6">Day logged!</p>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ background: "var(--primary-soft, rgba(76,108,224,0.12))" }}>
-              <Icons.check className="w-10 h-10 text-primary" />
-            </div>
-            {profileWeightKg != null && totals.calories > 0 ? (() => {
-              const prediction = projectWeight({
-                currentWeightKg: profileWeightKg,
-                todayCalories: totals.calories,
-                targetCalories: normalizeMacroTargets(nutritionTargets).calories,
-                goal: profileGoal,
-              });
-              const projectedLabel =
-                profileMeasurementSystem === "imperial"
-                  ? `${Math.round(kgToLb(prediction.projectedWeightKg) * 10) / 10} lb`
-                  : `${prediction.projectedWeightKg} kg`;
-              return (
-                <>
-                  <p className="text-lg font-bold text-foreground leading-relaxed mb-2 px-4">
-                    {"At today's pace, your projected weight in "}
-                    {prediction.projectionWeeks} weeks is{" "}
-                    <span className="text-primary">{projectedLabel}</span>.
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-6 px-4">
-                    This is a rough estimate based on net calories for this day. Actual results may vary.
-                  </p>
-                </>
-              );
-            })() : (
-              <p className="text-sm text-muted-foreground mb-6 px-4">
-                Great work logging today! Set your weight in your profile to see weight projections here.
-              </p>
-            )}
-            <button
-              onClick={() => {
-                setCompleteDayOpen(false);
-                onOpenProgress?.();
-              }}
-              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity"
-            >
-              View my progress
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TodayCompleteDayDialog
+        open={completeDayOpen}
+        onOpenChange={setCompleteDayOpen}
+        profileWeightKg={profileWeightKg}
+        todayCalories={totals.calories}
+        targetCalories={normalizeMacroTargets(nutritionTargets).calories}
+        profileGoal={profileGoal}
+        profileMeasurementSystem={profileMeasurementSystem}
+        onViewProgress={() => {
+          setCompleteDayOpen(false);
+          onOpenProgress?.();
+        }}
+      />
 
-      <Dialog
+      <TodayAddMealDialog
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
@@ -2167,343 +1536,57 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             setRecipePortionMultiplier(1);
           }
         }}
-      >
-        <DialogContent className="bg-card border-border max-h-[90vh] min-h-[28rem] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Log a meal</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Add macros for {selectedDate.toLocaleDateString()} from a saved recipe, the catalog, or enter food manually.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="flex rounded-lg border border-border p-1 bg-muted/50">
-              <button
-                type="button"
-                onClick={() => setAddMode("recipe")}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                  addMode === "recipe"
-                    ? "bg-card shadow text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Recipe
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddMode("manual")}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                  addMode === "manual"
-                    ? "bg-card shadow text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Manual food
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddMode("search")}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                  addMode === "search"
-                    ? "bg-card shadow text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Search
-              </button>
-            </div>
-            <label className="grid gap-1">
-              <span className="text-sm font-medium text-foreground">Meal</span>
-              <select
-                value={mealSlot}
-                onChange={(e) => setMealSlot(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-              >
-                {["Breakfast", "Lunch", "Dinner", "Snacks"].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {addMode === "recipe" ? (
-              <>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium text-foreground">Recipe</span>
-                  <select
-                    value={recipeId}
-                    onChange={(e) => setRecipeId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    disabled={!recipeOptions.length}
-                  >
-                    {recipeOptions.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.title}
-                      </option>
-                    ))}
-                  </select>
-                  {savedRecipesForLibrary.length === 0 && (
-                    <span className="text-xs text-muted-foreground">Save recipes from Discover to see them here.</span>
-                  )}
-                </label>
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2 bg-muted/40">
-                  <span className="text-sm font-medium text-foreground">Portions</span>
-                  <span className="text-xs text-muted-foreground max-w-[14rem]">
-                    1 = just you · 2 = shared (partner, family plate, double batch)
-                  </span>
-                  <div className="flex items-center gap-1 ml-auto">
-                    <button
-                      type="button"
-                      aria-label="Fewer portions"
-                      onClick={() => setRecipePortionMultiplier((m) => clampPortionMultiplier(m - 0.5))}
-                      className="w-9 h-9 rounded-lg border border-border text-lg font-semibold text-foreground hover:bg-muted/60"
-                    >
-                      −
-                    </button>
-                    <span className="min-w-[3rem] text-center text-sm font-semibold text-foreground">
-                      {recipePortionMultiplier === Math.floor(recipePortionMultiplier)
-                        ? recipePortionMultiplier
-                        : recipePortionMultiplier.toFixed(1)}
-                      ×
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="More portions"
-                      onClick={() => setRecipePortionMultiplier((m) => clampPortionMultiplier(m + 0.5))}
-                      className="w-9 h-9 rounded-lg border border-border text-lg font-semibold text-foreground hover:bg-muted/60"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : addMode === "search" ? (
-              <div className="grid gap-2">
-                <span className="text-sm font-medium text-foreground">Food search</span>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={foodQuery}
-                    onChange={(e) => setFoodQuery(e.target.value)}
-                    placeholder="e.g. chicken breast, rice cooked"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={foodLoading}
-                    onClick={() => {
-                      const q = effectiveFoodSearchQuery(foodQuery.trim());
-                      if (!q) return;
-                      setFoodLoading(true);
-                      setFoodSelected(null);
-                      fetch(`/api/usda/search?q=${encodeURIComponent(q)}`)
-                        .then((r) => r.json())
-                        .then((data: { ok?: boolean; hits?: UsdaHit[]; message?: string }) => {
-                          if (!data.ok || !data.hits) {
-                            toast.error(data.message ?? "Food search failed");
-                            return;
-                          }
-                          setFoodHits(data.hits.slice(0, 10));
-                        })
-                        .catch(() => toast.error("Food search failed"))
-                        .finally(() => setFoodLoading(false));
-                    }}
-                  >
-                    {foodLoading ? "…" : "Go"}
-                  </Button>
-                </div>
+        selectedDate={selectedDate}
+        mealSlot={mealSlot}
+        onMealSlotChange={setMealSlot}
+        addMode={addMode}
+        onAddModeChange={setAddMode}
+        recipeId={recipeId}
+        onRecipeIdChange={setRecipeId}
+        recipeOptions={recipeOptions}
+        savedRecipesEmpty={savedRecipesForLibrary.length === 0}
+        recipePortionMultiplier={recipePortionMultiplier}
+        onRecipePortionMultiplierChange={setRecipePortionMultiplier}
+        manualName={manualName}
+        onManualNameChange={setManualName}
+        manualCalories={manualCalories}
+        onManualCaloriesChange={setManualCalories}
+        manualProtein={manualProtein}
+        onManualProteinChange={setManualProtein}
+        manualCarbs={manualCarbs}
+        onManualCarbsChange={setManualCarbs}
+        manualFat={manualFat}
+        onManualFatChange={setManualFat}
+        manualFiber={manualFiber}
+        onManualFiberChange={setManualFiber}
+        manualWater={manualWater}
+        onManualWaterChange={setManualWater}
+        foodQuery={foodQuery}
+        onFoodQueryChange={setFoodQuery}
+        foodHits={foodHits}
+        onFoodHitsChange={setFoodHits}
+        foodLoading={foodLoading}
+        onFoodLoadingChange={setFoodLoading}
+        foodSelected={foodSelected}
+        onFoodSelectedChange={setFoodSelected}
+        foodGrams={foodGrams}
+        onFoodGramsChange={setFoodGrams}
+        effectiveCalorieTarget={effectiveCalorieTarget}
+        targetProtein={targets.protein}
+        targetCarbs={targets.carbs}
+        targetFat={targets.fat}
+        targetFiber={targets.fiber}
+        consumedCalories={totals.calories}
+        consumedProtein={totals.protein}
+        consumedCarbs={totals.carbs}
+        consumedFat={totals.fat}
+        consumedFiber={totals.fiber}
+        timeLabel={timeLabel}
+        onTimeLabelChange={setTimeLabel}
+        onSubmit={handleAddMeal}
+      />
 
-                {foodHits?.length ? (
-                  <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border">
-                    {foodHits.map((h) => (
-                      <button
-                        key={h.fdcId}
-                        type="button"
-                        className="w-full text-left p-3 hover:bg-muted/60/40"
-                        onClick={() => {
-                          setFoodLoading(true);
-                          fetch(`/api/usda/food?fdcId=${h.fdcId}`)
-                            .then((r) => r.json())
-                            .then((data: { ok?: boolean; message?: string } & Partial<UsdaFoodDetails>) => {
-                              if (!data.ok || !data.macrosPer100g || !data.description) {
-                                toast.error(data.message ?? "Could not load food details");
-                                return;
-                              }
-                              setFoodSelected({
-                                fdcId: data.fdcId!,
-                                description: data.description!,
-                                macrosPer100g: data.macrosPer100g!,
-                              });
-                            })
-                            .catch(() => toast.error("Could not load food details"))
-                            .finally(() => setFoodLoading(false));
-                        }}
-                      >
-                        <div className="text-sm font-medium text-foreground truncate">{h.description}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {h.dataType ?? "Food"}
-                          {h.brandName ? ` · ${h.brandName}` : ""}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-
-                {foodSelected ? (
-                  <div className="rounded-lg border border-border p-3 bg-muted/40">
-                    <div className="text-sm font-semibold text-foreground truncate">{foodSelected.description}</div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-sm text-foreground w-16">Grams</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={foodGrams}
-                        onChange={(e) => setFoodGrams(Number(e.target.value))}
-                        className="flex-1 px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      {(() => {
-                        const g = Math.max(1, Math.round(foodGrams) || 1);
-                        const mult = g / 100;
-                        const m = foodSelected.macrosPer100g;
-                        return `${Math.round(m.calories * mult)} kcal · ${Math.round(m.protein * mult)}P · ${Math.round(
-                          m.carbs * mult,
-                        )}C · ${Math.round(m.fat * mult)}F`;
-                      })()}
-                    </div>
-                    {/* Fit-this-in preview — parity with mobile FoodSearchModal. */}
-                    <RemainingMacrosBar
-                      className="mt-2"
-                      targets={{
-                        calories: effectiveCalorieTarget,
-                        protein: targets.protein,
-                        carbs: targets.carbs,
-                        fat: targets.fat,
-                        fiber: targets.fiber,
-                      }}
-                      consumed={{
-                        calories: totals.calories,
-                        protein: totals.protein,
-                        carbs: totals.carbs,
-                        fat: totals.fat,
-                        fiber: totals.fiber,
-                      }}
-                      candidate={(() => {
-                        const g = Math.max(1, Math.round(foodGrams) || 1);
-                        const mult = g / 100;
-                        const m = foodSelected.macrosPer100g;
-                        return {
-                          calories: m.calories * mult,
-                          protein: m.protein * mult,
-                          carbs: m.carbs * mult,
-                          fat: m.fat * mult,
-                          fiber: (m.fiberG ?? 0) * mult,
-                        };
-                      })()}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium text-foreground">Food name</span>
-                  <input
-                    type="text"
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    placeholder="e.g. Greek yogurt with berries"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Calories</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualCalories || ""}
-                      onChange={(e) => setManualCalories(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Protein (g)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualProtein || ""}
-                      onChange={(e) => setManualProtein(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Carbs (g)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualCarbs || ""}
-                      onChange={(e) => setManualCarbs(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Fat (g)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualFat || ""}
-                      onChange={(e) => setManualFat(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Fiber (g)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualFiber || ""}
-                      onChange={(e) => setManualFiber(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium text-foreground">Water (ml)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={manualWater || ""}
-                      onChange={(e) => setManualWater(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </label>
-                </div>
-              </>
-            )}
-            <label className="grid gap-1">
-              <span className="text-sm font-medium text-foreground">Time</span>
-              <input
-                type="text"
-                value={timeLabel}
-                onChange={(e) => setTimeLabel(e.target.value)}
-                placeholder="e.g. 12:30 PM"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-              />
-            </label>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleAddMeal}>
-              Add meal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
+      <TodayBarcodeDialog
         open={barcodeOpen}
         onOpenChange={(open) => {
           setBarcodeOpen(open);
@@ -2519,374 +1602,62 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             setBarcodeEditFat("");
           }
         }}
-      >
-        <DialogContent className="bg-card border-border">
-          {!barcodePreview ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-foreground">Barcode (Open Food Facts)</DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                  Enter a barcode. On the next screen you can fix the product name, meal, portion, or override calories and
-                  macros if the match is wrong.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium text-foreground">Barcode</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={barcodeValue}
-                    onChange={(e) => setBarcodeValue(e.target.value.replace(/\D/g, ""))}
-                    placeholder="8–13 digits"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card"
-                  />
-                </label>
-                {recentFoods.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs text-muted-foreground w-full">Recent:</span>
-                    {recentFoods.map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/70"
-                        onClick={() => {
-                          addLoggedMeal({
-                            name: "Snacks",
-                            recipeTitle: n,
-                            time: timeLabel,
-                            calories: 0,
-                            protein: 0,
-                            carbs: 0,
-                            fat: 0,
-                            source: "Manual",
-                          });
-                          setBarcodeOpen(false);
-                        }}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setBarcodeOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  disabled={barcodeBusy}
-                  onClick={async () => {
-                    setBarcodeBusy(true);
-                    try {
-                      const result = await fetchProductByBarcode(barcodeValue);
-                      if (!result.ok) {
-                        toast.error(
-                          result.error === "not_found"
-                            ? "Product not found"
-                            : result.error === "invalid"
-                              ? "Enter a valid barcode"
-                              : "Could not reach Open Food Facts",
-                        );
-                        return;
-                      }
-                      const p = result.product;
-                      setBarcodePreview(p);
-                      setBarcodeTitleOverride(p.name);
-                      setBarcodeMacrosManual(false);
-                      setBarcodeEditCal("");
-                      setBarcodeEditPro("");
-                      setBarcodeEditCarb("");
-                      setBarcodeEditFat("");
-                      setBarcodeGramsStr(
-                        typeof p.servingSizeG === "number" && p.servingSizeG > 0
-                          ? String(Math.round(p.servingSizeG * 10) / 10)
-                          : "100",
-                      );
-                    } finally {
-                      setBarcodeBusy(false);
-                    }
-                  }}
-                >
-                  {barcodeBusy ? "Looking up…" : "Look up"}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            barcodePreview && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">Review & log</DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
-                    Open Food Facts can mismatch your package or have wrong macros. Fix the name or values here, or try
-                    another barcode.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto pr-0.5">
-                  {(() => {
-                    const p = barcodePreview;
-                    const scaled = scaleFromPer100gGrams(p, barcodeGramsParsed);
-                    const portion = barcodePortionLabel(p, barcodeGramsParsed);
-                    const titleForLog = barcodeTitleOverride.trim() || p.name;
-                    return (
-                      <>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium text-foreground">Food name</span>
-                          <input
-                            type="text"
-                            value={barcodeTitleOverride}
-                            onChange={(e) => setBarcodeTitleOverride(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                            placeholder={p.name}
-                          />
-                          <span className="text-[11px] text-muted-foreground">
-                            Shown on your diary; does not change the database.
-                          </span>
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium text-foreground">Meal</span>
-                          <select
-                            value={mealSlot}
-                            onChange={(e) => setMealSlot(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                          >
-                            {["Breakfast", "Lunch", "Dinner", "Snacks"].map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3">
-                          <Checkbox
-                            id="barcode-macros-manual"
-                            checked={barcodeMacrosManual}
-                            className="mt-0.5"
-                            onCheckedChange={(c) => {
-                              const on = c === true;
-                              setBarcodeMacrosManual(on);
-                              if (on) {
-                                const s = scaleFromPer100gGrams(p, barcodeGramsParsed);
-                                setBarcodeEditCal(String(s.calories));
-                                setBarcodeEditPro(String(s.protein));
-                                setBarcodeEditCarb(String(s.carbs));
-                                setBarcodeEditFat(String(s.fat));
-                              }
-                            }}
-                          />
-                          <label htmlFor="barcode-macros-manual" className="text-sm leading-snug cursor-pointer">
-                            <span className="font-medium text-foreground">Edit calories & macros</span>
-                            <span className="block text-xs text-muted-foreground mt-0.5">
-                              Overrides label math for this entry only. Turn on if the pack values do not match what
-                              you scanned.
-                            </span>
-                          </label>
-                        </div>
-
-                        {!barcodeMacrosManual ? (
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium text-foreground">{scaled.calories}</span> kcal · P{" "}
-                            {scaled.protein}g · C {scaled.carbs}g · F {scaled.fat}g
-                            {scaled.fiberG > 0 ? ` · Fiber ${scaled.fiberG}g` : ""}
-                            <span className="block text-[11px] mt-1">From label per 100 g × grams below.</span>
-                          </p>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="grid gap-1 col-span-2 sm:col-span-1">
-                              <span className="text-xs font-medium text-foreground">Calories (kcal)</span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={barcodeEditCal}
-                                onChange={(e) => setBarcodeEditCal(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                              />
-                            </label>
-                            <label className="grid gap-1 col-span-2 sm:col-span-1">
-                              <span className="text-xs font-medium text-foreground">Protein (g)</span>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={barcodeEditPro}
-                                onChange={(e) => setBarcodeEditPro(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                              />
-                            </label>
-                            <label className="grid gap-1">
-                              <span className="text-xs font-medium text-foreground">Carbs (g)</span>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={barcodeEditCarb}
-                                onChange={(e) => setBarcodeEditCarb(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                              />
-                            </label>
-                            <label className="grid gap-1">
-                              <span className="text-xs font-medium text-foreground">Fat (g)</span>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={barcodeEditFat}
-                                onChange={(e) => setBarcodeEditFat(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                              />
-                            </label>
-                          </div>
-                        )}
-
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium text-foreground">Portion (grams)</span>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={barcodeGramsStr}
-                            onChange={(e) => setBarcodeGramsStr(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                          />
-                          <span className="text-[11px] text-muted-foreground">
-                            Used for the serving note in your diary
-                            {!barcodeMacrosManual ? " and to scale macros from the label" : ""}.
-                          </span>
-                        </label>
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">Quick picks</span>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {p.servingOptions.map((o) => {
-                              const selected = Math.abs(o.grams - barcodeGramsParsed) < 0.51;
-                              return (
-                                <button
-                                  key={`${o.label}-${o.grams}`}
-                                  type="button"
-                                  onClick={() => setBarcodeGramsStr(String(o.grams))}
-                                  className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                                    selected
-                                      ? "border-primary bg-primary/15 text-foreground"
-                                      : "border-border bg-muted/40 hover:bg-muted"
-                                  }`}
-                                >
-                                  {o.label}
-                                </button>
-                              );
-                            })}
-                            {[50, 150, 200]
-                              .filter((g) => !p.servingOptions.some((o) => Math.abs(o.grams - g) < 0.51))
-                              .map((g) => {
-                                const selected = Math.abs(g - barcodeGramsParsed) < 0.51;
-                                return (
-                                  <button
-                                    key={`g-${g}`}
-                                    type="button"
-                                    onClick={() => setBarcodeGramsStr(String(g))}
-                                    className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                                      selected
-                                        ? "border-primary bg-primary/15 text-foreground"
-                                        : "border-border bg-muted/40 hover:bg-muted"
-                                    }`}
-                                  >
-                                    {g} g
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Diary line: <span className="font-medium text-foreground">{titleForLog}</span> ({portion})
-                        </p>
-                      </>
-                    );
-                  })()}
-                </div>
-                <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    onClick={() => {
-                      setBarcodePreview(null);
-                      setBarcodeMacrosManual(false);
-                      setBarcodeEditCal("");
-                      setBarcodeEditPro("");
-                      setBarcodeEditCarb("");
-                      setBarcodeEditFat("");
-                    }}
-                  >
-                    Try another barcode
-                  </Button>
-                  <div className="flex w-full sm:w-auto gap-2 justify-end">
-                    <Button type="button" variant="outline" onClick={() => setBarcodeOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const p = barcodePreview;
-                        if (!p) return;
-                        const portion = barcodePortionLabel(p, barcodeGramsParsed);
-                        const titleForLog = barcodeTitleOverride.trim() || p.name;
-                        const scaled = scaleFromPer100gGrams(p, barcodeGramsParsed);
-                        let calories: number;
-                        let protein: number;
-                        let carbs: number;
-                        let fat: number;
-                        let fiberG: number | undefined;
-                        if (barcodeMacrosManual) {
-                          const c = Number.parseInt(barcodeEditCal.replace(/\s/g, ""), 10);
-                          const pr = parseNonnegNumber(barcodeEditPro);
-                          const cb = parseNonnegNumber(barcodeEditCarb);
-                          const ft = parseNonnegNumber(barcodeEditFat);
-                          if (!Number.isFinite(c) || c < 0 || c > 50_000) {
-                            toast.error("Enter a valid calorie amount (0–50000).");
-                            return;
-                          }
-                          if (pr == null || cb == null || ft == null) {
-                            toast.error("Enter protein, carbs, and fat (numbers ≥ 0).");
-                            return;
-                          }
-                          calories = c;
-                          protein = Math.round(pr * 10) / 10;
-                          carbs = Math.round(cb * 10) / 10;
-                          fat = Math.round(ft * 10) / 10;
-                          fiberG = undefined;
-                        } else {
-                          calories = scaled.calories;
-                          protein = scaled.protein;
-                          carbs = scaled.carbs;
-                          fat = scaled.fat;
-                          fiberG = scaled.fiberG > 0 ? scaled.fiberG : undefined;
-                        }
-                        const adjusted =
-                          barcodeMacrosManual ||
-                          titleForLog.trim() !== p.name.trim();
-                        pushRecentFood(titleForLog);
-                        setRecentFoods(loadRecentFoods());
-                        addLoggedMeal({
-                          name: mealSlot,
-                          recipeTitle: `${titleForLog} (${portion})`,
-                          time: timeLabel,
-                          calories,
-                          protein,
-                          carbs,
-                          fat,
-                          source: adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
-                          ...(fiberG != null && fiberG > 0 ? { fiberG } : {}),
-                        });
-                        setBarcodeOpen(false);
-                        toast.success("Logged from barcode");
-                        track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted });
-                      }}
-                    >
-                      Add to diary
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </>
-            )
-          )}
-        </DialogContent>
-      </Dialog>
+        barcodeValue={barcodeValue}
+        onBarcodeValueChange={setBarcodeValue}
+        barcodeBusy={barcodeBusy}
+        onBarcodeBusyChange={setBarcodeBusy}
+        barcodePreview={barcodePreview}
+        onBarcodePreviewChange={setBarcodePreview}
+        barcodeGramsStr={barcodeGramsStr}
+        onBarcodeGramsStrChange={setBarcodeGramsStr}
+        barcodeGramsParsed={barcodeGramsParsed}
+        barcodeTitleOverride={barcodeTitleOverride}
+        onBarcodeTitleOverrideChange={setBarcodeTitleOverride}
+        barcodeMacrosManual={barcodeMacrosManual}
+        onBarcodeMacrosManualChange={setBarcodeMacrosManual}
+        barcodeEditCal={barcodeEditCal}
+        onBarcodeEditCalChange={setBarcodeEditCal}
+        barcodeEditPro={barcodeEditPro}
+        onBarcodeEditProChange={setBarcodeEditPro}
+        barcodeEditCarb={barcodeEditCarb}
+        onBarcodeEditCarbChange={setBarcodeEditCarb}
+        barcodeEditFat={barcodeEditFat}
+        onBarcodeEditFatChange={setBarcodeEditFat}
+        mealSlot={mealSlot}
+        onMealSlotChange={setMealSlot}
+        recentFoods={recentFoods}
+        onPickRecentFood={(n) => {
+          addLoggedMeal({
+            name: "Snacks",
+            recipeTitle: n,
+            time: timeLabel,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            source: "Manual",
+          });
+          setBarcodeOpen(false);
+        }}
+        onConfirm={(payload: TodayBarcodeConfirmPayload) => {
+          pushRecentFood(payload.titleForLog);
+          setRecentFoods(loadRecentFoods());
+          addLoggedMeal({
+            name: mealSlot,
+            recipeTitle: `${payload.titleForLog} (${payload.portion})`,
+            time: timeLabel,
+            calories: payload.calories,
+            protein: payload.protein,
+            carbs: payload.carbs,
+            fat: payload.fat,
+            source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
+            ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
+          });
+          setBarcodeOpen(false);
+          toast.success("Logged from barcode");
+          track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted: payload.adjusted });
+        }}
+      />
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
       <VoiceLogDialog
@@ -2957,6 +1728,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           }
           toast.success(summary);
         }}
+      />
+
+      {/* Audit H4 (2026-04-18) — Save-combo dialog lifted out of
+          QuickAddPanel so the host is the single owner. Opened via
+          `handleOpenSaveCombo` (the meal-slot chip + the panel's
+          `onOpenSaveCombo` prop both fire it). */}
+      <SaveMealDialog
+        open={saveComboOpen}
+        onOpenChange={setSaveComboOpen}
+        initialItems={saveComboSeedItems}
+        defaultSlot={saveComboDefaultSlot}
+        onSave={handleCreateSavedMeal}
+        suggestedName={saveComboSuggestedName}
       />
     </div>
   );
