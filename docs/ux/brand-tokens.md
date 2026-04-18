@@ -36,6 +36,17 @@ Fixed across all screens. Never hardcode — always reference `MacroColors` (mob
 | Sodium | Orange | `#f97316` |
 | Water | Cyan | `#06b6d4` |
 
+## Stimulant tracker colours
+
+Used exclusively by the Hydration & Stimulants card (Batch 2.5). Not macro roles — caffeine has its own violet tone; alcohol uses an amber that rhymes with the warning accent because "approaching weekly limit" is the same semantic category.
+
+| Stimulant | Colour | Hex | Mobile token | Web CSS variable |
+|-----------|--------|-----|--------------|-----------------|
+| Caffeine | Violet | `#8b5cf6` | `StimulantColors.caffeine` | `--stimulant-caffeine` |
+| Alcohol | Amber | `#f59e0b` | `StimulantColors.alcohol` | `--stimulant-alcohol` |
+
+_Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously duplicated across `src/app/components/suppr/hydration-stimulants-card.tsx` and `apps/mobile/components/HydrationStimulantsCard.tsx`._
+
 ## Surface colours
 
 | Role | Light | Dark | Mobile token |

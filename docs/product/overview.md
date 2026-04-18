@@ -68,6 +68,27 @@ A week (or any 1–7 day slice) can be saved as a named template like "Bulk week
 When a recipe yields more than one serving and the user eats one, the remaining servings automatically fill matching slots on following days as "leftover of [recipe]". A dinner yielding 3 becomes lunch or dinner on the next two days; a breakfast yielding 2 becomes next-day breakfast or snack. Occupied slots are never overwritten. Leftover slots carry a `🍱 Leftover of [recipe]` badge but their macros equal the parent's scaled macros — the flag is purely visual, and totals are honest. If the user swaps or unlocks the parent, a confirm prompt states exactly how many leftovers will disappear ("This will remove 2 leftover meals.") and the plan recomputes. The whole pipeline lives in `src/lib/nutrition/leftoversPlanner.ts` and is unit-tested on both happy and unhappy paths.
 
 ### Food Tracking
+
+#### Today progressive disclosure (Audit M4, 2026-04-18)
+The Today screen progressively discloses its feature surfaces. On first run the
+user sees **only** the essentials — Day strip, calorie hero ring, remaining
+macros bar, meals section, and a single collapsed "Quick add" CTA above Meals.
+Everything else reveals as the user demonstrates relevance.
+
+| Card / surface | Visibility rule |
+|---|---|
+| Day strip, calorie hero ring, remaining macros bar, dashboard macro tiles, Meals section | Always visible in day view. |
+| Quick add panel (Favourites / Frequent / Recent / My meals) | Collapsed by default behind a single "Quick add" CTA above Meals. Tap expands inline (web + mobile). The last open/closed choice persists per device under `suppr-quick-add-collapsed-v1` — localStorage on web, AsyncStorage on mobile. The full-screen panel (mobile FAB → Previous) remains the power-user path. |
+| Hydration & stimulants card | Visible once the user has a non-zero `target_water_ml` **OR** has logged water / caffeine / alcohol (directly or via a meal that carries `waterMl`). Hidden first-run fallback: a compact "Track hydration?" link that reveals the card on tap — no state is written until the user logs something. |
+| Steps & activity card | Visible once Apple Health / Google Fit has synced at least once (`steps_by_day` or `activity_burn_by_day` non-empty for any day). Hidden first-run fallback: a compact "Connect health" link (mobile opens the Health Sync screen; web reveals the card so the user can log steps manually). |
+| Adaptive TDEE hint | Visible once `adaptive_tdee_confidence` is medium/high **OR** the user has logged ≥ 14 days. Matches the `getEffectiveTDEE` threshold so the hint and the calorie budget agree. |
+
+Returning users never lose cards they have already interacted with — every
+gate is sticky. Manual reveal is always available via the first-run links; no
+card or feature is removed by this change. Rules live in the shared helper
+`src/lib/nutrition/todayProgressiveDisclosure.ts` so web and mobile cannot
+drift.
+
 - Daily view with meal slot sections (Breakfast/Lunch/Dinner/Snack)
 - Weekly view with calorie bar chart and macro breakdown
 - Quick-log manual entry
@@ -93,8 +114,8 @@ When a recipe yields more than one serving and the user eats one, the remaining 
 
 #### Custom foods (Batch 3.9)
 - **What it is** — a user-defined food that isn't in USDA or Open Food Facts. The canonical use case is homemade items (granola, protein balls) and local-only items (corner-bakery pastry) where no label, no barcode, no USDA row exists. Distinct from **favourites** (starring a known food) and from **saved-meal combos** (bundling already-logged items).
-- **Create flow** — web: "+ Create custom food" entry point surfaces in the food-search panel, always visible at the bottom of the results list (and promoted when the query has zero results). Opens `CreateCustomFoodDialog`. Mobile: same entry, same payload via `CreateCustomFoodSheet`. Both take Name (required) + optional Brand, "Macros per N grams" basis (default 100 — the nutrition-label convention), macro inputs (kcal / protein / carbs / fat + optional fibre), and any number of named serving shortcuts like `1 bowl = 80g`, `1 tbsp = 12g`, `1 cup = 120g`. A live preview shows the first saved serving scaled. Zero-macro save is allowed with a soft "Macros not set" notice — no blocking, the user fills it in later.
-- **Log flow** — custom foods surface at the top of the food-search results list with a "Custom" badge when the typed query matches their name or brand (`searchCustomFoods`). When picked, the portion sheet adds a dropdown of the food's saved servings (plus the standard "grams" path). Choosing a named serving sets the quantity and the gram weight together. Macros are scaled linearly via the shared `scaleMacrosForGrams` helper — no nutrition values are minted; a non-positive `baseGrams` is treated as zero, never as a divide-by-zero.
+- **Create flow** — web: "+ Create custom food" entry point is wired into the food-search panel (`FoodSearch.tsx`), always visible beneath the results list (and promoted when the query has zero results — "Can't find it? Create your own."). Opens `CreateCustomFoodDialog` prefilled with the current query as the food name. Mobile: same entry, same payload via `CreateCustomFoodSheet` inside `FoodSearchModal.tsx`. Both take Name (required) + optional Brand, "Macros per N grams" basis (default 100 — the nutrition-label convention), macro inputs (kcal / protein / carbs / fat + optional fibre), and any number of named serving shortcuts like `1 bowl = 80g`, `1 tbsp = 12g`, `1 cup = 120g`. A live preview shows the first saved serving scaled. Zero-macro save is allowed with a soft "Macros not set" notice — no blocking, the user fills it in later. After save, the panel auto-selects the new food and drops the user straight into the portion picker so logging is a single extra tap.
+- **Log flow** — custom foods surface at the top of the food-search results list with a "Custom" badge (accessibility label "Custom food") when the typed query matches their name or brand (`searchCustomFoods`). When picked, the portion picker chips list the food's saved servings (labelled "1 bowl · 80 g" etc.) as a segmented control; changing the chip updates the gram weight immediately. The default chip is the first saved serving so most custom foods log in a single tap-to-confirm. Macros are projected onto a per-100g basis via the shared `customFoodToMacrosPer100g` helper and then scaled by the same `scaleMacros`/`scaleMacrosForGrams` path USDA / OFF results use — no nutrition values are minted; a non-positive `baseGrams` is treated as zero, never as a divide-by-zero. Logged custom foods write to `nutrition_entries` through the existing insert path (no bypass).
 - **Edit / delete** — each custom food row in the library has an overflow menu (web) / long-press menu (mobile) with Edit + Delete. Edit opens the same dialog pre-filled; Delete removes the row. Dedupe: the DB unique index on `(user_id, lower(name))` prevents duplicates; on collision the client appends " (2)" … " (9)" to the name so rapid imports don't fail silently.
 - **Persistence** — `public.user_custom_foods` (Batch 3.9). Macros per `base_grams`; `servings jsonb` holds `[{label, grams}]` bounded to 20 rows. RLS is owner-only full CRUD. Fiber is nullable (homemade items often genuinely lack a fiber value).
 - **Analytics** — `custom_food_created` with `{ hasBrand, servingCount }` on save; `custom_food_updated` / `custom_food_deleted` on edit / delete; `custom_food_logged` with `{ servingLabel?, grams }` alongside the normal `food_logged` event so custom-food usage can be sliced without double-counting total logs.
@@ -132,7 +153,7 @@ When a recipe yields more than one serving and the user eats one, the remaining 
 
 **Weekly recap card.** On Sunday evening (or Saturday for Sunday-start users), the Progress dashboard surfaces a recap of the week that just ended: avg calories, avg protein + adherence %, streak length, best day (highest-protein), and weight delta (suppressed when <2 weigh-ins). Supportive, factual copy — "3 days logged this week" not "You missed 4 days". Dismissible ("Got it") and shareable ("Share week" → system share sheet / clipboard). Once dismissed, the same week doesn't re-appear; the card reappears when the week key flips.
 
-**Weekly recap push (mobile).** Local `expo-notifications` trigger fires at 18:00 on the end-of-week day in the device's local timezone, nudging users back to the recap. Respects `weekly_recap_push_enabled` (opt-out in Settings). The notification deep-links to `/progress`. Web push is deferred — weekly recap is mobile-primary, and web users who open the app get the card directly on Progress.
+**Weekly recap push (mobile).** Local `expo-notifications` trigger fires at 18:00 on the end-of-week day in the device's local timezone, nudging users back to the recap. Respects `weekly_recap_push_enabled` (first-class opt-out in Settings on both platforms — web Settings Notifications section and mobile More → Connections → "Weekly recap"). Toggling off cancels any queued notification immediately; toggling on reschedules. Fires `weekly_recap_push_enabled_toggled { enabled }` on committed change. The notification deep-links to `/progress`. Web push is deferred — weekly recap is mobile-primary, and web users who open the app get the card directly on Progress.
 
 ### iOS widgets + Siri Shortcuts (Batch 5.12)
 

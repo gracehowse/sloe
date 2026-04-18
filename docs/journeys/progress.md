@@ -76,7 +76,11 @@ A hard streak breaks the moment the user has a sick or travel day — that's a r
 - Stable identifier `weekly-recap-v1` — rescheduled on every app launch, never stacked.
 
 ### Opt-out
-- Profile flag `weekly_recap_push_enabled` (default `true`). Toggle lives in the Notifications block of Settings (mobile). When disabled, any previously-scheduled notification is cancelled on the next app launch.
+- Profile flag `weekly_recap_push_enabled` (default `true`). First-class Settings toggle on both platforms (H6 audit fix, 2026-04-18):
+  - **Web** — `Settings.tsx` Notifications section, shadcn `<Switch>` row ("Weekly recap", sub: "Sunday 18:00 (respects your week start)." or "Saturday 18:00 …" depending on `week_start_day`). Writes the column via `savePref`; fires `weekly_recap_push_enabled_toggled { enabled }`.
+  - **Mobile** — `app/(tabs)/more.tsx` Connections section, `SettingsRow` that opens a bottom-sheet modal hosting a RN `Switch` (`accessibilityRole="switch"`). Off → `cancelWeeklyRecapPush()` clears the `weekly-recap-v1` identifier from the iOS notification queue immediately; On → `scheduleWeeklyRecapPush()` reinstalls the `WEEKLY` trigger. Fires the same `weekly_recap_push_enabled_toggled` event.
+- Defensive fallback: the Progress-visit effect in `app/(tabs)/progress.tsx` still reads the column and reconciles the OS queue on every app open, so a flip made on device A converges on device B without user action.
+- DB write error (RLS reject, offline, etc.) reverts the toggle and surfaces a toast (web) / Alert (mobile); no analytics fires on error.
 
 ### Content
 - Title: "Your week in Suppr"
@@ -85,6 +89,7 @@ A hard streak breaks the moment the user has a sick or travel day — that's a r
 
 ### Analytics
 - `weekly_recap_push_sent { weekKey }` — fires when the local notification is (re-)scheduled on mobile.
+- `weekly_recap_push_enabled_toggled { enabled }` — fires once per committed flip of the Settings toggle on web or mobile. Added 2026-04-18 (H6 audit fix) so product can measure opt-out rate directly instead of inferring it from `_push_sent` drop-off.
 - `weekly_recap_shown { weekKey }` — fires once per week when the card renders.
 - `weekly_recap_dismissed { weekKey }` — dismiss / "Got it" / close.
 - `weekly_recap_shared { weekKey, platform }` — share button tap.

@@ -474,17 +474,19 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - Server-side Whisper audio upload — the current release uses OS STT + typed fallback only.
 
 ### 7.14 Quick add panel — Favourites / Frequent / Recent / My meals
+- Components: mobile `apps/mobile/components/QuickAddPanel.tsx`, web `src/app/components/suppr/quick-add-panel.tsx`. Both are render-only wrappers around the shared helpers in `src/lib/nutrition/foodHistory.ts`, `favoriteFoods.ts`, `savedMeals.ts`, `savedMealsLogic.ts`. AI-source detection shared via `isAiSourcedFoodHistoryItem(row)` (audit H1, 2026-04-18).
 - EXP: FAB → Previous opens the Quick add panel. Header reads "Quick add" with "Logging to {slot}" subtext.
 - EXP: tab row — Favourites / Frequent / Recent / My meals. Default tab is Recent (matches prior "Previous Meals" behaviour).
 - **Recent tab**: up to 20 unique meals ordered most recent first. Tap any row → logs a duplicate with a new timestamp to the active slot and closes the panel.
 - **Frequent tab**: up to 20 unique meals ordered by count desc. Tap logs the same way.
-- **Favourites tab**: loads from Supabase on panel open. Empty state: "Star meals you log often for one-tap re-logging."
+- **Favourites tab**: loads from Supabase on mount (per `userId`). Empty state: "Star meals you log often for one-tap re-logging."
+- **AI badge**: rows whose `source` matches the shared `isAiSourcedFoodHistoryItem` rule (`"AI voice"` / `"AI photo"` / `"voice"` / `"ai_voice"` / `"ai_photo"`, case-insensitive) render `<Badge variant="ai">AI</Badge>` next to the title on both platforms. Updating the rule in `foodHistory.ts` flips both platforms at once.
 - **Star toggle** on each row: `Ionicons star` when favourited, `star-outline` otherwise. A11Y label `"Favourite this meal"` / `"Unstar meal"` and `accessibilityState.selected` reflects star state.
 - Star toggle is **optimistic**: fills immediately, writes to `user_favorite_foods`, reverts with an Alert on Supabase error.
 - EDGE: tapping star on a row that already exists in the DB (unique-violation) → treated as success; no duplicate row; star stays filled.
 - EDGE empty `byDay` AND no favourites → empty copy per active tab. No crash.
 - EDGE signed-out user taps star → Alert "Sign in to save favourites."
-- PARITY: web `QuickAddPanel` shows the same three tabs inline above the Meals section on Today.
+- PARITY: web `QuickAddPanel` shows the same four tabs inline above the Meals section on Today. Same prop contract (`byDay`, `activeSlot`, `supabase`, `userId`, `onLog`, `onLogSavedMeal`, `onOpenSaveCombo`, `savedMealsRefreshToken`, `defaultTab`), same tab order, same empty-state copy, same accessibility labels. **Divergent behaviour is a regression, not a style choice** (see `docs/product/web-mobile-parity-scope.md`).
 
 ### 7.14b Eat again card
 - EXP: on Today (only when `isToday` is true), if `computeEatAgainForSlot(byDay, currentSlotFromTime, now)` returns a row, a banner appears above the meal slots. Header "EAT AGAIN", body shows title + `N kcal · Pg Cg Fg · into {slot}`.
@@ -496,7 +498,7 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - PARITY: web shows the same banner at the top of the Day view, dismissed state persisted in `localStorage` under the same key.
 
 ### 7.14d Saved meal combos (Batch 2.6)
-Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPanel`; mobile `SaveMealSheet.tsx` + inline Quick add "My meals" tab in `app/(tabs)/index.tsx`. Shared helpers: `src/lib/nutrition/savedMeals.ts`, `savedMealsLogic.ts`.
+Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPanel`; mobile `SaveMealSheet.tsx` + `QuickAddPanel.tsx` (first-class component as of audit H1, 2026-04-18 — previously inline in `app/(tabs)/index.tsx`). Shared helpers: `src/lib/nutrition/savedMeals.ts`, `savedMealsLogic.ts`.
 
 **Save gate & entry point**
 - EXP: in a meal slot with **1 item** logged today, the slot header row shows **no** "Save combo" chip.
@@ -509,7 +511,7 @@ Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPa
 - EXP: name input has `accessibilityLabel="Meal combo name"` and `maxLength={80}`. Clearing it disables Save.
 - EXP: default-slot chips (No default / Breakfast / Lunch / Dinner / Snacks) act as a radio group with `accessibilityRole="radio"` and `accessibilityState.selected`.
 - EXP: each item row has chevron-up / chevron-down / remove buttons with per-item `accessibilityLabel`s (e.g. "Move Oatmeal up", "Remove Oatmeal from combo"). Chevron-up on index 0 and chevron-down on last item are disabled + dimmed.
-- EXP: Save button dims and shows "Saving…" during the write. On success the sheet closes, the Quick add panel auto-switches to "My meals" tab, and the new combo is visible.
+- EXP: Save button dims and shows "Saving…" during the write. On success the sheet closes, the host bumps `savedMealsRefreshToken` so the Quick add panel refetches + auto-switches to "My meals" tab, and the new combo is visible. Same behaviour on web.
 - NEG: items cleared down to 0 → Save is disabled, copy reads "No items left. Cancel and pick more items to save." with `accessibilityLiveRegion="polite"`.
 - EDGE: items insert fails on the server → parent is deleted so no zombie combo; Alert "Could not save — We couldn't save that combo. Try again."
 
@@ -534,8 +536,9 @@ Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPa
 - EXP: confirming Delete fires `saved_meal_deleted` once.
 
 **Parity**
-- Web: `NutritionTracker.tsx` renders a "Save combo" chip on each meal-slot header when the slot has 2+ items; the chip dispatches a `suppr:open-save-meal-dialog` CustomEvent that `QuickAddPanel`'s bridge picks up to open `SaveMealDialog`. Identical states, identical analytics events, identical labels.
-- Intentional differences: mobile uses Alert.prompt for rename on iOS and a future-work copy on Android; web uses `window.prompt`. Both are documented and tracked.
+- Web: `NutritionTracker.tsx` renders a "Save combo" chip on each meal-slot header when the slot has 2+ items; the chip calls the host's `handleOpenSaveCombo(slot, seedItems)` which opens the host-owned `SaveMealDialog` (audit H4, 2026-04-18 — replaced the prior `suppr:open-save-meal-dialog` CustomEvent bridge with a direct prop callback). `QuickAddPanel` also receives `onOpenSaveCombo` as a prop for parity + future use. Identical states, identical analytics events, identical labels.
+- Mobile: same shape — `app/(tabs)/index.tsx` renders the "Save combo" chip on each meal-slot header, opens the host-owned `SaveMealSheet`, bumps `savedMealsRefreshToken` after persist, and hands the token plus `onLogSavedMeal` / `onOpenSaveCombo` to `<QuickAddPanel />`. The panel itself is render-only (audit H1, 2026-04-18).
+- Intentional differences: mobile uses `Alert.prompt` for rename on iOS and a future-work copy on Android; web uses `window.prompt`. Both are documented and tracked.
 
 ### 7.14e Custom foods (Batch 3.9)
 Components: web `suppr/CreateCustomFoodDialog`; mobile `CreateCustomFoodSheet.tsx`. Shared helpers: `src/lib/nutrition/customFoods.ts` (pure) + `customFoodsClient.ts` (Supabase CRUD). Storage: `public.user_custom_foods`.
@@ -592,6 +595,32 @@ Components: web `suppr/CreateCustomFoodDialog`; mobile `CreateCustomFoodSheet.ts
 **Parity**
 - Web: same dialog, same payloads, same events, same unique-name suffix retry; edit/delete via row overflow menu. Intentional difference: mobile uses long-press to surface edit/delete; web uses a hover-visible overflow menu.
 
+**Create-then-log end-to-end from FoodSearch**
+- STEPS (mobile): Today → FAB → Search. Type "granola bowl". No USDA / OFF results surface for this exact query. Tap "+ Create custom food" at the bottom → sheet opens pre-filled with Name = "granola bowl". Fill baseGrams = 80, calories 300, protein 8, carbs 45, fat 9, add a serving "1 bowl = 80". Tap "Save food".
+- EXP: sheet dismisses, the search modal immediately enters the portion picker for the new food with "1 bowl" selected (first saved serving) and the macros panel showing 300 kcal / P 8 / C 45 / F 9.
+- EXP: tapping "Use this" logs the food to the active meal slot, writes through to `nutrition_entries`, fires `custom_food_created { hasBrand: false, servingCount: 1 }` once and `custom_food_logged { servingLabel: "1 bowl", grams: 80 }`.
+- EXP (web parity): same flow in `FoodSearch.tsx` + `CreateCustomFoodDialog` — the dialog closes, the portion picker opens on the new food, "Use this" logs it.
+
+**Edit a custom food from FoodSearch**
+- STEPS (mobile): after the above, re-open Search. Type "granola" — the custom row appears at the top with the "Custom" badge. Long-press the row → Edit.
+- EXP: the sheet opens pre-filled with the existing food's macros + servings. Change calories to 320 and save. The portion-picker preview (if open) refreshes so macros cannot drift from the saved row; the next search shows the updated calorie pill.
+- EXP: fires `custom_food_updated` once.
+- EXP (web parity): the overflow menu "⋯" on the custom row exposes Edit → same dialog, same behaviour.
+
+**Delete a custom food from FoodSearch**
+- STEPS (mobile): in Search, long-press the custom row → Delete → Confirm "Delete".
+- EXP: the row disappears from the results immediately; `custom_food_deleted` fires once. Prior `nutrition_entries` rows logged from it keep their historic macros (not retroactively removed).
+- EDGE: if the delete request fails, an Alert "Couldn't delete — Please try again." appears and the row stays in the list.
+- EXP (web parity): the overflow menu "⋯" → Delete → `window.confirm` (placeholder until M7 replacement) → row removed.
+
+**Search surfaces Custom badge at top**
+- EXP: when at least one custom food matches the query's name or brand, custom matches render ahead of any USDA/OFF result with the same score. Each custom row shows a small "Custom" pill (accessibility label "Custom food") beside the name. Custom rows are never de-duped against USDA/OFF rows (even if names collide) — the user explicitly saved the custom version.
+
+**Portion chips scale macros correctly**
+- EXP: a custom food with saved servings ["1 bowl = 80g", "1 tbsp = 12g"] offers those chips plus "g". Default is "1 bowl" (first saved serving). Tapping "1 tbsp" resets quantity to 1 and grams to 12; macros panel recalculates to 12/baseGrams × the saved macros.
+- EDGE: tapping "g" sets quantity to the food's `baseGrams` (or 100 if baseGrams is missing) and grams to 1 × quantity. The nutrition panel reads exactly the macros-per-100g projection from `customFoodToMacrosPer100g`.
+- EDGE: raising the quantity on "1 bowl" to 2.5 yields grams = 200 and macros scale 2.5× linearly; no invented values.
+
 ### 7.14c Copy meal / Duplicate day (batch 1.4)
 - EXP: long-press any logged meal row opens the action sheet with Edit / **Copy to another day** / Delete.
 - EXP: selecting **Copy to another day** opens `CopyMealSheet` with a month calendar; default target is the source day + 1. The source day is always disabled in the calendar.
@@ -615,7 +644,8 @@ Components: web `suppr/CreateCustomFoodDialog`; mobile `CreateCustomFoodSheet.ts
 ### 7.15b Hydration & stimulants card (Batch 2.5)
 Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the Today tab in day view above "Steps & activity".
 
-- **Water row** — progress bar to `target_water_ml`; four quick-add chips: `+100ml`, `+250ml`, `+500ml`, `+750ml`. Each tap calls `addWaterMl()` which updates `extra_water_by_day[dayKey]` and persists immediately. Chip's `accessibilityLabel` reads e.g. "Add 250 millilitres water". Secondary line reads "Includes Nml from logged food" when meals contribute water.
+- **Water row** — progress bar to `target_water_ml`; four quick-add chips: `+100 ml`, `+250 ml`, `+500 ml`, `+750 ml` on metric. Each tap calls `addWaterMl()` which updates `extra_water_by_day[dayKey]` and persists immediately. Chip's `accessibilityLabel` reads e.g. "Add 250 millilitres water". Secondary line reads "Includes N ml from logged food" when meals contribute water.
+- **Water row (imperial)** — Settings → Measurements → Imperial. Re-open Today. EXP: progress line renders in `fl oz` (e.g. `"8 fl oz / 100 fl oz"`), the "from logged food" sub-line renders in `fl oz`, and chips switch to `+4 fl oz`, `+8 fl oz`, `+16 fl oz`, `+20 fl oz`. Chip `accessibilityLabel` reads "Add 8 fl oz water". Underlying storage stays millilitres — flipping back to metric on Settings and returning to Today shows the same water logged, just re-rendered (`237 ml` after logging a `+8 fl oz` chip). Audit fix 2026-04-18 (C3). Parity: identical behaviour on the web card via the shared `formatWaterAmount` helper.
 - **Caffeine row** — progress bar to `target_caffeine_mg` (default 400 mg — FDA). Four quick-add chips: Espresso (+64mg), Coffee (+95mg), Filter coffee (+120mg), Black tea (+48mg). Each tap calls `addCaffeineMg()` and persists to `extra_caffeine_by_day`. EXP: over-target renders the amber "Over 400 mg" label; progress bar fills `Accent.warning` (not red).
 - **Alcohol row** — hidden when `target_alcohol_g_weekly === 0`. When opted in, shows the week-rolling sum in grams against the weekly target. Four quick-add chips: Beer 500ml (+16g), Wine 150ml (+14g), Spirit 44ml (+14g), Cider 330ml (+12g). EXP: progress bar fills with the alcohol tone and switches to amber "Over limit" on exceed. Week boundary respects `week_start_day`.
 - **Reset today** — tap the `ellipsis-horizontal` icon beside each row's value → modal with "Reset today" / "Cancel". Reset clears `dayKey` for that kind only, persists, and fires `hydration_logged` / `stimulant_logged` with `amount: 0, preset: "reset"`.
@@ -784,13 +814,19 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 
 ### 9.9 PARITY: web has drag-drop swap; mobile uses Alert. Document divergence; identical inputs must produce identical plans.
 
-### 9.10 Move meal between days (Batch 3.10)
-- Meal action sheet → Move. Prompt accepts `day,slot` target.
-- EXP: move a lunch from day 1 → day 3; source day loses it, destination day gains it; totals on both days recompute.
+### 9.10 Move meal between days (Batch 3.10, mobile parity shipped 2026-04-18 audit C2)
+- **Entry point**: long-press (~400 ms) any meal row in the planner. A medium-impact haptic fires, then `Alert.alert` opens with four options: "Move to another slot…", "Swap with another meal…", "Delete", "Cancel". Empty / placeholder slots omit Swap and Delete.
+- EXP Move: tap "Move to another slot…" → `MoveMealSheet` opens with every (day × slot) cell in the current week. Source cell is visually marked `FROM` and disabled.
+- EXP: tap "Thursday Lunch" → source day loses the meal, destination day gains it; totals on both days recompute.
+- Accessibility: every destination row has `accessibilityRole="button"` and `accessibilityLabel="Move to {DayName} {Slot}"`. Backdrop has `accessibilityLabel="Close move meal"`. Source row carries `accessibilityState.disabled = true`.
 - EDGE: move onto the same slot → no-op (shared `moveMealInPlan` returns input unchanged).
 - EDGE: move onto an empty slot → source becomes empty placeholder; destination gets the meal.
-- EDGE: move onto another non-empty slot → two-way swap; slot labels stay put (Breakfast stays Breakfast).
+- EDGE: move onto another non-empty slot → two-way swap; destination's slot label stays put (Breakfast stays Breakfast).
+- EDGE parent-of-leftovers: if the source meal has downstream leftover copies, tapping "Move to another slot…" shows a factual confirm Alert "This will remove N leftover meals." with Cancel / Continue. Continue clears downstream leftovers via the shared `markLeftoversOnSwap` before opening the destination picker.
+- EXP Delete: long-press → "Delete" → source slot becomes an empty placeholder; totals recompute; plan persists.
+- Persistence: after a move or delete, the new plan is persisted via the same relational-tables-with-legacy-JSONB-fallback path the generate flow uses.
 - Analytics: `meal_moved_in_plan` fires with `{ fromSlot, toSlot, crossDay }`.
+- PARITY: semantics match web drag-drop + keyboard "Move" fallback. No native drag-drop on mobile by design — action sheet is the canonical entry point and `moveMealInPlan` is the single shared helper on both platforms.
 
 ### 9.11 Save plan as template (Batch 3.10)
 - Templates button → PlanTemplatesSheet opens in "Save as template" mode when plan has ≥1 eligible meal; opens in "My templates" mode when plan is empty.
@@ -850,6 +886,25 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - EDGE: freeze consumed on a prior zero-day → `computeProtectedStreak.protectedDateKeys` contains that key; the tile count still reads the protected value and the raw value is surfaced via the "Raw streak" disclosure row on web (mobile surfaces this via `/progress-metric?metric=streak` detail).
 - A11Y: freeze sub-label wrapped in an accessible `View` with `accessibilityLabel="N streak freezes available"`.
 
+#### 10.10.a Streak freeze earned moment (2026-04-18 audit H7)
+- PRE: manually insert a fresh entry into `profiles.streak_freezes_earned_at` (for example `[{"earnedAt":"2026-04-18T14:30:00Z"}]`) greater than any previously stored value in `AsyncStorage` under key `suppr-last-seen-freeze-earned-at`, and ensure `availableFreezes(...) > 0`.
+- EXP: next visit to Today, a compact row reading "You earned a freeze — N available" with a ❄ leading icon renders directly under the streak insight card's "freeze available" badge. Cyan 10% wash, 1px cyan 35% border; not a modal, not full-width shame copy.
+- EXP: tap **Got it** → row hides immediately; `AsyncStorage.suppr-last-seen-freeze-earned-at` is written to the matching ISO; `streak_freeze_earned_seen { earnedAt }` analytics event fires exactly once.
+- EXP: kill-and-relaunch the app → row does not reappear for the same `earnedAt`.
+- EDGE: a second freeze earned later (newer `earnedAt` pushed onto the ledger) re-surfaces the row for the new entry; dismissing it advances the stored marker forward.
+- EDGE: user who has **never** earned a freeze (`earnedAt` empty) → row never renders; the streak insight card looks identical to pre-H7 (additive only).
+- EDGE: `AsyncStorage` unavailable (dev simulator with wiped store) → row still hides for the session after tap; no crash; analytics still fires.
+- A11Y: row is an accessibility summary with label "You earned a freeze — N available". Got it button has `accessibilityLabel="Got it — dismiss earned freeze"`.
+- PARITY: web renders the identical one-time row on `NutritionTracker.tsx` using `localStorage` key `suppr-last-seen-freeze-earned-at`. Same copy, same analytics event.
+
+#### 10.10.b DayStrip "Freeze used" glyph (2026-04-18 audit H7)
+- PRE: user has a protected streak where at least one in-streak date was absorbed by a freeze (e.g. log Mon, skip Tue, log Wed with `availableFreezes > 0` at the time; reopen Today on Wed).
+- EXP: scrolling the DayStrip back to the protected week shows a small cyan ❄ glyph in the top-right of the Tuesday tile. The regular dot/checkmark/today chrome for neighbouring tiles is unchanged.
+- EXP: VoiceOver focus on the protected tile announces "Freeze used on 2026-04-14" (substitute actual date key).
+- EDGE: `streak_freeze_budget_max = 0` or empty `usedHistory` → no ❄ anywhere on the strip.
+- EDGE: day view + week view both render the glyph (parent passes the same `protectedDateKeys` set to both DayStrip instances).
+- PARITY: web `DayStrip` at `src/app/components/DayStrip.tsx` renders an equivalent Lucide snowflake overlay and an `aria-label="Freeze used on {dateKey}"` on the tile button.
+
 ### 10.11 Weekly Recap card (Batch 4.11)
 - PRE: set device clock to Sun 18:30 local or Mon/Tue/Wed 10:00 local of a week where the user has ≥1 meal in the prior Mon..Sun window (Monday-start user).
 - EXP: `WeeklyRecapCard` renders above the 2x2 stat grid with "WEEK RECAP", "Your week — Apr 6 – Apr 12", day count, Avg calories / Avg protein / Streak / Weight stats, optional Best day row, and Share / Got it buttons.
@@ -871,6 +926,18 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - NEG: OS notification permission denied → `scheduleWeeklyRecapPush` returns `null` gracefully; no analytics event fires.
 - EDGE: Expo Go / simulator without native push → helper no-ops cleanly; no crash on `scheduleNotificationAsync`.
 - EDGE: DST boundary — `WEEKLY` trigger continues to fire at the same local wall-clock time (18:00).
+
+### 10.12a Weekly Recap Settings toggle (Batch 4.11 — H6 audit fix, 2026-04-18)
+- PRE: `weekly_recap_push_enabled = true` on the profile (default), OS notification permission granted, Monday-start user.
+- EXP: Open More → Connections → "Weekly recap" row. Sub line reads "Sunday 18:00 (respects your week start)". Tap opens a bottom-sheet modal with a Switch set to ON and the explainer "Get a one-tap reminder to open your weekly recap on Sunday at 18:00 local time.".
+- EXP: Tapping the Switch OFF calls `cancelWeeklyRecapPush()` immediately — inspect via `expo-notifications` API that the `weekly-recap-v1` identifier is no longer scheduled. `profiles.weekly_recap_push_enabled` is `false`. `weekly_recap_push_enabled_toggled { enabled: false }` fires once. Row sub updates to "Off · re-enable to get the Sun/Sat 18:00 nudge".
+- EXP: **No local notification arrives the next Sunday at 18:00.** Confirm with the Xcode scheduled-notifications inspector or a backdated test device.
+- EXP: Tapping the Switch ON calls `scheduleWeeklyRecapPush({ enabled: true, weekStartDay })` — a fresh `WEEKLY` trigger is installed for Sunday 18:00 (or Saturday 18:00 for Sunday-start users). `weekly_recap_push_enabled_toggled { enabled: true }` fires once.
+- NEG: Signed-out / `userId` null → toggle reverts to its previous value; Alert "Sign in required" surfaces; no DB write, no analytics.
+- NEG: DB update errors (e.g. RLS rejection, offline) → toggle reverts; Alert "Could not save. Please try again." surfaces; no analytics.
+- EDGE: Switch `week_start_day` from Monday to Sunday while the toggle is ON → next Progress visit (or next open of the modal) reconciles the schedule to Saturday 18:00 via the existing Progress-visit scheduler; no user action required.
+- EDGE: Toggle off on device A, then open device B with a cached `true` — device B's Progress-visit effect re-reads the column, sees `false`, and cancels any lingering scheduled notification before it fires.
+- A11Y: Switch carries `accessibilityRole="switch"` + `accessibilityLabel="Weekly recap push notifications"` + `accessibilityState={{ checked }}`. Modal dismiss Pressable has `accessibilityRole="button"` and `accessibilityLabel="Dismiss"`.
 
 ---
 

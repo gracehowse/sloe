@@ -22,6 +22,18 @@
 - Discovery path: **header shortcut** to Library plus the **hidden `view=library` route** (and equivalent deep links where applicable).
 - Treat “Library missing from tab bar” as **intentional information architecture**, not a defect, unless product reopens navigation.
 
+## Quick Add panel (Favourites / Frequent / Recent / My meals)
+
+**Rule (audit H1, 2026-04-18):** Quick Add panel logic lives in
+`src/lib/nutrition/foodHistory.ts`, `favoriteFoods.ts`, `savedMeals.ts`,
+and `savedMealsLogic.ts`. The mobile `apps/mobile/components/QuickAddPanel.tsx`
+and web `src/app/components/suppr/quick-add-panel.tsx` are render-only
+wrappers around those helpers. Divergent behaviour — different tab order,
+different empty-state copy, different AI-source detection, etc. — is a
+regression, not a stylistic choice. The AI-source detection rule itself
+lives in `isAiSourcedFoodHistoryItem(item)` and is imported by both
+components; if the rule changes, change it once there.
+
 ## Related
 
 - Maestro and Playwright setup: `apps/mobile/.maestro/README.md`, `tests/e2e/README.md`.

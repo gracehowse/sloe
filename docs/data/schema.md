@@ -148,7 +148,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | `food_reports` | Migration `20260408170000` |
 | `profiles.target_fiber_g`, `profiles.target_water_ml` | Migration `20260412100000` |
 | `profiles.tracked_macros`, `profiles.week_start_day` | Used by Settings and Today dashboard (added to generated types) |
-| `profiles.target_caffeine_mg`, `profiles.target_alcohol_g_weekly`, `profiles.extra_caffeine_by_day`, `profiles.extra_alcohol_g_by_day` | Migration `20260421110000` — Batch 2.5 hydration & stimulants |
+| `profiles.target_caffeine_mg`, `profiles.target_alcohol_g_weekly`, `profiles.extra_caffeine_by_day`, `profiles.extra_alcohol_g_by_day` | Migration `20260421110000` — Batch 2.5 hydration & stimulants. `target_water_ml` and `extra_water_by_day` stay millilitres on both platforms; the `HydrationStimulantsCard` display respects `profiles.measurement_system` via the shared `formatWaterAmount` / `imperialWaterQuickAdds` helpers (audit C3 fix, 2026-04-18). |
 | `user_saved_meals`, `user_saved_meal_items` | Migration `20260421120000` — Batch 2.6 saved-meal combos |
 | `user_custom_foods` | Migration `20260421150000` — Batch 3.9 user-defined custom foods with multiple serving sizes |
 | `user_plan_templates` | Migration `20260421160000` — Batch 3.10 named plan templates (1–7 day slices, JSONB slots) |

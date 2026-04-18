@@ -34,6 +34,11 @@ MacroColors = {
 - `Spacing: xs(4) sm(8) md(12) lg(16) xl(20) xxl(24) xxxl(32)`
 - `Radius: sm(8) md(12) lg(16) xl(20) full(9999)`
 
+### Stimulant tracker colours (Batch 2.5 / audit M9 2026-04-18)
+- `--stimulant-caffeine` (web) / `StimulantColors.caffeine` (mobile) — `#8b5cf6` violet — hydration card caffeine row, chips, progress fill.
+- `--stimulant-alcohol` (web) / `Accent.warning` (mobile) — `#f59e0b` amber (web) / `#e8a020` amber (mobile — shared warning token) — hydration card alcohol row.
+- Full role table in `docs/ux/brand-tokens.md`. No hex values anywhere in the Hydration & Stimulants card source on either platform.
+
 ## Interaction Patterns
 
 ### Long-press Actions
@@ -90,11 +95,221 @@ Vertical bars for Mon-Sun:
 - Today's label in bold purple
 - Tap any bar to drill into Day view
 
+## Badges
+
+A badge is a short uppercase tag rendered inline with a title or row label — used to communicate row-level state ("this was added by you", "this is AI-estimated", "this is a leftover") at a glance.
+
+There is exactly **one** badge primitive per platform:
+- Web: `src/app/components/suppr/badge.tsx` → `<Badge variant=… />`
+- Mobile: `apps/mobile/components/Badge.tsx` → `<Badge variant=… />`
+
+Every badge in the product should use it. If you find yourself writing an inline `<span className="… px-1.5 py-0.5 text-[9px]…">` or `<View style={{ paddingHorizontal: 6, paddingVertical: 2 …}}><Text>`, stop — use `<Badge>`.
+
+### Shape
+- One size, one padding (`px-2 py-0.5` web / `8/2` RN), one radius (`rounded-full`), one font size (`10px`), one weight (`font-semibold/700`), one tracking (`uppercase`).
+- Variants swap colour **only**. If a new badge needs a different shape, it belongs in a different primitive — don't re-roll.
+
+### Variants
+
+| Variant | Where | Colour anchor (web / mobile) |
+|---|---|---|
+| `neutral` | Catch-all | `muted` / `#94a3b8` |
+| `info` | Informational metadata | `--macro-water` / `Accent.info` |
+| `warn` | Warning metadata | `--warning` / `Accent.warning` |
+| `pro` | Pro-gated feature labels (future use) | `--primary` / `Accent.primary` |
+| `ai` | AI-estimated entries (voice/photo-log, Recent tab) | `--chart-5` (violet) / `#8b5cf6` |
+| `added` | Ingredient row added by user after import | `--success` / `Accent.success` |
+| `override` | Manual macro override pinned on row | `--warning` / `Accent.warning` |
+| `leftover` | Planner tile — leftover of a parent meal | `--warning` / `Accent.warning` |
+| `custom` | User-defined custom food in search results | `--primary` / `Accent.primary` |
+| `freeze` | Streak freeze available / used | `--macro-water` / `Accent.cyan` |
+
+### Accessibility
+The primitive ships a default `aria-label` / `accessibilityLabel` for every variant that carries semantics (pro / override / leftover / freeze / ai / added / custom). Override with the `ariaLabel` / `accessibilityLabel` prop when the label needs to include runtime context (e.g. "Leftover of Chicken Tikka Masala" or "2 streak freezes available").
+
+### Extending
+To introduce a new badge use-case:
+1. Add a new variant key to the `BadgeVariant` union in both platform primitives.
+2. Add a colour entry to the variant map in both.
+3. Add a default aria-label if the new variant carries semantics.
+4. Use `<Badge variant="new-one">…</Badge>` at the call site. Do not fork a new pill component.
+
+## One-time factual acknowledgements
+
+A few moments in the product are one-time "you did it" surfaces (e.g. earning a streak freeze). The rule of thumb:
+
+- **Never a modal takeover.** A compact inline row under the relevant card is enough. Today already has the user's attention.
+- **Factual copy, no shame, no celebration ad-libs.** "You earned a freeze — N available" is the ceiling. "Amazing!" / "Streak saved!" / "You're on fire" is not the bar we hold.
+- **One-time per earned event.** Gate on a local timestamp (`localStorage` / `AsyncStorage`) — no new DB migration needed when the underlying ledger already records the moment.
+- **Additive, never required.** A user who has never earned one must see nothing extra.
+- **Dismiss primitive = a small "Got it" button.** On dismiss, write the earned ISO to storage and fire a `*_seen { at }` analytics event so product can measure whether the surface is actually seen, not just fired.
+
+Reference implementation: the "You earned a freeze" row on the Today streak insight card (web `NutritionTracker.tsx`, mobile `app/(tabs)/index.tsx`). Storage key `suppr-last-seen-freeze-earned-at`; event `streak_freeze_earned_seen`. Paired with the ❄ glyph on `DayStrip` tiles for days where a freeze was consumed (factual "Freeze used (Tue)" signal; `aria-label` / `accessibilityLabel` = `Freeze used on {dateKey}`).
+
 ## Empty States
+
+There is exactly **one** empty-state primitive per platform (audit M5, 2026-04-18):
+- Web: `src/app/components/suppr/empty-state.tsx` → `<EmptyState icon title description action />`
+- Mobile: `apps/mobile/components/EmptyState.tsx` — same prop contract (`style` instead of `className`)
+
+Every empty-state card in the product should use it. If you find yourself writing a one-off `<p className="px-3.5 py-6 text-xs text-muted-foreground text-center">` or `<Text style={{ textAlign: "center", paddingTop: 40 }}>`, stop and use `<EmptyState />`.
+
+### Shape
+- Optional icon slot (`~24px`, muted).
+- `title` — semibold, foreground colour. Typically a short sentence; accepts rich React content so callers can preserve existing inline emphasis (e.g. a bolded CTA label) without forking the primitive.
+- Optional `description` — muted, smaller. Used when the empty-state naturally splits into two factual sentences.
+- Optional `action` — typically a primary button.
+
+### Copy rules
+- **Factual, no shame, no hype.** "No favourites yet" / "Nothing to re-log yet." is the ceiling. "Let's get started!" / "You haven't done anything!" is not the bar we hold.
+- **Do not gate the copy on login state.** Tell the user what will appear and how.
+- **Same strings on both platforms.** Never rewrite copy for mobile when the web string is already fine.
+
+### Reference sites
+- `suppr/quick-add-panel` + mobile `QuickAddPanel` — Favourites / Frequent / Recent empty tabs.
+- `suppr/saved-meals-tab` + mobile `QuickAddPanel` "My meals" branch — signed-out + no-combos states.
+
+### Legacy copy (bespoke screens not yet migrated)
 - **No recipes**: plate emoji + "No recipes yet" + pull-to-refresh hint
 - **No search results**: magnifying glass + "No results for X" + try different term
 - **No meals logged**: "No meals logged yet today" + ADD FOOD button
 - **No shopping list**: cart emoji + "No shopping list yet" + link to planner
+
+## Card radius
+
+One card radius token, everywhere (audit M6, 2026-04-18):
+- Web: `rounded-card` (`var(--radius-card) = 1rem / 16px`, defined in `src/styles/theme.css`).
+- Mobile: `Radius.lg` (`16`, defined in `apps/mobile/constants/theme.ts`).
+
+The two map to the same visual radius so web and mobile cannot drift.
+
+### When `rounded-card` / `Radius.lg` applies
+A **card-shell** is any container that presents a discrete content surface with `bg-card + border border-border` (web) / `backgroundColor: colors.card + borderWidth: 1` (mobile). Examples:
+- Today dashboard cards (Steps, Week view, Activity Bonus, Macro tiles, Remaining macros bar).
+- Streak insight card, Hydration & stimulants card.
+- Weekly recap card and the inline stat tiles inside it.
+- Recipe notes card, and its signed-out prompt card.
+- List-row cards inside a scroll view (Quick add rows, Move-meal destinations).
+
+### When it does **not** apply
+Buttons, pills, badges, chips, inputs, textareas, dropdown menu cells, modal handles, camera frames, tab-toggle backgrounds, and any other non-card element have their own radius spec and should **not** be changed. Pill-style quick-log chips (Search / Voice / Snap / Scan on Today) are buttons, not cards — leave them on `rounded-xl`.
+
+### Adding a new card
+- Use `rounded-card` (web) or `Radius.lg` (mobile) on the outer shell.
+- Do not introduce new radius tokens. If the design truly needs one, raise it with `product-lead` first.
+
+## Progressive disclosure defaults (audit M4, 2026-04-18)
+
+The **Today screen** is the product's most-used surface. When every card shows
+on first run, the screen is hostile to brand-new users and the primary action
+("log food") drowns in secondary cards. M4 lands a single rule for when a
+Today card is visible on first run vs on return, and **every rule lives in one
+shared helper** so web and mobile cannot drift:
+
+```
+src/lib/nutrition/todayProgressiveDisclosure.ts
+  └── isHydrationCardVisible()
+  └── isStepsCardVisible()
+  └── isAdaptiveTdeeHintVisible()
+  └── QUICK_ADD_COLLAPSED_STORAGE_KEY / parse/serialize helpers
+```
+
+### Rules
+
+1. **Always visible (day view).** Day strip, calorie hero ring, remaining
+   macros bar, dashboard macro tiles, Meals section. Never gate these.
+
+2. **State-gated cards.** Only render when the user has the state that makes
+   the card useful:
+   - Hydration card: non-zero `target_water_ml` OR any water / caffeine /
+     alcohol logged (including meals carrying `waterMl`).
+   - Steps card: `steps_by_day` or `activity_burn_by_day` non-empty (i.e.
+     Health / Fit has synced at least once).
+   - Adaptive TDEE hint: `adaptive_tdee_confidence` medium/high OR ≥ 14
+     logged days. Matches the `getEffectiveTDEE` threshold.
+
+3. **User-collapsible surfaces.** When the card is an entry point to a
+   larger picker (Quick Add), collapse it behind a single compact CTA by
+   default on first run. Persist the user's open/closed choice per device
+   via the documented storage key. The full overlay / alternative path
+   (mobile FAB → Previous) stays available to power users.
+
+4. **First-run fallbacks are never destructive.** When a card is hidden,
+   render a small text link that reveals the card on tap ("Track hydration?",
+   "Connect health"). No state is written until the user performs the
+   underlying action — the link just opens the card.
+
+### Sticky gates
+
+Every gate is **additive + sticky**: once `true`, a returning user will keep
+seeing the card because the underlying state persists (a target set in
+Settings, a Health sync completed, a water log from yesterday). We don't
+hide cards from returning users just because they happened to delete today's
+entries. The state gate checks the full persisted map, not just today.
+
+### When to extend
+
+- Add a rule to `todayProgressiveDisclosure.ts` — do **not** inline a new
+  visibility check on Today.
+- Add a test in `tests/unit/todayProgressiveDisclosure.test.ts`.
+- Update `docs/product/overview.md` → "Today progressive disclosure" table.
+- Update both platform call sites (web `NutritionTracker.tsx`, mobile
+  `apps/mobile/app/(tabs)/index.tsx`).
+
+### Anti-patterns
+
+- Adding a new Today card that is always on, even when empty.
+- Hiding a card based on `is_first_run` instead of its own state — leads to
+  a returning user being punished when the card would have helped them.
+- Writing default state (e.g. setting a water target of 2000 ml) just to
+  flip a gate to `true`. Gates must reflect real user intent.
+
+## Destructive confirmations (audit M7, 2026-04-18)
+
+Any action that deletes a user's content or that can't be undone must be confirmed through a themed dialog. Never use `window.confirm` — it is unthemed, synchronous, breaks in dark mode, and does not integrate with the app's accessibility tree.
+
+There is exactly **one** destructive-confirm primitive per platform:
+- Web: `src/app/components/suppr/destructive-confirm-dialog.tsx` → `<DestructiveConfirmDialog title description confirmLabel onConfirm />` (shadcn `AlertDialog` + destructive-variant button).
+- Mobile: `Alert.alert(title, description, [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress }])`. `Alert.alert` is the native iOS pattern and integrates correctly with VoiceOver; mobile does not need a wrapper.
+
+### Shape
+- Short, factual title framed as a question: `Delete "{name}"?`, `Remove "{recipeTitle}"?`, `Replace this week's plan with "{name}"?`.
+- Optional description explaining the consequence: `"This can't be undone."`, `"Downstream leftovers of this meal will be cleared."`, `"The current week will be overwritten with the template."`.
+- Two buttons: **Cancel** (neutral, auto-focused so a stray keystroke does nothing) and the destructive action (red, labelled with the verb — `Delete`, `Remove`, `Apply`, `Continue`).
+- Never confirm non-destructive actions through this primitive — use `toast.success` for save/apply/log feedback instead.
+
+### Copy rules
+- **No shame, no drama.** `"Delete local data & sign out?"` is the ceiling; `"Are you ABSOLUTELY sure?!"` is not the bar we hold.
+- **Describe the consequence, not the feeling.** `"This can't be undone."` / `"The current week will be overwritten."` — not `"You'll lose everything!"`.
+- **Reiterate the target.** Include the item name in quotes so the user knows exactly what will be deleted.
+- **Double-confirm only when the blast radius is the whole account.** `Settings` → "Delete my account permanently" surfaces two sequential `DestructiveConfirmDialog`s; every other destructive flow is single-confirm.
+
+### Call sites (web)
+- `suppr/quick-add-panel` — saved-meal delete.
+- `suppr/today-meals-section` — meal-row Delete overflow item.
+- `suppr/plan-templates-dialog` — template delete action.
+- `FoodSearch` — custom-food delete.
+- `Settings` — clear local data + sign out, two-stage account deletion.
+- `MealPlanner` — delete named plan slot, apply template (overwrites week), leftover-clearing swap.
+
+## Inline rename (audit M7, 2026-04-18)
+
+Short-lived "rename this thing" prompts must run through a themed dialog — never `window.prompt`. On web, Radix `Dialog` gives focus trap, labelled title, `Enter`-to-submit, and `Escape`-to-cancel for free.
+
+Two primitives per platform today:
+- **Saved-meal combo rename** — web `suppr/rename-saved-meal-dialog.tsx` → `<RenameSavedMealDialog currentName onConfirm />`. Runs input through the shared `normaliseSavedMealName(raw)` helper in `src/lib/nutrition/savedMeals.ts` (trim + `SAVED_MEAL_NAME_MAX_LENGTH = 80` clip). Empty or unchanged input is a no-op. Mobile uses `Alert.prompt` with the same rule.
+- **Generic named-slot rename / create** — web `suppr/text-prompt-dialog.tsx` → `<TextPromptDialog title inputLabel currentValue onConfirm />`. Trims input, disables Save on empty. Used by `MealPlanner` for New plan / Rename plan. Mobile uses `Alert.prompt` with the matching validation.
+
+### Shape
+- Short title framed as an action: `Rename meal`, `New plan`, `Rename plan`.
+- Single labelled `<Input>` pre-filled with the current value (for rename) or empty (for create).
+- Two buttons: **Cancel** (ghost) and the primary action (`Save` / `Create`).
+- `Enter` submits; `Escape` cancels; focus moves to the input on open (shadcn `autoFocus`).
+
+### Copy rules
+- **Factual label.** `"Name"` / `"Plan name"` on the input — never `"What would you like to call it?"`.
+- **Same cap on create and rename.** If the create dialog enforces `maxLength=80`, the rename dialog must too. Centralise the cap in a shared helper (`SAVED_MEAL_NAME_MAX_LENGTH`, `normaliseSavedMealName`) so the two sites cannot drift.
+- **No-op gracefully.** If the user types nothing, clears the field, or submits the same value, treat it as Cancel — do not surface a toast.
 
 ## Related Documents
 - [Component Reference](../technical/components.md)

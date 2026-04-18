@@ -95,7 +95,7 @@ Patchworked. The shared lib layer is cohesive; the UI layer is not. Mobile Quick
 ### 2.11 Streak freeze + weekly recap + push (Batch 4.11)
 - **Working.** Non-shaming copy ("3 days logged this week" not "You missed 4 days"). Weight delta suppressed with <2 weigh-ins. Push scheduled on mobile.
 - **Weak.** Freeze-earned UI event never fires — user never learns the feature is working. "Freeze used (Tue)" helper exists; grep for that string in UI returns nothing.
-- **Push UX.** No Settings toggle for `weekly_recap_push_enabled`. OS push settings are the only escape hatch.
+- **Push UX.** No Settings toggle for `weekly_recap_push_enabled`. OS push settings are the only escape hatch. **Resolved 2026-04-18 (H6):** first-class toggle shipped on both platforms.
 - **Recommendation.** Surface "Freeze earned" + "Freeze used" moments. Add Settings toggle. Show recap on Today for one tap post-push (not only Progress).
 
 ### 2.12 iOS widget snapshot + Siri deep links (Batch 5.12)
@@ -199,7 +199,7 @@ Patchworked. The shared lib layer is cohesive; the UI layer is not. Mobile Quick
 | H3 | Split `NutritionTracker.tsx` (2,963 LOC) and mobile Today (4,409 LOC) into per-card subcomponents; target < 800 LOC | L |
 | H4 | Drop `window.dispatchEvent` anti-pattern in `QuickAddPanel` — pass `onSaveCombo` as prop | S |
 | H5 | Add `week_start_day_changed` + `fit_this_in_previewed` events + PostHog dashboards | S |
-| H6 | Settings toggle for `weekly_recap_push_enabled` (both platforms) | S |
+| H6 | Settings toggle for `weekly_recap_push_enabled` (both platforms) — **Shipped 2026-04-18.** Web `Settings` Notifications section adds a shadcn `<Switch>` row; mobile `more.tsx` Connections section adds a `SettingsRow` + bottom-sheet modal with RN `Switch`. Off → `cancelWeeklyRecapPush()` immediately; On → `scheduleWeeklyRecapPush()`. New `weekly_recap_push_enabled_toggled { enabled }` analytics event. | S |
 | H7 | Instrument the missing "freeze earned / used" user moments | S |
 
 ### MEDIUM — polish + optimisation
@@ -216,7 +216,7 @@ Patchworked. The shared lib layer is cohesive; the UI layer is not. Mobile Quick
 | M8 | Drop hand-rolled menu in `HydrationStimulantsCard` Row — use shared DropdownMenu | S |
 | M9 | Caffeine + alcohol colours to theme tokens | S |
 | M10 | AI source-string normalise at write time, centralise classifier | S |
-| M11 | Ship the 4 deferred component/Maestro tests (G8, G16, F1, F2) | M |
+| M11 | Ship the 4 deferred component/Maestro tests (G8, G16, F1, F2) | M | **DONE 2026-04-18 (partial).** G8 (web + mobile) and F1 landed in full. G16 + F2 landed on web only; the mobile counterparts are infrastructure-blocked — `@testing-library/react-native` is not installed on `apps/mobile`. Follow-up: add RNTL and mirror `foodSearchFitThisIn` + dialog render tests on mobile. Shared helper `src/lib/nutrition/weekStartDayClient.ts` now backs both platforms' week-start save/load. New tests: `favoriteFoodsClient.test.ts` (16), `copyMealDialog.test.tsx` (5), `duplicateDayDialog.test.tsx` (5), `foodSearchFitThisIn.test.tsx` (2), `settingsWeekStartRoundTrip.test.ts` (9), `apps/mobile/tests/unit/moreWeekStartRoundTrip.test.ts` (6). |
 
 ### LOW — housekeeping
 

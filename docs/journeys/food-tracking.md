@@ -10,6 +10,25 @@ User logs food throughout the day, tracks progress against their calorie and mac
 
 ## Day View
 
+### First-run Today (Audit M4, 2026-04-18)
+Before any data exists, Today is intentionally sparse. A brand-new user sees:
+
+1. **Day strip** — pick a day (today is pre-selected).
+2. **Calorie hero ring** — shows target vs consumed (0 consumed on first run).
+3. **Remaining macros bar** — kcal / P / C / F left today.
+4. **Meals section** — four empty meal slots with "+ Add food" per slot.
+5. **Quick add CTA** (collapsed) — a single tappable pill above Meals. Expanding it reveals the Favourites / Frequent / Recent / My meals tabs inline; the choice persists per device under `suppr-quick-add-collapsed-v1`.
+6. **"Track hydration?"** — tiny link shown in place of the hydration card until the user has a water target or has logged water / caffeine / alcohol.
+7. **"Connect health"** — tiny link shown in place of the Steps & activity card until Apple Health / Google Fit has synced at least once (mobile opens the Health Sync screen; web reveals the card so the user can log steps manually).
+
+Hydration, Steps, Activity Bonus, Adaptive TDEE hint, and Deficit insight only
+appear once the user's state earns them (see `todayProgressiveDisclosure.ts`
+for the rules). The primary action on first-run Today is therefore always
+unambiguous: **log something**.
+
+A returning user who has ever interacted with any card continues to see that
+card — the gates are sticky.
+
 ### Layout
 ```
 ┌─────────────────────────────┐
@@ -67,13 +86,14 @@ User logs food throughout the day, tracks progress against their calorie and mac
 - Logged to the active meal slot
 
 **Create custom food** (Batch 3.9) — entry point inside the food-search panel:
+- Can't find your food? **Create a custom food from FoodSearch.** Type what you're looking for, and when the results don't match — or when you already know the item only exists in your kitchen — tap "+ Create custom food" at the bottom of the results (or "Can't find it? Create your own." in the zero-results state). Fill in Name + macros + saved servings, hit Save, and the panel drops you straight into the portion picker for the food you just created so logging is one more tap. The same flow works on web (`FoodSearch.tsx` → `CreateCustomFoodDialog`) and mobile (`FoodSearchModal.tsx` → `CreateCustomFoodSheet`).
 - Always visible as a "+ Create custom food" row at the bottom of the results list; promoted when the query returns zero results (for "homemade X" / "nana's Y" cases where USDA and OFF have nothing).
 - Opens `CreateCustomFoodDialog` (web) / `CreateCustomFoodSheet` (mobile) with the typed search query pre-filled as the Name.
 - Form fields: Name (required), Brand (optional, e.g. "My recipe", "Local bakery"), "Macros per N grams" basis (default 100), kcal / protein / carbs / fat / optional fibre, and any number of named serving shortcuts as `label = grams` rows (e.g. "1 bowl = 80g", "1 tbsp = 12g"). A live preview shows the first saved serving scaled.
 - Save persists to `public.user_custom_foods` via `createCustomFood`. Unique-violation on `(user_id, lower(name))` retries with " (2)", " (3)", … up to " (9)" appended so a quick rename is not required.
-- After save, the custom food is searchable (`searchCustomFoods` runs `ilike` across name + brand) and surfaces at the top of search results with a "Custom" badge.
-- When the user picks a custom food, the portion sheet offers the standard grams path plus a dropdown / segmented control of the food's saved servings. Choosing a named serving sets the quantity and gram weight together; macros are scaled linearly via the shared `scaleMacrosForGrams` helper (never invented, never divide-by-zero).
-- Edit / Delete — web: overflow menu on the custom-food row. Mobile: long-press. Edit opens the same dialog pre-filled.
+- After save, the custom food is searchable (`searchCustomFoods` runs `ilike` across name + brand) and surfaces at the top of search results with a "Custom" badge (accessibility label "Custom food").
+- When the user picks a custom food, the portion sheet offers the standard grams path plus a segmented control of the food's saved servings. The default chip is the first saved serving so most custom foods log in one tap. Macros project onto per-100g via `customFoodToMacrosPer100g`, then scale linearly via the same `scaleMacros` path USDA / OFF use (never invented, never divide-by-zero). Entries write to `nutrition_entries` through the existing insert path.
+- Edit / Delete — web: overflow menu on the custom-food row (confirm via `window.confirm` fallback). Mobile: long-press the row, then pick Edit or Delete from the action sheet (double-confirmed for delete). Edit opens the same dialog pre-filled.
 - Analytics: `custom_food_created` with `{ hasBrand, servingCount }` on save, `custom_food_updated` on edit, `custom_food_deleted` on delete. Logging a custom food fires `custom_food_logged` with `{ servingLabel?, grams }` alongside the normal `food_logged` event.
 
 **Scan** — BarcodeScannerModal:
@@ -180,8 +200,9 @@ A **saved meal** is a user-named bundle of 2+ foods the user habitually logs tog
 ## Hydration & Stimulants Card (Batch 2.5)
 
 - Component: `src/app/components/suppr/hydration-stimulants-card.tsx` (web), `apps/mobile/components/HydrationStimulantsCard.tsx` (mobile).
-- Shared pure helper: `src/lib/nutrition/hydrationStimulants.ts` — presets, `weeklyAlcoholG`, `sumWaterFromMeals`, `isOverTarget`, `parseDayNumberMap`.
-- **Water target**: `profiles.target_water_ml` (existing).
+- Shared pure helper: `src/lib/nutrition/hydrationStimulants.ts` — presets, `weeklyAlcoholG`, `sumWaterFromMeals`, `isOverTarget`, `parseDayNumberMap`, `formatWaterAmount`, `imperialWaterQuickAdds`.
+- **Water target**: `profiles.target_water_ml` (existing). Storage is always millilitres on both platforms.
+- **Measurement system (audit C3, 2026-04-18):** the water row, the "from logged food" sub-line, and the quick-add chips respect `profiles.measurement_system` on both platforms. Imperial renders in `fl oz` (chips at 4 / 8 / 16 / 20 fl oz — each stored as integer millilitres); metric renders integer ml up to 1 L, then one-decimal L. Caffeine stays in mg and alcohol in grams on both systems. Flipping measurement system on Settings and returning to Today re-renders the same logged water in the new unit — nothing is re-encoded.
 - **Caffeine target**: `profiles.target_caffeine_mg`, default 400 mg (FDA upper bound for healthy adults).
 - **Alcohol target**: `profiles.target_alcohol_g_weekly`, default 0 (row hidden). Users set it in Settings; 196 g ≈ 14 UK units.
 - **Persistence**: `extra_water_by_day`, `extra_caffeine_by_day`, `extra_alcohol_g_by_day` on `profiles`. Each is a `{YYYY-MM-DD: number}` map. Writes are debounced to 300ms on web and awaited per-tap on mobile (matches the pre-existing water pattern).
