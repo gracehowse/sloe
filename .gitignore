@@ -12,6 +12,9 @@ tsconfig.tsbuildinfo
 # Cursor
 .cursor/
 
+# Claude Code local scheduler lock (machine-specific)
+.claude/scheduled_tasks.lock
+
 # Office
 ~$*.docx
 Platemate_Product_Audit.docx
@@ -20,3 +23,9 @@ Platemate_Product_Audit.docx
 
 # Expo local
 .expo/
+
+# App Store Connect API keys (never commit these)
+*.p8
+
+# Fetched TestFlight feedback may contain tester emails / screenshots
+docs/testflight-feedback/data/

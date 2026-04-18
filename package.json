@@ -26,6 +26,7 @@
     "ci:preflight": "npm run verify:production-env && npm run typecheck && npm test && npm run mobile:lint && npm run mobile:typecheck && npm run mobile:test",
     "prelaunch:checklist": "node --import tsx scripts/prelaunch-checklist.ts",
     "smoke:production": "node --import tsx scripts/production-smoke.ts",
+    "testflight:feedback": "node scripts/fetch-testflight-feedback.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:clear": "npm run start:clear --prefix apps/mobile",
     "mobile:dev:tunnel": "npm run start:tunnel --prefix apps/mobile",
