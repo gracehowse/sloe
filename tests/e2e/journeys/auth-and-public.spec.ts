@@ -70,14 +70,20 @@ test.describe("Public auth journey", () => {
 test.describe("Unauthenticated app shell", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("when I visit home without a session I am sent to sign in", async ({ page }) => {
+  test("when I visit home without a session I see the landing page with a sign-in path", async ({ page }) => {
     await test.step("I open the app root", async () => {
       await page.goto("/");
     });
-    await test.step("I expect the login gate (middleware + client shell)", async () => {
+    await test.step("I expect the landing page with a Sign in CTA", async () => {
+      // `/` now renders LandingPage for unauthenticated users (server component
+      // branch in app/page.tsx). The middleware no longer force-redirects.
+      await expect(page.getByRole("link", { name: /sign in/i }).first()).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+    await test.step("Sign in CTA navigates to /login", async () => {
+      await page.getByRole("link", { name: /sign in/i }).first().click();
       await page.waitForURL("**/login**");
       await expect(page.getByPlaceholder("you@domain.com")).toBeVisible();
-      await expectNoSeriousA11yViolations(page);
     });
   });
 });

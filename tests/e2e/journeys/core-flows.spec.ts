@@ -36,8 +36,13 @@ test.describe("Public pages", () => {
     await expect(page.getByText(/pro/i).first()).toBeVisible();
   });
 
-  test("unauthenticated root redirects to login", async ({ page }) => {
+  test("unauthenticated root shows landing page with a sign-in path", async ({ page }) => {
     await page.goto("/");
+    // LandingPage renders server-side for unauthenticated users (see app/page.tsx).
+    // Previously `/` middleware-redirected to /login; it now shows the marketing
+    // landing page with a Sign in CTA that opens /login?mode=signin.
+    await expect(page.getByRole("link", { name: /sign in/i }).first()).toBeVisible();
+    await page.getByRole("link", { name: /sign in/i }).first().click();
     await page.waitForURL("**/login**");
     await expect(page.getByPlaceholder("you@domain.com")).toBeVisible();
   });
