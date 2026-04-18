@@ -715,7 +715,7 @@ export default function OnboardingScreen() {
                   lineHeight: 18,
                 }}
               >
-                Pick your activity level — we'll compute your maintenance calories once your basics are in.
+                Pick your activity level — we&apos;ll compute your maintenance calories once your basics are in.
               </Text>
             )}
           </View>
