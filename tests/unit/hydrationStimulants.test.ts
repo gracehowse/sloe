@@ -5,6 +5,8 @@ import {
   DEFAULT_ALCOHOL_WEEKLY_TARGET_G,
   DEFAULT_CAFFEINE_TARGET_MG,
   WATER_QUICK_ADDS_ML,
+  formatWaterAmount,
+  imperialWaterQuickAdds,
   isOverTarget,
   parseDayNumberMap,
   sumWaterFromMeals,
@@ -247,6 +249,75 @@ describe("isOverTarget", () => {
     expect(isOverTarget(500, 0)).toBe(false); // target 0 = no opt-in
     expect(isOverTarget(Number.NaN, 400)).toBe(false);
     expect(isOverTarget(500, Number.NaN)).toBe(false);
+  });
+});
+
+describe("formatWaterAmount", () => {
+  it("metric: renders integer millilitres below 1 L", () => {
+    expect(formatWaterAmount(250, "metric")).toEqual({ value: "250", unit: "ml" });
+    expect(formatWaterAmount(999, "metric")).toEqual({ value: "999", unit: "ml" });
+  });
+
+  it("metric: renders one-decimal litres at and above 1 L, trimming .0", () => {
+    expect(formatWaterAmount(1000, "metric")).toEqual({ value: "1", unit: "L" });
+    expect(formatWaterAmount(1500, "metric")).toEqual({ value: "1.5", unit: "L" });
+    expect(formatWaterAmount(2000, "metric")).toEqual({ value: "2", unit: "L" });
+    expect(formatWaterAmount(2400, "metric")).toEqual({ value: "2.4", unit: "L" });
+  });
+
+  it("imperial: converts ml to integer fl oz", () => {
+    // 250 ml / 29.5735 = 8.4535… → rounds to 8
+    expect(formatWaterAmount(250, "imperial")).toEqual({ value: "8", unit: "fl oz" });
+    // 1000 ml / 29.5735 = 33.814… → rounds to 34
+    expect(formatWaterAmount(1000, "imperial")).toEqual({ value: "34", unit: "fl oz" });
+    // 2400 ml / 29.5735 = 81.15… → rounds to 81
+    expect(formatWaterAmount(2400, "imperial")).toEqual({ value: "81", unit: "fl oz" });
+  });
+
+  it("imperial: keeps fl oz unit above the 128 fl oz / 1 US gallon mark", () => {
+    // 4000 ml / 29.5735 = 135.26… → 135 fl oz (no qt / gal switch).
+    expect(formatWaterAmount(4000, "imperial")).toEqual({ value: "135", unit: "fl oz" });
+  });
+
+  it("defensive: 0 / negative / NaN inputs render as 0 of the chosen unit", () => {
+    expect(formatWaterAmount(0, "metric")).toEqual({ value: "0", unit: "ml" });
+    expect(formatWaterAmount(-250, "metric")).toEqual({ value: "0", unit: "ml" });
+    expect(formatWaterAmount(Number.NaN, "metric")).toEqual({ value: "0", unit: "ml" });
+    expect(formatWaterAmount(Number.POSITIVE_INFINITY, "metric")).toEqual({
+      value: "0",
+      unit: "ml",
+    });
+    expect(formatWaterAmount(-1, "imperial")).toEqual({ value: "0", unit: "fl oz" });
+    expect(formatWaterAmount(Number.NaN, "imperial")).toEqual({
+      value: "0",
+      unit: "fl oz",
+    });
+  });
+});
+
+describe("imperialWaterQuickAdds", () => {
+  it("returns exactly four entries", () => {
+    expect(imperialWaterQuickAdds()).toHaveLength(4);
+  });
+
+  it("every entry has positive integer millilitres and a non-empty label", () => {
+    for (const chip of imperialWaterQuickAdds()) {
+      expect(chip.ml).toBeGreaterThan(0);
+      expect(Number.isInteger(chip.ml)).toBe(true);
+      expect(chip.label.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("entries are ordered ascending by millilitres so the UI can render left-to-right", () => {
+    const mls = imperialWaterQuickAdds().map((c) => c.ml);
+    const sorted = [...mls].sort((a, b) => a - b);
+    expect(mls).toEqual(sorted);
+  });
+
+  it("labels name the imperial volume ('fl oz') so chips are imperial-friendly", () => {
+    for (const chip of imperialWaterQuickAdds()) {
+      expect(chip.label).toMatch(/fl oz/);
+    }
   });
 });
 

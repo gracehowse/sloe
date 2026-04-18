@@ -59,6 +59,76 @@ export function sumWaterFromMeals<M extends { waterMl?: number | null }>(
 /** Water quick-add presets in millilitres. */
 export const WATER_QUICK_ADDS_ML = [100, 250, 500, 750] as const;
 
+/** Conversion constant — US customary fluid ounce in millilitres. */
+const ML_PER_US_FLOZ = 29.5735;
+
+/**
+ * Format a water amount for display, respecting the user's measurement system.
+ *
+ * Storage is always millilitres (`profiles.target_water_ml`, `extra_water_by_day`) —
+ * this helper is display-only. Returns the numeric `value` and its `unit` as
+ * separate fields so callers can compose a single-line progress label
+ * (`"250 ml / 2 L"`) or lay the unit out stylistically.
+ *
+ * Metric:
+ *   - `< 1000 ml` → integer millilitres (`"250" / "ml"`).
+ *   - `≥ 1000 ml` → one-decimal litres with the trailing `.0` trimmed
+ *     (`"2" / "L"`, `"2.5" / "L"`).
+ *
+ * Imperial:
+ *   - Convert ml → US fluid ounces (1 fl oz = 29.5735 ml), round to the
+ *     nearest integer. Unit is always `"fl oz"` — we keep one unit across
+ *     the range so the progress label (`"34 fl oz / 100 fl oz"`) stays
+ *     readable. A future decision could introduce `US cups` above a
+ *     threshold; not doing it today to keep the card simple and glanceable.
+ *
+ * Defensive: negative / non-finite / NaN inputs format as `"0" / "ml"` or
+ * `"0" / "fl oz"` so an in-flight undo race can never render `"NaN ml"`.
+ */
+export function formatWaterAmount(
+  ml: number,
+  system: "metric" | "imperial",
+): { value: string; unit: string } {
+  const safeMl =
+    typeof ml === "number" && Number.isFinite(ml) && ml > 0 ? ml : 0;
+  if (system === "imperial") {
+    const floz = Math.round(safeMl / ML_PER_US_FLOZ);
+    return { value: String(floz), unit: "fl oz" };
+  }
+  if (safeMl >= 1000) {
+    const litres = (safeMl / 1000).toFixed(1).replace(/\.0$/, "");
+    return { value: litres, unit: "L" };
+  }
+  return { value: String(Math.round(safeMl)), unit: "ml" };
+}
+
+/**
+ * Imperial-friendly water quick-add presets. Returns four entries in
+ * ascending `ml` order — the `ml` value is what actually gets logged
+ * (storage stays metric), the `label` is the imperial rendering users tap.
+ *
+ * Picks align with the metric four-up (100 / 250 / 500 / 750 ml) scale
+ * but snap to common imperial volumes:
+ *   - `4 fl oz` ≈ 118 ml (half-cup sip)
+ *   - `8 fl oz` ≈ 237 ml (1 US cup — the "glass of water")
+ *   - `16 fl oz` ≈ 473 ml (pint / tall glass)
+ *   - `20 fl oz` ≈ 591 ml (large bottle)
+ *
+ * Integer millilitres so the reducer math stays clean. Ordered ascending
+ * so the UI can render them left-to-right without extra sorting.
+ */
+export function imperialWaterQuickAdds(): ReadonlyArray<{
+  ml: number;
+  label: string;
+}> {
+  return [
+    { ml: 118, label: "4 fl oz" },
+    { ml: 237, label: "8 fl oz" },
+    { ml: 473, label: "16 fl oz" },
+    { ml: 591, label: "20 fl oz" },
+  ];
+}
+
 /**
  * Caffeine quick-add presets in milligrams.
  * Values are reasonable UK/EU averages, rounded to the nearest integer.

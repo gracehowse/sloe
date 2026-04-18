@@ -30,10 +30,9 @@ describe("favoriteKey", () => {
 });
 
 // NOTE: Supabase integration tests for listFavorites / addFavorite /
-// removeFavorite / isFavorite are intentionally deferred. They require a
-// Supabase mock shaped to match the chained query-builder pattern (`from()
-// .select().eq().order()`, `from().insert().select().single()`, etc.) and
-// are best written alongside the broader `nutrition_entries` CRUD mocks
-// we haven't stood up yet. Tracked for `qa-lead`. The key-building logic
-// above is the piece that can silently drift the unique index, so it is
-// the critical thing to lock in with unit tests today.
+// removeFavorite / isFavorite live in `favoriteFoodsClient.test.ts`
+// (landed 2026-04-18 via M11 audit fix). They mock the chained query
+// builder (`from().insert().select().single()`, `from().delete().eq().eq()`,
+// etc.) and cover the PG 23505 unique-violation recovery path. The
+// `favoriteKey` tests above remain here because the key-building logic
+// is the piece that can silently drift the unique index.

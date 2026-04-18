@@ -26,6 +26,8 @@
  *    focused on I/O so the pure helpers remain trivially testable.
  */
 
+import { isMealSlot } from "./mealSlots";
+
 /** Supabase-js-compatible shape. Typed as `any` on purpose — this file
  * must import from neither workspace's generated types. */
 type SupabaseLike = {
@@ -69,6 +71,28 @@ export type SavedMealInput = {
   items: Array<Omit<SavedMealItem, "id" | "position">>;
 };
 
+/**
+ * Maximum length for a saved-meal combo name (characters). Matches the
+ * `maxLength={80}` cap on the `SaveMealDialog` name input so a name
+ * accepted at create-time stays acceptable at rename-time.
+ */
+export const SAVED_MEAL_NAME_MAX_LENGTH = 80;
+
+/**
+ * Normalise a saved-meal name for persistence: trim surrounding
+ * whitespace and clip to `SAVED_MEAL_NAME_MAX_LENGTH`. Returns `null`
+ * when the normalised result is empty — callers use this to decide
+ * whether a user's input is valid without implementing the trim / cap
+ * rule more than once. Used by the rename dialog (audit M7) and by any
+ * caller that needs to pre-validate a name before hitting Supabase.
+ */
+export function normaliseSavedMealName(raw: string): string | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  if (trimmed.length <= SAVED_MEAL_NAME_MAX_LENGTH) return trimmed;
+  return trimmed.slice(0, SAVED_MEAL_NAME_MAX_LENGTH);
+}
+
 function safeNumber(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : Number(n);
   return Number.isFinite(v) ? v : fallback;
@@ -82,12 +106,14 @@ function safeNonNegative(n: unknown, fallback = 0): number {
 function normaliseSlot(
   raw: unknown,
 ): "Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined {
+  // Strict canonical-casing match — legacy DB writes only ever stored
+  // one of the four canonical spellings, so `isMealSlot` is the right
+  // guard here. `normaliseMealSlot` (case-insensitive) is intentionally
+  // NOT used: this function backs `rowToItem` reads of a DB value that
+  // the DB layer already normalises on write.
   if (raw == null) return undefined;
   const s = String(raw).trim();
-  if (s === "Breakfast" || s === "Lunch" || s === "Dinner" || s === "Snacks") {
-    return s;
-  }
-  return undefined;
+  return isMealSlot(s) ? s : undefined;
 }
 
 function rowToItem(row: any): SavedMealItem {

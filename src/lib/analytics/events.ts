@@ -80,6 +80,12 @@ export const AnalyticsEvents = {
    * Payload: `{ newStreak }`. Separate from the `food_logged` event that
    * triggered the crossing so retention dashboards can slice by milestone. */
   streak_freeze_earned: "streak_freeze_earned",
+  /** User dismissed the one-time "You earned a freeze" row on the Today
+   * streak insight card (Batch 4.11 — 2026-04-18 audit H7). Payload:
+   * `{ earnedAt }` — the ISO timestamp of the earned entry that was
+   * acknowledged. One event per earned moment per user. Tracks that the
+   * celebratory surface was actually seen, not just fired in analytics. */
+  streak_freeze_earned_seen: "streak_freeze_earned_seen",
   /** Weekly recap card appeared on the Progress dashboard (Batch 4.11).
    * Payload: `{ weekKey }`. Fires once per week per platform load. */
   weekly_recap_shown: "weekly_recap_shown",
@@ -92,6 +98,12 @@ export const AnalyticsEvents = {
    * Fires when the local notification is scheduled (mobile) or when the
    * server-side push is deferred (web). Payload: `{ weekKey }`. */
   weekly_recap_push_sent: "weekly_recap_push_sent",
+  /** User flipped the Settings toggle controlling `profiles.weekly_recap_push_enabled`
+   * (web `Settings` / mobile `more.tsx`). Fires once per committed change, never on
+   * initial hydration from Supabase, never on dialog-cancel no-ops. Payload:
+   * `{ enabled: boolean }`. Added 2026-04-18 (H6 audit fix) so product can
+   * measure opt-out rate without inferring from `weekly_recap_push_sent` drop-off. */
+  weekly_recap_push_enabled_toggled: "weekly_recap_push_enabled_toggled",
   /** iOS home/lock-screen widget snapshot was written to the shared App
    * Group (Batch 5.12). Fires when Today totals or active fast state
    * change. Mobile-only. No payload — use `$sent_at` for freshness. */
@@ -119,6 +131,20 @@ export const AnalyticsEvents = {
   /** Free-tier user tapped the photo-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. */
   ai_photo_log_paywalled: "ai_photo_log_paywalled",
+  /** User changed the "Week starts on" preference in Settings (web) /
+   * More (mobile). Fires once per committed change, not on initial
+   * hydration. Payload: `{ from: "monday" | "sunday"; to: "monday" | "sunday" }`.
+   * Added 2026-04-18 (H5 audit fix) so product can measure Monday vs
+   * Sunday preference in the installed base. */
+  week_start_day_changed: "week_start_day_changed",
+  /** Food-search portion picker surfaced a "If you log this" projection
+   * for a new `(food, quantity, unit)` tuple (web `FoodSearch` / mobile
+   * `FoodSearchModal`). Fires once per distinct preview change — never
+   * on initial mount, never per-pixel while the user adjusts the
+   * quantity (caller de-dupes via a last-emitted key). Payload:
+   * `{ fromSlot?: string; overCalories: boolean; kcalDelta: number }`.
+   * Added 2026-04-18 (H5 audit fix) to measure fit-this-in usage. */
+  fit_this_in_previewed: "fit_this_in_previewed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

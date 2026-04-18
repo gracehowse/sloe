@@ -17,6 +17,32 @@
 
 export type AiLoggingSource = "voice" | "ai_photo";
 
+/**
+ * Canonical source strings for AI-logged diary rows (audit M10, 2026-04-18).
+ *
+ * Written by voice + photo commit paths on both platforms so new rows
+ * carry a single, human-readable tag. Historical rows with legacy
+ * strings (`"voice"`, `"ai_voice"`, `"ai_photo"`) are still recognised
+ * by `isAiSourcedFoodHistoryItem` in `foodHistory.ts` — the detector
+ * is permissive by design; writes are strict.
+ *
+ * Do not migrate historical rows; the detector handles backwards
+ * compatibility.
+ */
+export const AI_VOICE_SOURCE = "AI voice" as const;
+export const AI_PHOTO_SOURCE = "AI photo" as const;
+
+/**
+ * Resolve the canonical source string for a committed AI-logged item
+ * based on its `source` discriminator. `"voice"` → `AI_VOICE_SOURCE`,
+ * any photo source → `AI_PHOTO_SOURCE`. Centralises the mapping so
+ * the two commit paths (web `NutritionTracker` and mobile Today) can
+ * never drift.
+ */
+export function aiLoggingSourceLabel(source: AiLoggingSource): string {
+  return source === "voice" ? AI_VOICE_SOURCE : AI_PHOTO_SOURCE;
+}
+
 export type AiLoggedItem = {
   name: string;
   quantity?: number;

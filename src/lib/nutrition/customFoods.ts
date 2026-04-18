@@ -58,6 +58,28 @@ export type CustomFoodPortion =
   | { type: "grams"; grams: number }
   | { type: "serving"; label: string; quantity: number };
 
+/** Shape used by the food-search portion picker on both platforms. Kept
+ * loose (no `readonly`) to stay compatible with USDA/OFF portions which
+ * are constructed as plain objects. */
+export type CustomFoodPortionChip = {
+  label: string;
+  gramWeight: number;
+  amount: number;
+};
+
+/** Macros-per-100g shape shared with the food-search UI. Mirrors
+ * `src/app/components/FoodSearch.tsx` and `apps/mobile/lib/verifyRecipe.ts`
+ * exactly so a custom food can slot into either panel without branching. */
+export type CustomFoodMacrosPer100g = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
+};
+
 /** Maximum length of a custom-food name. Matches the DB CHECK. */
 export const CUSTOM_FOOD_NAME_MAX = 120;
 
@@ -157,6 +179,58 @@ export function normaliseCustomFoodName(name: string): string {
   const collapsed = name.replace(/\s+/g, " ").trim();
   if (collapsed.length <= CUSTOM_FOOD_NAME_MAX) return collapsed;
   return collapsed.slice(0, CUSTOM_FOOD_NAME_MAX).trim();
+}
+
+/**
+ * Project a custom food's macros onto a per-100g basis so the food-search
+ * portion picker — which uniformly reasons in `per100g × grams / 100` —
+ * can scale it using the same `scaleMacros` path as USDA/OFF results.
+ *
+ * Defensive: if `baseGrams` is non-finite or ≤ 0 we fall back to 100 so
+ * the caller never divides by zero. Fiber is echoed as `0` (not omitted)
+ * when the food has no fiber value so downstream code can rely on the
+ * shape. `sugarG` / `sodiumMg` are always zero — custom foods don't
+ * collect them. Math deliberately mirrors `scaleMacrosForGrams`
+ * rounding so scaled custom foods and edit-preview output agree to the
+ * byte.
+ */
+export function customFoodToMacrosPer100g(
+  food: Pick<CustomFood, "baseGrams" | "calories" | "protein" | "carbs" | "fat" | "fiber">,
+): CustomFoodMacrosPer100g {
+  const baseRaw = safeNumber(food.baseGrams);
+  const base = Number.isFinite(baseRaw) && baseRaw > 0 ? baseRaw : 100;
+  const factor = 100 / base;
+  return {
+    calories: Math.round(safeNonNegative(food.calories) * factor),
+    protein: roundTo(safeNonNegative(food.protein) * factor, 1),
+    carbs: roundTo(safeNonNegative(food.carbs) * factor, 1),
+    fat: roundTo(safeNonNegative(food.fat) * factor, 1),
+    fiberG: typeof food.fiber === "number" && Number.isFinite(food.fiber)
+      ? roundTo(safeNonNegative(food.fiber) * factor, 1)
+      : 0,
+    sugarG: 0,
+    sodiumMg: 0,
+  };
+}
+
+/**
+ * Build the portion-chip list for a custom food: always grams first,
+ * then one chip per saved serving with `gramWeight` == saved grams.
+ * Invalid entries (empty label, non-finite or ≤ 0 grams) are silently
+ * dropped so a half-saved row never renders a 0 g chip.
+ *
+ * Runs `dedupeServings` first so the returned list already respects
+ * case-insensitive label uniqueness.
+ */
+export function buildCustomFoodPortions(
+  food: Pick<CustomFood, "servings">,
+): CustomFoodPortionChip[] {
+  const portions: CustomFoodPortionChip[] = [{ label: "g", gramWeight: 1, amount: 1 }];
+  const servings = dedupeServings(food.servings ?? []);
+  for (const s of servings) {
+    portions.push({ label: s.label, gramWeight: s.grams, amount: 1 });
+  }
+  return portions;
 }
 
 /**

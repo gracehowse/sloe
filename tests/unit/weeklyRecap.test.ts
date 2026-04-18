@@ -208,6 +208,30 @@ describe("shouldShowRecap", () => {
     const satAm = new Date(2026, 3, 11, 9, 0, 0);
     expect(shouldShowRecap(null, "2026-W14", satAm, "sunday")).toBe(false);
   });
+
+  it("does not depend on weekly_recap_push_enabled (H6 audit, 2026-04-18)", () => {
+    // The Settings toggle shipped on 2026-04-18 controls the mobile push
+    // only — the Progress / Today recap card must keep appearing based
+    // solely on `shouldShowRecap`. This test pins the contract by
+    // exercising the helper identically for both flag states (the flag
+    // is deliberately not an argument) and asserting the visibility
+    // verdict is unchanged.
+    const sun18 = new Date(2026, 3, 12, 18, 0, 0); // Sun 12 Apr 18:00
+    const pushStates = [true, false] as const;
+    for (const _pushEnabled of pushStates) {
+      // The helper has no knob for the push flag, which is exactly the
+      // point — so we simply run it and confirm the verdict does not
+      // change across the two conceptual settings. Using `_pushEnabled`
+      // keeps the parity intent documented in the test body.
+      expect(shouldShowRecap(null, "2026-W14", sun18, "monday")).toBe(true);
+      expect(shouldShowRecap("2026-W14", "2026-W14", sun18, "monday")).toBe(false);
+    }
+    // Sanity check that suppressing the Sunday-evening visibility window
+    // still requires the same-week dismiss — nothing about the push
+    // toggle could have landed us here by mistake.
+    const thu = new Date(2026, 3, 16, 10, 0, 0);
+    expect(shouldShowRecap(null, "2026-W15", thu, "monday")).toBe(false);
+  });
 });
 
 describe("nextRecapFireDate", () => {

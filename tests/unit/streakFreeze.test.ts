@@ -166,6 +166,25 @@ describe("computeProtectedStreak", () => {
     expect(info.freezesConsumed).toBe(0);
     expect(info.protectedDateKeys).toEqual([]);
   });
+
+  // 2026-04-18 audit H7 — DayStrip renders a ❄ glyph on each tile whose
+  // key is in `protectedDateKeys`. Pin the array shape (a plain
+  // dateKey[], not a Set) so the consumer contract can't silently flip.
+  it("returns protectedDateKeys as a dateKey[] for a single zero-day mid-streak", () => {
+    const data = byDayFrom(["2026-04-12", "2026-04-14", "2026-04-15"]);
+    const ledger: FreezeLedger = {
+      earnedAt: [{ earnedAt: "2026-04-10T00:00:00Z" }],
+      usedHistory: [],
+    };
+    const info = computeProtectedStreak(data, ledger, 3, now);
+    expect(Array.isArray(info.protectedDateKeys)).toBe(true);
+    expect(info.protectedDateKeys).toEqual(["2026-04-13"]);
+    // Every entry must satisfy the YYYY-MM-DD shape the DayStrip hash
+    // matches against, otherwise the ❄ glyph silently won't render.
+    for (const key of info.protectedDateKeys) {
+      expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
 });
 
 describe("earnFreezeIfMilestone", () => {

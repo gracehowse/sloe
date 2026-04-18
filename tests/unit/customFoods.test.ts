@@ -8,6 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  buildCustomFoodPortions,
+  customFoodToMacrosPer100g,
   dedupeServings,
   normaliseCustomFoodName,
   resolvePortionToGrams,
@@ -257,5 +259,168 @@ describe("dedupeServings", () => {
   it("rounds grams to two decimals (matches server-side tolerance)", () => {
     const out = dedupeServings([{ label: "1 bowl", grams: 80.12345 }]);
     expect(out).toEqual([{ label: "1 bowl", grams: 80.12 }]);
+  });
+});
+
+// ── Food-search adapters (Batch 3.9 wire-up) ────────────────────────
+//
+// These helpers power the "Custom" rows + portion chips inside
+// `FoodSearch.tsx` (web) and `FoodSearchModal.tsx` (mobile). They must
+// agree to the byte so a homemade granola row doesn't scale to different
+// macros on different platforms. If these tests drift, so does the UI.
+describe("customFoodToMacrosPer100g", () => {
+  it("is a no-op when macros already reference 100g", () => {
+    expect(
+      customFoodToMacrosPer100g({
+        baseGrams: 100,
+        calories: 400,
+        protein: 10,
+        carbs: 60,
+        fat: 12,
+      }),
+    ).toEqual({
+      calories: 400,
+      protein: 10,
+      carbs: 60,
+      fat: 12,
+      fiberG: 0,
+      sugarG: 0,
+      sodiumMg: 0,
+    });
+  });
+
+  it("projects 80g-basis macros onto 100g (factor 1.25)", () => {
+    expect(
+      customFoodToMacrosPer100g({
+        baseGrams: 80,
+        calories: 200,
+        protein: 8,
+        carbs: 20,
+        fat: 6,
+        fiber: 4,
+      }),
+    ).toEqual({
+      calories: 250,
+      protein: 10,
+      carbs: 25,
+      fat: 7.5,
+      fiberG: 5,
+      sugarG: 0,
+      sodiumMg: 0,
+    });
+  });
+
+  it("falls back to a 100g basis when baseGrams is zero, negative or non-finite", () => {
+    // Zero basis → fall back to 100 so we don't divide by zero.
+    expect(
+      customFoodToMacrosPer100g({
+        baseGrams: 0,
+        calories: 300,
+        protein: 5,
+        carbs: 40,
+        fat: 10,
+      }).calories,
+    ).toBe(300);
+    expect(
+      customFoodToMacrosPer100g({
+        baseGrams: -5,
+        calories: 300,
+        protein: 5,
+        carbs: 40,
+        fat: 10,
+      }).calories,
+    ).toBe(300);
+    expect(
+      customFoodToMacrosPer100g({
+        baseGrams: Number.NaN,
+        calories: 300,
+        protein: 5,
+        carbs: 40,
+        fat: 10,
+      }).calories,
+    ).toBe(300);
+  });
+
+  it("echoes fiberG as 0 when the food has no saved fiber", () => {
+    const out = customFoodToMacrosPer100g({
+      baseGrams: 100,
+      calories: 100,
+      protein: 5,
+      carbs: 10,
+      fat: 2,
+    });
+    expect(out.fiberG).toBe(0);
+    expect(out.sugarG).toBe(0);
+    expect(out.sodiumMg).toBe(0);
+  });
+
+  it("rounds consistently with scaleMacrosForGrams so logs match previews", () => {
+    const food = {
+      baseGrams: 30,
+      calories: 133,
+      protein: 4.7,
+      carbs: 24.2,
+      fat: 1.1,
+    };
+    const per100 = customFoodToMacrosPer100g(food);
+    // A 30g portion should re-derive the original macros (mod rounding).
+    expect(per100.calories).toBeCloseTo(Math.round((133 / 30) * 100), 0);
+    expect(per100.protein).toBeCloseTo(Math.round((4.7 / 30) * 100 * 10) / 10, 1);
+  });
+});
+
+describe("buildCustomFoodPortions", () => {
+  it("always exposes grams as the first chip so users can log any weight", () => {
+    const out = buildCustomFoodPortions({ servings: [] });
+    expect(out).toEqual([{ label: "g", gramWeight: 1, amount: 1 }]);
+  });
+
+  it("appends one chip per saved serving in order", () => {
+    const out = buildCustomFoodPortions({
+      servings: [
+        { label: "1 bowl", grams: 80 },
+        { label: "1 cup", grams: 120 },
+      ],
+    });
+    expect(out).toEqual([
+      { label: "g", gramWeight: 1, amount: 1 },
+      { label: "1 bowl", gramWeight: 80, amount: 1 },
+      { label: "1 cup", gramWeight: 120, amount: 1 },
+    ]);
+  });
+
+  it("drops empty labels and non-positive gram weights via dedupeServings", () => {
+    const out = buildCustomFoodPortions({
+      servings: [
+        { label: "", grams: 80 },
+        { label: "  ", grams: 50 },
+        { label: "1 bowl", grams: 0 },
+        { label: "1 bowl", grams: -5 },
+        { label: "1 bowl", grams: 80 },
+      ],
+    });
+    expect(out).toEqual([
+      { label: "g", gramWeight: 1, amount: 1 },
+      { label: "1 bowl", gramWeight: 80, amount: 1 },
+    ]);
+  });
+
+  it("dedupes servings case-insensitively so '1 BOWL' cannot shadow '1 bowl'", () => {
+    const out = buildCustomFoodPortions({
+      servings: [
+        { label: "1 bowl", grams: 80 },
+        { label: "1 BOWL", grams: 999 },
+      ],
+    });
+    expect(out).toEqual([
+      { label: "g", gramWeight: 1, amount: 1 },
+      { label: "1 bowl", gramWeight: 80, amount: 1 },
+    ]);
+  });
+
+  it("treats missing `servings` as an empty array (never throws)", () => {
+    // Rare but possible: a partially-hydrated row from a stale cache.
+    const out = buildCustomFoodPortions({ servings: undefined as unknown as CustomFood["servings"] });
+    expect(out).toEqual([{ label: "g", gramWeight: 1, amount: 1 }]);
   });
 });

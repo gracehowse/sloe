@@ -4,8 +4,13 @@ import {
   computeFrequentMeals,
   computeRecentMeals,
   foodHistoryKey,
+  isAiSourcedFoodHistoryItem,
   type FoodHistoryMealLike,
 } from "@/lib/nutrition/foodHistory";
+import {
+  AI_PHOTO_SOURCE,
+  AI_VOICE_SOURCE,
+} from "@/lib/nutrition/aiLogging";
 
 type M = FoodHistoryMealLike & { name?: string };
 
@@ -212,5 +217,43 @@ describe("computeEatAgainForSlot", () => {
       "2026-04-13": [{ ...meal("Salad", 400), name: "Lunch" }],
     };
     expect(computeEatAgainForSlot(byDay, "Lunch", new Date("nope"))).toBeNull();
+  });
+});
+
+describe("isAiSourcedFoodHistoryItem (M10 backwards-compat, 2026-04-18)", () => {
+  // The detector is permissive by design: writes use the canonical
+  // `AI voice` / `AI photo` constants (see `aiLoggingSourceLabel`) but
+  // legacy rows (`voice`, `ai_voice`, `ai_photo`) must continue to
+  // surface the AI badge in the Quick Add Recent tab — we never
+  // migrate historical rows.
+  it("matches the new canonical write labels", () => {
+    expect(isAiSourcedFoodHistoryItem({ source: AI_VOICE_SOURCE })).toBe(true);
+    expect(isAiSourcedFoodHistoryItem({ source: AI_PHOTO_SOURCE })).toBe(true);
+  });
+
+  it("still matches legacy snake_case sources", () => {
+    expect(isAiSourcedFoodHistoryItem({ source: "ai_voice" })).toBe(true);
+    expect(isAiSourcedFoodHistoryItem({ source: "ai_photo" })).toBe(true);
+    expect(isAiSourcedFoodHistoryItem({ source: "voice" })).toBe(true);
+  });
+
+  it("matches regardless of casing / whitespace (written spelling drift)", () => {
+    expect(isAiSourcedFoodHistoryItem({ source: "ai voice" })).toBe(true);
+    expect(isAiSourcedFoodHistoryItem({ source: "AI VOICE" })).toBe(true);
+    expect(isAiSourcedFoodHistoryItem({ source: "  AI photo  " })).toBe(true);
+  });
+
+  it("does not match unrelated sources", () => {
+    expect(isAiSourcedFoodHistoryItem({ source: "USDA" })).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: "Open Food Facts" })).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: "manual" })).toBe(false);
+  });
+
+  it("handles missing / null / empty source", () => {
+    expect(isAiSourcedFoodHistoryItem({})).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: null })).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: undefined })).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: "" })).toBe(false);
+    expect(isAiSourcedFoodHistoryItem({ source: "   " })).toBe(false);
   });
 });

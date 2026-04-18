@@ -19,6 +19,8 @@
  *    dropped, so the user can still see + re-log them.
  */
 
+import { normaliseMealSlot } from "./mealSlots";
+
 /** Shape of a journal meal that this helper can consume. Narrow on
  * purpose so both `JournalMeal` (mobile) and `LoggedMeal` (web) fit. */
 export type FoodHistoryMealLike = {
@@ -227,7 +229,10 @@ export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: 
 ): FoodHistoryItem | null {
   if (!slot || !(now instanceof Date) || Number.isNaN(now.getTime())) return null;
   const todayKey = formatDayKey(now);
-  const normSlot = slot.trim().toLowerCase();
+  // Canonical slot via the shared helper — accepts "Breakfast" / "breakfast" /
+  // "  BREAKFAST  " / "Snack" equally. Unknown slot → no suggestion.
+  const targetSlot = normaliseMealSlot(slot);
+  if (!targetSlot) return null;
   // Walk days newest → oldest, skipping today.
   const dayKeys = Object.keys(byDay).sort().reverse();
   for (const dk of dayKeys) {
@@ -237,8 +242,7 @@ export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: 
     // Last meal in that slot on that day.
     for (let i = meals.length - 1; i >= 0; i -= 1) {
       const m = meals[i]!;
-      const mSlot = String(m.name ?? "").trim().toLowerCase();
-      if (mSlot === normSlot) {
+      if (normaliseMealSlot(m.name) === targetSlot) {
         const title = titleOf(m);
         const cal = Math.round(safeNumber(m.calories));
         const key = foodHistoryKey(title, cal);
@@ -256,4 +260,34 @@ function formatDayKey(d: Date): string {
   const mo = String(d.getMonth() + 1).padStart(2, "0");
   const da = String(d.getDate()).padStart(2, "0");
   return `${y}-${mo}-${da}`;
+}
+
+/**
+ * Returns true when a history/favourite/recent/frequent row originated from an
+ * AI-assisted logging flow (voice or photo capture).
+ *
+ * Shared by the web and mobile Quick Add panels so the "AI" badge fires for
+ * the same set of `source` strings on both platforms. Matches the strings
+ * written by `NutritionTracker` (web) and mobile Today voice/photo commit
+ * paths: `"AI voice"`, `"AI photo"`, `"voice"`, `"ai_voice"`, `"ai_photo"`.
+ * Accepts arbitrary casing and ignores leading/trailing whitespace.
+ *
+ * Centralising this rule is a CLAUDE.md parity requirement (audit H1,
+ * 2026-04-18): if either platform updates the AI source tag, the other
+ * stays in sync automatically because both import from here.
+ */
+export function isAiSourcedFoodHistoryItem(
+  item: Pick<FoodHistoryItem, "source"> | { source?: string | null | undefined },
+): boolean {
+  const s = item?.source;
+  if (s == null) return false;
+  const lc = String(s).trim().toLowerCase();
+  if (!lc) return false;
+  return (
+    lc.includes("ai voice") ||
+    lc.includes("ai photo") ||
+    lc === "voice" ||
+    lc === "ai_voice" ||
+    lc === "ai_photo"
+  );
 }

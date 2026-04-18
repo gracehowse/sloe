@@ -8,6 +8,9 @@
 import { describe, it, expect } from "vitest";
 import {
   aggregateTotals,
+  aiLoggingSourceLabel,
+  AI_PHOTO_SOURCE,
+  AI_VOICE_SOURCE,
   averageConfidence,
   classifyConfidence,
   isLowConfidence,
@@ -286,6 +289,29 @@ describe("sanitiseAiItem", () => {
     expect(item!.protein).toBe(6);
     expect(item!.carbs).toBe(1);
     expect(item!.fat).toBe(5);
+  });
+});
+
+describe("aiLoggingSourceLabel (M10, 2026-04-18)", () => {
+  // Contract test: new writes must use the canonical human-readable
+  // tags. The detector in foodHistory.ts is permissive and keeps
+  // recognising legacy strings — but strict writes stop the pile from
+  // growing.
+  it("voice source → canonical 'AI voice'", () => {
+    expect(aiLoggingSourceLabel("voice")).toBe("AI voice");
+    expect(aiLoggingSourceLabel("voice")).toBe(AI_VOICE_SOURCE);
+  });
+
+  it("ai_photo source → canonical 'AI photo'", () => {
+    expect(aiLoggingSourceLabel("ai_photo")).toBe("AI photo");
+    expect(aiLoggingSourceLabel("ai_photo")).toBe(AI_PHOTO_SOURCE);
+  });
+
+  it("exposes the canonical constants as string literals", () => {
+    // Pins the exact spelling + casing — a typo here would flip every
+    // new AI-logged row's Quick Add badge off silently.
+    expect(AI_VOICE_SOURCE).toBe("AI voice");
+    expect(AI_PHOTO_SOURCE).toBe("AI photo");
   });
 });
 
