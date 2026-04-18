@@ -190,7 +190,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.sm,
     padding: Spacing.sm,
-    borderRadius: Radius.md,
+    // Audit M6 (2026-04-18): card-shell uses Radius.lg to match the rest
+    // of the Today cards (mobile convention, matches web `rounded-card`).
+    borderRadius: Radius.lg,
     borderWidth: 1,
   },
   col: {

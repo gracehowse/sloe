@@ -1,0 +1,125 @@
+import React from "react";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+import Badge from "@/components/Badge";
+
+/**
+ * TodayStreakInsightCard — streak count + freeze badge + one-time
+ * "You earned a freeze" row.
+ *
+ * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
+ * 2026-04-18). All freeze ledger state stays in the host; this card
+ * only renders.
+ */
+export interface TodayStreakInsightCardProps {
+  streakDays: number;
+  freezesAvailableToday: number;
+  hasUnseenFreezeEarned: boolean;
+  onDismissFreezeEarned: () => void;
+  textColor: string;
+  textSecondaryColor: string;
+}
+
+export function TodayStreakInsightCard({
+  streakDays,
+  freezesAvailableToday,
+  hasUnseenFreezeEarned,
+  onDismissFreezeEarned,
+  textColor,
+  textSecondaryColor,
+}: TodayStreakInsightCardProps) {
+  if (streakDays <= 0) return null;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        padding: Spacing.lg,
+        borderRadius: Radius.lg,
+        backgroundColor: Accent.success + "08",
+        borderWidth: 1,
+        borderColor: Accent.success + "18",
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: Accent.success + "18",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="flame" size={18} color={Accent.success} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>
+          {streakDays}-day logging streak
+        </Text>
+        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 1 }}>
+          You&apos;ve logged meals {streakDays} days in a row.
+        </Text>
+        {freezesAvailableToday > 0 ? (
+          <Badge
+            variant="freeze"
+            accessibilityLabel={`${freezesAvailableToday} streak freeze${
+              freezesAvailableToday === 1 ? "" : "s"
+            } available`}
+            icon={<Ionicons name="snow-outline" size={10} color={Accent.cyan} />}
+            style={{ marginTop: 4 }}
+          >
+            {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
+          </Badge>
+        ) : null}
+        {hasUnseenFreezeEarned ? (
+          <View
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`You earned a freeze — ${freezesAvailableToday} available`}
+            style={{
+              marginTop: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: Radius.md,
+              borderWidth: 1,
+              borderColor: Accent.cyan + "59",
+              backgroundColor: Accent.cyan + "1A",
+            }}
+          >
+            <Ionicons name="snow-outline" size={13} color={Accent.cyan} />
+            <Text style={{ flex: 1, fontSize: 11, fontWeight: "600", color: textColor }}>
+              You earned a freeze — {freezesAvailableToday} available
+            </Text>
+            <Pressable
+              onPress={onDismissFreezeEarned}
+              accessibilityRole="button"
+              accessibilityLabel="Got it — dismiss earned freeze"
+              hitSlop={6}
+              style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.sm }}
+            >
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: "700",
+                  color: Accent.cyan,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                }}
+              >
+                Got it
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+export default TodayStreakInsightCard;

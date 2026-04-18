@@ -35,10 +35,15 @@ import {
   searchCustomFoods,
   updateCustomFood,
 } from "../../../src/lib/nutrition/customFoodsClient";
-import type { CustomFood } from "../../../src/lib/nutrition/customFoods";
+import {
+  buildCustomFoodPortions,
+  customFoodToMacrosPer100g,
+  type CustomFood,
+} from "../../../src/lib/nutrition/customFoods";
 import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "./CreateCustomFoodSheet";
+import Badge from "./Badge";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
@@ -212,23 +217,9 @@ function resolveInitialPortion(
   return { portion: portions[0], quantity: amt };
 }
 
-/** Convert a CustomFood row to the per-100g macros shape the rest of the
- *  modal already reasons in so the existing preview / scaling code path
- *  does not need to branch on source. */
-function customFoodToMacrosPer100g(food: CustomFood): Macros {
-  const base = Number.isFinite(food.baseGrams) && food.baseGrams > 0 ? food.baseGrams : 100;
-  const factor = 100 / base;
-  return {
-    calories: Math.round(food.calories * factor),
-    protein: Math.round(food.protein * factor * 10) / 10,
-    carbs: Math.round(food.carbs * factor * 10) / 10,
-    fat: Math.round(food.fat * factor * 10) / 10,
-    fiberG: typeof food.fiber === "number" ? Math.round(food.fiber * factor * 10) / 10 : 0,
-    sugarG: 0,
-    sodiumMg: 0,
-  };
-}
-
+/** Adapter that wraps the shared `customFoodToMacrosPer100g` helper into a
+ *  SearchRow — mobile keeps the adapter local because it also attaches the
+ *  `_custom` reference the long-press action-sheet needs. */
 function customFoodToRow(food: CustomFood): SearchRow {
   const macrosPer100g = customFoodToMacrosPer100g(food);
   const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
@@ -241,20 +232,6 @@ function customFoodToRow(food: CustomFood): SearchRow {
     _source: "CUSTOM",
     _custom: food,
   };
-}
-
-/** Build the portion list for a custom food: grams + one chip per saved
- *  serving. No USDA fallbacks — a homemade item's only canonical units
- *  are the ones the user chose to save. */
-function buildCustomFoodPortions(food: CustomFood): FoodPortion[] {
-  const portions: FoodPortion[] = [{ label: "g", gramWeight: 1, amount: 1 }];
-  for (const s of food.servings ?? []) {
-    const label = String(s?.label ?? "").trim();
-    const grams = Number(s?.grams);
-    if (!label || !Number.isFinite(grams) || grams <= 0) continue;
-    portions.push({ label, gramWeight: grams, amount: 1 });
-  }
-  return portions;
 }
 
 export default function FoodSearchModal({
@@ -293,18 +270,15 @@ export default function FoodSearchModal({
 
   // Custom foods (Batch 3.9) — only active when both supabase + userId provided.
   const customEnabled = Boolean(supabase && userId);
-  const [customLibrary, setCustomLibrary] = useState<CustomFood[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<CustomFood | undefined>(undefined);
 
   const refreshCustomLibrary = useCallback(async () => {
     if (!customEnabled || !supabase || !userId) return [] as CustomFood[];
-    const rows = await listCustomFoods(
+    return await listCustomFoods(
       supabase as Parameters<typeof listCustomFoods>[0],
       userId,
     );
-    setCustomLibrary(rows);
-    return rows;
   }, [customEnabled, supabase, userId]);
 
   /** Fetch full macros for USDA results that are missing inline nutrients */
@@ -445,15 +419,20 @@ export default function FoodSearchModal({
         const food = item._custom;
         const macrosPer100g = customFoodToMacrosPer100g(food);
         const allPortions = buildCustomFoodPortions(food);
-        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        // Prefer the first saved named serving so a single tap-to-log is
+        // possible; fall back to grams only when the user hasn't saved
+        // any servings yet.
+        const firstNamed = allPortions.find((p) => p.label !== "g");
+        const chosen = firstNamed ?? allPortions[0];
+        const defaultQty = chosen.label === "g" ? (food.baseGrams > 0 ? food.baseGrams : 100) : 1;
         setPreview({
           name: item.name,
           source: "CUSTOM",
           macrosPer100g,
           portions: allPortions,
-          chosenPortion: portion,
-          quantity,
-          quantityText: String(quantity),
+          chosenPortion: chosen,
+          quantity: defaultQty,
+          quantityText: String(defaultQty),
           customFoodId: food.id,
         });
       } else {
@@ -461,6 +440,137 @@ export default function FoodSearchModal({
       }
     },
     [initialAmount, initialUnit],
+  );
+
+  // Custom-food CRUD handlers ──────────────────────────────────────────
+  const handleCreateCustomFood = useCallback(
+    async (payload: CreateCustomFoodPayload) => {
+      if (!customEnabled || !supabase || !userId) return;
+      const created = await createCustomFood(
+        supabase as Parameters<typeof createCustomFood>[0],
+        userId,
+        payload,
+      );
+      try {
+        track(AnalyticsEvents.custom_food_created, {
+          hasBrand: Boolean(created.brand),
+          servingCount: created.servings.length,
+        });
+      } catch {
+        // Analytics must never block a save.
+      }
+      const library = await refreshCustomLibrary();
+      const fresh = library.find((f) => f.id === created.id) ?? created;
+      setEditingFood(undefined);
+      setCreateOpen(false);
+      // Auto-select the newly created food so the user lands in the
+      // portion picker and can log immediately.
+      const allPortions = buildCustomFoodPortions(fresh);
+      const firstNamed = allPortions.find((p) => p.label !== "g");
+      const chosen = firstNamed ?? allPortions[0];
+      const defaultQty = chosen.label === "g" ? (fresh.baseGrams > 0 ? fresh.baseGrams : 100) : 1;
+      setPreview({
+        name: fresh.brand ? `${fresh.name} · ${fresh.brand}` : fresh.name,
+        source: "CUSTOM",
+        macrosPer100g: customFoodToMacrosPer100g(fresh),
+        portions: allPortions,
+        chosenPortion: chosen,
+        quantity: defaultQty,
+        quantityText: String(defaultQty),
+        customFoodId: fresh.id,
+      });
+    },
+    [customEnabled, supabase, userId, refreshCustomLibrary],
+  );
+
+  const handleUpdateCustomFood = useCallback(
+    async (payload: CreateCustomFoodPayload) => {
+      if (!customEnabled || !supabase || !userId || !editingFood) return;
+      const updated = await updateCustomFood(
+        supabase as Parameters<typeof updateCustomFood>[0],
+        userId,
+        editingFood.id,
+        payload,
+      );
+      try {
+        track(AnalyticsEvents.custom_food_updated, {
+          hasBrand: Boolean(updated.brand),
+          servingCount: updated.servings.length,
+        });
+      } catch {
+        // noop
+      }
+      await refreshCustomLibrary();
+      setPreview((prev) =>
+        prev && prev.customFoodId === updated.id
+          ? {
+              ...prev,
+              name: updated.brand ? `${updated.name} · ${updated.brand}` : updated.name,
+              macrosPer100g: customFoodToMacrosPer100g(updated),
+              portions: buildCustomFoodPortions(updated),
+            }
+          : prev,
+      );
+      setEditingFood(undefined);
+    },
+    [customEnabled, supabase, userId, editingFood, refreshCustomLibrary],
+  );
+
+  const confirmAndDeleteCustomFood = useCallback(
+    async (food: CustomFood) => {
+      if (!customEnabled || !supabase || !userId) return;
+      try {
+        await deleteCustomFood(
+          supabase as Parameters<typeof deleteCustomFood>[0],
+          userId,
+          food.id,
+        );
+        try {
+          track(AnalyticsEvents.custom_food_deleted, { customFoodId: food.id });
+        } catch {
+          // noop
+        }
+        setResults((prev) =>
+          prev.filter((r) => !(r._source === "CUSTOM" && r._custom?.id === food.id)),
+        );
+        setPreview((prev) => (prev && prev.customFoodId === food.id ? null : prev));
+        await refreshCustomLibrary();
+      } catch {
+        Alert.alert("Couldn't delete", "Please try again.");
+      }
+    },
+    [customEnabled, supabase, userId, refreshCustomLibrary],
+  );
+
+  /** Long-press on a custom-food row surfaces edit / delete. Matches
+   *  web's overflow menu using the native alert idiom. */
+  const openCustomFoodActions = useCallback(
+    (food: CustomFood) => {
+      Alert.alert(food.name, food.brand ? `Brand: ${food.brand}` : undefined, [
+        {
+          text: "Edit",
+          onPress: () => {
+            setEditingFood(food);
+            setCreateOpen(true);
+          },
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () =>
+            Alert.alert(`Delete "${food.name}"?`, "This can't be undone.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => void confirmAndDeleteCustomFood(food),
+              },
+            ]),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    },
+    [confirmAndDeleteCustomFood],
   );
 
   const parseQuantityText = useCallback((text: string): number => {
@@ -496,6 +606,16 @@ export default function FoodSearchModal({
         preview.chosenPortion.label !== "ml"
           ? preview.chosenPortion.label
           : undefined;
+      if (preview.source === "CUSTOM") {
+        try {
+          const grams = Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
+          const evt: Record<string, unknown> = { grams };
+          if (servingLabel) evt.servingLabel = servingLabel;
+          track(AnalyticsEvents.custom_food_logged, evt);
+        } catch {
+          // Analytics must never block a log.
+        }
+      }
       onSelect({
         name: preview.name,
         source: preview.source,
@@ -539,24 +659,55 @@ export default function FoodSearchModal({
     });
   }, [macroTargets, macroConsumed, previewMacros]);
 
+  /**
+   * Fire `fit_this_in_previewed` once per distinct `(food, quantity,
+   * unit)` preview — keyed on name + quantity + portion label so slider
+   * drags and stepper holds don't spam PostHog. Cleared when the preview
+   * closes so re-opening the same food re-emits exactly once.
+   */
+  const lastFitKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!preview || !fitHint || !previewMacros) {
+      lastFitKeyRef.current = null;
+      return;
+    }
+    const key = `${preview.name}|${preview.quantity}|${preview.chosenPortion.label}`;
+    if (lastFitKeyRef.current === key) return;
+    lastFitKeyRef.current = key;
+    track(AnalyticsEvents.fit_this_in_previewed, {
+      overCalories: fitHint.overCalories,
+      kcalDelta: previewMacros.calories,
+    });
+  }, [preview, fitHint, previewMacros]);
+
   const renderItem = useCallback(
     ({ item }: { item: SearchRow }) => {
       const isLoading = loadingKey === item.key;
       const hasMacros = item.macrosPer100g && item.macrosPer100g.calories > 0;
       const cals = item.calsPer100g ?? item.macrosPer100g?.calories;
+      const isCustom = item._source === "CUSTOM";
+      const customFood = isCustom ? item._custom : null;
 
       return (
         <Pressable
           style={styles.resultRow}
           onPress={() => onPickResult(item)}
+          onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
           disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCustom
+              ? `Custom food: ${item.name}. Long-press for edit or delete.`
+              : item.name
+          }
         >
           {item.imageUrl && (
             <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
           )}
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              {item.verified && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {isCustom && <Badge variant="custom">Custom</Badge>}
+              {item.verified && !isCustom && (
                 <Ionicons name="checkmark-circle" size={14} color={Accent.success} />
               )}
               <Text style={styles.resultName} numberOfLines={2}>
@@ -590,7 +741,7 @@ export default function FoodSearchModal({
         </Pressable>
       );
     },
-    [loadingKey, onPickResult, colors],
+    [loadingKey, onPickResult, colors, openCustomFoodActions],
   );
 
   const styles = useMemo(() => StyleSheet.create({
@@ -893,10 +1044,63 @@ export default function FoodSearchModal({
             ListEmptyComponent={
               !loading && query.trim() ? (
                 <Text style={styles.emptyText}>
-                  No results for &quot;{query}&quot;. Try a simpler or more specific term.
+                  No results for &quot;{query}&quot;.
+                  {customEnabled ? " Can't find it? Create your own." : " Try a simpler or more specific term."}
                 </Text>
               ) : null
             }
+            ListFooterComponent={
+              customEnabled ? (
+                <Pressable
+                  onPress={() => {
+                    setEditingFood(undefined);
+                    setCreateOpen(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create a new custom food"
+                  style={{
+                    marginTop: Spacing.md,
+                    paddingVertical: Spacing.md,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: Spacing.sm,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderStyle: "dashed",
+                    borderRadius: Radius.md,
+                  }}
+                >
+                  <Ionicons name="add" size={16} color={Accent.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                    Create custom food
+                  </Text>
+                </Pressable>
+              ) : null
+            }
+          />
+        )}
+
+        {/* Custom food create/edit sheet — rendered outside the FlatList
+            so it survives search-result churn. */}
+        {customEnabled && (
+          <CreateCustomFoodSheet
+            visible={createOpen}
+            onClose={() => {
+              setCreateOpen(false);
+              setEditingFood(undefined);
+            }}
+            initialFood={editingFood}
+            initialName={editingFood ? undefined : query.trim() || undefined}
+            onSave={editingFood ? handleUpdateCustomFood : handleCreateCustomFood}
+            colors={{
+              text: colors.text,
+              textSecondary: colors.textSecondary,
+              textTertiary: colors.textTertiary,
+              card: colors.card,
+              cardBorder: colors.cardBorder,
+              background: colors.background,
+            }}
           />
         )}
       </View>

@@ -8,12 +8,14 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   ALCOHOL_QUICK_ADDS,
   CAFFEINE_QUICK_ADDS,
   WATER_QUICK_ADDS_ML,
+  formatWaterAmount,
+  imperialWaterQuickAdds,
   isOverTarget,
   weeklyAlcoholG,
   type StimulantTargets,
@@ -38,6 +40,13 @@ export interface HydrationStimulantsCardProps {
   waterFromMealsMl: number;
   caffeineTotalMg: number;
   alcoholByDayG: Record<string, number>;
+  /**
+   * Display-unit preference — only affects water rendering (chips, progress
+   * line, "from logged food" sub-line). Caffeine stays in mg and alcohol in
+   * grams on both systems. Defaults to `"metric"` so callers that haven't
+   * yet loaded the profile preference don't silently flip to imperial.
+   */
+  measurementSystem?: "metric" | "imperial";
   onAddWater: (ml: number) => void;
   onAddCaffeine: (mg: number, preset?: string | null) => void;
   onAddAlcohol: (grams: number, preset?: string | null) => void;
@@ -45,14 +54,17 @@ export interface HydrationStimulantsCardProps {
   style?: ViewStyle;
 }
 
-function formatWaterLine(ml: number): string {
-  if (ml >= 1000) return `${(ml / 1000).toFixed(1).replace(/\.0$/, "")}L`;
-  return `${ml}ml`;
+function formatWaterLine(
+  ml: number,
+  system: "metric" | "imperial",
+): string {
+  const { value, unit } = formatWaterAmount(ml, system);
+  return `${value} ${unit}`;
 }
 
 const COLORS: Record<"water" | "caffeine" | "alcohol", string> = {
-  water: MacroColors.water, // cyan
-  caffeine: "#8b5cf6", // violet — aligned with web tone
+  water: MacroColors.water, // cyan (shared --macro-water token)
+  caffeine: StimulantColors.caffeine, // violet — mirrors web --stimulant-caffeine
   alcohol: Accent.warning, // amber; over-target label also uses amber
 };
 
@@ -237,6 +249,7 @@ export function HydrationStimulantsCard({
   waterFromMealsMl,
   caffeineTotalMg,
   alcoholByDayG,
+  measurementSystem = "metric",
   onAddWater,
   onAddCaffeine,
   onAddAlcohol,
@@ -245,6 +258,13 @@ export function HydrationStimulantsCard({
 }: HydrationStimulantsCardProps) {
   const colors = useThemeColors();
   const showAlcohol = targets.alcoholGWeekly > 0;
+  const waterChips = useMemo(
+    () =>
+      measurementSystem === "imperial"
+        ? imperialWaterQuickAdds()
+        : WATER_QUICK_ADDS_ML.map((ml) => ({ ml, label: `${ml} ml` })),
+    [measurementSystem],
+  );
 
   const weeklyAlcohol = useMemo(
     () => weeklyAlcoholG(alcoholByDayG, selectedDateKey, weekStartDay),
@@ -302,10 +322,10 @@ export function HydrationStimulantsCard({
         tone="water"
         label="Water"
         icon="water-outline"
-        valueLine={`${formatWaterLine(waterTotalMl)} / ${formatWaterLine(targets.waterMl)}`}
+        valueLine={`${formatWaterLine(waterTotalMl, measurementSystem)} / ${formatWaterLine(targets.waterMl, measurementSystem)}`}
         secondaryLine={
           waterFromMealsMl > 0
-            ? `Includes ${formatWaterLine(waterFromMealsMl)} from logged food`
+            ? `Includes ${formatWaterLine(waterFromMealsMl, measurementSystem)} from logged food`
             : undefined
         }
         pct={waterPct}
@@ -313,13 +333,17 @@ export function HydrationStimulantsCard({
         overCopy=""
         onReset={() => onReset("water")}
       >
-        {WATER_QUICK_ADDS_ML.map((ml) => (
+        {waterChips.map((chip) => (
           <Chip
-            key={ml}
+            key={chip.ml}
             tone="water"
-            label={`+${ml}ml`}
-            accessibilityLabel={`Add ${ml} millilitres water`}
-            onPress={() => onAddWater(ml)}
+            label={`+${chip.label}`}
+            accessibilityLabel={
+              measurementSystem === "imperial"
+                ? `Add ${chip.label} water`
+                : `Add ${chip.ml} millilitres water`
+            }
+            onPress={() => onAddWater(chip.ml)}
           />
         ))}
       </Row>

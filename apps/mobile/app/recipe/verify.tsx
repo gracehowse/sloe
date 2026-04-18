@@ -38,6 +38,7 @@ import AddIngredientSheet, {
   type AddIngredientPayload,
 } from "@/components/AddIngredientSheet";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
+import Badge from "@/components/Badge";
 import {
   effectiveMacros,
   hasOverride,
@@ -529,56 +530,20 @@ export default function VerifyScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
                     {rowHasOverride ? (
-                      <View
-                        style={{
-                          paddingHorizontal: 6,
-                          paddingVertical: 1,
-                          borderRadius: 999,
-                          borderWidth: 1,
-                          borderColor: Accent.warning + "60",
-                          backgroundColor: Accent.warning + "15",
-                        }}
-                        accessible
+                      <Badge
+                        variant="override"
                         accessibilityLabel="Manual override pinned on this row"
                       >
-                        <Text
-                          style={{
-                            fontSize: 9,
-                            fontWeight: "700",
-                            letterSpacing: 0.4,
-                            color: Accent.warning,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Override
-                        </Text>
-                      </View>
+                        Override
+                      </Badge>
                     ) : null}
                     {rowAdded ? (
-                      <View
-                        style={{
-                          paddingHorizontal: 6,
-                          paddingVertical: 1,
-                          borderRadius: 999,
-                          borderWidth: 1,
-                          borderColor: Accent.primary + "60",
-                          backgroundColor: Accent.primary + "15",
-                        }}
-                        accessible
+                      <Badge
+                        variant="added"
                         accessibilityLabel="Row added by you after import"
                       >
-                        <Text
-                          style={{
-                            fontSize: 9,
-                            fontWeight: "700",
-                            letterSpacing: 0.4,
-                            color: Accent.primary,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Added
-                        </Text>
-                      </View>
+                        Added
+                      </Badge>
                     ) : null}
                   </View>
                   <Text style={styles.ingDetail}>

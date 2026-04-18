@@ -16,6 +16,15 @@ type Props = {
   selectedDate: Date;
   weekStartDay: "monday" | "sunday";
   loggedDays: Set<string>;
+  /**
+   * Date keys where a streak freeze was consumed (2026-04-18 audit H7).
+   * Tiles matching these keys render a small snowflake glyph in the
+   * corner and carry "Freeze used on {dateKey}" as their accessibility
+   * label so VoiceOver / TalkBack announce the save. Parity with web
+   * `DayStrip` prop of the same name. Derived from
+   * `computeProtectedStreak(...).protectedDateKeys` by the parent.
+   */
+  protectedDateKeys?: ReadonlySet<string>;
   onSelectDate: (date: Date) => void;
   onOpenCalendar: () => void;
   textColor: string;
@@ -36,6 +45,7 @@ export default function DayStrip({
   selectedDate,
   weekStartDay,
   loggedDays,
+  protectedDateKeys,
   onSelectDate,
   onOpenCalendar,
   textColor,
@@ -104,11 +114,13 @@ export default function DayStrip({
           const isSelected = dk === selectedDk;
           const isToday = dk === todayDk;
           const hasLogs = loggedDays.has(dk);
+          const isProtected = protectedDateKeys?.has(dk) ?? false;
           const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
           return (
             <Pressable
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
               onPress={() => onSelectDate(clampJournalDate(date))}
+              accessibilityLabel={isProtected ? `Freeze used on ${dk}` : undefined}
               style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: 4, opacity: outOfRange ? 0.35 : 1 }}
             >
               <Text
@@ -147,13 +159,31 @@ export default function DayStrip({
                     {date.getDate()}
                   </Text>
                 )}
+                {isProtected ? (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -4,
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: Accent.cyan + "33",
+                    }}
+                  >
+                    <Ionicons name="snow-outline" size={10} color={Accent.cyan} />
+                  </View>
+                ) : null}
               </View>
             </Pressable>
           );
         })}
       </View>
     ),
-    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, min, max, textColor, secondaryColor, onSelectDate],
+    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate],
   );
 
   return (

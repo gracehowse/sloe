@@ -14,6 +14,8 @@ import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -44,6 +46,18 @@ export default function CookModeScreen() {
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
   const stepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
+
+  // Track cook mode open — parity with web `CookMode.tsx` (audit R2,
+  // 2026-04-18). Same event name + `{ recipeId, stepCount }` payload shape
+  // as the web call site (`recipe.id` there, `recipeId` from query params
+  // here). Fires once per mount. Mobile previously silent on this event.
+  useEffect(() => {
+    track(AnalyticsEvents.cook_mode_opened, {
+      recipeId,
+      stepCount: totalSteps,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Timer count up
   useEffect(() => {
@@ -80,6 +94,15 @@ export default function CookModeScreen() {
   const startTimer = () => {
     setTimerElapsed(0);
     setTimerActive(true);
+    // Parity with web `CookMode.tsx` (audit R2, 2026-04-18). Web fires
+    // `{ recipeId, seconds: totalSeconds }` because web timers are
+    // pre-parsed countdowns with a known duration. Mobile is a count-up
+    // stopwatch with no intended duration at start time, so `seconds`
+    // is intentionally omitted — emitting a fake value would poison
+    // the dashboard. `recipe_timer_completed` is not fired on mobile
+    // because the mobile timer has no natural completion event (the
+    // user always presses Stop). Documented in the verification report.
+    track(AnalyticsEvents.recipe_timer_started, { recipeId });
   };
 
   const stopTimer = () => {

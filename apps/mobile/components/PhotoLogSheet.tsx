@@ -38,6 +38,7 @@ import {
 } from "../../../src/lib/nutrition/aiLogging";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import Badge from "./Badge";
 
 type Theme = {
   text: string;
@@ -456,12 +457,13 @@ export default function PhotoLogSheet({
                                   : "Low"}
                             </Text>
                           </View>
-                          <Text
+                          <Badge
+                            variant="ai"
                             accessibilityLabel="AI estimated nutrition"
-                            style={{ fontSize: 9, fontWeight: "700", color: colors.textTertiary, textTransform: "uppercase" }}
+                            icon={<Ionicons name="sparkles-outline" size={10} color="#8b5cf6" />}
                           >
                             AI estimate
-                          </Text>
+                          </Badge>
                         </View>
                         <Pressable
                           accessibilityRole="button"

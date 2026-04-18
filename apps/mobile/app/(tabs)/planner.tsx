@@ -23,8 +23,12 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+import Badge from "@/components/Badge";
 import {
+  countLeftoversOfRecipe,
   distributeLeftovers,
+  markLeftoversOnSwap,
+  moveMealInPlan,
   type LeftoverAwareMeal,
 } from "../../../../src/lib/nutrition/leftoversPlanner";
 import {
@@ -37,9 +41,12 @@ import {
   deletePlanTemplate,
   listPlanTemplates,
 } from "../../../../src/lib/nutrition/planTemplatesClient";
+import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { track } from "@/lib/analytics";
+import * as Haptics from "expo-haptics";
 import { HouseholdCard } from "@/components/HouseholdCard";
+import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
@@ -132,6 +139,12 @@ export default function PlannerScreen() {
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
+  // Batch 3.10 (mobile parity, 2026-04-18 audit C2) — Move meal state.
+  // Long-press a meal row → action sheet → "Move to another slot…" opens
+  // `MoveMealSheet` with `moveSource` set to the pressed cell.
+  const [moveSheetOpen, setMoveSheetOpen] = useState(false);
+  const [moveSource, setMoveSource] = useState<{ day: number; slotIndex: number } | null>(null);
+
   useEffect(() => {
     if (!templatesOpen || !userId) return;
     let cancelled = false;
@@ -167,9 +180,14 @@ export default function PlannerScreen() {
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     const allPool = [...savedRecipes, ...discoverRecipes];
+    // Audit L5 (2026-04-18): canonical slot via `normaliseMealSlot`
+    // so "breakfast" / "Breakfast" / "BREAKFAST" all collapse to the
+    // same branch. Unknown slots fall through to the snack ratio
+    // (matches the prior default branch).
+    const canonicalSlot = normaliseMealSlot(slotName);
     const fits = allPool.filter((r) => {
       const tags = r.mealSlots ?? [];
-      return tags.length === 0 || tags.some((t: string) => t.toLowerCase() === slotName.toLowerCase());
+      return tags.length === 0 || tags.some((t: string) => normaliseMealSlot(t) === canonicalSlot);
     });
     if (fits.length === 0) {
       Alert.alert("No alternatives", "Save more recipes to swap.");
@@ -177,7 +195,12 @@ export default function PlannerScreen() {
     }
 
     // Sort by calorie closeness to target slot budget
-    const slotTarget = planTargets ? planTargets.calories * (slotName.toLowerCase() === "breakfast" ? 0.25 : slotName.toLowerCase() === "lunch" ? 0.3 : slotName.toLowerCase() === "dinner" ? 0.35 : 0.1) : 400;
+    const slotRatio =
+      canonicalSlot === "Breakfast" ? 0.25 :
+      canonicalSlot === "Lunch" ? 0.3 :
+      canonicalSlot === "Dinner" ? 0.35 :
+      0.1;
+    const slotTarget = planTargets ? planTargets.calories * slotRatio : 400;
     const sorted = [...fits].sort((a, b) => Math.abs(a.calories - slotTarget) - Math.abs(b.calories - slotTarget));
 
     const options = sorted.slice(0, 10).map((r) => `${r.title} (${r.calories} kcal)`);
@@ -249,6 +272,78 @@ export default function PlannerScreen() {
       })),
     );
   }, [savedRecipes, discoverRecipes, plan, planTargets]);
+
+  /**
+   * Persist a plan back to Supabase — relational tables first with legacy
+   * JSONB fallback. Mirrors the tail of `generatePlan`.
+   */
+  const persistPlan = useCallback(
+    async (nextPlan: DayPlan[]) => {
+      if (!userId) return;
+      const { error: delErr } = await supabase
+        .from("meal_plan_days")
+        .delete()
+        .eq("user_id", userId)
+        .eq("slot_id", "default");
+      if (delErr) {
+        void upsertMealPlanJson(supabase, userId, nextPlan);
+        return;
+      }
+      for (const dp of nextPlan) {
+        const { data: dayRow } = await supabase
+          .from("meal_plan_days")
+          .insert({ user_id: userId, slot_id: "default", day: dp.day })
+          .select("id")
+          .single();
+        if (!dayRow) continue;
+        const mealInserts = dp.meals.map((m, idx) => ({
+          plan_day_id: dayRow.id,
+          slot_index: idx,
+          name: m.name,
+          recipe_title: m.recipeTitle,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          portion_multiplier: m.portionMultiplier ?? 1,
+          is_placeholder: m.isPlaceholder ?? false,
+        }));
+        if (mealInserts.length > 0) {
+          await supabase.from("meal_plan_meals").insert(mealInserts);
+        }
+      }
+    },
+    [userId],
+  );
+
+  // Batch 3.10 mobile parity — move a meal between slots / days.
+  // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
+  // is occupied; source becomes an empty placeholder when destination was
+  // empty. If the source is a parent-of-leftovers, caller has already
+  // confirmed (see long-press handler) and we run `markLeftoversOnSwap`
+  // before the move so totals stay right.
+  const handleMove = useCallback(
+    (from: { day: number; slotIndex: number }, to: { day: number; slotIndex: number }) => {
+      if (from.day === to.day && from.slotIndex === to.slotIndex) return;
+      setPlan((prev) => {
+        if (!prev) return prev;
+        const fromDp = prev.find((d) => d.day === from.day);
+        const toDp = prev.find((d) => d.day === to.day);
+        const fromSlot = fromDp?.meals[from.slotIndex]?.name ?? "";
+        const toSlot = toDp?.meals[to.slotIndex]?.name ?? "";
+        const next = moveMealInPlan(prev, from, to) as DayPlan[];
+        track(AnalyticsEvents.meal_moved_in_plan, {
+          fromSlot,
+          toSlot,
+          crossDay: from.day !== to.day,
+        });
+        // Fire-and-forget persist; UI already reflects the move.
+        void persistPlan(next);
+        return next;
+      });
+    },
+    [persistPlan],
+  );
 
   const toggleSlot = useCallback((slot: string) => {
     setEnabledSlots((prev) => {
@@ -422,12 +517,6 @@ export default function PlannerScreen() {
         },
         mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
         mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
-        leftoverBadge: {
-          fontSize: 11,
-          fontWeight: "600",
-          color: "#a16207",
-          marginTop: 4,
-        },
         mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
         mealLogBtn: { paddingVertical: 12, paddingHorizontal: 10, minWidth: 64, alignItems: "flex-end" },
         mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
@@ -899,6 +988,122 @@ export default function PlannerScreen() {
               <Pressable
                 key={i}
                 style={styles.mealRow}
+                delayLongPress={400}
+                onLongPress={() => {
+                  // Batch 3.10 mobile parity (2026-04-18 audit C2).
+                  // Long-press → action sheet with Move / Swap / Delete / Cancel.
+                  // Factual copy, no shame.
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  const isPlaceholder = !meal.recipeTitle || meal.isPlaceholder;
+                  const sourceDay = plan?.[dayIdx]?.day;
+                  if (sourceDay == null) return;
+                  Alert.alert(
+                    meal.recipeTitle || "Empty slot",
+                    isPlaceholder
+                      ? "No meal in this slot."
+                      : `${Math.round(meal.calories)} kcal · ${meal.name}`,
+                    [
+                      {
+                        text: "Move to another slot…",
+                        onPress: () => {
+                          if (isPlaceholder) {
+                            Alert.alert("Nothing to move", "This slot is empty.");
+                            return;
+                          }
+                          // If this meal is a parent of downstream leftovers,
+                          // factually confirm the N we'll clear before the move.
+                          const rid = meal.recipeId;
+                          const leftoverCount =
+                            rid && plan ? countLeftoversOfRecipe(plan, rid) : 0;
+                          const openSheet = () => {
+                            setMoveSource({ day: sourceDay, slotIndex: i });
+                            setMoveSheetOpen(true);
+                          };
+                          if (leftoverCount > 0 && rid && plan) {
+                            Alert.alert(
+                              "Move meal",
+                              `This will remove ${leftoverCount} leftover meal${leftoverCount === 1 ? "" : "s"}.`,
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                {
+                                  text: "Continue",
+                                  onPress: () => {
+                                    setPlan((prev) => {
+                                      if (!prev) return prev;
+                                      const dayIndexInArr = prev.findIndex(
+                                        (d) => d.day === sourceDay,
+                                      );
+                                      const { plan: cleaned } = markLeftoversOnSwap(prev, {
+                                        dayIndex: dayIndexInArr,
+                                        slot: meal.name,
+                                        previousRecipeId: rid,
+                                      });
+                                      return cleaned as DayPlan[];
+                                    });
+                                    openSheet();
+                                  },
+                                },
+                              ],
+                            );
+                          } else {
+                            openSheet();
+                          }
+                        },
+                      },
+                      {
+                        text: "Swap with another meal…",
+                        onPress: () => {
+                          if (isPlaceholder) {
+                            Alert.alert("Nothing to swap", "This slot is empty.");
+                            return;
+                          }
+                          swapMeal(dayIdx, i, meal.name);
+                        },
+                      },
+                      ...(isPlaceholder
+                        ? []
+                        : [
+                            {
+                              text: "Delete",
+                              style: "destructive" as const,
+                              onPress: () => {
+                                setPlan((prev) => {
+                                  if (!prev) return prev;
+                                  const next = prev.map((dpRow, di) => {
+                                    if (di !== dayIdx) return dpRow;
+                                    const newMeals = dpRow.meals.map((m, mi) => {
+                                      if (mi !== i) return m;
+                                      return {
+                                        name: m.name,
+                                        recipeTitle: "",
+                                        calories: 0,
+                                        protein: 0,
+                                        carbs: 0,
+                                        fat: 0,
+                                        isPlaceholder: true,
+                                      } as PlanMeal;
+                                    });
+                                    const totals = newMeals.reduce(
+                                      (a, m) => ({
+                                        calories: a.calories + m.calories,
+                                        protein: a.protein + m.protein,
+                                        carbs: a.carbs + m.carbs,
+                                        fat: a.fat + m.fat,
+                                      }),
+                                      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                                    );
+                                    return { ...dpRow, meals: newMeals, totals };
+                                  });
+                                  void persistPlan(next);
+                                  return next;
+                                });
+                              },
+                            },
+                          ]),
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  );
+                }}
                 onPress={() => {
                   const currentMult = meal.portionMultiplier ?? 1;
                   Alert.alert(
@@ -965,12 +1170,14 @@ export default function PlannerScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.mealSlot}>{meal.name}</Text>
                   {(meal as LeftoverAwareMeal).leftoverOf ? (
-                    <Text
+                    <Badge
+                      variant="leftover"
                       accessibilityLabel={`Leftover of ${meal.recipeTitle}`}
-                      style={styles.leftoverBadge}
+                      icon={<Text>🍱</Text>}
+                      style={{ marginTop: 4 }}
                     >
-                      🍱 Leftover of {meal.recipeTitle}
-                    </Text>
+                      Leftover of {meal.recipeTitle}
+                    </Badge>
                   ) : null}
                   <Text style={styles.mealTitle}>
                     {meal.recipeTitle}
@@ -1267,6 +1474,25 @@ export default function PlannerScreen() {
           if (error) return { ok: false, error };
           setPlanTemplates((prev) => prev.filter((t) => t.id !== templateId));
           return { ok: true };
+        }}
+      />
+      <MoveMealSheet
+        visible={moveSheetOpen}
+        onClose={() => {
+          setMoveSheetOpen(false);
+          setMoveSource(null);
+        }}
+        plan={plan}
+        from={moveSource}
+        dayLabels={(plan ?? []).map((_, idx) => {
+          const cal = planCalendarDateForIndex(idx, startOffset);
+          return WEEKDAY_LONG[cal.getDay()] ?? `Day ${idx + 1}`;
+        })}
+        onMove={(to) => {
+          if (!moveSource) return;
+          handleMove(moveSource, to);
+          setMoveSheetOpen(false);
+          setMoveSource(null);
         }}
       />
     </View>

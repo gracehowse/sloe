@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, Share, TextInput } from "react-native";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, Share, Switch, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -13,7 +13,14 @@ import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { isHealthSyncAvailable } from "@/lib/healthSync";
 import { nukeAllUserAppData, clearStructuredMealPlans } from "@/lib/nukeAccountData";
+import {
+  cancelWeeklyRecapPush,
+  scheduleWeeklyRecapPush,
+} from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
+import { saveWeekStartDay } from "../../../../src/lib/nutrition/weekStartDayClient";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { track } from "@/lib/analytics";
 
 /* ── Icon Box ── */
 function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -229,6 +236,12 @@ export default function ProfileScreen() {
   const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
   const [caffeineInput, setCaffeineInput] = useState<string>("400");
   const [alcoholInput, setAlcoholInput] = useState<string>("0");
+  /** Batch 4.11 / H6 audit (2026-04-18) — weekly recap push toggle state.
+   * `weeklyRecapPushEnabled` mirrors `profiles.weekly_recap_push_enabled`;
+   * default true until hydrated from Supabase. The modal mounts its own
+   * Switch which commits on tap — no Save button. */
+  const [weeklyRecapPushEnabled, setWeeklyRecapPushEnabled] = useState<boolean>(true);
+  const [weeklyRecapPushPickerOpen, setWeeklyRecapPushPickerOpen] = useState(false);
 
   // Load dashboard + hydration targets settings
   useEffect(() => {
@@ -238,7 +251,9 @@ export default function ProfileScreen() {
     void (async () => {
       let resp = await supabase
         .from("profiles")
-        .select("tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly")
+        .select(
+          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled",
+        )
         .eq("id", userId)
         .maybeSingle();
       if (resp.error) {
@@ -265,6 +280,12 @@ export default function ProfileScreen() {
       if (typeof ta === "number" && Number.isFinite(ta) && ta >= 0) {
         setTargetAlcoholGWeekly(Math.round(ta));
         setAlcoholInput(String(Math.round(ta)));
+      }
+      const wrp = (data as any).weekly_recap_push_enabled;
+      if (wrp !== undefined) {
+        // Default to true when the column is absent; only `false`
+        // explicitly opts the user out.
+        setWeeklyRecapPushEnabled(wrp !== false);
       }
     })();
   }, [userId]);
@@ -461,6 +482,21 @@ export default function ProfileScreen() {
           label="Notifications"
           sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"}
           onPress={() => router.push("/(tabs)/notifications" as any)}
+        />
+        {/* Weekly recap push toggle (Batch 4.11 — H6 audit fix, 2026-04-18).
+          * Gives the user a first-class opt-out surface matching web
+          * Settings. The Progress-visit scheduler still runs as a
+          * defensive fallback, but this row is the primary control. */}
+        <SettingsRow
+          icon="calendar-outline"
+          iconColor={t.accent}
+          label="Weekly recap"
+          sub={
+            weeklyRecapPushEnabled
+              ? `${weekStartDay === "monday" ? "Sunday" : "Saturday"} 18:00 (respects your week start)`
+              : "Off · re-enable to get the Sun/Sat 18:00 nudge"
+          }
+          onPress={() => setWeeklyRecapPushPickerOpen(true)}
         />
       </View>
 
@@ -821,6 +857,110 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Weekly Recap Push Picker (Batch 4.11 — H6 audit fix, 2026-04-18) */}
+      <Modal
+        visible={weeklyRecapPushPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setWeeklyRecapPushPickerOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }}
+            onPress={() => setWeeklyRecapPushPickerOpen(false)}
+          />
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl, paddingHorizontal: Spacing.xl }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Weekly recap</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>
+              Get a one-tap reminder to open your weekly recap on {weekStartDay === "monday" ? "Sunday" : "Saturday"} at 18:00 local time. Off by choice — no reminder will be sent.
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: colors.cardBorder,
+              }}
+            >
+              <View style={{ flex: 1, paddingRight: Spacing.md }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Send weekly recap</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                  {weeklyRecapPushEnabled
+                    ? "On · next push lands at the end of your week"
+                    : "Off · no push will be scheduled"}
+                </Text>
+              </View>
+              <Switch
+                accessibilityRole="switch"
+                accessibilityLabel="Weekly recap push notifications"
+                accessibilityState={{ checked: weeklyRecapPushEnabled }}
+                value={weeklyRecapPushEnabled}
+                onValueChange={(next) => {
+                  const previous = weeklyRecapPushEnabled;
+                  if (previous === next) return;
+                  // Optimistic flip so the Switch animates immediately.
+                  setWeeklyRecapPushEnabled(next);
+                  if (!userId) {
+                    setWeeklyRecapPushEnabled(previous);
+                    Alert.alert("Sign in required", "Sign in to change this preference.");
+                    return;
+                  }
+                  void (async () => {
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({ weekly_recap_push_enabled: next })
+                      .eq("id", userId);
+                    if (error) {
+                      setWeeklyRecapPushEnabled(previous);
+                      Alert.alert(
+                        "Could not save",
+                        "We couldn't save your preference. Please try again.",
+                      );
+                      return;
+                    }
+                    // Flip the local scheduler in lockstep so the iOS
+                    // queue matches the DB — off cancels, on reschedules
+                    // for next Sun/Sat 18:00 under the current
+                    // `week_start_day`.
+                    try {
+                      if (next) {
+                        await scheduleWeeklyRecapPush({
+                          enabled: true,
+                          weekStartDay,
+                        });
+                      } else {
+                        await cancelWeeklyRecapPush();
+                      }
+                    } catch {
+                      // The helper itself swallows OS-level errors via
+                      // captureException; if our wrapper still throws we
+                      // don't want to revert the DB-backed toggle — the
+                      // Progress-visit effect will reconcile on next
+                      // launch.
+                    }
+                    track(AnalyticsEvents.weekly_recap_push_enabled_toggled, {
+                      enabled: next,
+                    });
+                  })();
+                }}
+                trackColor={{ false: colors.border, true: Accent.primary }}
+              />
+            </View>
+            <Pressable
+              onPress={() => setWeeklyRecapPushPickerOpen(false)}
+              style={{ marginTop: Spacing.lg, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Accent.primary, alignItems: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Week Start Day Picker */}
       <Modal visible={weekStartPickerOpen} transparent animationType="slide" onRequestClose={() => setWeekStartPickerOpen(false)}>
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
@@ -833,15 +973,29 @@ export default function ProfileScreen() {
                 key={day}
                 onPress={() => {
                   const previous = weekStartDay;
+                  // No-op re-taps and the initial hydrated value must
+                  // stay silent in analytics — only actual changes fire.
+                  if (previous === day) {
+                    setWeekStartPickerOpen(false);
+                    return;
+                  }
                   setWeekStartDay(day);
                   setWeekStartPickerOpen(false);
                   if (!userId) return;
                   void (async () => {
-                    const { error } = await supabase.from("profiles").update({ week_start_day: day }).eq("id", userId);
-                    if (error) {
+                    // Shared helper — locks the update shape in sync with
+                    // the web settings screen (M11 audit, 2026-04-18).
+                    try {
+                      await saveWeekStartDay(supabase, userId, day);
+                    } catch {
                       setWeekStartDay(previous);
                       Alert.alert("Could not save", "We couldn't save your week-start preference. Please try again.");
+                      return;
                     }
+                    track(AnalyticsEvents.week_start_day_changed, {
+                      from: previous,
+                      to: day,
+                    });
                   })();
                 }}
                 style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}

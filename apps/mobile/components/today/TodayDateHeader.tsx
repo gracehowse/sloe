@@ -1,0 +1,182 @@
+import React from "react";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Accent } from "@/constants/theme";
+import DayStrip from "@/components/charts/DayStrip";
+
+/**
+ * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
+ * and the DayStrip row.
+ *
+ * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
+ * 2026-04-18).
+ */
+export interface TodayDateHeaderProps {
+  viewMode: "day" | "week";
+  onViewModeChange: (mode: "day" | "week") => void;
+  selectedDate: Date;
+  weekLabel: string;
+  isToday: boolean;
+  formatDateLabel: (d: Date) => string;
+  weekStartDay: "monday" | "sunday";
+  loggedDays: Set<string>;
+  protectedDateKeys: Set<string>;
+  onSelectDate: (d: Date) => void;
+  onOpenCalendar: () => void;
+  onNavigatePrev: () => void;
+  onNavigateNext: () => void;
+  onTapTitle: () => void;
+  avatarLetter: string;
+  textColor: string;
+  textSecondaryColor: string;
+  textTertiaryColor: string;
+  cardColor: string;
+  cardBorderColor: string;
+}
+
+export function TodayDateHeader({
+  viewMode,
+  onViewModeChange,
+  selectedDate,
+  weekLabel,
+  isToday,
+  formatDateLabel,
+  weekStartDay,
+  loggedDays,
+  protectedDateKeys,
+  onSelectDate,
+  onOpenCalendar,
+  onNavigatePrev,
+  onNavigateNext,
+  onTapTitle,
+  avatarLetter,
+  textColor,
+  textSecondaryColor,
+  textTertiaryColor,
+  cardColor,
+  cardBorderColor,
+}: TodayDateHeaderProps) {
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Pressable
+            onPress={onNavigatePrev}
+            hitSlop={12}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              backgroundColor: cardColor,
+              borderWidth: 1,
+              borderColor: cardBorderColor,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="chevron-back" size={16} color={textColor} />
+          </Pressable>
+          <Pressable onPress={onTapTitle} hitSlop={8}>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "600",
+                color: textTertiaryColor,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              {viewMode === "week"
+                ? weekLabel
+                : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+            </Text>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4, marginTop: 1 }}>
+              {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onNavigateNext}
+            hitSlop={12}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              backgroundColor: cardColor,
+              borderWidth: 1,
+              borderColor: cardBorderColor,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="chevron-forward" size={16} color={textColor} />
+          </Pressable>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              borderRadius: 8,
+              backgroundColor: cardColor,
+              borderWidth: 1,
+              borderColor: cardBorderColor,
+              overflow: "hidden",
+            }}
+          >
+            <Pressable
+              onPress={() => onViewModeChange("day")}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                backgroundColor: viewMode === "day" ? Accent.primary : "transparent",
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: "700", color: viewMode === "day" ? "#fff" : textSecondaryColor }}>
+                Day
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onViewModeChange("week")}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                backgroundColor: viewMode === "week" ? Accent.primary : "transparent",
+              }}
+            >
+              <Text
+                style={{ fontSize: 10, fontWeight: "700", color: viewMode === "week" ? "#fff" : textSecondaryColor }}
+              >
+                Week
+              </Text>
+            </Pressable>
+          </View>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              backgroundColor: Accent.primary + "10",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>{avatarLetter}</Text>
+          </View>
+        </View>
+      </View>
+      {viewMode === "day" && (
+        <DayStrip
+          selectedDate={selectedDate}
+          weekStartDay={weekStartDay}
+          loggedDays={loggedDays}
+          protectedDateKeys={protectedDateKeys}
+          onSelectDate={onSelectDate}
+          onOpenCalendar={onOpenCalendar}
+          textColor={textColor}
+          secondaryColor={textSecondaryColor}
+        />
+      )}
+    </View>
+  );
+}
+
+export default TodayDateHeader;

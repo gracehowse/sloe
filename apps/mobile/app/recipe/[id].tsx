@@ -31,6 +31,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
+import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -71,10 +72,8 @@ function journalSlotFromMealTypes(mealType: string[] | null | undefined): string
   if (joined.includes("lunch")) return "Lunch";
   if (joined.includes("dinner") || joined.includes("supper")) return "Dinner";
   if (joined.includes("snack")) return "Snacks";
-  const first = mealType[0]?.trim();
-  const slots = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-  const hit = slots.find((s) => s.toLowerCase() === first?.toLowerCase());
-  return hit ?? "Lunch";
+  // Audit L5 (2026-04-18): shared canonical slot helper.
+  return normaliseMealSlot(mealType[0]) ?? "Lunch";
 }
 
 type Ingredient = {

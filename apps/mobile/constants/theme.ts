@@ -22,6 +22,19 @@ export const Accent = {
   info: '#0ea5e9',
 };
 
+/**
+ * Stimulant tracker colours (Batch 2.5 hydration & stimulants).
+ * Caffeine is its own violet tone (not a macro role). Alcohol uses the
+ * same amber hue as the warning accent — the semantic is "approaching
+ * weekly limit", not error. Mirrors web `--stimulant-caffeine` /
+ * `--stimulant-alcohol` in `src/styles/theme.css`. See
+ * `docs/ux/brand-tokens.md` for the full role table.
+ */
+export const StimulantColors = {
+  caffeine: '#8b5cf6',
+  alcohol: '#f59e0b',
+};
+
 /** Legacy alias — use Accent instead for new code */
 export const Neon = {
   pink: Accent.magenta,
