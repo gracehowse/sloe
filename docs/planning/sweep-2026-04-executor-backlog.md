@@ -194,3 +194,16 @@ Cross-reference: `docs/planning/post-feature-expansion-audit-2026-04-18.md`.
 | ID | Title | Description | Severity | Effort | Platforms | Owner | Acceptance criteria |
 |----|-------|-------------|----------|--------|-----------|-------|---------------------|
 | F9 | Analytics schema registration | `meal_copied` / `day_duplicated` fire with `{ source, batchSize, targetDayCount }` but no PostHog dashboard / funnel exists. `food_logged.source=quick_add` likewise. | P3 | S (once specced) | analytics | analytics-engineer | Product-lead signs off event schemas; analytics-engineer adds PostHog dashboards for Quick add usage funnel, Copy/Duplicate adoption rate, Eat again dismissal rate. |
+
+---
+
+## 10. Open cross-cutting post-ship items (2026-04-18)
+
+Surfaced from the post-feature-expansion audit + the three user-decision items (M1 / M2 / L6). Kept persistently here so they survive session boundaries.
+
+| ID | Title | Status | Owner | Notes |
+|----|-------|--------|-------|-------|
+| PS#2 | **PostHog dashboard build** — needs PostHog admin access | **OPEN (user action)** | analytics-engineer + product-lead | All ~30 April-sprint events fire with canonical properties (L6 G1–G9 shipped) and the 8-rename dual-emit cycle is in flight (PS#1, retire 2026-05-18). Nobody is watching the events. Full spec at [`docs/planning/analytics-dashboards-plan-2026-04-18.md`](./analytics-dashboards-plan-2026-04-18.md) covers **6 dashboards** (Core Logging Health / Quick Add & Habits / Activation & Retention / Recipes & Cooking / Planner & Plans / AI Pro & Monetisation), **3 funnels** (activation, AI-Pro conversion, habit loop), **11 stop-firing alerts**. Hand the plan to whoever owns PostHog. Blocker: no code change — PostHog UI configuration. |
+| PS#6 | **iOS Widget native extension (Xcode)** | **DEFERRED post-launch (user decision 2026-04-18)** | integration-manager + iOS developer | User explicitly scoped widgets out of launch. `apps/mobile/lib/widgetSnapshot.ts` writes `{ kcalConsumed, kcalTarget, proteinLeftG, carbsLeftG, fatLeftG, fastActive, fastStartsAt, fastTargetHours }` JSON to an App Group-accessible path on every totals / fast change (debounced 500 ms, `widget_snapshot_updated` event with `trigger`). When the track is reopened, add a WidgetKit extension target to the Xcode project that reads the JSON via the App Group and renders the calorie ring + remaining macros. **Do not re-raise widget scope until the post-launch widget track is opened.** |
+
+**Calendar reminder:** 2026-05-18 — close the 30-day dual-emit cycle from PS#1. Grep `RENAME-CYCLE-RETIRE-2026-05-18` in `src/lib/analytics/events.ts` for the full retirement checklist.
