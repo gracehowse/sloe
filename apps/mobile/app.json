@@ -64,47 +64,6 @@
               "host": "pin.it"
             }
           ]
-        },
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": [
-            {
-              "scheme": "https",
-              "host": "www.instagram.com",
-              "pathPrefix": "/p"
-            },
-            {
-              "scheme": "https",
-              "host": "www.instagram.com",
-              "pathPrefix": "/reel"
-            },
-            {
-              "scheme": "https",
-              "host": "instagram.com",
-              "pathPrefix": "/p"
-            },
-            {
-              "scheme": "https",
-              "host": "instagram.com",
-              "pathPrefix": "/reel"
-            },
-            {
-              "scheme": "https",
-              "host": "www.tiktok.com"
-            },
-            {
-              "scheme": "https",
-              "host": "vm.tiktok.com"
-            },
-            {
-              "scheme": "https",
-              "host": "pin.it"
-            }
-          ]
         }
       ],
       "adaptiveIcon": {
@@ -116,8 +75,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
