@@ -10,7 +10,7 @@ Short log of tester-reported issues that were fixed in production (or schema), w
   `supabase db query --linked -f supabase/scripts/apply_caffeine_alcohol_columns.sql`  
   (same statements as the migration file), then `NOTIFY pgrst, 'reload schema'`.
 - **Verify:** Settings alcohol weekly limit and Today alcohol quick-add persist after force-quit; no client error.
-- **Follow-up:** Broader migration drift vs prod remains; see backlog “reconcile Supabase migration drift before next significant feature release”. Do **not** `migration repair` only this version until the dependency chain is reconciled.
+- **Follow-up:** Broader migration drift vs prod remains — see **[supabase-migration-drift-inventory.md](../planning/supabase-migration-drift-inventory.md)** for the current `supabase migration list --linked` tail and reconcile notes. Do **not** `migration repair` only this version until the dependency chain is reconciled.
 
 ## 2026-04-18 — “Not intuitive” (open)
 
