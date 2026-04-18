@@ -8,7 +8,7 @@ import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import {
@@ -21,6 +21,7 @@ import {
   readFreezeLedger,
   type FreezeLedger,
 } from "../../lib/nutrition/streakFreeze.ts";
+import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -66,10 +67,18 @@ import { computeEatAgainForSlot, type FoodHistoryItem } from "../../lib/nutritio
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
 import {
   createSavedMeal,
+  incrementLogCount,
+  listSavedMeals,
   type SavedMeal,
   type SavedMealItem,
 } from "../../lib/nutrition/savedMeals";
 import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import {
+  parseDismissedSlots,
+  serializeDismissedSlots,
+  shouldShowUsualMealHint,
+  USUAL_MEAL_HINT_STORAGE_KEY,
+} from "../../lib/nutrition/usualMealHint";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -326,14 +335,40 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   // 2026-04-18 audit H7 — `DayStrip` renders a ❄ glyph on each tile whose
   // date was absorbed by a freeze. The parent computes the set once so
   // both DayStrip instances (day + week view) read the same value.
-  const protectedDateKeys = useMemo(() => {
+  //
+  // L6 G8 (2026-04-18) — the memo also exposes `streakLength` so the
+  // `streak_reset` effect below can detect >=1 → 0 transitions without
+  // re-computing the whole thing.
+  const protectedStreakInfo = useMemo(() => {
     // Cast mirrors `ProgressDashboard`'s consumption of the same shared
     // helper — `LoggedMeal` satisfies the pure `StreakMeal` union via
     // its `.calories` field; the cast just silences the structural
     // widening without changing the runtime contract.
-    const info = computeProtectedStreak(nutritionByDay as never, freezeLedger, freezeBudgetMax);
-    return new Set(info.protectedDateKeys);
+    return computeProtectedStreak(nutritionByDay as never, freezeLedger, freezeBudgetMax);
   }, [nutritionByDay, freezeLedger, freezeBudgetMax]);
+  const protectedDateKeys = useMemo(
+    () => new Set(protectedStreakInfo.protectedDateKeys),
+    [protectedStreakInfo],
+  );
+  const protectedStreakLength = protectedStreakInfo.streakLength;
+  // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
+  // protected streak transitions from >=1 to 0. Seeded with `null` on
+  // mount so a user who currently has a zero streak doesn't generate a
+  // spurious event on first render.
+  const priorProtectedStreakRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prior = priorProtectedStreakRef.current;
+    priorProtectedStreakRef.current = protectedStreakLength;
+    if (didStreakReset(prior, protectedStreakLength)) {
+      try {
+        track(AnalyticsEvents.streak_reset, {
+          priorStreak: prior ?? 0,
+        });
+      } catch {
+        /* analytics is fire-and-forget */
+      }
+    }
+  }, [protectedStreakLength]);
   // 2026-04-18 audit H7 — "You earned a freeze" row. Newest earnedAt ISO
   // from the ledger; the row shows once until the user taps "Got it",
   // which writes today's timestamp to localStorage. No migration.
@@ -449,22 +484,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
    * the event shape is consistent. */
   const logHistoryItem = useCallback(
     (item: FoodHistoryItem, slot: string) => {
-      addLoggedMeal({
-        name: slot,
-        recipeTitle: item.recipeTitle,
-        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-        ...(item.fiber != null ? { fiberG: item.fiber } : {}),
-        ...(item.source ? { source: item.source } : {}),
-      });
-      try {
-        track(AnalyticsEvents.food_logged, { source: "quick_add", slot });
-      } catch {
-        /* analytics is fire-and-forget */
-      }
+      // Audit L6 G1 (2026-04-18) — the canonical `food_logged` event
+      // is now fired inside `addLoggedMeal` with the supplied source,
+      // so we pass "quick_add" here instead of double-emitting. Drops
+      // the prior secondary `track(food_logged, { source: "quick_add", slot })`
+      // call that could desync from the primitive's payload.
+      addLoggedMeal(
+        {
+          name: slot,
+          recipeTitle: item.recipeTitle,
+          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          ...(item.fiber != null ? { fiberG: item.fiber } : {}),
+          ...(item.source ? { source: item.source } : {}),
+        },
+        "quick_add",
+      );
       toast.success(`Logged ${item.recipeTitle} to ${slot}.`);
     },
     [addLoggedMeal],
@@ -488,20 +526,24 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         } = entry;
         void _discardedId;
         void _discardedSourceId;
-        addLoggedMealForDate(selectedDateKey, payload);
+        addLoggedMealForDate(selectedDateKey, payload, "saved_meal");
       }
       toast.success(`Logged ${meal.name} to ${slot}.`);
     },
     [addLoggedMealForDate, selectedDateKey],
   );
 
-  // -- Save-combo dialog (audit H4, 2026-04-18) --
+  // -- Save-usual-meal dialog (audit H4, 2026-04-18; Ship M1, 2026-04-18) --
   //
   // `SaveMealDialog` and its creation flow were lifted out of
   // `QuickAddPanel` so the host is the single owner of the dialog.
   // Replaces the prior save-combo CustomEvent bridge with a plain prop
   // callback (`onOpenSaveCombo`) + a refresh token the panel watches to
   // refetch `listSavedMeals`.
+  //
+  // Ship M1: the host also owns the full saved-meals list so the meal-slot
+  // section can render the `Log usual: {name}` pill directly (no duplicate
+  // fetch in `QuickAddPanel`).
   const [saveComboOpen, setSaveComboOpen] = useState(false);
   const [saveComboSeedItems, setSaveComboSeedItems] = useState<
     Array<Omit<SavedMealItem, "id" | "position">>
@@ -511,6 +553,118 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   >(undefined);
   const [saveComboSuggestedName, setSaveComboSuggestedName] = useState<string>("");
   const [savedMealsRefreshToken, setSavedMealsRefreshToken] = useState(0);
+
+  // Ship M1 — saved meals shared between `TodayMealsSection` (for the
+  // "Log usual" slot-header pill + full-width save row visibility) and
+  // `QuickAddPanel` (for the Usual meals tab). Host is now the owner of
+  // record so both surfaces read the same list.
+  const [hostSavedMeals, setHostSavedMeals] = useState<SavedMeal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!authedUserId) {
+      setHostSavedMeals([]);
+      return;
+    }
+    listSavedMeals(supabase, authedUserId)
+      .then((rows) => {
+        if (!cancelled) setHostSavedMeals(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("NutritionTracker listSavedMeals failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, savedMealsRefreshToken]);
+
+  // Ship M1 — usual-meal first-run hint dismiss state. Persisted under a
+  // versioned key; hydrated once on mount and rehydrated when a different
+  // tab writes to localStorage.
+  const [usualMealHintDismissed, setUsualMealHintDismissed] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(USUAL_MEAL_HINT_STORAGE_KEY);
+      setUsualMealHintDismissed(parseDismissedSlots(raw));
+    } catch {
+      /* storage access can throw in private modes — ignore */
+    }
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === USUAL_MEAL_HINT_STORAGE_KEY) {
+        setUsualMealHintDismissed(parseDismissedSlots(e.newValue));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const savedMealSlots = useMemo(() => {
+    const s = new Set<string>();
+    for (const m of hostSavedMeals) {
+      if (m.defaultMealSlot) s.add(m.defaultMealSlot);
+    }
+    return s;
+  }, [hostSavedMeals]);
+
+  const usualMealHintShownRef = useRef<Set<string>>(new Set());
+  const hintVisibleForSlot = useCallback(
+    (slot: string) => {
+      if (!isMealSlot(slot)) return false;
+      return shouldShowUsualMealHint({
+        byDay: nutritionByDay,
+        slot,
+        todayKey: selectedDateKey,
+        dismissedSlots: usualMealHintDismissed,
+        savedMealSlots,
+      });
+    },
+    [nutritionByDay, selectedDateKey, usualMealHintDismissed, savedMealSlots],
+  );
+  // Fire `usual_meal_hint_shown` once per (slot) per mount when it first
+  // passes the gate. `useEffect` runs after render so the impression
+  // matches what the user actually saw.
+  useEffect(() => {
+    for (const slot of ["Breakfast", "Lunch", "Dinner", "Snacks"] as const) {
+      if (hintVisibleForSlot(slot) && !usualMealHintShownRef.current.has(slot)) {
+        usualMealHintShownRef.current.add(slot);
+        try {
+          track(AnalyticsEvents.usual_meal_hint_shown, { slot });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+      }
+    }
+  }, [hintVisibleForSlot]);
+
+  const dismissUsualMealHint = useCallback(
+    (slot: string) => {
+      if (!isMealSlot(slot)) return;
+      setUsualMealHintDismissed((prev) => {
+        const next = new Set(prev);
+        next.add(slot);
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(
+              USUAL_MEAL_HINT_STORAGE_KEY,
+              serializeDismissedSlots(next),
+            );
+          } catch {
+            /* ignore storage failures */
+          }
+        }
+        return next;
+      });
+      try {
+        track(AnalyticsEvents.usual_meal_hint_dismissed, { slot });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    },
+    [],
+  );
 
   /** Open the save-combo dialog with pre-filled `seedItems` + optional
    * default `slot`. Wired to both the meal-slot header chip (directly)
@@ -522,12 +676,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       seedItems?: Array<Omit<SavedMealItem, "id" | "position">>,
     ) => {
       if (!authedUserId) {
-        toast.info("Sign in to save meal combos.");
+        toast.info("Sign in to save a usual meal.");
         return;
       }
       const items = seedItems ?? [];
       if (items.length < 2) {
-        toast.info("Log 2 or more items first, then save the combo.");
+        toast.info("Log 2 or more items first, then save as a usual meal.");
         return;
       }
       setSaveComboSeedItems(items);
@@ -535,7 +689,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       const normalisedSlot: MealSlot | undefined = isMealSlot(slot) ? slot : undefined;
       setSaveComboDefaultSlot(normalisedSlot);
       setSaveComboSuggestedName(
-        slot ? `My ${slot.toLowerCase()} combo` : `My ${mealSlot.toLowerCase()} combo`,
+        slot ? `My usual ${slot.toLowerCase()}` : `My usual ${mealSlot.toLowerCase()}`,
       );
       setSaveComboOpen(true);
     },
@@ -543,14 +697,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   );
 
   /** Gather the items in `slotName` from the active day and open the
-   * save-combo dialog. Called from the per-slot "Save combo" chip. */
+   * save-as-usual-meal dialog. Called from the per-slot full-width save
+   * row and from the first-run hint's "Save as usual" CTA (Ship M1). */
   const openSaveMealDialog = useCallback(
     (slotName: string) => {
       const slotMeals = mealsForSelectedDate.filter(
         (m) => normalizeJournalSlotName(m.name ?? "") === slotName,
       );
       if (slotMeals.length < 2) {
-        toast.info("Log 2 or more items first, then save the combo.");
+        toast.info("Log 2 or more items first, then save as a usual meal.");
         return;
       }
       const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
@@ -573,6 +728,73 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [handleOpenSaveCombo, mealsForSelectedDate],
   );
 
+  /** Ship M1 — the first-run hint's "Save as usual" CTA. Fires the
+   * accepted-analytics event then opens the save-usual-meal dialog
+   * pre-seeded with the current slot's items. */
+  const acceptUsualMealHint = useCallback(
+    (slot: string) => {
+      try {
+        track(AnalyticsEvents.usual_meal_hint_accepted, { slot });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      openSaveMealDialog(slot);
+    },
+    [openSaveMealDialog],
+  );
+
+  /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
+   * into `slot` via the shared `logSavedMeal` helper, then optimistically
+   * reorders `hostSavedMeals` so the re-logged one bubbles to the top
+   * (matches the Quick Add panel's post-log ordering). */
+  const logSavedMealFromSlotHeader = useCallback(
+    (meal: SavedMeal, slot: string) => {
+      logSavedMeal(meal, slot);
+      try {
+        track(AnalyticsEvents.usual_meal_log_tapped, {
+          slot,
+          itemCount: meal.items.length,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      try {
+        track(AnalyticsEvents.saved_meal_logged, {
+          itemCount: meal.items.length,
+          defaultMealSlot: meal.defaultMealSlot,
+          // L6 G3 (2026-04-18) — join key for the create→logged funnel.
+          savedMealId: meal.id,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      setHostSavedMeals((prev) => {
+        const next = prev.map((m) =>
+          m.id === meal.id
+            ? { ...m, logCount: m.logCount + 1, lastLoggedAt: new Date().toISOString() }
+            : m,
+        );
+        next.sort((a, b) => {
+          const ta = a.lastLoggedAt ? Date.parse(a.lastLoggedAt) : 0;
+          const tb = b.lastLoggedAt ? Date.parse(b.lastLoggedAt) : 0;
+          if (ta !== tb) return tb - ta;
+          return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+        });
+        return next;
+      });
+      if (authedUserId) {
+        void incrementLogCount(supabase, authedUserId, meal.id).catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("NutritionTracker slot-header usual-meal log bump failed", err);
+        });
+      }
+      // Bump the refresh token so `QuickAddPanel` rereads its own list —
+      // this keeps the Usual meals tab in sync after a slot-header log.
+      setSavedMealsRefreshToken((n) => n + 1);
+    },
+    [authedUserId, logSavedMeal],
+  );
+
   /** Persist a new saved-meal combo from the lifted `SaveMealDialog`,
    * then bump `savedMealsRefreshToken` so `QuickAddPanel` refetches its
    * "My meals" tab and jumps to it (preserves Batch 2.6 post-save UX). */
@@ -584,11 +806,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     }) => {
       if (!authedUserId) return;
       try {
-        await createSavedMeal(supabase, authedUserId, payload);
+        const created = await createSavedMeal(supabase, authedUserId, payload);
         try {
           track(AnalyticsEvents.saved_meal_created, {
             itemCount: payload.items.length,
             defaultMealSlot: payload.defaultMealSlot,
+            // L6 G3 (2026-04-18) — carry the new combo's id so the
+            // create → later-logged funnel (F3 habit loop) can join
+            // on a single stable key.
+            savedMealId: created.id,
           });
         } catch {
           /* analytics is fire-and-forget */
@@ -596,7 +822,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         toast.success(`Saved "${payload.name}".`);
         setSavedMealsRefreshToken((n) => n + 1);
       } catch (err) {
-        toast.error("Couldn't save that combo. Try again.");
+        toast.error("Couldn't save that meal. Try again.");
         // eslint-disable-next-line no-console
         console.error("NutritionTracker saved-meal create failed", err);
       }
@@ -741,16 +967,24 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     (items: AiLoggedItem[]) => {
       if (items.length === 0) return;
       for (const item of items) {
-        addLoggedMeal({
-          name: mealSlot,
-          recipeTitle: item.name,
-          time: mealSlot,
-          calories: Math.round(item.calories),
-          protein: Math.round(item.protein),
-          carbs: Math.round(item.carbs),
-          fat: Math.round(item.fat),
-          source: aiLoggingSourceLabel(item.source),
-        });
+        // Audit L6 G1 (2026-04-18) — `food_logged.source` mirrors the
+        // AI origin (voice vs photo) so the funnel F2 / AI-Pro
+        // dashboard slices correctly.
+        const analyticsSource: FoodLoggedSource =
+          item.source === "voice" ? "voice" : "photo";
+        addLoggedMeal(
+          {
+            name: mealSlot,
+            recipeTitle: item.name,
+            time: mealSlot,
+            calories: Math.round(item.calories),
+            protein: Math.round(item.protein),
+            carbs: Math.round(item.carbs),
+            fat: Math.round(item.fat),
+            source: aiLoggingSourceLabel(item.source),
+          },
+          analyticsSource,
+        );
       }
       const label = items[0]?.source === "voice" ? "voice" : "photo";
       toast.success(`Logged ${items.length} item${items.length === 1 ? "" : "s"} from ${label}`);
@@ -1078,18 +1312,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       if (!name) {
         return;
       }
-      addLoggedMeal({
-        name: mealSlot,
-        recipeTitle: name,
-        time: timeLabel,
-        calories: Math.max(0, Math.round(manualCalories)),
-        protein: Math.max(0, Math.round(manualProtein)),
-        carbs: Math.max(0, Math.round(manualCarbs)),
-        fat: Math.max(0, Math.round(manualFat)),
-        source: "Manual",
-        ...(manualFiber > 0 ? { fiberG: Math.max(0, Math.round(manualFiber)) } : {}),
-        ...(manualWater > 0 ? { waterMl: Math.max(0, Math.round(manualWater)) } : {}),
-      });
+      addLoggedMeal(
+        {
+          name: mealSlot,
+          recipeTitle: name,
+          time: timeLabel,
+          calories: Math.max(0, Math.round(manualCalories)),
+          protein: Math.max(0, Math.round(manualProtein)),
+          carbs: Math.max(0, Math.round(manualCarbs)),
+          fat: Math.max(0, Math.round(manualFat)),
+          source: "Manual",
+          ...(manualFiber > 0 ? { fiberG: Math.max(0, Math.round(manualFiber)) } : {}),
+          ...(manualWater > 0 ? { waterMl: Math.max(0, Math.round(manualWater)) } : {}),
+        },
+        "manual",
+      );
       setAddOpen(false);
       setManualName("");
       setManualCalories(0);
@@ -1108,17 +1345,20 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       const g = Math.max(1, Math.round(foodGrams) || 1);
       const mult = g / 100;
       const m = foodSelected.macrosPer100g;
-      addLoggedMeal({
-        name: mealSlot,
-        recipeTitle: `${foodSelected.description} (${g}g)`,
-        time: timeLabel,
-        calories: Math.max(0, Math.round(m.calories * mult)),
-        protein: Math.max(0, Math.round(m.protein * mult)),
-        carbs: Math.max(0, Math.round(m.carbs * mult)),
-        fat: Math.max(0, Math.round(m.fat * mult)),
-        source: "USDA FoodData Central",
-        ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
-      });
+      addLoggedMeal(
+        {
+          name: mealSlot,
+          recipeTitle: `${foodSelected.description} (${g}g)`,
+          time: timeLabel,
+          calories: Math.max(0, Math.round(m.calories * mult)),
+          protein: Math.max(0, Math.round(m.protein * mult)),
+          carbs: Math.max(0, Math.round(m.carbs * mult)),
+          fat: Math.max(0, Math.round(m.fat * mult)),
+          source: "USDA FoodData Central",
+          ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
+        },
+        "manual",
+      );
       setAddOpen(false);
       setFoodQuery("");
       setFoodHits(null);
@@ -1136,18 +1376,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     const p = clampPortionMultiplier(recipePortionMultiplier);
     const fiberFromRecipe =
       recipe.fiberG != null && recipe.fiberG > 0 ? scaledMacro(recipe.fiberG, p) : null;
-    addLoggedMeal({
-      name: mealSlot,
-      recipeTitle: recipe.title,
-      time: timeLabel,
-      calories: scaledMacro(recipe.calories, p),
-      protein: scaledMacro(recipe.protein, p),
-      carbs: scaledMacro(recipe.carbs, p),
-      fat: scaledMacro(recipe.fat, p),
-      source: "Recipe",
-      ...(fiberFromRecipe != null && fiberFromRecipe > 0 ? { fiberG: fiberFromRecipe } : {}),
-      ...(p !== 1 ? { portionMultiplier: p } : {}),
-    });
+    addLoggedMeal(
+      {
+        name: mealSlot,
+        recipeTitle: recipe.title,
+        time: timeLabel,
+        calories: scaledMacro(recipe.calories, p),
+        protein: scaledMacro(recipe.protein, p),
+        carbs: scaledMacro(recipe.carbs, p),
+        fat: scaledMacro(recipe.fat, p),
+        source: "Recipe",
+        ...(fiberFromRecipe != null && fiberFromRecipe > 0 ? { fiberG: fiberFromRecipe } : {}),
+        ...(p !== 1 ? { portionMultiplier: p } : {}),
+      },
+      "recipe",
+    );
     setAddOpen(false);
     setRecipePortionMultiplier(1);
   };
@@ -1388,10 +1631,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       />
 
 
-      {/* Quick add panel — Favourites / Frequent / Recent / My meals tabs
-          with one-tap log. Batch 2.6 adds "My meals" for saved combos.
-          Audit H4 (2026-04-18) lifted `SaveMealDialog` up to this host
-          and wires opening via `onOpenSaveCombo` instead of the previous
+      {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
+          tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
+          meals is the primary re-log surface and renames the "My meals"
+          tab to "Usual meals". Batch 2.6 introduced saved meals; audit
+          H4 (2026-04-18) lifted `SaveMealDialog` up to this host and
+          wires opening via `onOpenSaveCombo` instead of the previous
           `window.dispatchEvent` bridge.
           Audit M4 (2026-04-18): collapsed behind a single "Quick add" CTA
           above Meals. Default collapsed on first run; user's last choice
@@ -1408,7 +1653,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             <Icons.energy className="h-4 w-4 text-primary" aria-hidden="true" />
             <span className="text-sm font-bold text-foreground">Quick add</span>
             <span className="text-xs text-muted-foreground truncate">
-              Favourites, frequent, recent, my meals
+              Usual meals, recent, frequent, favourites
             </span>
           </span>
           <Icons.down
@@ -1444,27 +1689,36 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           setMealSlot(slot);
           setAddOpen(true);
         }}
-        onOpenSaveCombo={openSaveMealDialog}
+        onOpenSaveUsualMeal={openSaveMealDialog}
         onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
         mealPlanFirstDay={mealPlan && mealPlan.length > 0 ? mealPlan[0]! : null}
         onLogPlanMeal={(meal) => {
-          addLoggedMealForDate(selectedDateKey, {
-            name: normalizeJournalSlotName(meal.name),
-            recipeTitle: meal.recipeTitle,
-            time: normalizeJournalSlotName(meal.name),
-            calories: meal.calories,
-            protein: meal.protein,
-            carbs: meal.carbs,
-            fat: meal.fat,
-            source: "Meal plan",
-          });
+          addLoggedMealForDate(
+            selectedDateKey,
+            {
+              name: normalizeJournalSlotName(meal.name),
+              recipeTitle: meal.recipeTitle,
+              time: normalizeJournalSlotName(meal.name),
+              calories: meal.calories,
+              protein: meal.protein,
+              carbs: meal.carbs,
+              fat: meal.fat,
+              source: "Meal plan",
+            },
+            "planner",
+          );
         }}
         onOpenAddCustom={() => setAddOpen(true)}
         onOpenPhotoLog={handlePhotoLogClick}
         onOpenVoiceLog={handleVoiceLog}
         userTier={userTier}
+        savedMeals={hostSavedMeals}
+        onLogSavedMeal={logSavedMealFromSlotHeader}
+        hintVisibleForSlot={hintVisibleForSlot}
+        onDismissUsualMealHint={dismissUsualMealHint}
+        onAcceptUsualMealHint={acceptUsualMealHint}
       />
 
       {/* 6. Streak Insight Card */}
@@ -1627,32 +1881,38 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onMealSlotChange={setMealSlot}
         recentFoods={recentFoods}
         onPickRecentFood={(n) => {
-          addLoggedMeal({
-            name: "Snacks",
-            recipeTitle: n,
-            time: timeLabel,
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            source: "Manual",
-          });
+          addLoggedMeal(
+            {
+              name: "Snacks",
+              recipeTitle: n,
+              time: timeLabel,
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+              source: "Manual",
+            },
+            "manual",
+          );
           setBarcodeOpen(false);
         }}
         onConfirm={(payload: TodayBarcodeConfirmPayload) => {
           pushRecentFood(payload.titleForLog);
           setRecentFoods(loadRecentFoods());
-          addLoggedMeal({
-            name: mealSlot,
-            recipeTitle: `${payload.titleForLog} (${payload.portion})`,
-            time: timeLabel,
-            calories: payload.calories,
-            protein: payload.protein,
-            carbs: payload.carbs,
-            fat: payload.fat,
-            source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
-            ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
-          });
+          addLoggedMeal(
+            {
+              name: mealSlot,
+              recipeTitle: `${payload.titleForLog} (${payload.portion})`,
+              time: timeLabel,
+              calories: payload.calories,
+              protein: payload.protein,
+              carbs: payload.carbs,
+              fat: payload.fat,
+              source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
+              ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
+            },
+            "barcode",
+          );
           setBarcodeOpen(false);
           toast.success("Logged from barcode");
           track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted: payload.adjusted });

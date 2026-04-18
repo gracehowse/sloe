@@ -28,10 +28,14 @@ import {
   type FreezeLedger,
 } from "@/lib/streakFreeze";
 import {
+  buildUsualMealRecapInsight,
   buildWeeklyRecap,
   shouldShowRecap,
   weekKeyFor,
+  type UsualMealRecapInsight,
 } from "@/lib/weeklyRecap";
+import { listSavedMeals, type SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
+import { normaliseRecipeTitle } from "../../../../src/lib/nutrition/usualMealHint";
 import { scheduleWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
@@ -243,6 +247,73 @@ export default function ProgressScreen() {
     [recapLastSeenWeekKey, currentWeekKey, weekStartDay, recap.daysLogged],
   );
 
+  // Ship M1 — saved meals + usual-meal insight for the recap card.
+  const [hostSavedMealsForRecap, setHostSavedMealsForRecap] = useState<SavedMeal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setHostSavedMealsForRecap([]);
+      return;
+    }
+    listSavedMeals(supabase, userId)
+      .then((rows) => {
+        if (!cancelled) setHostSavedMealsForRecap(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("Progress listSavedMeals (recap) failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const usualMealInsight: UsualMealRecapInsight = useMemo(() => {
+    if (!recapVisible) return null;
+    const prevAnchor = new Date();
+    prevAnchor.setDate(prevAnchor.getDate() - 7);
+    const d = new Date(prevAnchor);
+    d.setHours(0, 0, 0, 0);
+    const dow = d.getDay();
+    const offset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+    d.setDate(d.getDate() + offset);
+    const weekKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      weekKeys.push(`${y}-${m}-${day}`);
+      d.setDate(d.getDate() + 1);
+    }
+    const logCountBySavedMealId: Record<string, number> = {};
+    for (const sm of hostSavedMealsForRecap) {
+      const itemKeys = new Set<string>();
+      for (const it of sm.items) {
+        itemKeys.add(`${normaliseRecipeTitle(it.recipeTitle)}|${Math.round(it.calories)}`);
+      }
+      let dayMatches = 0;
+      for (const dayKey of weekKeys) {
+        const meals = byDay[dayKey] ?? [];
+        const dayKeys = new Set<string>();
+        for (const m of meals) {
+          dayKeys.add(
+            `${normaliseRecipeTitle(m.recipeTitle ?? "")}|${Math.round(m.calories)}`,
+          );
+        }
+        if (itemKeys.size > 0 && [...itemKeys].every((k) => dayKeys.has(k))) {
+          dayMatches += 1;
+        }
+      }
+      logCountBySavedMealId[sm.id] = dayMatches;
+    }
+    return buildUsualMealRecapInsight({
+      byDay: byDay as any,
+      weekKeys,
+      savedMeals: hostSavedMealsForRecap,
+      logCountBySavedMealId,
+    });
+  }, [recapVisible, hostSavedMealsForRecap, byDay, weekStartDay]);
+
   const recapShownRef = useRef<string | null>(null);
   useEffect(() => {
     if (!recapVisible) return;
@@ -342,9 +413,19 @@ export default function ProgressScreen() {
         </View>
       ) : (
         <>
-          {/* Weekly Recap Card (Batch 4.11) */}
+          {/* Weekly Recap Card (Batch 4.11; Ship M1 usual-meal line). */}
           {recapVisible ? (
-            <WeeklyRecapCard recap={recap} onDismiss={dismissRecap} />
+            <WeeklyRecapCard
+              recap={recap}
+              onDismiss={dismissRecap}
+              usualMealInsight={usualMealInsight}
+              onStartUsualMealSave={() => {
+                // Ship M1 — route to Today; canonical save flow lives on
+                // the meal-slot section. Direct deep-link to the sheet
+                // pre-seeded with most-frequent items is a follow-up.
+                router.navigate({ pathname: "/(tabs)" as any });
+              }}
+            />
           ) : null}
 
           {/* 2x2 Stat Grid */}

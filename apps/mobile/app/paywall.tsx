@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -27,7 +27,25 @@ import {
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
+
+/** Map a raw `?from=` URL-param string into the canonical enum. Unknown
+ *  / missing values fall back to `"deep_link"` so the paywall can be
+ *  opened from a generic link without fabricating a specific surface. */
+function normalisePaywallFrom(raw: unknown): PaywallViewedFrom {
+  const s = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : "";
+  switch (s) {
+    case "voice_log":
+    case "photo_log":
+    case "settings":
+    case "onboarding":
+    case "trial_end":
+    case "deep_link":
+      return s;
+    default:
+      return "deep_link";
+  }
+}
 
 const TIMELINE = [
   { icon: "checkmark-circle" as const, color: Accent.success, title: "Your targets are set", desc: "Calorie budget and macro targets based on your goals." },
@@ -47,15 +65,26 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
   const [offeringsReady, setOfferingsReady] = useState(false);
 
+  // L6 G9 (2026-04-18) — every `paywall_viewed` MUST carry a canonical
+  // `from` so funnel F2 can attribute conversion to the originating
+  // surface (voice_log / photo_log / settings / onboarding / trial_end
+  // / deep_link). Raw route params are normalised through the enum so
+  // a malformed deep-link never bypasses the dashboard slice.
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const paywallFrom = useMemo(
+    () => normalisePaywallFrom(params.from),
+    [params.from],
+  );
+
   useEffect(() => {
-    track(AnalyticsEvents.paywall_viewed);
+    track(AnalyticsEvents.paywall_viewed, { from: paywallFrom });
     void (async () => {
       await ensurePurchasesUser(userId);
       const pkgs = await getOfferings();
       setPackages(pkgs);
       setOfferingsReady(true);
     })();
-  }, [userId]);
+  }, [userId, paywallFrom]);
 
   const annualPkg = packages.find(
     (p) => p.packageType === "ANNUAL" || p.identifier === "$rc_annual",

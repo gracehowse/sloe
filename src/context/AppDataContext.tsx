@@ -35,7 +35,7 @@ import {
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
 import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
-import { AnalyticsEvents } from "../lib/analytics/events.ts";
+import { AnalyticsEvents, type FoodLoggedSource } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
 import {
@@ -155,8 +155,20 @@ interface AppDataContextValue {
   selectedDateKey: string;
   setSelectedDateKey: Dispatch<SetStateAction<string>>;
   mealsForSelectedDate: LoggedMeal[];
-  addLoggedMeal: (meal: Omit<LoggedMeal, "id">) => void;
-  addLoggedMealForDate: (dayKey: string, meal: Omit<LoggedMeal, "id">) => void;
+  /**
+   * L6 G1 (2026-04-18) — optional `analyticsSource` threaded through to
+   * the `food_logged` event that the primitive fires. Defaults to
+   * `"manual"` at the hook so legacy callers keep working; call sites
+   * that originate from a specific flow (quick_add / recipe / planner
+   * / barcode / voice / photo / copy_meal / duplicate_day / saved_meal
+   * / custom_food) pass the matching enum so dashboards can slice.
+   */
+  addLoggedMeal: (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => void;
+  addLoggedMealForDate: (
+    dayKey: string,
+    meal: Omit<LoggedMeal, "id">,
+    analyticsSource?: FoodLoggedSource,
+  ) => void;
   removeLoggedMeal: (mealId: string) => void;
   /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day). */
   copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string) => Promise<void>;
@@ -1106,6 +1118,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         amount: add,
         unit: "ml",
         preset: null,
+        // L6 G6 (2026-04-18) — explicit amount_ml + via so dashboards
+        // don't have to parse (amount, unit) to know how much water
+        // was logged. The only caller on web is the quick-chip path
+        // (HydrationStimulantsCard + TodayDashboardMacroTiles); the
+        // manual-entry form logs `waterMl` via the meal row instead,
+        // which lands in `food_logged` not `hydration_logged`.
+        amount_ml: add,
+        via: "quick_chip",
       });
     },
     [selectedDateKey, authedUserId],
@@ -1130,6 +1150,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         amount: add,
         unit: "mg",
         preset: preset ?? null,
+        // L6 G6 (2026-04-18) — explicit kind + via + amount_mg_or_g.
+        kind: "caffeine",
+        amount_mg_or_g: add,
+        via: preset ? "quick_chip" : "manual",
       });
     },
     [selectedDateKey, authedUserId],
@@ -1154,6 +1178,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         amount: add,
         unit: "g",
         preset: preset ?? null,
+        // L6 G6 (2026-04-18) — explicit kind + via + amount_mg_or_g.
+        kind: "alcohol",
+        amount_mg_or_g: add,
+        via: preset ? "quick_chip" : "manual",
       });
     },
     [selectedDateKey, authedUserId],
@@ -1206,15 +1234,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      track(
-        kind === "water" ? AnalyticsEvents.hydration_logged : AnalyticsEvents.stimulant_logged,
-        {
+      // L6 G6 (2026-04-18) — reset fires the same event with the
+      // enriched payload. `via: "manual"` because reset is always a
+      // deliberate menu action, never a quick chip. `amount_ml` /
+      // `amount_mg_or_g` stay 0 so a reset is a distinct row in
+      // funnels without a dedicated event name.
+      if (kind === "water") {
+        track(AnalyticsEvents.hydration_logged, {
+          type: "water",
+          amount: 0,
+          unit: "ml",
+          preset: "reset",
+          amount_ml: 0,
+          via: "manual",
+        });
+      } else {
+        track(AnalyticsEvents.stimulant_logged, {
           type: kind,
           amount: 0,
-          unit: kind === "water" ? "ml" : kind === "caffeine" ? "mg" : "g",
+          unit: kind === "caffeine" ? "mg" : "g",
           preset: "reset",
-        },
-      );
+          kind,
+          amount_mg_or_g: 0,
+          via: "manual",
+        });
+      }
     },
     [authedUserId],
   );

@@ -7,6 +7,7 @@ Use this before a major release or store submission.
 - [ ] Production Supabase: all migrations from `supabase/migrations/` applied (`supabase db push` or hosted SQL).
 - [ ] Vercel (or host): env vars match `.env.example` — no placeholders for required keys.
 - [ ] `NEXT_PUBLIC_APP_URL` / domain correct for auth redirects and Stripe.
+- [ ] **Apple Sign-In (Supabase):** Dashboard → Authentication → Providers → Apple — **Secret** (JWT from Apple `.p8` key) set and rotated before expiry (~6 months). See [`docs/environment.md`](../environment.md#supabase-cli-local-stack-supabase-start) and [`supabase/.env.example`](../../supabase/.env.example) for local `supabase start` (`SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in `supabase/.env`).
 
 ## Web
 

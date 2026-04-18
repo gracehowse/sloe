@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * SavedMealsTab (Batch 2.6) — the "My meals" tab body inside
- * `QuickAddPanel`. Lists the user's saved combos with total kcal / P /
- * C / F, a one-tap log button, and an overflow with Rename / Delete.
+ * SavedMealsTab (Batch 2.6; renamed copy Ship M1, 2026-04-18) — the
+ * **"Usual meals"** tab body inside `QuickAddPanel`. Lists the user's
+ * saved meals with total kcal / P / C / F, a one-tap log button, and an
+ * overflow with Rename / Delete.
  *
  * Full item-editing is **out of scope** for this batch — user deletes
  * + re-creates to change items. This is documented in the empty-state
@@ -69,20 +70,21 @@ export function SavedMealsTab({
 
   if (!signedIn) {
     return (
-      <EmptyState title="Sign in to save meal combos for one-tap re-logging." />
+      <EmptyState title="Sign in to save a usual meal for one-tap re-logging." />
     );
   }
 
   if (meals.length === 0) {
-    // Copy preserved verbatim from before audit M5 (2026-04-18);
-    // only the rendering moved into the shared <EmptyState /> primitive.
+    // Ship M1 (2026-04-18) — copy aligned with the new slot-header full
+    // width row ("Save {Slot} as a meal") so the empty-state points the
+    // user at the canonical save entry point.
     return (
       <EmptyState
         title={
           <>
             Log 2 or more items in a slot, then tap{" "}
-            <span className="font-medium text-foreground">Save these as a meal</span> to
-            re-log the combo in one tap.
+            <span className="font-medium text-foreground">Save {"{"}Slot{"}"} as a meal</span>{" "}
+            to re-log it in one tap.
           </>
         }
       />

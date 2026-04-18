@@ -145,6 +145,117 @@ export const AnalyticsEvents = {
    * `{ fromSlot?: string; overCalories: boolean; kcalDelta: number }`.
    * Added 2026-04-18 (H5 audit fix) to measure fit-this-in usage. */
   fit_this_in_previewed: "fit_this_in_previewed",
+  /** In-flow AI paywall surface rendered (web `AiPaywallDialog` or
+   * mobile `AiPaywallSheet`). Fires once per mount via `useEffect`.
+   * Payload: `{ feature: "voice_log" | "photo_log" }`. Added 2026-04-18
+   * (M2) — distinct from the pre-existing `voice_log_paywalled` /
+   * `ai_photo_log_paywalled` events, which continue to fire at the
+   * caller as the funnel-entry signal. This event measures the in-flow
+   * surface specifically. Identical payload on both platforms. */
+  ai_paywall_sheet_viewed: "ai_paywall_sheet_viewed",
+  /** User dismissed the in-flow AI paywall without tapping the primary
+   * CTA. Payload: `{ feature: "voice_log" | "photo_log"; reason:
+   * "backdrop" | "close_button" | "not_now" }`. Every dismiss path is
+   * labelled so product can slice which exit the user preferred. Fires
+   * from both platforms with identical payload shape (M2, 2026-04-18). */
+  ai_paywall_sheet_dismissed: "ai_paywall_sheet_dismissed",
+  /** User tapped the primary CTA on the in-flow AI paywall. Payload:
+   * `{ feature: "voice_log" | "photo_log"; action: "see_plans" }`. The
+   * host screen routes to `/paywall?from={feature}` after the tap; the
+   * existing `/pricing` / `/paywall` screen analytics are unaffected.
+   * Added 2026-04-18 (M2). */
+  ai_paywall_sheet_cta_tapped: "ai_paywall_sheet_cta_tapped",
+  /** First-run "Make this your usual {slot}" hint was rendered inside a
+   * meal slot on Today (Ship M1, 2026-04-18). Fires once per slot per
+   * mount after the gate passes. Payload: `{ slot }`. */
+  usual_meal_hint_shown: "usual_meal_hint_shown",
+  /** User tapped the "Save as usual" CTA on the first-run hint (Ship M1).
+   * Payload: `{ slot }`. */
+  usual_meal_hint_accepted: "usual_meal_hint_accepted",
+  /** User tapped "Not now" on the first-run hint (Ship M1). Payload:
+   * `{ slot }`. Dismiss is per-slot, persisted under
+   * `suppr-usual-meal-hint-dismissed-v1`. */
+  usual_meal_hint_dismissed: "usual_meal_hint_dismissed",
+  /** User tapped the "Log usual: {savedMealName}" pill on a slot header
+   * (Ship M1, 2026-04-18). Fires on direct one-tap or on accepting a
+   * picker-sheet selection when multiple saved meals match the slot.
+   * Payload: `{ slot, itemCount }`. Separate from `saved_meal_logged` so
+   * dashboards can slice slot-header usage vs Quick Add usage. */
+  usual_meal_log_tapped: "usual_meal_log_tapped",
+  /** The computed protected streak transitioned from >=1 to 0 — i.e.
+   * the user's logging streak reset, either because they missed a day
+   * without a freeze available or because the freeze budget was
+   * exhausted. Payload: `{ priorStreak: number }`. Fires once per
+   * transition, never on repeated zero-reads. Added 2026-04-18 (L6 G8)
+   * so D3's "freeze save rate" metric has a denominator. */
+  streak_reset: "streak_reset",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
+
+// -- Shared enum types (L6 G1, G4, G5, G6, G7, G9 — 2026-04-18) ------
+//
+// Exported so call sites are forced by TypeScript to pass a value
+// from the canonical enum, rather than inventing a new string that
+// would silently break the PostHog dashboards. Additive only — the
+// event names themselves are unchanged; these types lock the
+// properties that ship with them.
+
+/** Canonical `source` of a `food_logged` event (L6 G1).
+ *
+ * Every `track(AnalyticsEvents.food_logged, …)` call site MUST pass
+ * `source` as one of these values. See
+ * `tests/unit/foodLoggedSourceParity.test.ts` for the grep-level
+ * assertion that guards new call sites from drifting. */
+export type FoodLoggedSource =
+  | "manual"         // FoodSearch text/inline search confirm
+  | "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
+  | "saved_meal"     // Re-log from My meals tab
+  | "custom_food"    // Logged from custom food entry
+  | "copy_meal"      // Per-meal copy flow
+  | "duplicate_day"  // Day-level duplicate flow
+  | "barcode"        // Barcode scanner commit
+  | "voice"          // Voice log commit
+  | "photo"          // AI photo log commit
+  | "recipe"         // Logged from recipe detail / recipe mode
+  | "planner";       // Logged from planner slot
+
+/** Canonical `surface` of an `empty_state_cta_clicked` event (L6 G5). */
+export type EmptyStateSurface =
+  | "today"
+  | "quick_add_favourites"
+  | "quick_add_frequent"
+  | "quick_add_recent"
+  | "quick_add_my_meals"
+  | "recipes_library"
+  | "planner_weekly"
+  | "shopping_list"
+  | "progress";
+
+/** Canonical `via` of a `hydration_logged` / `stimulant_logged` event
+ *  (L6 G6). Separates quick-chip taps from manual macro entry (e.g.
+ *  water from `TodayAddMealDialog`'s manual form). */
+export type HydrationStimulantVia = "quick_chip" | "manual";
+
+/** Canonical `kind` on a `stimulant_logged` event (L6 G6). */
+export type StimulantKind = "caffeine" | "alcohol";
+
+/** Canonical `trigger` for `widget_snapshot_updated` (L6 G7). */
+export type WidgetSnapshotTrigger =
+  | "totals_changed"
+  | "fast_state_changed"
+  | "scheduled_refresh";
+
+/** Canonical `from` enum for `paywall_viewed` (L6 G9). */
+export type PaywallViewedFrom =
+  | "voice_log"
+  | "photo_log"
+  | "settings"
+  | "onboarding"
+  | "trial_end"
+  | "deep_link";
+
+/** Canonical `confidence_bucket` for recipe-ingredient override events
+ *  (L6 G4). Mirrors `classifyConfidence` in
+ *  `src/lib/nutrition/aiLogging.ts` — do not duplicate thresholds. */
+export type ConfidenceBucket = "high" | "medium" | "low";

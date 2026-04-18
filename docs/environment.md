@@ -76,6 +76,18 @@ Uses lightweight HTTP checks (no browser). Set URL to your preview or production
 
 Repository secrets should include at least `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for a real build + E2E sign-in path. Optional: `E2E_EMAIL`, `E2E_PASSWORD`. See [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and [`tests/e2e/README.md`](../tests/e2e/README.md).
 
+## Supabase CLI: local stack (supabase start)
+
+These are **not** read from the repo root `.env.local` by default. They apply when you run the **local** Supabase Docker stack and `config.toml` uses `env(...)`.
+
+| Variable | Where | Purpose |
+|----------|--------|---------|
+| `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` | **`supabase/.env`** (create from [`supabase/.env.example`](../supabase/.env.example)) | Apple OAuth **client secret** (JWT from your Apple `.p8` signing key). Referenced in [`supabase/config.toml`](../supabase/config.toml) under `[auth.external.apple]`. |
+
+**Hosted Supabase:** configure the same Apple provider (including secret) in the **project dashboard** → Authentication → Providers → Apple. That is what production and `supabase db … --linked` use for Auth; the local `supabase/.env` entry is optional unless you run `supabase start` and want Apple sign-in (or a quiet CLI when config is evaluated).
+
+If you only use **`supabase db push` / `migration list --linked`** against a remote project, missing this variable does **not** block migrations; you may still see a CLI warning until `supabase/.env` exists or the variable is exported.
+
 ## Related
 
 - [Observability (PostHog dashboards, Sentry verification, smoke)](observability.md)

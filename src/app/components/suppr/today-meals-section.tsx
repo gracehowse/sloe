@@ -19,15 +19,33 @@ import {
 } from "../../../lib/nutrition/portionMultiplier";
 import { normalizeJournalSlotName } from "../../../lib/nutrition/journalSlot";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
+import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
+import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 
 /**
- * TodayMealsSection — per-slot meal list + empty-state plan log.
+ * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
+ * Log-usual pill on slot headers, and the first-run "Make this your
+ * usual {slot}" hint.
  *
- * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). The
- * section owns no data — it reads what the host passes and fires
- * callbacks back up. State that crosses cards (collapsed slots, copy
- * target id, duplicate-day visibility, save-combo dialog) stays in
- * the composition root.
+ * Ship M1 (2026-04-18) — saved meals is the canonical re-log mechanism.
+ *  - Right-side slot-header action: `[↻ Log usual: <savedMealName>]` pill
+ *    when ≥1 saved meal matches the slot. 2+ matches open a picker.
+ *  - Full-width row below the last item: `+ Save {SlotName} as a meal`
+ *    when the slot has ≥2 items AND no saved meal yet for this slot.
+ *  - First-run hint renders above the full-width save row when the
+ *    shared `shouldShowUsualMealHint` gate passes for this slot.
+ *
+ * The old 10px "Save combo" metadata pill has been deleted. All
+ * user-facing "combo" strings are replaced with "usual meal".
  */
 
 export type TodayMealSectionMeal = {
@@ -60,7 +78,8 @@ export interface TodayMealsSectionProps {
   collapsedSlots: Set<string>;
   onToggleSlot: (name: string) => void;
   onOpenAddForSlot: (slot: string) => void;
-  onOpenSaveCombo: (slot: string) => void;
+  /** Open the save-as-usual dialog pre-seeded with the items in `slot`. */
+  onOpenSaveUsualMeal: (slot: string) => void;
   onOpenDuplicateDay: () => void;
   onRequestCopyMeal: (mealId: string) => void;
   onDeleteMeal: (mealId: string, recipeTitle: string) => void;
@@ -70,6 +89,17 @@ export interface TodayMealsSectionProps {
   onOpenPhotoLog: () => void;
   onOpenVoiceLog: () => void;
   userTier: UserTier;
+  /** Ship M1 — all saved meals the authed user owns, sorted newest-logged-first. */
+  savedMeals: SavedMeal[];
+  /** Ship M1 — log a saved meal into a specific slot. */
+  onLogSavedMeal: (meal: SavedMeal, slot: string) => void;
+  /** Ship M1 — whether the first-run hint is allowed to render in `slot`.
+   * Computed in the host via `shouldShowUsualMealHint`. */
+  hintVisibleForSlot: (slot: string) => boolean;
+  /** Ship M1 — user tapped "Not now" on the hint for `slot`. */
+  onDismissUsualMealHint: (slot: string) => void;
+  /** Ship M1 — user tapped "Save as usual" on the hint for `slot`. */
+  onAcceptUsualMealHint: (slot: string) => void;
 }
 
 function getMealIcon(name: string): { icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; tone: "warning" | "success" | "primary" | "fat" } {
@@ -80,6 +110,31 @@ function getMealIcon(name: string): { icon: React.ComponentType<React.SVGProps<S
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
 }
 
+/**
+ * Saved meals matching a slot. A meal matches when either:
+ *   - `defaultMealSlot === slot` (user explicitly tagged it); OR
+ *   - the meal has no default slot but its `lastLoggedAt` history shows
+ *     it was last logged into this slot (implicit match, handled by the
+ *     caller via pre-sorted listing — here we fall back to "no default
+ *     slot" meals appearing under every slot is noisy, so we restrict
+ *     to explicit matches only).
+ *
+ * Keeping this pure + local so tests can reach it if needed later.
+ */
+export function savedMealsForSlot(meals: readonly SavedMeal[], slot: string): SavedMeal[] {
+  const out: SavedMeal[] = [];
+  for (const m of meals) {
+    if (m.defaultMealSlot === slot) out.push(m);
+  }
+  // Sort newest-logged first (lastLoggedAt desc, then createdAt desc).
+  return out.sort((a, b) => {
+    const ta = a.lastLoggedAt ? Date.parse(a.lastLoggedAt) : 0;
+    const tb = b.lastLoggedAt ? Date.parse(b.lastLoggedAt) : 0;
+    if (ta !== tb) return tb - ta;
+    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+  });
+}
+
 export function TodayMealsSection({
   mealsGrouped,
   mealsForSelectedDate,
@@ -88,7 +143,7 @@ export function TodayMealsSection({
   collapsedSlots,
   onToggleSlot,
   onOpenAddForSlot,
-  onOpenSaveCombo,
+  onOpenSaveUsualMeal,
   onOpenDuplicateDay,
   onRequestCopyMeal,
   onDeleteMeal,
@@ -98,11 +153,22 @@ export function TodayMealsSection({
   onOpenPhotoLog,
   onOpenVoiceLog,
   userTier,
+  savedMeals,
+  onLogSavedMeal,
+  hintVisibleForSlot,
+  onDismissUsualMealHint,
+  onAcceptUsualMealHint,
 }: TodayMealsSectionProps) {
   // Audit M7 (2026-04-18) — themed destructive-confirm dialog
   // replacing the prior `window.confirm` on the Delete overflow item.
   const [deleteCandidate, setDeleteCandidate] = React.useState<
     { id: string; recipeTitle: string } | null
+  >(null);
+
+  // Ship M1 — "pick which usual meal to log" sheet when 2+ saved meals
+  // match the slot. `null` = closed; `{ slot, options }` = open for slot.
+  const [usualPicker, setUsualPicker] = React.useState<
+    { slot: string; options: SavedMeal[] } | null
   >(null);
 
   return (
@@ -134,6 +200,13 @@ export function TodayMealsSection({
           distributeMealBudget(effectiveCalorieTarget, fiberTarget, consumed);
 
           const mealIconInfo = getMealIcon(sectionName);
+          const slotSavedMeals = savedMealsForSlot(savedMeals, sectionName);
+          const hasSaved = slotSavedMeals.length > 0;
+          const showSaveRow = sectionMeals.length >= 2 && !hasSaved;
+          const showHint =
+            !hasSaved && sectionMeals.length >= 1 && hintVisibleForSlot(sectionName);
+          const primarySaved = slotSavedMeals[0];
+          const extraSavedCount = slotSavedMeals.length - 1;
 
           return (
             <div key={sectionName} className="border-b border-border last:border-b-0">
@@ -162,19 +235,38 @@ export function TodayMealsSection({
                   {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
                 </span>
                 <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
-                {/* Batch 2.6 — "Save these as a meal" when the slot has 2+ items. */}
-                {sectionMeals.length >= 2 && (
+                {/* Ship M1 — `Log usual: {name}` pill on slot headers with
+                    ≥1 saved meal matching this slot. 2+ matches open the
+                    picker sheet. Replaces the old 10px "Save combo"
+                    metadata pill — that action now lives in the
+                    full-width row below the last item. */}
+                {hasSaved && primarySaved && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenSaveCombo(sectionName);
+                      if (slotSavedMeals.length >= 2) {
+                        setUsualPicker({ slot: sectionName, options: slotSavedMeals });
+                      } else {
+                        onLogSavedMeal(primarySaved, sectionName);
+                      }
                     }}
-                    className="mr-1 inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:border-primary/40"
-                    aria-label={`Save ${sectionName} items as a meal combo`}
-                    title="Save these as a meal"
+                    className="mr-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20"
+                    aria-label={
+                      slotSavedMeals.length >= 2
+                        ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
+                        : `Log usual ${sectionName}: ${primarySaved.name}`
+                    }
+                    title={
+                      slotSavedMeals.length >= 2
+                        ? `Choose from ${slotSavedMeals.length} saved meals`
+                        : `Log ${primarySaved.name}`
+                    }
                   >
-                    Save combo
+                    <Icons.refresh className="w-3 h-3" aria-hidden />
+                    <span className="max-w-[140px] truncate">
+                      Log usual{extraSavedCount > 0 ? "…" : `: ${primarySaved.name}`}
+                    </span>
                   </button>
                 )}
                 <Icons.down className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`} />
@@ -223,6 +315,61 @@ export function TodayMealsSection({
                       </div>
                     </div>
                   ))}
+
+                  {/* Ship M1 — first-run hint inside the slot body. Teaches
+                      the feature once per slot then stops. Renders above
+                      the save row so a user who hasn't saved yet sees the
+                      invitation before the action. */}
+                  {showHint && (
+                    <div
+                      role="note"
+                      aria-label={`Tip — make this your usual ${sectionName}`}
+                      className="mx-3.5 my-2 rounded-card border border-primary/25 bg-primary/5 p-3"
+                    >
+                      <p className="text-[13px] font-semibold text-foreground">
+                        Make this your usual {sectionName.toLowerCase()}.
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        One tap to re-log it tomorrow.
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onAcceptUsualMealHint(sectionName)}
+                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                          aria-label={`Save ${sectionName} as a usual meal`}
+                        >
+                          <Icons.save className="w-3 h-3" aria-hidden />
+                          Save as usual
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDismissUsualMealHint(sectionName)}
+                          className="text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1"
+                          aria-label={`Dismiss the usual-meal hint for ${sectionName}`}
+                        >
+                          Not now
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ship M1 — full-width "Save {Slot} as a meal" row. Only
+                      renders when the slot has ≥2 items and no saved meal
+                      yet for this slot. Same weight as other primary row
+                      actions — this is the canonical save entry point now
+                      that the 10px pill is gone. */}
+                  {showSaveRow && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenSaveUsualMeal(sectionName)}
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-primary hover:bg-primary/5 transition-colors"
+                      aria-label={`Save ${sectionName} as a usual meal — one tap to re-log next time`}
+                    >
+                      <Icons.save className="w-4 h-4" aria-hidden />
+                      Save {sectionName} as a meal
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -335,6 +482,59 @@ export function TodayMealsSection({
           if (deleteCandidate) onDeleteMeal(deleteCandidate.id, deleteCandidate.recipeTitle);
         }}
       />
+
+      {/* Ship M1 — usual-meal picker for slots with 2+ matches. */}
+      <Dialog
+        open={usualPicker != null}
+        onOpenChange={(o) => {
+          if (!o) setUsualPicker(null);
+        }}
+      >
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              {usualPicker ? `Log a usual ${usualPicker.slot}` : "Log a usual meal"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Pick which saved meal to log. Newest logged first.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            {(usualPicker?.options ?? []).slice(0, 3).map((m) => {
+              const summary = summariseSavedMeal(m);
+              const itemsLabel =
+                summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    if (usualPicker) {
+                      onLogSavedMeal(m, usualPicker.slot);
+                    }
+                    setUsualPicker(null);
+                  }}
+                  className="w-full text-left rounded-card border border-border bg-card px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  aria-label={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
+                >
+                  <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {itemsLabel} · {summary.totalCalories} kcal · P{" "}
+                    {Math.round(summary.totalProtein)}g · C{" "}
+                    {Math.round(summary.totalCarbs)}g · F{" "}
+                    {Math.round(summary.totalFat)}g
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setUsualPicker(null)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { ConfidenceDot } from "./suppr/confidence-dot";
+import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
@@ -763,6 +764,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       track(AnalyticsEvents.recipe_ingredient_added, {
         recipeId: recipe.id,
         hasMatch: payload.hasMatch,
+        // L6 G4 (2026-04-18) — reuse the shared `classifyConfidence`
+        // classifier so the bucket thresholds never drift from the
+        // existing ConfidenceDot + verify-pipeline logic. When there
+        // was no match at all (pure manual add), the confidence is
+        // 0 and buckets as "low".
+        confidence_bucket: classifyConfidence(payload.confidence),
       });
       toast.success(
         payload.hasMatch
@@ -787,12 +794,22 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         toast.error("Failed to save override");
         return;
       }
+      const priorRow = dbIngredients[index];
       setDbIngredients((prev) =>
         prev.map((ing, i) => (i === index ? { ...ing, overrideMacros: override } : ing)),
       );
       track(AnalyticsEvents.recipe_ingredient_overridden, {
         recipeId: recipe.id,
         ingredientPosition: index,
+        // L6 G4 (2026-04-18) — bucket the row's PRE-override
+        // confidence so product can answer "do people override
+        // high-confidence matches too?". The `IngredientRow` itself
+        // only stores `isVerified` (true when the pipeline returned a
+        // match with confidence >= 0.5 at insert time), which mirrors
+        // the UI's `ConfidenceDot level={ing.isVerified ? "high" : "medium"}`
+        // decision. No raw confidence is persisted, so we reuse the
+        // UI's mapping here instead of inventing a new threshold.
+        confidence_bucket: priorRow?.isVerified ? "high" : "medium",
       });
       toast.success("Nutrition override saved");
     },
@@ -813,6 +830,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         toast.error("Failed to clear override");
         return;
       }
+      const priorRow = dbIngredients[index];
       setDbIngredients((prev) =>
         prev.map((ing, i) => {
           if (i !== index) return ing;
@@ -823,6 +841,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       track(AnalyticsEvents.recipe_ingredient_override_cleared, {
         recipeId: recipe.id,
         ingredientPosition: index,
+        // L6 G4 (2026-04-18) — same bucket derivation as the
+        // `_overridden` emit above. Classifier reused from the UI.
+        confidence_bucket: priorRow?.isVerified ? "high" : "medium",
       });
       toast.success("Override cleared — using matched macros");
     },

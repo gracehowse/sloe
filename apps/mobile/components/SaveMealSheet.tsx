@@ -1,16 +1,16 @@
 /**
- * Save-meal bottom sheet (Batch 2.6) — mobile mirror of the web
- * `SaveMealDialog`. Collects a name + optional default slot + items for a
- * saved-meal combo. Does no I/O itself — `onSave` hands the payload back
- * to the caller, which runs it through the shared `createSavedMeal`
- * helper.
+ * Save-meal bottom sheet (Batch 2.6; renamed copy Ship M1) — mobile
+ * mirror of the web `SaveMealDialog`. Collects a name + optional
+ * default slot + items for a saved ("usual") meal. Does no I/O itself —
+ * `onSave` hands the payload back to the caller, which runs it through
+ * the shared `createSavedMeal` helper.
  *
  * The items list is reorderable (up / down arrows) and removable to
  * match the web dialog. Reorder / remove happens in local state only
  * until the user taps "Save".
  *
  * Accessibility:
- *  - Name `TextInput` has `accessibilityLabel` "Meal combo name"
+ *  - Name `TextInput` has `accessibilityLabel` "Usual meal name"
  *  - Each item row carries an `accessibilityLabel` that includes the
  *    title + macro summary
  *  - Up/down/remove buttons have per-item accessibility labels
@@ -159,7 +159,7 @@ export default function SaveMealSheet({
               />
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
-              Save these as a meal
+              Save as a usual meal
             </Text>
             <Text
               style={{
@@ -169,7 +169,7 @@ export default function SaveMealSheet({
                 marginTop: 2,
               }}
             >
-              A meal combo re-logs all of these items in one tap next time.
+              One tap re-logs all of these items next time.
             </Text>
 
             <ScrollView
@@ -189,10 +189,12 @@ export default function SaveMealSheet({
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g. My usual breakfast"
+                placeholder={
+                  defaultSlot ? `My usual ${defaultSlot.toLowerCase()}` : "My usual breakfast"
+                }
                 placeholderTextColor={colors.textTertiary}
                 maxLength={80}
-                accessibilityLabel="Meal combo name"
+                accessibilityLabel="Usual meal name"
                 style={{
                   borderWidth: 1,
                   borderColor: colors.cardBorder,
@@ -358,7 +360,7 @@ export default function SaveMealSheet({
                         onPress={() => removeItem(i)}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel={`Remove ${title} from combo`}
+                        accessibilityLabel={`Remove ${title} from usual meal`}
                         style={{ padding: 4 }}
                       >
                         <Ionicons name="close" size={18} color={Accent.destructive} />
@@ -400,7 +402,7 @@ export default function SaveMealSheet({
                   backgroundColor: canSave ? Accent.primary : colors.cardBorder,
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="Save meal combo"
+                accessibilityLabel="Save usual meal"
                 accessibilityState={{ disabled: !canSave }}
               >
                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>

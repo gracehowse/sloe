@@ -298,3 +298,138 @@ export function nextRecapFireDate(
 
 /** Back-compat re-export so callers can import all recap helpers from one place. */
 export { dateKeyFromDate };
+
+/**
+ * Ship M1 (2026-04-18) — weekly recap "usual meals" growth-loop line.
+ *
+ * Keeps the core `WeeklyRecap` type unchanged (tests + share-string
+ * callers shouldn't have to move) and adds a second pure builder that
+ * decides which of three states the recap card should surface:
+ *
+ *   - `celebration` — user has ≥1 saved meal AND at least one was logged
+ *     in the last 7 days. Format: "You logged {name} {n} times this week."
+ *     Picks the most-logged saved meal in the window; ties break by most
+ *     recently logged.
+ *   - `prompt` — user has no saved meals AND has logged ≥5 distinct days.
+ *     Format: "Got a usual breakfast? Save it once, log it in one tap."
+ *     The prompt CTA seeds `SaveMealDialog` with the slot that has the
+ *     largest item-count across the week (usually Breakfast).
+ *   - `null` — neither gate passes. The recap card renders without the
+ *     usual-meals line at all.
+ *
+ * Pure — no React, no storage. Both platforms call this and render the
+ * three states in their own `WeeklyRecapCard`.
+ */
+
+export type UsualMealRecapInsight =
+  | {
+      kind: "celebration";
+      /** Saved meal name, verbatim (may be user-entered mixed case). */
+      name: string;
+      /** Number of times this saved meal was logged in the 7-day window. */
+      count: number;
+    }
+  | {
+      kind: "prompt";
+      /** Slot with the largest item-count across the week — the "pre-seed"
+       * target when the user taps the prompt CTA. */
+      suggestedSlot: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
+    }
+  | null;
+
+export type UsualMealRecapInsightInput<M extends MealMacros> = {
+  byDay: ByDayOf<M>;
+  /** `YYYY-MM-DD` keys for the 7 days the recap covers. */
+  weekKeys: readonly string[];
+  /** User's saved meals. Empty array when the user has none. */
+  savedMeals: ReadonlyArray<{
+    id: string;
+    name: string;
+    defaultMealSlot?: string;
+    lastLoggedAt?: string;
+  }>;
+  /**
+   * Per-saved-meal log count over the 7-day window. Normally derived
+   * from journal rows whose `source === "Saved meal"` or whose (title,
+   * kcal) matches an item in a saved meal — the caller owns matching
+   * because journal rows don't carry a `savedMealId` today. If the
+   * caller has no signal, passing `{}` lands on `prompt` when the
+   * distinct-days gate is met.
+   */
+  logCountBySavedMealId: Readonly<Record<string, number>>;
+};
+
+/**
+ * Pure helper — see `UsualMealRecapInsight` for the three states.
+ */
+export function buildUsualMealRecapInsight<M extends MealMacros>(
+  input: UsualMealRecapInsightInput<M>,
+): UsualMealRecapInsight {
+  const { byDay, weekKeys, savedMeals, logCountBySavedMealId } = input;
+
+  // Celebration path — pick the most-logged saved meal in the window.
+  if (savedMeals.length > 0) {
+    let topId: string | null = null;
+    let topCount = 0;
+    for (const m of savedMeals) {
+      const c = logCountBySavedMealId[m.id] ?? 0;
+      if (c > topCount) {
+        topId = m.id;
+        topCount = c;
+      } else if (c > 0 && c === topCount && topId && m.lastLoggedAt) {
+        // Tie-break on most recently logged.
+        const existing = savedMeals.find((x) => x.id === topId);
+        const tExisting = existing?.lastLoggedAt
+          ? Date.parse(existing.lastLoggedAt)
+          : 0;
+        const tCandidate = Date.parse(m.lastLoggedAt);
+        if (tCandidate > tExisting) {
+          topId = m.id;
+        }
+      }
+    }
+    if (topId && topCount > 0) {
+      const name = savedMeals.find((m) => m.id === topId)?.name;
+      if (name) {
+        return { kind: "celebration", name, count: topCount };
+      }
+    }
+    // User owns a saved meal but it wasn't logged this week — suppress
+    // both the celebration line (there's nothing concrete to celebrate)
+    // and the prompt (they already know the feature exists).
+    return null;
+  }
+
+  // Prompt path — no saved meals yet. Gate on ≥5 distinct logged days.
+  const daysLogged = weekKeys.filter((k) => {
+    const meals = byDay[k];
+    return Array.isArray(meals) && meals.length > 0;
+  }).length;
+  if (daysLogged < 5) return null;
+
+  // Suggest the slot with the highest item-count across the week.
+  const slotCounts: Record<"Breakfast" | "Lunch" | "Dinner" | "Snacks", number> = {
+    Breakfast: 0,
+    Lunch: 0,
+    Dinner: 0,
+    Snacks: 0,
+  };
+  for (const k of weekKeys) {
+    const meals = byDay[k] ?? [];
+    for (const m of meals) {
+      const slotName = ((m as unknown as { name?: string }).name ?? "").trim();
+      if (slotName === "Breakfast" || slotName === "Lunch" || slotName === "Dinner" || slotName === "Snacks") {
+        slotCounts[slotName] += 1;
+      } else if (slotName === "Snack") {
+        slotCounts.Snacks += 1;
+      }
+    }
+  }
+  const suggested = (Object.entries(slotCounts) as Array<
+    [keyof typeof slotCounts, number]
+  >).reduce<[keyof typeof slotCounts, number]>(
+    (top, next) => (next[1] > top[1] ? next : top),
+    ["Breakfast", 0],
+  );
+  return { kind: "prompt", suggestedSlot: suggested[0] };
+}

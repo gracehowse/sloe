@@ -616,6 +616,12 @@ export default function FoodSearchModal({
           // Analytics must never block a log.
         }
       }
+      // L6 G1 (2026-04-18) — `food_logged` is fired by the HOST of
+      // this modal (Today's onSelect, see `apps/mobile/app/(tabs)/index.tsx`)
+      // because verify flows (`recipe/verify.tsx`, `create-recipe.tsx`)
+      // also mount this modal and must NOT emit `food_logged`. The
+      // `source` the host emits is `"custom_food"` iff
+      // `selection.source === "CUSTOM"`, else `"manual"`.
       onSelect({
         name: preview.name,
         source: preview.source,

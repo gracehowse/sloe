@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { LoggedMeal } from "../../types/recipe.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
 import {
@@ -160,7 +160,18 @@ export function useNutritionJournalState(opts: {
     [],
   );
 
-  const addLoggedMealForDate = useCallback((dayKey: string, meal: Omit<LoggedMeal, "id">) => {
+  const addLoggedMealForDate = useCallback((
+    dayKey: string,
+    meal: Omit<LoggedMeal, "id">,
+    // L6 G1 (2026-04-18) — every `food_logged` call site MUST pass a
+    // canonical source. Defaults to `"manual"` when the caller didn't
+    // supply one (the single-meal TodayAddMealDialog manual-entry form
+    // is the historic default — recipe/planner/AI/barcode/quick-add
+    // paths override). The grep-level assertion test in
+    // `tests/unit/foodLoggedSourceParity.test.ts` ensures no
+    // regression to a bare `food_logged` emit.
+    analyticsSource: FoodLoggedSource = "manual",
+  ) => {
     const id = newId("meal");
     const newMeal = { ...meal, id };
     setNutritionByDay((prev) => {
@@ -187,8 +198,15 @@ export function useNutritionJournalState(opts: {
         });
     }
 
+    // If the caller tagged the meal as a Planner row (time === "Planned"),
+    // override the source to `"planner"` — otherwise the default/passed
+    // `analyticsSource` wins. The legacy `fromPlanner` boolean stays for
+    // backwards-compat with any in-flight dashboards.
+    const resolvedSource: FoodLoggedSource =
+      meal.time === "Planned" ? "planner" : analyticsSource;
     track(AnalyticsEvents.food_logged, {
       calories: meal.calories,
+      source: resolvedSource,
       fromPlanner: meal.time === "Planned",
     });
   }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow]);
@@ -245,8 +263,8 @@ export function useNutritionJournalState(opts: {
   );
 
   const addLoggedMeal = useCallback(
-    (meal: Omit<LoggedMeal, "id">) => {
-      addLoggedMealForDate(selectedDateKey, meal);
+    (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => {
+      addLoggedMealForDate(selectedDateKey, meal, analyticsSource);
     },
     [addLoggedMealForDate, selectedDateKey],
   );
@@ -289,7 +307,7 @@ export function useNutritionJournalState(opts: {
       const meal = sourceDay.find((m) => m.id === mealId);
       if (!meal) return;
       const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
-      addLoggedMealForDate(targetDayKey, cloned);
+      addLoggedMealForDate(targetDayKey, cloned, "copy_meal");
       track(AnalyticsEvents.meal_copied, {
         source: "copy_meal",
         batchSize: 1,

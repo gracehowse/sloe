@@ -35,6 +35,8 @@
 4. On success, checks `profiles.onboarding_completed` — routes to `/onboarding` or `/(tabs)`
 5. Apple Sign-In uses `expo-apple-authentication` → `signInWithIdToken` against Supabase
 
+**Ops / local:** Apple provider secret for **hosted** projects lives in the Supabase Dashboard. For **`supabase start`**, set `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in `supabase/.env` (see [`docs/environment.md`](../environment.md#supabase-cli-local-stack-supabase-start) and `supabase/.env.example`).
+
 ## Row-Level Security (RLS)
 
 All tables have RLS enabled. Key policies:

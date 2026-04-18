@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -41,6 +41,7 @@ import { summariseSavedMeal } from "../../../src/lib/nutrition/savedMealsLogic";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import EmptyState from "@/components/EmptyState";
+import { resolveQuickAddDefaultTab } from "../../../src/lib/nutrition/usualMealHint";
 
 /**
  * Mobile `QuickAddPanel` — first-class React Native component that mirrors
@@ -53,14 +54,14 @@ import EmptyState from "@/components/EmptyState";
  *  - `onLog` fires when the user taps `+` on a history/favourite/frequent/
  *    recent row. The host persists to the journal.
  *  - `onLogSavedMeal` fires when the user taps `+` on a saved-meal row.
- *    The host expands the combo into journal entries via
+ *    The host expands the saved meal into journal entries via
  *    `buildMealEntriesFromSavedMeal` so this panel stays presentation-only.
  *  - `onOpenSaveCombo` is part of the public API so the host owns
- *    `SaveMealSheet`. Not used internally today — the "Save combo" chip
- *    lives on the parent's meal-slot header — but parity with the web
- *    panel keeps the contract stable.
- *  - `savedMealsRefreshToken` — bump after the host persists a new combo
- *    to refetch + auto-switch to "My meals".
+ *    `SaveMealSheet`. Not used internally today — the save-usual-meal
+ *    surface lives on the parent's meal-slot section — but parity with
+ *    the web panel keeps the contract stable.
+ *  - `savedMealsRefreshToken` — bump after the host persists a new saved
+ *    meal to refetch + auto-switch to "Usual meals".
  *
  * Optimism:
  *  - Star toggles update local state immediately and revert on Supabase
@@ -69,7 +70,7 @@ import EmptyState from "@/components/EmptyState";
  *    an Alert on Supabase error.
  */
 
-type Tab = "favourites" | "frequent" | "recent" | "saved";
+type Tab = "saved" | "recent" | "frequent" | "favourites";
 
 export interface QuickAddPanelProps {
   /** Journal byDay map — accepts mobile `JournalMeal[]` or web `LoggedMeal[]`. */
@@ -82,8 +83,8 @@ export interface QuickAddPanelProps {
   userId: string;
   /** Fires when the user taps `+` on a history/favourite/frequent/recent row. */
   onLog: (item: FoodHistoryItem) => void;
-  /** Fires when the user taps a saved-meal row — receives the whole combo
-   *  + the slot to log to. */
+  /** Fires when the user taps a saved-meal row — receives the whole
+   *  saved meal + the slot to log to. */
   onLogSavedMeal?: (meal: SavedMeal, slot: string) => void;
   /** Request that the host open the `SaveMealSheet` pre-filled with
    *  `seedItems` for `slot`. Part of the public API for parity with web;
@@ -106,11 +107,15 @@ type Row = FoodHistoryItem & {
   favoriteId?: string;
 };
 
+/**
+ * Tab labels + insertion order. Ship M1 (2026-04-18) renames "My meals"
+ * → "Usual meals" and puts it first; matches the web panel ordering.
+ */
 const TAB_LABELS: Record<Tab, string> = {
-  favourites: "Favourites",
-  frequent: "Frequent",
+  saved: "Usual meals",
   recent: "Recent",
-  saved: "My meals",
+  frequent: "Frequent",
+  favourites: "Favourites",
 };
 
 /**
@@ -141,16 +146,20 @@ export function QuickAddPanel({
   onLogSavedMeal,
   onOpenSaveCombo: _onOpenSaveCombo,
   savedMealsRefreshToken,
-  defaultTab = "recent",
+  defaultTab,
   style,
 }: QuickAddPanelProps) {
-  // Part of the public API for parity with the web panel (the "Save combo"
-  // chip lives on the parent's meal-slot header today, not on the panel).
+  // Part of the public API for parity with the web panel (the save-usual
+  // row lives on the parent's meal-slot section today, not on the panel).
   void _onOpenSaveCombo;
 
   const colors = useThemeColors();
 
-  const [tab, setTab] = useState<Tab>(defaultTab);
+  // Ship M1 — when the caller leaves `defaultTab` unset, the first saved
+  // meals load decides whether to land on "Usual meals" or "Recent" via
+  // the shared `resolveQuickAddDefaultTab` helper (parity with web).
+  const callerForcedTab = defaultTab !== undefined;
+  const [tab, setTab] = useState<Tab>(defaultTab ?? "recent");
   const [favorites, setFavorites] = useState<FavoriteFood[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
@@ -158,6 +167,7 @@ export function QuickAddPanel({
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [savedMealsLoading, setSavedMealsLoading] = useState(false);
   const [savedPendingIds, setSavedPendingIds] = useState<Set<string>>(new Set());
+  const didResolveInitialTabRef = useRef(false);
 
   /** Load favourites on mount and whenever the user changes. */
   useEffect(() => {
@@ -180,7 +190,7 @@ export function QuickAddPanel({
   }, [supabase, userId]);
 
   /** Load saved meals on mount, userId change, and whenever the host bumps
-   *  `savedMealsRefreshToken` after persisting a new combo. */
+   *  `savedMealsRefreshToken` after persisting a new saved meal. */
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
@@ -190,7 +200,14 @@ export function QuickAddPanel({
     setSavedMealsLoading(true);
     listSavedMeals(supabase, userId)
       .then((rows) => {
-        if (!cancelled) setSavedMeals(rows);
+        if (!cancelled) {
+          setSavedMeals(rows);
+          // Ship M1 — apply the shared default-tab rule on first load.
+          if (!callerForcedTab && !didResolveInitialTabRef.current) {
+            didResolveInitialTabRef.current = true;
+            setTab(resolveQuickAddDefaultTab(rows.length > 0));
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setSavedMealsLoading(false);
@@ -198,10 +215,11 @@ export function QuickAddPanel({
     return () => {
       cancelled = true;
     };
-  }, [supabase, userId, savedMealsRefreshToken]);
+  }, [supabase, userId, savedMealsRefreshToken, callerForcedTab]);
 
-  /** Jump to the "My meals" tab whenever the host signals a new combo was
-   *  saved. Skip initial mount so the default tab still shows first. */
+  /** Jump to the "Usual meals" tab whenever the host signals a new saved
+   *  meal was persisted. Skip initial mount so the default tab still
+   *  shows first. */
   const [didMountForRefresh, setDidMountForRefresh] = useState(false);
   useEffect(() => {
     if (!didMountForRefresh) {
@@ -345,6 +363,8 @@ export function QuickAddPanel({
           track(AnalyticsEvents.saved_meal_logged, {
             itemCount: meal.items.length,
             slot,
+            // L6 G3 (2026-04-18) — join key for F3 habit-loop funnel.
+            savedMealId: meal.id,
           });
         } catch {
           /* analytics is fire-and-forget */
@@ -371,7 +391,7 @@ export function QuickAddPanel({
       // `Alert.prompt` is iOS-only; Android gets a graceful fallback.
       if (Platform.OS === "ios" && typeof (Alert as any).prompt === "function") {
         (Alert as any).prompt(
-          "Rename meal combo",
+          "Rename meal",
           "Enter a new name.",
           async (text: string | undefined) => {
             const next = (text ?? "").trim();
@@ -394,8 +414,8 @@ export function QuickAddPanel({
         );
       } else {
         Alert.alert(
-          "Rename meal combo",
-          "Renaming is coming to Android in a future update. For now, delete and re-create the combo with a new name.",
+          "Rename meal",
+          "Renaming is coming to Android in a future update. For now, delete and re-create the meal with a new name.",
         );
       }
     },
@@ -516,11 +536,11 @@ export function QuickAddPanel({
             </View>
           )}
           {!savedMealsLoading && !userId && (
-            <EmptyState title="Sign in to save meal combos for one-tap re-logging." />
+            <EmptyState title="Sign in to save a usual meal for one-tap re-logging." />
           )}
           {!savedMealsLoading && userId && savedMeals.length === 0 && (
             <EmptyState
-              title={`Log 2 or more items in a slot, then tap "Save combo" on the slot header to re-log it in one tap.`}
+              title={`Log 2 or more items in a slot, then tap "Save {Slot} as a meal" to re-log it in one tap.`}
             />
           )}
           {!savedMealsLoading &&

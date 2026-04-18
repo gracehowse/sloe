@@ -2,6 +2,9 @@
 .branches
 .temp
 
+# Local secrets for `supabase start` (config.toml env(...), e.g. Apple OAuth)
+.env
+
 # dotenvx
 .env.keys
 .env.local

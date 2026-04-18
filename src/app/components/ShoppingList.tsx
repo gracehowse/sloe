@@ -289,6 +289,9 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
               variant="outline"
               onClick={() => {
                 track(AnalyticsEvents.empty_state_cta_clicked, {
+                  // L6 G5 (2026-04-18) — `surface` lets dashboards slice
+                  // empty-state CTA effectiveness by origin.
+                  surface: "shopping_list",
                   title: "Your shopping list is empty",
                   ctaLabel: "Go to Meal Planner",
                 });

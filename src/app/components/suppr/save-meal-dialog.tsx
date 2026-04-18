@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * SaveMealDialog (Batch 2.6) — create a saved-meal **combo** from 2+
- * already-logged items in the current session.
+ * SaveMealDialog (Batch 2.6; renamed copy Ship M1, 2026-04-18) — create
+ * a **saved meal** (formerly "combo") from 2+ already-logged items in
+ * the current session.
  *
- * This is not a recipe. It's a reusable combination of foods — e.g.
+ * This is not a recipe. It's a reusable bundle of foods — e.g.
  * "My usual breakfast" = oatmeal + berries + protein powder — so the
- * user can re-log the whole combo in one tap from the Quick Add
- * panel's "My meals" tab (`SavedMealsTab`).
+ * user can re-log the whole thing in one tap from the Quick Add panel's
+ * "Usual meals" tab (`SavedMealsTab`) or from the new slot-header
+ * `Log usual: {name}` pill.
  *
  * Behaviour:
  *  - Name input (required; trimmed) + default-slot dropdown
@@ -45,13 +47,13 @@ type SavePayload = {
 export type SaveMealDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Items the user is about to bundle into a combo — preserved order. */
+  /** Items the user is about to bundle into a saved meal — preserved order. */
   initialItems: Array<Omit<SavedMealItem, "id" | "position">>;
   /** Default slot preselected in the dropdown (usually the active slot). */
   defaultSlot?: MealSlot;
   /** Called with the final payload when the user taps Save. */
   onSave: (payload: SavePayload) => void | Promise<void>;
-  /** Optional prefix for suggested names (e.g. "Breakfast combo"). */
+  /** Optional prefix for suggested names (e.g. "My usual breakfast"). */
   suggestedName?: string;
 };
 
@@ -117,9 +119,9 @@ export function SaveMealDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Save these as a meal</DialogTitle>
+          <DialogTitle className="text-foreground">Save as a usual meal</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            A meal combo re-logs all of these items in one tap next time.
+            One tap re-logs all of these items next time.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
@@ -129,10 +131,12 @@ export function SaveMealDialog({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. My usual breakfast"
+              placeholder={
+                defaultSlot ? `My usual ${defaultSlot.toLowerCase()}` : "My usual breakfast"
+              }
               autoFocus
               maxLength={80}
-              aria-label="Meal combo name"
+              aria-label="Usual meal name"
               aria-required="true"
             />
           </label>
@@ -198,7 +202,7 @@ export function SaveMealDialog({
                     type="button"
                     onClick={() => removeItem(i)}
                     className="size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
-                    aria-label={`Remove ${it.recipeTitle || "item"} from combo`}
+                    aria-label={`Remove ${it.recipeTitle || "item"} from usual meal`}
                   >
                     <X className="w-4 h-4" />
                   </button>

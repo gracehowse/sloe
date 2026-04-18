@@ -19,7 +19,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 - Supabase credentials in `.env.local` (`delete-seeded-recipes.ts` needs `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS)
 - Scripts that call local APIs need the dev server on localhost:3000 (not required for `delete-seeded-recipes.ts`)
 
-**Migrations:** One-off DB cleanup for seeded content is in `supabase/migrations/20260414120000_remove_all_seeded_recipes.sql`. Apply with `npx supabase db push` (after local/remote migration history matches) or run the SQL in the Supabase SQL editor.
+**Migrations:** One-off DB cleanup for seeded content is in `supabase/migrations/20260421180000_remove_all_seeded_recipes.sql`. Apply with `npx supabase db push` (after local/remote migration history matches) or run the SQL in the Supabase SQL editor.
 
 ### Production
 

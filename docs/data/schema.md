@@ -183,6 +183,73 @@ Pure helpers: `src/lib/nutrition/streakFreeze.ts` (`availableFreezes`, `computeP
 - `meal_plan_days.servings_used jsonb default '{}'` — `{recipeId: servingsConsumed}` map powering leftover math.
 Shared pure helper: `src/lib/nutrition/leftoversPlanner.ts` (`distributeLeftovers`, `markLeftoversOnSwap`, `countLeftoversOfRecipe`, `moveMealInPlan`).
 
+## Analytics event catalog (Ship L6 G1-G9, 2026-04-18)
+
+Every event name lives in `src/lib/analytics/events.ts`. The table below locks the **mandatory enum values** for the properties product dashboards + funnels depend on. Additions are backwards-compatible — a property gaining a new enum value is additive (dashboards treat unknown values as "other"), but a rename is a breaking change and must go through a 30-day dual-emit cycle.
+
+### `food_logged.source` enum (G1)
+```
+"manual"         // FoodSearch text/inline search confirm
+"quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
+"saved_meal"     // Re-log from My meals tab
+"custom_food"    // Logged from custom food entry
+"copy_meal"      // Per-meal copy flow
+"duplicate_day"  // Day-level duplicate flow
+"barcode"        // Barcode scanner commit
+"voice"          // Voice log commit
+"photo"          // AI photo log commit
+"recipe"         // Logged from recipe detail / recipe mode
+"planner"        // Logged from planner slot
+```
+Exported as `FoodLoggedSource`. Grep-level assertion at `tests/unit/foodLoggedSourceParity.test.ts` fails if any `track(AnalyticsEvents.food_logged, …)` call site drops `source`.
+
+### `paywall_viewed.from` enum (G9)
+```
+"voice_log"   // Free / Base user tapped Voice on Today
+"photo_log"   // Free / Base user tapped Snap on Today
+"settings"    // "View plans" row in Settings / More
+"onboarding"  // End-of-trial or onboarding handoff
+"trial_end"   // Expired trial landing
+"deep_link"   // Any other entry (fallback for unknown ?from=)
+```
+Exported as `PaywallViewedFrom`. Mobile reads `?from=` via `useLocalSearchParams`; web via `searchParams` in the async server component. Both run the value through a shared `normalisePaywallFrom()` guard so a malformed URL never bypasses the dashboard slice.
+
+### `empty_state_cta_clicked.surface` enum (G5)
+```
+"today" | "quick_add_favourites" | "quick_add_frequent" | "quick_add_recent"
+"quick_add_my_meals" | "recipes_library" | "planner_weekly" | "shopping_list" | "progress"
+```
+Exported as `EmptyStateSurface`.
+
+### `hydration_logged.via` + `stimulant_logged.via` enum (G6)
+```
+"quick_chip" | "manual"
+```
+Exported as `HydrationStimulantVia`. Hydration now carries `amount_ml`; stimulant carries `kind: "caffeine" | "alcohol"` + `amount_mg_or_g`. Legacy `{ type, amount, unit, preset }` retained.
+
+### `widget_snapshot_updated.trigger` enum (G7)
+```
+"totals_changed" | "fast_state_changed" | "scheduled_refresh"
+```
+Exported as `WidgetSnapshotTrigger`. First-write after hydrate is `"scheduled_refresh"` so initial liveness pings aren't misattributed to totals.
+
+### `recipe_ingredient_added.confidence_bucket` +
+### `recipe_ingredient_overridden.confidence_bucket` +
+### `recipe_ingredient_override_cleared.confidence_bucket` (G4)
+```
+"high" | "medium" | "low"
+```
+Exported as `ConfidenceBucket`. Added path reuses `classifyConfidence` from `src/lib/nutrition/aiLogging.ts` (`>=0.75 → high, >=0.5 → medium, else low`). Override + clear paths classify from `ingredient.isVerified` (true → high, false → medium), matching the UI's `<ConfidenceDot level={ing.isVerified ? "high" : "medium"} />` decision.
+
+### `streak_reset` event (G8)
+New event. Payload `{ priorStreak: number }`. Fires once per `>=1 → 0` transition of `computeProtectedStreak(...).streakLength`. Predicate: `didStreakReset(prior, current)` in `src/lib/nutrition/streakReset.ts`.
+
+### `saved_meal_created` + `saved_meal_logged` — `savedMealId` (G3)
+Both events carry `savedMealId: string` so F3 (habit loop) can join create → log without name-matching.
+
+### `first_log_at` — person property (G2)
+Not an event. Set on the first `food_logged` per user via `posthog.setPersonProperties({}, { first_log_at })` (web, `$set_once` idempotent) or `identify(distinctId, { first_log_at })` (mobile, AsyncStorage-gated). Helper: `src/lib/analytics/firstLog.ts`.
+
 ## Related Documents
 - [Technical Architecture](../technical/architecture.md)
 - [API Reference](../api/endpoints.md)

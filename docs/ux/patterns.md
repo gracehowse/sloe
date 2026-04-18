@@ -311,6 +311,63 @@ Two primitives per platform today:
 - **Same cap on create and rename.** If the create dialog enforces `maxLength=80`, the rename dialog must too. Centralise the cap in a shared helper (`SAVED_MEAL_NAME_MAX_LENGTH`, `normaliseSavedMealName`) so the two sites cannot drift.
 - **No-op gracefully.** If the user types nothing, clears the field, or submits the same value, treat it as Cancel — do not surface a toast.
 
+## Paywall surfaces — convention (Ship M2, 2026-04-18)
+
+There are exactly **two** paywall surfaces in the product, and they are not interchangeable:
+
+### 1. In-flow gate — bottom sheet / dialog
+- Web: `src/app/components/suppr/ai-paywall-dialog.tsx` (`<AiPaywallDialog feature={...} />`)
+- Mobile: `apps/mobile/components/AiPaywallSheet.tsx` (`<AiPaywallSheet visible feature onClose onSeePlans />`)
+
+Shown when a free / Base user taps a Pro-gated entry point **inside** a primary flow — today that means the Voice and Snap (AI photo) chips on Today. The user is not browsing for a plan; they were trying to log a meal and hit a gate. The surface must stay light-touch and keep the user in context.
+
+- Shape: title + factual body + PRO badge + secondary "Not now" + primary "See Pro plans".
+- Primary CTA navigates to the full-route `/paywall?from={feature}` surface (the second surface below).
+- Feature-specific copy comes from `FEATURE_COPY` (defined in the web dialog; mirrored verbatim in the mobile sheet). **If you edit the strings, change both files.**
+- Analytics fire on both platforms with identical payload shapes:
+  - `ai_paywall_sheet_viewed { feature }` on mount.
+  - `ai_paywall_sheet_dismissed { feature, reason: "backdrop" | "close_button" | "not_now" }` on every dismiss path. Web distinguishes `"not_now"` (explicit button) from `"backdrop"` (overlay click / Escape); `"close_button"` is mobile-only (the dedicated X in the top-right of the sheet). A Radix `onOpenChange(false)` triggered immediately after the "Not now" button is de-duped inside the web dialog so the funnel never double-counts.
+  - `ai_paywall_sheet_cta_tapped { feature, action: "see_plans" }` on primary CTA tap.
+
+### 2. Full-route commercial surface — `/paywall` (mobile) / `/pricing` (web)
+- Mobile: `apps/mobile/app/paywall.tsx`
+- Web: `/pricing` page
+
+A standalone screen where the user is browsing for a plan: trial timeline, features matrix, plan chooser, checkout. This is **commercial-intent** — it competes with landing pages, not with meal-logging flows.
+
+### Non-negotiables
+
+- **The in-flow gate NEVER replaces the full-route surface.** If the user wants to see plans, they must still be able to reach `/paywall` / `/pricing`. The sheet's primary CTA is the bridge.
+- **The full-route surface is NEVER invoked directly from an in-flow Pro-gated action.** Free / Base users tapping Voice or Snap see the sheet / dialog — not a full-screen route navigation. This was the exact mistake M2 fixed on mobile: the Today screen used to `router.push("/paywall?from=voice_log")`, yanking the user out of context.
+- **Copy taxonomy is shared.** Web and mobile render the same `FEATURE_COPY` keys. Do not rewrite the body on one platform to sound better — change both.
+- **Analytics are identical.** Same event names, same payload keys, same values. A new reason string means a new union member in `ai_paywall_sheet_dismissed` that must ship on both platforms at once.
+- **No shame copy anywhere.** Factual, no countdowns, no "only X seats left", no "you're missing out". This applies to both surfaces.
+
+### Anti-patterns
+
+- Adding a second in-flow paywall shape next to `AiPaywallDialog` / `AiPaywallSheet`. Consolidate.
+- Gating a new in-flow action (e.g. a future AI barcode narrator) by pushing to `/paywall` directly. Add a new `AiPaywallFeature` key to the shared union instead and route through the existing sheet / dialog.
+- Changing the primary CTA label on one platform without the other ("See plans" vs "See Pro plans" was the regression that M2 closed).
+- Firing the sheet analytics at the caller instead of inside the component. The component is the source of truth for `_viewed` / `_dismissed` / `_cta_tapped`; the caller only fires the feature-specific funnel-entry event (`voice_log_paywalled` / `ai_photo_log_paywalled`).
+
+## Copy vs Duplicate (Ship M1, 2026-04-18)
+
+The product has two distinct row-copy actions. Their names are pinned so they read as different affordances, never interchangeable.
+
+- **Copy to another day…** — per-meal action in the row overflow (web) / long-press action sheet (mobile). Copies **one logged meal** from the current day into another target day / date range. Source row is never mutated. Available when the row is a single journal entry.
+- **Duplicate day…** — day-header action in the Meals section chrome. Copies **every meal in the current day** into another target day / date range. Same "single target" / "quick range" / "date-range" picker UX as Copy, but the unit of work is the whole day.
+- Keep the distinction at the verb level. "Copy" is always about a single meal. "Duplicate" is always about a whole day. Do not let either action's copy refer to the other.
+
+## Usual meals canonical re-log (Ship M1, 2026-04-18)
+
+Saved meals are the canonical one-tap re-log surface. "Combo" is retired from user-facing copy — internal types and helper names may keep `savedMeal` / `SavedMeal`; UI strings always say **"usual meal"**.
+
+- **Slot-header pill (primary re-log entry point).** On each meal-slot header (`Breakfast / Lunch / Dinner / Snacks`) in `today-meals-section.tsx` (web) + `TodayMealsSection.tsx` (mobile), when the user has ≥1 saved meal with matching `defaultMealSlot`, a `[↻ Log usual: {name}]` pill renders on the right. 2+ matches open a small picker sheet with the top 3 by `last_logged_at`.
+- **Full-width "Save {Slot} as a meal" row (primary save entry point).** Below the last food item in a slot, a full-width primary-colour row renders when the slot has ≥2 items AND no saved meal yet for this slot. Same visual weight as other primary row actions — not a 10px metadata pill.
+- **First-run hint.** A one-off dismissible inline card inside the slot, gated by the shared `shouldShowUsualMealHint` helper (same-day ≥2 items OR cross-day ≥2 matches in 7d). Dismiss is per-slot, persisted under `suppr-usual-meal-hint-dismissed-v1` (localStorage / AsyncStorage). Fires `usual_meal_hint_shown` / `usual_meal_hint_accepted` / `usual_meal_hint_dismissed`.
+- **Quick Add tab order.** **Usual meals → Recent → Frequent → Favourites**. Default tab is `"saved"` when the user has ≥1 saved meal, else `"recent"` — resolved by the shared `resolveQuickAddDefaultTab` helper. Both platforms consume the helper so they cannot drift.
+- **Dialog copy.** `SaveMealDialog` (web) / `SaveMealSheet` (mobile) title is `"Save as a usual meal"`; description `"One tap re-logs all of these items next time."`; placeholder defaults to `My usual {slot}` (slot-contextual) or `My usual breakfast` (fallback). Empty-state copy in SavedMealsTab aligns with the button: `Save {Slot} as a meal`.
+
 ## Related Documents
 - [Component Reference](../technical/components.md)
 - [Product Overview](../product/overview.md)

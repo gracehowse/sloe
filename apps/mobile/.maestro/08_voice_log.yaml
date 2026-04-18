@@ -1,5 +1,5 @@
 appId: com.supprclub.supprapp
-name: "Voice log — text input fallback, submit, cancel"
+name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
 ---
 - runFlow: shared/login.yaml
 
@@ -10,6 +10,26 @@ name: "Voice log — text input fallback, submit, cancel"
 - tapOn: ".*Voice.*"
 - waitForAnimationToEnd
 
+# M2 (2026-04-18) — free-tier / Base users now see the in-flow
+# `AiPaywallSheet` (NOT a navigation to the `/paywall` full-route
+# surface). When the test account is free / Base, the sheet's title
+# and "See Pro plans" CTA are present; tap "Not now" to dismiss and
+# end the flow here — the voice sheet never opens for free users.
+- runFlow:
+    when:
+      visible: ".*Voice logging is a Pro feature.*"
+    commands:
+      - assertVisible:
+          text: ".*See Pro plans.*"
+      - assertVisible:
+          text: ".*Not now.*"
+      - tapOn: ".*Not now.*"
+      - waitForAnimationToEnd
+      - assertVisible:
+          text: ".*(?:LOGGED|kcal).*"
+      - stopApp
+
+# Pro branch — the real voice-log sheet opened.
 # Verify the voice log modal opened (Voice Log header + intro text)
 - assertVisible:
     text: ".*Voice Log.*"

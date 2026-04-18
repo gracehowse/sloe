@@ -1,9 +1,28 @@
 import type { Metadata } from "next";
 import { Check, Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
-import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
+import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
+
+/** Map a raw `?from=` URL-param value into the canonical enum so
+ *  `paywall_viewed.from` cannot drift from the PostHog dashboard slice.
+ *  Unknown / missing values fall back to `"deep_link"`. Shared contract
+ *  with `apps/mobile/app/paywall.tsx`. */
+function normalisePaywallFrom(raw: string | string[] | undefined): PaywallViewedFrom {
+  const s = Array.isArray(raw) ? raw[0] : raw ?? "";
+  switch (s) {
+    case "voice_log":
+    case "photo_log":
+    case "settings":
+    case "onboarding":
+    case "trial_end":
+    case "deep_link":
+      return s;
+    default:
+      return "deep_link";
+  }
+}
 
 export const metadata: Metadata = {
   title: "Pricing — Suppr",
@@ -108,11 +127,26 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-export default function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  // Next.js App Router passes `searchParams` as an async Promise in
+  // the current major — awaited once here so the page stays server-
+  // rendered without forcing client-side navigation.
+  searchParams?: Promise<{ from?: string | string[] }>;
+}) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  // L6 G9 (2026-04-18) — `paywall_viewed.from` is mandatory so funnel
+  // F2 (AI-Pro paywall conversion) can attribute the view to its
+  // originating surface. Normalised through the shared enum above.
+  const paywallFrom = normalisePaywallFrom(resolvedSearchParams.from);
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageViewTracker event={AnalyticsEvents.pricing_page_viewed} />
-      <PageViewTracker event={AnalyticsEvents.paywall_viewed} />
+      <PageViewTracker
+        event={AnalyticsEvents.paywall_viewed}
+        properties={{ from: paywallFrom }}
+      />
 
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">

@@ -19,7 +19,10 @@
 
 import * as React from "react";
 import { useCallback, useMemo } from "react";
-import type { WeeklyRecap } from "../../../lib/nutrition/weeklyRecap";
+import type {
+  UsualMealRecapInsight,
+  WeeklyRecap,
+} from "../../../lib/nutrition/weeklyRecap";
 import { formatRecapForShare } from "../../../lib/nutrition/weeklyRecap";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
@@ -30,9 +33,20 @@ export interface WeeklyRecapCardProps {
   recap: WeeklyRecap;
   onDismiss: () => void;
   className?: string;
+  /** Ship M1 — usual-meal growth-loop insight. Null skips the line. */
+  usualMealInsight?: UsualMealRecapInsight;
+  /** Ship M1 — caller handler for the prompt CTA; receives the suggested
+   * slot so the caller can pre-seed the save-usual-meal dialog. */
+  onStartUsualMealSave?: (slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks") => void;
 }
 
-export function WeeklyRecapCard({ recap, onDismiss, className }: WeeklyRecapCardProps) {
+export function WeeklyRecapCard({
+  recap,
+  onDismiss,
+  className,
+  usualMealInsight,
+  onStartUsualMealSave,
+}: WeeklyRecapCardProps) {
   const shareText = useMemo(() => formatRecapForShare(recap), [recap]);
 
   const handleShare = useCallback(async () => {
@@ -144,6 +158,42 @@ export function WeeklyRecapCard({ recap, onDismiss, className }: WeeklyRecapCard
           {" · "}
           {recap.bestDay.protein}g protein, {recap.bestDay.calories} kcal
         </p>
+      ) : null}
+
+      {/* Ship M1 — usual meals growth-loop line. Celebration path for
+          users with a re-logged saved meal; prompt path for logged-but-
+          no-saved-meal-yet users. Never renders as a shame surface. */}
+      {usualMealInsight?.kind === "celebration" ? (
+        <p className="text-xs text-foreground mb-4" data-testid="usual-meal-recap-celebration">
+          You logged{" "}
+          <span className="font-semibold">{usualMealInsight.name}</span>{" "}
+          {usualMealInsight.count} time{usualMealInsight.count === 1 ? "" : "s"} this
+          week.
+        </p>
+      ) : null}
+      {usualMealInsight?.kind === "prompt" ? (
+        <div
+          className="rounded-card border border-primary/25 bg-primary/5 p-3 mb-4"
+          data-testid="usual-meal-recap-prompt"
+        >
+          <p className="text-[13px] font-semibold text-foreground">
+            Got a usual {usualMealInsight.suggestedSlot.toLowerCase()}?
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Save it once, log it in one tap.
+          </p>
+          {onStartUsualMealSave ? (
+            <button
+              type="button"
+              onClick={() => onStartUsualMealSave(usualMealInsight.suggestedSlot)}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+              aria-label={`Save ${usualMealInsight.suggestedSlot} as a usual meal`}
+            >
+              <Icons.save className="h-3 w-3" aria-hidden />
+              Save {usualMealInsight.suggestedSlot} as a meal
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="flex items-center gap-2">

@@ -46,6 +46,7 @@ import {
 } from "../../../../src/lib/nutrition/ingredientOverrides";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { classifyConfidence } from "../../../../src/lib/nutrition/aiLogging";
 
 /** Standard units always available for editing */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -285,6 +286,9 @@ export default function VerifyScreen() {
       track(AnalyticsEvents.recipe_ingredient_added, {
         recipeId,
         hasMatch: payload.hasMatch,
+        // L6 G4 (2026-04-18) — reuse the shared `classifyConfidence`
+        // classifier so buckets mirror the existing ConfidenceDot UI.
+        confidence_bucket: classifyConfidence(payload.confidence),
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
@@ -301,12 +305,18 @@ export default function VerifyScreen() {
         Alert.alert("Couldn't save override", res.error);
         return;
       }
+      const priorIng = ing;
       setIngredients((prev) =>
         prev.map((item, i) => (i === index ? { ...item, overrideMacros: override } : item)),
       );
       track(AnalyticsEvents.recipe_ingredient_overridden, {
         recipeId,
         ingredientPosition: index,
+        // L6 G4 (2026-04-18) — bucket the row's PRE-override
+        // confidence. `VerifiableIngredient.isVerified` is true iff
+        // the pipeline returned a match with confidence >= 0.5,
+        // mirroring the ConfidenceDot mapping in the UI.
+        confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
@@ -322,6 +332,7 @@ export default function VerifyScreen() {
         Alert.alert("Couldn't clear override", res.error);
         return;
       }
+      const priorIng = ing;
       setIngredients((prev) =>
         prev.map((item, i) => {
           if (i !== index) return item;
@@ -332,6 +343,8 @@ export default function VerifyScreen() {
       track(AnalyticsEvents.recipe_ingredient_override_cleared, {
         recipeId,
         ingredientPosition: index,
+        // L6 G4 (2026-04-18) — same mapping as `_overridden` above.
+        confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },

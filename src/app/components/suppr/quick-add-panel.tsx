@@ -16,7 +16,7 @@
  *    with a Sonner toast on Supabase error.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Star, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -50,8 +50,9 @@ import { Badge } from "./badge";
 import { EmptyState } from "./empty-state";
 import { RenameSavedMealDialog } from "./rename-saved-meal-dialog";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
+import { resolveQuickAddDefaultTab } from "../../../lib/nutrition/usualMealHint";
 
-type Tab = "favourites" | "frequent" | "recent" | "saved";
+type Tab = "saved" | "recent" | "frequent" | "favourites";
 
 export interface QuickAddPanelProps {
   /** Journal byDay map — accepts web `LoggedMeal[]` or mobile `JournalMeal[]`. */
@@ -95,11 +96,24 @@ type Row = FoodHistoryItem & {
   favoriteId?: string;
 };
 
+/**
+ * Tab labels + insertion order.
+ *
+ * Ship M1 (2026-04-18) — "Usual meals" replaces "My meals" as the
+ * canonical re-log surface, and the tab order is restructured so the
+ * primary discovery path shows first: **Usual meals → Recent → Frequent
+ * → Favourites**. The old labelling ("My meals") was ambiguous with the
+ * broader food history tabs; "Usual meals" is concrete — "the thing I
+ * saved to re-log in one tap".
+ *
+ * Keys intentionally ordered — `Object.keys(TAB_LABELS)` drives the
+ * render sequence so a future rename does not need to touch the JSX.
+ */
 const TAB_LABELS: Record<Tab, string> = {
-  favourites: "Favourites",
-  frequent: "Frequent",
+  saved: "Usual meals",
   recent: "Recent",
-  saved: "My meals",
+  frequent: "Frequent",
+  favourites: "Favourites",
 };
 
 /**
@@ -132,7 +146,7 @@ export function QuickAddPanel({
   onLogSavedMeal,
   onOpenSaveCombo: _onOpenSaveCombo,
   savedMealsRefreshToken,
-  defaultTab = "recent",
+  defaultTab,
   className,
 }: QuickAddPanelProps) {
   // `onOpenSaveCombo` is part of the panel's public API (audit H4) so the
@@ -142,7 +156,14 @@ export function QuickAddPanel({
   // We reference it via `_onOpenSaveCombo` to keep TypeScript / ESLint happy.
   void _onOpenSaveCombo;
 
-  const [tab, setTab] = useState<Tab>(defaultTab);
+  // Ship M1 — when the caller leaves `defaultTab` unset we defer the
+  // initial tab choice to the shared `resolveQuickAddDefaultTab`
+  // helper. That helper lands on "saved" when the user has ≥1 saved
+  // meal and "recent" otherwise. We seed with "recent" here and let
+  // the load effect flip to "saved" on first response when appropriate
+  // (see below). A caller-forced `defaultTab` always wins.
+  const callerForcedTab = defaultTab !== undefined;
+  const [tab, setTab] = useState<Tab>(defaultTab ?? "recent");
   const [favorites, setFavorites] = useState<FavoriteFood[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
@@ -151,6 +172,7 @@ export function QuickAddPanel({
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [savedMealsLoading, setSavedMealsLoading] = useState(false);
   const [savedPendingIds, setSavedPendingIds] = useState<Set<string>>(new Set());
+  const didResolveInitialTabRef = useRef(false);
 
   // Rename + delete dialog state (audit M7, 2026-04-18). The dialogs
   // replace the previous `window.prompt` / `window.confirm` calls so
@@ -190,7 +212,17 @@ export function QuickAddPanel({
     setSavedMealsLoading(true);
     listSavedMeals(supabase, userId)
       .then((rows) => {
-        if (!cancelled) setSavedMeals(rows);
+        if (!cancelled) {
+          setSavedMeals(rows);
+          // Ship M1 — apply the shared default-tab rule on first load. If
+          // the caller forced a `defaultTab` we respect that forever; if
+          // not, the first successful load decides whether the user lands
+          // on Usual meals or Recent via the shared helper.
+          if (!callerForcedTab && !didResolveInitialTabRef.current) {
+            didResolveInitialTabRef.current = true;
+            setTab(resolveQuickAddDefaultTab(rows.length > 0));
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setSavedMealsLoading(false);
@@ -198,7 +230,7 @@ export function QuickAddPanel({
     return () => {
       cancelled = true;
     };
-  }, [supabase, userId, savedMealsRefreshToken]);
+  }, [supabase, userId, savedMealsRefreshToken, callerForcedTab]);
 
   // Jump to the "My meals" tab whenever the host signals a new combo was
   // saved. Skip the initial mount so users aren't yanked off the default
@@ -348,6 +380,8 @@ export function QuickAddPanel({
           track(AnalyticsEvents.saved_meal_logged, {
             itemCount: meal.items.length,
             defaultMealSlot: meal.defaultMealSlot,
+            // L6 G3 (2026-04-18) — join key for F3 habit-loop funnel.
+            savedMealId: meal.id,
           });
         } catch {
           /* noop */

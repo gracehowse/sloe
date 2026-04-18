@@ -22,13 +22,24 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import { formatRecapForShare, type WeeklyRecap } from "@/lib/weeklyRecap";
+import type { UsualMealRecapInsight } from "../../../src/lib/nutrition/weeklyRecap";
+import { Radius as RadiusTokens } from "@/constants/theme";
 
 export interface WeeklyRecapCardProps {
   recap: WeeklyRecap;
   onDismiss: () => void;
+  /** Ship M1 — usual-meal growth-loop insight. Null skips the line. */
+  usualMealInsight?: UsualMealRecapInsight;
+  /** Ship M1 — prompt CTA handler; receives the suggested slot. */
+  onStartUsualMealSave?: (slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks") => void;
 }
 
-export function WeeklyRecapCard({ recap, onDismiss }: WeeklyRecapCardProps) {
+export function WeeklyRecapCard({
+  recap,
+  onDismiss,
+  usualMealInsight,
+  onStartUsualMealSave,
+}: WeeklyRecapCardProps) {
   const colors = useThemeColors();
   const shareText = useMemo(() => formatRecapForShare(recap), [recap]);
 
@@ -133,6 +144,61 @@ export function WeeklyRecapCard({ recap, onDismiss }: WeeklyRecapCardProps) {
           {" · "}
           {recap.bestDay.protein}g protein, {recap.bestDay.calories} kcal
         </Text>
+      ) : null}
+
+      {/* Ship M1 — usual meals growth-loop line. */}
+      {usualMealInsight?.kind === "celebration" ? (
+        <Text
+          style={{ fontSize: 12, color: colors.text, marginBottom: 10 }}
+          accessibilityLabel={`You logged ${usualMealInsight.name} ${usualMealInsight.count} time${
+            usualMealInsight.count === 1 ? "" : "s"
+          } this week`}
+        >
+          You logged <Text style={{ fontWeight: "700" }}>{usualMealInsight.name}</Text>{" "}
+          {usualMealInsight.count} time{usualMealInsight.count === 1 ? "" : "s"} this week.
+        </Text>
+      ) : null}
+      {usualMealInsight?.kind === "prompt" ? (
+        <View
+          style={{
+            padding: 12,
+            marginBottom: 10,
+            borderRadius: RadiusTokens.md,
+            backgroundColor: Accent.primary + "0D",
+            borderWidth: 1,
+            borderColor: Accent.primary + "40",
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+            Got a usual {usualMealInsight.suggestedSlot.toLowerCase()}?
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+            Save it once, log it in one tap.
+          </Text>
+          {onStartUsualMealSave ? (
+            <Pressable
+              onPress={() => onStartUsualMealSave(usualMealInsight.suggestedSlot)}
+              accessibilityRole="button"
+              accessibilityLabel={`Save ${usualMealInsight.suggestedSlot} as a usual meal`}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                alignSelf: "flex-start",
+                marginTop: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: RadiusTokens.sm,
+                backgroundColor: Accent.primary,
+              }}
+            >
+              <Ionicons name="bookmark-outline" size={12} color="#fff" />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
+                Save {usualMealInsight.suggestedSlot} as a meal
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
 
       {/* Actions */}

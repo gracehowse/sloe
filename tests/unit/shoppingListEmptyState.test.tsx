@@ -116,6 +116,8 @@ describe("ShoppingList empty-state (audit R1)", () => {
     );
     expect(ctaFire).toBeDefined();
     expect(ctaFire?.payload).toEqual({
+      // L6 G5 (2026-04-18) — `surface` slice key for dashboards.
+      surface: "shopping_list",
       title: "Your shopping list is empty",
       ctaLabel: "Go to Meal Planner",
     });

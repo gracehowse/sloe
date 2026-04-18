@@ -5,6 +5,7 @@
  * duplication, so web and mobile cannot drift.
  */
 export {
+  buildUsualMealRecapInsight,
   buildWeeklyRecap,
   currentWeekKey,
   formatRecapForShare,
@@ -12,5 +13,6 @@ export {
   nextRecapFireDate,
   shouldShowRecap,
   weekKeyFor,
+  type UsualMealRecapInsight,
   type WeeklyRecap,
 } from "../../../src/lib/nutrition/weeklyRecap";

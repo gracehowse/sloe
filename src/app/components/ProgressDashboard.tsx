@@ -32,10 +32,14 @@ import {
   type FreezeLedger,
 } from "../../lib/nutrition/streakFreeze.ts";
 import {
+  buildUsualMealRecapInsight,
   buildWeeklyRecap,
   shouldShowRecap,
   weekKeyFor,
+  type UsualMealRecapInsight,
 } from "../../lib/nutrition/weeklyRecap.ts";
+import { listSavedMeals, type SavedMeal } from "../../lib/nutrition/savedMeals.ts";
+import { normaliseRecipeTitle } from "../../lib/nutrition/usualMealHint.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { WeeklyRecapCard } from "./suppr/weekly-recap-card.tsx";
@@ -370,6 +374,92 @@ function ProgressDashboardContent() {
     [recapLastSeenWeekKey, currentWeekKey, weekStartDay, recap.daysLogged],
   );
 
+  // Ship M1 — usual-meal growth-loop line on the recap card. Pull the
+  // user's saved meals once and match them against the last 7 days of
+  // journal history to count re-logs. Journal rows don't carry a
+  // `savedMealId` today; instead we match on normalised title + round
+  // kcal (same key used in the Quick Add "same item" detector).
+  const [hostSavedMealsForRecap, setHostSavedMealsForRecap] = useState<SavedMeal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!authedUserId) {
+      setHostSavedMealsForRecap([]);
+      return;
+    }
+    listSavedMeals(supabase, authedUserId)
+      .then((rows) => {
+        if (!cancelled) setHostSavedMealsForRecap(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("ProgressDashboard listSavedMeals (recap) failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId]);
+
+  const usualMealInsight: UsualMealRecapInsight = useMemo(() => {
+    if (!recapVisible) return null;
+
+    // Rebuild the week's date keys the recap covers. `buildWeeklyRecap`
+    // uses the previous-week anchor — replicate by subtracting 7 days
+    // and asking `weekKeyFor` → cleaner to just derive inline.
+    const prevAnchor = new Date();
+    prevAnchor.setDate(prevAnchor.getDate() - 7);
+    // Derive the 7 keys by walking from Monday-start / Sunday-start of
+    // the prev-week anchor. We use the same rule `buildWeekStats` uses,
+    // inlined here rather than refactoring the shared helper.
+    const d = new Date(prevAnchor);
+    d.setHours(0, 0, 0, 0);
+    const dow = d.getDay();
+    const offset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+    d.setDate(d.getDate() + offset);
+    const weekKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      weekKeys.push(`${y}-${m}-${day}`);
+      d.setDate(d.getDate() + 1);
+    }
+
+    // Build per-saved-meal log count. A saved meal is "logged" if at
+    // least one of its items appeared in the journal for that day.
+    // Count distinct days it was re-logged across the window.
+    const logCountBySavedMealId: Record<string, number> = {};
+    for (const sm of hostSavedMealsForRecap) {
+      const itemKeys = new Set<string>();
+      for (const it of sm.items) {
+        itemKeys.add(`${normaliseRecipeTitle(it.recipeTitle)}|${Math.round(it.calories)}`);
+      }
+      let dayMatches = 0;
+      for (const dayKey of weekKeys) {
+        const meals = nutritionByDay[dayKey] ?? [];
+        const dayKeys = new Set<string>();
+        for (const m of meals) {
+          dayKeys.add(
+            `${normaliseRecipeTitle(m.recipeTitle ?? "")}|${Math.round(m.calories)}`,
+          );
+        }
+        // A day counts if every item in the saved meal is present in
+        // that day's log (a tight match — stops single-item overlaps
+        // from triggering the count). Empty saved meals never match.
+        if (itemKeys.size > 0 && [...itemKeys].every((k) => dayKeys.has(k))) {
+          dayMatches += 1;
+        }
+      }
+      logCountBySavedMealId[sm.id] = dayMatches;
+    }
+
+    return buildUsualMealRecapInsight({
+      byDay: nutritionByDay,
+      weekKeys,
+      savedMeals: hostSavedMealsForRecap,
+      logCountBySavedMealId,
+    });
+  }, [recapVisible, hostSavedMealsForRecap, nutritionByDay, weekStartDay]);
+
   // Fire the `weekly_recap_shown` event once per visible week.
   const recapShownRef = useRef<string | null>(null);
   useEffect(() => {
@@ -437,7 +527,18 @@ function ProgressDashboardContent() {
       {/* WEEKLY RECAP CARD (Batch 4.11) — surfaces at end of week and stays
           visible for the first few days of the new week until dismissed. */}
       {recapVisible ? (
-        <WeeklyRecapCard recap={recap} onDismiss={dismissRecap} />
+        <WeeklyRecapCard
+          recap={recap}
+          onDismiss={dismissRecap}
+          usualMealInsight={usualMealInsight}
+          // Ship M1 — prompt CTA pipes back to Today by routing the user
+          // there. We don't deep-link the dialog open today; users land
+          // on Today with the slot-header save row highlighted via the
+          // canonical slot-level flow. A direct deep-link is a follow-up.
+          onStartUsualMealSave={() => {
+            router.replace("/?view=today");
+          }}
+        />
       ) : null}
 
       {/* 2x2 STAT GRID */}

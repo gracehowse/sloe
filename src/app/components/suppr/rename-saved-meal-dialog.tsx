@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * RenameSavedMealDialog — themed dialog for renaming a saved-meal
- * combo from the Quick Add "My meals" tab (audit M7, 2026-04-18).
+ * RenameSavedMealDialog — themed dialog for renaming a saved meal from
+ * the Quick Add "Usual meals" tab (audit M7, 2026-04-18; copy aligned
+ * Ship M1).
  *
  * Replaces the previous `window.prompt("Rename meal", ...)` call site
  * inside `quick-add-panel.tsx`. Behaviour is unchanged:

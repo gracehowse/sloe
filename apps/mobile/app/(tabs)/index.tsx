@@ -45,6 +45,7 @@ import CopyMealSheet from "@/components/CopyMealSheet";
 import DuplicateDaySheet from "@/components/DuplicateDaySheet";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
+import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import {
   availableFreezes,
@@ -52,6 +53,7 @@ import {
   readFreezeLedger,
   type FreezeLedger,
 } from "@/lib/streakFreeze";
+import { didStreakReset } from "../../../../src/lib/nutrition/streakReset";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -107,12 +109,20 @@ import QuickAddPanel from "@/components/QuickAddPanel";
 import {
   createSavedMeal,
   incrementLogCount,
+  listSavedMeals,
   type SavedMeal,
   type SavedMealItem,
 } from "../../../../src/lib/nutrition/savedMeals";
 import {
   buildMealEntriesFromSavedMeal,
 } from "../../../../src/lib/nutrition/savedMealsLogic";
+import {
+  parseDismissedSlots,
+  serializeDismissedSlots,
+  shouldShowUsualMealHint,
+  USUAL_MEAL_HINT_STORAGE_KEY,
+} from "../../../../src/lib/nutrition/usualMealHint";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TodayHeroRing } from "@/components/today/TodayHeroRing";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
@@ -318,6 +328,15 @@ export default function TrackerScreen() {
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+  // M2 (2026-04-18) — in-flow AI paywall sheet. Replaces the previous
+  // `router.push("/paywall?from=...")` on free-tier Voice / Snap taps.
+  // `/paywall` is still reachable via the sheet's primary CTA; tapping
+  // it is the commercial-intent surface, while this sheet is the
+  // light-touch in-flow gate that matches web `AiPaywallDialog`.
+  const [aiPaywall, setAiPaywall] = useState<{
+    open: boolean;
+    feature: AiPaywallFeature;
+  }>({ open: false, feature: "voice_log" });
   const [editingMeal, setEditingMeal] = useState<JournalMeal | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editKcal, setEditKcal] = useState("");
@@ -430,22 +449,126 @@ export default function TrackerScreen() {
 
   // Quick add panel — state/handlers live in `QuickAddPanel.tsx` (shared
   // render-only wrapper around the nutrition helpers). The host still owns
-  // the SaveMealSheet and drives the refresh token after a new combo is
-  // persisted.
+  // the SaveMealSheet and drives the refresh token after a new saved meal
+  // is persisted.
+  //
+  // Ship M1 (2026-04-18) — the host also owns the full saved-meals list
+  // so the meal-slot section can render the `Log usual` pill directly.
   const [saveMealSheetOpen, setSaveMealSheetOpen] = useState(false);
   const [saveMealSheetItems, setSaveMealSheetItems] = useState<Array<Omit<SavedMealItem, "id" | "position">>>([]);
   const [saveMealSheetDefaultSlot, setSaveMealSheetDefaultSlot] = useState<"Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined>(undefined);
-  /** Bumped after a new combo is persisted so `QuickAddPanel` refetches
-   *  its "My meals" tab and jumps to it (mirrors the web host). */
+  /** Bumped after a new saved meal is persisted so `QuickAddPanel` refetches
+   *  its "Usual meals" tab and jumps to it (mirrors the web host). */
   const [savedMealsRefreshToken, setSavedMealsRefreshToken] = useState(0);
+
+  /** Ship M1 — saved meals shared between `TodayMealsSection` (for the
+   *  slot-header "Log usual" pill + full-width save row visibility) and
+   *  `QuickAddPanel` (for the Usual meals tab). Host owns the list. */
+  const [hostSavedMeals, setHostSavedMeals] = useState<SavedMeal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setHostSavedMeals([]);
+      return;
+    }
+    listSavedMeals(supabase, userId)
+      .then((rows) => {
+        if (!cancelled) setHostSavedMeals(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("Today listSavedMeals failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, savedMealsRefreshToken]);
+
+  /** Ship M1 — usual-meal first-run hint dismiss state. Persisted via
+   *  AsyncStorage under a versioned key. Hydrated once on mount. */
+  const [usualMealHintDismissed, setUsualMealHintDismissed] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(USUAL_MEAL_HINT_STORAGE_KEY)
+      .then((raw) => {
+        if (!cancelled) setUsualMealHintDismissed(parseDismissedSlots(raw));
+      })
+      .catch(() => {
+        /* ignore storage failures */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const savedMealSlots = useMemo(() => {
+    const s = new Set<string>();
+    for (const m of hostSavedMeals) {
+      if (m.defaultMealSlot) s.add(m.defaultMealSlot);
+    }
+    return s;
+  }, [hostSavedMeals]);
+
+  const usualMealHintShownRef = useRef<Set<string>>(new Set());
+  const hintVisibleForSlot = useCallback(
+    (slot: string) => {
+      if (!isMealSlot(slot)) return false;
+      const currentDayKey = dateKeyFromDate(selectedDate);
+      return shouldShowUsualMealHint({
+        byDay,
+        slot,
+        todayKey: currentDayKey,
+        dismissedSlots: usualMealHintDismissed,
+        savedMealSlots,
+      });
+    },
+    [byDay, selectedDate, usualMealHintDismissed, savedMealSlots],
+  );
+  useEffect(() => {
+    for (const slot of ["Breakfast", "Lunch", "Dinner", "Snacks"] as const) {
+      if (hintVisibleForSlot(slot) && !usualMealHintShownRef.current.has(slot)) {
+        usualMealHintShownRef.current.add(slot);
+        try {
+          track(AnalyticsEvents.usual_meal_hint_shown, { slot });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+      }
+    }
+  }, [hintVisibleForSlot]);
+
+  const dismissUsualMealHint = useCallback(
+    (slot: string) => {
+      if (!isMealSlot(slot)) return;
+      setUsualMealHintDismissed((prev) => {
+        const next = new Set(prev);
+        next.add(slot);
+        void AsyncStorage.setItem(
+          USUAL_MEAL_HINT_STORAGE_KEY,
+          serializeDismissedSlots(next),
+        ).catch(() => {
+          /* ignore storage failures */
+        });
+        return next;
+      });
+      try {
+        track(AnalyticsEvents.usual_meal_hint_dismissed, { slot });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    },
+    [],
+  );
 
   /** Open the save-meal sheet pre-filled with the items in `slotName` on
    * the active day. Gated on >=2 items so the UI never lets the user
-   * save a single-item "combo". */
+   * save a single-item "usual meal". */
   const openSaveMealSheetForSlot = useCallback(
     (slotName: string) => {
       if (!userId) {
-        Alert.alert("Sign in", "Sign in to save meal combos.");
+        Alert.alert("Sign in", "Sign in to save a usual meal.");
         return;
       }
       const normalised = normalizeJournalSlotName(slotName);
@@ -455,8 +578,8 @@ export default function TrackerScreen() {
       );
       if (slotMeals.length < 2) {
         Alert.alert(
-          "Save meal combo",
-          "Log 2 or more items in this slot first, then save the combo.",
+          "Save as a usual meal",
+          "Log 2 or more items in this slot first, then save as a usual meal.",
         );
         return;
       }
@@ -482,9 +605,9 @@ export default function TrackerScreen() {
     [userId, byDay, selectedDate],
   );
 
-  /** Persist a new saved-meal combo from the lifted `SaveMealSheet`,
-   *  then bump `savedMealsRefreshToken` so `QuickAddPanel` refetches its
-   *  "My meals" tab and auto-switches to it. Mirrors the web host. */
+  /** Persist a new saved meal from the lifted `SaveMealSheet`, then bump
+   *  `savedMealsRefreshToken` so `QuickAddPanel` refetches its "Usual
+   *  meals" tab and auto-switches to it. Mirrors the web host. */
   const handleCreateSavedMeal = useCallback(
     async (payload: {
       name: string;
@@ -493,16 +616,20 @@ export default function TrackerScreen() {
     }) => {
       if (!userId) return;
       try {
-        await createSavedMeal(supabase, userId, payload);
+        const created = await createSavedMeal(supabase, userId, payload);
         try {
           track(AnalyticsEvents.saved_meal_created, {
             itemCount: payload.items.length,
             defaultMealSlot: payload.defaultMealSlot,
+            // L6 G3 (2026-04-18) — carry the new combo's id so the
+            // create → later-logged funnel can join on a single key
+            // instead of the (name, slot, items) tuple.
+            savedMealId: created.id,
           });
         } catch { /* analytics is fire-and-forget */ }
         setSavedMealsRefreshToken((n) => n + 1);
       } catch (err) {
-        Alert.alert("Could not save", "We couldn't save that combo. Try again.");
+        Alert.alert("Could not save", "We couldn't save that meal. Try again.");
         // eslint-disable-next-line no-console
         console.warn("Saved-meal create failed", err);
       }
@@ -510,10 +637,23 @@ export default function TrackerScreen() {
     [userId],
   );
 
-  /** Expand a saved-meal combo into per-item journal entries and insert
-   *  each via the same path as manual logs. Fires `saved_meal_logged`
-   *  once per combo tap. Invoked by `QuickAddPanel` via `onLogSavedMeal`;
-   *  the panel owns its own optimistic reorder of the "My meals" list. */
+  /** Ship M1 — the first-run hint's "Save as usual" CTA. */
+  const acceptUsualMealHint = useCallback(
+    (slot: string) => {
+      try {
+        track(AnalyticsEvents.usual_meal_hint_accepted, { slot });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      openSaveMealSheetForSlot(slot);
+    },
+    [openSaveMealSheetForSlot],
+  );
+
+  /** Expand a saved meal into per-item journal entries and insert each
+   *  via the same path as manual logs. Fires `saved_meal_logged` once
+   *  per tap. Invoked by `QuickAddPanel` via `onLogSavedMeal`; the panel
+   *  owns its own optimistic reorder of the "Usual meals" list. */
   const logSavedMealFromPanel = useCallback(
     (meal: SavedMeal, slot: string) => {
       if (!userId) return;
@@ -541,12 +681,107 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      // L6 G1 (2026-04-18) — mirror the web primitive: fire one
+      // `food_logged { source: "saved_meal" }` per expanded item so
+      // the funnel totals match web. `saved_meal_logged` is still
+      // fired by the QuickAddPanel itself (one event per tap).
+      try {
+        for (const m of newMeals) {
+          track(AnalyticsEvents.food_logged, {
+            source: "saved_meal",
+            calories: m.calories,
+            slot,
+          });
+        }
+      } catch { /* analytics fire-and-forget */ }
       // Fire-and-forget counter bump. Panel fires the analytics event.
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
         // eslint-disable-next-line no-console
         console.warn("Saved-meal log-count bump failed", err);
       });
       setShowPrevious(false);
+    },
+    [userId, selectedDate],
+  );
+
+  /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
+   *  into `slot`, fires slot-header analytics + `saved_meal_logged`, and
+   *  optimistically reorders the host's saved-meal list so the row
+   *  surfaces at the top on next render. Mirrors the web host. */
+  const logSavedMealFromSlotHeader = useCallback(
+    (meal: SavedMeal, slot: string) => {
+      if (!userId) return;
+      const timeLabel = new Date().toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId());
+      if (entries.length === 0) return;
+      const newMeals: JournalMeal[] = entries.map((e) => {
+        const jm: JournalMeal = {
+          id: e.id,
+          name: e.name,
+          recipeTitle: e.recipeTitle,
+          time: e.time,
+          calories: e.calories,
+          protein: e.protein,
+          carbs: e.carbs,
+          fat: e.fat,
+        };
+        if (e.fiberG != null) jm.fiberG = e.fiberG;
+        if (e.waterMl != null) jm.waterMl = e.waterMl;
+        if (e.source) jm.source = e.source;
+        return jm;
+      });
+      const targetDayKey = dateKeyFromDate(selectedDate);
+      setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      try {
+        track(AnalyticsEvents.usual_meal_log_tapped, {
+          slot,
+          itemCount: meal.items.length,
+        });
+      } catch { /* analytics fire-and-forget */ }
+      try {
+        track(AnalyticsEvents.saved_meal_logged, {
+          itemCount: meal.items.length,
+          slot,
+          // L6 G3 (2026-04-18) — add savedMealId so F3 ("habit loop")
+          // can follow the same combo across days without joining
+          // on name alone.
+          savedMealId: meal.id,
+        });
+      } catch { /* analytics fire-and-forget */ }
+      // L6 G1 (2026-04-18) — mirror web primitive: one `food_logged`
+      // per expanded item, tagged as a saved-meal log so the funnels
+      // F1/F3 can slice quick-add-vs-usual-meal sources reliably.
+      try {
+        for (const m of newMeals) {
+          track(AnalyticsEvents.food_logged, {
+            source: "saved_meal",
+            calories: m.calories,
+            slot,
+          });
+        }
+      } catch { /* analytics fire-and-forget */ }
+      setHostSavedMeals((prev) => {
+        const next = prev.map((m) =>
+          m.id === meal.id
+            ? { ...m, logCount: m.logCount + 1, lastLoggedAt: new Date().toISOString() }
+            : m,
+        );
+        next.sort((a, b) => {
+          const ta = a.lastLoggedAt ? Date.parse(a.lastLoggedAt) : 0;
+          const tb = b.lastLoggedAt ? Date.parse(b.lastLoggedAt) : 0;
+          if (ta !== tb) return tb - ta;
+          return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+        });
+        return next;
+      });
+      void incrementLogCount(supabase, userId, meal.id).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("Today slot-header usual-meal log bump failed", err);
+      });
+      setSavedMealsRefreshToken((n) => n + 1);
     },
     [userId, selectedDate],
   );
@@ -1024,8 +1259,40 @@ export default function TrackerScreen() {
   // best-effort). Debounced 500 ms so a rapid sequence of macro edits
   // doesn't flood disk. Only runs when viewing today — yesterday's numbers
   // should never appear in the widget.
+  //
+  // L6 G7 (2026-04-18) — tag each successful write with the `trigger`
+  // that caused it: macro totals/targets vs active fast state vs an
+  // initial "scheduled" write after hydration. Product uses this to
+  // triage why the iOS home-screen widget goes stale.
+  const widgetSnapshotSignatureRef = useRef<{
+    totalsKey: string;
+    fastKey: string | null;
+    wroteOnce: boolean;
+  }>({ totalsKey: "", fastKey: null, wroteOnce: false });
   useEffect(() => {
     if (!hydrated || !isToday || viewMode !== "day") return;
+    const currentTotalsKey = [
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      effectiveCalorieGoal,
+      targets.protein,
+      targets.carbs,
+      targets.fat,
+    ].join(":");
+    const currentFastKey = activeFastStart ?? null;
+    const prev = widgetSnapshotSignatureRef.current;
+    let trigger: "totals_changed" | "fast_state_changed" | "scheduled_refresh";
+    if (!prev.wroteOnce) {
+      // First write after hydrate — classified as a scheduled refresh
+      // so the initial liveness ping isn't misattributed to totals.
+      trigger = "scheduled_refresh";
+    } else if (prev.fastKey !== currentFastKey) {
+      trigger = "fast_state_changed";
+    } else {
+      trigger = "totals_changed";
+    }
     let cancelled = false;
     const handle = setTimeout(() => {
       if (cancelled) return;
@@ -1046,7 +1313,12 @@ export default function TrackerScreen() {
         });
         const result = await writeWidgetSnapshot(snapshot);
         if (result.ok) {
-          track(AnalyticsEvents.widget_snapshot_updated, {});
+          widgetSnapshotSignatureRef.current = {
+            totalsKey: currentTotalsKey,
+            fastKey: currentFastKey,
+            wroteOnce: true,
+          };
+          track(AnalyticsEvents.widget_snapshot_updated, { trigger });
         }
       })().catch(() => {
         // Never let a widget persistence failure break Today.
@@ -1091,10 +1363,32 @@ export default function TrackerScreen() {
   // 2026-04-18 audit H7 — DayStrip tiles for days where a freeze was
   // consumed render a ❄ glyph. Parent computes once so both DayStrips
   // (day + week view) render identically.
-  const protectedDateKeys = useMemo(() => {
-    const info = computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax);
-    return new Set(info.protectedDateKeys);
+  //
+  // L6 G8 (2026-04-18) — the memo also exposes `streakLength` so the
+  // `streak_reset` effect below can detect >=1 → 0 transitions.
+  const protectedStreakInfo = useMemo(() => {
+    return computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax);
   }, [byDay, freezeLedger, freezeBudgetMax]);
+  const protectedDateKeys = useMemo(
+    () => new Set(protectedStreakInfo.protectedDateKeys),
+    [protectedStreakInfo],
+  );
+  const protectedStreakLength = protectedStreakInfo.streakLength;
+  // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
+  // protected streak transitions from >=1 to 0. Ref starts at `null`
+  // so a user with a zero streak on first render never fires.
+  const priorProtectedStreakRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prior = priorProtectedStreakRef.current;
+    priorProtectedStreakRef.current = protectedStreakLength;
+    if (didStreakReset(prior, protectedStreakLength)) {
+      try {
+        track(AnalyticsEvents.streak_reset, {
+          priorStreak: prior ?? 0,
+        });
+      } catch { /* analytics fire-and-forget */ }
+    }
+  }, [protectedStreakLength]);
   // 2026-04-18 audit H7 — one-time "You earned a freeze" row under the
   // streak insight card. Newest `earnedAt` ISO from the ledger; the row
   // shows until the user taps "Got it", which writes that ISO to
@@ -1231,24 +1525,28 @@ export default function TrackerScreen() {
   );
 
   // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
-  // tiers are routed to the paywall; Pro opens the respective sheet.
+  // tiers see the in-flow `AiPaywallSheet` (M2, 2026-04-18); Pro opens
+  // the respective sheet. The `voice_log_paywalled` /
+  // `ai_photo_log_paywalled` events still fire so existing funnels keep
+  // reporting; the new `ai_paywall_sheet_viewed` event fires from
+  // inside the sheet on mount.
   const handleOpenVoiceLog = useCallback(() => {
     if (userTier !== "pro") {
       track(AnalyticsEvents.voice_log_paywalled);
-      router.push("/paywall?from=voice_log" as any);
+      setAiPaywall({ open: true, feature: "voice_log" });
       return;
     }
     setVoiceLogOpen(true);
-  }, [router, userTier]);
+  }, [userTier]);
 
   const handleOpenPhotoLog = useCallback(() => {
     if (userTier !== "pro") {
       track(AnalyticsEvents.ai_photo_log_paywalled);
-      router.push("/paywall?from=photo_log" as any);
+      setAiPaywall({ open: true, feature: "photo_log" });
       return;
     }
     setPhotoLogOpen(true);
-  }, [router, userTier]);
+  }, [userTier]);
 
   const addWaterMl = useCallback(
     async (ml: number) => {
@@ -1270,6 +1568,13 @@ export default function TrackerScreen() {
         amount: add,
         unit: "ml",
         preset: null,
+        // L6 G6 (2026-04-18) — dashboards key off amount_ml + via.
+        // All current mobile water entry points are quick chips (the
+        // HydrationStimulantsCard, the TodayAddMealDialog meal-row
+        // path routes `waterMl` inside the meal entry → food_logged,
+        // not here). If a manual `addWaterMl` is introduced, flag it.
+        amount_ml: add,
+        via: "quick_chip",
       });
     },
     [userId, dayKey],
@@ -1364,6 +1669,11 @@ export default function TrackerScreen() {
         amount: add,
         unit: "mg",
         preset,
+        // L6 G6 (2026-04-18) — explicit enum fields so the dashboards
+        // don't have to reverse a (unit, type) combo.
+        kind: "caffeine",
+        amount_mg_or_g: add,
+        via: preset ? "quick_chip" : "manual",
       });
     },
     [userId, dayKey],
@@ -1392,6 +1702,10 @@ export default function TrackerScreen() {
         amount: add,
         unit: "g",
         preset,
+        // L6 G6 (2026-04-18) — explicit enum fields.
+        kind: "alcohol",
+        amount_mg_or_g: add,
+        via: preset ? "quick_chip" : "manual",
       });
     },
     [userId, dayKey],
@@ -1436,15 +1750,30 @@ export default function TrackerScreen() {
       if (persisted) {
         await supabase.from("profiles").update({ [column]: persisted }).eq("id", userId);
       }
-      track(
-        kind === "water" ? AnalyticsEvents.hydration_logged : AnalyticsEvents.stimulant_logged,
-        {
+      // L6 G6 (2026-04-18) — reset paths stay backwards-compatible
+      // (amount: 0, preset: "reset") and add the explicit enum
+      // fields. `via: "manual"` because reset is always a deliberate
+      // menu action, never a quick chip.
+      if (kind === "water") {
+        track(AnalyticsEvents.hydration_logged, {
+          type: "water",
+          amount: 0,
+          unit: "ml",
+          preset: "reset",
+          amount_ml: 0,
+          via: "manual",
+        });
+      } else {
+        track(AnalyticsEvents.stimulant_logged, {
           type: kind,
           amount: 0,
-          unit: kind === "water" ? "ml" : kind === "caffeine" ? "mg" : "g",
+          unit: kind === "caffeine" ? "mg" : "g",
           preset: "reset",
-        },
-      );
+          kind,
+          amount_mg_or_g: 0,
+          via: "manual",
+        });
+      }
     },
     [userId, dayKey],
   );
@@ -2400,7 +2729,7 @@ export default function TrackerScreen() {
                 <Ionicons name="flash-outline" size={18} color={Accent.primary} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
                 <Text style={{ fontSize: 12, color: colors.textTertiary }}>
-                  Favourites, frequent, recent, my meals
+                  Usual meals, recent, frequent, favourites
                 </Text>
               </View>
               <Ionicons
@@ -2436,7 +2765,7 @@ export default function TrackerScreen() {
             collapsedSlots={collapsedSlots}
             onToggleSlotCollapse={toggleSlotCollapse}
             onOpenFabForSlot={(slot) => { setActiveMealSlot(slot); setFabSheetOpen(true); }}
-            onOpenSaveMealSheetForSlot={openSaveMealSheetForSlot}
+            onOpenSaveUsualMealForSlot={openSaveMealSheetForSlot}
             onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
             onPressMeal={(id) => router.push(`/meal-nutrition?id=${encodeURIComponent(id)}` as const)}
             onLongPressEdit={openEditMeal}
@@ -2451,6 +2780,11 @@ export default function TrackerScreen() {
             textTertiaryColor={colors.textTertiary}
             cardColor={colors.card}
             cardBorderColor={colors.cardBorder}
+            savedMeals={hostSavedMeals}
+            onLogSavedMeal={logSavedMealFromSlotHeader}
+            hintVisibleForSlot={hintVisibleForSlot}
+            onDismissUsualMealHint={dismissUsualMealHint}
+            onAcceptUsualMealHint={acceptUsualMealHint}
           />
         )}
 
@@ -2762,6 +3096,20 @@ export default function TrackerScreen() {
             ...prev,
             [dayKey]: [...(prev[dayKey] ?? []), meal],
           }));
+          // L6 G1 (2026-04-18) — the Today FoodSearchModal commit was
+          // the only `food_logged` emit site on mobile without a
+          // source. Fire the canonical event with `custom_food` when
+          // the hit is from the user's custom food library, otherwise
+          // `manual` (USDA / Open Food Facts). Recipe-verify flows
+          // that also mount this modal do NOT emit `food_logged` —
+          // this host is the logging surface.
+          try {
+            track(AnalyticsEvents.food_logged, {
+              source: result.source === "CUSTOM" ? "custom_food" : "manual",
+              calories: meal.calories,
+              slot: activeMealSlot,
+            });
+          } catch { /* noop */ }
           setSearchOpen(false);
         }}
         onClose={() => setSearchOpen(false)}
@@ -2839,7 +3187,7 @@ export default function TrackerScreen() {
         </View>
       )}
 
-      {/* Batch 2.6 — Save meal combo sheet */}
+      {/* Save-as-usual-meal sheet (Batch 2.6; Ship M1 copy rename). */}
       <SaveMealSheet
         visible={saveMealSheetOpen}
         onClose={() => setSaveMealSheetOpen(false)}
@@ -2847,7 +3195,7 @@ export default function TrackerScreen() {
         defaultSlot={saveMealSheetDefaultSlot}
         suggestedName={
           saveMealSheetDefaultSlot
-            ? `My ${saveMealSheetDefaultSlot.toLowerCase()} combo`
+            ? `My usual ${saveMealSheetDefaultSlot.toLowerCase()}`
             : undefined
         }
         onSave={handleCreateSavedMeal}
@@ -2990,6 +3338,26 @@ export default function TrackerScreen() {
           background: colors.background,
           inputBg: colors.inputBg,
           border: colors.border,
+        }}
+      />
+
+      {/* M2 (2026-04-18) — in-flow AI paywall. Mirrors web
+          `AiPaywallDialog`. Primary CTA routes to `/paywall?from=...`
+          so the full-route commercial surface stays reachable. */}
+      <AiPaywallSheet
+        visible={aiPaywall.open}
+        feature={aiPaywall.feature}
+        onClose={() => setAiPaywall((s) => ({ ...s, open: false }))}
+        onSeePlans={(feature) => {
+          setAiPaywall((s) => ({ ...s, open: false }));
+          router.push(`/paywall?from=${feature}` as any);
+        }}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          card: colors.card,
+          border: colors.border,
+          background: colors.background,
         }}
       />
     </View>
