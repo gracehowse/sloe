@@ -4061,7 +4061,7 @@ export default function TrackerScreen() {
               )}
               {!savedMealsLoading && userId && savedMeals.length === 0 && (
                 <Text style={{ color: colors.textSecondary, textAlign: "center", paddingTop: 40 }}>
-                  Log 2 or more items in a slot, then tap "Save combo" on the slot header to re-log it in one tap.
+                  {`Log 2 or more items in a slot, then tap "Save combo" on the slot header to re-log it in one tap.`}
                 </Text>
               )}
               {!savedMealsLoading && savedMeals.map((meal) => {

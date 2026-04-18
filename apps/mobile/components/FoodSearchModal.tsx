@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Modal,
@@ -27,6 +28,19 @@ import {
   type MacroConsumed,
   type MacroTargets,
 } from "../../../src/lib/nutrition/remainingMacros";
+import {
+  createCustomFood,
+  deleteCustomFood,
+  listCustomFoods,
+  searchCustomFoods,
+  updateCustomFood,
+} from "../../../src/lib/nutrition/customFoodsClient";
+import type { CustomFood } from "../../../src/lib/nutrition/customFoods";
+import CreateCustomFoodSheet, {
+  type CreateCustomFoodPayload,
+} from "./CreateCustomFoodSheet";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -39,23 +53,39 @@ const STANDARD_UNITS: FoodPortion[] = [
   { label: "ml", gramWeight: 1, amount: 1 },
 ];
 
-type SelectedFood = {
+type Macros = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
+};
+
+export type SelectedFood = {
   name: string;
-  source: "USDA" | "OFF";
-  macrosPer100g: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiberG: number;
-    sugarG: number;
-    sodiumMg: number;
-  };
+  source: "USDA" | "OFF" | "CUSTOM";
+  macrosPer100g: Macros;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
   quantity: number;
   fdcId?: number;
   barcode?: string;
+  /** Present when the user selected one of their own custom foods. */
+  customFoodId?: string;
+  /** Non-gram named serving label chosen from the custom food's saved chips. */
+  servingLabel?: string;
+};
+
+type SupabaseLike = { from: (table: string) => unknown };
+
+/** Local superset of UnifiedSearchResult that allows a CUSTOM source.
+ *  We don't widen the shared type because verifyRecipe.ts lives under
+ *  src/lib and other call sites assume only USDA/OFF results. */
+type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
+  _source: "USDA" | "OFF" | "CUSTOM";
+  _custom?: CustomFood;
 };
 
 type Props = {
@@ -76,6 +106,14 @@ type Props = {
    */
   macroTargets?: MacroTargets;
   macroConsumed?: MacroConsumed;
+  /**
+   * Custom-foods wiring (Batch 3.9). When both `supabase` and `userId` are
+   * provided, the modal lists the user's custom foods at the top of results,
+   * shows a "+ Create custom food" row, and exposes edit/delete via a
+   * long-press action sheet. Omit to hide the feature entirely.
+   */
+  supabase?: SupabaseLike;
+  userId?: string | null;
   onSelect: (result: SelectedFood) => void;
   onClose: () => void;
 };
@@ -174,6 +212,51 @@ function resolveInitialPortion(
   return { portion: portions[0], quantity: amt };
 }
 
+/** Convert a CustomFood row to the per-100g macros shape the rest of the
+ *  modal already reasons in so the existing preview / scaling code path
+ *  does not need to branch on source. */
+function customFoodToMacrosPer100g(food: CustomFood): Macros {
+  const base = Number.isFinite(food.baseGrams) && food.baseGrams > 0 ? food.baseGrams : 100;
+  const factor = 100 / base;
+  return {
+    calories: Math.round(food.calories * factor),
+    protein: Math.round(food.protein * factor * 10) / 10,
+    carbs: Math.round(food.carbs * factor * 10) / 10,
+    fat: Math.round(food.fat * factor * 10) / 10,
+    fiberG: typeof food.fiber === "number" ? Math.round(food.fiber * factor * 10) / 10 : 0,
+    sugarG: 0,
+    sodiumMg: 0,
+  };
+}
+
+function customFoodToRow(food: CustomFood): SearchRow {
+  const macrosPer100g = customFoodToMacrosPer100g(food);
+  const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
+  return {
+    key: `custom-${food.id}`,
+    name: displayName,
+    calsPer100g: macrosPer100g.calories,
+    macrosPer100g,
+    verified: false,
+    _source: "CUSTOM",
+    _custom: food,
+  };
+}
+
+/** Build the portion list for a custom food: grams + one chip per saved
+ *  serving. No USDA fallbacks — a homemade item's only canonical units
+ *  are the ones the user chose to save. */
+function buildCustomFoodPortions(food: CustomFood): FoodPortion[] {
+  const portions: FoodPortion[] = [{ label: "g", gramWeight: 1, amount: 1 }];
+  for (const s of food.servings ?? []) {
+    const label = String(s?.label ?? "").trim();
+    const grams = Number(s?.grams);
+    if (!label || !Number.isFinite(grams) || grams <= 0) continue;
+    portions.push({ label, gramWeight: grams, amount: 1 });
+  }
+  return portions;
+}
+
 export default function FoodSearchModal({
   visible,
   initialQuery,
@@ -182,31 +265,50 @@ export default function FoodSearchModal({
   originalDescription,
   macroTargets,
   macroConsumed,
+  supabase,
+  userId,
   onSelect,
   onClose,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<UnifiedSearchResult[]>([]);
+  const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF";
-    macrosPer100g: SelectedFood["macrosPer100g"];
+    source: "USDA" | "OFF" | "CUSTOM";
+    macrosPer100g: Macros;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
     quantityText: string;
     fdcId?: number;
     barcode?: string;
+    customFoodId?: string;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
 
+  // Custom foods (Batch 3.9) — only active when both supabase + userId provided.
+  const customEnabled = Boolean(supabase && userId);
+  const [customLibrary, setCustomLibrary] = useState<CustomFood[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingFood, setEditingFood] = useState<CustomFood | undefined>(undefined);
+
+  const refreshCustomLibrary = useCallback(async () => {
+    if (!customEnabled || !supabase || !userId) return [] as CustomFood[];
+    const rows = await listCustomFoods(
+      supabase as Parameters<typeof listCustomFoods>[0],
+      userId,
+    );
+    setCustomLibrary(rows);
+    return rows;
+  }, [customEnabled, supabase, userId]);
+
   /** Fetch full macros for USDA results that are missing inline nutrients */
-  const backfillMissingMacros = useCallback((items: UnifiedSearchResult[]) => {
+  const backfillMissingMacros = useCallback((items: SearchRow[]) => {
     const id = ++backfillRef.current;
     const missing = items
       .filter((r) => r._source === "USDA" && r._fdcId && !r.macrosPer100g && !(r.calsPer100g && r.calsPer100g > 0))
@@ -234,22 +336,48 @@ export default function FoodSearchModal({
     }
   }, []);
 
+  /** Merge custom-food matches at the top of USDA/OFF results. Custom
+   *  rows are never de-duped against external rows — the user explicitly
+   *  saved the custom version so we preserve that intent. */
+  const mergeWithCustom = useCallback((external: UnifiedSearchResult[], customs: CustomFood[]): SearchRow[] => {
+    const customRows: SearchRow[] = customs.map(customFoodToRow);
+    const merged: SearchRow[] = [...customRows, ...(external as SearchRow[])];
+    // Cap the combined list so a user with a huge library never pushes
+    // USDA results entirely off-screen.
+    return merged.slice(0, 30);
+  }, []);
+
   useEffect(() => {
     if (visible) {
       setQuery(initialQuery);
       setResults([]);
       setPreview(null);
       backfillRef.current++;
+      if (customEnabled) void refreshCustomLibrary();
       if (initialQuery.trim()) {
         setLoading(true);
-        searchFoods(initialQuery, (partial) => setResults(partial)).then((r) => {
-          setResults(r);
+        const externalP = searchFoods(initialQuery, (partial) => {
+          // While waiting for custom results, still show the external
+          // partials so the modal doesn't appear frozen. Once customs
+          // resolve we replace with the merged list below.
+          setResults(partial as SearchRow[]);
+        });
+        const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
+          ? searchCustomFoods(
+              supabase as Parameters<typeof searchCustomFoods>[0],
+              userId,
+              initialQuery,
+            )
+          : Promise.resolve([] as CustomFood[]);
+        Promise.all([externalP, customP]).then(([r, customs]) => {
+          const merged = mergeWithCustom(r, customs);
+          setResults(merged);
           setLoading(false);
-          backfillMissingMacros(r);
+          backfillMissingMacros(merged);
         });
       }
     }
-  }, [visible, initialQuery, backfillMissingMacros]);
+  }, [visible, initialQuery, backfillMissingMacros, customEnabled, refreshCustomLibrary, supabase, userId, mergeWithCustom]);
 
   const onChangeText = useCallback((text: string) => {
     setQuery(text);
@@ -262,15 +390,24 @@ export default function FoodSearchModal({
     }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      const r = await searchFoods(q, (partial) => setResults(partial));
-      setResults(r);
+      const externalP = searchFoods(q, (partial) => setResults(partial as SearchRow[]));
+      const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
+        ? searchCustomFoods(
+            supabase as Parameters<typeof searchCustomFoods>[0],
+            userId,
+            q,
+          )
+        : Promise.resolve([] as CustomFood[]);
+      const [r, customs] = await Promise.all([externalP, customP]);
+      const merged = mergeWithCustom(r, customs);
+      setResults(merged);
       setLoading(false);
-      backfillMissingMacros(r);
+      backfillMissingMacros(merged);
     }, 400);
-  }, [backfillMissingMacros]);
+  }, [backfillMissingMacros, customEnabled, supabase, userId, mergeWithCustom]);
 
   const onPickResult = useCallback(
-    async (item: UnifiedSearchResult) => {
+    async (item: SearchRow) => {
       setLoadingKey(item.key);
 
       if (item._source === "USDA" && item._fdcId) {
@@ -302,6 +439,22 @@ export default function FoodSearchModal({
           quantity,
           quantityText: String(quantity),
           barcode: item._offCode,
+        });
+      } else if (item._source === "CUSTOM" && item._custom) {
+        setLoadingKey(null);
+        const food = item._custom;
+        const macrosPer100g = customFoodToMacrosPer100g(food);
+        const allPortions = buildCustomFoodPortions(food);
+        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "CUSTOM",
+          macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+          customFoodId: food.id,
         });
       } else {
         setLoadingKey(null);
@@ -337,6 +490,12 @@ export default function FoodSearchModal({
 
   const onConfirmPreview = useCallback(() => {
     if (preview) {
+      const servingLabel =
+        preview.source === "CUSTOM" &&
+        preview.chosenPortion.label !== "g" &&
+        preview.chosenPortion.label !== "ml"
+          ? preview.chosenPortion.label
+          : undefined;
       onSelect({
         name: preview.name,
         source: preview.source,
@@ -346,6 +505,8 @@ export default function FoodSearchModal({
         quantity: preview.quantity,
         fdcId: preview.fdcId,
         barcode: preview.barcode,
+        ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+        ...(servingLabel ? { servingLabel } : {}),
       });
       setPreview(null);
     }
@@ -379,7 +540,7 @@ export default function FoodSearchModal({
   }, [macroTargets, macroConsumed, previewMacros]);
 
   const renderItem = useCallback(
-    ({ item }: { item: UnifiedSearchResult }) => {
+    ({ item }: { item: SearchRow }) => {
       const isLoading = loadingKey === item.key;
       const hasMacros = item.macrosPer100g && item.macrosPer100g.calories > 0;
       const cals = item.calsPer100g ?? item.macrosPer100g?.calories;
@@ -723,7 +884,7 @@ export default function FoodSearchModal({
         )}
 
         {!preview && (
-          <FlatList
+          <FlatList<SearchRow>
             data={results}
             keyExtractor={(item) => item.key}
             renderItem={renderItem}

@@ -32,7 +32,7 @@ import {
   type FoodPortion,
   type IngredientOverride,
 } from "@/lib/verifyRecipe";
-import FoodSearchModal from "@/components/FoodSearchModal";
+import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import AddIngredientSheet, {
   type AddIngredientPayload,
@@ -143,16 +143,7 @@ export default function VerifyScreen() {
 
   // Food search selection
   const onFoodSelected = useCallback(
-    (result: {
-      name: string;
-      source: "USDA" | "OFF";
-      macrosPer100g: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
-      portions: { label: string; gramWeight: number; amount: number }[];
-      chosenPortion: { label: string; gramWeight: number; amount: number };
-      quantity: number;
-      fdcId?: number;
-      barcode?: string;
-    }) => {
+    (result: SelectedFood) => {
       if (searchIndex == null) return;
       const grams = result.chosenPortion.gramWeight * result.quantity;
       const scaled = scaleMacros(result.macrosPer100g, grams);

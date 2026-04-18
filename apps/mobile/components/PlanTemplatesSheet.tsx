@@ -230,7 +230,7 @@ export function PlanTemplatesSheet({
               <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Loading…</Text>
             ) : templates.length === 0 ? (
               <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                No saved templates yet. Switch to "Save as template" after generating a plan.
+                {`No saved templates yet. Switch to "Save as template" after generating a plan.`}
               </Text>
             ) : (
               templates.map((t) => (
