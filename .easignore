@@ -2,6 +2,9 @@
 # The repo-root package.json is for the Next.js web app and pulls in
 # conflicting deps (React 18 vs mobile's React 19). Exclude it so EAS
 # only resolves apps/mobile/package.json on the builder.
+#
+# NOTE: /src MUST remain included — the mobile app imports shared nutrition
+# and analytics code from ../../../src/* via Metro watchFolders.
 
 # Web-only root files
 /package.json
@@ -11,8 +14,7 @@
 /next.config.*
 /next-env.d.ts
 
-# Web source + tests
-/src
+# Web-only directories (NOT /src — mobile shares code from there)
 /public
 /tests
 /e2e
@@ -30,3 +32,11 @@
 /.maestro
 *.log
 .DS_Store
+
+# Drop heavyweight dirs inside the mobile app — EAS rebuilds these
+apps/mobile/node_modules
+apps/mobile/ios/Pods
+apps/mobile/ios/build
+apps/mobile/android/build
+apps/mobile/android/.gradle
+apps/mobile/android/app/build
