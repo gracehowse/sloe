@@ -8,18 +8,20 @@ name: "Burn detail — navigation and content"
 
 # Scroll down to burn card (if Health data exists)
 - scrollUntilVisible:
-    element: ".*burned.*"
+    element: ".*(?:Burn so far|Total burn|Active energy).*"
     direction: DOWN
 
 # If burn card is visible, tap it
 - runFlow:
     when:
-      visible: ".*burned.*"
+      visible: ".*(?:Burn so far|Total burn|Active energy).*"
     commands:
-      - tapOn: ".*burned.*"
-      - assertVisible: ".*Calorie Burn.*"
+      - tapOn: ".*(?:Burn so far|Total burn|Active energy).*"
+      # Page title is "Activity Bonus" (today) or "Activity Summary" (past day)
       - assertVisible:
-          text: ".*(?:Active energy|Resting energy|Projected).*"
+          text: ".*(?:Activity Bonus|Activity Summary).*"
+      - assertVisible:
+          text: ".*(?:Active energy|Resting energy|Estimated remaining).*"
       # Navigate back
       - tapOn:
           point: "5%,8%"

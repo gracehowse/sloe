@@ -22,6 +22,11 @@ import {
   type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
+import {
+  projectRemaining,
+  type MacroConsumed,
+  type MacroTargets,
+} from "../../../src/lib/nutrition/remainingMacros";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -62,6 +67,15 @@ type Props = {
   initialUnit?: string | null;
   /** Original ingredient description shown as context (e.g. "1 lb chicken breast") */
   originalDescription?: string | null;
+  /**
+   * Optional daily budget context. When provided together with `macroConsumed`,
+   * the portion preview shows a fit-this-in hint:
+   * "If you log this: N kcal / P / C / F left" using the shared
+   * remainingMacros helper. Omit in verify-ingredient flows where there
+   * is no tracker budget context.
+   */
+  macroTargets?: MacroTargets;
+  macroConsumed?: MacroConsumed;
   onSelect: (result: SelectedFood) => void;
   onClose: () => void;
 };
@@ -166,6 +180,8 @@ export default function FoodSearchModal({
   initialAmount,
   initialUnit,
   originalDescription,
+  macroTargets,
+  macroConsumed,
   onSelect,
   onClose,
 }: Props) {
@@ -345,6 +361,22 @@ export default function FoodSearchModal({
     if (!preview) return 0;
     return Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
   }, [preview]);
+
+  /**
+   * "If you log this" — fit-this-in projection. Null unless caller
+   * provided both daily targets and today's running totals AND we have
+   * scaled macros to project. Over-budget → destructive colour + "over".
+   */
+  const fitHint = useMemo(() => {
+    if (!macroTargets || !macroConsumed || !previewMacros) return null;
+    return projectRemaining(macroTargets, macroConsumed, {
+      calories: previewMacros.calories,
+      protein: previewMacros.protein,
+      carbs: previewMacros.carbs,
+      fat: previewMacros.fat,
+      fiber: previewMacros.fiberG,
+    });
+  }, [macroTargets, macroConsumed, previewMacros]);
 
   const renderItem = useCallback(
     ({ item }: { item: UnifiedSearchResult }) => {
@@ -617,6 +649,53 @@ export default function FoodSearchModal({
                   </View>
                 ))}
               </View>
+              {fitHint ? (
+                <View
+                  accessible
+                  accessibilityRole="summary"
+                  accessibilityLabel="Projected remaining macros after logging this portion"
+                  style={{
+                    marginTop: Spacing.sm,
+                    paddingHorizontal: Spacing.md,
+                    paddingVertical: Spacing.sm,
+                    borderRadius: Radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "700", letterSpacing: 0.8, color: colors.textTertiary, marginBottom: 4, textTransform: "uppercase" }}>
+                    If you log this
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12, rowGap: 4 }}>
+                    {[
+                      { label: "kcal", value: fitHint.calories, delta: fitHint.deltas.calories, over: fitHint.overCalories, unit: "" as string },
+                      { label: "P", value: fitHint.protein, delta: fitHint.deltas.protein, over: fitHint.overProtein, unit: "g" },
+                      { label: "C", value: fitHint.carbs, delta: fitHint.deltas.carbs, over: fitHint.overCarbs, unit: "g" },
+                      { label: "F", value: fitHint.fat, delta: fitHint.deltas.fat, over: fitHint.overFat, unit: "g" },
+                      ...(fitHint.fiber != null
+                        ? [{ label: "Fi", value: fitHint.fiber, delta: fitHint.deltas.fiber ?? 0, over: fitHint.overFiber, unit: "g" }]
+                        : []),
+                    ].map((m) => (
+                      <View key={m.label} style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "700",
+                            fontVariant: ["tabular-nums"],
+                            color: m.over ? Accent.destructive : colors.text,
+                          }}
+                        >
+                          {m.over ? `+${Math.abs(m.delta)}` : m.value}{m.unit}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{m.label}</Text>
+                        <Text style={{ fontSize: 11, color: colors.textTertiary }}>{m.over ? "over" : "left"}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
               <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
                 <Pressable
                   style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}

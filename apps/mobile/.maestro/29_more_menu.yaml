@@ -93,7 +93,7 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 - tapOn: ".*Reset or erase everything.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Reset or start over.*"
-- assertVisible: ".*Reset Plan (Keep My Data).*"
+- assertVisible: ".*Reset Plan \\(Keep My Data\\).*"
 - assertVisible: ".*Erase all app data.*"
 - assertVisible: ".*Delete my account permanently.*"
 - assertVisible: ".*Cancel.*"

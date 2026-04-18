@@ -25,12 +25,26 @@ import {
   parseIngredientForSearch,
   sourceLabel,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+  addUserIngredient,
+  setIngredientOverride,
   type VerifiableIngredient,
   type BarcodeProduct,
   type FoodPortion,
+  type IngredientOverride,
 } from "@/lib/verifyRecipe";
 import FoodSearchModal from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import AddIngredientSheet, {
+  type AddIngredientPayload,
+} from "@/components/AddIngredientSheet";
+import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
+import {
+  effectiveMacros,
+  hasOverride,
+  recomputeRecipeTotals,
+} from "../../../../src/lib/nutrition/ingredientOverrides";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 
 /** Standard units always available for editing */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -56,6 +70,9 @@ export default function VerifyScreen() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [searchIndex, setSearchIndex] = useState<number | null>(null);
   const [barcodeIndex, setBarcodeIndex] = useState<number | null>(null);
+  // Batch 2.7 — add-ingredient + per-ingredient override sheets.
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!recipeId) return;
@@ -73,29 +90,35 @@ export default function VerifyScreen() {
     return () => { cancelled = true; };
   }, [recipeId]);
 
-  // Live totals
+  // Live totals — macros respect per-row overrides via the shared
+  // `recomputeRecipeTotals` helper (Batch 2.7). Sugar / sodium don't have
+  // an override surface yet, so they're summed from the snapshot columns.
   const totals = useMemo(() => {
+    const srv = Math.max(1, recipe?.servings ?? 1);
+    const pEff = recomputeRecipeTotals(ingredients, srv);
     const sum = ingredients.reduce(
-      (acc, i) => ({
-        calories: acc.calories + i.calories,
-        protein: acc.protein + i.protein,
-        carbs: acc.carbs + i.carbs,
-        fat: acc.fat + i.fat,
-        fiberG: acc.fiberG + i.fiberG,
-        sugarG: acc.sugarG + i.sugarG,
-        sodiumMg: acc.sodiumMg + i.sodiumMg,
-      }),
+      (acc, i) => {
+        const eff = effectiveMacros(i);
+        return {
+          calories: acc.calories + eff.calories,
+          protein: acc.protein + eff.protein,
+          carbs: acc.carbs + eff.carbs,
+          fat: acc.fat + eff.fat,
+          fiberG: acc.fiberG + (eff.fiber ?? i.fiberG),
+          sugarG: acc.sugarG + i.sugarG,
+          sodiumMg: acc.sodiumMg + i.sodiumMg,
+        };
+      },
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
     );
-    const srv = recipe?.servings ?? 1;
     return {
       total: sum,
       perServing: {
-        calories: Math.round(sum.calories / srv),
-        protein: Math.round(sum.protein / srv),
-        carbs: Math.round(sum.carbs / srv),
-        fat: Math.round(sum.fat / srv),
-        fiberG: Math.round((sum.fiberG / srv) * 10) / 10,
+        calories: pEff.calories,
+        protein: pEff.protein,
+        carbs: pEff.carbs,
+        fat: pEff.fat,
+        fiberG: pEff.fiber ?? Math.round((sum.fiberG / srv) * 10) / 10,
         sugarG: Math.round((sum.sugarG / srv) * 10) / 10,
         sodiumMg: Math.round(sum.sodiumMg / srv),
       },
@@ -214,6 +237,113 @@ export default function VerifyScreen() {
       updateIngredient(index, updates);
     },
     [ingredients, updateIngredient],
+  );
+
+  // Batch 2.7 — add new user-added ingredient row. Persists via shared helper
+  // and pushes the new row into local state so the user sees it immediately.
+  const onAddIngredient = useCallback(
+    async (payload: AddIngredientPayload) => {
+      if (!recipeId) return;
+      const res = await addUserIngredient(recipeId, {
+        name: payload.name,
+        amount: payload.amount,
+        unit: payload.unit,
+        calories: payload.calories,
+        protein: payload.protein,
+        carbs: payload.carbs,
+        fat: payload.fat,
+        fiberG: payload.fiberG,
+        sugarG: payload.sugarG,
+        sodiumMg: payload.sodiumMg,
+        source: payload.source,
+        confidence: payload.confidence,
+        hasMatch: payload.hasMatch,
+        overrideMacros: payload.overrideMacros,
+      });
+      if ("error" in res) {
+        Alert.alert("Couldn't add ingredient", res.error);
+        return;
+      }
+      setIngredients((prev) => [
+        ...prev,
+        {
+          id: res.id,
+          name: payload.name,
+          amount: payload.amount,
+          unit: payload.unit,
+          calories: payload.calories,
+          protein: payload.protein,
+          carbs: payload.carbs,
+          fat: payload.fat,
+          fiberG: payload.fiberG,
+          sugarG: payload.sugarG,
+          sodiumMg: payload.sodiumMg,
+          source: payload.source,
+          confidence: payload.confidence,
+          matchedName: payload.hasMatch ? payload.name : null,
+          isVerified: payload.hasMatch && payload.confidence >= 0.5,
+          isDirty: false,
+          macrosPer100g: null,
+          portions: [],
+          chosenPortion: null,
+          addedByUser: true,
+          ...(payload.overrideMacros ? { overrideMacros: payload.overrideMacros } : {}),
+        },
+      ]);
+      track(AnalyticsEvents.recipe_ingredient_added, {
+        recipeId,
+        hasMatch: payload.hasMatch,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [recipeId],
+  );
+
+  // Batch 2.7 — pin / clear a manual macro override on an existing row.
+  const onOverrideSave = useCallback(
+    async (index: number, override: IngredientOverride) => {
+      const ing = ingredients[index];
+      if (!ing) return;
+      const res = await setIngredientOverride(ing.id, override);
+      if ("error" in res) {
+        Alert.alert("Couldn't save override", res.error);
+        return;
+      }
+      setIngredients((prev) =>
+        prev.map((item, i) => (i === index ? { ...item, overrideMacros: override } : item)),
+      );
+      track(AnalyticsEvents.recipe_ingredient_overridden, {
+        recipeId,
+        ingredientPosition: index,
+      });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [ingredients, recipeId],
+  );
+
+  const onOverrideReset = useCallback(
+    async (index: number) => {
+      const ing = ingredients[index];
+      if (!ing) return;
+      const res = await setIngredientOverride(ing.id, null);
+      if ("error" in res) {
+        Alert.alert("Couldn't clear override", res.error);
+        return;
+      }
+      setIngredients((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item;
+          const { overrideMacros: _drop, ...rest } = item;
+          return rest as VerifiableIngredient;
+        }),
+      );
+      track(AnalyticsEvents.recipe_ingredient_override_cleared, {
+        recipeId,
+        ingredientPosition: index,
+      });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [ingredients, recipeId],
   );
 
   // Save
@@ -387,27 +517,87 @@ export default function VerifyScreen() {
             !ing.isVerified || ing.confidence < RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
           const displayName = decodeEntities(ing.matchedName ?? ing.name);
           const amountStr = ing.amount != null ? `${ing.amount}${ing.unit ? ` ${ing.unit}` : ""}` : "";
+          const rowHasOverride = hasOverride(ing);
+          const rowAdded = Boolean(ing.addedByUser);
+          // When an override is present we show the effective calories so the
+          // row reflects the user's authoritative number, not the stale match.
+          const rowEff = effectiveMacros(ing);
+          const rowCal = rowHasOverride ? Math.round(rowEff.calories) : ing.calories;
 
           return (
             <View key={ing.id}>
               {/* Collapsed row */}
               <Pressable
-                style={[styles.ingRow, needsReview && styles.ingRowNeedsReview]}
+                style={[styles.ingRow, needsReview && !rowHasOverride && styles.ingRowNeedsReview]}
                 onPress={() => setExpandedIndex(expanded ? null : i)}
               >
-                {needsReview && (
+                {needsReview && !rowHasOverride && (
                   <Ionicons name="alert-circle" size={18} color={Accent.warning} style={{ marginRight: Spacing.sm }} />
                 )}
                 <View style={styles.ingContent}>
-                  <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
+                    {rowHasOverride ? (
+                      <View
+                        style={{
+                          paddingHorizontal: 6,
+                          paddingVertical: 1,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: Accent.warning + "60",
+                          backgroundColor: Accent.warning + "15",
+                        }}
+                        accessible
+                        accessibilityLabel="Manual override pinned on this row"
+                      >
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "700",
+                            letterSpacing: 0.4,
+                            color: Accent.warning,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Override
+                        </Text>
+                      </View>
+                    ) : null}
+                    {rowAdded ? (
+                      <View
+                        style={{
+                          paddingHorizontal: 6,
+                          paddingVertical: 1,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: Accent.primary + "60",
+                          backgroundColor: Accent.primary + "15",
+                        }}
+                        accessible
+                        accessibilityLabel="Row added by you after import"
+                      >
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "700",
+                            letterSpacing: 0.4,
+                            color: Accent.primary,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Added
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={styles.ingDetail}>
-                    {amountStr ? `${amountStr}, ` : ""}{ing.calories} calories
+                    {amountStr ? `${amountStr}, ` : ""}{rowCal} calories
                   </Text>
                   {ing.matchedName && ing.matchedName !== ing.name && (
                     <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
                 </View>
-                <Text style={styles.ingCals}>{ing.calories}</Text>
+                <Text style={styles.ingCals}>{rowCal}</Text>
                 <Ionicons
                   name={expanded ? "chevron-down" : "chevron-forward"}
                   size={18}
@@ -517,6 +707,8 @@ export default function VerifyScreen() {
                     <Pressable
                       style={styles.actionBtn}
                       onPress={() => { setSearchIndex(i); setExpandedIndex(null); }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Search alternative for ${displayName}`}
                     >
                       <Ionicons name="search" size={16} color={Accent.primary} />
                       <Text style={styles.actionBtnText}>Search alternative</Text>
@@ -524,9 +716,29 @@ export default function VerifyScreen() {
                     <Pressable
                       style={styles.actionBtn}
                       onPress={() => { setBarcodeIndex(i); setExpandedIndex(null); }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Scan barcode for ${displayName}`}
                     >
                       <Ionicons name="barcode-outline" size={16} color={Accent.primary} />
                       <Text style={styles.actionBtnText}>Scan</Text>
+                    </Pressable>
+                  </View>
+                  {/* Batch 2.7 — Override nutrition (pin label values) */}
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      style={styles.actionBtn}
+                      onPress={() => { setOverrideIndex(i); setExpandedIndex(null); }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Override nutrition for ${displayName}`}
+                    >
+                      <Ionicons
+                        name={rowHasOverride ? "create" : "create-outline"}
+                        size={16}
+                        color={Accent.primary}
+                      />
+                      <Text style={styles.actionBtnText}>
+                        {rowHasOverride ? "Edit override" : "Override nutrition"}
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
@@ -534,6 +746,28 @@ export default function VerifyScreen() {
             </View>
           );
         })}
+
+        {/* Batch 2.7 — Add ingredient row at the bottom of the list. */}
+        <Pressable
+          onPress={() => setAddSheetOpen(true)}
+          style={{
+            marginTop: Spacing.md,
+            padding: Spacing.lg,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderStyle: "dashed",
+            borderColor: Accent.primary + "80",
+            backgroundColor: Accent.primary + "10",
+            alignItems: "center",
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Add an ingredient the importer missed"
+        >
+          <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2, textAlign: "center" }}>
+            Missed an ingredient during import? Add it here and totals update live.
+          </Text>
+        </Pressable>
       </ScrollView>
 
       {/* Footer */}
@@ -578,6 +812,46 @@ export default function VerifyScreen() {
         onScan={onBarcodeScanned}
         onClose={() => setBarcodeIndex(null)}
       />
+
+      {/* Batch 2.7 — Add ingredient sheet */}
+      <AddIngredientSheet
+        visible={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        onAdd={onAddIngredient}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.border,
+          background: colors.background,
+          border: colors.border,
+        }}
+      />
+
+      {/* Batch 2.7 — Per-ingredient override sheet */}
+      {overrideIndex != null && ingredients[overrideIndex] ? (
+        <OverrideIngredientSheet
+          visible={overrideIndex != null}
+          onClose={() => setOverrideIndex(null)}
+          ingredientName={decodeEntities(
+            ingredients[overrideIndex]!.matchedName ?? ingredients[overrideIndex]!.name,
+          )}
+          currentMacros={effectiveMacros(ingredients[overrideIndex]!)}
+          hasExistingOverride={hasOverride(ingredients[overrideIndex]!)}
+          onSave={(ov) => onOverrideSave(overrideIndex, ov)}
+          onReset={() => onOverrideReset(overrideIndex)}
+          colors={{
+            text: colors.text,
+            textSecondary: colors.textSecondary,
+            textTertiary: colors.textTertiary,
+            card: colors.card,
+            cardBorder: colors.border,
+            background: colors.background,
+            border: colors.border,
+          }}
+        />
+      ) : null}
     </View>
   );
 }

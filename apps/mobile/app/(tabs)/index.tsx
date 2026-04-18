@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,9 +43,19 @@ import FoodSearchModal from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 import CalorieRing from "@/components/charts/CalorieRing";
+import { RemainingMacrosBar } from "@/components/RemainingMacrosBar";
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
+import CopyMealSheet from "@/components/CopyMealSheet";
+import DuplicateDaySheet from "@/components/DuplicateDaySheet";
+import VoiceLogSheet from "@/components/VoiceLogSheet";
+import PhotoLogSheet from "@/components/PhotoLogSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import {
+  availableFreezes,
+  readFreezeLedger,
+  type FreezeLedger,
+} from "@/lib/streakFreeze";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -67,6 +79,42 @@ import {
   isHealthSyncAvailable,
 } from "@/lib/healthSync";
 import { clampJournalDate } from "@/lib/journalNavigation";
+import {
+  computeEatAgainForSlot,
+  computeFrequentMeals,
+  computeRecentMeals,
+  foodHistoryKey,
+  type FoodHistoryItem,
+} from "../../../../src/lib/nutrition/foodHistory";
+import {
+  cloneMealWithoutId,
+  sanitizeCopyTargets,
+} from "../../../../src/lib/nutrition/copyMeals";
+import {
+  addFavorite,
+  favoriteKey,
+  listFavorites,
+  removeFavorite,
+  type FavoriteFood,
+} from "../../../../src/lib/nutrition/favoriteFoods";
+import {
+  parseDayNumberMap,
+} from "../../../../src/lib/nutrition/hydrationStimulants";
+import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
+import SaveMealSheet from "@/components/SaveMealSheet";
+import {
+  createSavedMeal,
+  deleteSavedMeal,
+  incrementLogCount,
+  listSavedMeals,
+  renameSavedMeal,
+  type SavedMeal,
+  type SavedMealItem,
+} from "../../../../src/lib/nutrition/savedMeals";
+import {
+  buildMealEntriesFromSavedMeal,
+  summariseSavedMeal,
+} from "../../../../src/lib/nutrition/savedMealsLogic";
 
 type TrackerMacroTargets = Pick<
   NutritionDefaults,
@@ -207,12 +255,29 @@ export default function TrackerScreen() {
   const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"];
   const [trackedMacros, setTrackedMacros] = useState<string[]>(DEFAULT_TRACKED_MACROS);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  // Batch 4.11 — freeze ledger for Today streak sub-label. Defaults
+  // keep the sub-label hidden until the profile query returns.
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
+    earnedAt: [],
+    usedHistory: [],
+  });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   const [activeMealSlot, setActiveMealSlot] = useState("Breakfast");
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [journalCalendarOpen, setJournalCalendarOpen] = useState(false);
+  /** Batch 1.4 — Copy-meal sheet: the meal id being copied, or null. */
+  const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
+  /** Batch 1.4 — Duplicate-day sheet visibility. */
+  const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
   const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>({});
+  /** Batch 2.5 — caffeine per-day (mg) + target (mg/day, default 400). */
+  const [extraCaffeineByDay, setExtraCaffeineByDay] = useState<Record<string, number>>({});
+  const [targetCaffeineMg, setTargetCaffeineMg] = useState<number>(400);
+  /** Batch 2.5 — alcohol per-day (g ethanol) + weekly target (g; 0 = hidden). */
+  const [extraAlcoholGByDay, setExtraAlcoholGByDay] = useState<Record<string, number>>({});
+  const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
   const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
@@ -228,6 +293,10 @@ export default function TrackerScreen() {
   const [photoAnalyzing, setPhotoAnalyzing] = useState(false);
   const [voiceInputOpen, setVoiceInputOpen] = useState(false);
   const [voiceInputText, setVoiceInputText] = useState("");
+  // Batch 5.13 — Pro-gated Voice + AI photo logging state.
+  const [voiceLogOpen, setVoiceLogOpen] = useState(false);
+  const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
   const [editingMeal, setEditingMeal] = useState<JournalMeal | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editKcal, setEditKcal] = useState("");
@@ -264,6 +333,27 @@ export default function TrackerScreen() {
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
+  // Batch 5.13 — load profile tier for Voice / AI photo gating. Same
+  // pattern as `planner.tsx`; defaults to "free" on any error.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("user_tier")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const t = data?.user_tier as string | null;
+        if (t === "free" || t === "base" || t === "pro") setUserTier(t);
+        else setUserTier("free");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   useEffect(() => {
     if (!activeFastStart) return;
     const id = setInterval(() => setFastingTick(Date.now()), 60_000);
@@ -272,33 +362,426 @@ export default function TrackerScreen() {
 
   const MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
-  // Recent unique meals from all days for "Add previous meal"
-  const recentMeals = useMemo(() => {
-    const seen = new Set<string>();
-    const recent: JournalMeal[] = [];
-    const allDayKeys = Object.keys(byDay).sort().reverse();
-    for (const dk of allDayKeys) {
-      for (const m of (byDay[dk] ?? []).slice().reverse()) {
-        const key = `${m.recipeTitle}|${m.calories}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        recent.push(m);
-        if (recent.length >= 20) break;
-      }
-      if (recent.length >= 20) break;
+  // Quick add tabs — shared helpers build the three lists off `byDay`.
+  const recentMeals = useMemo(() => computeRecentMeals(byDay, 20), [byDay]);
+  const frequentMeals = useMemo(() => computeFrequentMeals(byDay, 20), [byDay]);
+  const [quickAddTab, setQuickAddTab] = useState<"favourites" | "frequent" | "recent" | "saved">("recent");
+  const [favoriteFoods, setFavoriteFoods] = useState<FavoriteFood[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [favoritesPending, setFavoritesPending] = useState<Set<string>>(new Set());
+
+  // Batch 2.6 — saved-meal combos.
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
+  const [savedMealsLoading, setSavedMealsLoading] = useState(false);
+  const [savedPendingIds, setSavedPendingIds] = useState<Set<string>>(new Set());
+  const [saveMealSheetOpen, setSaveMealSheetOpen] = useState(false);
+  const [saveMealSheetItems, setSaveMealSheetItems] = useState<Array<Omit<SavedMealItem, "id" | "position">>>([]);
+  const [saveMealSheetDefaultSlot, setSaveMealSheetDefaultSlot] = useState<"Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined>(undefined);
+
+  /** Load favourites when the Quick add panel opens and a user is signed in. */
+  useEffect(() => {
+    if (!showPrevious || !userId) return;
+    let cancelled = false;
+    setFavoritesLoading(true);
+    listFavorites(supabase, userId)
+      .then((rows) => { if (!cancelled) setFavoriteFoods(rows); })
+      .finally(() => { if (!cancelled) setFavoritesLoading(false); });
+    return () => { cancelled = true; };
+  }, [showPrevious, userId]);
+
+  /** Batch 2.6 — load saved meals when Quick add opens. */
+  useEffect(() => {
+    if (!showPrevious || !userId) return;
+    let cancelled = false;
+    setSavedMealsLoading(true);
+    listSavedMeals(supabase, userId)
+      .then((rows) => { if (!cancelled) setSavedMeals(rows); })
+      .finally(() => { if (!cancelled) setSavedMealsLoading(false); });
+    return () => { cancelled = true; };
+  }, [showPrevious, userId]);
+
+  /** Map "title|cal" -> favourite id so rows on any tab can show star state. */
+  const favoriteIdByKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of favoriteFoods) m.set(favoriteKey(f.recipeTitle, f.calories), f.id);
+    return m;
+  }, [favoriteFoods]);
+
+  /** Unified row model for the three tabs. */
+  const quickAddRows = useMemo<Array<FoodHistoryItem & { favoriteId?: string }>>(() => {
+    if (quickAddTab === "favourites") {
+      return favoriteFoods.map((f) => ({
+        recipeTitle: f.recipeTitle,
+        calories: f.calories,
+        protein: f.protein,
+        carbs: f.carbs,
+        fat: f.fat,
+        ...(f.fiber != null ? { fiber: f.fiber } : {}),
+        ...(f.source ? { source: f.source } : {}),
+        count: f.count,
+        favoriteId: f.id,
+      }));
     }
-    return recent;
-  }, [byDay]);
+    const src = quickAddTab === "frequent" ? frequentMeals : recentMeals;
+    return src.map((item) => {
+      const id = favoriteIdByKey.get(foodHistoryKey(item.recipeTitle, item.calories));
+      return id ? { ...item, favoriteId: id } : item;
+    });
+  }, [quickAddTab, favoriteFoods, frequentMeals, recentMeals, favoriteIdByKey]);
+
+  const toggleFavoriteRow = useCallback(
+    async (row: FoodHistoryItem & { favoriteId?: string }) => {
+      if (!userId) {
+        Alert.alert("Sign in", "Sign in to save favourites.");
+        return;
+      }
+      const key = favoriteKey(row.recipeTitle, row.calories);
+      if (favoritesPending.has(key)) return;
+      setFavoritesPending((s) => { const n = new Set(s); n.add(key); return n; });
+      const snapshot = favoriteFoods;
+      const wasStarred = Boolean(row.favoriteId);
+      try {
+        if (wasStarred && row.favoriteId) {
+          setFavoriteFoods((prev) => prev.filter((f) => f.id !== row.favoriteId));
+          await removeFavorite(supabase, userId, row.favoriteId);
+        } else {
+          const tempId = `temp-${key}`;
+          const optimistic: FavoriteFood = {
+            id: tempId,
+            recipeTitle: row.recipeTitle,
+            calories: row.calories,
+            protein: row.protein,
+            carbs: row.carbs,
+            fat: row.fat,
+            ...(row.fiber != null ? { fiber: row.fiber } : {}),
+            ...(row.source ? { source: row.source } : {}),
+            count: 1,
+            createdAt: new Date().toISOString(),
+          };
+          setFavoriteFoods((prev) => [optimistic, ...prev]);
+          const saved = await addFavorite(supabase, userId, {
+            recipeTitle: row.recipeTitle,
+            calories: row.calories,
+            protein: row.protein,
+            carbs: row.carbs,
+            fat: row.fat,
+            fiber: row.fiber,
+            source: row.source ?? null,
+          });
+          setFavoriteFoods((prev) => [saved, ...prev.filter((f) => f.id !== tempId)]);
+        }
+      } catch (err) {
+        setFavoriteFoods(snapshot);
+        Alert.alert(
+          wasStarred ? "Could not remove favourite" : "Could not save favourite",
+          "Please try again.",
+        );
+        // eslint-disable-next-line no-console
+        console.warn("Favourite toggle failed", err);
+      } finally {
+        setFavoritesPending((s) => { const n = new Set(s); n.delete(key); return n; });
+      }
+    },
+    [favoriteFoods, favoritesPending, userId],
+  );
+
+  // -- Batch 2.6 — saved-meal handlers --
+
+  /** Open the save-meal sheet pre-filled with the items in `slotName` on
+   * the active day. Gated on >=2 items so the UI never lets the user
+   * save a single-item "combo". */
+  const openSaveMealSheetForSlot = useCallback(
+    (slotName: string) => {
+      if (!userId) {
+        Alert.alert("Sign in", "Sign in to save meal combos.");
+        return;
+      }
+      const normalised = normalizeJournalSlotName(slotName);
+      const currentDayKey = dateKeyFromDate(selectedDate);
+      const slotMeals = (byDay[currentDayKey] ?? []).filter(
+        (m) => normalizeJournalSlotName(m.name ?? "") === normalised,
+      );
+      if (slotMeals.length < 2) {
+        Alert.alert(
+          "Save meal combo",
+          "Log 2 or more items in this slot first, then save the combo.",
+        );
+        return;
+      }
+      const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
+        const item: Omit<SavedMealItem, "id" | "position"> = {
+          recipeTitle: m.recipeTitle,
+          calories: Math.max(0, Math.round(m.calories)),
+          protein: Math.max(0, Math.round(m.protein * 10) / 10),
+          carbs: Math.max(0, Math.round(m.carbs * 10) / 10),
+          fat: Math.max(0, Math.round(m.fat * 10) / 10),
+          portionMultiplier: 1,
+        };
+        if (m.fiberG != null) item.fiber = Math.max(0, Math.round(m.fiberG * 10) / 10);
+        if (m.waterMl != null) item.waterMl = Math.max(0, Math.round(m.waterMl));
+        if (m.source) item.source = m.source;
+        return item;
+      });
+      const slotIsKnown =
+        normalised === "Breakfast" ||
+        normalised === "Lunch" ||
+        normalised === "Dinner" ||
+        normalised === "Snacks";
+      setSaveMealSheetItems(items);
+      setSaveMealSheetDefaultSlot(slotIsKnown ? (normalised as "Breakfast" | "Lunch" | "Dinner" | "Snacks") : undefined);
+      setSaveMealSheetOpen(true);
+    },
+    [userId, byDay, selectedDate],
+  );
+
+  const handleCreateSavedMeal = useCallback(
+    async (payload: {
+      name: string;
+      defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
+      items: Array<Omit<SavedMealItem, "id" | "position">>;
+    }) => {
+      if (!userId) return;
+      const tempId = `temp-${Date.now()}`;
+      const optimistic: SavedMeal = {
+        id: tempId,
+        name: payload.name,
+        items: payload.items.map((it, i) => ({ position: i, ...it })),
+        createdAt: new Date().toISOString(),
+        logCount: 0,
+        ...(payload.defaultMealSlot ? { defaultMealSlot: payload.defaultMealSlot } : {}),
+      };
+      setSavedMeals((prev) => [optimistic, ...prev]);
+      try {
+        const created = await createSavedMeal(supabase, userId, payload);
+        setSavedMeals((prev) => [created, ...prev.filter((m) => m.id !== tempId)]);
+        try {
+          track(AnalyticsEvents.saved_meal_created, {
+            itemCount: payload.items.length,
+            defaultMealSlot: payload.defaultMealSlot,
+          });
+        } catch { /* noop */ }
+        setQuickAddTab("saved");
+      } catch (err) {
+        setSavedMeals((prev) => prev.filter((m) => m.id !== tempId));
+        Alert.alert("Could not save", "We couldn't save that combo. Try again.");
+        // eslint-disable-next-line no-console
+        console.warn("Saved-meal create failed", err);
+      }
+    },
+    [userId],
+  );
+
+  /** Expand a saved-meal combo into per-item journal entries and insert
+   * each via the same path as manual logs. Fires `saved_meal_logged`
+   * once per combo tap. */
+  const logSavedMealFromPanel = useCallback(
+    (meal: SavedMeal) => {
+      if (!userId || savedPendingIds.has(meal.id)) return;
+      const slot = meal.defaultMealSlot ?? activeMealSlot;
+      setSavedPendingIds((s) => { const n = new Set(s); n.add(meal.id); return n; });
+      try {
+        const timeLabel = new Date().toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId());
+        if (entries.length === 0) return;
+        const newMeals: JournalMeal[] = entries.map((e) => {
+          const jm: JournalMeal = {
+            id: e.id,
+            name: e.name,
+            recipeTitle: e.recipeTitle,
+            time: e.time,
+            calories: e.calories,
+            protein: e.protein,
+            carbs: e.carbs,
+            fat: e.fat,
+          };
+          if (e.fiberG != null) jm.fiberG = e.fiberG;
+          if (e.waterMl != null) jm.waterMl = e.waterMl;
+          if (e.source) jm.source = e.source;
+          return jm;
+        });
+        const targetDayKey = dateKeyFromDate(selectedDate);
+        setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+        // Optimistic bump + resort (matches web panel behaviour).
+        setSavedMeals((prev) => {
+          const next = prev.map((m) =>
+            m.id === meal.id
+              ? { ...m, logCount: m.logCount + 1, lastLoggedAt: new Date().toISOString() }
+              : m,
+          );
+          next.sort((a, b) => {
+            const ta = a.lastLoggedAt ? Date.parse(a.lastLoggedAt) : 0;
+            const tb = b.lastLoggedAt ? Date.parse(b.lastLoggedAt) : 0;
+            if (ta !== tb) return tb - ta;
+            return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+          });
+          return next;
+        });
+        try {
+          track(AnalyticsEvents.saved_meal_logged, {
+            itemCount: entries.length,
+            slot,
+          });
+        } catch { /* noop */ }
+        void incrementLogCount(supabase, userId, meal.id).catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("Saved-meal log-count bump failed", err);
+        });
+        setShowPrevious(false);
+      } finally {
+        setSavedPendingIds((s) => { const n = new Set(s); n.delete(meal.id); return n; });
+      }
+    },
+    [userId, savedPendingIds, activeMealSlot, selectedDate],
+  );
+
+  const promptRenameSavedMeal = useCallback(
+    (meal: SavedMeal) => {
+      if (!userId) return;
+      // Use Alert.prompt on iOS; fall back to a simple Alert flow on
+      // Android (Alert.prompt is iOS-only). Android users get a cancel
+      // path with no-op — rename is available in a follow-up modal.
+      if (Platform.OS === "ios" && typeof (Alert as any).prompt === "function") {
+        (Alert as any).prompt(
+          "Rename meal combo",
+          "Enter a new name.",
+          async (text: string | undefined) => {
+            const next = (text ?? "").trim();
+            if (!next || next === meal.name) return;
+            const snapshot = savedMeals;
+            setSavedMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, name: next } : m)));
+            try {
+              await renameSavedMeal(supabase, userId, meal.id, next);
+            } catch (err) {
+              setSavedMeals(snapshot);
+              Alert.alert("Could not rename", "Please try again.");
+              // eslint-disable-next-line no-console
+              console.warn("Saved-meal rename failed", err);
+            }
+          },
+          "plain-text",
+          meal.name,
+        );
+      } else {
+        Alert.alert(
+          "Rename meal combo",
+          "Renaming is coming to Android in a future update. For now, delete and re-create the combo with a new name.",
+        );
+      }
+    },
+    [userId, savedMeals],
+  );
+
+  const confirmDeleteSavedMeal = useCallback(
+    (meal: SavedMeal) => {
+      if (!userId) return;
+      Alert.alert(
+        "Delete saved meal",
+        `Delete "${meal.name}"? This can't be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              const snapshot = savedMeals;
+              setSavedMeals((prev) => prev.filter((m) => m.id !== meal.id));
+              try {
+                await deleteSavedMeal(supabase, userId, meal.id);
+                try {
+                  track(AnalyticsEvents.saved_meal_deleted, {
+                    itemCount: meal.items.length,
+                    defaultMealSlot: meal.defaultMealSlot,
+                  });
+                } catch { /* noop */ }
+              } catch (err) {
+                setSavedMeals(snapshot);
+                Alert.alert("Could not delete", "Please try again.");
+                // eslint-disable-next-line no-console
+                console.warn("Saved-meal delete failed", err);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [userId, savedMeals],
+  );
+
+  const openSavedMealActions = useCallback(
+    (meal: SavedMeal) => {
+      Alert.alert(meal.name, `${meal.items.length} item${meal.items.length === 1 ? "" : "s"}`, [
+        { text: "Rename", onPress: () => promptRenameSavedMeal(meal) },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => confirmDeleteSavedMeal(meal),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    },
+    [promptRenameSavedMeal, confirmDeleteSavedMeal],
+  );
+
+  /** Infer the default slot for the Eat-again card from local clock time. */
+  const currentSlotFromTime = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 10) return "Breakfast";
+    if (h < 14) return "Lunch";
+    if (h < 17) return "Snacks";
+    return "Dinner";
+  }, []);
+  const eatAgainSuggestion = useMemo(
+    () => computeEatAgainForSlot(byDay, currentSlotFromTime, new Date()),
+    [byDay, currentSlotFromTime],
+  );
+  const [eatAgainDismissedKey, setEatAgainDismissedKey] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        const v = await AsyncStorage.getItem("suppr-eat-again-dismissed");
+        if (!cancelled) setEatAgainDismissedKey(v);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const dismissEatAgain = useCallback(async () => {
+    const key = dateKeyFromDate(new Date());
+    setEatAgainDismissedKey(key);
+    try {
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorage.setItem("suppr-eat-again-dismissed", key);
+    } catch { /* noop */ }
+  }, []);
+  const eatAgainDismissedForToday = eatAgainDismissedKey === dateKeyFromDate(new Date());
+
 
   const loadProfileTargets = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
+    // Batch 2.5: include new `target_caffeine_mg` + `target_alcohol_g_weekly` +
+    // the two per-day maps. If the migration hasn't landed yet on this env,
+    // fall through to the legacy select so quick-add water keeps working.
+    let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", userId)
       .maybeSingle();
+    if (resp.error) {
+      resp = await supabase
+        .from("profiles")
+        .select(
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs",
+        )
+        .eq("id", userId)
+        .maybeSingle();
+    }
+    const { data } = resp;
     if (!data) return;
     const d = data as any;
     const targets = resolveTargets(
@@ -322,10 +805,24 @@ export default function TrackerScreen() {
     });
     const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
     setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
+    // Batch 2.5 — caffeine + alcohol targets. Falls back to defaults if the
+    // migration isn't applied on this env.
+    const tc = (d as any).target_caffeine_mg;
+    if (typeof tc === "number" && Number.isFinite(tc) && tc >= 0) {
+      setTargetCaffeineMg(Math.round(tc));
+    }
+    const ta = (d as any).target_alcohol_g_weekly;
+    if (typeof ta === "number" && Number.isFinite(ta) && ta >= 0) {
+      setTargetAlcoholGWeekly(Math.round(ta));
+    }
     // Water: only overwrite on initial load — subsequent tab focuses must not
     // clobber locally-added water that hasn't finished persisting yet.
     if (!waterActivityInitialLoadDone.current) {
       setExtraWaterByDay(parseByDayNumberMap(data.extra_water_by_day));
+      // Same pattern for caffeine + alcohol — only hydrate local state on
+      // the first focus so quick-add chips don't lose in-flight writes.
+      setExtraCaffeineByDay(parseDayNumberMap((d as any).extra_caffeine_by_day));
+      setExtraAlcoholGByDay(parseDayNumberMap((d as any).extra_alcohol_g_by_day));
       waterActivityInitialLoadDone.current = true;
     }
     // Burn maps, steps, and workouts come from HealthKit sync and are never
@@ -349,6 +846,15 @@ export default function TrackerScreen() {
     if (data.week_start_day === "sunday" || data.week_start_day === "monday") {
       setWeekStartDay(data.week_start_day);
     }
+    // Batch 4.11 — freeze ledger (profile select above includes the new
+    // columns; they fall back to defaults if the migration isn't live).
+    const rawFreezeEarned = (d as any).streak_freezes_earned_at;
+    const rawFreezeUsed = (d as any).streak_freezes_used_history;
+    setFreezeLedger(
+      readFreezeLedger({ earnedAt: rawFreezeEarned, usedHistory: rawFreezeUsed }),
+    );
+    const rawBudget = Number((d as any).streak_freeze_budget_max);
+    setFreezeBudgetMax(Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3);
     const wk = d.weight_kg != null ? Number(d.weight_kg) : null;
     setProfileWeightKg(Number.isFinite(wk) ? wk : null);
     const gwk = d.goal_weight_kg != null ? Number(d.goal_weight_kg) : null;
@@ -365,6 +871,29 @@ export default function TrackerScreen() {
   }, [userId]);
 
   const dayKey = dateKeyFromDate(selectedDate);
+
+  /** Log any FoodHistoryItem to the active slot. Shared by Quick add
+   * panel + Eat-again card so the persist/event shape stays aligned. */
+  const logHistoryItemToSlot = useCallback(
+    (item: FoodHistoryItem, slot: string) => {
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: slot,
+        recipeTitle: item.recipeTitle,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        ...(item.fiber != null ? { fiberG: item.fiber } : {}),
+        ...(item.source ? { source: item.source } : {}),
+      };
+      setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
+      try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
+    },
+    [dayKey],
+  );
+
   const trackerWeekSummaryKeys = useMemo(
     () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
     [weekSummaryMode, selectedDate, weekStartDay],
@@ -637,6 +1166,58 @@ export default function TrackerScreen() {
 
   const remaining = effectiveCalorieGoal - totals.calories;
 
+  // Batch 5.12 — iOS widget snapshot. Writes today's totals + fast state
+  // to a shared App Group-accessible snapshot (AsyncStorage always, file
+  // best-effort). Debounced 500 ms so a rapid sequence of macro edits
+  // doesn't flood disk. Only runs when viewing today — yesterday's numbers
+  // should never appear in the widget.
+  useEffect(() => {
+    if (!hydrated || !isToday || viewMode !== "day") return;
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      if (cancelled) return;
+      (async () => {
+        const { buildWidgetSnapshot, writeWidgetSnapshot } = await import("@/lib/widgetSnapshot");
+        const snapshot = buildWidgetSnapshot({
+          kcalConsumed: totals.calories,
+          kcalTarget: effectiveCalorieGoal,
+          proteinTargetG: targets.protein,
+          proteinConsumedG: totals.protein,
+          carbsTargetG: targets.carbs,
+          carbsConsumedG: totals.carbs,
+          fatTargetG: targets.fat,
+          fatConsumedG: totals.fat,
+          fastStartsAt: activeFastStart,
+          // TODO — thread profiles.fasting_window once Today reads it.
+          // Snapshot falls back to 16h in the meantime.
+        });
+        const result = await writeWidgetSnapshot(snapshot);
+        if (result.ok) {
+          track(AnalyticsEvents.widget_snapshot_updated, {});
+        }
+      })().catch(() => {
+        // Never let a widget persistence failure break Today.
+      });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [
+    hydrated,
+    isToday,
+    viewMode,
+    totals.calories,
+    totals.protein,
+    totals.carbs,
+    totals.fat,
+    effectiveCalorieGoal,
+    targets.protein,
+    targets.carbs,
+    targets.fat,
+    activeFastStart,
+  ]);
+
   const loggedDays = useMemo(() => {
     const s = new Set<string>();
     for (const k of Object.keys(byDay)) {
@@ -649,6 +1230,11 @@ export default function TrackerScreen() {
     () => computeLoggingStreak(byDay as any),
     [byDay],
   );
+  // Batch 4.11 — freeze sub-label on the streak insight card.
+  const freezesAvailableToday = useMemo(
+    () => availableFreezes(freezeLedger, freezeBudgetMax),
+    [freezeLedger, freezeBudgetMax],
+  );
 
   const extraWaterToday = extraWaterByDay[dayKey] ?? 0;
   const waterFromMealsMl = useMemo(
@@ -657,6 +1243,9 @@ export default function TrackerScreen() {
   );
   /** Used for Today macro strip when "water" is enabled in dashboard widgets. */
   const totalWaterMl = extraWaterToday + waterFromMealsMl;
+  /** Batch 2.5 — today's caffeine total in mg (from quick-add; per-meal
+   *  caffeine lives in `nutrition_micros.caffeineMg` and is summed elsewhere). */
+  const extraCaffeineToday = extraCaffeineByDay[dayKey] ?? 0;
   const stepsRecorded = Object.prototype.hasOwnProperty.call(stepsByDay, dayKey);
   const stepsCount = stepsRecorded ? (stepsByDay[dayKey] ?? 0) : null;
   const activityBurnRecorded = Object.prototype.hasOwnProperty.call(activityBurnByDay, dayKey);
@@ -665,6 +1254,78 @@ export default function TrackerScreen() {
   const dayWorkouts = workoutsByDay[dayKey] ?? [];
   const totalBurnKcal = (activityBurnKcal ?? 0) + basalBurnKcal;
   const hasBurnData = activityBurnRecorded || basalBurnKcal > 0 || dayWorkouts.length > 0;
+
+  // Batch 5.13 — resolve the web API base from expo-constants once per
+  // render so the gated sheets don't each import Constants independently.
+  const [apiBase, setApiBase] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const Constants = (await import("expo-constants")).default;
+        const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+        if (!cancelled) setApiBase(extra?.supprApiUrl ?? "");
+      } catch {
+        if (!cancelled) setApiBase("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Batch 5.13 — commit AI-logged items (voice / photo) as journal meals.
+  // Shared by the VoiceLogSheet + PhotoLogSheet. Mirrors the web's
+  // `commitAiLoggedItems` in `NutritionTracker.tsx`.
+  const commitAiLoggedItems = useCallback(
+    (aiItems: import("../../../../src/lib/nutrition/aiLogging").AiLoggedItem[]) => {
+      if (!aiItems.length) return;
+      const timeLabel = new Date().toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const newMeals: JournalMeal[] = aiItems.map((item) => ({
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: item.name,
+        time: timeLabel,
+        calories: Math.round(item.calories),
+        protein: Math.round(item.protein),
+        carbs: Math.round(item.carbs),
+        fat: Math.round(item.fat),
+        source: item.source === "voice" ? "AI voice" : "AI photo",
+      }));
+      setByDay((prev) => ({
+        ...prev,
+        [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
+      }));
+      track(AnalyticsEvents.food_logged, {
+        source: aiItems[0]?.source === "voice" ? "voice" : "photo",
+        count: newMeals.length,
+      });
+    },
+    [activeMealSlot, dayKey],
+  );
+
+  // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
+  // tiers are routed to the paywall; Pro opens the respective sheet.
+  const handleOpenVoiceLog = useCallback(() => {
+    if (userTier !== "pro") {
+      track(AnalyticsEvents.voice_log_paywalled);
+      router.push("/paywall?from=voice_log" as any);
+      return;
+    }
+    setVoiceLogOpen(true);
+  }, [router, userTier]);
+
+  const handleOpenPhotoLog = useCallback(() => {
+    if (userTier !== "pro") {
+      track(AnalyticsEvents.ai_photo_log_paywalled);
+      router.push("/paywall?from=photo_log" as any);
+      return;
+    }
+    setPhotoLogOpen(true);
+  }, [router, userTier]);
 
   const handlePhotoLog = useCallback(async () => {
     try {
@@ -887,6 +1548,186 @@ export default function TrackerScreen() {
       if (persisted) {
         await supabase.from("profiles").update({ extra_water_by_day: persisted }).eq("id", userId);
       }
+      track(AnalyticsEvents.hydration_logged, {
+        type: "water",
+        amount: add,
+        unit: "ml",
+        preset: null,
+      });
+    },
+    [userId, dayKey],
+  );
+
+  /** Batch 5.12 — start a fast from a deep link (Siri / Shortcuts app).
+   *  No-ops when a fast is already active; uses the existing
+   *  profiles.fasting_sessions shape so the fasting screen agrees. */
+  const startFastFromShortcut = useCallback(
+    async (hours: number) => {
+      if (!userId) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("fasting_sessions")
+        .eq("id", userId)
+        .maybeSingle();
+      const existing: Array<{ start: string; end: string | null }> = Array.isArray(
+        data?.fasting_sessions,
+      )
+        ? (data.fasting_sessions as Array<{ start: string; end: string | null }>)
+        : [];
+      if (existing.some((s) => s.end === null)) {
+        // Already fasting — do not stack sessions.
+        return;
+      }
+      const startIso = new Date().toISOString();
+      const next = [...existing, { start: startIso, end: null }].slice(-90);
+      await supabase.from("profiles").update({ fasting_sessions: next }).eq("id", userId);
+      setActiveFastStart(startIso);
+      // `hours` currently only informs the widget snapshot — the fasting
+      // screen reads the window from `profiles.fasting_window`. When
+      // users invoke `suppr://fast/start?hours=N` with a non-default N we
+      // log it so analytics reflects actual use.
+      track(AnalyticsEvents.siri_action_invoked, { kind: "start_fast", hours });
+    },
+    [userId],
+  );
+
+  /**
+   * Batch 5.12 — flush any pending Siri / Shortcuts-app action that the
+   * `_layout.tsx` deep-link handler enqueued before Today mounted. Runs
+   * once per session load and after every return-to-foreground so
+   * cold-start and warm deep links both work.
+   */
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    const flush = async () => {
+      const { consumePendingSiriAction } = await import("@/lib/siriPending");
+      const action = await consumePendingSiriAction();
+      if (!action || cancelled) return;
+      if (action.kind === "log_water") {
+        await addWaterMl(action.ml);
+      } else if (action.kind === "start_fast") {
+        await startFastFromShortcut(action.hours);
+      }
+      // `today_remaining` only needs the Today tab to be visible — the
+      // router already handled that. No state mutation required here.
+    };
+
+    void flush();
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") void flush();
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, [userId, addWaterMl, startFastFromShortcut]);
+
+  /** Batch 2.5 — caffeine quick-add for the selected day. */
+  const addCaffeineMg = useCallback(
+    async (mg: number, preset: string | null = null) => {
+      if (!userId) return;
+      const add = Math.max(0, Math.round(mg));
+      if (add === 0) return;
+      let persisted: Record<string, number> | null = null;
+      setExtraCaffeineByDay((prev) => {
+        const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
+        persisted = next;
+        return next;
+      });
+      if (persisted) {
+        await supabase
+          .from("profiles")
+          .update({ extra_caffeine_by_day: persisted })
+          .eq("id", userId);
+      }
+      track(AnalyticsEvents.stimulant_logged, {
+        type: "caffeine",
+        amount: add,
+        unit: "mg",
+        preset,
+      });
+    },
+    [userId, dayKey],
+  );
+
+  /** Batch 2.5 — alcohol quick-add (grams ethanol) for the selected day. */
+  const addAlcoholG = useCallback(
+    async (grams: number, preset: string | null = null) => {
+      if (!userId) return;
+      const add = Math.max(0, Math.round(grams));
+      if (add === 0) return;
+      let persisted: Record<string, number> | null = null;
+      setExtraAlcoholGByDay((prev) => {
+        const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
+        persisted = next;
+        return next;
+      });
+      if (persisted) {
+        await supabase
+          .from("profiles")
+          .update({ extra_alcohol_g_by_day: persisted })
+          .eq("id", userId);
+      }
+      track(AnalyticsEvents.stimulant_logged, {
+        type: "alcohol",
+        amount: add,
+        unit: "g",
+        preset,
+      });
+    },
+    [userId, dayKey],
+  );
+
+  /** Batch 2.5 — reset today's value for one of the three hydration rows. */
+  const resetHydrationStimulantsForDay = useCallback(
+    async (kind: "water" | "caffeine" | "alcohol") => {
+      if (!userId) return;
+      const column =
+        kind === "water"
+          ? "extra_water_by_day"
+          : kind === "caffeine"
+          ? "extra_caffeine_by_day"
+          : "extra_alcohol_g_by_day";
+      const apply = (prev: Record<string, number>): Record<string, number> => {
+        if (prev[dayKey] == null) return prev;
+        const next = { ...prev };
+        delete next[dayKey];
+        return next;
+      };
+      let persisted: Record<string, number> | null = null;
+      if (kind === "water") {
+        setExtraWaterByDay((prev) => {
+          const next = apply(prev);
+          persisted = next;
+          return next;
+        });
+      } else if (kind === "caffeine") {
+        setExtraCaffeineByDay((prev) => {
+          const next = apply(prev);
+          persisted = next;
+          return next;
+        });
+      } else {
+        setExtraAlcoholGByDay((prev) => {
+          const next = apply(prev);
+          persisted = next;
+          return next;
+        });
+      }
+      if (persisted) {
+        await supabase.from("profiles").update({ [column]: persisted }).eq("id", userId);
+      }
+      track(
+        kind === "water" ? AnalyticsEvents.hydration_logged : AnalyticsEvents.stimulant_logged,
+        {
+          type: kind,
+          amount: 0,
+          unit: kind === "water" ? "ml" : kind === "caffeine" ? "mg" : "g",
+          preset: "reset",
+        },
+      );
     },
     [userId, dayKey],
   );
@@ -1272,6 +2113,124 @@ export default function TrackerScreen() {
         });
     }
   }, [dayKey, userId]);
+
+  /**
+   * Shared insert primitive for batch 1.4 "copy meal" / "duplicate day".
+   *
+   * Optimistically adds rows to `byDay[targetDayKey]` and writes them
+   * straight to `nutrition_entries`. We cannot reuse the debounced
+   * selected-day sync effect because the target day may not be the
+   * currently selected day — without the explicit insert those rows
+   * would only persist once the user navigates to that day.
+   *
+   * `rows` are clones produced by `cloneMealWithoutId`, so there is no
+   * id on them yet; a fresh `newMealId()` is minted per row.
+   */
+  const insertClonedRowsIntoDay = useCallback(
+    async (targetDayKey: string, clones: Array<Omit<JournalMeal, "id">>): Promise<void> => {
+      if (clones.length === 0) return;
+      const withIds: JournalMeal[] = clones.map((c) => ({ ...c, id: newMealId() } as JournalMeal));
+      setByDay((prev) => ({
+        ...prev,
+        [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
+      }));
+      if (!userId) return;
+      const dbRows = withIds.map((m) => ({
+        id: m.id,
+        user_id: userId,
+        date_key: targetDayKey,
+        name: m.name,
+        recipe_title: m.recipeTitle,
+        time_label: m.time,
+        calories: m.calories,
+        protein: m.protein,
+        carbs: m.carbs,
+        fat: m.fat,
+        fiber_g: m.fiberG ?? null,
+        water_ml: m.waterMl ?? null,
+        portion_multiplier: m.portionMultiplier ?? 1,
+        nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
+        source: m.source ?? null,
+      }));
+      const { error } = await supabase.from("nutrition_entries").insert(dbRows);
+      if (error) {
+        console.error("[tracker] copy/duplicate insert failed:", error.message);
+        // Roll back optimistic add.
+        setByDay((prev) => ({
+          ...prev,
+          [targetDayKey]: (prev[targetDayKey] ?? []).filter((m) => !withIds.some((w) => w.id === m.id)),
+        }));
+        Alert.alert("Couldn't copy", error.message);
+      } else {
+        void refreshAdaptiveTdeeForUser(supabase, userId);
+      }
+    },
+    [userId],
+  );
+
+  const copyMealToDate = useCallback(
+    async (sourceDayKey: string, mealId: string, targetDayKey: string): Promise<void> => {
+      if (!sourceDayKey || !mealId || !targetDayKey) return;
+      if (sourceDayKey === targetDayKey) return;
+      const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
+      if (!meal) return;
+      const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
+      await insertClonedRowsIntoDay(targetDayKey, [cloned]);
+      try { track(AnalyticsEvents.meal_copied, { source: "copy_meal", batchSize: 1, targetDayCount: 1 }); } catch { /* noop */ }
+    },
+    [byDay, insertClonedRowsIntoDay],
+  );
+
+  const copyMealToDateRange = useCallback(
+    async (sourceDayKey: string, mealId: string, targetDayKeys: string[]): Promise<void> => {
+      if (!sourceDayKey || !mealId) return;
+      const clean = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
+      if (clean.length === 0) return;
+      const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
+      if (!meal) return;
+      for (const t of clean) {
+        const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
+        await insertClonedRowsIntoDay(t, [cloned]);
+      }
+      try {
+        track(AnalyticsEvents.meal_copied, { source: "copy_meal", batchSize: 1, targetDayCount: clean.length });
+      } catch { /* noop */ }
+    },
+    [byDay, insertClonedRowsIntoDay],
+  );
+
+  const duplicateDay = useCallback(
+    async (sourceDayKey: string, targetDayKey: string): Promise<void> => {
+      if (!sourceDayKey || !targetDayKey) return;
+      if (sourceDayKey === targetDayKey) return;
+      const src = byDay[sourceDayKey] ?? [];
+      if (src.length === 0) return;
+      const clones = src.map((m) => cloneMealWithoutId(m) as Omit<JournalMeal, "id">);
+      await insertClonedRowsIntoDay(targetDayKey, clones);
+      try {
+        track(AnalyticsEvents.day_duplicated, { source: "duplicate_day", batchSize: src.length, targetDayCount: 1 });
+      } catch { /* noop */ }
+    },
+    [byDay, insertClonedRowsIntoDay],
+  );
+
+  const duplicateDayToDateRange = useCallback(
+    async (sourceDayKey: string, targetDayKeys: string[]): Promise<void> => {
+      if (!sourceDayKey) return;
+      const clean = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
+      if (clean.length === 0) return;
+      const src = byDay[sourceDayKey] ?? [];
+      if (src.length === 0) return;
+      for (const t of clean) {
+        const clones = src.map((m) => cloneMealWithoutId(m) as Omit<JournalMeal, "id">);
+        await insertClonedRowsIntoDay(t, clones);
+      }
+      try {
+        track(AnalyticsEvents.day_duplicated, { source: "duplicate_day", batchSize: src.length, targetDayCount: clean.length });
+      } catch { /* noop */ }
+    },
+    [byDay, insertClonedRowsIntoDay],
+  );
 
   const syncEditCanonicalFromFields = useCallback(() => {
     const p = parseFloat(editPortion.replace(",", ".")) || 1;
@@ -1729,6 +2688,25 @@ export default function TrackerScreen() {
               </Text>
             </View>
 
+            {/* Remaining macros — kcal / P / C / F (+ fiber when tracked) left today. Parity: web RemainingMacrosBar. */}
+            <RemainingMacrosBar
+              style={{ marginBottom: Spacing.md }}
+              targets={{
+                calories: effectiveCalorieGoal,
+                protein: targets.protein,
+                carbs: targets.carbs,
+                fat: targets.fat,
+                fiber: targets.fiber,
+              }}
+              consumed={{
+                calories: totals.calories,
+                protein: totals.protein,
+                carbs: totals.carbs,
+                fat: totals.fat,
+                fiber: totals.fiber,
+              }}
+            />
+
             {/* Dynamic Macro Cards */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               {trackedMacros.map((macro) => {
@@ -1780,19 +2758,31 @@ export default function TrackerScreen() {
               </Pressable>
             ) : null}
 
-            {/* 4 Quick-log chips — prototype style */}
+            {/* 4 Quick-log chips — prototype style.
+                Batch 5.13 — Voice and Photo are Pro features; free + base
+                tiers see a lock icon and the Pro paywall on tap. Mirrors
+                the web quick-log strip ordering. */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
               {([
-                ["Photo", "camera-outline" as const, Accent.primary, () => handlePhotoLog()],
-                ["Voice", "mic-outline" as const, Accent.success, () => handleVoiceLog()],
-                ["Search", "search-outline" as const, Accent.warning, () => { setSearchOpen(true); }],
-                ["Scan", "scan-outline" as const, Accent.magenta, () => { setBarcodeOpen(true); }],
-              ] as const).map(([label, iconName, color, onPress]) => (
-                <Pressable key={label} onPress={onPress} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+                ["Search", "search-outline" as const, Accent.warning, () => { setSearchOpen(true); }, false],
+                ["Voice", "mic-outline" as const, Accent.success, handleOpenVoiceLog, userTier !== "pro"],
+                ["Snap", "camera-outline" as const, Accent.primary, handleOpenPhotoLog, userTier !== "pro"],
+                ["Scan", "scan-outline" as const, Accent.magenta, () => { setBarcodeOpen(true); }, false],
+              ] as const).map(([label, iconName, color, onPress, locked]) => (
+                <Pressable
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={locked ? `${label} — Pro feature` : label}
+                  onPress={onPress}
+                  style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}
+                >
                   <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
                     <Ionicons name={iconName} size={14} color={color} />
                   </View>
-                  <Text style={{ fontSize: 10, fontWeight: "500", color: colors.textSecondary }}>{label}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "500", color: colors.textSecondary }}>{label}</Text>
+                    {locked && <Ionicons name="lock-closed" size={9} color={colors.textTertiary} />}
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -1808,6 +2798,18 @@ export default function TrackerScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>{streakDays}-day logging streak</Text>
               <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>You&apos;ve logged meals {streakDays} days in a row.</Text>
+              {freezesAvailableToday > 0 ? (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}
+                  accessible
+                  accessibilityLabel={`${freezesAvailableToday} streak freeze${freezesAvailableToday === 1 ? "" : "s"} available`}
+                >
+                  <Ionicons name="snow-outline" size={11} color={Accent.primary} />
+                  <Text style={{ fontSize: 11, color: Accent.primary, fontWeight: "600" }}>
+                    {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         )}
@@ -1849,6 +2851,50 @@ export default function TrackerScreen() {
         )}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
+        {/* Eat again — suggest re-logging the most recent meal in the
+            slot matching the current clock time. Dismissible per day. */}
+        {viewMode === "day" && isToday && eatAgainSuggestion && !eatAgainDismissedForToday && (
+          <View style={{
+            marginBottom: Spacing.md,
+            backgroundColor: Accent.primary + "10",
+            borderWidth: 1,
+            borderColor: Accent.primary + "40",
+            borderRadius: Radius.lg,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.sm,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+          }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginTop: 2 }} numberOfLines={1}>
+                {eatAgainSuggestion.recipeTitle}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                {Math.round(eatAgainSuggestion.calories)} kcal · P {Math.round(eatAgainSuggestion.protein)}g · C {Math.round(eatAgainSuggestion.carbs)}g · F {Math.round(eatAgainSuggestion.fat)}g · into {currentSlotFromTime}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Log ${eatAgainSuggestion.recipeTitle} to ${currentSlotFromTime}`}
+              onPress={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, backgroundColor: Accent.primary }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>LOG</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss Eat again suggestion"
+              onPress={dismissEatAgain}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="close" size={18} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        )}
+
         {viewMode === "day" && (() => {
           const slotIcon = (s: string): keyof typeof Ionicons.glyphMap =>
             ({
@@ -1867,7 +2913,32 @@ export default function TrackerScreen() {
               Snack: MacroColors.fat,
             }[s] ?? Accent.primary);
           return (
-            <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: Spacing.lg }}>
+            <View>
+              {/* Batch 1.4 — Day header action: duplicate today's meals to another day */}
+              {mealsToday.length > 0 && (
+                <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 6 }}>
+                  <Pressable
+                    onPress={() => setDuplicateDayOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Duplicate this day to another day"
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 999,
+                      backgroundColor: Accent.primary + "12",
+                    }}
+                  >
+                    <Ionicons name="copy-outline" size={12} color={Accent.primary} />
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>
+                      Duplicate day…
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+              <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: Spacing.lg }}>
               {MEAL_SLOTS.map((slot) => {
                 const meals = mealGroups[slot] ?? [];
                 const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
@@ -1903,7 +2974,31 @@ export default function TrackerScreen() {
                         )}
                       </View>
                       {hasMeals ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          {/* Batch 2.6 — save this slot as a meal combo when the slot has 2+ items */}
+                          {meals.length >= 2 && (
+                            <Pressable
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                openSaveMealSheetForSlot(slot);
+                              }}
+                              hitSlop={8}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Save ${slot} items as a meal combo`}
+                              style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 999,
+                                borderWidth: 1,
+                                borderColor: colors.cardBorder,
+                                backgroundColor: "transparent",
+                              }}
+                            >
+                              <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textSecondary }}>
+                                Save combo
+                              </Text>
+                            </Pressable>
+                          )}
                           <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{slotCals}</Text>
                           <Text style={{ fontSize: 10, color: colors.textTertiary }}>kcal</Text>
                         </View>
@@ -1946,6 +3041,7 @@ export default function TrackerScreen() {
                             Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
                               { text: "Cancel", style: "cancel" },
                               { text: "Edit", onPress: () => openEditMeal(m) },
+                              { text: "Copy to another day", onPress: () => setCopyMealTargetId(m.id) },
                               { text: "Delete", style: "destructive", onPress: () => deleteMeal(m.id) },
                             ]);
                           }}
@@ -2001,6 +3097,7 @@ export default function TrackerScreen() {
               >
                 <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "500" }}>+ Add Food</Text>
               </Pressable>
+              </View>
             </View>
           );
         })()}
@@ -2117,10 +3214,32 @@ export default function TrackerScreen() {
           </View>
         )}
 
-        {/* Steps, water, active energy — per selected day (historic via header / DayStrip) */}
+        {/* Batch 2.5 — hydration & stimulants (water + caffeine + alcohol). */}
+        {viewMode === "day" && (
+          <HydrationStimulantsCard
+            selectedDateKey={dayKey}
+            weekStartDay={weekStartDay}
+            targets={{
+              waterMl: waterGoalMl,
+              caffeineMg: targetCaffeineMg,
+              alcoholGWeekly: targetAlcoholGWeekly,
+            }}
+            waterTotalMl={totalWaterMl}
+            waterFromMealsMl={waterFromMealsMl}
+            caffeineTotalMg={extraCaffeineToday}
+            alcoholByDayG={extraAlcoholGByDay}
+            onAddWater={(ml) => void addWaterMl(ml)}
+            onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}
+            onAddAlcohol={(g, preset) => void addAlcoholG(g, preset ?? null)}
+            onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
+          />
+        )}
+
+        {/* Steps, active energy — per selected day (historic via header / DayStrip).
+            Water + stimulants moved into `HydrationStimulantsCard` above. */}
         {viewMode === "day" && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Steps, water & activity</Text>
+            <Text style={styles.cardTitle}>Steps & activity</Text>
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: Spacing.md }}>
               {isToday ? "Today" : formatDateLabel(selectedDate)}
             </Text>
@@ -2152,53 +3271,6 @@ export default function TrackerScreen() {
                   />
                 </View>
               )}
-
-              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
-
-              <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <Ionicons name="water-outline" size={18} color={MacroColors.water} />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Water</Text>
-                </View>
-                <View style={{ flex: 1, alignItems: "flex-end", gap: 6 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                    {totalWaterMl.toLocaleString()} / {waterGoalMl.toLocaleString()} ml
-                  </Text>
-                  <View style={{ width: "100%", maxWidth: 220, height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
-                    <View
-                      style={{
-                        width: `${Math.min(totalWaterMl / Math.max(waterGoalMl, 1), 1) * 100}%`,
-                        height: "100%",
-                        borderRadius: 3,
-                        backgroundColor: MacroColors.water,
-                      }}
-                    />
-                  </View>
-                  {waterFromMealsMl > 0 && (
-                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>
-                      Includes {waterFromMealsMl.toLocaleString()} ml from logged food
-                    </Text>
-                  )}
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "flex-end", marginTop: 2 }}>
-                    {([250, 500] as const).map((ml) => (
-                      <Pressable
-                        key={ml}
-                        onPress={() => addWaterMl(ml)}
-                        style={{
-                          paddingVertical: 6,
-                          paddingHorizontal: 10,
-                          borderRadius: Radius.sm,
-                          backgroundColor: MacroColors.water + "22",
-                          borderWidth: 1,
-                          borderColor: MacroColors.water + "55",
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: MacroColors.water }}>+{ml} ml</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              </View>
 
               <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
 
@@ -2583,8 +3655,8 @@ export default function TrackerScreen() {
             {/* Secondary actions */}
             <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
               {[
-                { icon: "camera-outline" as const, label: "Photo (AI)", onPress: () => { setFabSheetOpen(false); handlePhotoLog(); } },
-                { icon: "mic-outline" as const, label: "Voice", onPress: () => { setFabSheetOpen(false); handleVoiceLog(); } },
+                { icon: "camera-outline" as const, label: "Photo (AI)", onPress: () => { setFabSheetOpen(false); handleOpenPhotoLog(); } },
+                { icon: "mic-outline" as const, label: "Voice", onPress: () => { setFabSheetOpen(false); handleOpenVoiceLog(); } },
               ].map((item) => (
                 <Pressable
                   key={item.label}
@@ -2855,6 +3927,20 @@ export default function TrackerScreen() {
       <FoodSearchModal
         visible={searchOpen}
         initialQuery=""
+        macroTargets={{
+          calories: effectiveCalorieGoal,
+          protein: targets.protein,
+          carbs: targets.carbs,
+          fat: targets.fat,
+          fiber: targets.fiber,
+        }}
+        macroConsumed={{
+          calories: totals.calories,
+          protein: totals.protein,
+          carbs: totals.carbs,
+          fat: totals.fat,
+          fiber: totals.fiber,
+        }}
         onSelect={(result: any) => {
           const grams = result.chosenPortion.gramWeight * result.quantity;
           const f = grams / 100;
@@ -2910,7 +3996,7 @@ export default function TrackerScreen() {
         onClose={() => setBarcodeOpen(false)}
       />
 
-      {/* Previous meals panel */}
+      {/* Quick add panel — Favourites / Frequent / Recent tabs. */}
       {showPrevious && (
         <View style={{
           position: "absolute", bottom: 0, left: 0, right: 0, top: 0,
@@ -2918,60 +4004,208 @@ export default function TrackerScreen() {
         }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
             <View>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Previous Meals</Text>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Quick add</Text>
               <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", marginTop: 2 }}>
                 Logging to {activeMealSlot}
               </Text>
             </View>
-            <Pressable onPress={() => setShowPrevious(false)} hitSlop={12}>
+            <Pressable onPress={() => setShowPrevious(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close quick add">
               <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
           </View>
+          {/* Tab row */}
+          <View style={{ flexDirection: "row", gap: Spacing.xs, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm }}>
+            {(["favourites", "frequent", "recent", "saved"] as const).map((t) => {
+              const active = quickAddTab === t;
+              const label =
+                t === "favourites"
+                  ? "Favourites"
+                  : t === "frequent"
+                  ? "Frequent"
+                  : t === "recent"
+                  ? "Recent"
+                  : "My meals";
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => setQuickAddTab(t)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`${label} tab`}
+                  style={{
+                    flex: 1, paddingVertical: 6, borderRadius: Radius.sm, alignItems: "center",
+                    backgroundColor: active ? Accent.primary : colors.border + "40",
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#fff" : colors.textSecondary }}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {quickAddTab === "saved" ? (
+            <ScrollView
+              contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 40, gap: Spacing.sm }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {savedMealsLoading && (
+                <View style={{ paddingTop: 40, alignItems: "center" }}>
+                  <ActivityIndicator color={Accent.primary} />
+                </View>
+              )}
+              {!savedMealsLoading && !userId && (
+                <Text style={{ color: colors.textSecondary, textAlign: "center", paddingTop: 40 }}>
+                  Sign in to save meal combos for one-tap re-logging.
+                </Text>
+              )}
+              {!savedMealsLoading && userId && savedMeals.length === 0 && (
+                <Text style={{ color: colors.textSecondary, textAlign: "center", paddingTop: 40 }}>
+                  Log 2 or more items in a slot, then tap "Save combo" on the slot header to re-log it in one tap.
+                </Text>
+              )}
+              {!savedMealsLoading && savedMeals.map((meal) => {
+                const summary = summariseSavedMeal(meal);
+                const pending = savedPendingIds.has(meal.id);
+                const itemsLabel = summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+                const slotLabel = meal.defaultMealSlot ?? activeMealSlot;
+                const summaryLabel = `${itemsLabel}, ${summary.totalCalories} kcal, protein ${Math.round(
+                  summary.totalProtein,
+                )} grams, carbs ${Math.round(summary.totalCarbs)} grams, fat ${Math.round(
+                  summary.totalFat,
+                )} grams`;
+                return (
+                  <Pressable
+                    key={meal.id}
+                    onPress={() => logSavedMealFromPanel(meal)}
+                    onLongPress={() => openSavedMealActions(meal)}
+                    disabled={pending || summary.itemCount === 0}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Log ${meal.name} to ${slotLabel}. ${summaryLabel}. Long-press for more actions.`}
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: Radius.md,
+                      padding: Spacing.md,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      opacity: pending ? 0.6 : 1,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                      >
+                        {meal.name}
+                      </Text>
+                      <Text
+                        style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
+                      >
+                        {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
+                        {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={(e) => { e.stopPropagation?.(); openSavedMealActions(meal); }}
+                      hitSlop={12}
+                      accessibilityRole="button"
+                      accessibilityLabel={`More actions for ${meal.name}`}
+                      style={{ paddingHorizontal: 6 }}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={18} color={colors.textSecondary} />
+                    </Pressable>
+                    <Ionicons name="add-circle" size={24} color={Accent.primary} />
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 40, gap: Spacing.sm }} keyboardShouldPersistTaps="handled">
-            {recentMeals.length === 0 && (
+            {quickAddTab === "favourites" && favoritesLoading && (
+              <View style={{ paddingTop: 40, alignItems: "center" }}>
+                <ActivityIndicator color={Accent.primary} />
+              </View>
+            )}
+            {quickAddRows.length === 0 && !(quickAddTab === "favourites" && favoritesLoading) && (
               <Text style={{ color: colors.textSecondary, textAlign: "center", paddingTop: 40 }}>
-                No previous meals to show. Start logging to build your history.
+                {quickAddTab === "favourites"
+                  ? "Star meals you log often for one-tap re-logging."
+                  : quickAddTab === "frequent"
+                  ? "Your most-logged meals will show up here after a few days of tracking."
+                  : "No previous meals to show. Start logging to build your history."}
               </Text>
             )}
-            {recentMeals.map((m, idx) => (
-              <Pressable
-                key={`${m.recipeTitle}-${idx}`}
-                style={{
-                  backgroundColor: colors.card, borderRadius: Radius.md,
-                  padding: Spacing.md, flexDirection: "row", alignItems: "center",
-                  borderWidth: 1, borderColor: colors.border,
-                }}
-                onPress={() => {
-                  const meal: JournalMeal = {
-                    id: newMealId(),
-                    name: activeMealSlot,
-                    recipeTitle: m.recipeTitle,
-                    time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                    calories: m.calories,
-                    protein: m.protein,
-                    carbs: m.carbs,
-                    fat: m.fat,
-                    ...(m.source ? { source: m.source } : {}),
-                  };
-                  setByDay((prev) => ({
-                    ...prev,
-                    [dayKey]: [...(prev[dayKey] ?? []), meal],
-                  }));
-                  setShowPrevious(false);
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{m.recipeTitle}</Text>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    {Math.round(m.calories)} kcal · P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fat)}g
-                  </Text>
-                </View>
-                <Ionicons name="add-circle" size={24} color={Accent.primary} />
-              </Pressable>
-            ))}
+            {quickAddRows.map((row, idx) => {
+              const starred = Boolean(row.favoriteId);
+              const pending = favoritesPending.has(favoriteKey(row.recipeTitle, row.calories));
+              return (
+                <Pressable
+                  key={`${row.recipeTitle}-${row.calories}-${idx}`}
+                  style={{
+                    backgroundColor: colors.card, borderRadius: Radius.md,
+                    padding: Spacing.md, flexDirection: "row", alignItems: "center",
+                    borderWidth: 1, borderColor: colors.border,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log ${row.recipeTitle} to ${activeMealSlot}`}
+                  onPress={() => {
+                    logHistoryItemToSlot(row, activeMealSlot);
+                    setShowPrevious(false);
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{row.recipeTitle}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                      {Math.round(row.calories)} kcal · P {Math.round(row.protein)}g · C {Math.round(row.carbs)}g · F {Math.round(row.fat)}g
+                      {row.count > 1 ? `  ·  ${row.count}×` : ""}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation?.(); toggleFavoriteRow(row); }}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel={starred ? "Unstar meal" : "Favourite this meal"}
+                    accessibilityState={{ selected: starred, disabled: pending }}
+                    style={{ paddingHorizontal: 6, opacity: pending ? 0.5 : 1 }}
+                  >
+                    <Ionicons
+                      name={starred ? "star" : "star-outline"}
+                      size={22}
+                      color={starred ? "#f59e0b" : colors.textSecondary}
+                    />
+                  </Pressable>
+                  <Ionicons name="add-circle" size={24} color={Accent.primary} />
+                </Pressable>
+              );
+            })}
           </ScrollView>
+          )}
         </View>
       )}
+
+      {/* Batch 2.6 — Save meal combo sheet */}
+      <SaveMealSheet
+        visible={saveMealSheetOpen}
+        onClose={() => setSaveMealSheetOpen(false)}
+        initialItems={saveMealSheetItems}
+        defaultSlot={saveMealSheetDefaultSlot}
+        suggestedName={
+          saveMealSheetDefaultSlot
+            ? `My ${saveMealSheetDefaultSlot.toLowerCase()} combo`
+            : undefined
+        }
+        onSave={handleCreateSavedMeal}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+        }}
+      />
 
       <Modal visible={nutrientsModalOpen} animationType="slide" transparent onRequestClose={() => setNutrientsModalOpen(false)}>
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
@@ -3036,6 +4270,108 @@ export default function TrackerScreen() {
           card: colors.card,
           cardBorder: colors.cardBorder,
           background: colors.background,
+        }}
+      />
+
+      {/* Batch 1.4 — Copy meal sheet */}
+      {copyMealTargetId && (() => {
+        const meal = (byDay[dayKey] ?? []).find((m) => m.id === copyMealTargetId);
+        if (!meal) return null;
+        return (
+          <CopyMealSheet
+            visible={true}
+            onClose={() => setCopyMealTargetId(null)}
+            sourceDayKey={dayKey}
+            mealLabel={meal.recipeTitle}
+            onConfirm={(targetDayKeys, summary) => {
+              if (targetDayKeys.length === 0) {
+                Alert.alert("Copy meal", summary);
+                return;
+              }
+              if (targetDayKeys.length === 1) {
+                void copyMealToDate(dayKey, meal.id, targetDayKeys[0]!);
+              } else {
+                void copyMealToDateRange(dayKey, meal.id, targetDayKeys);
+              }
+              Alert.alert("Copied", summary);
+            }}
+            colors={{
+              text: colors.text,
+              textSecondary: colors.textSecondary,
+              textTertiary: colors.textTertiary,
+              card: colors.card,
+              cardBorder: colors.cardBorder,
+              background: colors.background,
+            }}
+          />
+        );
+      })()}
+
+      {/* Batch 1.4 — Duplicate day sheet */}
+      <DuplicateDaySheet
+        visible={duplicateDayOpen}
+        onClose={() => setDuplicateDayOpen(false)}
+        sourceDayKey={dayKey}
+        sourceMealCount={mealsToday.length}
+        onConfirm={(targetDayKeys, summary) => {
+          if (targetDayKeys.length === 0) {
+            Alert.alert("Duplicate day", summary);
+            return;
+          }
+          if (targetDayKeys.length === 1) {
+            void duplicateDay(dayKey, targetDayKeys[0]!);
+          } else {
+            void duplicateDayToDateRange(dayKey, targetDayKeys);
+          }
+          Alert.alert("Duplicated", summary);
+        }}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+        }}
+      />
+
+      {/* Batch 5.13 — Voice log sheet (Pro). */}
+      <VoiceLogSheet
+        visible={voiceLogOpen}
+        onClose={() => setVoiceLogOpen(false)}
+        activeSlot={activeMealSlot}
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={commitAiLoggedItems}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+        }}
+      />
+
+      {/* Batch 5.13 — AI photo log sheet (Pro). */}
+      <PhotoLogSheet
+        visible={photoLogOpen}
+        onClose={() => setPhotoLogOpen(false)}
+        activeSlot={activeMealSlot}
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={commitAiLoggedItems}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
         }}
       />
     </View>

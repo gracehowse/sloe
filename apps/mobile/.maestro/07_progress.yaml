@@ -9,18 +9,21 @@ name: "Progress screen — stats, charts, weight journey, time range"
 - waitForAnimationToEnd
 - assertVisible: ".*Progress.*"
 
-# Wait for data to fully load (stat tiles or empty state — not just the header)
+# Wait for data to fully load (stat tiles or empty state — not just the header).
+# Uses content from below the header: "Weekly report" subtitle is a plain Text
+# node and matches reliably; "AVG CALORIES" gets nested inside icon-card a11y
+# wrappers and is intermittently missed by Maestro.
 - extendedWaitUntil:
-    visible: ".*(?:AVG CALORIES|Your progress will appear here|Log meals on the Today tab).*"
+    visible: ".*(?:Weekly report|Your progress will appear here|Log meals on the Today tab).*"
     timeout: 30000
 
 # If data exists, verify full stat grid and charts
 - runFlow:
     when:
-      visible: ".*AVG CALORIES.*"
+      visible: ".*Weekly report.*"
     commands:
-      - assertVisible: ".*PROTEIN HIT.*"
-      - assertVisible: ".*STREAK.*"
+      - assertVisible: ".*Daily Calories.*"
+      - assertVisible: ".*Macro Adherence.*"
 
       # Scroll to weight section
       - scrollUntilVisible:

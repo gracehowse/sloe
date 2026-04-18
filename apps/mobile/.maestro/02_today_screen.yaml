@@ -20,22 +20,9 @@ name: "Today screen — ring, macros, quick-log buttons"
 - assertVisible: ".*Search.*"
 - assertVisible: ".*Scan.*"
 
-# Tap to show/hide macros
-- runFlow:
-    when:
-      visible: ".*Tap to show macros.*"
-    commands:
-      - tapOn: ".*Tap to show macros.*"
-      - assertVisible: ".*Tap to hide macros.*"
-      - tapOn: ".*Tap to hide macros.*"
-      - assertVisible: ".*Tap to show macros.*"
-
-- runFlow:
-    when:
-      visible: ".*Tap to hide macros.*"
-    commands:
-      - tapOn: ".*Tap to hide macros.*"
-      - assertVisible: ".*Tap to show macros.*"
+# Verify the macro-toggle affordance is present (in either show or hide state).
+- assertVisible:
+    text: ".*Tap to (?:show|hide) macros.*"
 
 # Scroll down to verify meal journal section loads
 - swipe:

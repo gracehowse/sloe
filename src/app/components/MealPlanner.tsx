@@ -3,6 +3,7 @@ import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
+import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -20,6 +21,23 @@ import {
   isMealPlanPlaceholderLikeTitle,
   scaledMacro,
 } from "../../lib/nutrition/portionMultiplier.ts";
+import {
+  buildTemplateFromWeek,
+  applyTemplateToWeek,
+  type PlanTemplate,
+} from "../../lib/nutrition/planTemplates.ts";
+import {
+  createPlanTemplate,
+  deletePlanTemplate,
+  listPlanTemplates,
+} from "../../lib/nutrition/planTemplatesClient.ts";
+import {
+  countLeftoversOfRecipe,
+  distributeLeftovers,
+  markLeftoversOnSwap,
+  moveMealInPlan,
+  type LeftoverAwareMeal,
+} from "../../lib/nutrition/leftoversPlanner.ts";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -90,6 +108,35 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
 
   const isFree = userTier === "free";
 
+  // Batch 3.10 — plan templates state.
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  // Batch 3.10 — drag-drop source pointer. `null` outside any drag.
+  const [dragSource, setDragSource] = useState<{ day: number; slotIndex: number } | null>(null);
+
+  const refreshPlanTemplates = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user.id;
+    if (!uid) return;
+    setTemplatesLoading(true);
+    try {
+      const { templates, error } = await listPlanTemplates(supabase, uid);
+      if (error) {
+        toast.error(`Could not load templates: ${error}`);
+        return;
+      }
+      setPlanTemplates(templates);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (templatesOpen) void refreshPlanTemplates();
+  }, [templatesOpen, refreshPlanTemplates]);
+
   const handleGenerate = () => {
     if (!hasLibraryRecipes) {
       toast.error("Save at least one recipe first.");
@@ -110,6 +157,26 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           },
           days: planDays,
         });
+        // Batch 3.10 — run a leftovers distribution pass over the freshly
+        // generated plan. Only recipes with servings > 1 contribute; the
+        // helper is a no-op when no yields qualify.
+        const recipesByRef: Record<string, { servings: number }> = {};
+        for (const r of savedRecipesForLibrary) {
+          if (r.servings && r.servings > 1) recipesByRef[r.id] = { servings: r.servings };
+        }
+        if (Object.keys(recipesByRef).length > 0) {
+          setMealPlan((prev) => {
+            if (!prev) return prev;
+            const { plan: withLeftovers, parentCount, leftoverCount } = distributeLeftovers(
+              prev,
+              recipesByRef,
+            );
+            if (leftoverCount > 0) {
+              track(AnalyticsEvents.plan_leftovers_generated, { parentCount, leftoverCount });
+            }
+            return withLeftovers;
+          });
+        }
         await generateShoppingListFromPlan();
         toast.success(`${planDays}-day plan ready! Shopping list updated.`);
         // Scroll to top so user sees the generated plan
@@ -131,6 +198,81 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
       description: "Your meal plan is persisted as you generate or swap meals.",
     });
   };
+
+  // Batch 3.10 — move a meal between slots / days. Source & destination
+  // may be on the same day (re-orders within day) or different days.
+  const handleMoveMeal = useCallback(
+    (from: { day: number; slotIndex: number }, to: { day: number; slotIndex: number }) => {
+      if (from.day === to.day && from.slotIndex === to.slotIndex) return;
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        const next = moveMealInPlan(prev, from, to);
+        const fromDay = prev.find((d) => d.day === from.day);
+        const toDay = prev.find((d) => d.day === to.day);
+        const fromSlot = fromDay?.meals[from.slotIndex]?.name ?? "";
+        const toSlot = toDay?.meals[to.slotIndex]?.name ?? "";
+        track(AnalyticsEvents.meal_moved_in_plan, {
+          fromSlot,
+          toSlot,
+          crossDay: from.day !== to.day,
+        });
+        toast.success("Moved meal");
+        return next;
+      });
+    },
+    [setMealPlan],
+  );
+
+  const handleSaveTemplate = useCallback(
+    async (name: string, dayCount: number): Promise<{ ok: boolean; error?: string }> => {
+      const source = generatedPlan ?? mealPlan;
+      const draft = buildTemplateFromWeek(source, name, dayCount);
+      if (!draft) {
+        return { ok: false, error: "This plan has no meals to save." };
+      }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user.id;
+      if (!uid) return { ok: false, error: "Sign in to save templates." };
+      const { template, error } = await createPlanTemplate(supabase, uid, draft);
+      if (error || !template) return { ok: false, error: error ?? "Could not save template." };
+      track(AnalyticsEvents.plan_template_created, {
+        dayCount: draft.dayCount,
+        slotCount: draft.slots.length,
+      });
+      toast.success(`Saved "${template.name}"`);
+      setPlanTemplates((prev) => [template, ...prev.filter((t) => t.id !== template.id)]);
+      return { ok: true };
+    },
+    [generatedPlan, mealPlan],
+  );
+
+  const handleApplyTemplate = useCallback(
+    (templateId: string) => {
+      const tmpl = planTemplates.find((t) => t.id === templateId);
+      if (!tmpl) return;
+      if (!window.confirm(`Replace this week's plan with "${tmpl.name}"?`)) return;
+      const next = applyTemplateToWeek(tmpl);
+      setMealPlan(next);
+      track(AnalyticsEvents.plan_template_applied, { dayCount: tmpl.dayCount, slotCount: tmpl.slots.length });
+      toast.success(`Applied "${tmpl.name}"`);
+      setTemplatesOpen(false);
+    },
+    [planTemplates, setMealPlan],
+  );
+
+  const handleDeleteTemplate = useCallback(
+    async (templateId: string): Promise<{ ok: boolean; error?: string }> => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user.id;
+      if (!uid) return { ok: false, error: "Sign in required." };
+      const { error } = await deletePlanTemplate(supabase, uid, templateId);
+      if (error) return { ok: false, error };
+      setPlanTemplates((prev) => prev.filter((t) => t.id !== templateId));
+      toast.success("Template deleted");
+      return { ok: true };
+    },
+    [],
+  );
 
   const recalcTotals = (meals: DayPlan["meals"]): DayPlan["totals"] => dayPlanTotalsFromMeals(meals);
 
@@ -160,6 +302,30 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     ) {
       toast.error("Save recipes to enable swapping");
       return;
+    }
+    // Batch 3.10 — if this meal is the parent of downstream leftovers,
+    // warn and confirm before wiping them. No shame copy — factual count.
+    const prevPlan = generatedPlan ?? mealPlan;
+    const curRecipeId = (curMeal as (typeof curMeal & { recipeId?: string }) | undefined)?.recipeId;
+    if (prevPlan && curRecipeId) {
+      const leftoverCount = countLeftoversOfRecipe(prevPlan, curRecipeId);
+      if (leftoverCount > 0) {
+        const confirmed = window.confirm(
+          `This will remove ${leftoverCount} leftover meal${leftoverCount === 1 ? "" : "s"}. Continue?`,
+        );
+        if (!confirmed) return;
+        // Pre-clear leftovers BEFORE running the swap so totals stay right.
+        setMealPlan((prev) => {
+          if (!prev) return prev;
+          const dayIdx = prev.findIndex((d) => d.day === day);
+          const { plan: cleaned } = markLeftoversOnSwap(prev, {
+            dayIndex: dayIdx,
+            slot: curMeal?.name ?? "",
+            previousRecipeId: curRecipeId,
+          });
+          return cleaned;
+        });
+      }
     }
     const pool = savedRecipesForLibrary.map((r) => r.title);
     setMealPlan((prev) => {
@@ -397,6 +563,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             </button>
             <button
               type="button"
+              onClick={() => setTemplatesOpen(true)}
+              className="px-5 py-2.5 bg-card border border-border rounded-xl hover:bg-muted transition-all shadow-sm"
+              aria-label="Save or apply a plan template"
+            >
+              Templates
+            </button>
+            <button
+              type="button"
               onClick={handleSavePlan}
               className="px-5 py-2.5 bg-primary text-white rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105 font-semibold"
             >
@@ -405,6 +579,29 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           </div>
         )}
       </div>
+
+      <PlanTemplatesDialog
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        sourceMealCount={
+          (generatedPlan ?? mealPlan ?? []).reduce(
+            (n, d) =>
+              n +
+              d.meals.filter(
+                (m) =>
+                  !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
+                  !(m as LeftoverAwareMeal).leftoverOf,
+              ).length,
+            0,
+          )
+        }
+        maxDayCount={(generatedPlan ?? mealPlan ?? []).length || 1}
+        templates={planTemplates}
+        loading={templatesLoading}
+        onSave={handleSaveTemplate}
+        onApply={handleApplyTemplate}
+        onDelete={handleDeleteTemplate}
+      />
 
       <div className="mb-6 rounded-2xl border border-border bg-card/70 backdrop-blur-xl p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
@@ -982,11 +1179,53 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   const bestForLabel = recipeMeta?.mealSlots?.length
                     ? recipeMeta.mealSlots.join(", ")
                     : null;
+                  const leftoverMeal = meal as unknown as LeftoverAwareMeal;
+                  const isLeftover = Boolean(leftoverMeal.leftoverOf);
+                  const isDragging =
+                    dragSource?.day === dp.day && dragSource?.slotIndex === index;
                   return (
                     <div
                       key={slotKey}
-                      className="group bg-card border border-border rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        try {
+                          e.dataTransfer.setData(
+                            "application/x-suppr-meal",
+                            JSON.stringify({ day: dp.day, slotIndex: index }),
+                          );
+                        } catch {
+                          /* older browsers swallow setData; dragSource state still covers it */
+                        }
+                        setDragSource({ day: dp.day, slotIndex: index });
+                      }}
+                      onDragEnd={() => setDragSource(null)}
+                      onDragOver={(e) => {
+                        if (dragSource) {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (!dragSource) return;
+                        handleMoveMeal(dragSource, { day: dp.day, slotIndex: index });
+                        setDragSource(null);
+                      }}
+                      role="listitem"
+                      aria-roledescription="Draggable planned meal"
+                      aria-grabbed={isDragging}
+                      tabIndex={0}
+                      className={`group bg-card border ${
+                        isDragging ? "border-primary/60 opacity-60" : "border-border"
+                      } rounded-2xl p-6 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 shadow-lg cursor-grab active:cursor-grabbing`}
                     >
+                      {isLeftover ? (
+                        <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                          <span aria-hidden>🍱</span>
+                          <span>Leftover of {meal.recipeTitle}</span>
+                        </div>
+                      ) : null}
                       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
                         <div>
                           <span className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-semibold mb-2">
@@ -1032,6 +1271,30 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                             className="px-4 py-2 bg-muted hover:bg-primary/10 text-foreground hover:text-primary rounded-xl transition-all font-medium border border-border hover:border-primary/30"
                           >
                             Swap
+                          </button>
+                          {/* Batch 3.10 — keyboard-accessible move fallback for drag-drop. */}
+                          <button
+                            type="button"
+                            aria-label="Move meal to another slot or day"
+                            onClick={() => {
+                              const total = generatedPlan?.length ?? 1;
+                              const input = window.prompt(
+                                `Move to which day (1-${total}) and slot index (0-based)? Format: day,slot (e.g. 2,1)`,
+                                `${dp.day},${index}`,
+                              );
+                              if (!input) return;
+                              const [dStr, sStr] = input.split(",").map((s) => s.trim());
+                              const d = Number(dStr);
+                              const s = Number(sStr);
+                              if (!Number.isInteger(d) || !Number.isInteger(s)) {
+                                toast.error("Invalid move target");
+                                return;
+                              }
+                              handleMoveMeal({ day: dp.day, slotIndex: index }, { day: d, slotIndex: s });
+                            }}
+                            className="px-4 py-2 bg-muted hover:bg-primary/10 text-foreground hover:text-primary rounded-xl transition-all font-medium border border-border hover:border-primary/30"
+                          >
+                            Move
                           </button>
                           {onCookRecipe ? (
                             <button

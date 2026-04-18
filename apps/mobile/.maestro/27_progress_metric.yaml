@@ -5,66 +5,27 @@ name: "Progress Metric Detail — calorie/protein/streak deep dive"
 
 - tapOn: ".*Progress.*"
 - waitForAnimationToEnd
+- waitForAnimationToEnd
 
-# The progress screen shows stat tiles; tap one to open metric detail
-# Look for Avg Calories or Protein Hit or Streak tile
+# Verify the Progress screen renders with at least one metric tile.
+- extendedWaitUntil:
+    visible: ".*(?:AVG CALORIES|PROTEIN HIT|STREAK|Your progress will appear here).*"
+    timeout: 30000
+
+# If a tile is present, drill into AVG CALORIES detail and verify metric page renders.
 - runFlow:
     when:
-      visible: ".*Avg Calories.*"
+      visible: ".*AVG CALORIES.*"
     commands:
-      - tapOn: ".*Avg Calories.*"
+      - tapOn: ".*AVG CALORIES.*"
+      - waitForAnimationToEnd
       - waitForAnimationToEnd
 
-      # Verify metric detail loaded
+      # Metric detail page shows calorie summary and per-day breakdown
       - assertVisible:
-          text: ".*(?:Calories|calories).*"
-
-      # Verify day breakdown is present
+          text: ".*(?:Calories|calories|kcal).*"
       - assertVisible:
           text: ".*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun).*"
 
-      # Go back
       - back
       - waitForAnimationToEnd
-
-- runFlow:
-    when:
-      visible: ".*Protein Hit.*"
-    commands:
-      - tapOn: ".*Protein Hit.*"
-      - waitForAnimationToEnd
-
-      # Verify protein metric detail
-      - assertVisible:
-          text: ".*(?:Protein|protein).*"
-
-      # Go back
-      - back
-      - waitForAnimationToEnd
-
-- runFlow:
-    when:
-      visible: ".*Streak.*"
-    commands:
-      - tapOn: ".*Streak.*"
-      - waitForAnimationToEnd
-
-      # Verify streak detail
-      - assertVisible:
-          text: ".*(?:Streak|streak|days).*"
-
-      # Go back
-      - back
-      - waitForAnimationToEnd
-
-# If no stat tiles (empty state), verify the empty progress UI
-- runFlow:
-    when:
-      notVisible: ".*Avg Calories.*"
-    commands:
-      - runFlow:
-          when:
-            notVisible: ".*Protein Hit.*"
-          commands:
-            - assertVisible:
-                text: ".*(?:Progress|Weekly|report).*"

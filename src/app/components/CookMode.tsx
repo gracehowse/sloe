@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Play } from "lucide-react";
 import { toast } from "sonner";
 import type { IngredientRow, RecipeCard } from "../../types/recipe.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
+import {
+  parseTimersInStep,
+  formatTimer,
+  type ParsedTimer,
+} from "../../lib/nutrition/recipeTimers.ts";
 
 interface CookModeProps {
   recipe: RecipeCard;
@@ -19,36 +24,60 @@ interface CookModeProps {
   onViewTracker?: () => void;
 }
 
-/** Parse seconds from step text like "cook for 5 minutes" or "bake 20–25 minutes". */
-function parseTimerSeconds(text: string): number | null {
-  const patterns = [
-    /(\d+)\s*–\s*(\d+)\s*min/i,
-    /(\d+)\s*-\s*(\d+)\s*min/i,
-    /(\d+)\s*min/i,
-    /(\d+)\s*hour/i,
-    /(\d+)\s*second/i,
-  ];
-  for (const pat of patterns) {
-    const m = text.match(pat);
-    if (!m) continue;
-    if (pat.source.includes("hour")) return parseInt(m[1]!) * 3600;
-    if (pat.source.includes("second")) return parseInt(m[1]!);
-    // For range like "20-25 minutes", take the higher value
-    const val = m[2] ? parseInt(m[2]!) : parseInt(m[1]!);
-    return val * 60;
-  }
-  return null;
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 /** Strip leading step numbers like "1. " or "Step 1: " */
 function cleanStepText(text: string): string {
   return text.replace(/^\s*(?:step\s*)?\d+[\.\)\:\-]\s*/i, "").trim();
+}
+
+type RunningTimer = {
+  id: string;
+  stepIndex: number;
+  label: string;
+  totalSeconds: number;
+  /** Server-tick-based remainder so the timer doesn't drift on visibility change. */
+  endsAtMs: number;
+  /** Derived each tick — held in state so the badge strip re-renders. */
+  remainingSeconds: number;
+  done: boolean;
+};
+
+/**
+ * Emit a short chime when a timer completes. Uses a no-asset
+ * `AudioContext` tone so it works without bundling a sound file.
+ * Guarded behind user-initiated interaction (the timer start click
+ * satisfies the browser autoplay policy).
+ */
+function playChime() {
+  if (typeof window === "undefined") return;
+  const AC = (window.AudioContext || (window as any).webkitAudioContext) as
+    | typeof AudioContext
+    | undefined;
+  if (!AC) return;
+  try {
+    const ctx = new AC();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.001;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    // Quick envelope: ramp up, beep for ~200ms, ramp down.
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.start(now);
+    osc.stop(now + 0.45);
+    osc.onended = () => {
+      try {
+        ctx.close();
+      } catch {
+        /* no-op */
+      }
+    };
+  } catch {
+    // Audio not allowed — fall through to the toast alert.
+  }
 }
 
 export function CookMode({ recipe, instructionSteps, ingredients, servings, onExit, onViewTracker }: CookModeProps) {
@@ -56,98 +85,187 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   const [currentStep, setCurrentStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerRemaining, setTimerRemaining] = useState(0);
+  const [runningTimers, setRunningTimers] = useState<RunningTimer[]>([]);
   const [logged, setLogged] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const timerTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const firedTimerIdsRef = useRef<Set<string>>(new Set());
 
   const totalSteps = instructionSteps.length;
   const isLastStep = currentStep >= totalSteps - 1;
   const isDone = currentStep >= totalSteps;
 
+  const currentStepRaw = currentStep < totalSteps ? instructionSteps[currentStep]! : "";
   const currentStepText = useMemo(
-    () => (currentStep < totalSteps ? cleanStepText(instructionSteps[currentStep]!) : ""),
-    [currentStep, instructionSteps, totalSteps],
+    () => cleanStepText(currentStepRaw),
+    [currentStepRaw],
   );
 
-  const stepTimerSeconds = useMemo(
-    () => (currentStep < totalSteps ? parseTimerSeconds(instructionSteps[currentStep]!) : null),
-    [currentStep, instructionSteps, totalSteps],
+  /** Parse timers from the CURRENT step's cleaned text so the offsets
+   * align with the rendered substring. */
+  const stepTimers: ParsedTimer[] = useMemo(
+    () => parseTimersInStep(currentStepText),
+    [currentStepText],
   );
 
-  // Track cook mode start
+  // Track cook mode open — includes step count so analytics can see
+  // how deep the recipes users cook are.
   useEffect(() => {
+    track(AnalyticsEvents.cook_mode_opened, {
+      recipeId: recipe.id,
+      stepCount: totalSteps,
+    });
     track(AnalyticsEvents.cook_mode_started, { recipeTitle: recipe.title, steps: totalSteps });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wake Lock
+  // Wake Lock with visibility-change re-acquire.
   useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    (async () => {
+    let active = true;
+
+    const acquire = async () => {
+      if (typeof navigator === "undefined" || !("wakeLock" in navigator)) return;
       try {
-        if ("wakeLock" in navigator) {
-          lock = await navigator.wakeLock.request("screen");
-          wakeLockRef.current = lock;
+        const lock = await navigator.wakeLock.request("screen");
+        if (!active) {
+          try { await lock.release(); } catch { /* noop */ }
+          return;
         }
+        wakeLockRef.current = lock;
+        // Browser may release on its own (e.g. low battery) — noop on release.
+        lock.addEventListener("release", () => {
+          if (wakeLockRef.current === lock) wakeLockRef.current = null;
+        });
       } catch {
-        // Wake Lock not supported or denied — non-critical
+        // Not supported, denied, or out of budget — silent no-op.
       }
-    })();
+    };
+
+    const onVisibilityChange = () => {
+      if (!active) return;
+      if (document.visibilityState === "visible" && wakeLockRef.current == null) {
+        void acquire();
+      }
+    };
+
+    void acquire();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
-      lock?.release();
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      const lock = wakeLockRef.current;
       wakeLockRef.current = null;
+      if (lock) {
+        try { void lock.release(); } catch { /* noop */ }
+      }
     };
   }, []);
 
-  // Timer countdown
+  // Single global tick drives every running timer — no leaks even if a
+  // step with three timers is left behind by step navigation.
   useEffect(() => {
-    if (timerActive && timerRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimerRemaining((prev) => {
-          if (prev <= 1) {
-            setTimerActive(false);
-            toast.success("Timer done!");
-            return 0;
+    if (runningTimers.length === 0) {
+      if (timerTickRef.current) {
+        clearInterval(timerTickRef.current);
+        timerTickRef.current = null;
+      }
+      return;
+    }
+    if (timerTickRef.current) return; // already ticking
+    timerTickRef.current = setInterval(() => {
+      setRunningTimers((prev) => {
+        const now = Date.now();
+        let anyChanged = false;
+        const next = prev.map((t) => {
+          if (t.done) return t;
+          const remaining = Math.max(0, Math.ceil((t.endsAtMs - now) / 1000));
+          if (remaining === t.remainingSeconds && !t.done) return t;
+          anyChanged = true;
+          const done = remaining <= 0;
+          if (done && !firedTimerIdsRef.current.has(t.id)) {
+            firedTimerIdsRef.current.add(t.id);
+            playChime();
+            toast.success(`Timer done: ${t.label}`, {
+              description: `Step ${t.stepIndex + 1}`,
+            });
+            track(AnalyticsEvents.recipe_timer_completed, {
+              recipeId: recipe.id,
+              seconds: t.totalSeconds,
+            });
           }
-          return prev - 1;
+          return { ...t, remainingSeconds: remaining, done };
         });
-      }, 1000);
-    }
+        return anyChanged ? next : prev;
+      });
+    }, 250); // faster cadence smooths the last-second of each countdown
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerTickRef.current) {
+        clearInterval(timerTickRef.current);
+        timerTickRef.current = null;
+      }
     };
-  }, [timerActive, timerRemaining]);
+  }, [runningTimers.length, recipe.id]);
 
-  const startTimer = useCallback(() => {
-    if (stepTimerSeconds) {
-      setTimerRemaining(stepTimerSeconds);
-      setTimerActive(true);
-    }
-  }, [stepTimerSeconds]);
+  const startTimer = useCallback(
+    (timer: ParsedTimer) => {
+      const id = `${currentStep}:${timer.startIndex}:${Date.now()}`;
+      const endsAtMs = Date.now() + timer.totalSeconds * 1000;
+      setRunningTimers((prev) => [
+        ...prev,
+        {
+          id,
+          stepIndex: currentStep,
+          label: timer.label,
+          totalSeconds: timer.totalSeconds,
+          endsAtMs,
+          remainingSeconds: timer.totalSeconds,
+          done: false,
+        },
+      ]);
+      track(AnalyticsEvents.recipe_timer_started, {
+        recipeId: recipe.id,
+        seconds: timer.totalSeconds,
+      });
+    },
+    [currentStep, recipe.id],
+  );
 
-  const stopTimer = useCallback(() => {
-    setTimerActive(false);
-    setTimerRemaining(0);
+  const cancelTimer = useCallback((id: string) => {
+    setRunningTimers((prev) => prev.filter((t) => t.id !== id));
+    firedTimerIdsRef.current.delete(id);
+  }, []);
+
+  const resetTimer = useCallback((id: string) => {
+    setRunningTimers((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        firedTimerIdsRef.current.delete(id);
+        return {
+          ...t,
+          endsAtMs: Date.now() + t.totalSeconds * 1000,
+          remainingSeconds: t.totalSeconds,
+          done: false,
+        };
+      }),
+    );
   }, []);
 
   const goNext = useCallback(() => {
     if (currentStep < totalSteps) {
-      stopTimer();
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
       if (nextStep >= totalSteps) {
         track(AnalyticsEvents.cook_mode_completed, { recipeTitle: recipe.title });
       }
     }
-  }, [currentStep, totalSteps, stopTimer, recipe.title]);
+  }, [currentStep, totalSteps, recipe.title]);
 
   const goPrev = useCallback(() => {
     if (currentStep > 0) {
-      stopTimer();
       setCurrentStep((s) => s - 1);
     }
-  }, [currentStep, stopTimer]);
+  }, [currentStep]);
 
   const toggleIngredientChecked = useCallback((idx: number) => {
     setCheckedIngredients((prev) => {
@@ -159,12 +277,10 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   }, []);
 
   const handleLogMeal = useCallback(() => {
-    // Infer meal name from recipe's tagged slots or time of day
     const hour = new Date().getHours();
     const fallbackMeal = hour < 11 ? "Breakfast" : hour < 15 ? "Lunch" : hour < 17 ? "Snacks" : "Dinner";
     const mealName = recipe.mealSlots?.[0] ?? fallbackMeal;
 
-    // Scale macros by servings relative to recipe base (e.g. cooking 2 servings of a 1-serving recipe)
     const baseServings = recipe.servings > 0 ? recipe.servings : 1;
     const portionMultiplier = servings / baseServings;
     const scale = (v: number) => Math.round(v * portionMultiplier);
@@ -189,9 +305,15 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
     toast.success(`Logged ${mealName} to your tracker!`);
   }, [addLoggedMeal, recipe, servings]);
 
-  // Keyboard navigation
+  // Keyboard navigation — arrows and escape, space as "advance".
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "INPUT" ||
+        target?.isContentEditable;
+      if (isEditable) return;
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
         goNext();
@@ -205,6 +327,47 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [goNext, goPrev, onExit]);
+
+  /**
+   * Render the current step text with each timer-like phrase replaced
+   * by a tappable pill. Offsets come from `parseTimersInStep`, which
+   * uses the same cleaned string we render.
+   */
+  const renderedStep = useMemo(() => {
+    if (stepTimers.length === 0) {
+      return <p className="text-2xl sm:text-3xl leading-relaxed text-white">{currentStepText}</p>;
+    }
+    const nodes: React.ReactNode[] = [];
+    let cursor = 0;
+    stepTimers.forEach((t, i) => {
+      if (t.startIndex > cursor) {
+        nodes.push(currentStepText.slice(cursor, t.startIndex));
+      }
+      const label = t.label;
+      const rangeHint = t.isRange ? ` (timer uses upper bound)` : "";
+      nodes.push(
+        <button
+          key={`${i}:${t.startIndex}`}
+          type="button"
+          onClick={() => startTimer(t)}
+          aria-label={`Start ${formatTimer(t.totalSeconds)} timer${rangeHint}`}
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 mx-0.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors text-[0.9em] font-semibold align-baseline"
+        >
+          <Play className="w-3.5 h-3.5" fill="currentColor" />
+          <span>{label}</span>
+        </button>,
+      );
+      cursor = t.endIndex;
+    });
+    if (cursor < currentStepText.length) {
+      nodes.push(currentStepText.slice(cursor));
+    }
+    return (
+      <p className="text-2xl sm:text-3xl leading-relaxed text-white">
+        {nodes}
+      </p>
+    );
+  }, [currentStepText, stepTimers, startTimer]);
 
   return (
     <div className="fixed inset-0 z-50 bg-background text-white flex flex-col">
@@ -234,6 +397,50 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
           <span className="hidden sm:inline">Ingredients</span>
         </button>
       </div>
+
+      {/* Active timer strip — shown whenever any timer is running, so
+           timers started on earlier steps remain visible and cancellable.
+           role="status" so assistive tech announces new timers. */}
+      {runningTimers.length > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="shrink-0 px-4 py-2 border-b border-border flex flex-wrap gap-2 bg-card/70"
+        >
+          {runningTimers.map((t) => (
+            <div
+              key={t.id}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                t.done
+                  ? "bg-success/15 text-success border border-success/30"
+                  : "bg-primary/10 text-primary border border-primary/25"
+              }`}
+            >
+              <span className="tabular-nums">{formatTimer(t.remainingSeconds)}</span>
+              <span className="text-muted-foreground font-medium">· {t.label}</span>
+              {t.done && (
+                <span role="alert" className="font-semibold">Done!</span>
+              )}
+              <button
+                type="button"
+                onClick={() => resetTimer(t.id)}
+                className="underline text-muted-foreground hover:text-foreground"
+                aria-label={`Reset ${t.label} timer`}
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => cancelTimer(t.id)}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label={`Cancel ${t.label} timer`}
+              >
+                <Icons.close className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
@@ -266,41 +473,10 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 </div>
               </div>
 
-              {/* Step Text */}
+              {/* Step Text with inline timer pills */}
               <div className="max-w-lg text-center mb-8">
-                <p className="text-2xl sm:text-3xl leading-relaxed text-white">
-                  {currentStepText}
-                </p>
+                {renderedStep}
               </div>
-
-              {/* Timer */}
-              {stepTimerSeconds && (
-                <div className="mb-8">
-                  {timerActive ? (
-                    <div className="flex items-center gap-4">
-                      <div className="text-3xl font-mono font-bold text-primary tabular-nums">
-                        {formatTime(timerRemaining)}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={stopTimer}
-                        className="px-4 py-2 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:bg-muted/60 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : timerRemaining === 0 ? (
-                    <button
-                      type="button"
-                      onClick={startTimer}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
-                    >
-                      <Icons.timer className="w-4 h-4" />
-                      Start {formatTime(stepTimerSeconds)} timer
-                    </button>
-                  ) : null}
-                </div>
-              )}
 
               {/* Navigation */}
               <div className="flex items-center gap-4">
@@ -309,6 +485,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   onClick={goPrev}
                   disabled={currentStep === 0}
                   className="p-3 rounded-xl border border-border text-muted-foreground dark:text-muted-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Previous step"
                 >
                   <Icons.back className="w-6 h-6" />
                 </button>
@@ -324,6 +501,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                   onClick={goNext}
                   disabled={isLastStep}
                   className="p-3 rounded-xl border border-border text-muted-foreground dark:text-muted-foreground hover:bg-muted/60 transition-colors disabled:opacity-0 disabled:cursor-default"
+                  aria-label="Next step"
                 >
                   <Icons.forward className="w-6 h-6" />
                 </button>

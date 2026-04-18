@@ -38,6 +38,11 @@ import {
   computeLoggingStreak,
   computeWeekFiberWaterHits,
 } from "../../lib/nutrition/trackerStats.ts";
+import {
+  availableFreezes,
+  readFreezeLedger,
+  type FreezeLedger,
+} from "../../lib/nutrition/streakFreeze.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import {
   normalizeWeekSummaryMode,
@@ -62,6 +67,18 @@ import {
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { DailyRing, type CalorieRingDisplayMode } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
+import { RemainingMacrosBar } from "./suppr/remaining-macros-bar";
+import { QuickAddPanel } from "./suppr/quick-add-panel";
+import { CopyMealDialog } from "./suppr/copy-meal-dialog";
+import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
+import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
+import { VoiceLogDialog } from "./suppr/voice-log-dialog";
+import { PhotoLogDialog } from "./suppr/photo-log-dialog";
+import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
+import type { AiLoggedItem } from "../../lib/nutrition/aiLogging";
+import { computeEatAgainForSlot, type FoodHistoryItem } from "../../lib/nutrition/foodHistory";
+import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
+import type { SavedMeal, SavedMealItem } from "../../lib/nutrition/savedMeals";
 import { DayStrip } from "./DayStrip.tsx";
 import {
   parseDateKey,
@@ -217,6 +234,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     addLoggedMeal,
     addLoggedMealForDate,
     removeLoggedMeal,
+    copyMealToDate,
+    copyMealToDateRange,
+    duplicateDay,
+    duplicateDayToDateRange,
     mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
@@ -226,6 +247,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     setActivityBurnForSelectedDay,
     addWaterMlForSelectedDay,
     extraWaterMlForSelectedDay,
+    addCaffeineMgForSelectedDay,
+    extraCaffeineMgForSelectedDay,
+    extraCaffeineByDay: _extraCaffeineByDay,
+    addAlcoholGForSelectedDay,
+    extraAlcoholGByDay,
+    resetHydrationStimulantsForDay,
+    targetCaffeineMg,
+    targetAlcoholGWeekly,
     workoutsByDay,
     basalBurnByDay,
     profileMeasurementSystem,
@@ -235,6 +264,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     profileDisplayName,
     authEmail,
   } = useAppData();
+  // Suppress unused warning for caffeine-by-day (currently shown only via
+  // today's number; weekly caffeine view is a separate roadmap item).
+  void _extraCaffeineByDay;
 
   const useImperialWater = profileMeasurementSystem === "imperial";
   const formatWaterLine = (ml: number) =>
@@ -261,6 +293,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   const [ringExpanded, setRingExpanded] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
+  const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
+  /** Batch 1.4 — Duplicate day dialog visibility. */
+  const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
@@ -304,18 +340,33 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [quickSelected, setQuickSelected] = useState<UsdaFoodDetails | null>(null);
   const [quickGrams, setQuickGrams] = useState(100);
   const [quickMealSlot, setQuickMealSlot] = useState("Lunch");
-  const headerPhotoInputRef = useRef<HTMLInputElement>(null);
   /** Recipe log: scale catalog/saved recipe macros (1 = solo, 2 = shared dinner, etc.). */
   const [recipePortionMultiplier, setRecipePortionMultiplier] = useState(1);
 
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  // Batch 5.13 — Pro-gated Voice + AI photo logging dialogs replace the
+  // legacy free-tier inline text dialog and `<input type="file">` upload.
+  const [voiceLogOpen, setVoiceLogOpen] = useState(false);
+  const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
+  // alongside `week_start_day`; budget defaults to 3.
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
+    earnedAt: [],
+    usedHistory: [],
+  });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  // Batch 4.11 — freeze sub-label on Today streak card. Safe to default
+  // to 0 when the ledger hasn't loaded; the sub-label is hidden then.
+  const freezesAvailableToday = useMemo(
+    () => availableFreezes(freezeLedger, freezeBudgetMax),
+    [freezeLedger, freezeBudgetMax],
+  );
   const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
@@ -324,6 +375,130 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
   const calendarInputRef = useRef<HTMLInputElement>(null);
   const { authedUserId } = useAuthSession();
+
+  /** Infer the default meal slot from local clock time for Eat-again /
+   * Quick Add defaults. Mirrors the mobile rule of thumb in
+   * `apps/mobile/app/(tabs)/index.tsx`. */
+  const currentSlotFromTime = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 10) return "Breakfast";
+    if (h < 14) return "Lunch";
+    if (h < 17) return "Snacks";
+    return "Dinner";
+  }, []);
+  const [eatAgainDismissedKey, setEatAgainDismissedKey] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem("suppr-eat-again-dismissed");
+    } catch {
+      return null;
+    }
+  });
+
+  /** Suggestion for the "Eat again" card — previous-day meal in the
+   * slot matching the current clock time. `null` disables the card. */
+  const eatAgainSuggestion = useMemo(() => {
+    return computeEatAgainForSlot(nutritionByDay, currentSlotFromTime, new Date());
+  }, [nutritionByDay, currentSlotFromTime]);
+
+  /** Log a history row (Favourite / Frequent / Recent / Eat again) into
+   * the active meal slot. Shared by QuickAddPanel + Eat-again card so
+   * the event shape is consistent. */
+  const logHistoryItem = useCallback(
+    (item: FoodHistoryItem, slot: string) => {
+      addLoggedMeal({
+        name: slot,
+        recipeTitle: item.recipeTitle,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        ...(item.fiber != null ? { fiberG: item.fiber } : {}),
+        ...(item.source ? { source: item.source } : {}),
+      });
+      try {
+        track(AnalyticsEvents.food_logged, { source: "quick_add", slot });
+      } catch {
+        /* analytics is fire-and-forget */
+      }
+      toast.success(`Logged ${item.recipeTitle} to ${slot}.`);
+    },
+    [addLoggedMeal],
+  );
+
+  /** Expand a saved-meal combo into individual journal entries and
+   * insert each one via the same primitive as manual logs. Batch 2.6. */
+  const logSavedMeal = useCallback(
+    (meal: SavedMeal, slot: string) => {
+      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      // Build entries — makeId is swallowed because addLoggedMealForDate
+      // mints its own id. We pass `() => ""` here; the id field is
+      // discarded before insert. Using `newId` is impossible (it is
+      // file-local to persistence.ts) and unnecessary.
+      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => "");
+      for (const entry of entries) {
+        const {
+          id: _discardedId,
+          sourceId: _discardedSourceId,
+          ...payload
+        } = entry;
+        void _discardedId;
+        void _discardedSourceId;
+        addLoggedMealForDate(selectedDateKey, payload);
+      }
+      toast.success(`Logged ${meal.name} to ${slot}.`);
+    },
+    [addLoggedMealForDate, selectedDateKey],
+  );
+
+  /** "Save these as a meal" — gather the items in the active slot and
+   * dispatch a CustomEvent the QuickAddPanel listens for. Keeps the
+   * panel's prop API unchanged. Batch 2.6. */
+  const openSaveMealDialog = useCallback(
+    (slotName: string) => {
+      if (typeof window === "undefined") return;
+      const slotMeals = mealsForSelectedDate.filter(
+        (m) => normalizeJournalSlotName(m.name ?? "") === slotName,
+      );
+      if (slotMeals.length < 2) {
+        toast.info("Log 2 or more items first, then save the combo.");
+        return;
+      }
+      const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
+        const pm = m.portionMultiplier ?? 1;
+        const item: Omit<SavedMealItem, "id" | "position"> = {
+          recipeTitle: m.recipeTitle,
+          calories: scaledMacro(m.calories, pm),
+          protein: scaledMacro(m.protein, pm),
+          carbs: scaledMacro(m.carbs, pm),
+          fat: scaledMacro(m.fat, pm),
+          portionMultiplier: 1, // snapshot macros are already scaled
+        };
+        if (m.fiberG != null) item.fiber = m.fiberG;
+        if (m.waterMl != null) item.waterMl = m.waterMl;
+        if (m.source) item.source = m.source;
+        return item;
+      });
+      window.dispatchEvent(
+        new CustomEvent("suppr:open-save-meal-dialog", { detail: { items } }),
+      );
+    },
+    [mealsForSelectedDate],
+  );
+
+  const dismissEatAgain = useCallback(() => {
+    const key = todayKey();
+    setEatAgainDismissedKey(key);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("suppr-eat-again-dismissed", key);
+      } catch {
+        /* noop */
+      }
+    }
+  }, []);
+  const eatAgainDismissedForToday = eatAgainDismissedKey === todayKey();
 
   useEffect(() => {
     const id = setInterval(() => setFastingNowTick(Date.now()), 60_000);
@@ -335,7 +510,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     supabase
       .from("profiles")
       .select(
-        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros",
+        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -343,6 +518,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         if (!data) return;
         const wsd = (data as { week_start_day?: string }).week_start_day;
         if (wsd === "sunday" || wsd === "monday") setWeekStartDay(wsd);
+
+        // Batch 4.11 — freeze ledger loads alongside other profile bits.
+        const rawEarned = (data as { streak_freezes_earned_at?: unknown })
+          .streak_freezes_earned_at;
+        const rawUsed = (data as { streak_freezes_used_history?: unknown })
+          .streak_freezes_used_history;
+        setFreezeLedger(
+          readFreezeLedger({ earnedAt: rawEarned, usedHistory: rawUsed }),
+        );
+        const rawBudget = Number(
+          (data as { streak_freeze_budget_max?: number }).streak_freeze_budget_max,
+        );
+        setFreezeBudgetMax(
+          Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3,
+        );
         setTrackedDashboardMacros(
           normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros),
         );
@@ -392,7 +582,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [refreshTrackedDashboardMacros]);
 
-  const [voiceText, setVoiceText] = useState("");
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" ? navigator.onLine : true,
   );
@@ -409,27 +598,32 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     };
   }, []);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotoUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-      const resp = await fetch("/api/nutrition/photo-log", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await resp.json();
-      if (resp.status === 403 && data.error === "upgrade_required") {
-        toast.error(data.message ?? "Photo meal logging requires a paid plan.");
-        return;
-      }
-      if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-        toast.error(data.message ?? "Could not identify food items. Try a clearer photo.");
-        return;
-      }
-      for (const item of data.items) {
+  const handleVoiceLog = () => {
+    // Batch 5.13 — Pro gate. Free users see the paywall dialog; Base users
+    // currently have voice via the server's existing Base+ check, but the
+    // product spec gates on Pro specifically.
+    if (userTier !== "pro") {
+      track(AnalyticsEvents.voice_log_paywalled);
+      setAiPaywallFeature("voice_log");
+      return;
+    }
+    setVoiceLogOpen(true);
+  };
+
+  const handlePhotoLogClick = () => {
+    // Batch 5.13 — Pro gate for AI photo logging.
+    if (userTier !== "pro") {
+      track(AnalyticsEvents.ai_photo_log_paywalled);
+      setAiPaywallFeature("photo_log");
+      return;
+    }
+    setPhotoLogOpen(true);
+  };
+
+  const commitAiLoggedItems = useCallback(
+    (items: AiLoggedItem[]) => {
+      if (items.length === 0) return;
+      for (const item of items) {
         addLoggedMeal({
           name: mealSlot,
           recipeTitle: item.name,
@@ -438,89 +632,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           protein: Math.round(item.protein),
           carbs: Math.round(item.carbs),
           fat: Math.round(item.fat),
-          source: "AI photo",
+          source: item.source === "voice" ? "AI voice" : "AI photo",
         });
       }
-      toast.success(`Logged ${data.items.length} item${data.items.length > 1 ? "s" : ""} (${data.totalCalories} kcal)`);
-    } catch {
-      toast.error("Photo logging failed. Please try again.");
-    } finally {
-      setPhotoUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const submitVoiceTranscriptWeb = async (transcript: string) => {
-    if (!transcript.trim()) return;
-    try {
-      const resp = await fetch("/api/nutrition/voice-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: transcript.trim() }),
-      });
-      const data = await resp.json();
-      if (resp.status === 403 && data.error === "upgrade_required") {
-        toast.error(data.message ?? "Voice meal logging requires a paid plan.");
-        return;
-      }
-      if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-        toast.error(data.message ?? "Could not parse your description. Try again.");
-        return;
-      }
-      for (const item of data.items) {
-        addLoggedMeal({
-          name: mealSlot,
-          recipeTitle: item.name,
-          time: mealSlot,
-          calories: Math.round(item.calories),
-          protein: Math.round(item.protein),
-          carbs: Math.round(item.carbs),
-          fat: Math.round(item.fat),
-          source: "AI voice",
-        });
-      }
-      toast.success(`Logged ${data.items.length} item${data.items.length > 1 ? "s" : ""} (${data.totalCalories} kcal) from voice`);
-    } catch {
-      toast.error("Voice logging failed. Please try again.");
-    }
-  };
-
-  const handleVoiceLog = async () => {
-    const SpeechRecognition = typeof window !== "undefined"
-      ? (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
-      : null;
-
-    if (SpeechRecognition) {
-      try {
-        const transcript = await new Promise<string>((resolve, reject) => {
-          const recognition = new SpeechRecognition();
-          recognition.lang = "en-US";
-          recognition.interimResults = false;
-          recognition.maxAlternatives = 1;
-          let gotResult = false;
-          recognition.onresult = (event: any) => {
-            gotResult = true;
-            resolve(event.results[0][0].transcript);
-          };
-          recognition.onerror = (event: any) => reject(new Error(event.error));
-          recognition.onend = () => {
-            if (!gotResult) reject(new Error("no-speech"));
-          };
-          recognition.start();
-          toast.info("Listening... Describe what you ate.");
-        });
-        if (transcript.trim()) {
-          await submitVoiceTranscriptWeb(transcript);
-          return;
-        }
-      } catch {
-        // Speech recognition failed or returned empty — fall through to text dialog
-      }
-    }
-
-    // Always fall through to text dialog if speech didn't produce a result
-    setVoiceDialogOpen(true);
-  };
+      const label = items[0]?.source === "voice" ? "voice" : "photo";
+      toast.success(`Logged ${items.length} item${items.length === 1 ? "" : "s"} from ${label}`);
+    },
+    [addLoggedMeal, mealSlot],
+  );
 
   const recipeOptions = useMemo((): RecipeCard[] => {
     return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
@@ -1227,6 +1346,37 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
       {viewMode === "day" && (
       <>
+      {/* Eat again — one-tap re-log of the most recent meal in the slot
+          matching the current clock time. Dismissible per day. */}
+      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
+        <div className="mb-3 rounded-card border border-primary/30 bg-primary/5 px-3.5 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eat again</p>
+            <p className="text-[13px] font-semibold text-foreground truncate">{eatAgainSuggestion.recipeTitle}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {Math.round(eatAgainSuggestion.calories)} kcal · P {Math.round(eatAgainSuggestion.protein)}g · C {Math.round(eatAgainSuggestion.carbs)}g · F {Math.round(eatAgainSuggestion.fat)}g · into {currentSlotFromTime}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-primary text-primary-foreground hover:opacity-90"
+            aria-label={`Log ${eatAgainSuggestion.recipeTitle} to ${currentSlotFromTime}`}
+          >
+            Log
+          </button>
+          <button
+            type="button"
+            onClick={dismissEatAgain}
+            className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss Eat again suggestion"
+            title="Dismiss"
+          >
+            <span aria-hidden>×</span>
+          </button>
+        </div>
+      )}
+
       {/* Daily ring — tap to expand macro rings */}
       <div className="flex flex-col items-center mb-4">
         <DailyRing
@@ -1259,6 +1409,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           ))}
         </div>
       </div>
+
+      {/* Remaining macros — kcal / P / C / F (and fiber when tracked) left today. */}
+      <RemainingMacrosBar
+        className="mb-4"
+        targets={{
+          calories: effectiveCalorieTarget,
+          protein: targets.protein,
+          carbs: targets.carbs,
+          fat: targets.fat,
+          fiber: targets.fiber,
+        }}
+        consumed={{
+          calories: totals.calories,
+          protein: totals.protein,
+          carbs: totals.carbs,
+          fat: totals.fat,
+          fiber: totals.fiber,
+        }}
+      />
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings), same keys as mobile */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -1372,43 +1541,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         })}
       </div>
 
-      {/* Full hydration card only when water is not already a dashboard tile (avoids duplicate summary + bar). */}
-      {!trackedDashboardMacros.includes("water") ? (
-        <div className="rounded-xl bg-card border border-border p-3 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <IconBox size="sm" tone="water">
-                <Icons.water />
-              </IconBox>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">Water</span>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {formatWaterLine(totalWaterMl)} / {formatWaterLine(targets.waterMl)}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-1.5">
-              {([250, 500] as const).map((ml) => (
-                <button
-                  key={ml}
-                  type="button"
-                  onClick={() => addWaterMlForSelectedDay(ml)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
-                >
-                  +{ml} ml
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Progress bar */}
-          <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-macro-water transition-all duration-300"
-              style={{ width: `${Math.min((totalWaterMl / Math.max(targets.waterMl, 1)) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
-      ) : null}
+      {/* Hydration & stimulants card (Batch 2.5).
+          Replaces the old water-only tile. Always renders so caffeine +
+          alcohol are reachable even when "water" is already a dashboard
+          widget (the widget shows daily water; this card adds quick-add
+          chips + stimulant rows). */}
+      <HydrationStimulantsCard
+        selectedDateKey={selectedDateKey}
+        weekStartDay={weekStartDay}
+        targets={{
+          waterMl: targets.waterMl,
+          caffeineMg: targetCaffeineMg,
+          alcoholGWeekly: targetAlcoholGWeekly,
+        }}
+        waterTotalMl={totalWaterMl}
+        waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+        caffeineTotalMg={extraCaffeineMgForSelectedDay}
+        alcoholByDayG={extraAlcoholGByDay}
+        measurementSystem={profileMeasurementSystem}
+        onAddWater={addWaterMlForSelectedDay}
+        onAddCaffeine={addCaffeineMgForSelectedDay}
+        onAddAlcohol={addAlcoholGForSelectedDay}
+        onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+      />
+      {/* End hydration & stimulants card */}
 
       {/* Steps & activity (manual steps; water total above) */}
       <div className="rounded-xl bg-card border border-border p-3 mb-4">
@@ -1473,32 +1629,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </div>
       ) : null}
 
-      {/* 4. Quick Log Strip: 4 action chips in a row */}
+      {/* 4. Quick Log Strip: 5 action chips — Search, Voice (Pro), Snap (Pro),
+          Scan, Photo (legacy free). Voice + Snap are gated; free-tier users
+          see a lock icon and tapping opens the factual Pro paywall
+          (Batch 5.13). */}
       <div className="flex gap-2 mb-5">
-        {/* Photo chip */}
-        <button
-          type="button"
-          onClick={() => headerPhotoInputRef.current?.click()}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors flex"
-        >
-          <IconBox size="sm" tone="primary">
-            <Icons.camera />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground">Photo</span>
-        </button>
-
-        {/* Voice chip */}
-        <button
-          type="button"
-          onClick={handleVoiceLog}
-          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-success/40 transition-colors flex"
-        >
-          <IconBox size="sm" tone="success">
-            <Icons.mic />
-          </IconBox>
-          <span className="text-[10px] font-medium text-muted-foreground">Voice</span>
-        </button>
-
         {/* Search chip */}
         <button
           type="button"
@@ -1509,6 +1644,42 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             <Icons.search />
           </IconBox>
           <span className="text-[10px] font-medium text-muted-foreground">Search</span>
+        </button>
+
+        {/* Voice chip (Pro) */}
+        <button
+          type="button"
+          onClick={handleVoiceLog}
+          aria-label={userTier === "pro" ? "Open voice log" : "Voice log — Pro feature"}
+          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-success/40 transition-colors flex relative"
+        >
+          <IconBox size="sm" tone="success">
+            <Icons.mic />
+          </IconBox>
+          <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+            Voice
+            {userTier !== "pro" && (
+              <Icons.lock className="size-2.5" aria-hidden />
+            )}
+          </span>
+        </button>
+
+        {/* Snap chip (Pro — AI photo logging) */}
+        <button
+          type="button"
+          onClick={handlePhotoLogClick}
+          aria-label={userTier === "pro" ? "Open AI photo log" : "AI photo log — Pro feature"}
+          className="flex-1 flex-col items-center gap-1.5 p-2.5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors flex relative"
+        >
+          <IconBox size="sm" tone="primary">
+            <Icons.camera />
+          </IconBox>
+          <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+            Snap
+            {userTier !== "pro" && (
+              <Icons.lock className="size-2.5" aria-hidden />
+            )}
+          </span>
         </button>
 
         {/* Scan chip */}
@@ -1524,19 +1695,35 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </button>
       </div>
 
-      <input
-        ref={headerPhotoInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
-        onChange={handlePhotoUpload}
+
+      {/* Quick add panel — Favourites / Frequent / Recent / My meals tabs
+          with one-tap log. Batch 2.6 adds "My meals" for saved combos. */}
+      <QuickAddPanel
+        className="mb-4"
+        byDay={nutritionByDay}
+        activeSlot={mealSlot}
+        supabase={supabase}
+        userId={authedUserId ?? ""}
+        onLog={(item) => logHistoryItem(item, mealSlot)}
+        onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
       />
 
       {/* 5. Meals Section */}
       <div className="mb-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Meals</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Meals</h3>
+          {mealsForSelectedDate.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setDuplicateDayOpen(true)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-md border border-border bg-card"
+              aria-label="Duplicate this day to another day"
+            >
+              <Icons.copyPlus className="w-3.5 h-3.5" />
+              Duplicate day…
+            </button>
+          )}
+        </div>
         <div className="rounded-card bg-card border border-border overflow-hidden">
           {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
             const consumed: Record<string, number> = {};
@@ -1580,6 +1767,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
                   </span>
                   <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
+                  {/* Batch 2.6 — "Save these as a meal" when the slot has 2+ items. */}
+                  {sectionMeals.length >= 2 && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openSaveMealDialog(sectionName); }}
+                      className="mr-1 inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      aria-label={`Save ${sectionName} items as a meal combo`}
+                      title="Save these as a meal"
+                    >
+                      Save combo
+                    </button>
+                  )}
                   <Icons.down className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`} />
                 </div>
 
@@ -1597,14 +1796,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="text-xs text-muted-foreground tabular-nums">{Math.round(meal.calories)}</span>
-                          <button
-                            type="button"
-                            onClick={() => { if (window.confirm(`Remove "${meal.recipeTitle}"?`)) removeLoggedMeal(meal.id); }}
-                            className="text-muted-foreground hover:text-destructive"
-                            aria-label={`Remove ${meal.recipeTitle}`}
-                          >
-                            <Icons.delete className="w-3.5 h-3.5" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground px-1"
+                                aria-label={`More actions for ${meal.recipeTitle}`}
+                              >
+                                <Icons.more className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => setCopyMealTargetId(meal.id)}
+                              >
+                                Copy to another day…
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => { if (window.confirm(`Remove "${meal.recipeTitle}"?`)) removeLoggedMeal(meal.id); }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
@@ -1688,29 +1903,37 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                     <Icons.add className="h-5 w-5" />
                     {mealPlan && mealPlan.length > 0 ? "Add custom meal" : "Log your first meal"}
                   </button>
-                  <label
-                    aria-label="Upload a meal photo for AI nutrition estimate"
-                    title="Photos are sent to our servers and may be processed with AI to estimate nutrition."
-                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary cursor-pointer hover:bg-primary/5 transition-colors"
+                  <button
+                    type="button"
+                    onClick={handlePhotoLogClick}
+                    aria-label={
+                      userTier === "pro"
+                        ? "AI photo log — snap a meal for nutrition estimates"
+                        : "AI photo log — Pro feature"
+                    }
+                    title="Photos are sent to our servers and processed with AI to estimate nutrition. Pro only."
+                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
                   >
                     <Icons.camera className="h-5 w-5" />
                     Photo log
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                    />
-                  </label>
+                    {userTier !== "pro" && (
+                      <Icons.lock className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={handleVoiceLog}
-                    title="Voice and typed descriptions may be processed with AI on our servers."
+                    aria-label={
+                      userTier === "pro" ? "Record voice log" : "Voice log — Pro feature"
+                    }
+                    title="Voice and typed descriptions are processed with AI on our servers. Pro only."
                     className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
                   >
-                    <Icons.edit className="h-5 w-5" />
+                    <Icons.mic className="h-5 w-5" />
                     Voice log
+                    {userTier !== "pro" && (
+                      <Icons.lock className="h-3.5 w-3.5" aria-hidden />
+                    )}
                   </button>
                 </div>
               </div>
@@ -1730,8 +1953,17 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               {streakDays}-day logging streak
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              You've logged meals {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
+              You&apos;ve logged meals {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
             </p>
+            {freezesAvailableToday > 0 ? (
+              <p
+                className="text-[11px] text-primary mt-0.5 inline-flex items-center gap-1"
+                aria-label={`${freezesAvailableToday} streak freeze${freezesAvailableToday === 1 ? "" : "s"} available`}
+              >
+                <Icons.streakFreeze className="h-3 w-3" aria-hidden />
+                {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
+              </p>
+            ) : null}
           </div>
         </div>
       )}
@@ -2140,6 +2372,36 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                         )}C · ${Math.round(m.fat * mult)}F`;
                       })()}
                     </div>
+                    {/* Fit-this-in preview — parity with mobile FoodSearchModal. */}
+                    <RemainingMacrosBar
+                      className="mt-2"
+                      targets={{
+                        calories: effectiveCalorieTarget,
+                        protein: targets.protein,
+                        carbs: targets.carbs,
+                        fat: targets.fat,
+                        fiber: targets.fiber,
+                      }}
+                      consumed={{
+                        calories: totals.calories,
+                        protein: totals.protein,
+                        carbs: totals.carbs,
+                        fat: totals.fat,
+                        fiber: totals.fiber,
+                      }}
+                      candidate={(() => {
+                        const g = Math.max(1, Math.round(foodGrams) || 1);
+                        const mult = g / 100;
+                        const m = foodSelected.macrosPer100g;
+                        return {
+                          calories: m.calories * mult,
+                          protein: m.protein * mult,
+                          carbs: m.carbs * mult,
+                          fat: m.fat * mult,
+                          fiber: (m.fiberG ?? 0) * mult,
+                        };
+                      })()}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -2626,58 +2888,76 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </DialogContent>
       </Dialog>
 
-      {/* Voice log text dialog */}
-      <Dialog open={voiceDialogOpen} onOpenChange={(open) => { setVoiceDialogOpen(open); if (!open) setVoiceText(""); }}>
-        <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Voice Log</DialogTitle>
-            <DialogDescription className="text-muted-foreground space-y-2">
-              <span className="block">
-                Describe what you ate and we&apos;ll estimate the nutrition. Text is processed on our servers and may be
-                sent to an AI provider (e.g. OpenAI). Browser speech recognition, if you use it elsewhere, may be
-                handled by your device or browser before text reaches us.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <input
-              type="text"
-              value={voiceText}
-              onChange={(e) => setVoiceText(e.target.value)}
-              placeholder='e.g. "2 scrambled eggs and toast with butter"'
-              className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && voiceText.trim()) {
-                  setVoiceDialogOpen(false);
-                  submitVoiceTranscriptWeb(voiceText.trim());
-                  setVoiceText("");
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => { setVoiceDialogOpen(false); setVoiceText(""); }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (voiceText.trim()) {
-                  setVoiceDialogOpen(false);
-                  submitVoiceTranscriptWeb(voiceText.trim());
-                  setVoiceText("");
-                }
-              }}
-              disabled={!voiceText.trim()}
-            >
-              Log Food
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
+      <VoiceLogDialog
+        open={voiceLogOpen}
+        onOpenChange={setVoiceLogOpen}
+        activeSlot={mealSlot}
+        onCommit={commitAiLoggedItems}
+      />
+
+      {/* Batch 5.13 — AI photo log (Pro). */}
+      <PhotoLogDialog
+        open={photoLogOpen}
+        onOpenChange={setPhotoLogOpen}
+        activeSlot={mealSlot}
+        onCommit={commitAiLoggedItems}
+      />
+
+      {/* Batch 5.13 — Factual Pro paywall for voice / photo logging. */}
+      <AiPaywallDialog
+        open={aiPaywallFeature !== null}
+        onOpenChange={(next) => {
+          if (!next) setAiPaywallFeature(null);
+        }}
+        feature={aiPaywallFeature ?? "voice_log"}
+      />
+
+      {/* Batch 1.4 — Copy meal to another day */}
+      {copyMealTargetId && (() => {
+        const meal = mealsForSelectedDate.find((m) => m.id === copyMealTargetId);
+        if (!meal) return null;
+        return (
+          <CopyMealDialog
+            open={true}
+            onOpenChange={(open) => { if (!open) setCopyMealTargetId(null); }}
+            sourceDayKey={selectedDateKey}
+            mealLabel={meal.recipeTitle}
+            onConfirm={(targetDayKeys, summary) => {
+              if (targetDayKeys.length === 0) {
+                toast(summary);
+                return;
+              }
+              if (targetDayKeys.length === 1) {
+                void copyMealToDate(selectedDateKey, meal.id, targetDayKeys[0]!);
+              } else {
+                void copyMealToDateRange(selectedDateKey, meal.id, targetDayKeys);
+              }
+              toast.success(summary);
+            }}
+          />
+        );
+      })()}
+
+      {/* Batch 1.4 — Duplicate the whole day */}
+      <DuplicateDayDialog
+        open={duplicateDayOpen}
+        onOpenChange={setDuplicateDayOpen}
+        sourceDayKey={selectedDateKey}
+        sourceMealCount={mealsForSelectedDate.length}
+        onConfirm={(targetDayKeys, summary) => {
+          if (targetDayKeys.length === 0) {
+            toast(summary);
+            return;
+          }
+          if (targetDayKeys.length === 1) {
+            void duplicateDay(selectedDateKey, targetDayKeys[0]!);
+          } else {
+            void duplicateDayToDateRange(selectedDateKey, targetDayKeys);
+          }
+          toast.success(summary);
+        }}
+      />
     </div>
   );
 });

@@ -6,41 +6,42 @@ name: "Voice log — text input fallback, submit, cancel"
 - tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
-# Tap Voice button
+# Tap Voice quick-log button
 - tapOn: ".*Voice.*"
 - waitForAnimationToEnd
 
-# Should show the voice log text input (fallback in Expo Go)
+# Verify the voice log modal opened (Voice Log header + intro text)
 - assertVisible:
-    text: ".*(?:Voice Log|Describe what you ate).*"
-
-# Verify the text input placeholder
+    text: ".*Voice Log.*"
+- assertVisible:
+    text: ".*Describe what you ate.*"
 - assertVisible:
     text: ".*Type what you ate.*"
 
-# Verify Cancel button
-- assertVisible: ".*Cancel.*"
+# Verify the submit button (the modal uses "Log Food", not Cancel/Submit)
+- assertVisible: ".*Log Food.*"
 
-# Type a food description
+# Type a food description into the input
 - tapOn:
     text: ".*Type what you ate.*"
 - inputText: "2 scrambled eggs and toast with butter"
 - waitForAnimationToEnd
 
-# Verify the submit/log button is present
-- assertVisible:
-    text: ".*(?:Log|Submit|Done|Save).*"
+# Submit button still visible
+- assertVisible: ".*Log Food.*"
 
-# Cancel instead of submitting (don't create test data)
-- tapOn: ".*Cancel.*"
+# Dismiss the bottom sheet by tapping the backdrop (top of screen, above the sheet)
+- tapOn:
+    point: "50%,10%"
 - waitForAnimationToEnd
 
 # Verify we're back on Today screen
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
-# Re-open and immediately cancel to test dismiss
+# Re-open and dismiss via backdrop again
 - tapOn: ".*Voice.*"
 - waitForAnimationToEnd
-- tapOn: ".*Cancel.*"
+- tapOn:
+    point: "50%,10%"
 - waitForAnimationToEnd

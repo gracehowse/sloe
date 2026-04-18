@@ -8,6 +8,11 @@ import {
 } from "../../../src/lib/openFoodFacts/offServingPortions";
 import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
 import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
+import {
+  effectiveMacros as effectiveIngredientMacros,
+  recomputeRecipeTotals,
+  type IngredientOverride,
+} from "../../../src/lib/nutrition/ingredientOverrides";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -57,7 +62,19 @@ export type VerifiableIngredient = {
   portions: FoodPortion[];
   /** Currently chosen portion */
   chosenPortion: FoodPortion | null;
+  /** Batch 2.7 — manual macro override takes precedence over the match in totals. */
+  overrideMacros?: IngredientOverride;
+  /** Batch 2.7 — row added by the user post-import (not importer-parsed). */
+  addedByUser?: boolean;
 };
+
+/**
+ * Batch 2.7 — expose the shared helpers directly so the verify screen
+ * and any totaliser can compute effective per-ingredient macros without
+ * re-implementing the override precedence rule.
+ */
+export { effectiveIngredientMacros, recomputeRecipeTotals };
+export type { IngredientOverride };
 
 export type FoodSearchResult = {
   fdcId: number;
@@ -186,7 +203,9 @@ export async function fetchIngredientsForVerification(
 ): Promise<VerifiableIngredient[]> {
   const { data, error } = await supabase
     .from("recipe_ingredients")
-    .select("id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source")
+    .select(
+      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+    )
     .eq("recipe_id", recipeId);
 
   if (error || !data) return [];
@@ -211,6 +230,21 @@ export async function fetchIngredientsForVerification(
       sugarG: Math.round(((r.sugar_g ?? 0) / factor) * 10) / 10,
       sodiumMg: Math.round((r.sodium_mg ?? 0) / factor),
     } : null;
+    const ov = r.override_macros && typeof r.override_macros === "object" ? r.override_macros : null;
+    const overrideMacros: IngredientOverride | undefined =
+      ov &&
+      Number.isFinite(ov.calories) &&
+      Number.isFinite(ov.protein) &&
+      Number.isFinite(ov.carbs) &&
+      Number.isFinite(ov.fat)
+        ? {
+            calories: Number(ov.calories),
+            protein: Number(ov.protein),
+            carbs: Number(ov.carbs),
+            fat: Number(ov.fat),
+            ...(Number.isFinite(ov.fiber) ? { fiber: Number(ov.fiber) } : {}),
+          }
+        : undefined;
     return {
       id: r.id,
       name: r.name ?? "",
@@ -231,6 +265,8 @@ export async function fetchIngredientsForVerification(
       macrosPer100g: per100g,
       portions: [],
       chosenPortion: null,
+      ...(overrideMacros ? { overrideMacros } : {}),
+      ...(r.added_by_user ? { addedByUser: true as const } : {}),
     };
   });
 }
@@ -639,27 +675,34 @@ export async function saveVerifiedIngredients(
 ): Promise<{ ok: true } | { error: string }> {
   // 1. Compute and save recipe totals FIRST — ensures recipe-level macros always
   //    reflect the user's intent even if per-ingredient updates partially fail.
+  //    We use `effectiveIngredientMacros` so per-ingredient overrides take
+  //    precedence when summing (Batch 2.7).
   const totals = ingredients.reduce(
-    (acc, i) => ({
-      calories: acc.calories + i.calories,
-      protein: acc.protein + i.protein,
-      carbs: acc.carbs + i.carbs,
-      fat: acc.fat + i.fat,
-      fiberG: acc.fiberG + i.fiberG,
-      sugarG: acc.sugarG + i.sugarG,
-      sodiumMg: acc.sodiumMg + i.sodiumMg,
-    }),
+    (acc, i) => {
+      const eff = effectiveIngredientMacros(i);
+      return {
+        calories: acc.calories + eff.calories,
+        protein: acc.protein + eff.protein,
+        carbs: acc.carbs + eff.carbs,
+        fat: acc.fat + eff.fat,
+        // fiber comes from override when set, else from the snapshot column.
+        fiberG: acc.fiberG + (eff.fiber ?? i.fiberG),
+        sugarG: acc.sugarG + i.sugarG,
+        sodiumMg: acc.sodiumMg + i.sodiumMg,
+      };
+    },
     { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
   );
 
+  const safeServings = Math.max(1, servings || 1);
   const perServing = {
-    calories: Math.round(totals.calories / servings),
-    protein: Math.round(totals.protein / servings),
-    carbs: Math.round(totals.carbs / servings),
-    fat: Math.round(totals.fat / servings),
-    fiberG: Math.round((totals.fiberG / servings) * 10) / 10,
-    sugarG: Math.round((totals.sugarG / servings) * 10) / 10,
-    sodiumMg: Math.round(totals.sodiumMg / servings),
+    calories: Math.round(totals.calories / safeServings),
+    protein: Math.round(totals.protein / safeServings),
+    carbs: Math.round(totals.carbs / safeServings),
+    fat: Math.round(totals.fat / safeServings),
+    fiberG: Math.round((totals.fiberG / safeServings) * 10) / 10,
+    sugarG: Math.round((totals.sugarG / safeServings) * 10) / 10,
+    sodiumMg: Math.round(totals.sodiumMg / safeServings),
   };
 
   const { error: recipeErr } = await supabase
@@ -678,26 +721,35 @@ export async function saveVerifiedIngredients(
 
   if (recipeErr) return { error: recipeErr.message };
 
-  // 2. Update individual ingredients — collect errors instead of aborting on first failure
+  // 2. Update individual ingredients — collect errors instead of aborting on
+  //    first failure. Preserve `override_macros` and `added_by_user` on every
+  //    dirty row so existing overrides survive a save that only touched other
+  //    fields.
   const errors: string[] = [];
   for (const ing of ingredients) {
     if (!ing.isDirty) continue;
+    const updates: Record<string, unknown> = {
+      name: ing.matchedName ?? ing.name,
+      amount: ing.amount,
+      unit: ing.unit,
+      calories: Math.round(ing.calories),
+      protein: Math.round(ing.protein),
+      carbs: Math.round(ing.carbs),
+      fat: Math.round(ing.fat),
+      fiber_g: Math.round(ing.fiberG * 10) / 10,
+      sugar_g: Math.round(ing.sugarG * 10) / 10,
+      sodium_mg: Math.round(ing.sodiumMg),
+      is_verified: true,
+      source: ing.source,
+      // Allow caller to clear an override by setting `overrideMacros` to
+      // undefined on a dirty row — we pass `null` to wipe the jsonb column.
+      override_macros: ing.overrideMacros ?? null,
+    };
+    if (ing.addedByUser) updates.added_by_user = true;
+
     const { error } = await supabase
       .from("recipe_ingredients")
-      .update({
-        name: ing.matchedName ?? ing.name,
-        amount: ing.amount,
-        unit: ing.unit,
-        calories: Math.round(ing.calories),
-        protein: Math.round(ing.protein),
-        carbs: Math.round(ing.carbs),
-        fat: Math.round(ing.fat),
-        fiber_g: Math.round(ing.fiberG * 10) / 10,
-        sugar_g: Math.round(ing.sugarG * 10) / 10,
-        sodium_mg: Math.round(ing.sodiumMg),
-        is_verified: true,
-        source: ing.source,
-      })
+      .update(updates)
       .eq("id", ing.id);
 
     if (error) errors.push(`${ing.matchedName ?? ing.name}: ${error.message}`);
@@ -706,5 +758,75 @@ export async function saveVerifiedIngredients(
   if (errors.length > 0) {
     return { error: `Recipe totals saved but some ingredients failed: ${errors.join("; ")}` };
   }
+  return { ok: true };
+}
+
+/**
+ * Insert a new user-added ingredient row (Batch 2.7). Returns the inserted
+ * row so the caller can push it straight into the on-screen list without a
+ * refetch. Non-atomic with existing-row edits on purpose — the mobile
+ * verify screen fires this inline from the Add-ingredient sheet.
+ */
+export async function addUserIngredient(
+  recipeId: string,
+  payload: {
+    name: string;
+    amount: number | null;
+    unit: string | null;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    source: string;
+    confidence: number;
+    hasMatch: boolean;
+    overrideMacros?: IngredientOverride;
+  },
+): Promise<{ ok: true; id: string } | { error: string }> {
+  const insertRow: Record<string, unknown> = {
+    recipe_id: recipeId,
+    name: payload.name,
+    amount: payload.amount,
+    unit: payload.unit,
+    calories: Math.round(payload.calories),
+    protein: Math.round(payload.protein * 10) / 10,
+    carbs: Math.round(payload.carbs * 10) / 10,
+    fat: Math.round(payload.fat * 10) / 10,
+    fiber_g: Math.round(payload.fiberG * 10) / 10,
+    sugar_g: Math.round(payload.sugarG * 10) / 10,
+    sodium_mg: Math.round(payload.sodiumMg),
+    is_verified: payload.hasMatch && payload.confidence >= 0.5,
+    source: payload.source,
+    confidence: payload.confidence,
+    added_by_user: true,
+  };
+  if (payload.overrideMacros) insertRow.override_macros = payload.overrideMacros;
+
+  const { data, error } = await supabase
+    .from("recipe_ingredients")
+    .insert(insertRow)
+    .select("id")
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "Insert failed" };
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+/**
+ * Pin or clear a manual macro override on a single row (Batch 2.7).
+ * Returns the persisted override (or null when cleared).
+ */
+export async function setIngredientOverride(
+  ingredientId: string,
+  override: IngredientOverride | null,
+): Promise<{ ok: true } | { error: string }> {
+  const { error } = await supabase
+    .from("recipe_ingredients")
+    .update({ override_macros: override })
+    .eq("id", ingredientId);
+  if (error) return { error: error.message };
   return { ok: true };
 }

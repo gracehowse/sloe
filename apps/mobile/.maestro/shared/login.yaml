@@ -1,61 +1,24 @@
 appId: com.supprclub.supprapp
-name: "Launch app and login with test account"
+name: "Ensure authenticated (assumes app is already running)"
 ---
-# Launch native Suppr build. clearState: false keeps auth session
-# so the app skips login on subsequent flows.
-- launchApp:
-    clearState: false
+# The auth provider auto-signs in at startup when EXPO_PUBLIC_E2E_AUTH_ENABLED=true
+# is baked into the build. Flows using this helper never interact with the login
+# form — see 30_login_auth.yaml for the only flow that tests login UI directly.
+#
+# Required build-time env (in apps/mobile/.env when running E2E):
+#   EXPO_PUBLIC_E2E_AUTH_ENABLED=true
+#   EXPO_PUBLIC_E2E_EMAIL=<test account>
+#   EXPO_PUBLIC_E2E_PASSWORD=<test password>
+#
+# IMPORTANT: launch the app once before running the suite via:
+#   xcrun simctl launch booted com.supprclub.supprapp
+# Maestro's own launchApp under XCUITest stalls the Expo Release build, so
+# this helper does NOT relaunch — it just verifies authenticated state.
 
-# Wait for the app to load past the auth spinner.
-# The auth provider has a 10s timeout so this should resolve.
 - extendedWaitUntil:
-    visible: ".*(?:Sign In|Today).*"
-    timeout: 30000
+    visible: ".*Today.*"
+    timeout: 60000
 
-# If already authenticated (tab bar visible), navigate to Today
-- runFlow:
-    when:
-      visible: ".*Today.*"
-    commands:
-      - tapOn: ".*Today.*"
-
-# If on login screen, sign in with test account
-- runFlow:
-    when:
-      visible: ".*Sign In.*"
-    commands:
-      - tapOn:
-          id: "login-email"
-          retryTapIfNoChange: true
-      - waitForAnimationToEnd
-      - waitForAnimationToEnd
-      - inputText: ${E2E_EMAIL}
-      - waitForAnimationToEnd
-
-      - tapOn:
-          id: "login-password"
-          retryTapIfNoChange: true
-      - waitForAnimationToEnd
-      - waitForAnimationToEnd
-      - inputText: ${E2E_PASSWORD}
-      - waitForAnimationToEnd
-
-      # Submit via keyboard return key
-      - pressKey: Enter
-
-      - extendedWaitUntil:
-          visible: ".*(?:Today|LOGGED|Enter your|What should we call you|Welcome|No account|reach the server|Not Now|Save Password).*"
-          timeout: 45000
-
-      # Dismiss iOS "Save Password?" dialog
-      - runFlow:
-          when:
-            visible: ".*Not Now.*"
-          commands:
-            - tapOn: ".*Not Now.*"
-            - waitForAnimationToEnd
-
-# Dismiss any remaining system dialog
 - runFlow:
     when:
       visible: ".*Not Now.*"

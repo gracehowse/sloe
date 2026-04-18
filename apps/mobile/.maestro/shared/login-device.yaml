@@ -1,59 +1,17 @@
 appId: com.supprclub.supprapp
-name: "Launch native app and login with test account (physical device)"
+name: "Launch native app and ensure authenticated (physical device)"
 ---
-# For physical device with native Suppr build (not Expo Go)
+# Auth bypass lives in AuthProvider (context/auth.tsx). Requires the build to
+# include EXPO_PUBLIC_E2E_AUTH_ENABLED=true + EXPO_PUBLIC_E2E_EMAIL/PASSWORD.
+# Build must embed the JS bundle (no --no-bundler) so the app runs without Metro.
 - launchApp:
     clearState: false
+    stopApp: true
 
-# Wait for the app to load — Sign In or Today (no Expo Go dev menu on native builds)
 - extendedWaitUntil:
-    visible: ".*(?:Sign In|Today).*"
+    visible: ".*Today.*"
     timeout: 90000
 
-# If already authenticated (tab bar visible), done
-- runFlow:
-    when:
-      visible: ".*Today.*"
-    commands:
-      - tapOn: ".*Today.*"
-
-# If on login screen, sign in with test account
-- runFlow:
-    when:
-      visible: ".*Sign In.*"
-    commands:
-      - tapOn:
-          id: "login-email"
-          retryTapIfNoChange: true
-      - waitForAnimationToEnd
-      - inputText: ${E2E_EMAIL}
-      - waitForAnimationToEnd
-
-      - tapOn:
-          id: "login-password"
-          retryTapIfNoChange: true
-      - waitForAnimationToEnd
-      - inputText: ${E2E_PASSWORD}
-      - waitForAnimationToEnd
-      - hideKeyboard
-      - waitForAnimationToEnd
-
-      - tapOn:
-          id: "login-submit"
-          retryTapIfNoChange: true
-      - extendedWaitUntil:
-          visible: ".*(?:Today|LOGGED|Enter your|What should we call you|Welcome|No account|reach the server|Not Now|Save Password).*"
-          timeout: 30000
-
-      # Dismiss iOS "Save Password?" dialog
-      - runFlow:
-          when:
-            visible: ".*Not Now.*"
-          commands:
-            - tapOn: ".*Not Now.*"
-            - waitForAnimationToEnd
-
-# Dismiss any remaining system dialog
 - runFlow:
     when:
       visible: ".*Not Now.*"

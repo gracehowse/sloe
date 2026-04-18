@@ -44,9 +44,31 @@ FoodSearchModal opens with ingredient name as initial query:
 ### Step 4: Save Changes
 ```
 Tap "Save Changes" → writes all dirty ingredients back to Supabase
-  → Updates recipe_ingredients rows
-  → Recalculates recipe header macros (per-serving)
+  → Updates recipe_ingredients rows (preserves override_macros / added_by_user)
+  → Recalculates recipe header macros (per-serving) using effectiveMacros()
   → Haptic feedback on success
+```
+
+### Step 5: Add a missing ingredient (Batch 2.7)
+```
+Web: "+ Add ingredient" below the ingredients list (RecipeDetail).
+Mobile: "+ Add ingredient" row at the bottom of the verify screen.
+  → Opens AddIngredientDialog / AddIngredientSheet
+  → Name + quantity + unit + optional "Find match" (calls shared verify pipeline)
+  → Optional manual macros section (label values) when no confident match
+  → Save persists a new recipe_ingredients row with `added_by_user: true`
+    and, when the user typed macros, `override_macros: { calories, protein, carbs, fat, fiber? }`
+  → Analytics: recipe_ingredient_added { recipeId, hasMatch }
+  → Live per-serving totals update immediately via recomputeRecipeTotals()
+```
+
+### Step 6: Override macros on an existing row (Batch 2.7)
+```
+Row action "Override nutrition" opens the override dialog / sheet
+  → Number inputs pre-fill from current effective macros (override or match)
+  → Save writes override_macros jsonb; Reset clears it (update → null)
+  → "Override" badge shows on the row while set
+  → Analytics: recipe_ingredient_overridden / recipe_ingredient_override_cleared
 ```
 
 ## Edge Cases
@@ -54,6 +76,9 @@ Tap "Save Changes" → writes all dirty ingredients back to Supabase
 - Barcode scan returns no match → alert with "Not found" message
 - Multiple ingredients edited → all saved atomically
 - No ingredients loaded (empty recipe) → verify screen shows empty state
+- User-added row with no confident match → row persists with manual / zero macros and a low-confidence flag (no silent "close enough" estimate)
+- Override with all-zero fields typed → treated as "reset" (clears `override_macros`)
+- Servings field 0 / negative → clamped to 1 in `recomputeRecipeTotals` (never divides by zero)
 
 ## Related Documents
 - [Journey: Import a Recipe](import-recipe.md)

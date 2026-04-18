@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, Share } from "react-native";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, Share, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -222,23 +222,51 @@ export default function ProfileScreen() {
   const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
   const [trackedMacros, setTrackedMacros] = useState<string[]>(["protein", "carbs", "fat"]);
   const [weekStartDay, setWeekStartDay] = useState<"sunday" | "monday">("monday");
+  /** Batch 2.5 — hydration / stimulants targets + bottom-sheet state. */
+  const [caffeineTargetPickerOpen, setCaffeineTargetPickerOpen] = useState(false);
+  const [alcoholTargetPickerOpen, setAlcoholTargetPickerOpen] = useState(false);
+  const [targetCaffeineMg, setTargetCaffeineMg] = useState<number>(400);
+  const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
+  const [caffeineInput, setCaffeineInput] = useState<string>("400");
+  const [alcoholInput, setAlcoholInput] = useState<string>("0");
 
-  // Load dashboard settings
+  // Load dashboard + hydration targets settings
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("profiles")
-      .select("tracked_macros, week_start_day")
-      .eq("id", userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.tracked_macros && Array.isArray(data.tracked_macros)) {
-          setTrackedMacros(data.tracked_macros as string[]);
-        }
-        if (data?.week_start_day === "sunday" || data?.week_start_day === "monday") {
-          setWeekStartDay(data.week_start_day);
-        }
-      });
+    // Try new columns first; fall through to legacy select if the migration
+    // hasn't landed on this environment yet.
+    void (async () => {
+      let resp = await supabase
+        .from("profiles")
+        .select("tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly")
+        .eq("id", userId)
+        .maybeSingle();
+      if (resp.error) {
+        resp = await supabase
+          .from("profiles")
+          .select("tracked_macros, week_start_day")
+          .eq("id", userId)
+          .maybeSingle();
+      }
+      const { data } = resp;
+      if (!data) return;
+      if (data.tracked_macros && Array.isArray(data.tracked_macros)) {
+        setTrackedMacros(data.tracked_macros as string[]);
+      }
+      if (data.week_start_day === "sunday" || data.week_start_day === "monday") {
+        setWeekStartDay(data.week_start_day);
+      }
+      const tc = (data as any).target_caffeine_mg;
+      if (typeof tc === "number" && Number.isFinite(tc) && tc >= 0) {
+        setTargetCaffeineMg(Math.round(tc));
+        setCaffeineInput(String(Math.round(tc)));
+      }
+      const ta = (data as any).target_alcohol_g_weekly;
+      if (typeof ta === "number" && Number.isFinite(ta) && ta >= 0) {
+        setTargetAlcoholGWeekly(Math.round(ta));
+        setAlcoholInput(String(Math.round(ta)));
+      }
+    })();
   }, [userId]);
 
   const handleResetPlan = useCallback(async (clearData: boolean) => {
@@ -406,7 +434,21 @@ export default function ProfileScreen() {
           onPress={() => router.push("/profile" as any)}
         />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
-        <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week Starts On" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
+        <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week starts on" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
+        <SettingsRow
+          icon="cafe-outline"
+          iconColor={t.accent}
+          label="Caffeine limit"
+          sub={`${targetCaffeineMg} mg/day · FDA guideline is 400 mg`}
+          onPress={() => setCaffeineTargetPickerOpen(true)}
+        />
+        <SettingsRow
+          icon="wine-outline"
+          iconColor={t.accent}
+          label="Alcohol limit"
+          sub={targetAlcoholGWeekly > 0 ? `${targetAlcoholGWeekly} g/week` : "Off · set a target to show the row"}
+          onPress={() => setAlcoholTargetPickerOpen(true)}
+        />
       </View>
 
       {/* Connections */}
@@ -692,20 +734,115 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Caffeine target picker (Batch 2.5) */}
+      <Modal visible={caffeineTargetPickerOpen} transparent animationType="slide" onRequestClose={() => setCaffeineTargetPickerOpen(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setCaffeineTargetPickerOpen(false)} />
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl, paddingHorizontal: Spacing.xl }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Caffeine limit</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>FDA upper bound for healthy adults is 400 mg/day. Set your own comfortable ceiling.</Text>
+            <TextInput
+              accessibilityLabel="Caffeine limit in milligrams per day"
+              keyboardType="number-pad"
+              value={caffeineInput}
+              onChangeText={setCaffeineInput}
+              placeholder="400"
+              placeholderTextColor={colors.textTertiary}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.text }}
+            />
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 6 }}>Example: 400 mg ≈ 4 cups of coffee.</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save caffeine limit"
+              onPress={async () => {
+                const n = Math.max(0, Math.min(2000, Math.round(Number(caffeineInput))));
+                if (Number.isNaN(n)) {
+                  setCaffeineInput(String(targetCaffeineMg));
+                  return;
+                }
+                setTargetCaffeineMg(n);
+                setCaffeineInput(String(n));
+                if (userId) {
+                  const { error } = await supabase.from("profiles").update({ target_caffeine_mg: n }).eq("id", userId);
+                  if (error) Alert.alert("Could not save", error.message);
+                }
+                setCaffeineTargetPickerOpen(false);
+              }}
+              style={{ marginTop: Spacing.lg, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Accent.primary, alignItems: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alcohol target picker (Batch 2.5) */}
+      <Modal visible={alcoholTargetPickerOpen} transparent animationType="slide" onRequestClose={() => setAlcoholTargetPickerOpen(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setAlcoholTargetPickerOpen(false)} />
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl, paddingHorizontal: Spacing.xl }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Alcohol limit (g/week)</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>
+              Set 0 to hide the alcohol row. 14 g ethanol ≈ 1 US standard drink. 196 g/week = 14 UK units.
+            </Text>
+            <TextInput
+              accessibilityLabel="Alcohol limit in grams per week"
+              keyboardType="number-pad"
+              value={alcoholInput}
+              onChangeText={setAlcoholInput}
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.text }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save alcohol limit"
+              onPress={async () => {
+                const n = Math.max(0, Math.min(2000, Math.round(Number(alcoholInput))));
+                if (Number.isNaN(n)) {
+                  setAlcoholInput(String(targetAlcoholGWeekly));
+                  return;
+                }
+                setTargetAlcoholGWeekly(n);
+                setAlcoholInput(String(n));
+                if (userId) {
+                  const { error } = await supabase.from("profiles").update({ target_alcohol_g_weekly: n }).eq("id", userId);
+                  if (error) Alert.alert("Could not save", error.message);
+                }
+                setAlcoholTargetPickerOpen(false);
+              }}
+              style={{ marginTop: Spacing.lg, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Accent.primary, alignItems: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Week Start Day Picker */}
       <Modal visible={weekStartPickerOpen} transparent animationType="slide" onRequestClose={() => setWeekStartPickerOpen(false)}>
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
           <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setWeekStartPickerOpen(false)} />
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl, paddingHorizontal: Spacing.xl }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.lg }}>Week Starts On</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.lg }}>Week starts on</Text>
             {(["monday", "sunday"] as const).map((day) => (
               <Pressable
                 key={day}
                 onPress={() => {
+                  const previous = weekStartDay;
                   setWeekStartDay(day);
                   setWeekStartPickerOpen(false);
-                  if (userId) supabase.from("profiles").update({ week_start_day: day }).eq("id", userId).then();
+                  if (!userId) return;
+                  void (async () => {
+                    const { error } = await supabase.from("profiles").update({ week_start_day: day }).eq("id", userId);
+                    if (error) {
+                      setWeekStartDay(previous);
+                      Alert.alert("Could not save", "We couldn't save your week-start preference. Please try again.");
+                    }
+                  })();
                 }}
                 style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}
               >

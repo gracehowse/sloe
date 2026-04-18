@@ -31,6 +31,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
+import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
 
@@ -1231,6 +1232,9 @@ export default function RecipeDetailScreen() {
               <Text style={styles.actionBtnText}>Start Cooking</Text>
             </Pressable>
           </View>
+
+          {/* Batch 3.8 — Personal notes + rating */}
+          <RecipeNotesCard recipeId={recipeId} userId={userId} colors={colors} />
         </View>
       </ScrollView>
 

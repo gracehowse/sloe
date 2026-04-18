@@ -48,9 +48,6 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { session, loading } = useAuth();
   const [email, setEmail] = useState("");
-  // Refs track native text that Maestro's inputText may set without triggering onChangeText.
-  const emailNativeRef = useRef("");
-  const passwordNativeRef = useRef("");
   const [password, setPassword] = useState("");
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -185,12 +182,8 @@ export default function LoginScreen() {
 
   async function onSubmit() {
     setMessage(null);
-    // Read native text from TextInput refs as fallback (Maestro's inputText
-    // can set native text without triggering React's onChangeText).
-    const nativeEmail = (emailRef.current as any)?.props?.value ?? "";
-    const nativePassword = (passwordRef.current as any)?.props?.value ?? "";
-    const resolvedEmail = email.trim() || emailNativeRef.current.trim() || nativeEmail.trim();
-    const resolvedPassword = password || passwordNativeRef.current || nativePassword;
+    const resolvedEmail = email.trim();
+    const resolvedPassword = password;
     if (!resolvedEmail || !resolvedPassword) {
       setMessage("Enter your email and password.");
       return;
@@ -281,8 +274,8 @@ export default function LoginScreen() {
           returnKeyType="next"
           placeholder="Email"
           placeholderTextColor={colors.tabIconDefault}
-          defaultValue={email}
-          onChangeText={(t) => { setEmail(t); emailNativeRef.current = t; }}
+          value={email}
+          onChangeText={setEmail}
           onSubmitEditing={() => passwordRef.current?.focus()}
           style={styles.input}
         />
@@ -295,8 +288,8 @@ export default function LoginScreen() {
           returnKeyType="go"
           placeholder="Password"
           placeholderTextColor={colors.tabIconDefault}
-          defaultValue={password}
-          onChangeText={(t) => { setPassword(t); passwordNativeRef.current = t; }}
+          value={password}
+          onChangeText={setPassword}
           onSubmitEditing={() => void onSubmit()}
           secureTextEntry
           style={styles.input}

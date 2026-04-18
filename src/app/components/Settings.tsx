@@ -65,6 +65,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     setNotificationPrefs,
     preferActivityAdjustedCalories,
     setPreferActivityAdjustedCalories,
+    targetCaffeineMg,
+    setTargetCaffeineMg,
+    targetAlcoholGWeekly,
+    setTargetAlcoholGWeekly,
   } = useAppData();
   const { theme, setTheme } = useTheme();
   const promoSectionRef = useRef<HTMLDivElement>(null);
@@ -86,6 +90,16 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [measurementSystem, setMeasurementSystem] = useState("metric");
   const [trackedMacros, setTrackedMacros] = useState<string[]>(["protein", "carbs", "fat"]);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  const [caffeineInput, setCaffeineInput] = useState<string>(String(targetCaffeineMg));
+  const [alcoholInput, setAlcoholInput] = useState<string>(String(targetAlcoholGWeekly));
+
+  // Keep inputs in sync when the context value changes (e.g. after initial load).
+  useEffect(() => {
+    setCaffeineInput(String(targetCaffeineMg));
+  }, [targetCaffeineMg]);
+  useEffect(() => {
+    setAlcoholInput(String(targetAlcoholGWeekly));
+  }, [targetAlcoholGWeekly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -409,6 +423,73 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Hydration & stimulant limits (Batch 2.5) */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-foreground">Hydration & stimulants</label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Caffeine limit is the FDA guideline for healthy adults. Set alcohol to 0 to hide the row.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="caffeine-target">
+                  Caffeine limit (mg/day)
+                </label>
+                <input
+                  id="caffeine-target"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={2000}
+                  step={10}
+                  value={caffeineInput}
+                  onChange={(e) => setCaffeineInput(e.target.value)}
+                  onBlur={() => {
+                    const n = Math.max(0, Math.min(2000, Math.round(Number(caffeineInput))));
+                    if (Number.isNaN(n)) {
+                      setCaffeineInput(String(targetCaffeineMg));
+                      return;
+                    }
+                    setCaffeineInput(String(n));
+                    if (n === targetCaffeineMg) return;
+                    setTargetCaffeineMg(n);
+                    void savePref({ target_caffeine_mg: n });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="alcohol-target">
+                  Alcohol limit (g/week, 0 = hide)
+                </label>
+                <input
+                  id="alcohol-target"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={2000}
+                  step={1}
+                  value={alcoholInput}
+                  onChange={(e) => setAlcoholInput(e.target.value)}
+                  onBlur={() => {
+                    const n = Math.max(0, Math.min(2000, Math.round(Number(alcoholInput))));
+                    if (Number.isNaN(n)) {
+                      setAlcoholInput(String(targetAlcoholGWeekly));
+                      return;
+                    }
+                    setAlcoholInput(String(n));
+                    if (n === targetAlcoholGWeekly) return;
+                    setTargetAlcoholGWeekly(n);
+                    void savePref({ target_alcohol_g_weekly: n });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Reference: 14g ethanol ≈ 1 US standard drink (or ~1.75 UK units). 196g/week = 14 UK units.
+            </p>
           </div>
 
           {/* Dashboard widgets (tracked macros) */}

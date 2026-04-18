@@ -496,7 +496,17 @@ async function getDietaryImportSamplesSafe(
 
 function saveFoodSamplePromise(
   hk: AppleHealthKitNative,
-  options: { name: string; energy: number; protein?: number; carbohydrates?: number; fatTotal?: number; dietaryFiber?: number; date?: string },
+  options: {
+    name: string;
+    energy: number;
+    protein?: number;
+    carbohydrates?: number;
+    fatTotal?: number;
+    dietaryFiber?: number;
+    /** Grams of caffeine (react-native-health convention). */
+    caffeine?: number;
+    date?: string;
+  },
 ): Promise<boolean> {
   return new Promise((resolve, reject) => {
     if (!hk.saveFoodSample) { resolve(false); return; }
@@ -1467,6 +1477,9 @@ export async function syncNutritionFromHealthThrottled(userId: string): Promise<
   const now = Date.now();
   if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
   await syncNutritionFromHealth(userId, 120);
+  // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
+  // is not imported (see backlog note in `exportDayToHealth`).
+  await syncCaffeineFromHealth(userId, 30);
   lastNutritionImportSyncAt = Date.now();
 }
 
@@ -1518,6 +1531,13 @@ export async function writeNutritionToHealth(
 /**
  * Convenience: export all of a user's Suppr-logged meals for a given date to HealthKit.
  * Skips entries that were themselves imported from Health (to avoid a feedback loop).
+ *
+ * Batch 2.5 — also writes today's caffeine total (mg) as a single
+ * `saveFoodSample` record named "Suppr caffeine". Alcohol is **not**
+ * written: Apple's HealthKit exposes alcohol only via
+ * `HKQuantityTypeIdentifierNumberOfAlcoholicBeverages` (count, not mass),
+ * which sits outside the dietary saveFoodSample path we already use.
+ * Documented as a backlog item in `docs/health-platform-phase-b.md`.
  */
 export async function exportDayToHealth(
   userId: string,
@@ -1529,9 +1549,7 @@ export async function exportDayToHealth(
     .eq("user_id", userId)
     .eq("date_key", dateKeyStr);
 
-  if (!entries || entries.length === 0) return 0;
-
-  const meals: MealToExport[] = entries
+  const meals: MealToExport[] = (entries ?? [])
     .filter((e: any) => e.source !== "apple_health") // don't re-export imports
     .map((e: any) => ({
       name: e.recipe_title || e.name || "Suppr meal",
@@ -1543,5 +1561,96 @@ export async function exportDayToHealth(
       date: e.created_at,
     }));
 
-  return writeNutritionToHealth(meals);
+  const mealsWritten = meals.length > 0 ? await writeNutritionToHealth(meals) : 0;
+
+  // Caffeine: write today's quick-add total as a single HK food sample.
+  // Writing only when the total is positive avoids empty placeholder rows
+  // in Apple Health's "Nutrition" source list.
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("extra_caffeine_by_day")
+      .eq("id", userId)
+      .maybeSingle();
+    const map = (profile?.extra_caffeine_by_day as Record<string, number> | null) ?? null;
+    const mg = map && typeof map === "object" ? Math.max(0, Math.round(Number(map[dateKeyStr] ?? 0))) : 0;
+    if (mg > 0) {
+      const hk = loadAppleHealthKit();
+      if (hk) {
+        const ok = await saveFoodSamplePromise(hk, {
+          name: "Suppr caffeine",
+          energy: 0,
+          caffeine: mg / 1000, // react-native-health expects grams, UI stores mg
+          date: new Date(`${dateKeyStr}T12:00:00`).toISOString(),
+        });
+        return mealsWritten + (ok ? 1 : 0);
+      }
+    }
+  } catch {
+    // Swallow: caffeine write is best-effort; main meals already persisted.
+  }
+
+  return mealsWritten;
+}
+
+/**
+ * Batch 2.5 — pull dietary caffeine samples from HealthKit for the
+ * lookback window, bucket them by date, and merge into
+ * `profiles.extra_caffeine_by_day`. Skips samples that Suppr itself
+ * wrote (by bundle ID) so exportDayToHealth round-trips don't double-count.
+ *
+ * Does nothing if HealthKit isn't available or the "Import meals from
+ * Health" AsyncStorage flag is unset. Returns the number of days touched.
+ */
+export async function syncCaffeineFromHealth(
+  userId: string,
+  lookbackDays = 30,
+): Promise<{ daysTouched: number }> {
+  const hk = loadAppleHealthKit();
+  if (!hk || !userId) return { daysTouched: 0 };
+  try {
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const imp = await AsyncStorage.getItem("health_import_nutrition");
+    if (imp !== "true") return { daysTouched: 0 };
+  } catch {
+    return { daysTouched: 0 };
+  }
+
+  const startDate = daysAgo(lookbackDays).toISOString();
+  const endDate = new Date().toISOString();
+
+  // `Caffeine` uses the `gram` unit in `unitForDietaryImportKey`, but HK
+  // stores caffeine in grams — converted back to mg before we persist.
+  const samples = await getDietaryImportSamplesSafe(hk, "Caffeine", { startDate, endDate });
+
+  const byDay: Record<string, number> = {};
+  for (const s of samples) {
+    if (isOwnAppSample(s)) continue;
+    const mg = Math.max(0, Math.round(Number(s.value) * 1000));
+    if (mg <= 0) continue;
+    const whenStr = s.startDate;
+    if (!whenStr) continue;
+    const d = parseSampleInstant(whenStr);
+    const k = dateKey(d);
+    byDay[k] = (byDay[k] ?? 0) + mg;
+  }
+
+  if (Object.keys(byDay).length === 0) return { daysTouched: 0 };
+
+  // Merge into existing map, preferring max(existing, imported) per day to
+  // avoid double-counting if the user also logged caffeine via quick-add
+  // in Suppr. Using max (not sum) is the same shape as the web debounce
+  // and keeps re-syncs idempotent.
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("extra_caffeine_by_day")
+    .eq("id", userId)
+    .maybeSingle();
+  const existing = (prof?.extra_caffeine_by_day as Record<string, number> | null) ?? {};
+  const merged: Record<string, number> = { ...existing };
+  for (const [k, v] of Object.entries(byDay)) {
+    merged[k] = Math.max(existing[k] ?? 0, v);
+  }
+  await supabase.from("profiles").update({ extra_caffeine_by_day: merged }).eq("id", userId);
+  return { daysTouched: Object.keys(byDay).length };
 }

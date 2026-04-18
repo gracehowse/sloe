@@ -134,12 +134,38 @@ interface AppDataContextValue {
   basalBurnByDay: Record<string, number>;
   /** All quick-add water amounts by `YYYY-MM-DD` (for weekly summaries / export). */
   extraWaterByDay: Record<string, number>;
+  /** Quick-add caffeine (mg) for the selected day. Batch 2.5. */
+  addCaffeineMgForSelectedDay: (mg: number, preset?: string | null) => void;
+  extraCaffeineMgForSelectedDay: number;
+  /** All caffeine entries keyed by `YYYY-MM-DD` (mg). */
+  extraCaffeineByDay: Record<string, number>;
+  /** Quick-add alcohol (grams of ethanol) for the selected day. Batch 2.5. */
+  addAlcoholGForSelectedDay: (grams: number, preset?: string | null) => void;
+  extraAlcoholGForSelectedDay: number;
+  /** All alcohol entries keyed by `YYYY-MM-DD` (grams). */
+  extraAlcoholGByDay: Record<string, number>;
+  /** Reset all hydration + stimulant entries for one day. */
+  resetHydrationStimulantsForDay: (dayKey: string, kind: "water" | "caffeine" | "alcohol") => void;
+  /** Caffeine daily target in mg (default 400 — FDA). */
+  targetCaffeineMg: number;
+  setTargetCaffeineMg: Dispatch<SetStateAction<number>>;
+  /** Alcohol weekly target in grams. 0 = hidden (default). */
+  targetAlcoholGWeekly: number;
+  setTargetAlcoholGWeekly: Dispatch<SetStateAction<number>>;
   selectedDateKey: string;
   setSelectedDateKey: Dispatch<SetStateAction<string>>;
   mealsForSelectedDate: LoggedMeal[];
   addLoggedMeal: (meal: Omit<LoggedMeal, "id">) => void;
   addLoggedMealForDate: (dayKey: string, meal: Omit<LoggedMeal, "id">) => void;
   removeLoggedMeal: (mealId: string) => void;
+  /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day). */
+  copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string) => Promise<void>;
+  /** Copy one logged meal to every day in the deduped, source-excluded target list. */
+  copyMealToDateRange: (sourceDayKey: string, mealId: string, targetDayKeys: string[]) => Promise<void>;
+  /** Duplicate every meal from the source day into a single target day. */
+  duplicateDay: (sourceDayKey: string, targetDayKey: string) => Promise<void>;
+  /** Duplicate every meal from the source day into every day in the deduped target list. */
+  duplicateDayToDateRange: (sourceDayKey: string, targetDayKeys: string[]) => Promise<void>;
   mealPlan: DayPlan[] | null;
   setMealPlan: Dispatch<SetStateAction<DayPlan[] | null>>;
   mealPlanSlots: MealPlanNamedSlot[];
@@ -266,6 +292,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>(
     () => initial.extraWaterByDay ?? {},
   );
+  const [extraCaffeineByDay, setExtraCaffeineByDay] = useState<Record<string, number>>({});
+  const [extraAlcoholGByDay, setExtraAlcoholGByDay] = useState<Record<string, number>>({});
+  const [targetCaffeineMg, setTargetCaffeineMg] = useState<number>(400);
+  const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
   const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
   const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
   /** Guard: skip debounced write-back until the initial Supabase fetch resolves. */
@@ -298,6 +328,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addLoggedMeal,
     removeLoggedMeal,
     mealsForSelectedDate,
+    copyMealToDate,
+    copyMealToDateRange,
+    duplicateDay,
+    duplicateDayToDateRange,
   } = useNutritionJournalState({
     authedUserId,
     initialByDay: initial.nutritionByDay,
@@ -878,6 +912,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         (m) =>
           m.recipeTitle &&
           !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
+          // Batch 3.10 — leftover slots represent servings of an already-accounted
+          // parent recipe, so skip them. Counting them would triple-buy ingredients
+          // for a recipe that yields multiple servings.
+          !(m as DayPlan["meals"][number] & { leftoverOf?: string }).leftoverOf &&
           titleToId(m.recipeTitle),
       )
       .map((m) => ({
@@ -1034,6 +1072,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
 
   const extraWaterMlForSelectedDay = extraWaterByDay[selectedDateKey] ?? 0;
+  const extraCaffeineMgForSelectedDay = extraCaffeineByDay[selectedDateKey] ?? 0;
+  const extraAlcoholGForSelectedDay = extraAlcoholGByDay[selectedDateKey] ?? 0;
 
   const activityBurnForSelectedDay = activityBurnByDay[selectedDateKey] ?? activityBurnKcal;
 
@@ -1061,13 +1101,131 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return updated;
       });
+      track(AnalyticsEvents.hydration_logged, {
+        type: "water",
+        amount: add,
+        unit: "ml",
+        preset: null,
+      });
     },
     [selectedDateKey, authedUserId],
   );
 
-  // Sync water & activity burn data to Supabase (debounced).
+  const addCaffeineMgForSelectedDay = useCallback(
+    (mg: number, preset: string | null = null) => {
+      const add = Math.max(0, Math.round(mg));
+      if (add === 0) return;
+      setExtraCaffeineByDay((prev) => {
+        const updated = { ...prev, [selectedDateKey]: (prev[selectedDateKey] ?? 0) + add };
+        if (authedUserId && waterActivityLoadedRef.current) {
+          void supabase
+            .from("profiles")
+            .update({ extra_caffeine_by_day: updated })
+            .eq("id", authedUserId);
+        }
+        return updated;
+      });
+      track(AnalyticsEvents.stimulant_logged, {
+        type: "caffeine",
+        amount: add,
+        unit: "mg",
+        preset: preset ?? null,
+      });
+    },
+    [selectedDateKey, authedUserId],
+  );
+
+  const addAlcoholGForSelectedDay = useCallback(
+    (grams: number, preset: string | null = null) => {
+      const add = Math.max(0, Math.round(grams));
+      if (add === 0) return;
+      setExtraAlcoholGByDay((prev) => {
+        const updated = { ...prev, [selectedDateKey]: (prev[selectedDateKey] ?? 0) + add };
+        if (authedUserId && waterActivityLoadedRef.current) {
+          void supabase
+            .from("profiles")
+            .update({ extra_alcohol_g_by_day: updated })
+            .eq("id", authedUserId);
+        }
+        return updated;
+      });
+      track(AnalyticsEvents.stimulant_logged, {
+        type: "alcohol",
+        amount: add,
+        unit: "g",
+        preset: preset ?? null,
+      });
+    },
+    [selectedDateKey, authedUserId],
+  );
+
+  /**
+   * Reset today's value for one of the three hydration rows. Leaves the
+   * other days + the other kinds untouched. Fires an analytics event with
+   * `amount: 0` so the reset is observable in funnels.
+   */
+  const resetHydrationStimulantsForDay = useCallback(
+    (dayKey: string, kind: "water" | "caffeine" | "alcohol") => {
+      if (!dayKey) return;
+      const clearColumn =
+        kind === "water"
+          ? "extra_water_by_day"
+          : kind === "caffeine"
+          ? "extra_caffeine_by_day"
+          : "extra_alcohol_g_by_day";
+
+      if (kind === "water") {
+        setExtraWaterByDay((prev) => {
+          if (prev[dayKey] == null) return prev;
+          const next = { ...prev };
+          delete next[dayKey];
+          if (authedUserId && waterActivityLoadedRef.current) {
+            void supabase.from("profiles").update({ [clearColumn]: next }).eq("id", authedUserId);
+          }
+          return next;
+        });
+      } else if (kind === "caffeine") {
+        setExtraCaffeineByDay((prev) => {
+          if (prev[dayKey] == null) return prev;
+          const next = { ...prev };
+          delete next[dayKey];
+          if (authedUserId && waterActivityLoadedRef.current) {
+            void supabase.from("profiles").update({ [clearColumn]: next }).eq("id", authedUserId);
+          }
+          return next;
+        });
+      } else {
+        setExtraAlcoholGByDay((prev) => {
+          if (prev[dayKey] == null) return prev;
+          const next = { ...prev };
+          delete next[dayKey];
+          if (authedUserId && waterActivityLoadedRef.current) {
+            void supabase.from("profiles").update({ [clearColumn]: next }).eq("id", authedUserId);
+          }
+          return next;
+        });
+      }
+
+      track(
+        kind === "water" ? AnalyticsEvents.hydration_logged : AnalyticsEvents.stimulant_logged,
+        {
+          type: kind,
+          amount: 0,
+          unit: kind === "water" ? "ml" : kind === "caffeine" ? "mg" : "g",
+          preset: "reset",
+        },
+      );
+    },
+    [authedUserId],
+  );
+
+  // Sync water, caffeine, alcohol, and activity burn data to Supabase (debounced).
   // Skipped until the initial Supabase load resolves to avoid overwriting
   // server data with stale localStorage values on a new device.
+  // Debounce matched to 300 ms per spec — tight enough that a burst of
+  // quick-add chips doesn't fan out individual writes (the inline per-action
+  // writes above cover instant persistence on nav-away), loose enough that
+  // we never race with React batching.
   useEffect(() => {
     if (!authedUserId || !waterActivityLoadedRef.current) return;
     const t = setTimeout(() => {
@@ -1075,14 +1233,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         .from("profiles")
         .update({
           extra_water_by_day: extraWaterByDay,
+          extra_caffeine_by_day: extraCaffeineByDay,
+          extra_alcohol_g_by_day: extraAlcoholGByDay,
           activity_burn_by_day: activityBurnByDay,
         })
         .eq("id", authedUserId);
-    }, 1200);
+    }, 300);
     return () => clearTimeout(t);
-  }, [authedUserId, extraWaterByDay, activityBurnByDay]);
+  }, [authedUserId, extraWaterByDay, extraCaffeineByDay, extraAlcoholGByDay, activityBurnByDay]);
 
-  // Load water & activity burn from Supabase on mount.
+  // Load water, caffeine, alcohol, targets & activity burn from Supabase on mount.
   // Sets waterActivityLoadedRef so the debounced write-back only starts after
   // server state is known (prevents stale localStorage from clobbering Supabase).
   useEffect(() => {
@@ -1090,13 +1250,56 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     supabase
       .from("profiles")
-      .select("extra_water_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day")
+      .select(
+        "extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, target_caffeine_mg, target_alcohol_g_weekly, activity_burn_by_day, workouts_by_day, basal_burn_by_day",
+      )
       .eq("id", authedUserId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
+        // Schema-missing fallback: if the migration hasn't landed yet, the
+        // select with new columns errors. Retry with the legacy subset so
+        // the profile still loads and quick-add water keeps working.
+        if (error) {
+          void supabase
+            .from("profiles")
+            .select("extra_water_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day")
+            .eq("id", authedUserId)
+            .maybeSingle()
+            .then(({ data: legacy }) => {
+              if (cancelled) return;
+              if (legacy?.extra_water_by_day && typeof legacy.extra_water_by_day === "object") {
+                setExtraWaterByDay(legacy.extra_water_by_day as Record<string, number>);
+              }
+              if (legacy?.activity_burn_by_day && typeof legacy.activity_burn_by_day === "object") {
+                setActivityBurnByDay(legacy.activity_burn_by_day as Record<string, number>);
+              }
+              if (legacy?.workouts_by_day && typeof legacy.workouts_by_day === "object" && !Array.isArray(legacy.workouts_by_day)) {
+                setWorkoutsByDay(legacy.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
+              }
+              if (legacy?.basal_burn_by_day && typeof legacy.basal_burn_by_day === "object") {
+                setBasalBurnByDay(legacy.basal_burn_by_day as Record<string, number>);
+              }
+              waterActivityLoadedRef.current = true;
+            });
+          return;
+        }
         if (data?.extra_water_by_day && typeof data.extra_water_by_day === "object") {
           setExtraWaterByDay(data.extra_water_by_day as Record<string, number>);
+        }
+        if (data?.extra_caffeine_by_day && typeof data.extra_caffeine_by_day === "object") {
+          setExtraCaffeineByDay(data.extra_caffeine_by_day as Record<string, number>);
+        }
+        if (data?.extra_alcohol_g_by_day && typeof data.extra_alcohol_g_by_day === "object") {
+          setExtraAlcoholGByDay(data.extra_alcohol_g_by_day as Record<string, number>);
+        }
+        const caf = (data as { target_caffeine_mg?: number | null } | null)?.target_caffeine_mg;
+        if (typeof caf === "number" && Number.isFinite(caf) && caf >= 0) {
+          setTargetCaffeineMg(Math.round(caf));
+        }
+        const alc = (data as { target_alcohol_g_weekly?: number | null } | null)?.target_alcohol_g_weekly;
+        if (typeof alc === "number" && Number.isFinite(alc) && alc >= 0) {
+          setTargetAlcoholGWeekly(Math.round(alc));
         }
         if (data?.activity_burn_by_day && typeof data.activity_burn_by_day === "object") {
           setActivityBurnByDay(data.activity_burn_by_day as Record<string, number>);
@@ -1400,6 +1603,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      addCaffeineMgForSelectedDay,
+      extraCaffeineMgForSelectedDay,
+      extraCaffeineByDay,
+      addAlcoholGForSelectedDay,
+      extraAlcoholGForSelectedDay,
+      extraAlcoholGByDay,
+      resetHydrationStimulantsForDay,
+      targetCaffeineMg,
+      setTargetCaffeineMg,
+      targetAlcoholGWeekly,
+      setTargetAlcoholGWeekly,
       workoutsByDay,
       basalBurnByDay,
       extraWaterByDay,
@@ -1409,6 +1623,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addLoggedMeal,
       addLoggedMealForDate,
       removeLoggedMeal,
+      copyMealToDate,
+      copyMealToDateRange,
+      duplicateDay,
+      duplicateDayToDateRange,
       mealPlan,
       setMealPlan,
       mealPlanSlots,
@@ -1467,6 +1685,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setActivityBurnForSelectedDay,
       addWaterMlForSelectedDay,
       extraWaterMlForSelectedDay,
+      addCaffeineMgForSelectedDay,
+      extraCaffeineMgForSelectedDay,
+      extraCaffeineByDay,
+      addAlcoholGForSelectedDay,
+      extraAlcoholGForSelectedDay,
+      extraAlcoholGByDay,
+      resetHydrationStimulantsForDay,
+      targetCaffeineMg,
+      setTargetCaffeineMg,
+      targetAlcoholGWeekly,
+      setTargetAlcoholGWeekly,
       workoutsByDay,
       basalBurnByDay,
       extraWaterByDay,
@@ -1476,6 +1705,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addLoggedMeal,
       addLoggedMealForDate,
       removeLoggedMeal,
+      copyMealToDate,
+      copyMealToDateRange,
+      duplicateDay,
+      duplicateDayToDateRange,
       mealPlan,
       setMealPlan,
       mealPlanSlots,

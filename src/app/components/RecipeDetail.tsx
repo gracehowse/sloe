@@ -5,11 +5,21 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import type { IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
+import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { ConfidenceDot } from "./suppr/confidence-dot";
+import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
+import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
+import { RecipeNotesCard } from "./suppr/recipe-notes-card";
+import {
+  effectiveMacros,
+  hasOverride,
+  recomputeRecipeTotals,
+} from "../../lib/nutrition/ingredientOverrides.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,12 +75,17 @@ type DbIngredientRow = {
   protein: number;
   carbs: number;
   fat: number;
+  fiber_g?: number | null;
+  sugar_g?: number | null;
+  sodium_mg?: number | null;
   is_verified: boolean;
   source: string | null;
+  override_macros?: IngredientOverride | null;
+  added_by_user?: boolean | null;
 };
 
 function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
-  return {
+  const out: IngredientRow = {
     name: row.name,
     amount: row.amount != null ? String(row.amount) : "",
     unit: row.unit ?? "",
@@ -78,9 +93,25 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
     protein: row.protein,
     carbs: row.carbs,
     fat: row.fat,
+    fiberG: row.fiber_g ?? 0,
+    sugarG: row.sugar_g ?? 0,
+    sodiumMg: row.sodium_mg ?? 0,
     isVerified: row.is_verified,
     source: row.source ?? "Manual",
   };
+  if (row.override_macros && typeof row.override_macros === "object") {
+    const o = row.override_macros as IngredientOverride;
+    if (
+      Number.isFinite(o.calories) &&
+      Number.isFinite(o.protein) &&
+      Number.isFinite(o.carbs) &&
+      Number.isFinite(o.fat)
+    ) {
+      out.overrideMacros = o;
+    }
+  }
+  if (row.added_by_user) out.addedByUser = true;
+  return out;
 }
 
 export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
@@ -132,6 +163,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
+  // Batch 2.7 — add-ingredient + per-ingredient override dialogs.
+  const [addIngOpen, setAddIngOpen] = useState(false);
+  const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
 
   const [followCreatorId, setFollowCreatorId] = useState<string | null>(null);
   const [recipeAuthorId, setRecipeAuthorId] = useState<string | null>(null);
@@ -421,7 +455,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
       const { data: ingRows, error: ingError } = await supabase
         .from("recipe_ingredients")
-        .select("id, name, amount, unit, calories, protein, carbs, fat, is_verified, source")
+        .select(
+          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+        )
         .eq("recipe_id", recipe.id)
         .order("created_at", { ascending: true });
 
@@ -489,29 +525,64 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     };
   }, [recipe, isCatalogRecipe, dbMacros, baseServings, dbPrepMin, dbCookMin]);
 
-  const scaledMacros = {
-    calories: Math.round((displayRecipe.calories * servings) / baseServings),
-    protein: Math.round((displayRecipe.protein * servings) / baseServings),
-    carbs: Math.round((displayRecipe.carbs * servings) / baseServings),
-    fat: Math.round((displayRecipe.fat * servings) / baseServings),
-  };
+  // Base per-serving macros: prefer live ingredient totals (so add-ingredient
+  // and override flows reflect immediately before the user saves) but fall
+  // back to the persisted recipe macros when the recipe has no ingredient
+  // rows yet. We still scale by `servings / baseServings` to respect the
+  // "portions to view" selector.
+  // NOTE: declared after `liveIngredientPerServing` which depends on `baseServings`.
 
+  // Totals use `effectiveMacros` so per-ingredient overrides take precedence
+  // over the matched snapshot (Batch 2.7). Sugar / sodium don't have an
+  // override surface yet — they stay on the persisted snapshot columns.
   const ingredientTotal = useMemo(
     () =>
       ingredients.reduce(
-        (acc, ing) => ({
-          calories: acc.calories + ing.calories,
-          protein: acc.protein + ing.protein,
-          carbs: acc.carbs + ing.carbs,
-          fat: acc.fat + ing.fat,
-          fiberG: acc.fiberG + (ing.fiberG ?? 0),
-          sugarG: acc.sugarG + (ing.sugarG ?? 0),
-          sodiumMg: acc.sodiumMg + (ing.sodiumMg ?? 0),
-        }),
+        (acc, ing) => {
+          const eff = effectiveMacros(ing);
+          return {
+            calories: acc.calories + eff.calories,
+            protein: acc.protein + eff.protein,
+            carbs: acc.carbs + eff.carbs,
+            fat: acc.fat + eff.fat,
+            fiberG: acc.fiberG + (eff.fiber ?? ing.fiberG ?? 0),
+            sugarG: acc.sugarG + (ing.sugarG ?? 0),
+            sodiumMg: acc.sodiumMg + (ing.sodiumMg ?? 0),
+          };
+        },
         { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
       ),
     [ingredients],
   );
+
+  // Live per-serving totals from effective macros (Batch 2.7). When the
+  // recipe has any ingredient rows, these override the persisted
+  // `displayRecipe` calories/macros so add-ingredient and override flows
+  // reflect immediately before the user saves the recipe-level totals.
+  const liveIngredientPerServing = useMemo(
+    () => recomputeRecipeTotals(ingredients, baseServings),
+    [ingredients, baseServings],
+  );
+
+  // Top-of-recipe "portions to view" macros — prefer live ingredient totals
+  // (per-serving) scaled by the viewer's chosen portion count when we have
+  // ingredient rows; else fall back to the persisted recipe per-serving
+  // macros scaled the same way.
+  const perServingBase = ingredients.length > 0
+    ? liveIngredientPerServing
+    : {
+        calories: displayRecipe.calories,
+        protein: displayRecipe.protein,
+        carbs: displayRecipe.carbs,
+        fat: displayRecipe.fat,
+      };
+  const viewScale = servings / Math.max(1, baseServings);
+  const scaledMacros = {
+    calories: Math.round(perServingBase.calories * viewScale),
+    protein: Math.round(perServingBase.protein * viewScale),
+    carbs: Math.round(perServingBase.carbs * viewScale),
+    fat: Math.round(perServingBase.fat * viewScale),
+  };
 
   // Scaled micronutrients — from ingredient sum or recipe-level fallback
   const scaledMicros = {
@@ -636,6 +707,119 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     setRecipeYieldEditing(false);
     recipeYieldInputRef.current?.blur();
   }, [baseServings]);
+
+  // Batch 2.7 — persist a new user-added ingredient row. Uses the same
+  // Supabase path as the verify flow (single insert into `recipe_ingredients`)
+  // and fires `recipe_ingredient_added` with the match outcome.
+  const handleAddIngredient = useCallback(
+    async (payload: AddIngredientPayload) => {
+      if (!authUserId || !isMyRecipe) {
+        toast.error("Only the recipe author can add ingredients.");
+        return;
+      }
+      const insertRow: Record<string, unknown> = {
+        recipe_id: recipe.id,
+        name: payload.name,
+        amount: payload.amount ? Number(payload.amount) : null,
+        unit: payload.unit || null,
+        calories: Math.round(payload.calories),
+        protein: Math.round(payload.protein * 10) / 10,
+        carbs: Math.round(payload.carbs * 10) / 10,
+        fat: Math.round(payload.fat * 10) / 10,
+        fiber_g: Math.round(payload.fiberG * 10) / 10,
+        sugar_g: Math.round(payload.sugarG * 10) / 10,
+        sodium_mg: Math.round(payload.sodiumMg),
+        is_verified: payload.hasMatch && payload.confidence >= 0.5,
+        source: payload.source,
+        confidence: payload.confidence,
+        added_by_user: true,
+      };
+      if (payload.overrideMacros) insertRow.override_macros = payload.overrideMacros;
+
+      const { data, error } = await supabase
+        .from("recipe_ingredients")
+        .insert(insertRow)
+        .select(
+          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+        )
+        .single();
+
+      if (error || !data) {
+        toast.error(error?.message ?? "Failed to add ingredient");
+        return;
+      }
+
+      const mapped = mapDbIngredientToRow(data as DbIngredientRow);
+      setDbIngredients((prev) => [...prev, mapped]);
+      setDbIngredientIds((prev) => [...prev, (data as { id: string }).id]);
+      track(AnalyticsEvents.recipe_ingredient_added, {
+        recipeId: recipe.id,
+        hasMatch: payload.hasMatch,
+      });
+      toast.success(
+        payload.hasMatch
+          ? `Added ${payload.name}`
+          : `Added ${payload.name} (manual macros)`,
+      );
+    },
+    [authUserId, isMyRecipe, recipe.id],
+  );
+
+  // Batch 2.7 — pin a manual macro override on an existing ingredient row.
+  const handleOverrideSave = useCallback(
+    async (index: number, override: IngredientOverride) => {
+      if (!authUserId || !isMyRecipe) return;
+      const ingId = dbIngredientIds[index];
+      if (!ingId) return;
+      const { error } = await supabase
+        .from("recipe_ingredients")
+        .update({ override_macros: override })
+        .eq("id", ingId);
+      if (error) {
+        toast.error("Failed to save override");
+        return;
+      }
+      setDbIngredients((prev) =>
+        prev.map((ing, i) => (i === index ? { ...ing, overrideMacros: override } : ing)),
+      );
+      track(AnalyticsEvents.recipe_ingredient_overridden, {
+        recipeId: recipe.id,
+        ingredientPosition: index,
+      });
+      toast.success("Nutrition override saved");
+    },
+    [authUserId, isMyRecipe, dbIngredientIds, recipe.id],
+  );
+
+  // Batch 2.7 — clear a previously-pinned override, reverting to matched macros.
+  const handleOverrideReset = useCallback(
+    async (index: number) => {
+      if (!authUserId || !isMyRecipe) return;
+      const ingId = dbIngredientIds[index];
+      if (!ingId) return;
+      const { error } = await supabase
+        .from("recipe_ingredients")
+        .update({ override_macros: null })
+        .eq("id", ingId);
+      if (error) {
+        toast.error("Failed to clear override");
+        return;
+      }
+      setDbIngredients((prev) =>
+        prev.map((ing, i) => {
+          if (i !== index) return ing;
+          const { overrideMacros: _drop, ...rest } = ing;
+          return rest as IngredientRow;
+        }),
+      );
+      track(AnalyticsEvents.recipe_ingredient_override_cleared, {
+        recipeId: recipe.id,
+        ingredientPosition: index,
+      });
+      toast.success("Override cleared — using matched macros");
+    },
+    [authUserId, isMyRecipe, dbIngredientIds, recipe.id],
+  );
 
   if (!isCatalogRecipe && dbLoading) {
     return (
@@ -1059,16 +1243,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             ) : (
               <div className="divide-y divide-border">
                 {ingredients.map((ingredient, index) => {
-                  const ingCal = Math.round((ingredient.calories * servings) / baseServings);
-                  const ingP = Math.round((ingredient.protein * servings) / baseServings);
-                  const ingC = Math.round((ingredient.carbs * servings) / baseServings);
-                  const ingF = Math.round((ingredient.fat * servings) / baseServings);
+                  // Use effective macros so per-row overrides take precedence (Batch 2.7).
+                  const eff = effectiveMacros(ingredient);
+                  const ingCal = Math.round((eff.calories * servings) / baseServings);
+                  const ingP = Math.round((eff.protein * servings) / baseServings);
+                  const ingC = Math.round((eff.carbs * servings) / baseServings);
+                  const ingF = Math.round((eff.fat * servings) / baseServings);
                   const macroTotal = ingP + ingC + ingF || 1;
+                  const rowHasOverride = hasOverride(ingredient);
+                  const rowAddedByUser = Boolean(ingredient.addedByUser);
                   return (
                     <div key={index} className="px-4 py-3 flex items-center gap-3 group">
                       <ConfidenceDot level={ingredient.isVerified ? "high" : "medium"} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
+                          {rowHasOverride ? (
+                            <span
+                              className="shrink-0 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning"
+                              title="Manual macro override is pinned on this row."
+                            >
+                              Override
+                            </span>
+                          ) : null}
+                          {rowAddedByUser ? (
+                            <span
+                              className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary"
+                              title="Added by you after import."
+                            >
+                              Added
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="text-[11px] text-muted-foreground">
                           {ingredient.amount
                             ? `${(parseFloat(ingredient.amount) * servings) / baseServings} ${ingredient.unit}`.trim()
@@ -1083,16 +1289,44 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                         <div style={{ width: `${(ingF / macroTotal) * 100}%`, backgroundColor: "var(--macro-fat)" }} />
                       </div>
                       {dbIngredientIds[index] && (
-                        <button
-                          onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
-                          className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          Fix
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                            className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full"
+                            aria-label={`Fix match for ${ingredient.name}`}
+                          >
+                            Fix
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOverrideIndex(index)}
+                            className="text-xs text-primary hover:bg-primary/10 px-2 py-0.5 rounded-full"
+                            aria-label={`Override nutrition for ${ingredient.name}`}
+                          >
+                            Override
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {isMyRecipe && !isCatalogRecipe && (
+              <div className="border-t border-border bg-muted/30 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setAddIngOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-card px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                  aria-label="Add an ingredient the importer missed"
+                >
+                  <span aria-hidden>+</span>
+                  Add ingredient
+                </button>
+                <p className="mt-2 text-[11px] text-muted-foreground text-center">
+                  Missed an ingredient during import? Add it here and totals update live.
+                </p>
               </div>
             )}
           </div>
@@ -1179,6 +1413,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             I Made This
           </button>
         </div>
+
+        {/* Batch 3.8 — Personal notes + rating */}
+        <RecipeNotesCard recipeId={recipe.id} userId={authUserId} />
       </div>
 
       {/* Food search dialog for ingredient verification */}
@@ -1242,6 +1479,26 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           setVerifyIndex(null);
         }}
       />
+
+      {/* Batch 2.7 — Add ingredient (user-added row) */}
+      <AddIngredientDialog
+        open={addIngOpen}
+        onOpenChange={setAddIngOpen}
+        onAdd={handleAddIngredient}
+      />
+
+      {/* Batch 2.7 — Per-ingredient override dialog */}
+      {overrideIndex != null && ingredients[overrideIndex] ? (
+        <OverrideIngredientDialog
+          open={overrideIndex != null}
+          onOpenChange={(o) => { if (!o) setOverrideIndex(null); }}
+          ingredientName={ingredients[overrideIndex]!.name}
+          currentMacros={effectiveMacros(ingredients[overrideIndex])}
+          hasExistingOverride={hasOverride(ingredients[overrideIndex])}
+          onSave={(ov) => handleOverrideSave(overrideIndex, ov)}
+          onReset={() => handleOverrideReset(overrideIndex)}
+        />
+      ) : null}
     </div>
   );
 }

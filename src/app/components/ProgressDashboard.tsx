@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
@@ -25,6 +25,20 @@ import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.t
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { buildWeekStats } from "../../lib/nutrition/progressWeekReport.ts";
+import {
+  availableFreezes,
+  computeProtectedStreak,
+  readFreezeLedger,
+  type FreezeLedger,
+} from "../../lib/nutrition/streakFreeze.ts";
+import {
+  buildWeeklyRecap,
+  shouldShowRecap,
+  weekKeyFor,
+} from "../../lib/nutrition/weeklyRecap.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { track } from "../../lib/analytics/track.ts";
+import { WeeklyRecapCard } from "./suppr/weekly-recap-card.tsx";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
@@ -43,6 +57,34 @@ function parseNumMap(raw: unknown): Record<string, number> {
 function coercePace(v: string | null | undefined): PlanPace {
   const s = (v ?? "steady").toLowerCase();
   return (PACES as string[]).includes(s) ? (s as PlanPace) : "steady";
+}
+
+/**
+ * "Tue" / "Mar 12" compact date label for freeze-used rows. Uses the
+ * local Date constructor so it lines up with the device timezone shown
+ * on Today.
+ */
+function formatFreezeDate(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map((n) => Number.parseInt(n, 10));
+  if (![y, m, d].every(Number.isFinite)) return dateKey;
+  const dt = new Date(y, m - 1, d);
+  const now = new Date();
+  const daysAgo = Math.round((now.getTime() - dt.getTime()) / 86_400_000);
+  if (daysAgo >= 0 && daysAgo < 7) {
+    return dt.toLocaleDateString(undefined, { weekday: "short" });
+  }
+  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function FreezeStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/30 border border-border/60 p-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+        {label}
+      </p>
+      <p className="text-[18px] font-bold tabular-nums text-foreground">{value}</p>
+    </div>
+  );
 }
 
 function coerceProgressMetric(v: string | null): ProgressMetric | null {
@@ -79,6 +121,14 @@ function ProgressDashboardContent() {
   const [range, setRange] = useState<"1W" | "1M" | "3M" | "6M" | "All">("3M");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
+  // Batch 4.11 — streak freeze + weekly recap state
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
+    earnedAt: [],
+    usedHistory: [],
+  });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  const [recapLastSeenWeekKey, setRecapLastSeenWeekKey] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!authedUserId) {
       setLoading(false);
@@ -88,7 +138,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, week_start_day",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -112,6 +162,24 @@ function ProgressDashboardContent() {
       setUserGoal((data as any).goal ?? null);
       const wsd = String((data as { week_start_day?: string }).week_start_day ?? "").toLowerCase();
       setWeekStartDay(wsd === "sunday" ? "sunday" : "monday");
+
+      // Batch 4.11 — freeze ledger + recap seen-state. Columns may be
+      // missing if the migration hasn't run locally; fall back to the
+      // defaults so the UI still renders.
+      const rawFreezeEarned = (data as { streak_freezes_earned_at?: unknown })
+        .streak_freezes_earned_at;
+      const rawFreezeUsed = (data as { streak_freezes_used_history?: unknown })
+        .streak_freezes_used_history;
+      setFreezeLedger(
+        readFreezeLedger({ earnedAt: rawFreezeEarned, usedHistory: rawFreezeUsed }),
+      );
+      const rawBudget = Number(
+        (data as { streak_freeze_budget_max?: number }).streak_freeze_budget_max,
+      );
+      setFreezeBudgetMax(Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3);
+      const rawLastSeen = (data as { weekly_recap_last_seen_week_key?: string | null })
+        .weekly_recap_last_seen_week_key;
+      setRecapLastSeenWeekKey(typeof rawLastSeen === "string" ? rawLastSeen : null);
 
       // Compute TDEE values
       const sex = ((data as any).sex as Sex) ?? "unspecified";
@@ -265,7 +333,60 @@ function ProgressDashboardContent() {
 
   const avgCalories = weekStatsBundle.avgCalories;
   const proteinOnTarget = weekStatsBundle.proteinOnTarget;
-  const streakDays = computeLoggingStreak(nutritionByDay);
+  // Raw streak — `streak_freeze` only augments this; we never hide the
+  // raw value from callers that need it.
+  const rawStreakDays = computeLoggingStreak(nutritionByDay);
+  const protectedStreakInfo = useMemo(
+    () => computeProtectedStreak(nutritionByDay as any, freezeLedger, freezeBudgetMax),
+    [nutritionByDay, freezeLedger, freezeBudgetMax],
+  );
+  const streakDays = protectedStreakInfo.streakLength;
+  const freezesAvailable = useMemo(
+    () => availableFreezes(freezeLedger, freezeBudgetMax),
+    [freezeLedger, freezeBudgetMax],
+  );
+
+  // Batch 4.11 — build recap for the *previous* week and gate visibility.
+  const currentWeekKey = useMemo(
+    () => weekKeyFor(new Date(), weekStartDay),
+    [weekStartDay],
+  );
+  const recap = useMemo(
+    () =>
+      buildWeeklyRecap({
+        byDay: nutritionByDay,
+        weightKgByDay,
+        targets,
+        weekStartDay,
+        ledger: freezeLedger,
+        budgetMax: freezeBudgetMax,
+      }),
+    [nutritionByDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+  );
+  const recapVisible = useMemo(
+    () =>
+      shouldShowRecap(recapLastSeenWeekKey, currentWeekKey, new Date(), weekStartDay) &&
+      recap.daysLogged > 0,
+    [recapLastSeenWeekKey, currentWeekKey, weekStartDay, recap.daysLogged],
+  );
+
+  // Fire the `weekly_recap_shown` event once per visible week.
+  const recapShownRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!recapVisible) return;
+    if (recapShownRef.current === recap.weekKey) return;
+    recapShownRef.current = recap.weekKey;
+    track(AnalyticsEvents.weekly_recap_shown, { weekKey: recap.weekKey });
+  }, [recapVisible, recap.weekKey]);
+
+  const dismissRecap = useCallback(async () => {
+    setRecapLastSeenWeekKey(currentWeekKey);
+    if (!authedUserId) return;
+    await supabase
+      .from("profiles")
+      .update({ weekly_recap_last_seen_week_key: currentWeekKey } as never)
+      .eq("id", authedUserId);
+  }, [authedUserId, currentWeekKey]);
 
   const openMetric = useCallback(
     (m: ProgressMetric) => {
@@ -313,6 +434,12 @@ function ProgressDashboardContent() {
         <p className="text-sm text-muted-foreground">Weekly report</p>
       </div>
 
+      {/* WEEKLY RECAP CARD (Batch 4.11) — surfaces at end of week and stays
+          visible for the first few days of the new week until dismissed. */}
+      {recapVisible ? (
+        <WeeklyRecapCard recap={recap} onDismiss={dismissRecap} />
+      ) : null}
+
       {/* 2x2 STAT GRID */}
       <div className="grid grid-cols-2 gap-2 mb-6">
         <button
@@ -349,7 +476,14 @@ function ProgressDashboardContent() {
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
           </div>
           <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
-          <p className="text-[11px] text-muted-foreground">logging streak</p>
+          <p className="text-[11px] text-muted-foreground">
+            logging streak{freezesAvailable > 0 ? (
+              <span className="inline-flex items-center gap-1 ml-1">
+                <Icons.streakFreeze className="h-3 w-3 text-primary" aria-hidden />
+                <span className="text-primary font-semibold">{freezesAvailable}</span>
+              </span>
+            ) : null}
+          </p>
         </button>
         <div className="rounded-xl bg-card border border-border p-3">
           <div className="flex items-center gap-1.5 mb-2">
@@ -374,6 +508,44 @@ function ProgressDashboardContent() {
           })()}</p>
         </div>
       </div>
+
+      {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
+          freezes, or has consumed any. Hidden entirely when budget = 0. */}
+      {freezeBudgetMax > 0 ? (
+        <div className="rounded-xl bg-card border border-border p-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
+            <p className="text-sm font-semibold text-foreground">Streak freezes</p>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Freezes cover one empty day each so a sick or travel day doesn&apos;t break your streak. You earn one every 7-day streak, up to a cap of {freezeBudgetMax}.
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <FreezeStat label="Available" value={String(freezesAvailable)} />
+            <FreezeStat label="Earned" value={String(freezeLedger.earnedAt.length)} />
+            <FreezeStat label="Used" value={String(freezeLedger.usedHistory.length)} />
+          </div>
+          {protectedStreakInfo.protectedDateKeys.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">
+                Recent freezes used
+              </p>
+              <ul className="space-y-1">
+                {protectedStreakInfo.protectedDateKeys.slice(0, 3).map((k) => (
+                  <li key={k} className="text-xs text-muted-foreground tabular-nums">
+                    Freeze used ({formatFreezeDate(k)})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {rawStreakDays !== streakDays ? (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Raw streak (without freezes): {rawStreakDays} day{rawStreakDays === 1 ? "" : "s"}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* DAILY CALORIES CHART */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">

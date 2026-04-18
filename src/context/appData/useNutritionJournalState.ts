@@ -12,6 +12,7 @@ import {
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
+import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -214,11 +215,113 @@ export function useNutritionJournalState(opts: {
     return nutritionByDay[selectedDateKey] ?? [];
   }, [nutritionByDay, selectedDateKey]);
 
+  /**
+   * Copy a single logged meal from `sourceDayKey` to `targetDayKey`.
+   * Uses the same `addLoggedMealForDate` insert path as manual logging,
+   * so the row persists to `nutrition_entries` with a fresh id.
+   */
+  const copyMealToDate = useCallback(
+    async (sourceDayKey: string, mealId: string, targetDayKey: string): Promise<void> => {
+      if (!sourceDayKey || !mealId || !targetDayKey) return;
+      if (sourceDayKey === targetDayKey) return;
+      const sourceDay = nutritionByDay[sourceDayKey] ?? [];
+      const meal = sourceDay.find((m) => m.id === mealId);
+      if (!meal) return;
+      const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+      addLoggedMealForDate(targetDayKey, cloned);
+      track(AnalyticsEvents.meal_copied, {
+        source: "copy_meal",
+        batchSize: 1,
+        targetDayCount: 1,
+      });
+    },
+    [nutritionByDay, addLoggedMealForDate],
+  );
+
+  /**
+   * Copy a single logged meal to many target days. The source day is
+   * excluded and duplicates are dropped, both via `sanitizeCopyTargets`.
+   * Fires exactly one `meal_copied` analytics event covering the batch.
+   */
+  const copyMealToDateRange = useCallback(
+    async (sourceDayKey: string, mealId: string, targetDayKeys: string[]): Promise<void> => {
+      if (!sourceDayKey || !mealId) return;
+      const cleanTargets = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
+      if (cleanTargets.length === 0) return;
+      const sourceDay = nutritionByDay[sourceDayKey] ?? [];
+      const meal = sourceDay.find((m) => m.id === mealId);
+      if (!meal) return;
+      for (const target of cleanTargets) {
+        const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+        addLoggedMealForDate(target, cloned);
+      }
+      track(AnalyticsEvents.meal_copied, {
+        source: "copy_meal",
+        batchSize: 1,
+        targetDayCount: cleanTargets.length,
+      });
+    },
+    [nutritionByDay, addLoggedMealForDate],
+  );
+
+  /**
+   * Duplicate every meal from `sourceDayKey` into `targetDayKey`.
+   * No-op when the source day has no meals, or when source === target.
+   */
+  const duplicateDay = useCallback(
+    async (sourceDayKey: string, targetDayKey: string): Promise<void> => {
+      if (!sourceDayKey || !targetDayKey) return;
+      if (sourceDayKey === targetDayKey) return;
+      const sourceDay = nutritionByDay[sourceDayKey] ?? [];
+      if (sourceDay.length === 0) return;
+      for (const meal of sourceDay) {
+        const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+        addLoggedMealForDate(targetDayKey, cloned);
+      }
+      track(AnalyticsEvents.day_duplicated, {
+        source: "duplicate_day",
+        batchSize: sourceDay.length,
+        targetDayCount: 1,
+      });
+    },
+    [nutritionByDay, addLoggedMealForDate],
+  );
+
+  /**
+   * Duplicate every meal from `sourceDayKey` into each target day.
+   * Uses `sanitizeCopyTargets` to drop the source day and dedupe.
+   */
+  const duplicateDayToDateRange = useCallback(
+    async (sourceDayKey: string, targetDayKeys: string[]): Promise<void> => {
+      if (!sourceDayKey) return;
+      const cleanTargets = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
+      if (cleanTargets.length === 0) return;
+      const sourceDay = nutritionByDay[sourceDayKey] ?? [];
+      if (sourceDay.length === 0) return;
+      for (const target of cleanTargets) {
+        for (const meal of sourceDay) {
+          const cloned = cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">;
+          addLoggedMealForDate(target, cloned);
+        }
+      }
+      track(AnalyticsEvents.day_duplicated, {
+        source: "duplicate_day",
+        batchSize: sourceDay.length,
+        targetDayCount: cleanTargets.length,
+      });
+    },
+    [nutritionByDay, addLoggedMealForDate],
+  );
+
   return {
     nutritionByDay,
     addLoggedMealForDate,
     addLoggedMeal,
     removeLoggedMeal,
     mealsForSelectedDate,
+    copyMealToDate,
+    copyMealToDateRange,
+    duplicateDay,
+    duplicateDayToDateRange,
   };
 }

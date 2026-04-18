@@ -23,12 +23,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setLoading(false);
     }, 10000);
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) {
-        clearTimeout(timeout);
-        setSession(data.session);
-        setLoading(false);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (cancelled) return;
+
+      // E2E test seam: when running under Maestro/Detox, skip the login UI by
+      // signing in with env credentials. Requires explicit opt-in via
+      // EXPO_PUBLIC_E2E_AUTH_ENABLED — never set in production .env.
+      if (
+        !data.session &&
+        process.env.EXPO_PUBLIC_E2E_AUTH_ENABLED === "true" &&
+        process.env.EXPO_PUBLIC_E2E_EMAIL &&
+        process.env.EXPO_PUBLIC_E2E_PASSWORD
+      ) {
+        const { data: signIn } = await supabase.auth.signInWithPassword({
+          email: process.env.EXPO_PUBLIC_E2E_EMAIL,
+          password: process.env.EXPO_PUBLIC_E2E_PASSWORD,
+        });
+        if (!cancelled) {
+          clearTimeout(timeout);
+          setSession(signIn.session ?? null);
+          setLoading(false);
+        }
+        return;
       }
+
+      clearTimeout(timeout);
+      setSession(data.session);
+      setLoading(false);
     }).catch(() => {
       if (!cancelled) {
         clearTimeout(timeout);

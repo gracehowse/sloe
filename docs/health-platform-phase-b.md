@@ -36,3 +36,10 @@ Treat HealthKit as a **central, permissioned datastore**—not a **real-time syn
 3. Keep **manual burn** as fallback for Android and web-only users.
 
 This doc should be updated when the team commits to Capacitor/Expo vs staying web-only for the next 6–12 months.
+
+## Backlog items
+
+- **Alcohol ↔ Apple Health round-trip (Batch 2.5 follow-up).** Suppr's "Alcohol" row in the hydration & stimulants card tracks grams of ethanol, mirroring the UK CMO weekly-limit model. Apple HealthKit does not expose a dietary alcohol mass type; the only alcohol surface is `HKQuantityTypeIdentifierNumberOfAlcoholicBeverages` (a count, not a mass). That identifier sits outside the dietary `saveFoodSample` path used by our existing meal export, so we cannot round-trip grams idempotently without:
+  1. A mapping layer (grams → drinks count) using the preset "single drink ≈ 14 g ethanol" rule — acceptable for export but lossy for import.
+  2. A separate HealthKit permission + native read for the count type, then reverse-mapping to grams using conservative assumptions.
+  Deferred until we add a full Health Connect (Android) / HealthKit (iOS) dietary mapping pass. Current behaviour: alcohol is Suppr-only; caffeine is exported as `Suppr caffeine` food samples and imported on the existing nutrition-import throttle with idempotent `max(existing, imported)` merging.

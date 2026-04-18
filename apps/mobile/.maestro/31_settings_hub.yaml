@@ -7,9 +7,9 @@ name: "Settings hub — sections, navigation, profile info"
 - tapOn: ".*Profile, tab.*"
 - waitForAnimationToEnd
 
-# Verify profile header — avatar initial and email or name
+# Verify profile header — tier subtitle (Free/Pro/Base) appears under the name
 - assertVisible:
-    text: ".*(?:Your Profile|@).*"
+    text: ".*(?:Free|Pro|Base).*"
 
 # Verify stat pills
 - assertVisible: ".*Recipes.*"

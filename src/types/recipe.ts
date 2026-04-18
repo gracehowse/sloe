@@ -51,6 +51,19 @@ export interface RecipeCard {
   cookTimeMin?: number | null;
 }
 
+/**
+ * Optional per-ingredient manual override (Batch 2.7).
+ * When set, these values take precedence over the matched-source macros
+ * when computing recipe totals. Persisted as `recipe_ingredients.override_macros`.
+ */
+export interface IngredientOverride {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+}
+
 export interface IngredientRow {
   name: string;
   amount: string;
@@ -64,6 +77,10 @@ export interface IngredientRow {
   sodiumMg?: number;
   isVerified: boolean;
   source: string;
+  /** Batch 2.7 — manual macro override. Replaces matched macros in totals when present. */
+  overrideMacros?: IngredientOverride;
+  /** Batch 2.7 — true when the user added this row post-import (not parsed by the importer). */
+  addedByUser?: boolean;
 }
 
 export interface ShoppingItem {
@@ -103,11 +120,15 @@ export interface LoggedMeal {
 export interface DayPlanMeal {
   name: string;
   recipeTitle: string;
+  /** Optional recipe id — surfaced by newer planners for stable navigation and leftover math. */
+  recipeId?: string;
   /** Base recipe macros for one portion (multiplier 1). */
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  /** Optional fiber (grams) so leftovers can carry it through. */
+  fiberG?: number;
   /**
    * Scale for this slot (1 = one serving as above, 2 = double / partner, etc.).
    * Day totals and shopping list use base macros × this value.
@@ -115,6 +136,15 @@ export interface DayPlanMeal {
   portionMultiplier?: number;
   /** True when no saved recipes exist for this slot (should not appear after macro-aware generation). */
   isPlaceholder?: boolean;
+  /**
+   * Batch 3.10 — when set, this slot is a leftover portion of the named parent
+   * recipe id. Macros equal the parent's scaled macros; the flag is purely
+   * visual. When the user swaps the parent, any downstream leftovers with a
+   * matching `leftoverOf` are cleared.
+   */
+  leftoverOf?: string;
+  /** Batch 3.10 — visual-only companion to `leftoverOf`. Set together. */
+  isLeftover?: boolean;
 }
 
 export interface DayPlan {

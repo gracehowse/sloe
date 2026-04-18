@@ -4,7 +4,7 @@ import { Stack, usePathname, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
-import { AppState, Platform } from 'react-native';
+import { AccessibilityInfo, AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
@@ -20,6 +20,10 @@ import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
 import { extractUrlFromShareText, urlFromDeepLink } from '@/lib/resolveImportUrl';
+import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
+import { setPendingSiriAction } from '@/lib/siriPending';
+import { track } from '@/lib/analytics';
+import { AnalyticsEvents } from '../../../src/lib/analytics/events';
 
 initErrorTracking();
 configurePurchases();
@@ -39,6 +43,9 @@ function ForwardSocialSharesToImport() {
   const forward = useCallback(
     (href: string) => {
       const t = href.trim();
+      // Batch 5.12 — Siri / Shortcuts-app deep links are handled by
+      // HandleSiriDeepLinks. Skip here so we don't race-navigate.
+      if (parseSiriDeepLink(t) != null) return;
       if (/^suppr:/i.test(t)) {
         const u = urlFromDeepLink(t);
         if (u) {
@@ -66,6 +73,67 @@ function ForwardSocialSharesToImport() {
     const sub = Linking.addEventListener("url", ({ url }) => forward(url));
     return () => sub.remove();
   }, [forward]);
+
+  return null;
+}
+
+/**
+ * Batch 5.12 — Siri / Shortcuts-app deep links.
+ *
+ * Parses `suppr://log/water?ml=…`, `suppr://fast/start?hours=…`, and
+ * `suppr://today/remaining`. For actions that mutate state (water, fast),
+ * the action is queued via `setPendingSiriAction` and the user is routed
+ * to Today — the Today tab flushes the queue on mount/focus. This keeps
+ * the layout provider-free (no tight coupling to the Today hook).
+ *
+ * An accessibility announcement surfaces the action immediately so
+ * VoiceOver users hear confirmation even before Today renders.
+ */
+function HandleSiriDeepLinks() {
+  const router = useRouter();
+
+  const handle = useCallback(
+    async (href: string | null | undefined) => {
+      if (!href) return false;
+      const action = parseSiriDeepLink(href);
+      if (!action) return false;
+
+      track(AnalyticsEvents.siri_action_invoked, { kind: action.kind });
+
+      switch (action.kind) {
+        case "log_water": {
+          await setPendingSiriAction(action);
+          AccessibilityInfo.announceForAccessibility(`Logged ${action.ml} millilitres of water`);
+          router.replace("/");
+          return true;
+        }
+        case "start_fast": {
+          await setPendingSiriAction(action);
+          AccessibilityInfo.announceForAccessibility(`Starting a ${action.hours} hour fast`);
+          router.replace("/");
+          return true;
+        }
+        case "today_remaining": {
+          AccessibilityInfo.announceForAccessibility("Opening today's remaining macros");
+          router.replace("/");
+          return true;
+        }
+      }
+      return false;
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    // Cold-start deep link.
+    void Linking.getInitialURL().then((h) => {
+      void handle(h);
+    });
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      void handle(url);
+    });
+    return () => sub.remove();
+  }, [handle]);
 
   return null;
 }
@@ -191,6 +259,7 @@ function RootLayoutInner() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
+        <HandleSiriDeepLinks />
         <ForwardSocialSharesToImport />
         <ForwardShareIntentToImport />
         <ResumeClipboardToImport />

@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
+import {
+  projectRemaining,
+  type MacroConsumed,
+  type MacroTargets,
+} from "@/lib/nutrition/remainingMacros";
 import { Loader2 } from "lucide-react";
 import { Icons } from "./ui/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog.tsx";
@@ -53,6 +58,14 @@ type Props = {
   initialUnit?: string | null;
   /** Original ingredient description shown as context (e.g. "1 lb chicken breast") */
   originalDescription?: string | null;
+  /**
+   * Optional budget context. When both `macroTargets` and `macroConsumed`
+   * are provided the portion preview shows a "If you log this:" fit-this-in
+   * hint using the shared remainingMacros helper. Omitting them (e.g. in
+   * verify-ingredient flows) hides the hint.
+   */
+  macroTargets?: MacroTargets;
+  macroConsumed?: MacroConsumed;
 };
 
 // ── Standard units ──────────────────────────────────────────────────
@@ -234,7 +247,7 @@ function resolveInitialPortion(
 
 // ── Component ───────────────────────────────────────────────────────
 
-export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initialAmount, initialUnit, originalDescription }: Props) {
+export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initialAmount, initialUnit, originalDescription, macroTargets, macroConsumed }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -369,6 +382,19 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
 
   const totalGrams = preview ? Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10 : 0;
 
+  // Fit-this-in hint — only when both budget context and a scaled portion exist.
+  const fitHint = useMemo(() => {
+    if (!macroTargets || !macroConsumed || !scaled) return null;
+    const projection = projectRemaining(macroTargets, macroConsumed, {
+      calories: scaled.calories,
+      protein: scaled.protein,
+      carbs: scaled.carbs,
+      fat: scaled.fat,
+      fiber: scaled.fiberG,
+    });
+    return projection;
+  }, [macroTargets, macroConsumed, scaled]);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0">
@@ -487,6 +513,45 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                   ))}
                 </div>
               </div>
+
+              {fitHint && (
+                <div
+                  className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs"
+                  role="status"
+                  aria-label="Projected remaining macros after logging this portion"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    If you log this
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 tabular-nums">
+                    {[
+                      { label: "kcal", value: fitHint.calories, delta: fitHint.deltas.calories, over: fitHint.overCalories },
+                      { label: "P", value: fitHint.protein, delta: fitHint.deltas.protein, over: fitHint.overProtein, unit: "g" },
+                      { label: "C", value: fitHint.carbs, delta: fitHint.deltas.carbs, over: fitHint.overCarbs, unit: "g" },
+                      { label: "F", value: fitHint.fat, delta: fitHint.deltas.fat, over: fitHint.overFat, unit: "g" },
+                      ...(fitHint.fiber != null
+                        ? [{ label: "Fi", value: fitHint.fiber, delta: fitHint.deltas.fiber ?? 0, over: fitHint.overFiber, unit: "g" }]
+                        : []),
+                    ].map((m) => (
+                      <span key={m.label} className="flex items-baseline gap-0.5">
+                        <span
+                          className="font-semibold"
+                          style={{ color: m.over ? "var(--destructive)" : "var(--foreground)" }}
+                        >
+                          {m.over ? `+${Math.abs(m.delta)}` : m.value}
+                          {m.unit ? m.unit : ""}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {m.label}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {m.over ? " over" : " left"}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={onConfirm}

@@ -5,14 +5,25 @@ name: "Recipe detail — ingredients, nutrition, portions, cook, log"
 
 - tapOn: ".*Discover.*"
 - waitForAnimationToEnd
+- waitForAnimationToEnd
 
-# Tap the first recipe card
+# Wait for recipe grid to load (cards show "kcal")
+- extendedWaitUntil:
+    visible: ".*kcal.*"
+    timeout: 30000
+
+# Tap into a recipe card by tapping a card area below the header.
+# 25%,40% lands inside the first column of the 2-col grid.
 - tapOn:
-    index: 0
+    point: "25%,40%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
 
-# Recipe detail should show key sections
-- assertVisible:
-    text: ".*(?:Ingredients|Servings).*"
+# Recipe detail should show key sections (Servings appears in header info bar,
+# Ingredients is the default tab title)
+- extendedWaitUntil:
+    visible: ".*(?:Ingredients|Servings).*"
+    timeout: 15000
 
 # Should see macros
 - assertVisible:

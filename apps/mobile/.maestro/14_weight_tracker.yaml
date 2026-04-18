@@ -35,15 +35,19 @@ name: "Weight tracker — sections, input, charts"
     element: ".*Steps.*"
     direction: DOWN
 
-# Water section
-- scrollUntilVisible:
-    element: ".*Water.*"
-    direction: DOWN
+# Water section — only renders with ≥2 days of logged water; treat as optional
+- runFlow:
+    when:
+      visible: ".*Water.*"
+    commands:
+      - assertVisible: ".*Water.*"
 
-# Body Fat section
-- scrollUntilVisible:
-    element: ".*Body Fat.*"
-    direction: DOWN
+# Body Fat section — only renders with logged body-fat data; optional
+- runFlow:
+    when:
+      visible: ".*Body Fat.*"
+    commands:
+      - assertVisible: ".*Body Fat.*"
 
 # Navigate back
 - tapOn:

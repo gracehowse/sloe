@@ -1,5 +1,4 @@
-import type { LoggedMeal } from "../../types/recipe.ts";
-import { dateKeyFromDate } from "./trackerStats.ts";
+import { dateKeyFromDate } from "./trackerStats";
 
 export type WeekDayTotals = {
   key: string;
@@ -23,9 +22,21 @@ export type WeekStatsBundle = {
   fatAdherence: number;
 };
 
-type ByDay = Record<string, LoggedMeal[]>;
+/**
+ * Minimal shape required for week-report math. Both web `LoggedMeal` and
+ * mobile `JournalMeal` satisfy this, so callers on either platform can use
+ * this module directly without duplication.
+ */
+export type MealMacros = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
 
-function sumDay(meals: LoggedMeal[]) {
+export type ByDayOf<M extends MealMacros> = Record<string, M[]>;
+
+function sumDay<M extends MealMacros>(meals: M[]) {
   return meals.reduce(
     (acc, m) => ({
       calories: acc.calories + Math.max(0, m.calories),
@@ -38,8 +49,8 @@ function sumDay(meals: LoggedMeal[]) {
 }
 
 /** Current calendar week (based on profile week start) with per-day macro totals. */
-export function buildWeekStats(
-  byDay: ByDay,
+export function buildWeekStats<M extends MealMacros>(
+  byDay: ByDayOf<M>,
   targets: { calories: number; protein: number; carbs: number; fat: number },
   weekStartDay: "monday" | "sunday",
   now: Date = new Date(),
@@ -55,7 +66,7 @@ export function buildWeekStats(
     const d = new Date(weekFirst);
     d.setDate(weekFirst.getDate() + i);
     const key = dateKeyFromDate(d);
-    const totals = sumDay(byDay[key] ?? []);
+    const totals = sumDay<M>(byDay[key] ?? []);
     days.push({ key, label: dayLabels[d.getDay()]!, ...totals });
   }
 
@@ -65,10 +76,23 @@ export function buildWeekStats(
   const avgCarbs = Math.round(days.reduce((s, d) => s + d.carbs, 0) / daysWithFoodCount);
   const avgFat = Math.round(days.reduce((s, d) => s + d.fat, 0) / daysWithFoodCount);
 
-  const proteinOnTarget = days.filter((d) => d.protein >= targets.protein * 0.9).length;
-  const proteinAdherence = daysWithFoodCount > 0 ? Math.round((avgProtein / targets.protein) * 100) : 0;
-  const carbsAdherence = daysWithFoodCount > 0 ? Math.round((avgCarbs / targets.carbs) * 100) : 0;
-  const fatAdherence = daysWithFoodCount > 0 ? Math.round((avgFat / targets.fat) * 100) : 0;
+  // Guard against zero targets — otherwise adherence becomes Infinity and
+  // `proteinOnTarget` becomes "every day with ≥0 protein" (i.e. all 7).
+  const safePro = targets.protein > 0 ? targets.protein : 0;
+  const safeCarb = targets.carbs > 0 ? targets.carbs : 0;
+  const safeFat = targets.fat > 0 ? targets.fat : 0;
+  const proteinOnTarget = safePro > 0
+    ? days.filter((d) => d.protein >= safePro * 0.9).length
+    : 0;
+  const proteinAdherence = safePro > 0 && daysWithFoodCount > 0
+    ? Math.round((avgProtein / safePro) * 100)
+    : 0;
+  const carbsAdherence = safeCarb > 0 && daysWithFoodCount > 0
+    ? Math.round((avgCarbs / safeCarb) * 100)
+    : 0;
+  const fatAdherence = safeFat > 0 && daysWithFoodCount > 0
+    ? Math.round((avgFat / safeFat) * 100)
+    : 0;
 
   return {
     days,
@@ -85,12 +109,12 @@ export function buildWeekStats(
 }
 
 /** Same rule as `computeLoggingStreak`: consecutive days ending today or yesterday with ≥1 meal. */
-export function getStreakContributingDays(
-  byDay: ByDay,
+export function getStreakContributingDays<M extends MealMacros>(
+  byDay: ByDayOf<M>,
   now: Date = new Date(),
 ): Array<{ key: string; mealCount: number; calories: number }> {
   const out: Array<{ key: string; mealCount: number; calories: number }> = [];
-  let d = new Date(now);
+  const d = new Date(now);
   const todayKey = dateKeyFromDate(d);
   if ((byDay[todayKey] ?? []).length === 0) {
     d.setDate(d.getDate() - 1);

@@ -26,29 +26,12 @@ name: "Profile & targets — nutrition goals, dietary prefs, body stats"
 - assertVisible:
     text: ".*(?:Fat|fat).*"
 
-# Look for body stats section
+# Profile editor surfaces nutrition targets + dietary preferences only.
+# Body stats / goal / activity live in onboarding, not here. Verify dietary section.
 - scrollUntilVisible:
-    element: ".*(?:Body stats|Weight|Height|Activity).*"
+    element: ".*Dietary Preferences.*"
     direction: DOWN
-
-# Verify body stat fields are present
-- assertVisible:
-    text: ".*(?:Weight|kg|lbs).*"
-
-# Look for goal selector
-- scrollUntilVisible:
-    element: ".*(?:Goal|Lose|Maintain|Gain).*"
-    direction: DOWN
-- assertVisible:
-    text: ".*(?:Lose|Maintain|Gain).*"
-
-# Look for activity level
-- runFlow:
-    when:
-      visible: ".*(?:Activity|Sedentary|Lightly|Moderately|Very|Extra).*"
-    commands:
-      - assertVisible:
-          text: ".*(?:Activity|Sedentary|Lightly|Moderately|Very|Extra).*"
+- assertVisible: ".*Dietary Preferences.*"
 
 # Scroll back to top
 - scrollUntilVisible:

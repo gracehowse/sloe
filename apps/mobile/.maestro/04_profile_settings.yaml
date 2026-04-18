@@ -6,20 +6,29 @@ name: "Profile & settings — sections, navigation, data export"
 - tapOn: ".*Profile.*"
 - waitForAnimationToEnd
 
-# Check reorganised sections exist
+# Check top-of-screen sections (visible without scroll)
 - assertVisible: ".*Goals & Targets.*"
-- assertVisible: ".*Connections.*"
-- assertVisible: ".*Legal.*"
-
-# Daily Targets row
 - assertVisible: ".*Daily Targets.*"
 - assertVisible: ".*kcal.*"
 
-# Help link
+# Connections section is partway down the screen
+- scrollUntilVisible:
+    element: ".*Connections.*"
+    direction: DOWN
+- assertVisible: ".*Connections.*"
+
+# Help link / Export Data live in the App section further down
+- scrollUntilVisible:
+    element: ".*Export Data.*"
+    direction: DOWN
+- assertVisible: ".*Export Data.*"
 - assertVisible: ".*Help & Information.*"
 
-# Export Data
-- assertVisible: ".*Export Data.*"
+# Legal section is near the bottom
+- scrollUntilVisible:
+    element: ".*Legal.*"
+    direction: DOWN
+- assertVisible: ".*Legal.*"
 
 # Privacy Policy
 - scrollUntilVisible:

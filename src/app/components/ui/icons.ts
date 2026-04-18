@@ -78,6 +78,8 @@ import {
   Pencil,
   Trash2,
   Copy,
+  CopyPlus,
+  MoreHorizontal,
   Filter,
   SlidersHorizontal,
   Camera,
@@ -96,6 +98,7 @@ import {
   PieChart,
   LineChart,
   Activity,
+  Snowflake,
 
   // Misc
   Bell,
@@ -194,6 +197,8 @@ export const Icons = {
   edit: Pencil,
   delete: Trash2,
   copy: Copy,
+  copyPlus: CopyPlus,
+  more: MoreHorizontal,
   filter: Filter,
   adjust: SlidersHorizontal,
   camera: Camera,
@@ -208,6 +213,7 @@ export const Icons = {
   // Progress & data
   trophy: Trophy,
   streak: Streak,
+  streakFreeze: Snowflake,
   calendarCheck: CalendarCheck,
   pieChart: PieChart,
   lineChart: LineChart,

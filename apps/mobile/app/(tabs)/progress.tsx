@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -21,6 +21,21 @@ import {
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats } from "@/lib/progressWeekReport";
+import {
+  availableFreezes,
+  computeProtectedStreak,
+  readFreezeLedger,
+  type FreezeLedger,
+} from "@/lib/streakFreeze";
+import {
+  buildWeeklyRecap,
+  shouldShowRecap,
+  weekKeyFor,
+} from "@/lib/weeklyRecap";
+import { scheduleWeeklyRecapPush } from "@/lib/weeklyRecapPush";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -73,6 +88,15 @@ export default function ProgressScreen() {
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
+  // Batch 4.11 — streak freeze + weekly recap state
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
+    earnedAt: [],
+    usedHistory: [],
+  });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  const [recapLastSeenWeekKey, setRecapLastSeenWeekKey] = useState<string | null>(null);
+  const [recapPushEnabled, setRecapPushEnabled] = useState<boolean>(true);
+
   // Adaptive TDEE
   const [staticTdee, setStaticTdee] = useState<number | null>(null);
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
@@ -95,7 +119,7 @@ export default function ProgressScreen() {
       isHealthSyncAvailable() ? syncHealthDataThrottled(userId).catch(() => {}) : Promise.resolve(),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
         .eq("id", userId)
         .maybeSingle(),
       supabase
@@ -124,6 +148,17 @@ export default function ProgressScreen() {
         setWeekStartDay(profile.week_start_day);
       }
       setUserGoal((profile as any).goal ?? null);
+
+      // Batch 4.11 — freeze ledger + recap state
+      const rawEarned = (profile as any).streak_freezes_earned_at;
+      const rawUsed = (profile as any).streak_freezes_used_history;
+      setFreezeLedger(readFreezeLedger({ earnedAt: rawEarned, usedHistory: rawUsed }));
+      const rawBudget = Number((profile as any).streak_freeze_budget_max);
+      setFreezeBudgetMax(Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3);
+      const rawLastSeen = (profile as any).weekly_recap_last_seen_week_key;
+      setRecapLastSeenWeekKey(typeof rawLastSeen === "string" ? rawLastSeen : null);
+      const rawPushEnabled = (profile as any).weekly_recap_push_enabled;
+      setRecapPushEnabled(rawPushEnabled !== false);
 
       // Compute TDEE values
       const sex = ((profile as any).sex as string) ?? "unspecified";
@@ -171,7 +206,79 @@ export default function ProgressScreen() {
 
   const weekStats = useMemo(() => buildWeekStats(byDay, targets, weekStartDay), [byDay, targets, weekStartDay]);
 
-  const streakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
+  // Raw streak retained so the "Raw streak" disclosure row can surface it
+  // alongside the protected value — never misrepresented.
+  const rawStreakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
+  const protectedStreakInfo = useMemo(
+    () => computeProtectedStreak(byDay as any, freezeLedger, freezeBudgetMax),
+    [byDay, freezeLedger, freezeBudgetMax],
+  );
+  const streakDays = protectedStreakInfo.streakLength;
+  const freezesAvailable = useMemo(
+    () => availableFreezes(freezeLedger, freezeBudgetMax),
+    [freezeLedger, freezeBudgetMax],
+  );
+
+  // Batch 4.11 — weekly recap derivation + visibility gating.
+  const currentWeekKey = useMemo(
+    () => weekKeyFor(new Date(), weekStartDay),
+    [weekStartDay],
+  );
+  const recap = useMemo(
+    () =>
+      buildWeeklyRecap({
+        byDay: byDay as any,
+        weightKgByDay,
+        targets,
+        weekStartDay,
+        ledger: freezeLedger,
+        budgetMax: freezeBudgetMax,
+      }),
+    [byDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+  );
+  const recapVisible = useMemo(
+    () =>
+      shouldShowRecap(recapLastSeenWeekKey, currentWeekKey, new Date(), weekStartDay) &&
+      recap.daysLogged > 0,
+    [recapLastSeenWeekKey, currentWeekKey, weekStartDay, recap.daysLogged],
+  );
+
+  const recapShownRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!recapVisible) return;
+    if (recapShownRef.current === recap.weekKey) return;
+    recapShownRef.current = recap.weekKey;
+    track(AnalyticsEvents.weekly_recap_shown, { weekKey: recap.weekKey });
+  }, [recapVisible, recap.weekKey]);
+
+  const dismissRecap = useCallback(async () => {
+    setRecapLastSeenWeekKey(currentWeekKey);
+    if (!userId) return;
+    await supabase
+      .from("profiles")
+      .update({ weekly_recap_last_seen_week_key: currentWeekKey } as never)
+      .eq("id", userId);
+  }, [currentWeekKey, userId]);
+
+  // Schedule / cancel the Sunday-18:00 push whenever the opt-in flag or
+  // week_start_day changes. Idempotent — the helper cancels any prior
+  // scheduled notification before installing a fresh one.
+  const pushSchedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    const ledgerKey = `${recapPushEnabled ? "on" : "off"}|${weekStartDay}`;
+    if (pushSchedRef.current === ledgerKey) return;
+    pushSchedRef.current = ledgerKey;
+    (async () => {
+      const scheduled = await scheduleWeeklyRecapPush({
+        enabled: recapPushEnabled,
+        weekStartDay,
+      });
+      if (scheduled) {
+        track(AnalyticsEvents.weekly_recap_push_sent, { weekKey: currentWeekKey });
+      }
+    })();
+  }, [userId, recapPushEnabled, weekStartDay, currentWeekKey]);
 
   // Weight trend (last entries)
   const weightTrend = useMemo(() => {
@@ -235,6 +342,11 @@ export default function ProgressScreen() {
         </View>
       ) : (
         <>
+          {/* Weekly Recap Card (Batch 4.11) */}
+          {recapVisible ? (
+            <WeeklyRecapCard recap={recap} onDismiss={dismissRecap} />
+          ) : null}
+
           {/* 2x2 Stat Grid */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
             {([
@@ -255,7 +367,9 @@ export default function ProgressScreen() {
               [
                 "Streak",
                 `${streakDays} day${streakDays !== 1 ? "s" : ""}`,
-                "logging streak",
+                freezesAvailable > 0
+                  ? `logging streak · ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`
+                  : "logging streak",
                 streakDays >= 3 ? t.green : t.accent,
                 "trophy-outline",
               ],

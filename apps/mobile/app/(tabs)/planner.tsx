@@ -23,7 +23,24 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+import {
+  distributeLeftovers,
+  type LeftoverAwareMeal,
+} from "../../../../src/lib/nutrition/leftoversPlanner";
+import {
+  buildTemplateFromWeek,
+  applyTemplateToWeek,
+  type PlanTemplate,
+} from "../../../../src/lib/nutrition/planTemplates";
+import {
+  createPlanTemplate,
+  deletePlanTemplate,
+  listPlanTemplates,
+} from "../../../../src/lib/nutrition/planTemplatesClient";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { track } from "@/lib/analytics";
 import { HouseholdCard } from "@/components/HouseholdCard";
+import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -59,6 +76,10 @@ type PlanMeal = {
   fiberG?: number;
   portionMultiplier?: number;
   isPlaceholder?: boolean;
+  /** Batch 3.10 — leftover parent recipe id. Visual-only; macros equal parent. */
+  leftoverOf?: string;
+  /** Batch 3.10 — visual-only companion to `leftoverOf`. */
+  isLeftover?: boolean;
 };
 
 type DayPlan = {
@@ -105,6 +126,32 @@ export default function PlannerScreen() {
   const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number; fiber?: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
+
+  // Batch 3.10 — plan templates state.
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!templatesOpen || !userId) return;
+    let cancelled = false;
+    setTemplatesLoading(true);
+    listPlanTemplates(supabase, userId)
+      .then(({ templates, error }) => {
+        if (cancelled) return;
+        if (error) {
+          Alert.alert("Templates", `Could not load templates: ${error}`);
+          return;
+        }
+        setPlanTemplates(templates);
+      })
+      .finally(() => {
+        if (!cancelled) setTemplatesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [templatesOpen, userId]);
 
   // Load shopping item count
   useEffect(() => {
@@ -375,6 +422,12 @@ export default function PlannerScreen() {
         },
         mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
         mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
+        leftoverBadge: {
+          fontSize: 11,
+          fontWeight: "600",
+          color: "#a16207",
+          marginTop: 4,
+        },
         mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
         mealLogBtn: { paddingVertical: 12, paddingHorizontal: 10, minWidth: 64, alignItems: "flex-end" },
         mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
@@ -571,7 +624,7 @@ export default function PlannerScreen() {
         days,
         slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
       });
-      const newPlan = rawPlan.map((dp) => {
+      const stripped = rawPlan.map((dp) => {
         const meals = stripPlanPlaceholders(dp.meals);
         const totals = meals.reduce(
           (acc, ml) => ({
@@ -584,6 +637,24 @@ export default function PlannerScreen() {
         );
         return { ...dp, meals, totals };
       });
+
+      // Batch 3.10 — leftovers pass using recipe `servings` yield.
+      const recipesByRef: Record<string, { servings: number }> = {};
+      for (const r of savedRecipes) {
+        const s = (r as { servings?: number }).servings;
+        if (s && s > 1) recipesByRef[r.id] = { servings: s };
+      }
+      let newPlan: DayPlan[] = stripped as DayPlan[];
+      if (Object.keys(recipesByRef).length > 0) {
+        const { plan: distributed, parentCount, leftoverCount } = distributeLeftovers(
+          stripped as DayPlan[],
+          recipesByRef,
+        );
+        newPlan = distributed as DayPlan[];
+        if (leftoverCount > 0) {
+          track(AnalyticsEvents.plan_leftovers_generated, { parentCount, leftoverCount });
+        }
+      }
 
       setPlan(newPlan);
       setPlanTargets(resolved);
@@ -893,6 +964,14 @@ export default function PlannerScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.mealSlot}>{meal.name}</Text>
+                  {(meal as LeftoverAwareMeal).leftoverOf ? (
+                    <Text
+                      accessibilityLabel={`Leftover of ${meal.recipeTitle}`}
+                      style={styles.leftoverBadge}
+                    >
+                      🍱 Leftover of {meal.recipeTitle}
+                    </Text>
+                  ) : null}
                   <Text style={styles.mealTitle}>
                     {meal.recipeTitle}
                     {meal.portionMultiplier && meal.portionMultiplier !== 1 ? ` (${meal.portionMultiplier}x)` : ""}
@@ -1001,11 +1080,15 @@ export default function PlannerScreen() {
                     return;
                   }
 
-                  // Count how many times each recipe appears in the plan
+                  // Count how many times each recipe appears in the plan.
+                  // Batch 3.10 — leftover rows represent servings of an already-counted
+                  // parent recipe. Skip them so the shopping list doesn't triple-buy
+                  // ingredients for a single batch cook.
                   const recipeCounts: Record<string, number> = {};
                   const recipeTitles: Record<string, string> = {};
                   for (const dp of plan) {
                     for (const m of dp.meals) {
+                      if ((m as PlanMeal).leftoverOf) continue;
                       const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
                       if (rid) {
                         recipeCounts[rid] = (recipeCounts[rid] ?? 0) + 1;
@@ -1116,9 +1199,76 @@ export default function PlannerScreen() {
             <Pressable style={styles.regenBtn} onPress={() => setPlan(null)}>
               <Text style={styles.regenBtnText}>New Plan</Text>
             </Pressable>
+            <Pressable
+              style={styles.regenBtn}
+              onPress={() => setTemplatesOpen(true)}
+              accessibilityLabel="Save or apply a plan template"
+            >
+              <Text style={styles.regenBtnText}>Templates</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
+      <PlanTemplatesSheet
+        visible={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        sourceMealCount={(plan ?? []).reduce(
+          (n, d) =>
+            n +
+            d.meals.filter(
+              (m) =>
+                !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }) &&
+                !(m as LeftoverAwareMeal).leftoverOf,
+            ).length,
+          0,
+        )}
+        maxDayCount={(plan ?? []).length || 1}
+        templates={planTemplates}
+        loading={templatesLoading}
+        onSave={async (name, dayCount) => {
+          if (!userId) return { ok: false, error: "Sign in to save templates." };
+          const draft = buildTemplateFromWeek(plan, name, dayCount);
+          if (!draft) return { ok: false, error: "This plan has no meals to save." };
+          const { template, error } = await createPlanTemplate(supabase, userId, draft);
+          if (error || !template) return { ok: false, error: error ?? "Could not save template." };
+          track(AnalyticsEvents.plan_template_created, {
+            dayCount: draft.dayCount,
+            slotCount: draft.slots.length,
+          });
+          setPlanTemplates((prev) => [template, ...prev.filter((t) => t.id !== template.id)]);
+          return { ok: true };
+        }}
+        onApply={(templateId) => {
+          const tmpl = planTemplates.find((t) => t.id === templateId);
+          if (!tmpl) return;
+          Alert.alert(
+            "Apply template?",
+            `Replace this week's plan with "${tmpl.name}"?`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Apply",
+                onPress: () => {
+                  const next = applyTemplateToWeek(tmpl);
+                  setPlan(next as DayPlan[]);
+                  track(AnalyticsEvents.plan_template_applied, {
+                    dayCount: tmpl.dayCount,
+                    slotCount: tmpl.slots.length,
+                  });
+                  setTemplatesOpen(false);
+                },
+              },
+            ],
+          );
+        }}
+        onDelete={async (templateId) => {
+          if (!userId) return { ok: false, error: "Sign in required." };
+          const { error } = await deletePlanTemplate(supabase, userId, templateId);
+          if (error) return { ok: false, error };
+          setPlanTemplates((prev) => prev.filter((t) => t.id !== templateId));
+          return { ok: true };
+        }}
+      />
     </View>
   );
 }

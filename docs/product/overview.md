@@ -36,6 +36,8 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 - Import from social (Instagram/TikTok via OpenAI caption parsing)
 - Manual recipe creation with ingredient search
 - Ingredient-level nutrition verification with USDA food search
+- **Add ingredient post-import** (Batch 2.7) — if the importer missed a row ("I also added cheese"), the recipe detail on web and the verify screen on mobile both expose a "+ Add ingredient" affordance. Name + quantity + unit + a "Find match" step that calls the same verify pipeline used during import; low-confidence or no-match rows persist with `addedByUser: true` so totals update but the row shows a low-confidence badge. Fires `recipe_ingredient_added`.
+- **Per-ingredient override** (Batch 2.7) — when USDA/OFF picked the wrong food for one line, users can pin manual macros from the label on that row without rewriting the recipe. The override replaces the matched macros when computing recipe totals and shows a visible "override" badge with a Reset affordance to revert. Fires `recipe_ingredient_overridden` / `recipe_ingredient_override_cleared`.
 - Barcode scanning for packaged foods
 - Portion-adjusted recipe viewing
 - Cook Mode (step-by-step fullscreen instructions)
@@ -56,6 +58,15 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 - Log planned meals directly to tracker
 - Auto-generate shopping list from plan
 
+#### Drag-drop meals between days (Batch 3.10)
+Any planned meal can be moved to another day or another slot without regenerating the plan. On web, users drag a card and drop it on the target slot — source and destination swap places in one move, and day totals recompute immediately. A keyboard-accessible "Move" button opens a factual prompt (`day,slot`) that works identically for screen-reader and keyboard users. On mobile, the Move action lives in the meal action sheet. Both platforms fire `meal_moved_in_plan` with `{ fromSlot, toSlot, crossDay }`. The underlying `moveMealInPlan` helper is shared — there is no place for web and mobile to drift on what a "move" means.
+
+#### Save plan as template (Batch 3.10)
+A week (or any 1–7 day slice) can be saved as a named template like "Bulk week" or "Vacation week". Templates persist server-side in `user_plan_templates` with RLS locked to the owning user, and names are unique per user (case-insensitive). Applying a template overwrites the current week after a confirm. Empty-week saves fail loudly — there is no silent success and no blank template; the dialog shows "This plan has no meals to save." Web and mobile share the same validation, DB client, and pure helpers (`buildTemplateFromWeek`, `applyTemplateToWeek`, `validatePlanTemplate`).
+
+#### Leftovers-aware plan (Batch 3.10)
+When a recipe yields more than one serving and the user eats one, the remaining servings automatically fill matching slots on following days as "leftover of [recipe]". A dinner yielding 3 becomes lunch or dinner on the next two days; a breakfast yielding 2 becomes next-day breakfast or snack. Occupied slots are never overwritten. Leftover slots carry a `🍱 Leftover of [recipe]` badge but their macros equal the parent's scaled macros — the flag is purely visual, and totals are honest. If the user swaps or unlocks the parent, a confirm prompt states exactly how many leftovers will disappear ("This will remove 2 leftover meals.") and the plan recomputes. The whole pipeline lives in `src/lib/nutrition/leftoversPlanner.ts` and is unit-tested on both happy and unhappy paths.
+
 ### Food Tracking
 - Daily view with meal slot sections (Breakfast/Lunch/Dinner/Snack)
 - Weekly view with calorie bar chart and macro breakdown
@@ -65,6 +76,39 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 - Re-log from previous meals
 - Delete entries (long-press)
 - Profile-synced targets with over/under display
+- Remaining macros bar below the daily ring shows kcal / protein / carbs / fat (+ fiber when tracked) left today, flipping to a factual "+N over" indicator in the destructive colour once a macro exceeds its target
+- Fit-this-in preview on food search — selecting a portion shows "If you log this: N kcal / Pg / Cg / Fg left" so the user can decide without leaving the sheet
+- Quick add panel with Favourites / Frequent / Recent / My meals tabs — star a meal once to one-tap re-log it forever. Frequent ranks by how many times the meal has been logged; Recent shows the last 20 unique meals. Web and mobile share the same logic via `src/lib/nutrition/foodHistory.ts` + `favoriteFoods.ts`.
+
+#### Saved meal combos (Batch 2.6)
+- **What it is** — a user-named bundle of 2+ foods logged together habitually (e.g. "My usual breakfast" = oats + berries + protein powder). One tap re-logs every item into the active slot on the active day with fresh ids, so the saved combo and its past instances are independent rows. Distinct from **recipes** (multi-step cooked dishes with ingredients/instructions), from **favourites** (single-food one-tap re-log), and from **meal templates** (future whole-day plans).
+- **Save flow** — each meal-slot header gets a "Save combo" chip once the slot has 2+ logged items. Tapping it opens the save dialog (web `SaveMealDialog`) / bottom sheet (mobile `SaveMealSheet`) with the items pre-filled and the active slot preselected as the default. The user can rename, reorder (up/down), or remove items before saving. Item-level full editing post-save is deferred to a later batch — users delete + re-create to change items.
+- **Re-log flow** — the Quick add panel has a fourth tab "My meals" listing the user's combos, newest-re-logged first. Each row shows name, item count, and bundle totals (kcal / P / C / F). Tap the `+` to log every item into the active slot (or the combo's stored default slot, if set). The combo goes through the same `addLoggedMealForDate` (web) / `setByDay` (mobile) insert path as manual logs, so confidence, micros, and `nutrition_entries` end up identical to a normal log.
+- **Manage** — web overflow menu on each saved meal has Rename / Delete. Mobile long-press opens an action sheet with the same options. Rename trims + reuses the shared `renameSavedMeal`; delete cascades child items via FK `on delete cascade`.
+- **Persistence** — parent row in `public.user_saved_meals` (name, optional `default_meal_slot`, `log_count`, `last_logged_at`) plus child rows in `public.user_saved_meal_items` (one per food, ordered by `position`). RLS locks both to the owning user. Combos are listed by `(last_logged_at desc nulls last, created_at desc)` so the most recently re-logged combos bubble up.
+- **Analytics** — `saved_meal_created` on save, `saved_meal_logged` with `{ itemCount, slot }` on re-log, `saved_meal_deleted` on delete. Events fire identically on web and mobile.
+- **Accessibility** — name input is labeled "Meal combo name"; each item row has a full label including title + per-item macros; each saved-meal row label includes bundle totals so screen readers announce the macro cost before the user logs.
+- "Eat again" card — on the Today view, when there is a meal in the slot matching the current clock time on any prior day, a banner suggests re-logging it in one tap. Dismissible per day (resets on the next new day).
+- Copy meal / Duplicate day — any logged meal has a "Copy to another day…" action (web: row overflow menu; mobile: long-press). Day header has a "Duplicate day…" action. Both offer a single target day and an inclusive multi-day range; the source day is always excluded. Copied rows go through the same `nutrition_entries` insert path as normal logs, with a fresh id per row. Shared helper `src/lib/nutrition/copyMeals.ts`. Analytics events: `meal_copied`, `day_duplicated` with `{ source, batchSize, targetDayCount }` on both platforms.
+
+#### Custom foods (Batch 3.9)
+- **What it is** — a user-defined food that isn't in USDA or Open Food Facts. The canonical use case is homemade items (granola, protein balls) and local-only items (corner-bakery pastry) where no label, no barcode, no USDA row exists. Distinct from **favourites** (starring a known food) and from **saved-meal combos** (bundling already-logged items).
+- **Create flow** — web: "+ Create custom food" entry point surfaces in the food-search panel, always visible at the bottom of the results list (and promoted when the query has zero results). Opens `CreateCustomFoodDialog`. Mobile: same entry, same payload via `CreateCustomFoodSheet`. Both take Name (required) + optional Brand, "Macros per N grams" basis (default 100 — the nutrition-label convention), macro inputs (kcal / protein / carbs / fat + optional fibre), and any number of named serving shortcuts like `1 bowl = 80g`, `1 tbsp = 12g`, `1 cup = 120g`. A live preview shows the first saved serving scaled. Zero-macro save is allowed with a soft "Macros not set" notice — no blocking, the user fills it in later.
+- **Log flow** — custom foods surface at the top of the food-search results list with a "Custom" badge when the typed query matches their name or brand (`searchCustomFoods`). When picked, the portion sheet adds a dropdown of the food's saved servings (plus the standard "grams" path). Choosing a named serving sets the quantity and the gram weight together. Macros are scaled linearly via the shared `scaleMacrosForGrams` helper — no nutrition values are minted; a non-positive `baseGrams` is treated as zero, never as a divide-by-zero.
+- **Edit / delete** — each custom food row in the library has an overflow menu (web) / long-press menu (mobile) with Edit + Delete. Edit opens the same dialog pre-filled; Delete removes the row. Dedupe: the DB unique index on `(user_id, lower(name))` prevents duplicates; on collision the client appends " (2)" … " (9)" to the name so rapid imports don't fail silently.
+- **Persistence** — `public.user_custom_foods` (Batch 3.9). Macros per `base_grams`; `servings jsonb` holds `[{label, grams}]` bounded to 20 rows. RLS is owner-only full CRUD. Fiber is nullable (homemade items often genuinely lack a fiber value).
+- **Analytics** — `custom_food_created` with `{ hasBrand, servingCount }` on save; `custom_food_updated` / `custom_food_deleted` on edit / delete; `custom_food_logged` with `{ servingLabel?, grams }` alongside the normal `food_logged` event so custom-food usage can be sliced without double-counting total logs.
+- **Accessibility** — all inputs are labelled; macro inputs use `inputmode="decimal"` (web) / `keyboardType="decimal-pad"` (mobile); add / remove serving-row buttons carry per-row aria-labels referencing the row label so screen readers announce which row is being removed.
+
+#### Hydration & stimulants (Batch 2.5)
+- Today dashboard has a dedicated card with three rows: **Water**, **Caffeine**, **Alcohol**.
+- **Water** — progress bar against `profiles.target_water_ml` + four quick-add chips (100 / 250 / 500 / 750 ml). Includes a "from logged food" sub-line when meals contribute water. Manual water input still flows through the manual-log modal.
+- **Caffeine** — daily total in mg against `profiles.target_caffeine_mg` (default 400 mg — the FDA upper bound for healthy adults). Four quick-add chips: Espresso (64 mg), Coffee (95 mg), Filter coffee (120 mg), Black tea (48 mg). Additional presets (green tea, energy drink, cola) are available programmatically and used by future UI. Over-target copy is factual — "Over 400 mg" — in `Accent.warning` amber, never the destructive red. No card-wide red treatment.
+- **Alcohol** — **week-rolling** grams-of-ethanol sum against `profiles.target_alcohol_g_weekly`. Four quick-add chips: Beer 500 ml (16 g), Wine 150 ml (14 g), Spirit 44 ml (14 g), Cider 330 ml (12 g). 14 g ethanol ≈ 1 US standard drink ≈ 1.75 UK units. The whole row is **hidden** when `target_alcohol_g_weekly === 0` — users opt in via Settings. Over-target copy is factual — "Over limit" — also in amber.
+- **Reset today** — each row has an overflow action that clears that day's value for that kind, leaving the other two rows (and the other days) untouched.
+- **Apple Health** — inbound: dietary caffeine samples are pulled into `extra_caffeine_by_day` on the same throttle as `syncNutritionFromHealthThrottled`, using `max(existing, imported)` per day to stay idempotent across re-syncs. Outbound: `exportDayToHealth` writes a `Suppr caffeine` food sample with the day's caffeine total. Alcohol is **not** wired because `HKQuantityTypeIdentifierNumberOfAlcoholicBeverages` is a count type that sits outside the dietary `saveFoodSample` path — tracked as a backlog item.
+- **Analytics** — every quick-add fires `hydration_logged` (water) or `stimulant_logged` (caffeine / alcohol) with `{ type, amount, unit, preset }`. Reset actions fire the same events with `amount: 0, preset: "reset"` so reset frequency is observable.
+- **Accessibility** — every chip carries an `aria-label` (web) / `accessibilityLabel` (mobile) that names both the quantity and the stimulant, e.g. "Add 250 millilitres water", "Add Coffee: 95 milligrams caffeine", "Add Wine 150ml: 14 grams alcohol".
 
 ### Shopping List
 - Auto-generated from meal plan
@@ -78,8 +122,48 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 - 15-step onboarding with TDEE calculator
 - Activity level, goal (cut/maintain/bulk), macro strategy
 - Custom calorie/protein/carbs/fat/fiber/water targets
+- Caffeine daily cap (default 400 mg — FDA) and optional alcohol weekly cap (default 0 = hidden). Configurable in Settings.
 - Measurement system preference (metric/imperial)
 - Apple Sign-In, email/password, magic link auth
+
+### Engagement & Retention (Batch 4.11)
+
+**Streak freeze.** The logging streak (`computeLoggingStreak`) is a retention signal, but a hard streak punishes real-world users (sick days, travel). Users hold a small budget of freeze credits (default cap 3, configurable 0–10) that each absorb a single zero-meal day without breaking the streak. Freezes are earned automatically when the streak crosses a multiple of 7 (7, 14, 21…). UI copy is factual — "Freeze used (Tue)", never "Streak saved!". The raw streak is never overwritten; the protected streak is a derived value (`computeProtectedStreak`) so we can surface both side-by-side when useful. Feature can be disabled per-user by setting `streak_freeze_budget_max = 0`.
+
+**Weekly recap card.** On Sunday evening (or Saturday for Sunday-start users), the Progress dashboard surfaces a recap of the week that just ended: avg calories, avg protein + adherence %, streak length, best day (highest-protein), and weight delta (suppressed when <2 weigh-ins). Supportive, factual copy — "3 days logged this week" not "You missed 4 days". Dismissible ("Got it") and shareable ("Share week" → system share sheet / clipboard). Once dismissed, the same week doesn't re-appear; the card reappears when the week key flips.
+
+**Weekly recap push (mobile).** Local `expo-notifications` trigger fires at 18:00 on the end-of-week day in the device's local timezone, nudging users back to the recap. Respects `weekly_recap_push_enabled` (opt-out in Settings). The notification deep-links to `/progress`. Web push is deferred — weekly recap is mobile-primary, and web users who open the app get the card directly on Progress.
+
+### iOS widgets + Siri Shortcuts (Batch 5.12)
+
+**Siri Shortcuts deep links.** Three `suppr://` URLs cover hands-free action without a native Siri Intent extension. Users add them to the iOS Shortcuts app (Open URL action) and optionally donate to Siri / add to Home screen / attach to the Action Button.
+
+- `suppr://log/water?ml=250` — add N ml water to today's hydration. `ml` defaults to 250, clamps to 1..5000, rejects non-numeric.
+- `suppr://fast/start?hours=16` — begin an N-hour fast. `hours` defaults to 16, clamps to 1..48, rejects non-numeric. No-ops when a fast is already active (never stacks sessions).
+- `suppr://today/remaining` — open Today. Also the tap URL for the (future) Home / Lock-screen widget.
+
+The URL parser (`parseSiriDeepLink`) uses the WHATWG `URL` class, is case-insensitive on host + path, treats a present-but-non-numeric parameter as hostile (rejects rather than silently defaults), and never throws. A pending-action queue (`lib/siriPending.ts`, single-slot / latest-wins / 5-minute TTL) bridges the deep-link handler in `_layout.tsx` to the Today tab so the layout doesn't need access to Today's hook state. Water actions flow through the existing `addWaterMl` path; fast actions append to `profiles.fasting_sessions` via `startFastFromShortcut`. Every action triggers an accessibility announcement so VoiceOver users hear confirmation immediately.
+
+**iOS widget snapshot.** Today writes a compact snapshot of the day to AsyncStorage and (best-effort) to a shared file in the documents directory every time kcal consumed / target / remaining macros / active fast state changes, debounced 500 ms. Snapshot shape (`WidgetSnapshot`) is frozen in `src/lib/nutrition/widgetSnapshot.ts` so a future native Swift widget extension can read it via App Group without JS involvement. The widget itself is deferred to a separate iOS developer task that wires `expo-apple-targets` (or equivalent) and a `WidgetKit` target — the snapshot is ready for consumption as soon as that extension lands. Analytics `widget_snapshot_updated` on every successful write.
+
+**Deferred.** Native Swift widget extension (render the calorie ring / remaining macros / fasting countdown). `react-native-siri-shortcut` donation (auto-populate the Shortcuts app without pasting URLs). Both can slot in without reshaping the shared helpers.
+
+### Voice logging + AI photo logging (Pro, Batch 5.13)
+
+**What it is.** Two hands-free ways to log a meal:
+
+- **Voice log.** Press-and-hold the mic, describe what you ate in natural language ("two eggs and a slice of toast"), release to transcribe. The transcript is parsed by an LLM into structured food items, and each item is run through our verified nutrition pipeline (USDA -> Open Food Facts -> FatSecret -> estimation fallback) — we never invent macro values.
+- **AI photo log.** Snap a photo of your meal; GPT-4o identifies the foods and estimates portions, we match each one against the verified nutrition pipeline, and you get a review list before anything commits to your diary.
+
+**Why Pro.** Both features call vision / language models with per-user cost. They sit behind `user_tier === "pro"`; free + Base users see a factual paywall dialog ("Voice logging is a Pro feature. Upgrade to use it.") and a lock icon on the entry points. No countdowns, no dark patterns.
+
+**Review before commit.** Every parsed item shows a confidence dot (high / medium / low, 0.75 and 0.5 thresholds), an "AI estimate" badge, and inline-editable macros. Items with confidence < 0.5 get an amber border and a "Low confidence — please verify" note. Nothing auto-logs: the user always taps "Log all" (or "Log anyway" when low-confidence items are present).
+
+**Source tagging.** Voice-logged entries carry `source: "AI voice"`; photo-logged entries carry `source: "AI photo"`. These surface in the Quick Add Recent tab with a small "AI" badge so users can always tell which diary rows came from an AI estimate.
+
+**Analytics.** `voice_log_started`, `voice_log_committed` (`{ itemCount, avgConfidence }`), `voice_log_paywalled`, `ai_photo_log_started`, `ai_photo_log_committed`, `ai_photo_log_paywalled`. The same events fire on web and mobile via the shared `src/lib/analytics/events.ts` map.
+
+**Deferred.** Server-side Whisper-based audio upload (the browser Web Speech API + mobile OS STT cover the current release). A native multilingual prompt. Native Android mic permission prompt UI (handled by Expo when permission is denied).
 
 ### Monetisation
 - Free / Base ($5/mo) / Pro ($12/mo) tiers
