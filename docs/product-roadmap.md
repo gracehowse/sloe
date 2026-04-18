@@ -4,6 +4,8 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 **Last reviewed:** 2026-04-18. This is a living doc — update phases as beta feedback arrives.
 
+**Known platform debt:** **Supabase migration drift** — local migrations ahead of production; some prod tables missing while history implies otherwise → risk of **silent** client failures for schema-backed features. **Reconcile before the next significant feature release** ([`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md); backlog **D1** in [`docs/planning/sweep-2026-04-executor-backlog.md`](../planning/sweep-2026-04-executor-backlog.md)).
+
 ---
 
 ## Product thesis
@@ -39,12 +41,12 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Fiber + water as first-class goals.** `profiles.target_fiber_g`, `profiles.target_water_ml`. Nutrition tab shows both; quick-add chips for water; per-meal fiber aggregation in day totals. Fiber column in RemainingMacrosBar is conditional on non-zero target (see `decisions_batch_1_1_1_2` DEC-005).
 - **Caffeine + alcohol tracking** (Batch 2.5). `profiles.target_caffeine_mg` (FDA 400 mg default), `profiles.target_alcohol_g_weekly` (opt-in, row hidden until set). Quick-add chips, week-rolling alcohol sum, factual over-target copy in amber (never red whole-card shame). Shared `hydrationStimulants.ts`.
 - **Dietary requirements + preferences.** `profiles.dietary` stores `vegetarian / vegan / pescatarian / gluten-free / dairy-free / nut-free / halal / kosher` via the canonical `DIETARY_PREFERENCE_ENTRIES` set (`src/constants/dietaryPreferences.ts`). Recipe labeling and discovery filtering apply the same ids. **Coeliac-strict and allergen-ingredient-level filtering is still TBD**.
-- **Custom foods** (Batch 3.9). Homemade / local-only foods with any number of named serving shortcuts (`1 bowl = 80g`). Shared `scaleMacrosForGrams`. Owner-only RLS on `user_custom_foods`.
+- **Custom foods** (Batch 3.9). Homemade / local-only foods with any number of named serving shortcuts (`1 bowl = 80g`). Shared `scaleMacrosForGrams`. Owner-only RLS on `user_custom_foods`. **FoodSearch integration shipped 2026-04-18 (audit C1)** — `FoodSearch.tsx` + `FoodSearchModal.tsx` now list custom foods at top of results with a "Custom" badge, a "+ Create custom food" row always below results, portion chips for named servings, and edit/delete via overflow menu (web) / long-press (mobile). Primary log path on web NutritionTracker inline search still uses legacy USDA-only search (C1a backlog follow-up).
 - **Saved meal combos** (Batch 2.6). 2+ logged items saved as a named bundle, re-logged in one tap from the "My meals" tab. Parent `user_saved_meals` + child `user_saved_meal_items`.
 - **Favourites / Frequent / Recent Quick Add** (Batch 1.3). Tabbed picker; star any meal to one-tap re-log. "Eat again" clock-aware banner. `user_favorite_foods` with unique key on `user_id + lower(title) + round(cal)`.
 - **Copy meal / Duplicate day** (Batch 1.4). Per-meal and per-day copy to single day or inclusive range. Shared `copyMeals.ts`.
 - **Add ingredient + per-ingredient overrides** (Batch 2.7). Add a missed ingredient post-import or pin manual "label values" on one row without losing the match. `recipe_ingredients.override_macros` + `added_by_user`.
-- **Drag-drop meals between days, save-plan-as-template, leftovers-aware planning** (Batch 3.10). `user_plan_templates`; `meal_plan_meals.is_leftover` + `leftover_of_recipe_id`; auto-distribution of multi-serving recipes into matching next-day slots.
+- **Drag-drop meals between days, save-plan-as-template, leftovers-aware planning** (Batch 3.10). `user_plan_templates`; `meal_plan_meals.is_leftover` + `leftover_of_recipe_id`; auto-distribution of multi-serving recipes into matching next-day slots. **Mobile Move action shipped 2026-04-18 (audit C2)** — long-press a meal row → action sheet → `MoveMealSheet` destination picker → shared `moveMealInPlan` helper. No native drag-drop on mobile by design; parity is now real.
 - **Adaptive TDEE** (Phase B shipped into A's loop). `computeAdaptiveTDEE` persists `profiles.adaptive_*` when confidence clears medium/high; 6 h throttle; runs after every journal insert/delete on web and every `nutrition_entries` upsert on mobile.
 
 ### Still to build
@@ -94,7 +96,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Hydration + caffeine + alcohol card** — see Phase A.
 - **Saved meals, add-ingredient + overrides, custom foods, leftovers / plan templates, drag-drop** — all shipped in Batches 2.6, 2.7, 3.9, 3.10.
 - **Streak freeze + Weekly recap + weekly push** (Batch 4.11). Freeze credits (default cap 3) earned at 7-day milestones; raw streak untouched, protected streak derived. Weekly recap card at EOW (Sun or Sat based on `week_start_day`) with avg kcal, protein adherence, streak + freezes, weight delta (suppressed <2 weigh-ins), best day. Mobile `expo-notifications` WEEKLY trigger at 18:00 local. Web push deferred.
-- **iOS widget snapshot + Siri Shortcut deep links** (Batch 5.12). `suppr://log/water?ml=N`, `suppr://fast/start?hours=N`, `suppr://today/remaining`. WHATWG URL parsing; single-slot 5-min TTL pending queue; VoiceOver announcements. Native widget extension deferred.
+- **Siri Shortcut deep links** (Batch 5.12). `suppr://log/water?ml=N`, `suppr://fast/start?hours=N`, `suppr://today/remaining`. WHATWG URL parsing; single-slot 5-min TTL pending queue; VoiceOver announcements. **iOS widget explicitly removed from launch scope (2026-04-18 product decision — not critical for launch)** — `widgetSnapshot.ts` infra still writes the JSON so a native WidgetKit extension can be added later without more code changes; no native target exists today.
 - **Voice logging + AI photo logging (Pro, Batch 5.13).** Press-and-hold mic on Today → transcript → `/api/nutrition/voice-log` → verified-macro review list with confidence badges + "AI estimate" badges → commit. Snap chip → camera/library picker → `/api/nutrition/photo-log` (GPT-4o vision) → same review flow. Low-confidence (<0.5) items flagged with `role="alert"` and can only be committed via explicit "Log anyway". Pro-gated: free + Base tiers see a factual paywall dialog, no countdowns. Analytics: `voice_log_started/_committed/_paywalled`, `ai_photo_log_started/_committed/_paywalled`. Shared helper `src/lib/nutrition/aiLogging.ts` owns sanitisation + classification + totals across web and mobile. 37 new unit tests cover the helper.
 - **CSV export** — shared `exportNutritionCsv.ts` (web) + `apps/mobile/lib/exportCsv.ts` (mobile). One row per logged meal per day: date, meal, food, kcal, protein, carbs, fat, fiber, source, time.
 
@@ -102,7 +104,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 
 - **Weekly fiber + hydration adherence** rollups in Progress (parallel to protein adherence in weekly recap).
 - **Per-meal breakdown export** — current CSV is per-logged-row; Lose-It-style per-slot rollup export is a future-cut.
-- **Native iOS Home / Lock-screen widget extension** consuming `WidgetSnapshot`.
+- **Native iOS Home / Lock-screen widget extension** consuming `WidgetSnapshot`. **Deferred post-launch** — user decision 2026-04-18: widgets not critical for launch. Do not reinvestigate scope until the post-launch widget track is opened.
 - **`react-native-siri-shortcut` donation** to auto-populate the Shortcuts app.
 - **Web push** for weekly recap (blocked on service-worker infra).
 
@@ -182,7 +184,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 We've already completed much of the Phase A + B + C breadth. The remaining sequence is:
 
 1. **Close out Phase A allergen depth** — ingredient-level hard-filter vs soft-warn for coeliac, nut, shellfish. Surfaces in discover + planner.
-2. **Close out Phase C rollups** — weekly fiber + hydration adherence; native iOS widget extension + Siri donation.
+2. **Close out Phase C rollups** — weekly fiber + hydration adherence. (Native iOS widget extension + Siri donation explicitly deferred post-launch per user decision 2026-04-18 — widgets not critical for launch.)
 3. **Phase B breadth** — Android / Health Connect spike; Strava / Garmin partner APIs; weekly deficit rollup.
 4. **Phase D depth** — feed filters, creator profile + follow + notifications, saves→library→plan loop polish. Multi-format creator authoring is exploratory until baseline and compliance are clear.
 5. **Phase F.2** — friends graph + one-to-one meal / plan sharing. Partner sync with macro-aware gap fill. Keep sharing opt-in per type, revokable.

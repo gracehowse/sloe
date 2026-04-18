@@ -1,5 +1,11 @@
 # Supabase migration drift — inventory
 
+**Known debt (product):** the linked **Supabase** project has **many local migrations not applied on remote**; some migrations assume tables that **do not exist in prod** (migration **history** can disagree with **actual schema**). That causes **silent client failures** until DDL is aligned. **Reconcile in a planned window before the next significant feature release** — do not keep shipping schema-dependent features on top of this drift.
+
+**Inventory:** first captured in commit **`d3cdc3d`**; follow-up hardening and `db push` notes in **`61e4425`**.
+
+---
+
 **Generated:** 2026-04-18 (from `supabase migration list --linked` on project **Suppr**).
 
 Last version **applied on remote** matches local through **`20260418100000`**. Everything below has **Local** set but **Remote** empty (not recorded as applied on the linked database).
