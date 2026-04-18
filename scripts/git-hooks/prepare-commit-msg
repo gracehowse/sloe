@@ -1,0 +1,8 @@
+#!/bin/sh
+# Strip tool-injected commit footers (e.g. "Made-with: Cursor") before the message is finalized.
+# Enable for this repo: git config core.hooksPath scripts/git-hooks
+msg=${1:?}
+[ -f "$msg" ] || exit 0
+tmp=${msg}.$$
+grep -v '^Made-with:' "$msg" >"$tmp" && mv "$tmp" "$msg"
+exit 0

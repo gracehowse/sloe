@@ -43,3 +43,13 @@ For ingredient matching:
 - validate nutrition plausibility
 - reject low-confidence matches
 - only ask for clarification when uncertainty materially affects nutrition
+
+## Git commits
+
+**One-time per clone:** strip tool footers from commit messages (e.g. `Made-with: Cursor`):
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+Hooks live under `scripts/git-hooks/` (see `prepare-commit-msg`). New machines need the same `core.hooksPath` setting.
