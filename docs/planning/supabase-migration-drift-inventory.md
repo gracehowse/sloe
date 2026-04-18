@@ -25,6 +25,13 @@ Last version **applied on remote** matches local through **`20260418100000`**. E
 
 **Count:** 14 pending versions after `20260418100000`.
 
+## 2026-04-18 — `db push` attempt (first blocker)
+
+- **`supabase db push --linked`** failed on **`20260418120000`**: `relation "public.creator_publish_notifications" does not exist` when adding the table to `supabase_realtime`. Migration history on prod implied older migrations were applied, but **this table was never created** (historical drift).
+- **Repo fix:** `20260418120000_realtime_notification_tables.sql` now uses **`to_regclass(...)`** so publication changes run **only if the table exists**, allowing `db push` to continue on drifted databases.
+- **Prod data fix (when pooler / CLI auth is healthy):** run **`supabase/scripts/ensure_creator_publish_notifications.sql`** in the Supabase SQL editor (same as migration `20260409140000_*`), then re-run **`supabase db push --linked`**. If the CLI hits **`ECIRCUITBREAKER` / password failures**, wait several minutes and retry, or paste the script in the dashboard.
+- **`20260421180000`:** deletes seeded/demo recipes by fixed UUIDs and a known seed `author_id` — review before applying on prod with real user content.
+
 ## Manual prod hotfix (already done)
 
 - **`20260421110000` (caffeine / alcohol columns on `profiles`):** DDL was applied directly on production (see `supabase/scripts/apply_caffeine_alcohol_columns.sql`). Remote **migration history** still does **not** list `20260421110000` as applied until you reconcile (either `supabase db push` in order after prerequisites exist, or `migration repair` once the chain matches reality).
