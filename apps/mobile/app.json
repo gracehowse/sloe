@@ -14,7 +14,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSHealthShareUsageDescription": "Suppr reads your steps, weight, body fat, and activity data from Apple Health to keep your tracker in sync.",
-        "NSHealthUpdateUsageDescription": "Suppr only reads steps, weight, body fat, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health."
+        "NSHealthUpdateUsageDescription": "Suppr only reads steps, weight, body fat, and activity from Apple Health to sync your tracker. It does not write data back to Apple Health.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
@@ -130,7 +131,11 @@
       "supprWebUrl": "https://suppr-club.com",
       "supprApiUrl": "https://suppr-club.com",
       "supabaseUrl": "https://fnfgxsignmuepshbebrl.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4",
+      "router": {},
+      "eas": {
+        "projectId": "16ff0460-233f-4126-b40e-4b5ad54057df"
+      }
     },
     "plugins": [
       "expo-router",

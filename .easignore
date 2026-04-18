@@ -1,0 +1,32 @@
+# EAS Build: treat this repo as just the mobile app.
+# The repo-root package.json is for the Next.js web app and pulls in
+# conflicting deps (React 18 vs mobile's React 19). Exclude it so EAS
+# only resolves apps/mobile/package.json on the builder.
+
+# Web-only root files
+/package.json
+/package-lock.json
+/node_modules
+/.next
+/next.config.*
+/next-env.d.ts
+
+# Web source + tests
+/src
+/public
+/tests
+/e2e
+/playwright.config.*
+/vitest.config.*
+
+# Supabase / scripts / docs — not needed for the mobile build
+/supabase
+/scripts
+/docs
+/.github
+/.vscode
+
+# Large / local-only
+/.maestro
+*.log
+.DS_Store
