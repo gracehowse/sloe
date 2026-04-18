@@ -4,7 +4,7 @@ This document extends the MVP hardening work with **nutrition depth**, **activit
 
 **Last reviewed:** 2026-04-18. This is a living doc — update phases as beta feedback arrives.
 
-**Known platform debt:** **Supabase migration drift** — local migrations ahead of production; some prod tables missing while history implies otherwise → risk of **silent** client failures for schema-backed features. **Reconcile before the next significant feature release** ([`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md); backlog **D1** in [`docs/planning/sweep-2026-04-executor-backlog.md`](../planning/sweep-2026-04-executor-backlog.md)).
+**Supabase (2026-04-18):** migration drift on the linked prod project is **reconciled** through **`20260421180000`** (`supabase db push --linked`). Process and replay notes: [`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md).
 
 ---
 

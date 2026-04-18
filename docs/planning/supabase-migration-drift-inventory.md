@@ -1,16 +1,23 @@
 # Supabase migration drift — inventory
 
-**Known debt (product):** the linked **Supabase** project has **many local migrations not applied on remote**; some migrations assume tables that **do not exist in prod** (migration **history** can disagree with **actual schema**). That causes **silent client failures** until DDL is aligned. **Reconcile in a planned window before the next significant feature release** — do not keep shipping schema-dependent features on top of this drift.
+## Status (linked project **Suppr**)
 
-**Inventory:** first captured in commit **`d3cdc3d`**; follow-up hardening and `db push` notes in **`61e4425`**.
+**Resolved on production (2026-04-18):** `supabase db push --linked` completed through **`20260421180000`**. **`supabase migration list --linked`** now shows **Remote** populated for every local version (no empty middle column).
+
+**What we changed in-repo to unblock push:**
+
+1. **`20260418120000_realtime_notification_tables.sql`** — `to_regclass(...)` guards before `ALTER PUBLICATION … ADD TABLE` (prod had missed `creator_publish_notifications` while history looked healthy).
+2. **`supabase/scripts/ensure_creator_publish_notifications.sql`** — run once via `supabase db query --linked -f …` before push so the table + trigger exist.
+3. **`20260419100000_recipes_rls_published_only.sql`** — `DROP POLICY IF EXISTS` for **`recipes_select_published_or_own`** before `CREATE` (policy already existed on prod).
+4. **`20260420100000_household_planning.sql`** — `create extension if not exists pgcrypto` and **`encode(extensions.gen_random_bytes(6), 'hex')`** for `invite_code` (extension lived in `extensions` schema; unqualified `gen_random_bytes` failed).
+
+**Historical capture:** first inventory commit **`d3cdc3d`**; interim notes **`61e4425`** / **`c07c667`** (known-debt docs).
 
 ---
 
-**Generated:** 2026-04-18 (from `supabase migration list --linked` on project **Suppr**).
+## Previously pending (now applied on remote)
 
-Last version **applied on remote** matches local through **`20260418100000`**. Everything below has **Local** set but **Remote** empty (not recorded as applied on the linked database).
-
-## Pending on remote (apply in this order)
+These were the gap **after `20260418100000`** before reconcile:
 
 | Version | Migration file |
 |---------|----------------|
@@ -29,32 +36,19 @@ Last version **applied on remote** matches local through **`20260418100000`**. E
 | `20260421170000` | `20260421170000_streak_freeze_weekly_recap.sql` |
 | `20260421180000` | `20260421180000_remove_all_seeded_recipes.sql` |
 
-**Count:** 14 pending versions after `20260418100000`.
+**Earlier manual hotfix:** caffeine / alcohol `profiles` columns were applied before history caught up (`supabase/scripts/apply_caffeine_alcohol_columns.sql`); migration **`20260421110000`** then ran cleanly with `IF NOT EXISTS` notices.
 
-## 2026-04-18 — `db push` attempt (first blocker)
+---
 
-- **`supabase db push --linked`** failed on **`20260418120000`**: `relation "public.creator_publish_notifications" does not exist` when adding the table to `supabase_realtime`. Migration history on prod implied older migrations were applied, but **this table was never created** (historical drift).
-- **Repo fix:** `20260418120000_realtime_notification_tables.sql` now uses **`to_regclass(...)`** so publication changes run **only if the table exists**, allowing `db push` to continue on drifted databases.
-- **Prod data fix (when pooler / CLI auth is healthy):** run **`supabase/scripts/ensure_creator_publish_notifications.sql`** in the Supabase SQL editor (same as migration `20260409140000_*`), then re-run **`supabase db push --linked`**. If the CLI hits **`ECIRCUITBREAKER` / password failures**, wait several minutes and retry, or paste the script in the dashboard.
-- **`20260421180000`:** deletes seeded/demo recipes by fixed UUIDs and a known seed `author_id` — review before applying on prod with real user content.
+## Playbook — if drift happens again
 
-## Manual prod hotfix (already done)
+1. **`supabase migration list --linked`** — find first row with empty **Remote**.
+2. **`supabase db push --linked`** (or SQL editor for surgical fixes), fix idempotency in the failing migration file if prod already partially matches.
+3. **`migration repair`** only when you applied SQL **outside** the tracked migration and need history to match.
+4. Re-list until no gaps.
 
-- **`20260421110000` (caffeine / alcohol columns on `profiles`):** DDL was applied directly on production (see `supabase/scripts/apply_caffeine_alcohol_columns.sql`). Remote **migration history** still does **not** list `20260421110000` as applied until you reconcile (either `supabase db push` in order after prerequisites exist, or `migration repair` once the chain matches reality).
-
-## Reconcile playbook (when you schedule this)
-
-1. Read each migration above; drop or rewrite any that are obsolete vs current product.
-2. Prefer **`supabase db push --linked`** on a maintenance window so Postgres runs migrations in order (resolve dependency errors as they appear), **or** a consolidated catch-up SQL script if push is not viable.
-3. After prod schema matches, align history: **`supabase migration repair --status applied <ver> --linked`** per version you applied out-of-band (use sparingly and consistently with what actually ran).
-4. Re-run **`supabase migration list --linked`** until every row has Remote populated.
-
-## Refresh this doc
-
-Re-run:
+## Refresh
 
 ```bash
 supabase migration list --linked
 ```
-
-Paste the tail (from first empty Remote) into this file when the set changes.

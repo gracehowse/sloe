@@ -6,13 +6,16 @@
 -- Tables are created first, then cross-referencing RLS policies,
 -- because household policies reference household_members and vice versa.
 
+-- `gen_random_bytes` lives in pgcrypto; some prod DBs never ran schema bootstrap that enables it.
+create extension if not exists "pgcrypto" with schema extensions;
+
 -- ────────── 1. Create all tables ──────────
 
 create table if not exists public.households (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'My Household',
   owner_id uuid not null references auth.users(id) on delete cascade,
-  invite_code text unique not null default encode(gen_random_bytes(6), 'hex'),
+  invite_code text unique not null default encode(extensions.gen_random_bytes(6), 'hex'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
