@@ -223,7 +223,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
   };
 
   const handleRegenerate = () => {
+    // Plan + grocery list regenerate together — clearing the plan and then
+    // calling handleGenerate produces a new plan AND a fresh shopping list
+    // in a single tap. TestFlight build 7 `AEe5QKJqkPPxtFMbDpVW5yg`
+    // (2026-04-18): tester noted the prior split flow felt clunky because
+    // they had to click a separate "Generate grocery list" button after
+    // every regenerate.
     setGeneratedPlan(null);
+    handleGenerate();
   };
 
   const handleSavePlan = () => {
@@ -956,6 +963,78 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
               </p>
             </div>
           </div>
+
+          {/* Plan summary — average daily macros vs targets across the
+              whole plan. TestFlight build 7 `AH8csBqtZsBJJr0uHgXyEcE`
+              (2026-04-18): tester wanted to see how close the plan as a
+              whole sits to their macro targets without inspecting every
+              day. Bands re-use the same calorie / carb-fat tolerances as
+              the per-day cards. Pure rendering — no extra fetches. */}
+          {generatedPlan.length > 0 && (() => {
+            const totals = generatedPlan.reduce(
+              (acc, d) => ({
+                calories: acc.calories + (d.totals?.calories ?? 0),
+                protein: acc.protein + (d.totals?.protein ?? 0),
+                carbs: acc.carbs + (d.totals?.carbs ?? 0),
+                fat: acc.fat + (d.totals?.fat ?? 0),
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
+            const n = generatedPlan.length || 1;
+            const avg = {
+              calories: Math.round(totals.calories / n),
+              protein: Math.round(totals.protein / n),
+              carbs: Math.round(totals.carbs / n),
+              fat: Math.round(totals.fat / n),
+            };
+            const pct = (val: number, target: number) =>
+              target > 0 ? Math.abs((val - target) / target) * 100 : 0;
+            const tone = (val: number, target: number, band: number): "ok" | "warn" | "off" => {
+              if (target <= 0) return "ok";
+              const dPct = pct(val, target);
+              if (dPct <= band) return "ok";
+              if (dPct <= band * 2) return "warn";
+              return "off";
+            };
+            const toneClass = (t: "ok" | "warn" | "off") =>
+              t === "ok" ? "text-success" : t === "warn" ? "text-warning" : "text-destructive";
+            const rows: Array<{ label: string; avg: number; target: number; unit: string; band: number }> = [
+              { label: "Calories", avg: avg.calories, target: targetCalories, unit: "kcal", band: calorieBandPct },
+              { label: "Protein", avg: avg.protein, target: targetProtein, unit: "g", band: 15 },
+              { label: "Carbs", avg: avg.carbs, target: targetCarbs, unit: "g", band: carbFatBandPct },
+              { label: "Fat", avg: avg.fat, target: targetFat, unit: "g", band: carbFatBandPct },
+            ];
+            return (
+              <div className="rounded-2xl bg-card border border-border p-4 mb-4">
+                <div className="flex items-baseline justify-between gap-3 mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan summary · daily average</p>
+                  <p className="text-[11px] text-muted-foreground">Across {n} {n === 1 ? "day" : "days"}</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {rows.map((row) => {
+                    const t = tone(row.avg, row.target, row.band);
+                    const delta = row.target > 0 ? row.avg - row.target : 0;
+                    const deltaSign = delta >= 0 ? "+" : "";
+                    return (
+                      <div key={row.label} className="rounded-xl border border-border bg-background/60 px-3 py-2.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{row.label}</p>
+                        <p className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
+                          {row.avg.toLocaleString()} <span className="text-xs text-muted-foreground font-normal">/ {row.target.toLocaleString()} {row.unit}</span>
+                        </p>
+                        {row.target > 0 ? (
+                          <p className={`text-[11px] font-semibold tabular-nums mt-0.5 ${toneClass(t)}`}>
+                            {deltaSign}{delta.toLocaleString()} {row.unit} ({Math.round(pct(row.avg, row.target))}%)
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">No target set</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Horizontal scrollable day cards */}
           <div className="overflow-x-auto -mx-pm-6 px-pm-6 pb-2">

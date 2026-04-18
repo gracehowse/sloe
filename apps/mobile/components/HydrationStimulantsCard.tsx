@@ -28,6 +28,10 @@ import {
  * `src/app/components/suppr/hydration-stimulants-card.tsx`.
  * Presets, labels, and "Over limit" / "Over 400 mg" copy are identical.
  *
+ * Rules:
+ *   - Caffeine row is hidden when `targets.caffeineMg === 0`.
+ *   - Alcohol row is hidden when `targets.alcoholGWeekly === 0`.
+ *
  * Accessibility: every chip has `accessibilityRole="button"` and an
  * `accessibilityLabel` that names quantity + stimulant.
  */
@@ -257,6 +261,7 @@ export function HydrationStimulantsCard({
   style,
 }: HydrationStimulantsCardProps) {
   const colors = useThemeColors();
+  const showCaffeine = targets.caffeineMg > 0;
   const showAlcohol = targets.alcoholGWeekly > 0;
   const waterChips = useMemo(
     () =>
@@ -348,26 +353,28 @@ export function HydrationStimulantsCard({
         ))}
       </Row>
 
-      <Row
-        tone="caffeine"
-        label="Caffeine"
-        icon="cafe-outline"
-        valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
-        pct={caffeinePct}
-        overTarget={caffeineOver}
-        overCopy={`Over ${targets.caffeineMg} mg`}
-        onReset={() => onReset("caffeine")}
-      >
-        {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
-          <Chip
-            key={preset.label}
-            tone="caffeine"
-            label={`+${preset.label} (${preset.mg}mg)`}
-            accessibilityLabel={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
-            onPress={() => handleCaffeine(preset.mg, preset.label)}
-          />
-        ))}
-      </Row>
+      {showCaffeine ? (
+        <Row
+          tone="caffeine"
+          label="Caffeine"
+          icon="cafe-outline"
+          valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
+          pct={caffeinePct}
+          overTarget={caffeineOver}
+          overCopy={`Over ${targets.caffeineMg} mg`}
+          onReset={() => onReset("caffeine")}
+        >
+          {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
+            <Chip
+              key={preset.label}
+              tone="caffeine"
+              label={`+${preset.label} (${preset.mg}mg)`}
+              accessibilityLabel={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
+              onPress={() => handleCaffeine(preset.mg, preset.label)}
+            />
+          ))}
+        </Row>
+      ) : null}
 
       {showAlcohol ? (
         <Row

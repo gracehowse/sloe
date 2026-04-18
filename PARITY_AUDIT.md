@@ -148,6 +148,83 @@ Last `npm test` run: **36 files, 393 tests, all passing**.
 
 ---
 
+## Landing page alignment (2026-04-18)
+
+The public marketing landing at `/` (unauthenticated visitors only — authenticated users see the app) must stay aligned with the real product on wording, features, pricing, roadmap, and promises. Drift here is a trust / legal risk on a nutrition product.
+
+### Canonical copy module
+
+**`src/lib/copy/today.ts`** is the **single source of truth** for all Today / tracker / calorie-balance strings shared across web, mobile, and the landing:
+
+| Concept | Canonical token | Surfaces importing it |
+|---|---|---|
+| Calorie ring overline (LOGGED / REMAINING / OVER) | `RING_LABELS` | Web `daily-ring.tsx`, mobile `CalorieRing.tsx`, landing phone + web-shot mocks |
+| 4 Today stat-tile labels (Logged / Target / Burned / Net) | `TODAY_STAT_LABELS` | Web `today-hero-stats.tsx`, landing web-shot mock |
+| Net detail (deficit / surplus / maintenance) | `NET_DEFICIT_LABEL` + `netDetailFromKcal()` | Web `today-hero-stats.tsx` + `CalorieDeficitInsight`, mobile `TodayDeficitInsight`, landing web-shot mock |
+| Meal slot headers (Breakfast / Lunch / Dinner / Snack) | `MEAL_SLOT_HEADERS` | Web `NutritionTracker` slot sections, mobile Today slot headers, landing phone + web-shot mocks |
+| "About N kcal deficit so far today" prose | `todayBalanceHeadline()` | Web `CalorieDeficitInsight`, mobile `TodayDeficitInsight` |
+
+Retired phrasings (enforced by `tests/unit/todayCopyParity.test.ts`):
+- "below maint.", "below maintenance", "below TDEE" → `deficit`
+- "under budget", "over budget" → `deficit` / `surplus`
+- "kcal left", "UNDER" → `REMAINING`
+- "Today's meals" (single section title) → per-slot headers
+
+### Landing ↔ product alignment
+
+| Feature / claim | Landing shows | Real product | Enforced by |
+|---|---|---|---|
+| Ring overline | `REMAINING` + `of X kcal` | Web + mobile rings use `RING_LABELS.remaining` | `todayCopyParity` + `landingParity` tests |
+| 4-stat meta tiles | Logged / Target / Burned / Net beside the ring | `TodayHeroStats` on web desktop (`lg:`) | `todayHeroStats.test.tsx` |
+| Net detail | `deficit` when logged < target, `surplus` when over, `maintenance` at parity | `netDetailFromKcal()` resolves the same | `todayCopyParity` |
+| Meal section headers | Breakfast / Lunch / Snack (per-slot) | Same on web + mobile tracker | `landingParity` |
+| Mobile tab bar 5th label | `Profile` | Mobile `(tabs)/_layout.tsx` ships `Profile` | manual review |
+| Web desktop layout | Sidebar (Track / Recipes categories) | `DesktopSidebar` rendered at `lg:` (≥1024px); mobile-web keeps bottom tabs | `desktopSidebar.test.tsx` |
+| "Does it work on iOS, Android, web?" | Web + iOS (TestFlight). Android **not** on roadmap | Matches `docs/product/overview.md` Platforms | `landingParity` forbidden-claim list |
+| "Recipe import from 400+ sources" | Retired — imports any JSON-LD recipe site + Instagram/TikTok/YouTube | No curated 400-source list; JSON-LD is the implementation | `landingParity` |
+| "Voice control" in cook mode | Retired — cook mode has timers + step highlighting; voice logging is a Pro tracker feature, separate | `CookMode.tsx` has no voice nav | `landingParity` |
+| Annual-plan pricing | "Not yet, but it's coming" | Matches `/pricing` FAQ | `landingParity` (forbids hard-coded $50/$120 annual) |
+| Pricing tier names + prices | Free $0 / Base $5 / Pro $12 (headline) | Stripe price IDs in env; same numbers in `/pricing` | `landingParity` |
+
+### Ring + hero-stats block (web desktop, 2026-04-18)
+
+`src/app/components/suppr/today-hero-stats.tsx` wraps `TodayHeroRing` and, at `md:` (≥768px), renders the 4-tile meta block (Logged / Target / Burned / Net) to the right of the ring — mirroring the landing web-shot mock. Below `md:` only the ring renders, preserving the mobile-web feel.
+
+- Net number uses `\u2212` (Unicode minus) for negative values so the dash doesn't wrap and screen-readers pronounce "minus".
+- Net detail resolves via `netDetailFromKcal()` so the word can never drift from canonical.
+- `Burned` shows `—` when no Health data is synced (rather than `0`), so a first-run user isn't misled into thinking their activity is tracked at zero.
+
+### Desktop sidebar (web, 2026-04-18)
+
+`src/app/components/suppr/desktop-sidebar.tsx` renders the landing's web-shot sidebar for real at `lg:` (≥1024px). Structure:
+
+- **Track**: Today · Plan · Progress
+- **Recipes**: Library · Discover · Shopping (with unchecked-count badge)
+- Pinned bottom: Profile · Settings
+
+Below `lg:` the sidebar is hidden and the bottom tab bar remains — same tab order as the mobile app (`Today / Discover / Plan / Progress / Profile`). This is the deliberate 2026-04-18 decision: *mobile-web should feel like the native mobile app*, desktop-web gets a first-class desktop layout.
+
+### Parity tests added this batch
+
+- `tests/unit/todayCopyParity.test.ts` — 15 tests. Asserts canonical module outputs and scans web + mobile + landing for forbidden phrases.
+- `tests/unit/landingParity.test.tsx` — 15 tests. Renders `LandingPage` and checks ring overline, stat labels, meal-slot headers, Net detail, pricing tiers match `/pricing`, and a forbidden-claims list (400+, voice control, annual-plan prices, mock URL).
+- `tests/unit/todayHeroStats.test.tsx` — 6 tests. Verifies the 4-tile block's number formatting, deficit/surplus/maintenance detail, and em-dash when Burned is zero.
+- `tests/unit/desktopSidebar.test.tsx` — 5 tests. Nav item presence, `aria-current`, click dispatch, shopping badge render + cap at `99+`.
+
+### What to do when this section fails
+
+If `tests/unit/todayCopyParity.test.ts` lights up because you added a forbidden phrase:
+
+1. **First, try to use the canonical token.** The vast majority of the time, the correct fix is to `import { … } from "src/lib/copy/today"` and consume the constant or the function.
+2. **If the new phrase is genuinely intentional** (a new product decision), update both `src/lib/copy/today.ts` (remove from `FORBIDDEN_TODAY_PHRASES`, rename constant if needed) and the comment block at the top of the file explaining the reason. The diff is then a deliberate product-copy decision, not a drift.
+
+If `tests/unit/landingParity.test.tsx` lights up:
+
+1. Probably the landing is claiming something the real product doesn't do yet. Trim the claim, don't update the test to allow it.
+2. If the product grew the capability (e.g. we really do support Android now, or we really did curate 400 sources), remove the entry from `FORBIDDEN_CLAIMS` in the test and update `docs/product/overview.md` so the two stay in sync.
+
+---
+
 ## Pre-merge checklist (for any future change)
 
 - [ ] Shared `src/lib/` change → test both platforms

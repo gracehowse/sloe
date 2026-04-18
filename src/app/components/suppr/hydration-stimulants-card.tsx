@@ -10,6 +10,7 @@
  * platforms cannot drift.
  *
  * Rules:
+ *   - Caffeine row is hidden when `targets.caffeineMg === 0`.
  *   - Alcohol row is hidden when `targets.alcoholGWeekly === 0`.
  *   - Over-target copy is factual — "Over limit" / "Over 400 mg" — in
  *     `amber` (warning), never the `destructive` red. No card-wide red
@@ -194,6 +195,7 @@ export function HydrationStimulantsCard({
 }: HydrationStimulantsCardProps) {
   const imperial = measurementSystem === "imperial";
 
+  const showCaffeine = targets.caffeineMg > 0;
   const showAlcohol = targets.alcoholGWeekly > 0;
   const weeklyAlcohol = useMemo(
     () => weeklyAlcoholG(alcoholByDayG, selectedDateKey, weekStartDay),
@@ -273,36 +275,38 @@ export function HydrationStimulantsCard({
         ))}
       </Row>
 
-      {/* Caffeine */}
-      <Row
-        tone="caffeine"
-        label="Caffeine"
-        icon={<span aria-hidden>☕</span>}
-        valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
-        pct={caffeinePct}
-        overTarget={caffeineOver}
-        overCopy={`Over ${targets.caffeineMg} mg`}
-        onReset={() => onReset("caffeine")}
-      >
-        {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            onClick={() => handleAddCaffeine(preset.mg, preset.label)}
-            aria-label={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
-            style={{
-              backgroundColor:
-                "color-mix(in oklab, var(--stimulant-caffeine) 15%, transparent)",
-              color: "var(--stimulant-caffeine)",
-              borderColor:
-                "color-mix(in oklab, var(--stimulant-caffeine) 30%, transparent)",
-            }}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
-          >
-            +{preset.label} ({preset.mg}mg)
-          </button>
-        ))}
-      </Row>
+      {/* Caffeine — hidden when target == 0 (parity with alcohol) */}
+      {showCaffeine ? (
+        <Row
+          tone="caffeine"
+          label="Caffeine"
+          icon={<span aria-hidden>☕</span>}
+          valueLine={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg} mg`}
+          pct={caffeinePct}
+          overTarget={caffeineOver}
+          overCopy={`Over ${targets.caffeineMg} mg`}
+          onReset={() => onReset("caffeine")}
+        >
+          {CAFFEINE_QUICK_ADDS.slice(0, 4).map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => handleAddCaffeine(preset.mg, preset.label)}
+              aria-label={`Add ${preset.label}: ${preset.mg} milligrams caffeine`}
+              style={{
+                backgroundColor:
+                  "color-mix(in oklab, var(--stimulant-caffeine) 15%, transparent)",
+                color: "var(--stimulant-caffeine)",
+                borderColor:
+                  "color-mix(in oklab, var(--stimulant-caffeine) 30%, transparent)",
+              }}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors hover:brightness-110"
+            >
+              +{preset.label} ({preset.mg}mg)
+            </button>
+          ))}
+        </Row>
+      ) : null}
 
       {/* Alcohol — hidden when target == 0 */}
       {showAlcohol ? (

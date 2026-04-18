@@ -124,7 +124,9 @@ export async function POST(req: Request) {
     weight_kg: Number(profile.weight_kg) || 70,
     height_cm: Number(profile.height_cm) || 170,
     age: Number(profile.age) || 30,
-    activity_level: (profile.activity_level as ActivityLevel) ?? "moderate",
+    // Default to sedentary (1.2) when missing — "moderate" (1.55) silently
+    // over-inflated TDEE by ~14% (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`).
+    activity_level: (profile.activity_level as ActivityLevel) ?? "sedentary",
   });
 
   return NextResponse.json({

@@ -623,6 +623,7 @@ export type Database = {
           dietary_restrictions: Json | null
           display_name: string | null
           dob: string | null
+          expo_push_token: string | null
           extra_water_by_day: Json | null
           fasting_enabled: boolean | null
           fasting_window: string | null
@@ -667,6 +668,7 @@ export type Database = {
           dietary_restrictions?: Json | null
           display_name?: string | null
           dob?: string | null
+          expo_push_token?: string | null
           extra_water_by_day?: Json | null
           fasting_enabled?: boolean | null
           fasting_window?: string | null
@@ -714,6 +716,7 @@ export type Database = {
           dietary_restrictions?: Json | null
           display_name?: string | null
           dob?: string | null
+          expo_push_token?: string | null
           extra_water_by_day?: Json | null
           fasting_enabled?: boolean | null
           fasting_window?: string | null

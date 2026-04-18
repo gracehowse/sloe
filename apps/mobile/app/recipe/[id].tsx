@@ -577,7 +577,14 @@ export default function RecipeDetailScreen() {
     return raw;
   }, [recipe?.image_url]);
 
+  // Defensive normalisation: some imports (and at least one historical
+  // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
+  // "/n" or escaped "\n" 2-char sequences. Replace both with real newlines
+  // before splitting so users never see "/n" as UI text. Keep this on the
+  // client — DB history may contain other imports in the same shape.
   const instructionSteps = (recipe?.instructions ?? "")
+    .replace(/\\n/g, "\n")
+    .replace(/\s\/n\s?/g, "\n")
     .split(/\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
@@ -1135,20 +1142,6 @@ export default function RecipeDetailScreen() {
             </View>
           )}
 
-          {/* Source attribution */}
-          {recipe.source_url && (
-            <View style={styles.sourceCard}>
-              <Text style={styles.sourceLabel}>SOURCE</Text>
-              <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
-              <Pressable
-                style={styles.sourceLinkBtn}
-                onPress={() => Linking.openURL(recipe.source_url!)}
-              >
-                <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
-              </Pressable>
-            </View>
-          )}
-
           {/* Log to journal — portion vs one recipe serving */}
           {userId && (
             <View style={[styles.card, { gap: Spacing.sm }]}>
@@ -1234,6 +1227,25 @@ export default function RecipeDetailScreen() {
 
           {/* Batch 3.8 — Personal notes + rating */}
           <RecipeNotesCard recipeId={recipeId} userId={userId} colors={colors} />
+
+          {/* Source attribution — kept at the very bottom so it's the last
+              thing a user sees after scrolling through a full recipe. The
+              top-of-page byline link is the primary entry point; this is
+              the secondary entry + provenance label. TestFlight build 7
+              feedback `AMAxKVVxPZtUvGz8I6Yqo3w` (2026-04-18) — the bottom
+              source section had previously been lost in a refactor. */}
+          {recipe.source_url && (
+            <View style={styles.sourceCard}>
+              <Text style={styles.sourceLabel}>SOURCE</Text>
+              <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
+              <Pressable
+                style={styles.sourceLinkBtn}
+                onPress={() => Linking.openURL(recipe.source_url!)}
+              >
+                <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
 

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Linking,
@@ -13,11 +13,47 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useAuth } from "@/context/auth";
+import {
+  hasNotificationsPromptBeenDismissed,
+  markNotificationsPromptDismissed,
+  registerExpoPushTokenForUser,
+} from "@/lib/expoPushToken";
 
 export default function NotificationsPromptScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+  // `null` while we check, `true` to render, `false` to render-nothing
+  // before `router.replace` swaps the route. Avoids a flash of the
+  // explainer when the user has already responded.
+  const [showPrompt, setShowPrompt] = useState<boolean | null>(null);
+  const redirectedRef = useRef(false);
+
+  // Mount gate (TestFlight build 7 fix): if the user already responded
+  // to the OS prompt OR we have previously written the AsyncStorage
+  // dismiss flag, skip the explainer entirely instead of nagging them
+  // every cold launch.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const dismissed = await hasNotificationsPromptBeenDismissed();
+      if (cancelled) return;
+      if (dismissed) {
+        if (!redirectedRef.current) {
+          redirectedRef.current = true;
+          router.replace("/(tabs)/discover");
+        }
+        return;
+      }
+      setShowPrompt(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function onEnable() {
     try {
@@ -33,7 +69,12 @@ export default function NotificationsPromptScreen() {
         existing.status === "granted"
           ? existing
           : await Notifications.requestPermissionsAsync();
-      if (next.status !== "granted") {
+      if (next.status === "granted") {
+        // Fetch + persist the Expo push token so the server has an
+        // address to push to. Failures are logged inside the helper —
+        // the user still completes the flow either way.
+        await registerExpoPushTokenForUser(userId);
+      } else {
         Alert.alert(
           "Notifications are off",
           "You can turn them on any time in Settings → Suppr → Notifications.",
@@ -49,10 +90,16 @@ export default function NotificationsPromptScreen() {
         "System notifications require a full Suppr install (not Expo Go).",
       );
     }
+    // Whether the user granted, denied, or hit a missing-native-module
+    // path, the prompt has done its job. Suppress it so we never re-nag.
+    await markNotificationsPromptDismissed();
     router.replace("/(tabs)/discover");
   }
 
-  function onSkip() {
+  async function onSkip() {
+    // Skip is an informed decision — also suppress, so a deliberate
+    // "no" doesn't re-prompt on every launch.
+    await markNotificationsPromptDismissed();
     router.replace("/(tabs)/discover");
   }
 
@@ -90,6 +137,10 @@ export default function NotificationsPromptScreen() {
     skipText: { color: colors.textTertiary, fontSize: 15 },
   }), [colors]);
 
+  // Render nothing until the suppression check resolves so we never
+  // flash the explainer for a user who has already responded.
+  if (showPrompt !== true) return null;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.badge}>
@@ -109,7 +160,7 @@ export default function NotificationsPromptScreen() {
       <Pressable style={styles.enableBtn} onPress={() => void onEnable()}>
         <Text style={styles.enableBtnText}>Turn on notifications</Text>
       </Pressable>
-      <Pressable style={styles.skipBtn} onPress={onSkip}>
+      <Pressable style={styles.skipBtn} onPress={() => void onSkip()}>
         <Text style={styles.skipText}>Skip</Text>
       </Pressable>
     </View>

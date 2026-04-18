@@ -1,4 +1,5 @@
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { calculateBudget, type PlanPace } from "../../../src/lib/nutrition/tdee";
 
 /** Body-stat fields fetched from profiles */
 export type BodyStats = {
@@ -10,7 +11,23 @@ export type BodyStats = {
   dob?: string | null;
   /** Saved during onboarding when DOB is not collected */
   age?: number | null;
+  /**
+   * `profiles.plan_pace` — controls the daily calorie deficit / surplus
+   * applied vs maintenance TDEE. Defaults to `"steady"` when missing,
+   * matching the web `calculateBudget` default. TestFlight build 7
+   * (P0-3, 2026-04-18): mobile previously ignored pace and applied a
+   * flat ±500 / 0 / +300, producing different calorie targets to web on
+   * the same account. Keep this field in any `profiles` SELECT that
+   * feeds `calcTargetsFromStats` / `resolveTargets`.
+   */
+  plan_pace?: string | null;
 };
+
+function normalisePace(raw: string | null | undefined): PlanPace {
+  const p = (raw ?? "steady").trim().toLowerCase();
+  if (p === "relaxed" || p === "steady" || p === "accelerated" || p === "vigorous") return p;
+  return "steady";
+}
 
 export type MacroTargets = {
   calories: number;
@@ -28,24 +45,46 @@ const ACTIVITY_MULT: Record<string, number> = {
   very_active: 1.9,
 };
 
-const GOAL_ADJ: Record<string, number> = {
-  lose: -500,
-  maintain: 0,
-  gain: 300,
-};
-
-/** DB + legacy goal strings → kcal adjustment vs TDEE (exported for activity / burn math on Today). */
-export function goalCalorieAdjustment(goal: string | null | undefined): number {
-  const g = (goal ?? "maintain").trim().toLowerCase();
-  if (g === "cut" || g === "lose") return -500;
-  if (g === "bulk" || g === "gain" || g === "strength") return 300;
-  return GOAL_ADJ[g] ?? 0;
+/**
+ * DB + legacy goal strings → kcal adjustment vs TDEE.
+ *
+ * Pace-aware: `relaxed` / `steady` / `accelerated` / `vigorous` apply
+ * deficits of 275 / 550 / 825 / 1100 kcal (same table as web
+ * `src/lib/nutrition/tdee.ts:PACE_DAILY_DEFICIT`). Bulk / gain goals
+ * apply half the deficit as a surplus, mirroring web `calculateBudget`.
+ *
+ * Without a pace argument, defaults to `"steady"` (550/-550) — the same
+ * default used by web. TestFlight build 7 (P0-3, 2026-04-18): mobile
+ * previously applied a flat ±500 / 0 / +300 ignoring pace, which gave a
+ * different calorie target to web on the same account.
+ */
+export function goalCalorieAdjustment(
+  goal: string | null | undefined,
+  pace?: string | null,
+): number {
+  // Preserve the legacy mobile-only "null/empty goal defaults to maintain"
+  // semantics — web's `calculateBudget` treats unknown strings as a deficit
+  // (safe default for the budget calculator), but on mobile we have surfaces
+  // that ask "by how much should I shift today's burn vs target?" where a
+  // missing goal must be a no-op, not a -550 kcal surprise.
+  if (goal == null) return 0;
+  const g = goal.trim().toLowerCase();
+  if (!g) return 0;
+  // Use a base TDEE of 0 so calculateBudget returns just the adjustment.
+  // calculateBudget(0, pace, "lose") returns -PACE_DAILY_DEFICIT[pace];
+  // calculateBudget(0, pace, "bulk") returns +PACE_DAILY_DEFICIT[pace] * 0.5;
+  // calculateBudget(0, pace, "maintain") returns 0.
+  return calculateBudget(0, normalisePace(pace), g);
 }
 
 /** Approximate maintenance intake (TDEE) implied by saved calorie target and goal, e.g. lose 1,800 → ~2,300 TDEE. */
-export function maintenanceIntakeFromTargetCalories(targetCalories: number, goal: string | null | undefined): number {
+export function maintenanceIntakeFromTargetCalories(
+  targetCalories: number,
+  goal: string | null | undefined,
+  pace?: string | null,
+): number {
   if (!Number.isFinite(targetCalories) || targetCalories <= 0) return 0;
-  return Math.max(0, Math.round(targetCalories - goalCalorieAdjustment(goal)));
+  return Math.max(0, Math.round(targetCalories - goalCalorieAdjustment(goal, pace)));
 }
 
 /**
@@ -79,8 +118,12 @@ export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
       ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
       : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
 
-  const tdee = bmr * (ACTIVITY_MULT[activityRaw] ?? 1.55);
-  const cals = Math.round(tdee + goalCalorieAdjustment(stats.goal));
+  // Default to sedentary (1.2) when missing — see TestFlight
+  // `AIIm60nKi_sTu3-4YjR-WR4` (2026-04-18). Previously "moderate" (1.55)
+  // silently over-inflated TDEE by ~14% for users who never picked a level.
+  const tdee = bmr * (ACTIVITY_MULT[activityRaw] ?? ACTIVITY_MULT.sedentary);
+  // Pace-aware adjustment: matches web `calculateBudget`. P0-3 (2026-04-18).
+  const cals = Math.round(tdee + goalCalorieAdjustment(stats.goal, stats.plan_pace));
 
   return {
     calories: cals,
@@ -109,7 +152,7 @@ export function calculateTDEE(
   if (sex === "male") bmr = base + 5;
   else if (sex === "female") bmr = base - 161;
   else bmr = Math.round((base + 5 + (base - 161)) / 2);
-  return Math.round(bmr * (ACTIVITY_MULT[activityLevel] ?? 1.55));
+  return Math.round(bmr * (ACTIVITY_MULT[activityLevel] ?? ACTIVITY_MULT.sedentary));
 }
 
 /**

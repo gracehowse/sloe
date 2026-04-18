@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Accent, MacroColors } from "@/constants/theme";
+import { RING_LABELS } from "../../../../src/lib/copy/today";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -125,10 +126,10 @@ export default function CalorieRing({
     ? Math.round(consumed)
     : Math.abs(diff);
   const centerLabel = displayMode === "consumed"
-    ? "LOGGED"
+    ? RING_LABELS.logged
     : isOver
-      ? "OVER"
-      : "UNDER";
+      ? RING_LABELS.over
+      : RING_LABELS.remaining;
   const budgetLine = `of ${Math.round(goal)} kcal`;
   const pct = goal > 0 ? Math.min(1, consumed / goal) : 0;
   const mainCirc = CIRC(R);

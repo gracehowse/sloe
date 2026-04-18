@@ -24,6 +24,14 @@ export interface TodayCompleteDayDialogProps {
   profileWeightKg: number | null;
   todayCalories: number;
   targetCalories: number;
+  /**
+   * Effective maintenance TDEE (adaptive when confidence is medium/high,
+   * else static Mifflin). Optional for backwards compatibility, but callers
+   * should always supply it — without it the projection falls back to a
+   * crude target-based heuristic that mis-classifies real deficits as gains
+   * when actual burn is high. See TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
+   */
+  maintenanceTdeeKcal?: number | null;
   profileGoal: string | null;
   profileMeasurementSystem: "metric" | "imperial";
   onViewProgress: () => void;
@@ -35,6 +43,7 @@ export function TodayCompleteDayDialog({
   profileWeightKg,
   todayCalories,
   targetCalories,
+  maintenanceTdeeKcal,
   profileGoal,
   profileMeasurementSystem,
   onViewProgress,
@@ -59,6 +68,7 @@ export function TodayCompleteDayDialog({
               currentWeightKg: profileWeightKg,
               todayCalories,
               targetCalories,
+              maintenanceTdeeKcal,
               goal: profileGoal,
             });
             const projectedLabel =

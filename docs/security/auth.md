@@ -21,10 +21,13 @@
 - **Token refresh:** Mobile proactively refreshes when app comes to foreground if token expires within 5 minutes
 
 ### Web Auth Flow
-1. User visits `/login` — email/password or magic link form
-2. On success, `supabase.auth.getSession()` resolves
-3. Next.js middleware (`middleware.ts`) refreshes the auth token cookie and redirects unauthenticated users to `/login` for all non-public routes
-4. `HomeProfileGate` checks if profile is complete, redirects to `/onboarding` if not
+1. Unauthenticated visitors at `/` see the marketing **landing page** (`app/(landing)/LandingPage.tsx`); every CTA deep-links into `/login?mode=signup` or `/login?mode=signin`
+2. User visits `/login` — email/password or magic link form
+3. On success, `supabase.auth.getSession()` resolves and `window.location.href = "/"` reloads `/`; the server component now sees a session and renders the authenticated `HomePageClient`
+4. Next.js middleware (`middleware.ts`) refreshes the auth token cookie and redirects unauthenticated users to `/login` for all non-public routes
+5. `HomeProfileGate` checks if profile is complete, redirects to `/onboarding` if not
+
+**`/` routing:** `app/page.tsx` is a server component that reads the Supabase session via `cookies()`. No session → `<LandingPage />`; session present → `<HomePageClient />` (the authenticated app). The middleware keeps `/` in `PUBLIC_ROUTES` so unauthenticated users are not redirected to `/login` before the landing renders.
 
 **Public routes (bypass middleware auth):** `/`, `/login`, `/signup`, `/roadmap`, `/auth/callback`, `/help`, `/pricing`, `/privacy`, `/terms`, `/reset-password`, all `/api/*` routes (APIs handle their own auth), and static assets.
 

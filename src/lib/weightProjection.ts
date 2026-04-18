@@ -44,24 +44,41 @@ export type DailyProjection = {
 /**
  * Project weight change based on today's calorie intake vs TDEE/target.
  *
- * @param currentWeightKg  - User's current weight
- * @param todayCalories    - Total calories consumed today
- * @param targetCalories   - Daily calorie target (approximation of adjusted TDEE)
- * @param maintenanceTdee  - Estimated maintenance TDEE (if available). Falls back to target + 500 for "lose" goal.
- * @param goal             - User's goal: "lose", "gain", or "maintain"
- * @param weeksOut         - How many weeks to project (default 5)
+ * @param currentWeightKg    - User's current weight.
+ * @param todayCalories      - Total calories consumed today.
+ * @param targetCalories     - Daily calorie target (adjusted TDEE for the goal).
+ * @param maintenanceTdeeKcal - **Preferred input** — the user's actual
+ *   maintenance TDEE (static Mifflin or adaptive). When provided and > 0 this
+ *   is used as the break-even number. Callers should always pass it when
+ *   available (see `getEffectiveTDEE` in `src/lib/calcTargets.ts`).
+ * @param goal               - User's goal: "lose", "gain", or "maintain".
+ *   Only used when `maintenanceTdeeKcal` is missing as a crude fallback
+ *   (target + 500 for "lose", target − 300 for "gain", target otherwise).
+ *   Fallback is intentionally coarse — pass the real TDEE instead of
+ *   relying on it. Bug history: before 2026-04-18 this was the only path,
+ *   which flagged users whose actual burn exceeded `target + 500` as
+ *   gaining weight even when they were in a real deficit (TestFlight
+ *   feedback `ALkK-XrcMz_V-D6NrjuVYbo`).
+ * @param weeksOut           - How many weeks to project (default 5).
  */
 export function projectWeight(opts: {
   currentWeightKg: number;
   todayCalories: number;
   targetCalories: number;
+  maintenanceTdeeKcal?: number | null;
   goal?: string | null;
   weeksOut?: number;
 }): DailyProjection {
-  const { currentWeightKg, todayCalories, targetCalories, goal, weeksOut = 5 } = opts;
+  const { currentWeightKg, todayCalories, targetCalories, maintenanceTdeeKcal, goal, weeksOut = 5 } = opts;
 
   let estimatedTdee: number;
-  if (goal === "lose") {
+  if (
+    typeof maintenanceTdeeKcal === "number" &&
+    Number.isFinite(maintenanceTdeeKcal) &&
+    maintenanceTdeeKcal > 0
+  ) {
+    estimatedTdee = maintenanceTdeeKcal;
+  } else if (goal === "lose") {
     estimatedTdee = targetCalories + 500;
   } else if (goal === "gain") {
     estimatedTdee = targetCalories - 300;

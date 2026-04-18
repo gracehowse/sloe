@@ -104,6 +104,16 @@ export const AnalyticsEvents = {
    * `{ enabled: boolean }`. Added 2026-04-18 (H6 audit fix) so product can
    * measure opt-out rate without inferring from `weekly_recap_push_sent` drop-off. */
   weekly_recap_push_enabled_toggled: "weekly_recap_push_enabled_toggled",
+  /** User tapped the "Save {slot} as a meal" prompt CTA inside the weekly
+   * recap card (post-ship #4, 2026-04-18). Fires when the deep-link to
+   * `SaveMealDialog` / `SaveMealSheet` opens pre-seeded with the user's
+   * most-frequent items from the last 7 days — the entry point of the
+   * one-tap save-your-usual funnel. Payload:
+   *   - `slot`: "Breakfast" | "Lunch" | "Dinner" | "Snacks" — the slot
+   *     the shared `selectMostFrequentSlotSeed` helper picked.
+   *   - `seedCount`: number of items pre-seeded (2–4). Product can join
+   *     this against `saved_meal_created` to measure funnel completion. */
+  weekly_recap_save_prompt_tapped: "weekly_recap_save_prompt_tapped",
   /** iOS home/lock-screen widget snapshot was written to the shared App
    * Group (Batch 5.12). Fires when Today totals or active fast state
    * change. Mobile-only. No payload — use `$sent_at` for freshness. */

@@ -34,6 +34,7 @@
  */
 
 import { normaliseMealSlot, type MealSlot } from "./mealSlots";
+import { computeFrequentMeals, type FoodHistoryItem, type FoodHistoryMealLike } from "./foodHistory";
 
 /**
  * Minimal shape we need from a journal meal. Accepts both the web
@@ -213,4 +214,100 @@ export type QuickAddTabId = "saved" | "recent" | "frequent" | "favourites";
  */
 export function resolveQuickAddDefaultTab(hasSavedMeals: boolean): QuickAddTabId {
   return hasSavedMeals ? "saved" : "recent";
+}
+
+/**
+ * Post-ship #4 (2026-04-18) — pre-seed payload for the weekly-recap
+ * "Save your usual" deep-link.
+ *
+ * When the user taps the recap-card prompt CTA we don't want to bounce
+ * them to Today and make them find the slot-header save row. Instead we
+ * open `SaveMealDialog` (web) / `SaveMealSheet` (mobile) pre-seeded with
+ * the user's actual most-frequent items in the strongest slot across
+ * their whole history. The dialog already supports `seedItems` — this
+ * helper decides **which** items and **which** slot to pass.
+ *
+ * Rules:
+ *  - Only items the user has actually logged. Never invent rows.
+ *  - An item qualifies for the seed when its (title, round-kcal) bucket
+ *    appears on ≥2 distinct days in the slot (`MIN_ITEM_COUNT`). This is
+ *    the "you eat this repeatedly" signal — the whole point of the
+ *    growth loop. A one-off Tuesday-lunch shouldn't end up in a "usual
+ *    lunch" combo.
+ *  - A slot qualifies when it has ≥2 qualifying items (`MIN_SEED_ITEMS`).
+ *    Below that threshold there's nothing to "combo".
+ *  - Up to 4 items are returned per seed (`MAX_SEED_ITEMS`) ordered by
+ *    count desc, then most-recent tie-break, then title — same order as
+ *    `computeFrequentMeals`.
+ *  - `slotPreference` (usually the insight's `suggestedSlot`) wins when
+ *    it qualifies; otherwise the slot with the strongest signal wins.
+ *    Signal = sum of top-4 qualifying item counts; slot-ordering
+ *    (Breakfast < Lunch < Dinner < Snacks) breaks final ties
+ *    deterministically so the same `byDay` always returns the same slot.
+ *  - Returns `null` when no slot qualifies — callers fall back to
+ *    routing the user to Today rather than opening an empty dialog.
+ */
+
+const MIN_ITEM_COUNT = 2;
+const MIN_SEED_ITEMS = 2;
+const MAX_SEED_ITEMS = 4;
+
+export type SelectMostFrequentSlotSeedResult = {
+  slot: MealSlot;
+  seedItems: FoodHistoryItem[];
+};
+
+export function selectMostFrequentSlotSeed<M extends FoodHistoryMealLike & { name?: string | null }>(
+  byDay: Record<string, M[]>,
+  slotPreference?: string | null,
+): SelectMostFrequentSlotSeedResult | null {
+  if (!byDay || typeof byDay !== "object") return null;
+
+  // Build a per-slot `byDay` slice so `computeFrequentMeals` can bucket
+  // items without mixing slots. We rebuild per slot rather than grouping
+  // once so legacy rows (e.g. `"Snack"` vs `"Snacks"`) collapse via
+  // `normaliseMealSlot` — identical to the gate rules in
+  // `shouldShowUsualMealHint`.
+  const slots: readonly MealSlot[] = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+  const perSlotItems = new Map<MealSlot, FoodHistoryItem[]>();
+  for (const slot of slots) {
+    const slotByDay: Record<string, M[]> = {};
+    for (const [dayKey, meals] of Object.entries(byDay)) {
+      if (!Array.isArray(meals)) continue;
+      const kept = meals.filter((m) => normaliseMealSlot(m?.name ?? "") === slot);
+      if (kept.length > 0) slotByDay[dayKey] = kept;
+    }
+    // `computeFrequentMeals` already sorts by count desc, most-recent
+    // tie-break, then title — exactly what we want for the seed.
+    const ranked = computeFrequentMeals(slotByDay, 20);
+    const qualifying = ranked.filter((it) => it.count >= MIN_ITEM_COUNT);
+    if (qualifying.length >= MIN_SEED_ITEMS) {
+      perSlotItems.set(slot, qualifying.slice(0, MAX_SEED_ITEMS));
+    }
+  }
+
+  if (perSlotItems.size === 0) return null;
+
+  // Slot-preference path — honour the caller's hint when it qualifies.
+  const preferred = normaliseMealSlot(slotPreference ?? null);
+  if (preferred && perSlotItems.has(preferred)) {
+    return { slot: preferred, seedItems: perSlotItems.get(preferred)! };
+  }
+
+  // Auto-pick the slot with the strongest signal = sum of kept-item
+  // counts. Deterministic tie-break by canonical slot order so two
+  // equally-strong slots always resolve to the same one across renders.
+  let bestSlot: MealSlot | null = null;
+  let bestSignal = -1;
+  for (const slot of slots) {
+    const items = perSlotItems.get(slot);
+    if (!items) continue;
+    const signal = items.reduce((acc, it) => acc + it.count, 0);
+    if (signal > bestSignal) {
+      bestSignal = signal;
+      bestSlot = slot;
+    }
+  }
+  if (!bestSlot) return null;
+  return { slot: bestSlot, seedItems: perSlotItems.get(bestSlot)! };
 }

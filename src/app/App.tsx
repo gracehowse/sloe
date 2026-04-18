@@ -8,6 +8,7 @@ import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
 import { Library } from "./components/Library.tsx";
 import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
+import { DesktopSidebar } from "./components/suppr/desktop-sidebar.tsx";
 
 const NotificationsCenter = dynamic(
   () => import("./components/NotificationsCenter.tsx").then((m) => ({ default: m.NotificationsCenter })),
@@ -329,64 +330,87 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex bg-background">
       {/* Skip link for keyboard navigation */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg">
         Skip to content
       </a>
-      {/* Header */}
-      <header className="px-5 py-3 flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <h1 className="text-lg font-bold text-foreground tracking-tight">Suppr</h1>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => navigateToView("library")}
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
-            aria-label="Recipe library"
-            title="Library"
-          >
-            <Icons.recipe className="w-5 h-5" />
-          </button>
-          <NotificationsBell
-            onOpenRecipe={openRecipeById}
-            onOpenAll={() => {
-              navigateToView("notifications");
-            }}
-          />
-        </div>
-      </header>
 
-      {/* Content Area */}
-      <main id="main-content" className="flex-1 overflow-auto pb-20" role="main">{renderView()}</main>
+      {/* Desktop sidebar (>= lg). Hidden on mobile-web where the bottom
+          tab bar keeps the mobile-app feel (decision 2026-04-18). */}
+      <DesktopSidebar
+        currentView={currentView}
+        onNavigate={(view) => navigateToView(view as View)}
+        shoppingUncheckedCount={shoppingUncheckedCount}
+      />
 
-      {/* Bottom tabs */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
-        <div className="flex" role="tablist">
-          {([
-            { view: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
-            { view: "discover" as const, icon: <Icons.discover className="w-5 h-5" />, label: "Discover" },
-            { view: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
-            { view: "progress" as const, icon: <Icons.sparkles className="w-5 h-5" />, label: "Progress" },
-            { view: "profile" as const, icon: <Icons.user className="w-5 h-5" />, label: "Profile" },
-          ] as const).map((tab) => (
+      <div className="flex flex-1 flex-col min-w-0">
+        {/* Header — full top bar on mobile-web (brand + Library + bell);
+            on desktop the sidebar owns the brand so the header collapses
+            to a slim row with just the notifications bell pinned right.
+            Skipping the border on desktop keeps the canvas continuous
+            from the sidebar boundary. */}
+        <header className="flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-5 py-3 border-b border-border md:py-2 md:border-b-0">
+          <h1 className="text-lg font-bold text-foreground tracking-tight md:hidden">Suppr</h1>
+          <div className="hidden md:block" aria-hidden />
+          <div className="flex items-center gap-1">
             <button
-              key={tab.view}
               type="button"
-              role="tab"
-              aria-selected={currentView === tab.view}
-              aria-current={currentView === tab.view ? "page" : undefined}
-              onClick={() => navigateToView(tab.view)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-                currentView === tab.view ? "text-primary" : "text-muted-foreground"
-              }`}
+              onClick={() => navigateToView("library")}
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors md:hidden"
+              aria-label="Recipe library"
+              title="Library"
             >
-              {tab.icon}
-              {tab.label}
+              <Icons.recipe className="w-5 h-5" />
             </button>
-          ))}
-        </div>
-      </nav>
+            <NotificationsBell
+              onOpenRecipe={openRecipeById}
+              onOpenAll={() => {
+                navigateToView("notifications");
+              }}
+            />
+          </div>
+        </header>
 
+        {/* Content Area — reserve space for fixed bottom tabs on
+            mobile-web; on desktop the bottom tabs are hidden so no
+            reservation is needed. */}
+        <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-0" role="main">
+          {renderView()}
+        </main>
+
+        {/* Bottom tabs — mobile-web only. Below `lg` the web feels like
+            the native mobile app; from `lg` up the sidebar takes over. */}
+        <nav
+          aria-label="Main navigation"
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          <div className="flex" role="tablist">
+            {([
+              { view: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
+              { view: "discover" as const, icon: <Icons.discover className="w-5 h-5" />, label: "Discover" },
+              { view: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
+              { view: "progress" as const, icon: <Icons.sparkles className="w-5 h-5" />, label: "Progress" },
+              { view: "profile" as const, icon: <Icons.user className="w-5 h-5" />, label: "Profile" },
+            ] as const).map((tab) => (
+              <button
+                key={tab.view}
+                type="button"
+                role="tab"
+                aria-selected={currentView === tab.view}
+                aria-current={currentView === tab.view ? "page" : undefined}
+                onClick={() => navigateToView(tab.view)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
+                  currentView === tab.view ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      </div>
 
       {/* First-run guided checklist */}
       <FirstRunChecklist onNavigate={(view) => navigateToView(view as View)} />

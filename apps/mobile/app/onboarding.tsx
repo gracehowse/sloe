@@ -41,8 +41,10 @@ import {
   cmToFtIn,
   ftInToCm,
   ACTIVITY_LABELS,
+  ACTIVITY_SHORT_LABELS,
   PACE_LABELS,
   STRATEGY_LABELS,
+  activityLevelPreviewKcal,
   type Sex,
   type ActivityLevel,
   type PlanPace,
@@ -132,7 +134,9 @@ const INITIAL_DATA: OnboardingData = {
   goalWeightStLb: "",
   weightUnit: "kg",
   heightUnit: "cm",
-  activity: "moderate",
+  // Default to sedentary so users who skip the activity step don't silently
+  // inflate their TDEE by ~14% (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`).
+  activity: "sedentary",
   planPace: "steady",
   strategy: "balanced",
   dietary: [],
@@ -666,7 +670,18 @@ export default function OnboardingScreen() {
         );
       }
 
-      case "activity":
+      case "activity": {
+        // TDEE preview (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ` /
+        // `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18). `age`, `weightKg`, and
+        // `heightCm` upstream fall back to defaults when the user hasn't
+        // typed anything yet — gate the preview on the raw string inputs
+        // being non-empty so the helper line shows on a fresh run.
+        const hasBasics =
+          data.age.trim().length > 0 &&
+          (data.heightCm.trim().length > 0 || (data.heightFt.trim().length > 0 && data.heightIn.trim().length >= 0)) &&
+          (data.weightKg.trim().length > 0 || data.weightLb.trim().length > 0 || data.weightSt.trim().length > 0);
+        const preview = hasBasics ? activityLevelPreviewKcal(data.sex, weightKg, heightCm, age) : null;
+        const order: ActivityLevel[] = ["sedentary", "light", "moderate", "active", "very_active"];
         return (
           <View style={styles.stepContent}>
             <Text style={styles.heading}>How active are you?</Text>
@@ -675,8 +690,37 @@ export default function OnboardingScreen() {
                 <OptionButton key={key} label={val.title} desc={val.desc} active={data.activity === key} onPress={() => { update("activity", key); goNext(); }} />
               ))}
             </View>
+            {preview ? (
+              <Text
+                accessibilityLabel="Maintenance calorie preview by activity level"
+                style={{
+                  marginTop: Spacing.md,
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  fontVariant: ["tabular-nums"],
+                  lineHeight: 18,
+                }}
+              >
+                {order
+                  .map((lvl) => `${ACTIVITY_SHORT_LABELS[lvl]}: ${preview[lvl].toLocaleString()} kcal`)
+                  .join(" \u00B7 ")}
+              </Text>
+            ) : (
+              <Text
+                accessibilityLabel="Maintenance preview unavailable"
+                style={{
+                  marginTop: Spacing.md,
+                  fontSize: 12,
+                  color: colors.textTertiary,
+                  lineHeight: 18,
+                }}
+              >
+                Pick your activity level — we'll compute your maintenance calories once your basics are in.
+              </Text>
+            )}
           </View>
         );
+      }
 
       case "plan_pace":
         return (

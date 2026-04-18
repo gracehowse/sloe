@@ -4,40 +4,44 @@ import { useCallback, useEffect, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { useAuthSession } from "../../context/AuthSessionContext";
+import { supabase } from "../../lib/supabase/browserClient";
+// Direct-to-Supabase household client. Web previously used the Next.js
+// REST routes at /api/household; the routes still exist but the runtime
+// path is now the shared client so web + mobile stay structurally
+// identical (TestFlight feedback AAegi1DJEiscjIFi_pYaep4 also fixed a
+// long-standing broken Authorization header here that passed an
+// unresolved Promise as the bearer value).
+import {
+  createHousehold as createHouseholdRemote,
+  getMyHousehold,
+  joinHouseholdByInviteCode,
+  leaveHousehold as leaveHouseholdRemote,
+  type HouseholdData,
+} from "../../lib/household/householdClient";
 
-type MemberSummary = {
-  userId: string;
-  role: string;
-  displayName: string;
-  targets: { calories: number; protein: number; carbs: number; fat: number };
-  consumed: { calories: number; protein: number; carbs: number; fat: number };
-  remaining: { calories: number; protein: number; carbs: number; fat: number };
-};
+function mapCreateError(code: string): string {
+  if (code === "already_in_household") {
+    return "You already belong to a household. Leave it first to create a new one.";
+  }
+  return "Failed to create household.";
+}
 
-type HouseholdMeal = {
-  id: string;
-  date_key: string;
-  meal_label: string;
-  recipe_title: string;
-  servings: number;
-  calories_per_serving: number | null;
-  protein_per_serving: number | null;
-  carbs_per_serving: number | null;
-  fat_per_serving: number | null;
-  notes: string | null;
-};
-
-type HouseholdData = {
-  household: {
-    id: string;
-    name: string;
-    invite_code: string;
-    isOwner: boolean;
-    myRole: string;
-  } | null;
-  members: MemberSummary[];
-  meals: HouseholdMeal[];
-};
+function mapJoinError(code: string): string {
+  switch (code) {
+    case "missing_code":
+      return "Enter the invite code first.";
+    case "invalid_code":
+      return "No household found with that invite code.";
+    case "already_in_household":
+      return "Leave your current household first.";
+    case "household_full":
+      return "This household has reached the maximum of 8 members.";
+    case "not_authenticated":
+      return "Please sign in again.";
+    default:
+      return "Couldn't join household.";
+  }
+}
 
 export function HouseholdPanel() {
   const { authedUserId } = useAuthSession();
@@ -53,13 +57,15 @@ export function HouseholdPanel() {
   const load = useCallback(async () => {
     if (!authedUserId) { setLoading(false); return; }
     try {
-      const res = await fetch("/api/household", {
-        headers: { Authorization: `Bearer ${(await import("../../lib/supabase/browserClient")).supabase.auth.getSession().then((s) => s.data.session?.access_token)}` },
-      });
-      const json = await res.json();
-      if (json.ok) setData(json);
-    } catch {
-      // ignore
+      const { data: result, error: loadErr } = await getMyHousehold(supabase as any, authedUserId);
+      if (loadErr) {
+        setError(loadErr);
+      } else if (result) {
+        setData(result);
+        setError(null);
+      }
+    } catch (e) {
+      setError((e as Error).message || "Couldn't load household.");
     }
     setLoading(false);
   }, [authedUserId]);
@@ -67,43 +73,58 @@ export function HouseholdPanel() {
   useEffect(() => { void load(); }, [load]);
 
   const createHousehold = async () => {
+    if (!authedUserId) return;
     setError(null);
-    const res = await fetch("/api/household", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: householdName.trim() || "My Household" }),
-    });
-    const json = await res.json();
-    if (json.ok) {
+    try {
+      const { error: createErr } = await createHouseholdRemote(
+        supabase as any,
+        authedUserId,
+        householdName.trim() || undefined,
+      );
+      if (createErr) {
+        setError(mapCreateError(createErr));
+        return;
+      }
       setShowCreate(false);
       setHouseholdName("");
       void load();
-    } else {
-      setError(json.message ?? "Failed to create household");
+    } catch (e) {
+      setError((e as Error).message || "Failed to create household");
     }
   };
 
   const joinHousehold = async () => {
     setError(null);
-    const res = await fetch("/api/household/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode: inviteCode.trim() }),
-    });
-    const json = await res.json();
-    if (json.ok) {
+    try {
+      const { error: joinErr } = await joinHouseholdByInviteCode(
+        supabase as any,
+        inviteCode.trim(),
+      );
+      if (joinErr) {
+        setError(mapJoinError(joinErr));
+        return;
+      }
       setShowJoin(false);
       setInviteCode("");
       void load();
-    } else {
-      setError(json.message ?? "Invalid invite code");
+    } catch (e) {
+      setError((e as Error).message || "Invalid invite code");
     }
   };
 
   const leaveHousehold = async () => {
+    if (!authedUserId) return;
     if (!confirm("Are you sure you want to leave this household?")) return;
-    await fetch("/api/household/leave", { method: "POST" });
-    void load();
+    try {
+      const { error: leaveErr } = await leaveHouseholdRemote(supabase as any, authedUserId);
+      if (leaveErr) {
+        setError(leaveErr);
+        return;
+      }
+      void load();
+    } catch (e) {
+      setError((e as Error).message || "Failed to leave household");
+    }
   };
 
   if (!authedUserId) return null;

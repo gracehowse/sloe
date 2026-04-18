@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../ui/utils";
+import { RING_LABELS } from "../../../lib/copy/today";
 
 /**
  * DailyRing — circular progress ring for daily calorie target.
@@ -64,10 +65,10 @@ function DailyRing({
   const centerValue = displayMode === "consumed" ? Math.round(consumed) : remaining;
   const centerLabel =
     displayMode === "consumed"
-      ? "LOGGED"
+      ? RING_LABELS.logged
       : isOverBudget
-        ? "Over budget"
-        : "kcal left";
+        ? RING_LABELS.over
+        : RING_LABELS.remaining;
   const centerValueColor = isOverBudget ? "var(--destructive)" : undefined;
   const centerLabelColor = isOverBudget ? "var(--destructive)" : undefined;
 

@@ -152,7 +152,7 @@ export default function ProfileScreen() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, weight_kg, height_cm, sex, activity_level, goal, dob, age",
+        "display_name, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -175,6 +175,7 @@ export default function ProfileScreen() {
           goal: typeof d.goal === "string" ? d.goal : null,
           dob: typeof d.dob === "string" ? d.dob : null,
           age: d.age != null ? Number(d.age) : null,
+          plan_pace: typeof d.plan_pace === "string" ? d.plan_pace : null,
         },
       );
       setCalories(String(resolved.calories));

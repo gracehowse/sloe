@@ -6,10 +6,12 @@ import {
   type WeekSummaryMode,
 } from "../../../../src/lib/nutrition/weekSummaryWindow";
 import type { JournalMeal } from "@/lib/nutritionJournal";
+import { NET_DEFICIT_LABEL } from "../../../../src/lib/copy/today";
 
 /**
- * TodayDeficitInsight — small "under budget" banner shown on today view
- * when there's calorie headroom left.
+ * TodayDeficitInsight — small banner shown on today view when there's
+ * calorie headroom left. Uses canonical "deficit" phrasing from
+ * `src/lib/copy/today.ts`.
  *
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
  * 2026-04-18).
@@ -84,11 +86,11 @@ export function TodayDeficitInsight({
       }}
     >
       <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
-        ~{remaining} kcal under budget so far today
+        ~{remaining} kcal {NET_DEFICIT_LABEL} so far today
       </Text>
       {avgDeficit != null && avgDeficit > 0 ? (
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4 }}>
-          {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit} kcal/day under goal
+          {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit} kcal/day {NET_DEFICIT_LABEL}
         </Text>
       ) : null}
     </View>

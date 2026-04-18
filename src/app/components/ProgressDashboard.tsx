@@ -40,6 +40,10 @@ import {
 } from "../../lib/nutrition/weeklyRecap.ts";
 import { listSavedMeals, type SavedMeal } from "../../lib/nutrition/savedMeals.ts";
 import { normaliseRecipeTitle } from "../../lib/nutrition/usualMealHint.ts";
+import {
+  PENDING_USUAL_MEAL_SAVE_KEY,
+  serializePendingUsualMealSave,
+} from "../../lib/nutrition/pendingUsualMealSave.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { WeeklyRecapCard } from "./suppr/weekly-recap-card.tsx";
@@ -189,7 +193,10 @@ function ProgressDashboardContent() {
       const sex = ((data as any).sex as Sex) ?? "unspecified";
       const heightCm = Number((data as any).height_cm) || 170;
       const age = Number((data as any).age) || 30;
-      const actLevel = ((data as any).activity_level as ActivityLevel) ?? "moderate";
+      // Default to "sedentary" (1.2) when missing — "moderate" (1.55) silently
+      // over-inflated TDEE by ~14% for users who never picked a level
+      // (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
+      const actLevel = ((data as any).activity_level as ActivityLevel) ?? "sedentary";
       const wForTdee = Number.isFinite(w) ? w! : 70;
       const sTdee = calculateTDEE(sex, wForTdee, heightCm, age, actLevel);
       setStaticTdee(sTdee);
@@ -531,11 +538,30 @@ function ProgressDashboardContent() {
           recap={recap}
           onDismiss={dismissRecap}
           usualMealInsight={usualMealInsight}
-          // Ship M1 — prompt CTA pipes back to Today by routing the user
-          // there. We don't deep-link the dialog open today; users land
-          // on Today with the slot-header save row highlighted via the
-          // canonical slot-level flow. A direct deep-link is a follow-up.
+          // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to the
+          // `SaveMealDialog` on Today, pre-seeded with the user's most-
+          // frequent items from their history. `byDay` lets the card
+          // run the shared `selectMostFrequentSlotSeed` helper; when it
+          // returns a seed, `onOpenSaveCombo` stashes `{slot, items}` in
+          // sessionStorage and routes to Today — `NutritionTracker`
+          // hydrates on mount and opens the dialog. When the helper
+          // returns null (rare — user logged ≥5 days but items don't
+          // cluster), we fall back to the legacy route-to-Today path.
+          byDay={nutritionByDay}
+          onOpenSaveCombo={(slot, items) => {
+            const serialized = serializePendingUsualMealSave(slot, items);
+            if (serialized && typeof window !== "undefined") {
+              try {
+                window.sessionStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized);
+              } catch {
+                /* sessionStorage can throw in private modes — ignore. */
+              }
+            }
+            router.replace("/?view=today");
+          }}
           onStartUsualMealSave={() => {
+            // Fallback path — helper returned null, so just route to Today;
+            // the slot-header save row is still reachable manually.
             router.replace("/?view=today");
           }}
         />
@@ -886,8 +912,18 @@ function ProgressDashboardContent() {
         const avgRecentCals = daysWithFood.length > 0
           ? Math.round(daysWithFood.reduce((s, k) => s + (nutritionByDay[k] ?? []).reduce((a, m) => a + m.calories, 0), 0) / daysWithFood.length)
           : 0;
+        // Prefer the user's real TDEE (adaptive when available, else static Mifflin) as
+        // the break-even number, so the projection respects actual burn and doesn't
+        // flag a genuine deficit as a gain. See TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
+        const maintenanceTdeeKcal = isAdaptive && adaptiveTdee != null ? adaptiveTdee : staticTdee;
         const dailyProjection = avgRecentCals > 0
-          ? projectWeight({ currentWeightKg: weightKg, todayCalories: avgRecentCals, targetCalories: targets.calories, goal: userGoal })
+          ? projectWeight({
+              currentWeightKg: weightKg,
+              todayCalories: avgRecentCals,
+              targetCalories: targets.calories,
+              maintenanceTdeeKcal,
+              goal: userGoal,
+            })
           : null;
 
         return (

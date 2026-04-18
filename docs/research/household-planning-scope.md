@@ -4,6 +4,8 @@
 **Date:** 2026-04-16
 **Depends on:** Stable single-user meal planning (Phase A/C), day totals, profiles with macro targets
 
+> **Shipping note (2026-04-18):** The Phase 1 read-only shared dinner list is live on web and mobile. Runtime data path for **both** platforms is `src/lib/household/householdClient.ts` — direct Supabase calls under RLS, plus a `security definer` RPC `public.household_join_by_invite_code` for the one operation RLS cannot express. The Next.js routes under `app/api/household/` still exist but are no longer the runtime path for the UI; do not add new household callers to those routes. See `docs/testflight-feedback/resolved.md` (2026-04-18 entry, ASC `AAegi1DJEiscjIFi_pYaep4`).
+
 ---
 
 ## Background

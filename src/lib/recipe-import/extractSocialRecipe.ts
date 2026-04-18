@@ -362,6 +362,36 @@ export function socialImportSourceName(
   return domain || "Instagram";
 }
 
+/**
+ * GPT sometimes returns the entire caption as `title` when the post lacks an
+ * explicit headline, which produces recipes with 500+ character "titles".
+ * TestFlight feedback `AOHTbpXsKXz9e63LN0j58FQ` (2026-04-18): "Some recipes
+ * pulling the whole caption in as the title."
+ *
+ * Clamp to one line, strip trailing hashtag/URL runs, cap length.
+ * Null out when the result would be too long to be a plausible title —
+ * caller will fall back to `meta.title` / "Imported recipe".
+ */
+const IMPORTED_TITLE_MAX_CHARS = 120;
+
+export function sanitiseImportedTitle(raw: unknown): string | null {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (!s) return null;
+  // Collapse internal whitespace, drop newlines.
+  s = s.replace(/\s+/g, " ");
+  // Strip trailing tails: hashtag runs, "Follow @x", URL tails.
+  s = s.replace(/(\s*(#[\w-]+|@[\w.]+|https?:\/\/\S+))+\s*$/g, "").trim();
+  // If first sentence exists and fits, prefer it.
+  const firstSentence = s.split(/(?<=[.!?])\s+/)[0]?.trim();
+  if (firstSentence && firstSentence.length <= IMPORTED_TITLE_MAX_CHARS) s = firstSentence;
+  if (s.length > IMPORTED_TITLE_MAX_CHARS) {
+    // Still too long → reject; caller falls back.
+    return null;
+  }
+  return s || null;
+}
+
 function extractMetaContent(html: string, property: string): string | null {
   // Match both property="..." and name="..." patterns
   const patterns = [
@@ -684,7 +714,7 @@ Rules:
     const prepFromModel = asPosMin(parsed.prepTimeMin);
     const cookFromModel = asPosMin(parsed.cookTimeMin);
     return {
-      title: parsed.title ?? null,
+      title: sanitiseImportedTitle(parsed.title),
       ingredients: Array.isArray(parsed.ingredients)
         ? parsed.ingredients.map((s) => String(s).trim()).filter(Boolean)
         : [],

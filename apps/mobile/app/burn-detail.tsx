@@ -44,7 +44,7 @@ export default function BurnDetailScreen() {
       if (cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal")
+        .select("activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !profile) return;
@@ -54,7 +54,7 @@ export default function BurnDetailScreen() {
         activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
         restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
         steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
-        maintenanceKcal: maintenanceIntakeFromTargetCalories(targetCal, p.goal),
+        maintenanceKcal: maintenanceIntakeFromTargetCalories(targetCal, p.goal, p.plan_pace),
         workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
       });
     })();

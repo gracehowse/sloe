@@ -503,7 +503,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const instructionSteps = useMemo(() => {
     const text = dbInstructionsText?.trim() ?? "";
     if (!text) return [];
+    // Defensive normalisation: some imports (and at least one historical
+    // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
+    // "/n" or escaped "\n" 2-char sequences. Replace both with real newlines
+    // before splitting so users never see "/n" as UI text.
     return text
+      .replace(/\\n/g, "\n")
+      .replace(/\s\/n\s?/g, "\n")
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);

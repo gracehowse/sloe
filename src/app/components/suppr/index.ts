@@ -100,8 +100,6 @@ export {
   TodayAddMealDialog,
   type TodayAddMealDialogProps,
   type AddMealMode,
-  type UsdaHit,
-  type UsdaFoodDetails,
 } from "./today-add-meal-dialog";
 export {
   TodayBarcodeDialog,

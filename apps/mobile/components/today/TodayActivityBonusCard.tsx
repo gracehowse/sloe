@@ -1,11 +1,17 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
 } from "../../../../src/lib/nutrition/weekSummaryWindow";
+import {
+  buildTdeeExplainerCopy,
+  calculateBMR,
+  type ActivityLevel,
+  type Sex,
+} from "@/lib/tdee";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
@@ -39,6 +45,24 @@ export interface TodayActivityBonusCardProps {
   borderColor: string;
   cardColor: string;
   cardBorderColor: string;
+  /**
+   * Effective maintenance TDEE for the user (adaptive when confident,
+   * else `calculateTDEE` from profile basics). When non-null/positive,
+   * the card renders a 4th "Maintenance" tile and the header info icon
+   * surfaces a popover with `buildTdeeExplainerCopy`. Pass `null` (not
+   * zero) to omit — zero is misleading.
+   *
+   * Wired 2026-04-18 from `apps/mobile/app/(tabs)/index.tsx` (the
+   * `staticTdee` fallback when adaptive isn't confident yet) to close
+   * TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ` / `AFdtq8z_FmWRCispqF04Lsk`.
+   */
+  maintenanceTdeeKcal: number | null;
+  /** For the info-popover BMR line. Optional — popover hides when missing. */
+  profileSex?: Sex | null;
+  profileWeightKg?: number | null;
+  profileHeightCm?: number | null;
+  profileAge?: number | null;
+  profileActivityLevel?: ActivityLevel | null;
 }
 
 export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
@@ -65,7 +89,35 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     borderColor,
     cardColor,
     cardBorderColor,
+    maintenanceTdeeKcal,
+    profileSex,
+    profileWeightKg,
+    profileHeightCm,
+    profileAge,
+    profileActivityLevel,
   } = props;
+  const [infoOpen, setInfoOpen] = React.useState(false);
+
+  // 4th "Maintenance" tile + info popover — render only when we know
+  // maintenance TDEE. Zero/null = omit (no misleading "0 kcal" cell).
+  // Mirrors web `today-activity-bonus-card.tsx` (TestFlight
+  // `AAtW7dYcCBPyBdsMU6UqiQQ` / `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18).
+  const hasMaintenanceTile = maintenanceTdeeKcal != null && maintenanceTdeeKcal > 0;
+  const popoverBmr =
+    profileSex && profileWeightKg && profileHeightCm && profileAge
+      ? Math.round(calculateBMR(profileSex, profileWeightKg, profileHeightCm, profileAge))
+      : null;
+  const popoverActivity: ActivityLevel = profileActivityLevel ?? "sedentary";
+  const popoverCopy =
+    hasMaintenanceTile && popoverBmr != null
+      ? buildTdeeExplainerCopy({
+          maintenanceTdeeKcal: maintenanceTdeeKcal!,
+          bmrKcal: popoverBmr,
+          activityLevel: popoverActivity,
+          basalKcal: basalBurnKcal,
+          activeKcal: activityBurnKcal ?? 0,
+        })
+      : null;
 
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
@@ -88,7 +140,19 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     <View style={styles.card}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
         <Ionicons name="flame" size={20} color={Accent.warning} />
-        <Text style={styles.cardTitle}>Activity Bonus</Text>
+        <Text style={[styles.cardTitle, { flex: 1 }]}>Activity Bonus</Text>
+        {popoverCopy ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="What is maintenance TDEE?"
+            testID="today-activity-bonus-info-trigger"
+            onPress={() => setInfoOpen(true)}
+            hitSlop={8}
+            style={{ padding: 4 }}
+          >
+            <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
+          </Pressable>
+        ) : null}
       </View>
 
       {!hasBurnData && isToday ? (
@@ -99,7 +163,10 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         </Text>
       ) : null}
 
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm }}>
+      <View
+        testID="today-activity-bonus-summary-row"
+        style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm }}
+      >
         <View style={{ alignItems: "center", flex: 1 }}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
             {totalBurnKcal.toLocaleString()}
@@ -115,6 +182,20 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </Text>
           <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Food logged</Text>
         </View>
+        {hasMaintenanceTile ? (
+          <>
+            <View style={{ width: 1, backgroundColor: borderColor }} />
+            <View
+              testID="today-activity-bonus-maintenance-tile"
+              style={{ alignItems: "center", flex: 1 }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
+                {maintenanceTdeeKcal!.toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 2 }}>Maintenance</Text>
+            </View>
+          </>
+        ) : null}
         <View style={{ width: 1, backgroundColor: borderColor }} />
         <View style={{ alignItems: "center", flex: 1 }}>
           <Text
@@ -253,6 +334,55 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           </View>
         </View>
       )}
+
+      {popoverCopy ? (
+        <Modal
+          visible={infoOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setInfoOpen(false)}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss TDEE explainer"
+            onPress={() => setInfoOpen(false)}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: Spacing.lg,
+            }}
+          >
+            <View
+              testID="today-activity-bonus-info-content"
+              style={{
+                maxWidth: 360,
+                backgroundColor: cardColor,
+                borderRadius: Radius.md,
+                padding: Spacing.md,
+                borderWidth: 1,
+                borderColor: cardBorderColor,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "700", color: textColor, marginBottom: Spacing.sm }}>
+                Maintenance TDEE
+              </Text>
+              <Text style={{ fontSize: 13, color: textSecondaryColor, lineHeight: 19 }}>
+                {popoverCopy}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setInfoOpen(false)}
+                style={{ marginTop: Spacing.sm, paddingVertical: 8, alignItems: "flex-end" }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>Close</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
     </View>
   );
 }

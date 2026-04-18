@@ -150,7 +150,7 @@ Cross-reference: `docs/planning/post-feature-expansion-audit-2026-04-18.md`.
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
 | C1 | Custom foods dead code | **DONE 2026-04-18** | Wired into `FoodSearch.tsx` + `FoodSearchModal.tsx`. Two shared helpers added (`customFoodToMacrosPer100g`, `buildCustomFoodPortions`). 10 new unit tests. 948 tests green. |
-| C1a | NutritionTracker inline web search not rewired to `FoodSearch` | **NEW follow-up (low)** | Primary web log path is still an inline USDA-only search inside `NutritionTracker.tsx`. Custom foods reachable on web via `RecipeDetail` verify, but not via inline Today search. One-line swap when rewiring lands. Owner: `executor`. |
+| C1a | NutritionTracker inline web search not rewired to `FoodSearch` | **DONE 2026-04-18 (Post-ship #5)** | `NutritionTracker.tsx` now mounts shared `<FoodSearch>` on Today. `TodayAddMealDialog` drops the inline "Search" tab + hand-rolled search view; a single "Search foods" CTA hands off to the standalone search modal (parity with mobile's Add-meal → FoodSearchModal pattern). QuickLogStrip's Search chip opens `<FoodSearch>` directly. Custom foods surface at top with "Custom" badge on the primary web Today log path. `food_logged.source` fires `custom_food` / `manual` to match mobile. `todayAddMealDialog.test.tsx` (4 cases) + existing `foodSearchFitThisIn.test.tsx` guard the rewire. 1135 vitest green. |
 | C2 | Mobile planner Move action | **DONE 2026-04-18** | `MoveMealSheet` bottom sheet + long-press action sheet + shared `moveMealInPlan` / `markLeftoversOnSwap` wired. 957 tests green. |
 | C3 | Imperial water on mobile | **DONE 2026-04-18** | Shared `formatWaterAmount` + `imperialWaterQuickAdds` helpers; mobile card now accepts `measurementSystem`; metric storage unchanged. Product-memory logged. |
 | C4 | Dead voice/photo modals on mobile Today | **DONE 2026-04-18** | −287 LOC from `(tabs)/index.tsx` (4,419 → 4,132). Only unreachable paths deleted; `apps/mobile/lib/voiceLog.ts` preserved because `VoiceLogSheet` still imports `isSpeechAvailable` / `listenForSpeech`. |
@@ -160,7 +160,8 @@ Cross-reference: `docs/planning/post-feature-expansion-audit-2026-04-18.md`.
 
 ### Follow-up ledger (2026-04-18)
 
-- **C1a** above — rewire web NutritionTracker inline search to `<FoodSearch>` when scope fits.
+- ~~**C1a** above — rewire web NutritionTracker inline search to `<FoodSearch>`.~~ **Closed 2026-04-18 (Post-ship #5).**
+- ~~**Post-ship #4** — weekly recap "Save your usual" prompt CTA deep-links to `SaveMealDialog` / `SaveMealSheet` pre-seeded with the user's most-frequent items from history.~~ **Closed 2026-04-18 (Post-ship #4).** New shared helper `selectMostFrequentSlotSeed(byDay, slotPreference?)` in `src/lib/nutrition/usualMealHint.ts`; cross-view bridge `src/lib/nutrition/pendingUsualMealSave.ts` (sessionStorage on web, AsyncStorage on mobile, versioned key `suppr-pending-usual-meal-save-v1`, 5-minute TTL); new analytics event `weekly_recap_save_prompt_tapped { slot, seedCount }`. `buildUsualMealRecapInsight` prompt-show gate untouched. Tests: +12 `selectMostFrequentSlotSeed` cases in `tests/unit/usualMealHint.test.ts`; new `tests/unit/pendingUsualMealSave.test.ts` (10 cases). 1169/1169 vitest green.
 - Mobile planner: the old `swapMeal` + "Adjust portion" paths mutate state without persisting (pre-existing bug, flagged during C2 — route through new `persistPlan` helper). Owner: `code-quality` / `executor` when touched.
 - `VOICE_LOG_NATIVE_BUILD_HINT` export in `apps/mobile/lib/voiceLog.ts` is unused in code (only in docs). Two-line cleanup when convenient. Owner: `executor`.
 

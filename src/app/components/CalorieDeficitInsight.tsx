@@ -9,6 +9,7 @@ import {
   todayFoodBalanceKcal,
 } from "../../lib/nutrition/deficitProjection.ts";
 import { dateKeyFromDate } from "../../lib/nutrition/trackerStats.ts";
+import { todayBalanceHeadline } from "../../lib/copy/today.ts";
 
 type CalorieDeficitInsightProps = {
   nutritionByDay: Record<string, LoggedMeal[]>;
@@ -42,15 +43,7 @@ export function CalorieDeficitInsight({
 
   const isToday = selectedDateKey === dateKeyFromDate(new Date());
 
-  const headline = useMemo(() => {
-    if (todayBalance > 0) {
-      return `About ${todayBalance} kcal under your food budget today`;
-    }
-    if (todayBalance < 0) {
-      return `About ${Math.abs(todayBalance)} kcal over your food budget today`;
-    }
-    return "Right on your calorie budget for food so far today";
-  }, [todayBalance]);
+  const headline = useMemo(() => todayBalanceHeadline(todayBalance), [todayBalance]);
 
   return (
     <section

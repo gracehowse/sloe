@@ -34,8 +34,13 @@ import {
   weekKeyFor,
   type UsualMealRecapInsight,
 } from "@/lib/weeklyRecap";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { listSavedMeals, type SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { normaliseRecipeTitle } from "../../../../src/lib/nutrition/usualMealHint";
+import {
+  PENDING_USUAL_MEAL_SAVE_KEY,
+  serializePendingUsualMealSave,
+} from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import { scheduleWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
@@ -118,20 +123,55 @@ export default function ProgressScreen() {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
 
-    // Run Health sync and DB queries in parallel for faster loading
-    const [, { data: profile }, { data: rows }] = await Promise.all([
-      isHealthSyncAvailable() ? syncHealthDataThrottled(userId).catch(() => {}) : Promise.resolve(),
+    // Performance fix (P2-1, 2026-04-18): the previous version awaited
+    // `syncHealthDataThrottled` for the entire render so the loading
+    // spinner blocked on 6 serial HealthKit reads + 6 serial profile
+    // updates (3-8s on a fresh focus). Now the sync fires in the
+    // background; we render as soon as `nutrition_entries` + `profile`
+    // resolve, then re-fetch `steps_by_day` once the sync finishes so
+    // today's steps are still correct (the AD6_… steps-drift fix is
+    // preserved by the follow-up read, just not paid for in TTI).
+    //
+    // Also caps `nutrition_entries` to the last 90 days — no card on
+    // this screen looks back further (90d trend chart is the longest
+    // window). Prior unbounded select pulled the user's entire history
+    // every focus.
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const syncPromise = isHealthSyncAvailable()
+      ? syncHealthDataThrottled(userId).catch(() => {})
+      : Promise.resolve();
+
+    const [{ data: rows }, { data: profile }] = await Promise.all([
+      supabase
+        .from("nutrition_entries")
+        .select("date_key, calories, protein, carbs, fat")
+        .eq("user_id", userId)
+        .gte("date_key", ninetyDaysAgo)
+        .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
         .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
         .eq("id", userId)
         .maybeSingle(),
-      supabase
-        .from("nutrition_entries")
-        .select("date_key, calories, protein, carbs, fat")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
     ]);
+
+    // Re-read `steps_by_day` after the background HK sync completes so
+    // today's steps are accurate even though we didn't await sync above.
+    void syncPromise.then(async () => {
+      const { data: refreshed } = await supabase
+        .from("profiles")
+        .select("steps_by_day, weight_kg_by_day, weight_kg")
+        .eq("id", userId)
+        .maybeSingle();
+      if (refreshed) {
+        setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
+        setWeightKgByDay(parseNumMap((refreshed as any).weight_kg_by_day));
+        const w = (refreshed as any).weight_kg != null ? Number((refreshed as any).weight_kg) : null;
+        if (Number.isFinite(w)) setWeightKg(w);
+      }
+    });
 
     if (profile) {
       setTargets({
@@ -168,7 +208,10 @@ export default function ProgressScreen() {
       const sex = ((profile as any).sex as string) ?? "unspecified";
       const heightCm = Number((profile as any).height_cm) || 170;
       const ageVal = Number((profile as any).age) || 30;
-      const actLevel = ((profile as any).activity_level as string) ?? "moderate";
+      // Default to "sedentary" (1.2) when missing — "moderate" (1.55) silently
+      // over-inflated TDEE by ~14% for users who never picked a level
+      // (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
+      const actLevel = ((profile as any).activity_level as string) ?? "sedentary";
       const wForTdee = Number.isFinite(w) ? w! : 70;
       const sTdee = calculateTDEE(sex, wForTdee, heightCm, ageVal, actLevel);
       setStaticTdee(sTdee);
@@ -413,16 +456,37 @@ export default function ProgressScreen() {
         </View>
       ) : (
         <>
-          {/* Weekly Recap Card (Batch 4.11; Ship M1 usual-meal line). */}
+          {/* Weekly Recap Card (Batch 4.11; Ship M1 usual-meal line;
+              post-ship #4 deep-link to SaveMealSheet pre-seeded). */}
           {recapVisible ? (
             <WeeklyRecapCard
               recap={recap}
               onDismiss={dismissRecap}
               usualMealInsight={usualMealInsight}
+              // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to
+              // the Today `SaveMealSheet` pre-seeded with the user's
+              // most-frequent items. `byDay` enables the card to run
+              // `selectMostFrequentSlotSeed`; `onOpenSaveCombo` stashes
+              // the payload in AsyncStorage and navigates to Today. The
+              // Today tab hydrates on focus and opens the sheet. When
+              // the helper returns null, `onStartUsualMealSave` falls
+              // back to the legacy route-to-Today behaviour.
+              byDay={byDay}
+              onOpenSaveCombo={(slot, items) => {
+                const serialized = serializePendingUsualMealSave(slot, items);
+                if (serialized) {
+                  // Fire-and-forget — a set that races with the navigate
+                  // still lands before focus effects fire on Today.
+                  AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(
+                    () => {
+                      /* ignore storage failures */
+                    },
+                  );
+                }
+                router.navigate({ pathname: "/(tabs)" as any });
+              }}
               onStartUsualMealSave={() => {
-                // Ship M1 — route to Today; canonical save flow lives on
-                // the meal-slot section. Direct deep-link to the sheet
-                // pre-seeded with most-frequent items is a follow-up.
+                // Fallback — helper returned null or props missing.
                 router.navigate({ pathname: "/(tabs)" as any });
               }}
             />
@@ -763,12 +827,18 @@ export default function ProgressScreen() {
               const avgCals = recentDays.length > 0
                 ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
                 : 0;
+              // Prefer the user's real TDEE (adaptive when available, else static
+              // Mifflin) as the break-even number so the projection respects
+              // actual burn and doesn't flag a genuine deficit as a gain. See
+              // TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
+              const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
               const dailyProjection =
                 avgCals > 0 && latestWeightKg != null
                   ? projectWeight({
                       currentWeightKg: latestWeightKg,
                       todayCalories: avgCals,
                       targetCalories: targets.calories,
+                      maintenanceTdeeKcal,
                       goal: userGoal,
                     })
                   : null;

@@ -23,15 +23,38 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import { formatRecapForShare, type WeeklyRecap } from "@/lib/weeklyRecap";
 import type { UsualMealRecapInsight } from "../../../src/lib/nutrition/weeklyRecap";
+import { selectMostFrequentSlotSeed } from "../../../src/lib/nutrition/usualMealHint";
+import type { FoodHistoryMealLike } from "../../../src/lib/nutrition/foodHistory";
+import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
 import { Radius as RadiusTokens } from "@/constants/theme";
+
+/** Loose journal-meal shape accepted by the save-prompt deep-link.
+ *  Narrow enough that both `JournalMeal` (mobile) and `LoggedMeal` (web)
+ *  fit without adapters. Kept in sync with the web card. */
+type RecapSaveSeedMeal = FoodHistoryMealLike & { name?: string | null };
 
 export interface WeeklyRecapCardProps {
   recap: WeeklyRecap;
   onDismiss: () => void;
   /** Ship M1 — usual-meal growth-loop insight. Null skips the line. */
   usualMealInsight?: UsualMealRecapInsight;
-  /** Ship M1 — prompt CTA handler; receives the suggested slot. */
+  /** Ship M1 — fallback CTA handler (route to Today) when the deep-link
+   * seed isn't available. Still used by the card when `byDay` +
+   * `onOpenSaveCombo` aren't supplied, or when the helper returns null. */
   onStartUsualMealSave?: (slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks") => void;
+  /** Post-ship #4 — journal map so the card can compute pre-seeded
+   * items for the save-prompt deep-link. When supplied alongside
+   * `onOpenSaveCombo`, the CTA opens `SaveMealSheet` pre-filled with
+   * the user's most-frequent items. When the helper returns null the
+   * card falls back to `onStartUsualMealSave`. */
+  byDay?: Record<string, RecapSaveSeedMeal[]>;
+  /** Post-ship #4 — deep-link handler; receives the helper-picked slot
+   * and the pre-seeded items. Same shape as the host's existing
+   * `openSaveMealSheetForSlot(slot, seedItems)` wrapper. */
+  onOpenSaveCombo?: (
+    slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
+    seedItems: Array<Omit<SavedMealItem, "id" | "position">>,
+  ) => void;
 }
 
 export function WeeklyRecapCard({
@@ -39,6 +62,8 @@ export function WeeklyRecapCard({
   onDismiss,
   usualMealInsight,
   onStartUsualMealSave,
+  byDay,
+  onOpenSaveCombo,
 }: WeeklyRecapCardProps) {
   const colors = useThemeColors();
   const shareText = useMemo(() => formatRecapForShare(recap), [recap]);
@@ -61,6 +86,66 @@ export function WeeklyRecapCard({
     track(AnalyticsEvents.weekly_recap_dismissed, { weekKey: recap.weekKey });
     onDismiss();
   }, [onDismiss, recap.weekKey]);
+
+  /**
+   * Post-ship #4 — pre-compute the save-prompt seed once per render so
+   * the prompt copy and CTA label reflect the slot the sheet will open
+   * with. Mirrors the web card.
+   */
+  const saveSeed = useMemo(() => {
+    if (!byDay) return null;
+    const suggested =
+      usualMealInsight?.kind === "prompt" ? usualMealInsight.suggestedSlot : null;
+    return selectMostFrequentSlotSeed(byDay, suggested);
+  }, [byDay, usualMealInsight]);
+
+  /** Slot label the prompt renders — prefers the deep-link seed's slot
+   *  so the dialog and copy agree. Falls back to the insight's
+   *  suggested slot for legacy callers that don't pass `byDay`. */
+  const promptDisplaySlot: "Breakfast" | "Lunch" | "Dinner" | "Snacks" | null =
+    usualMealInsight?.kind === "prompt"
+      ? saveSeed?.slot ?? usualMealInsight.suggestedSlot
+      : null;
+
+  /**
+   * Post-ship #4 — CTA handler for "Save {slot} as a meal". Prefers the
+   * deep-link path (pre-seeded save sheet) when `byDay` +
+   * `onOpenSaveCombo` are wired; falls back to route-to-Today when the
+   * helper returns null or the host didn't wire the deep-link props.
+   */
+  const handleStartUsualMealSave = useCallback(
+    (suggestedSlot: "Breakfast" | "Lunch" | "Dinner" | "Snacks") => {
+      if (saveSeed && onOpenSaveCombo && saveSeed.seedItems.length >= 2) {
+        const items: Array<Omit<SavedMealItem, "id" | "position">> = saveSeed.seedItems.map(
+          (it) => {
+            const row: Omit<SavedMealItem, "id" | "position"> = {
+              recipeTitle: it.recipeTitle,
+              calories: it.calories,
+              protein: it.protein,
+              carbs: it.carbs,
+              fat: it.fat,
+              portionMultiplier: 1,
+            };
+            if (it.fiber != null) row.fiber = it.fiber;
+            if (it.source) row.source = it.source;
+            return row;
+          },
+        );
+        try {
+          track(AnalyticsEvents.weekly_recap_save_prompt_tapped, {
+            slot: saveSeed.slot,
+            seedCount: items.length,
+          });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+        onOpenSaveCombo(saveSeed.slot, items);
+        return;
+      }
+      if (onStartUsualMealSave) onStartUsualMealSave(suggestedSlot);
+    },
+    [saveSeed, onOpenSaveCombo, onStartUsualMealSave],
+  );
 
   const hasWeight = recap.weightDeltaKg != null;
   const weightCopy = hasWeight
@@ -158,7 +243,7 @@ export function WeeklyRecapCard({
           {usualMealInsight.count} time{usualMealInsight.count === 1 ? "" : "s"} this week.
         </Text>
       ) : null}
-      {usualMealInsight?.kind === "prompt" ? (
+      {usualMealInsight?.kind === "prompt" && promptDisplaySlot ? (
         <View
           style={{
             padding: 12,
@@ -170,16 +255,16 @@ export function WeeklyRecapCard({
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-            Got a usual {usualMealInsight.suggestedSlot.toLowerCase()}?
+            Got a usual {promptDisplaySlot.toLowerCase()}?
           </Text>
           <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
             Save it once, log it in one tap.
           </Text>
-          {onStartUsualMealSave ? (
+          {onStartUsualMealSave || onOpenSaveCombo ? (
             <Pressable
-              onPress={() => onStartUsualMealSave(usualMealInsight.suggestedSlot)}
+              onPress={() => handleStartUsualMealSave(promptDisplaySlot)}
               accessibilityRole="button"
-              accessibilityLabel={`Save ${usualMealInsight.suggestedSlot} as a usual meal`}
+              accessibilityLabel={`Save ${promptDisplaySlot} as a usual meal`}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -194,7 +279,7 @@ export function WeeklyRecapCard({
             >
               <Ionicons name="bookmark-outline" size={12} color="#fff" />
               <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
-                Save {usualMealInsight.suggestedSlot} as a meal
+                Save {promptDisplaySlot} as a meal
               </Text>
             </Pressable>
           ) : null}

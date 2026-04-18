@@ -64,9 +64,10 @@ import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
+import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
-import { maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
+import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
 import {
   syncHealthDataThrottled,
   syncNutritionFromHealthThrottled,
@@ -122,6 +123,10 @@ import {
   shouldShowUsualMealHint,
   USUAL_MEAL_HINT_STORAGE_KEY,
 } from "../../../../src/lib/nutrition/usualMealHint";
+import {
+  PENDING_USUAL_MEAL_SAVE_KEY,
+  parsePendingUsualMealSave,
+} from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TodayHeroRing } from "@/components/today/TodayHeroRing";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
@@ -357,6 +362,17 @@ export default function TrackerScreen() {
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoalWeightKg, setProfileGoalWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  // P0-3 (2026-04-18) — mobile must apply pace-aware deficits to match web.
+  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  // Cached profile basics needed by the activity-bonus info popover so it
+  // can show "BMR × multiplier" without a second profile fetch (TestFlight
+  // `AAtW7dYcCBPyBdsMU6UqiQQ`, 2026-04-18).
+  const [profileSex, setProfileSex] = useState<"male" | "female" | "unspecified" | null>(null);
+  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
+  const [profileAge, setProfileAge] = useState<number | null>(null);
+  const [profileActivityLevel, setProfileActivityLevel] = useState<
+    "sedentary" | "light" | "moderate" | "active" | "very_active" | null
+  >(null);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -605,6 +621,73 @@ export default function TrackerScreen() {
     [userId, byDay, selectedDate],
   );
 
+  /**
+   * Post-ship #4 (2026-04-18) — open the save-meal sheet with a pre-
+   * prepared seed (items + slot). Unlike `openSaveMealSheetForSlot`
+   * which rebuilds the seed from today's journal, this opener accepts
+   * the items verbatim — used by the weekly-recap deep-link so the
+   * user's most-frequent historical items are pre-filled instead of
+   * only today's items.
+   */
+  const openSaveMealSheetWithSeed = useCallback(
+    (
+      slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
+      items: Array<Omit<SavedMealItem, "id" | "position">>,
+    ) => {
+      if (!userId) {
+        Alert.alert("Sign in", "Sign in to save a usual meal.");
+        return;
+      }
+      if (!Array.isArray(items) || items.length < 2) {
+        // Guard mirrors `openSaveMealSheetForSlot` — never show an
+        // empty sheet to the user. The recap card shouldn't reach here
+        // (the helper enforces ≥2 items) but the guard is cheap.
+        return;
+      }
+      setSaveMealSheetItems(items);
+      setSaveMealSheetDefaultSlot(isMealSlot(slot) ? slot : undefined);
+      setSaveMealSheetOpen(true);
+    },
+    [userId],
+  );
+
+  /**
+   * Post-ship #4 (2026-04-18) — consume the "save your usual" deep-link
+   * the weekly-recap card stashed in AsyncStorage from the Progress
+   * tab. Fires once per userId. Pops the stored payload, validates the
+   * TTL inside `parsePendingUsualMealSave`, then opens the
+   * `SaveMealSheet` pre-seeded with the slot and items chosen by the
+   * shared helper on Progress.
+   */
+  const pendingUsualMealConsumedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    if (pendingUsualMealConsumedRef.current === userId) return;
+    let cancelled = false;
+    (async () => {
+      let raw: string | null = null;
+      try {
+        raw = await AsyncStorage.getItem(PENDING_USUAL_MEAL_SAVE_KEY);
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      pendingUsualMealConsumedRef.current = userId;
+      if (!raw) return;
+      try {
+        await AsyncStorage.removeItem(PENDING_USUAL_MEAL_SAVE_KEY);
+      } catch {
+        /* ignore — worst case it's picked up again before TTL expiry. */
+      }
+      const pending = parsePendingUsualMealSave(raw);
+      if (!pending) return;
+      openSaveMealSheetWithSeed(pending.slot, pending.items);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, openSaveMealSheetWithSeed]);
+
   /** Persist a new saved meal from the lifted `SaveMealSheet`, then bump
    *  `savedMealsRefreshToken` so `QuickAddPanel` refetches its "Usual
    *  meals" tab and auto-switches to it. Mirrors the web host. */
@@ -849,7 +932,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -857,7 +940,7 @@ export default function TrackerScreen() {
       resp = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -875,6 +958,7 @@ export default function TrackerScreen() {
         goal: d.goal,
         dob: d.dob,
         age: d.age != null ? Number(d.age) : null,
+        plan_pace: d.plan_pace,
       },
     );
     setProfileTargets({
@@ -948,6 +1032,17 @@ export default function TrackerScreen() {
     const gwk = d.goal_weight_kg != null ? Number(d.goal_weight_kg) : null;
     setProfileGoalWeightKg(Number.isFinite(gwk) ? gwk : null);
     setProfileGoal(d.goal ?? null);
+    setProfilePlanPace(typeof d.plan_pace === "string" ? d.plan_pace : null);
+    // Cached profile basics for the activity-bonus info popover (P1-1, 2026-04-18).
+    const sxRaw = typeof d.sex === "string" ? d.sex.trim().toLowerCase() : "";
+    setProfileSex(sxRaw === "male" || sxRaw === "female" || sxRaw === "unspecified" ? (sxRaw as any) : null);
+    const hCm = d.height_cm != null ? Number(d.height_cm) : null;
+    setProfileHeightCm(Number.isFinite(hCm) && hCm! > 0 ? hCm : null);
+    const ageVal = d.age != null ? Number(d.age) : null;
+    setProfileAge(Number.isFinite(ageVal) && ageVal! > 0 ? ageVal : null);
+    const actRaw = typeof d.activity_level === "string" ? d.activity_level.trim().toLowerCase() : "";
+    const ACT_OK = ["sedentary", "light", "moderate", "active", "very_active"] as const;
+    setProfileActivityLevel((ACT_OK as readonly string[]).includes(actRaw) ? (actRaw as any) : null);
     const np = d.notification_prefs as {
       showMealTimestamps?: boolean;
       weekSummaryMode?: string;
@@ -991,9 +1086,30 @@ export default function TrackerScreen() {
   const isToday = dayKey === dateKeyFromDate(new Date());
 
   const maintenanceKcal = useMemo(
-    () => maintenanceIntakeFromTargetCalories(targets.calories, profileGoal),
-    [targets.calories, profileGoal],
+    () => maintenanceIntakeFromTargetCalories(targets.calories, profileGoal, profilePlanPace),
+    [targets.calories, profileGoal, profilePlanPace],
   );
+
+  // Static-Mifflin maintenance for the activity-bonus tile + popover.
+  // Adaptive TDEE lives in Progress only; here we surface the formula
+  // value so the user can see "BMR × multiplier = maintenance" (TestFlight
+  // `AAtW7dYcCBPyBdsMU6UqiQQ` / `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18).
+  const profileMaintenanceTdeeKcal = useMemo(() => {
+    if (
+      profileSex == null ||
+      profileWeightKg == null ||
+      profileHeightCm == null ||
+      profileAge == null
+    )
+      return null;
+    return calculateTDEE(
+      profileSex,
+      profileWeightKg,
+      profileHeightCm,
+      profileAge,
+      profileActivityLevel ?? "sedentary",
+    );
+  }, [profileSex, profileWeightKg, profileHeightCm, profileAge, profileActivityLevel]);
 
   const persistActivityBonusPref = useCallback(
     async (nextVal: boolean) => {
@@ -2054,6 +2170,18 @@ export default function TrackerScreen() {
     }, [loadJournal, loadProfileTargets]),
   );
 
+  // Token rotation (TestFlight build 7 fix —
+  // `AOjQg5DGBZqS5qNJ1Rqu960`, `APdpODtJDL8q2JhtGup6DK0`). Expo push
+  // tokens can change across reinstalls / restore-from-backup; the
+  // helper short-circuits when nothing has changed so it is cheap to
+  // call on every focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      void refreshExpoPushTokenIfChanged(userId);
+    }, [userId]),
+  );
+
   // Pull steps / weight / active energy from HealthKit into `profiles`, then refresh targets (throttled app-wide).
   useFocusEffect(
     useCallback(() => {
@@ -2822,46 +2950,9 @@ export default function TrackerScreen() {
           />
         )}
 
-        {/* Batch 2.5 — hydration & stimulants (water + caffeine + alcohol).
-            Audit M4 (2026-04-18): gated behind a water target > 0 OR any
-            water / caffeine / alcohol logged. First-run fallback is a tiny
-            "Track hydration?" link that reveals the card on tap — the card
-            itself is never destroyed, only conditionally rendered. */}
-        {viewMode === "day" && showHydrationCard && (
-          <HydrationStimulantsCard
-            selectedDateKey={dayKey}
-            weekStartDay={weekStartDay}
-            targets={{
-              waterMl: waterGoalMl,
-              caffeineMg: targetCaffeineMg,
-              alcoholGWeekly: targetAlcoholGWeekly,
-            }}
-            waterTotalMl={totalWaterMl}
-            waterFromMealsMl={waterFromMealsMl}
-            caffeineTotalMg={extraCaffeineToday}
-            alcoholByDayG={extraAlcoholGByDay}
-            measurementSystem={measurementSystem}
-            onAddWater={(ml) => void addWaterMl(ml)}
-            onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}
-            onAddAlcohol={(g, preset) => void addAlcoholG(g, preset ?? null)}
-            onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
-          />
-        )}
-        {viewMode === "day" && !showHydrationCard && (
-          <Pressable
-            onPress={() => setHydrationManualExpanded(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Track hydration"
-            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
-          >
-            <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", textAlign: "center" }}>
-              Track hydration?
-            </Text>
-          </Pressable>
-        )}
-
         {/* Steps, active energy — per selected day (historic via header / DayStrip).
-            Water + stimulants moved into `HydrationStimulantsCard` above.
+            Water + stimulants live in the `HydrationStimulantsCard` at the
+            bottom of Today (post-TestFlight build 7 feedback, 2026-04-18).
             Audit M4 (2026-04-18): gated until Apple Health / Google Fit has
             synced at least once (steps map OR activity burn map non-empty).
             First-run fallback is a small "Connect health" link that opens
@@ -2910,6 +3001,12 @@ export default function TrackerScreen() {
             byDay={byDay}
             weekSummaryMode={weekSummaryMode}
             onOpenBurnDetail={() => router.push({ pathname: "/burn-detail", params: { date: dayKey } } as any)}
+            maintenanceTdeeKcal={profileMaintenanceTdeeKcal}
+            profileSex={profileSex}
+            profileWeightKg={profileWeightKg}
+            profileHeightCm={profileHeightCm}
+            profileAge={profileAge}
+            profileActivityLevel={profileActivityLevel}
             styles={styles}
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
@@ -2918,6 +3015,47 @@ export default function TrackerScreen() {
             cardColor={colors.card}
             cardBorderColor={colors.cardBorder}
           />
+        )}
+
+        {/* Batch 2.5 — hydration & stimulants (water + caffeine + alcohol).
+            Position (2026-04-18, post-TestFlight build 7 feedback): sits at
+            the bottom of Today — primary water quick-add lives in the macro
+            tile row up top; this card is detail + caffeine/alcohol quick-add.
+            Gating: visible once water target > 0 OR any water/caffeine/
+            alcohol logged. Caffeine + alcohol rows additionally self-hide
+            when their individual target is 0. First-run fallback is a tiny
+            "Track hydration?" link. */}
+        {viewMode === "day" && showHydrationCard && (
+          <HydrationStimulantsCard
+            selectedDateKey={dayKey}
+            weekStartDay={weekStartDay}
+            targets={{
+              waterMl: waterGoalMl,
+              caffeineMg: targetCaffeineMg,
+              alcoholGWeekly: targetAlcoholGWeekly,
+            }}
+            waterTotalMl={totalWaterMl}
+            waterFromMealsMl={waterFromMealsMl}
+            caffeineTotalMg={extraCaffeineToday}
+            alcoholByDayG={extraAlcoholGByDay}
+            measurementSystem={measurementSystem}
+            onAddWater={(ml) => void addWaterMl(ml)}
+            onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}
+            onAddAlcohol={(g, preset) => void addAlcoholG(g, preset ?? null)}
+            onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
+          />
+        )}
+        {viewMode === "day" && !showHydrationCard && (
+          <Pressable
+            onPress={() => setHydrationManualExpanded(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Track hydration"
+            style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
+          >
+            <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", textAlign: "center" }}>
+              Track hydration?
+            </Text>
+          </Pressable>
         )}
 
         {/* Complete Day button — only when viewing today and there are logged meals */}

@@ -131,7 +131,7 @@ export default function ImportSharedScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !data) return;
@@ -146,6 +146,7 @@ export default function ImportSharedScreen() {
           goal: d.goal,
           dob: d.dob,
           age: d.age != null ? Number(d.age) : null,
+          plan_pace: d.plan_pace,
         },
       );
       setProfileTargets({

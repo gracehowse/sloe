@@ -5,35 +5,51 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, MacroColors } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+// Direct-to-Supabase household client. Replaced the old
+// `fetch("/api/household")` calls (which never worked from React Native —
+// no origin → silent failure, TestFlight feedback AAegi1DJEiscjIFi_pYaep4).
+// See `src/lib/household/householdClient.ts` for the shared contract.
+import {
+  createHousehold as createHouseholdRemote,
+  getMyHousehold,
+  joinHouseholdByInviteCode,
+  leaveHousehold as leaveHouseholdRemote,
+  type HouseholdData,
+} from "../../../src/lib/household/householdClient";
 
-type MemberSummary = {
-  userId: string;
-  displayName: string;
-  remaining: { calories: number; protein: number; carbs: number; fat: number };
-};
+// Map RPC / shared-client error codes to friendly Alert messages. Kept in
+// the component file so web (`HouseholdPanel.tsx`) can use the same map
+// shape via its own helpers — they intentionally diverge in copy because
+// web uses inline error text while mobile uses native Alert.
+function mapCreateError(code: string): string {
+  if (code === "already_in_household") {
+    return "You already belong to a household. Leave it first to create a new one.";
+  }
+  return code;
+}
 
-type HouseholdMeal = {
-  id: string;
-  date_key: string;
-  meal_label: string;
-  recipe_title: string;
-  calories_per_serving: number | null;
-  protein_per_serving: number | null;
-  carbs_per_serving: number | null;
-  fat_per_serving: number | null;
-};
-
-type HouseholdState = {
-  household: { id: string; name: string; invite_code: string; isOwner: boolean } | null;
-  members: MemberSummary[];
-  meals: HouseholdMeal[];
-};
+function mapJoinError(code: string): string {
+  switch (code) {
+    case "missing_code":
+      return "Enter the invite code first.";
+    case "invalid_code":
+      return "No household found with that invite code.";
+    case "already_in_household":
+      return "Leave your current household first.";
+    case "household_full":
+      return "This household has reached the maximum of 8 members.";
+    case "not_authenticated":
+      return "Please sign in again.";
+    default:
+      return code || "Couldn't join household.";
+  }
+}
 
 export function HouseholdCard() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
-  const [data, setData] = useState<HouseholdState | null>(null);
+  const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"idle" | "create" | "join">("idle");
   const [inputValue, setInputValue] = useState("");
@@ -57,14 +73,15 @@ export function HouseholdCard() {
   const load = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      const res = await fetch("/api/household", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const json = await res.json();
-      if (json.ok) setData(json);
-    } catch {
-      // Household API may not be deployed yet — silently ignore
+      const { data: result, error } = await getMyHousehold(supabase as any, userId);
+      if (error) {
+        // Real infra error — surface instead of silently hiding the card.
+        Alert.alert("Couldn't load household", error);
+      } else if (result) {
+        setData(result);
+      }
+    } catch (e) {
+      Alert.alert("Couldn't load household", (e as Error).message || "Please try again.");
     }
     setLoading(false);
   }, [userId]);
@@ -72,36 +89,40 @@ export function HouseholdCard() {
   useEffect(() => { void load(); }, [load]);
 
   const createHousehold = async () => {
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    const res = await fetch("/api/household", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ name: inputValue.trim() || "My Household" }),
-    });
-    const json = await res.json();
-    if (json.ok) {
+    if (!userId) return;
+    try {
+      const { error } = await createHouseholdRemote(
+        supabase as any,
+        userId,
+        inputValue.trim() || undefined,
+      );
+      if (error) {
+        Alert.alert("Error", mapCreateError(error));
+        return;
+      }
       setMode("idle");
       setInputValue("");
       void load();
-    } else {
-      Alert.alert("Error", json.message ?? "Failed to create household");
+    } catch (e) {
+      Alert.alert("Error", (e as Error).message || "Failed to create household");
     }
   };
 
   const joinHousehold = async () => {
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    const res = await fetch("/api/household/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ inviteCode: inputValue.trim() }),
-    });
-    const json = await res.json();
-    if (json.ok) {
+    try {
+      const { error } = await joinHouseholdByInviteCode(
+        supabase as any,
+        inputValue.trim(),
+      );
+      if (error) {
+        Alert.alert("Error", mapJoinError(error));
+        return;
+      }
       setMode("idle");
       setInputValue("");
       void load();
-    } else {
-      Alert.alert("Error", json.message ?? "Invalid invite code");
+    } catch (e) {
+      Alert.alert("Error", (e as Error).message || "Invalid invite code");
     }
   };
 
@@ -112,12 +133,17 @@ export function HouseholdCard() {
         text: "Leave",
         style: "destructive",
         onPress: async () => {
-          const token = (await supabase.auth.getSession()).data.session?.access_token;
-          await fetch("/api/household/leave", {
-            method: "POST",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          void load();
+          if (!userId) return;
+          try {
+            const { error } = await leaveHouseholdRemote(supabase as any, userId);
+            if (error) {
+              Alert.alert("Error", error);
+              return;
+            }
+            void load();
+          } catch (e) {
+            Alert.alert("Error", (e as Error).message || "Failed to leave");
+          }
         },
       },
     ]);

@@ -49,6 +49,7 @@ import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroRing } from "./suppr/today-hero-ring";
+import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayStreakInsightCard } from "./suppr/today-streak-insight-card";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -59,7 +60,8 @@ import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
-import { TodayAddMealDialog, type UsdaHit, type UsdaFoodDetails } from "./suppr/today-add-meal-dialog";
+import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
+import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
@@ -79,6 +81,10 @@ import {
   shouldShowUsualMealHint,
   USUAL_MEAL_HINT_STORAGE_KEY,
 } from "../../lib/nutrition/usualMealHint";
+import {
+  PENDING_USUAL_MEAL_SAVE_KEY,
+  parsePendingUsualMealSave,
+} from "../../lib/nutrition/pendingUsualMealSave";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -265,7 +271,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [mealSlot, setMealSlot] = useState("Breakfast");
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
-  const [addMode, setAddMode] = useState<"recipe" | "manual" | "search">("recipe");
+  const [addMode, setAddMode] = useState<"recipe" | "manual">("recipe");
   const [manualName, setManualName] = useState("");
   const [manualCalories, setManualCalories] = useState(0);
   const [manualProtein, setManualProtein] = useState(0);
@@ -290,21 +296,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [barcodeEditCarb, setBarcodeEditCarb] = useState("");
   const [barcodeEditFat, setBarcodeEditFat] = useState("");
   const [trackedDashboardMacros, setTrackedDashboardMacros] = useState<string[]>(["protein", "carbs", "fat"]);
-  const [foodQuery, setFoodQuery] = useState("");
-  const [foodHits, setFoodHits] = useState<UsdaHit[] | null>(null);
-  const [foodLoading, setFoodLoading] = useState(false);
-  const [foodSelected, setFoodSelected] = useState<UsdaFoodDetails | null>(null);
-  const [foodGrams, setFoodGrams] = useState(100);
   const [recentFoods, setRecentFoods] = useState<string[]>(() =>
     typeof window !== "undefined" ? loadRecentFoods() : [],
   );
-
-  const [quickQuery, setQuickQuery] = useState("");
-  const [quickHits, setQuickHits] = useState<UsdaHit[] | null>(null);
-  const [quickLoading, setQuickLoading] = useState(false);
-  const [quickSelected, setQuickSelected] = useState<UsdaFoodDetails | null>(null);
-  const [quickGrams, setQuickGrams] = useState(100);
-  const [quickMealSlot, setQuickMealSlot] = useState("Lunch");
+  /**
+   * Post-ship #5 (C1a, 2026-04-18) — shared `<FoodSearch>` host.
+   * Replaces the former inline USDA-only search tab inside
+   * `TodayAddMealDialog`. Opening this modal closes the Add-meal
+   * dialog (if open) — parity with mobile's Add-meal → FoodSearchModal
+   * hand-off. `<FoodSearch>` surfaces custom foods at the top, with
+   * USDA + OFF results underneath.
+   */
+  const [foodSearchOpen, setFoodSearchOpen] = useState(false);
   /** Recipe log: scale catalog/saved recipe macros (1 = solo, 2 = shared dinner, etc.). */
   const [recipePortionMultiplier, setRecipePortionMultiplier] = useState(1);
 
@@ -317,6 +320,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
+  // Cached profile basics (sex / height / age / activity_level) needed
+  // by the activity-bonus info popover so it can show "BMR × multiplier"
+  // without a second profile fetch (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
+  // 2026-04-18).
+  const [profileSex, setProfileSex] = useState<"male" | "female" | "unspecified" | null>(null);
+  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
+  const [profileAge, setProfileAge] = useState<number | null>(null);
+  const [profileActivityLevel, setProfileActivityLevel] = useState<
+    "sedentary" | "light" | "moderate" | "active" | "very_active" | null
+  >(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
@@ -696,6 +709,41 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [authedUserId, mealSlot],
   );
 
+  /**
+   * Post-ship #4 (2026-04-18) — consume the "save your usual" deep-link
+   * the weekly-recap card stashed in sessionStorage. Fires once per
+   * auth-session arrival on Today. Pops the stored payload, validates
+   * the TTL inside `parsePendingUsualMealSave`, then opens
+   * `SaveMealDialog` pre-seeded with the slot and items the helper
+   * picked on Progress.
+   *
+   * The clear-unconditionally rule means a stale or malformed blob is
+   * always cleared — we never want an old payload to re-fire on the
+   * next mount.
+   */
+  const pendingUsualMealConsumedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!authedUserId) return;
+    if (pendingUsualMealConsumedRef.current === authedUserId) return;
+    if (typeof window === "undefined") return;
+    let raw: string | null = null;
+    try {
+      raw = window.sessionStorage.getItem(PENDING_USUAL_MEAL_SAVE_KEY);
+    } catch {
+      return;
+    }
+    pendingUsualMealConsumedRef.current = authedUserId;
+    if (!raw) return;
+    try {
+      window.sessionStorage.removeItem(PENDING_USUAL_MEAL_SAVE_KEY);
+    } catch {
+      /* ignore — worst case the blob fires once then TTL-expires. */
+    }
+    const pending = parsePendingUsualMealSave(raw);
+    if (!pending) return;
+    handleOpenSaveCombo(pending.slot, pending.items);
+  }, [authedUserId, handleOpenSaveCombo]);
+
   /** Gather the items in `slotName` from the active day and open the
    * save-as-usual-meal dialog. Called from the per-slot full-width save
    * row and from the first-run hint's "Save as usual" CTA (Ship M1). */
@@ -890,6 +938,28 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         const w = data.weight_kg != null ? Number(data.weight_kg) : null;
         setProfileWeightKg(Number.isFinite(w) ? w : null);
         setProfileGoal((data as any).goal ?? null);
+        // Cache basics for the activity-bonus info popover (TestFlight
+        // `AAtW7dYcCBPyBdsMU6UqiQQ`, 2026-04-18).
+        const sexRaw = (data.sex ?? null) as string | null;
+        setProfileSex(
+          sexRaw === "male" || sexRaw === "female" || sexRaw === "unspecified" ? sexRaw : null,
+        );
+        const hCmRaw = data.height_cm != null ? Number(data.height_cm) : null;
+        setProfileHeightCm(Number.isFinite(hCmRaw) && hCmRaw && hCmRaw > 0 ? hCmRaw : null);
+        const ageRaw = data.age != null ? Number(data.age) : null;
+        setProfileAge(Number.isFinite(ageRaw) && ageRaw && ageRaw > 0 ? ageRaw : null);
+        const actRaw = (data.activity_level ?? null) as string | null;
+        if (
+          actRaw === "sedentary" ||
+          actRaw === "light" ||
+          actRaw === "moderate" ||
+          actRaw === "active" ||
+          actRaw === "very_active"
+        ) {
+          setProfileActivityLevel(actRaw);
+        } else {
+          setProfileActivityLevel(null);
+        }
         // Compute maintenance TDEE for surplus-only activity adjustment.
         // Prefer adaptive TDEE if available (more accurate), else compute from profile.
         const adaptive = Number(data.adaptive_tdee);
@@ -900,7 +970,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           const age = Number(data.age);
           const hCm = Number(data.height_cm);
           const wKg = Number(data.weight_kg);
-          const act = data.activity_level ?? "moderate";
+          // Default to "sedentary" (1.2) when missing — "moderate" (1.55)
+          // silently over-inflated TDEE by ~14% for users who never picked a
+          // level (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
+          const act = data.activity_level ?? "sedentary";
           if (Number.isFinite(age) && Number.isFinite(hCm) && Number.isFinite(wKg) && age > 0 && hCm > 0 && wKg > 0) {
             setProfileMaintenanceTdee(calculateTDEE(sex, wKg, hCm, age, act));
           }
@@ -1337,35 +1410,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       setManualWater(0);
       return;
     }
-    if (addMode === "search") {
-      if (!foodSelected) {
-        toast.error("Select a food first.");
-        return;
-      }
-      const g = Math.max(1, Math.round(foodGrams) || 1);
-      const mult = g / 100;
-      const m = foodSelected.macrosPer100g;
-      addLoggedMeal(
-        {
-          name: mealSlot,
-          recipeTitle: `${foodSelected.description} (${g}g)`,
-          time: timeLabel,
-          calories: Math.max(0, Math.round(m.calories * mult)),
-          protein: Math.max(0, Math.round(m.protein * mult)),
-          carbs: Math.max(0, Math.round(m.carbs * mult)),
-          fat: Math.max(0, Math.round(m.fat * mult)),
-          source: "USDA FoodData Central",
-          ...(m.fiberG > 0 ? { fiberG: Math.max(0, Math.round(m.fiberG * mult)) } : {}),
-        },
-        "manual",
-      );
-      setAddOpen(false);
-      setFoodQuery("");
-      setFoodHits(null);
-      setFoodSelected(null);
-      setFoodGrams(100);
-      return;
-    }
     if (!recipeOptions.length) {
       return;
     }
@@ -1487,8 +1531,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         />
       )}
 
-      {/* Daily ring — tap to expand macro rings */}
-      <TodayHeroRing
+      {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
+          Desktop (>= 768px) renders stats beside the ring; mobile-web
+          shows just the ring. Canonical copy + deficit/surplus detail
+          comes from `src/lib/copy/today.ts`. */}
+      <TodayHeroStats
+        loggedKcal={Math.round(totals.calories)}
+        targetKcal={Math.round(effectiveCalorieTarget)}
+        burnedKcal={Math.round(totalBurnKcal)}
+        targetDetail="Mifflin-St Jeor"
+        burnedDetail={totalBurnKcal > 0 ? "Apple Health" : undefined}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
         proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
@@ -1538,44 +1590,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onAddWaterMl={addWaterMlForSelectedDay}
       />
 
-      {/* Hydration & stimulants card (Batch 2.5).
-          Audit M4 (2026-04-18): gated behind a water target > 0 OR any
-          water / caffeine / alcohol logged. First-run fallback is a tiny
-          "Track hydration?" link. */}
-      {showHydrationCard ? (
-        <HydrationStimulantsCard
-          selectedDateKey={selectedDateKey}
-          weekStartDay={weekStartDay}
-          targets={{
-            waterMl: targets.waterMl,
-            caffeineMg: targetCaffeineMg,
-            alcoholGWeekly: targetAlcoholGWeekly,
-          }}
-          waterTotalMl={totalWaterMl}
-          waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-          caffeineTotalMg={extraCaffeineMgForSelectedDay}
-          alcoholByDayG={extraAlcoholGByDay}
-          measurementSystem={profileMeasurementSystem}
-          onAddWater={addWaterMlForSelectedDay}
-          onAddCaffeine={addCaffeineMgForSelectedDay}
-          onAddAlcohol={addAlcoholGForSelectedDay}
-          onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
-        />
-      ) : (
-        <div className="mb-3 text-center">
-          <button
-            type="button"
-            onClick={() => setHydrationManualExpanded(true)}
-            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
-            aria-expanded={false}
-            aria-controls="today-hydration-card"
-          >
-            Track hydration?
-          </button>
-        </div>
-      )}
-      {/* End hydration & stimulants card */}
-
       {/* Steps & activity (manual steps; water total above).
           Audit M4 (2026-04-18): gated until any steps OR activity burn has
           been recorded. First-run fallback is a small "Connect health"
@@ -1624,7 +1638,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           opens the factual Pro paywall (Batch 5.13). */}
       <TodayQuickLogStrip
         userTier={userTier}
-        onOpenSearch={() => setAddOpen(true)}
+        onOpenSearch={() => setFoodSearchOpen(true)}
         onOpenVoiceLog={handleVoiceLog}
         onOpenPhotoLog={handlePhotoLogClick}
         onOpenBarcode={() => setBarcodeOpen(true)}
@@ -1745,7 +1759,54 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         nutritionByDay={nutritionByDay}
         selectedDateKey={selectedDateKey}
         profileMeasurementSystem={profileMeasurementSystem}
+        maintenanceTdeeKcal={profileMaintenanceTdee}
+        profileSex={profileSex}
+        profileWeightKg={profileWeightKg}
+        profileHeightCm={profileHeightCm}
+        profileAge={profileAge}
+        profileActivityLevel={profileActivityLevel}
       />
+
+      {/* Hydration & stimulants card (Batch 2.5).
+          Position (2026-04-18, post-TestFlight build 7 feedback): sits at the
+          bottom of Today — primary hydration quick-add lives in the macro
+          tiles up top; this card is detail + caffeine/alcohol quick-add.
+          Gating: visible once water target > 0 OR any water/caffeine/alcohol
+          logged. Caffeine + alcohol rows additionally self-hide when their
+          individual target is 0. First-run fallback is a tiny
+          "Track hydration?" link. */}
+      {showHydrationCard ? (
+        <HydrationStimulantsCard
+          selectedDateKey={selectedDateKey}
+          weekStartDay={weekStartDay}
+          targets={{
+            waterMl: targets.waterMl,
+            caffeineMg: targetCaffeineMg,
+            alcoholGWeekly: targetAlcoholGWeekly,
+          }}
+          waterTotalMl={totalWaterMl}
+          waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
+          caffeineTotalMg={extraCaffeineMgForSelectedDay}
+          alcoholByDayG={extraAlcoholGByDay}
+          measurementSystem={profileMeasurementSystem}
+          onAddWater={addWaterMlForSelectedDay}
+          onAddCaffeine={addCaffeineMgForSelectedDay}
+          onAddAlcohol={addAlcoholGForSelectedDay}
+          onReset={(kind) => resetHydrationStimulantsForDay(selectedDateKey, kind)}
+        />
+      ) : (
+        <div className="mb-3 text-center">
+          <button
+            type="button"
+            onClick={() => setHydrationManualExpanded(true)}
+            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+            aria-expanded={false}
+            aria-controls="today-hydration-card"
+          >
+            Track hydration?
+          </button>
+        </div>
+      )}
 
       {/* Complete Day */}
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
@@ -1769,11 +1830,70 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         profileWeightKg={profileWeightKg}
         todayCalories={totals.calories}
         targetCalories={normalizeMacroTargets(nutritionTargets).calories}
+        maintenanceTdeeKcal={profileMaintenanceTdee}
         profileGoal={profileGoal}
         profileMeasurementSystem={profileMeasurementSystem}
         onViewProgress={() => {
           setCompleteDayOpen(false);
           onOpenProgress?.();
+        }}
+      />
+
+      {/* Post-ship #5 (C1a, 2026-04-18) — shared FoodSearch modal.
+          Replaces the former inline USDA-only search inside
+          TodayAddMealDialog. Custom foods surface at the top; USDA +
+          OFF below. Mirrors mobile's Today FoodSearchModal wiring. */}
+      <FoodSearch
+        open={foodSearchOpen}
+        onClose={() => setFoodSearchOpen(false)}
+        supabase={supabase}
+        userId={authedUserId ?? null}
+        macroTargets={{
+          calories: effectiveCalorieTarget,
+          protein: targets.protein,
+          carbs: targets.carbs,
+          fat: targets.fat,
+          fiber: targets.fiber,
+        }}
+        macroConsumed={{
+          calories: totals.calories,
+          protein: totals.protein,
+          carbs: totals.carbs,
+          fat: totals.fat,
+          fiber: totals.fiber,
+        }}
+        onSelect={(selection: FoodSearchSelection) => {
+          const grams = selection.chosenPortion.gramWeight * selection.quantity;
+          const f = grams / 100;
+          // Mirror mobile's attribution — USDA / Open Food Facts /
+          // Custom foods all show a human-readable `source` in the
+          // journal row so the user can tell where the numbers came
+          // from after the fact.
+          const sourceLabel =
+            selection.source === "CUSTOM"
+              ? "Custom food"
+              : selection.source === "OFF"
+              ? "Open Food Facts"
+              : "USDA FoodData Central";
+          const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
+          addLoggedMeal(
+            {
+              name: mealSlot,
+              recipeTitle: selection.name,
+              time: timeLabel,
+              calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
+              protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
+              carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
+              fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
+              source: sourceLabel,
+              ...(fiberG > 0 ? { fiberG } : {}),
+            },
+            // Mirror mobile's `food_logged.source` mapping: custom food
+            // logs fire with `"custom_food"`, USDA/OFF with `"manual"`
+            // (the canonical shared-food source).
+            selection.source === "CUSTOM" ? "custom_food" : "manual",
+          );
+          setFoodSearchOpen(false);
         }}
       />
 
@@ -1783,10 +1903,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           setAddOpen(open);
           if (!open) {
             setAddMode("recipe");
-            setFoodQuery("");
-            setFoodHits(null);
-            setFoodSelected(null);
-            setFoodGrams(100);
             setRecipePortionMultiplier(1);
           }
         }}
@@ -1815,29 +1931,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onManualFiberChange={setManualFiber}
         manualWater={manualWater}
         onManualWaterChange={setManualWater}
-        foodQuery={foodQuery}
-        onFoodQueryChange={setFoodQuery}
-        foodHits={foodHits}
-        onFoodHitsChange={setFoodHits}
-        foodLoading={foodLoading}
-        onFoodLoadingChange={setFoodLoading}
-        foodSelected={foodSelected}
-        onFoodSelectedChange={setFoodSelected}
-        foodGrams={foodGrams}
-        onFoodGramsChange={setFoodGrams}
-        effectiveCalorieTarget={effectiveCalorieTarget}
-        targetProtein={targets.protein}
-        targetCarbs={targets.carbs}
-        targetFat={targets.fat}
-        targetFiber={targets.fiber}
-        consumedCalories={totals.calories}
-        consumedProtein={totals.protein}
-        consumedCarbs={totals.carbs}
-        consumedFat={totals.fat}
-        consumedFiber={totals.fiber}
         timeLabel={timeLabel}
         onTimeLabelChange={setTimeLabel}
         onSubmit={handleAddMeal}
+        onOpenSearch={() => {
+          // Close Add-meal before opening Search so the two dialogs
+          // don't stack. Mirrors mobile's Add-meal → FoodSearchModal
+          // hand-off in `apps/mobile/app/(tabs)/index.tsx`.
+          setAddOpen(false);
+          setFoodSearchOpen(true);
+        }}
       />
 
       <TodayBarcodeDialog

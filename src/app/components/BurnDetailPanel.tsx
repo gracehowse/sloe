@@ -204,7 +204,7 @@ export function BurnDetailPanel({
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {bonusCalories > 0
-                  ? `Your projected burn (${projected.projectedTotal.toLocaleString()}) exceeds your maintenance (${maintenanceKcal.toLocaleString()}). The extra ${bonusCalories.toLocaleString()} kcal are added to your food budget.`
+                  ? `Your projected burn (${projected.projectedTotal.toLocaleString()}) exceeds your maintenance (${maintenanceKcal.toLocaleString()}). The extra ${bonusCalories.toLocaleString()} kcal are added to your calorie target.`
                   : "Your projected burn has not exceeded your maintenance yet. Keep moving to earn bonus calories."}
               </p>
             </div>

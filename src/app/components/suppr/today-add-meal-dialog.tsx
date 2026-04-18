@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -11,36 +10,26 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
-import { RemainingMacrosBar } from "./remaining-macros-bar";
 import { clampPortionMultiplier } from "../../../lib/nutrition/portionMultiplier";
-import { effectiveFoodSearchQuery } from "../../../lib/nutrition/foodSearchQuery";
 import type { RecipeCard } from "../../../types/recipe";
 
 /**
- * TodayAddMealDialog — the recipe / manual / search "Log a meal" dialog.
+ * TodayAddMealDialog — the recipe / manual "Log a meal" dialog.
  *
  * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). State
  * stays in the composition root so `handleAddMeal` keeps firing the
- * same analytics + toast sequence. This component is a pure view +
- * local fetch for USDA search (the search is scoped to this dialog).
+ * same analytics + toast sequence. This component is a pure view.
+ *
+ * Post-ship #5 (C1a, 2026-04-18) removed the inline USDA-only "search"
+ * tab. Search now goes through the shared `<FoodSearch>` component so
+ * custom foods surface on the primary Today log path (parity with
+ * mobile's `FoodSearchModal`). The dialog still exposes a "Search
+ * foods" CTA which the host wires to open `<FoodSearch>` standalone —
+ * the add-meal dialog closes when the search modal opens, matching
+ * mobile's Add-meal → Search-modal hand-off.
  */
 
-export type AddMealMode = "recipe" | "manual" | "search";
-
-export type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string };
-export type UsdaFoodDetails = {
-  fdcId: number;
-  description: string;
-  macrosPer100g: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiberG: number;
-    sugarG: number;
-    sodiumMg: number;
-  };
-};
+export type AddMealMode = "recipe" | "manual";
 
 export interface TodayAddMealDialogProps {
   open: boolean;
@@ -71,32 +60,17 @@ export interface TodayAddMealDialogProps {
   onManualFiberChange: (v: number) => void;
   manualWater: number;
   onManualWaterChange: (v: number) => void;
-  // search
-  foodQuery: string;
-  onFoodQueryChange: (v: string) => void;
-  foodHits: UsdaHit[] | null;
-  onFoodHitsChange: (v: UsdaHit[] | null) => void;
-  foodLoading: boolean;
-  onFoodLoadingChange: (v: boolean) => void;
-  foodSelected: UsdaFoodDetails | null;
-  onFoodSelectedChange: (v: UsdaFoodDetails | null) => void;
-  foodGrams: number;
-  onFoodGramsChange: (v: number) => void;
-  // remaining-bar context
-  effectiveCalorieTarget: number;
-  targetProtein: number;
-  targetCarbs: number;
-  targetFat: number;
-  targetFiber: number;
-  consumedCalories: number;
-  consumedProtein: number;
-  consumedCarbs: number;
-  consumedFat: number;
-  consumedFiber: number;
   // submit + time
   timeLabel: string;
   onTimeLabelChange: (v: string) => void;
   onSubmit: () => void;
+  /**
+   * Opens the shared `<FoodSearch>` modal (custom foods + USDA + OFF).
+   * Host should close this dialog before opening search so the two
+   * modals don't stack — matches mobile's Add-meal → FoodSearchModal
+   * hand-off.
+   */
+  onOpenSearch: () => void;
 }
 
 export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
@@ -128,29 +102,10 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
     onManualFiberChange,
     manualWater,
     onManualWaterChange,
-    foodQuery,
-    onFoodQueryChange,
-    foodHits,
-    onFoodHitsChange,
-    foodLoading,
-    onFoodLoadingChange,
-    foodSelected,
-    onFoodSelectedChange,
-    foodGrams,
-    onFoodGramsChange,
-    effectiveCalorieTarget,
-    targetProtein,
-    targetCarbs,
-    targetFat,
-    targetFiber,
-    consumedCalories,
-    consumedProtein,
-    consumedCarbs,
-    consumedFat,
-    consumedFiber,
     timeLabel,
     onTimeLabelChange,
     onSubmit,
+    onOpenSearch,
   } = props;
 
   return (
@@ -159,13 +114,13 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-foreground">Log a meal</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Add macros for {selectedDate.toLocaleDateString()} from a saved recipe, the catalog, or enter food manually.
+            Add macros for {selectedDate.toLocaleDateString()} from a saved recipe or enter food manually.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="flex rounded-lg border border-border p-1 bg-muted/50">
-            {(["recipe", "manual", "search"] as const).map((mode) => {
-              const label = mode === "recipe" ? "Recipe" : mode === "manual" ? "Manual food" : "Search";
+            {(["recipe", "manual"] as const).map((mode) => {
+              const label = mode === "recipe" ? "Recipe" : "Manual food";
               return (
                 <button
                   key={mode}
@@ -180,6 +135,19 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
               );
             })}
           </div>
+          {/* Search foods CTA — hand-off to shared <FoodSearch>. Matches
+              mobile parity: the Add-meal dialog does not render an
+              inline search view; tapping this opens the standalone
+              search modal and closes the Add-meal sheet. */}
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            className="w-full flex items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2.5 text-left text-sm font-medium text-primary hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Search foods including your custom foods, USDA, and Open Food Facts"
+          >
+            <span>Search foods (includes your custom foods)</span>
+            <span aria-hidden="true">→</span>
+          </button>
           <label className="grid gap-1">
             <span className="text-sm font-medium text-foreground">Meal</span>
             <select
@@ -246,135 +214,6 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
                 </div>
               </div>
             </>
-          ) : addMode === "search" ? (
-            <div className="grid gap-2">
-              <span className="text-sm font-medium text-foreground">Food search</span>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={foodQuery}
-                  onChange={(e) => onFoodQueryChange(e.target.value)}
-                  placeholder="e.g. chicken breast, rice cooked"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={foodLoading}
-                  onClick={() => {
-                    const q = effectiveFoodSearchQuery(foodQuery.trim());
-                    if (!q) return;
-                    onFoodLoadingChange(true);
-                    onFoodSelectedChange(null);
-                    fetch(`/api/usda/search?q=${encodeURIComponent(q)}`)
-                      .then((r) => r.json())
-                      .then((data: { ok?: boolean; hits?: UsdaHit[]; message?: string }) => {
-                        if (!data.ok || !data.hits) {
-                          toast.error(data.message ?? "Food search failed");
-                          return;
-                        }
-                        onFoodHitsChange(data.hits.slice(0, 10));
-                      })
-                      .catch(() => toast.error("Food search failed"))
-                      .finally(() => onFoodLoadingChange(false));
-                  }}
-                >
-                  {foodLoading ? "…" : "Go"}
-                </Button>
-              </div>
-
-              {foodHits?.length ? (
-                <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border">
-                  {foodHits.map((h) => (
-                    <button
-                      key={h.fdcId}
-                      type="button"
-                      className="w-full text-left p-3 hover:bg-muted/60/40"
-                      onClick={() => {
-                        onFoodLoadingChange(true);
-                        fetch(`/api/usda/food?fdcId=${h.fdcId}`)
-                          .then((r) => r.json())
-                          .then((data: { ok?: boolean; message?: string } & Partial<UsdaFoodDetails>) => {
-                            if (!data.ok || !data.macrosPer100g || !data.description) {
-                              toast.error(data.message ?? "Could not load food details");
-                              return;
-                            }
-                            onFoodSelectedChange({
-                              fdcId: data.fdcId!,
-                              description: data.description!,
-                              macrosPer100g: data.macrosPer100g!,
-                            });
-                          })
-                          .catch(() => toast.error("Could not load food details"))
-                          .finally(() => onFoodLoadingChange(false));
-                      }}
-                    >
-                      <div className="text-sm font-medium text-foreground truncate">{h.description}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {h.dataType ?? "Food"}
-                        {h.brandName ? ` · ${h.brandName}` : ""}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              {foodSelected ? (
-                <div className="rounded-lg border border-border p-3 bg-muted/40">
-                  <div className="text-sm font-semibold text-foreground truncate">{foodSelected.description}</div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-sm text-foreground w-16">Grams</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={foodGrams}
-                      onChange={(e) => onFoodGramsChange(Number(e.target.value))}
-                      className="flex-1 px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                    />
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {(() => {
-                      const g = Math.max(1, Math.round(foodGrams) || 1);
-                      const mult = g / 100;
-                      const m = foodSelected.macrosPer100g;
-                      return `${Math.round(m.calories * mult)} kcal · ${Math.round(m.protein * mult)}P · ${Math.round(
-                        m.carbs * mult,
-                      )}C · ${Math.round(m.fat * mult)}F`;
-                    })()}
-                  </div>
-                  {/* Fit-this-in preview — parity with mobile FoodSearchModal. */}
-                  <RemainingMacrosBar
-                    className="mt-2"
-                    targets={{
-                      calories: effectiveCalorieTarget,
-                      protein: targetProtein,
-                      carbs: targetCarbs,
-                      fat: targetFat,
-                      fiber: targetFiber,
-                    }}
-                    consumed={{
-                      calories: consumedCalories,
-                      protein: consumedProtein,
-                      carbs: consumedCarbs,
-                      fat: consumedFat,
-                      fiber: consumedFiber,
-                    }}
-                    candidate={(() => {
-                      const g = Math.max(1, Math.round(foodGrams) || 1);
-                      const mult = g / 100;
-                      const m = foodSelected.macrosPer100g;
-                      return {
-                        calories: m.calories * mult,
-                        protein: m.protein * mult,
-                        carbs: m.carbs * mult,
-                        fat: m.fat * mult,
-                        fiber: (m.fiberG ?? 0) * mult,
-                      };
-                    })()}
-                  />
-                </div>
-              ) : null}
-            </div>
           ) : (
             <>
               <label className="grid gap-1">

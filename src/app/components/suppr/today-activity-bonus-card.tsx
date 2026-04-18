@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { Icons } from "../ui/icons";
-import { kgToLb } from "../../../lib/nutrition/tdee";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import {
+  buildTdeeExplainerCopy,
+  calculateBMR,
+  kgToLb,
+  type ActivityLevel,
+  type Sex,
+} from "../../../lib/nutrition/tdee";
 import { weekSummaryHeading } from "../../../lib/nutrition/weekSummaryWindow";
 import type { WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
 
@@ -35,6 +42,23 @@ export interface TodayActivityBonusCardProps {
   nutritionByDay: Record<string, Array<{ calories?: number }>>;
   selectedDateKey: string;
   profileMeasurementSystem: "metric" | "imperial";
+  /**
+   * Effective maintenance TDEE for the user (adaptive when confident,
+   * else static Mifflin). When non-null/positive, the card renders a
+   * 4th "Maintenance" tile alongside Total burn / Target / Under-Over.
+   * Pass `null` (not zero) to omit the tile — zero is misleading.
+   *
+   * Wired 2026-04-18 from `NutritionTracker.tsx:profileMaintenanceTdee`
+   * to close TestFlight feedback `AAtW7dYcCBPyBdsMU6UqiQQ`/
+   * `AFdtq8z_FmWRCispqF04Lsk`.
+   */
+  maintenanceTdeeKcal: number | null;
+  /** For the info-popover BMR line. Optional — popover hides BMR row when missing. */
+  profileSex?: Sex | null;
+  profileWeightKg?: number | null;
+  profileHeightCm?: number | null;
+  profileAge?: number | null;
+  profileActivityLevel?: ActivityLevel | null;
 }
 
 export function TodayActivityBonusCard({
@@ -52,6 +76,12 @@ export function TodayActivityBonusCard({
   nutritionByDay,
   selectedDateKey,
   profileMeasurementSystem,
+  maintenanceTdeeKcal,
+  profileSex,
+  profileWeightKg,
+  profileHeightCm,
+  profileAge,
+  profileActivityLevel,
 }: TodayActivityBonusCardProps) {
   if (!hasBurnData) return null;
 
@@ -77,24 +107,79 @@ export function TodayActivityBonusCard({
       : `${weeklyKgRate.toFixed(2)} kg`;
   const isWeekDeficit = weekDeficit >= 0;
 
+  // 4th "Maintenance" tile — render only when we actually know the
+  // user's maintenance TDEE. Zero or null = omit the tile rather than
+  // print a misleading "0 kcal · Maintenance" cell. (TestFlight
+  // `AAtW7dYcCBPyBdsMU6UqiQQ`/`AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18.)
+  const hasMaintenanceTile = maintenanceTdeeKcal != null && maintenanceTdeeKcal > 0;
+
+  // Info-popover copy uses the canonical helper so wording stays in
+  // lockstep with mobile and the parity test in
+  // `tests/unit/tdeeExplainer.test.ts`.
+  const popoverBmr =
+    profileSex && profileWeightKg && profileHeightCm && profileAge
+      ? Math.round(calculateBMR(profileSex, profileWeightKg, profileHeightCm, profileAge))
+      : null;
+  const popoverActivity: ActivityLevel = profileActivityLevel ?? "sedentary";
+  const popoverCopy =
+    hasMaintenanceTile && popoverBmr != null
+      ? buildTdeeExplainerCopy({
+          maintenanceTdeeKcal: maintenanceTdeeKcal!,
+          bmrKcal: popoverBmr,
+          activityLevel: popoverActivity,
+          basalKcal: basalBurnKcal,
+          activeKcal: activityBurnForSelectedDay,
+        })
+      : null;
+
   return (
     <div className="rounded-card border border-border bg-card p-4 mt-4">
       <div className="flex items-center gap-2 mb-3">
         <Icons.calories className="h-5 w-5 text-warning" />
-        <h3 className="text-sm font-bold text-foreground">Activity Bonus</h3>
+        <h3 className="text-sm font-bold text-foreground flex-1">Activity Bonus</h3>
+        {popoverCopy ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="What is maintenance TDEE?"
+                data-testid="today-activity-bonus-info-trigger"
+                className="rounded-full p-1 -m-1 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <Icons.info className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              data-testid="today-activity-bonus-info-content"
+              className="text-xs leading-relaxed w-80"
+            >
+              {popoverCopy}
+            </PopoverContent>
+          </Popover>
+        ) : null}
       </div>
 
-      {/* Summary row */}
-      <div className="grid grid-cols-3 gap-2 text-center mb-3">
+      {/* Summary row — 3 tiles by default, +Maintenance when known */}
+      <div
+        className={`grid ${hasMaintenanceTile ? "grid-cols-4" : "grid-cols-3"} gap-2 text-center mb-3`}
+        data-testid="today-activity-bonus-summary-row"
+      >
         <div>
           <p className="text-lg font-extrabold text-foreground tabular-nums">{totalBurnKcal.toLocaleString()}</p>
           <p className="text-[10px] text-muted-foreground">Total burn</p>
         </div>
-        <div className="border-x border-border">
+        <div className="border-l border-border">
           <p className="text-lg font-extrabold text-foreground tabular-nums">{effectiveCalorieTarget > 0 ? effectiveCalorieTarget.toLocaleString() : "—"}</p>
           <p className="text-[10px] text-muted-foreground">Target intake</p>
         </div>
-        <div>
+        {hasMaintenanceTile ? (
+          <div className="border-l border-border" data-testid="today-activity-bonus-maintenance-tile">
+            <p className="text-lg font-extrabold text-foreground tabular-nums">{maintenanceTdeeKcal!.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">Maintenance</p>
+          </div>
+        ) : null}
+        <div className="border-l border-border">
           <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(deficit).toLocaleString()}</p>
           <p className="text-[10px] text-muted-foreground">{isDeficit ? "Under" : "Over"}</p>
         </div>

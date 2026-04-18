@@ -17,6 +17,12 @@ import {
   buildFiberAndMicrosFromHealthTotals,
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
+import {
+  buildQuantityIdToCorrelationId,
+  detectBulkSync,
+  dietaryCorrelationKeyForSample,
+  type CorrelationParentRow,
+} from "./healthSyncCorrelation";
 
 /** Expo Go (no custom native modules). Prefer executionEnvironment; appOwnership is legacy. */
 export function isExpoGoRuntime(): boolean {
@@ -57,19 +63,67 @@ type AppleHealthKitNative = {
   ): void;
   getEnergyConsumedSamples(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; metadata?: { HKFoodType?: string }; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (
+      err: string,
+      results: Array<{
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        metadata?: Record<string, unknown>;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+      }>,
+    ) => void,
   ): void;
   getProteinSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (
+      err: string,
+      results: Array<{
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        metadata?: Record<string, unknown>;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+      }>,
+    ) => void,
   ): void;
   getCarbohydratesSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (
+      err: string,
+      results: Array<{
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        metadata?: Record<string, unknown>;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+      }>,
+    ) => void,
   ): void;
   getFatTotalSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (
+      err: string,
+      results: Array<{
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        metadata?: Record<string, unknown>;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+      }>,
+    ) => void,
   ): void;
   getFiberSamples(
     options: { startDate: string; endDate: string; unit: string },
@@ -847,14 +901,23 @@ function journalMealSlotForSample(sample: DietarySample, when: Date, meta: Recor
 }
 
 /**
- * Energy + macro samples from the same log often share an instant but differ in ISO string
- * formatting; bucket to the same **local clock minute** + source so macros attach reliably.
+ * Group dietary samples produced by the same logged food. See
+ * `healthSyncCorrelation.ts` for the full strategy: prefer the parent
+ * `HKCorrelationTypeIdentifierFood` UUID (via the `quantitySampleId →
+ * correlationId` map built from `getFoodCorrelationSamples`); fall back to the
+ * sample's own `metadata.HKCorrelationUUID`; only use the legacy
+ * `effectiveMinute|bundleId` heuristic for samples with no correlation
+ * information at all.
+ *
+ * Without per-correlation grouping, third-party loggers (e.g. MFP) that bulk
+ * sync a day's meals at one wall-clock instant collapsed every food into one
+ * inflated `nutrition_entries` row — see TestFlight `AJHZNp8NHTiFNk9TjQfdYBk`.
  */
-function dietaryCorrelationKey(s: DietarySample): string {
-  const t = effectiveConsumptionInstant(s).getTime();
-  if (!Number.isFinite(t)) return `${s.startDate}|${sourceBundleIdOf(s) || "unknown"}`;
-  const minute = Math.floor(t / 60000);
-  return `${minute}|${sourceBundleIdOf(s) || "unknown"}`;
+function dietaryCorrelationKey(
+  s: DietarySample,
+  quantityIdToCorrelationId: ReadonlyMap<string, string> | null,
+): string {
+  return dietaryCorrelationKeyForSample(s, quantityIdToCorrelationId).key;
 }
 
 function daysAgo(n: number): Date {
@@ -1315,13 +1378,23 @@ export async function syncNutritionFromHealth(
   ]);
 
   const quantityIdToFoodCorrelationMeta = buildQuantitySampleIdToCorrelationMetadata(foodCorrelationRows);
+  const correlationParentRows: CorrelationParentRow[] = foodCorrelationRows.map((row) => ({
+    id: row.id,
+    quantitySampleIds: row.quantitySampleIds,
+  }));
+  const quantityIdToCorrelationId = buildQuantityIdToCorrelationId(correlationParentRows);
 
   const correlated = newCorrelatedTotalsMap();
   for (let i = 0; i < HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.length; i++) {
     const permissionKey = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS[i]!;
     const rows = dietaryFetches[i] ?? [];
     for (const s of rows.filter(isExternal)) {
-      bumpCorrelatedTotals(correlated, dietaryCorrelationKey(s), permissionKey, s.value);
+      bumpCorrelatedTotals(
+        correlated,
+        dietaryCorrelationKey(s, quantityIdToCorrelationId),
+        permissionKey,
+        s.value,
+      );
     }
   }
 
@@ -1329,6 +1402,17 @@ export async function syncNutritionFromHealth(
   const energy = (energyIdx >= 0 ? dietaryFetches[energyIdx] : []) ?? [];
   const extEnergy = energy.filter(isExternal);
   let skippedOwn = energy.length - extEnergy.length;
+
+  // Diagnostic: log once per sync if MFP-style bulk batches were detected (multiple
+  // food correlations sharing one effective minute + bundle id). Helps confirm in
+  // production that the per-correlation grouping is doing real work.
+  const bulk = detectBulkSync(extEnergy, quantityIdToCorrelationId);
+  if (bulk.detected) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[healthSync] bulk-sync detected: ${extEnergy.length} energy samples, bundles=[${bulk.bundles.join(",")}] — using per-correlation grouping`,
+    );
+  }
 
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
@@ -1406,7 +1490,7 @@ export async function syncNutritionFromHealth(
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
-    const inner = correlated.get(dietaryCorrelationKey(sample));
+    const inner = correlated.get(dietaryCorrelationKey(sample, quantityIdToCorrelationId));
     const totals = totalsRecordFromInner(inner);
     const { fiberG, micros: builtMicros } = buildFiberAndMicrosFromHealthTotals(totals);
     const microsJson = builtMicros;

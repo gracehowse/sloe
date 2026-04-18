@@ -79,11 +79,12 @@ card — the gates are sticky.
 - Fields: food name, calories, protein, carbs, fat
 - "Add to Today" button
 
-**Search** — FoodSearchModal:
-- Search USDA + Open Food Facts databases
-- Select food → portion picker → Use this
+**Search** — shared `<FoodSearch>` (web) / `FoodSearchModal` (mobile):
+- Entry points on Today: the `Search` chip in the quick-log strip and the "Search foods" CTA inside the Add-meal dialog. Both open the same shared search modal. Opening from inside Add-meal closes the Add-meal dialog first (parity across platforms — the two dialogs never stack).
+- Results merge: **Custom foods (user's own) → USDA → Open Food Facts**. Custom foods surface at the top with a "Custom" badge; USDA + OFF results render underneath, ranked by the shared relevance scorer.
+- Select food → portion picker → Use this (single-tap log when a custom food has a default saved serving).
 - When the caller supplies macro targets and today's consumed totals, the portion picker shows a fit-this-in preview row ("after: N kcal / Ng / Ng / Ng left") that updates as the user adjusts the portion. This uses `projectRemaining()` from `src/lib/nutrition/remainingMacros.ts`. Present on both web (`FoodSearch.tsx`) and mobile (`FoodSearchModal.tsx`).
-- Logged to the active meal slot
+- Logged to the active meal slot with canonical `source`: `"Custom food"` / `"USDA FoodData Central"` / `"Open Food Facts"` in the journal row, and `food_logged.source: "custom_food"` (custom) or `"manual"` (USDA/OFF) in analytics — identical strings on both platforms (Post-ship #5 / C1a, 2026-04-18).
 
 **Create custom food** (Batch 3.9) — entry point inside the food-search panel:
 - Can't find your food? **Create a custom food from FoodSearch.** Type what you're looking for, and when the results don't match — or when you already know the item only exists in your kitchen — tap "+ Create custom food" at the bottom of the results (or "Can't find it? Create your own." in the zero-results state). Fill in Name + macros + saved servings, hit Save, and the panel drops you straight into the portion picker for the food you just created so logging is one more tap. The same flow works on web (`FoodSearch.tsx` → `CreateCustomFoodDialog`) and mobile (`FoodSearchModal.tsx` → `CreateCustomFoodSheet`).
@@ -93,7 +94,7 @@ card — the gates are sticky.
 - Save persists to `public.user_custom_foods` via `createCustomFood`. Unique-violation on `(user_id, lower(name))` retries with " (2)", " (3)", … up to " (9)" appended so a quick rename is not required.
 - After save, the custom food is searchable (`searchCustomFoods` runs `ilike` across name + brand) and surfaces at the top of search results with a "Custom" badge (accessibility label "Custom food").
 - When the user picks a custom food, the portion sheet offers the standard grams path plus a segmented control of the food's saved servings. The default chip is the first saved serving so most custom foods log in one tap. Macros project onto per-100g via `customFoodToMacrosPer100g`, then scale linearly via the same `scaleMacros` path USDA / OFF use (never invented, never divide-by-zero). Entries write to `nutrition_entries` through the existing insert path.
-- Edit / Delete — web: overflow menu on the custom-food row (confirm via `window.confirm` fallback). Mobile: long-press the row, then pick Edit or Delete from the action sheet (double-confirmed for delete). Edit opens the same dialog pre-filled.
+- Edit / Delete — web: overflow menu on the custom-food row, delete goes through the themed `DestructiveConfirmDialog` (audit M7, 2026-04-18) — focus-trapped, screen-reader friendly. Mobile: long-press the row, then pick Edit or Delete from the action sheet (double-confirmed for delete). Edit opens the same dialog pre-filled.
 - Analytics: `custom_food_created` with `{ hasBrand, servingCount }` on save, `custom_food_updated` on edit, `custom_food_deleted` on delete. Logging a custom food fires `custom_food_logged` with `{ servingLabel?, grams }` alongside the normal `food_logged` event.
 
 **Scan** — BarcodeScannerModal:
@@ -207,8 +208,9 @@ A **usual meal** (internally `SavedMeal`) is a user-named bundle of 2+ foods the
 - Shared pure helper: `src/lib/nutrition/hydrationStimulants.ts` — presets, `weeklyAlcoholG`, `sumWaterFromMeals`, `isOverTarget`, `parseDayNumberMap`, `formatWaterAmount`, `imperialWaterQuickAdds`.
 - **Water target**: `profiles.target_water_ml` (existing). Storage is always millilitres on both platforms.
 - **Measurement system (audit C3, 2026-04-18):** the water row, the "from logged food" sub-line, and the quick-add chips respect `profiles.measurement_system` on both platforms. Imperial renders in `fl oz` (chips at 4 / 8 / 16 / 20 fl oz — each stored as integer millilitres); metric renders integer ml up to 1 L, then one-decimal L. Caffeine stays in mg and alcohol in grams on both systems. Flipping measurement system on Settings and returning to Today re-renders the same logged water in the new unit — nothing is re-encoded.
-- **Caffeine target**: `profiles.target_caffeine_mg`, default 400 mg (FDA upper bound for healthy adults).
+- **Caffeine target**: `profiles.target_caffeine_mg`, default 400 mg (FDA upper bound for healthy adults). Set to `0` to hide the caffeine row entirely (post-TestFlight build 7 feedback, 2026-04-18 — parity with alcohol).
 - **Alcohol target**: `profiles.target_alcohol_g_weekly`, default 0 (row hidden). Users set it in Settings; 196 g ≈ 14 UK units.
+- **Card position (2026-04-18, post-TestFlight build 7):** the card sits at the bottom of Today on both platforms — after the Activity Bonus card, before the Complete Day button. Primary water quick-add still lives in the macro tile row at the top of Today; this card is the secondary detail surface plus the caffeine/alcohol quick-add.
 - **Persistence**: `extra_water_by_day`, `extra_caffeine_by_day`, `extra_alcohol_g_by_day` on `profiles`. Each is a `{YYYY-MM-DD: number}` map. Writes are debounced to 300ms on web and awaited per-tap on mobile (matches the pre-existing water pattern).
 - **Reset today**: per-row overflow action (web dropdown / mobile modal) deletes the current day's key for that kind and persists, untouched other days.
 - **Over-target copy** is factual and amber (`Accent.warning`), never red:

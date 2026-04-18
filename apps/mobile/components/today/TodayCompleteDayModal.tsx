@@ -19,6 +19,14 @@ export interface TodayCompleteDayModalProps {
   profileWeightKg: number | null;
   todayCalories: number;
   targetCalories: number;
+  /**
+   * Effective maintenance TDEE (adaptive when confidence is medium/high,
+   * else static Mifflin). Optional for backwards compatibility, but callers
+   * should always supply it — without it the projection falls back to a
+   * crude target-based heuristic that mis-classifies real deficits as gains
+   * when actual burn is high. See TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
+   */
+  maintenanceTdeeKcal?: number | null;
   profileGoal: string | null;
   onViewProgress: () => void;
   cardColor: string;
@@ -34,6 +42,7 @@ export function TodayCompleteDayModal({
   profileWeightKg,
   todayCalories,
   targetCalories,
+  maintenanceTdeeKcal,
   profileGoal,
   onViewProgress,
   cardColor,
@@ -88,6 +97,7 @@ export function TodayCompleteDayModal({
               currentWeightKg: profileWeightKg,
               todayCalories,
               targetCalories,
+              maintenanceTdeeKcal,
               goal: profileGoal,
             });
             return (

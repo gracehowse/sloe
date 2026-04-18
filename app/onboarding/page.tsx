@@ -9,6 +9,8 @@ import {
   calculateTDEE,
   calculateBudget,
   calculateMacros,
+  activityLevelPreviewKcal,
+  ACTIVITY_SHORT_LABELS,
   type PlanPace,
   type NutritionStrategy,
 } from "../../src/lib/nutrition/tdee.ts";
@@ -68,7 +70,9 @@ export default function OnboardingPage() {
   const [heightFt, setHeightFt] = useState("5");
   const [heightIn, setHeightIn] = useState("7");
   const [weightLb, setWeightLb] = useState("143");
-  const [activityLevel, setActivityLevel] = useState<ActivityLevel>("moderate");
+  // Default to sedentary so users who skip the activity step don't silently
+  // inflate their TDEE by ~14% (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`).
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>("sedentary");
   const [goal, setGoal] = useState<Goal>("maintain");
   const [planPace, setPlanPace] = useState<PlanPace>("steady");
   const [nutritionStrategy, setNutritionStrategy] = useState<NutritionStrategy>("balanced");
@@ -426,7 +430,7 @@ export default function OnboardingPage() {
             </div>
 
             <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Activity level</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ACTIVITY_LEVELS.map((lvl) => (
                 <button key={lvl.value} type="button" onClick={() => setActivityLevel(lvl.value)} className={selBtnCls(activityLevel === lvl.value)}>
                   <div className="flex items-center gap-2">
@@ -437,6 +441,49 @@ export default function OnboardingPage() {
                 </button>
               ))}
             </div>
+            {/* TDEE preview (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ` /
+                `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18) — show maintenance kcal
+                for every activity level so the user can see how the choice
+                moves the number. Falls back to a quieter helper line when
+                any of height/weight/age/sex is missing. */}
+            {(() => {
+              const a = coerceInt(age);
+              const h = coerceInt(heightCm);
+              const w = coerceInt(weightKg);
+              const preview = activityLevelPreviewKcal(sex, w, h, a);
+              if (!preview) {
+                return (
+                  <p
+                    data-testid="onboarding-activity-preview-fallback"
+                    className="mt-3 mb-6 text-xs text-slate-500 dark:text-slate-400"
+                  >
+                    Pick your activity level — we'll compute your maintenance calories once your basics are in.
+                  </p>
+                );
+              }
+              const order: Array<typeof activityLevel> = [
+                "sedentary",
+                "light",
+                "moderate",
+                "active",
+                "very_active",
+              ];
+              return (
+                <p
+                  data-testid="onboarding-activity-preview-row"
+                  className="mt-3 mb-6 text-xs text-slate-600 dark:text-slate-300 tabular-nums"
+                >
+                  {order.map((lvl, i) => (
+                    <span key={lvl}>
+                      {i > 0 ? <span className="text-slate-400 dark:text-slate-500"> · </span> : null}
+                      <span className={lvl === activityLevel ? "font-bold text-slate-900 dark:text-white" : undefined}>
+                        {ACTIVITY_SHORT_LABELS[lvl]}: {preview[lvl].toLocaleString()} kcal
+                      </span>
+                    </span>
+                  ))}
+                </p>
+              );
+            })()}
 
             {goal === "cut" && (
               <div className="mb-6">

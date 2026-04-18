@@ -650,7 +650,7 @@ export default function PlannerScreen() {
       if (userId) {
         const { data } = await supabase
           .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age")
+          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace")
           .eq("id", userId)
           .single();
         if (data) {
@@ -665,6 +665,7 @@ export default function PlannerScreen() {
               goal: d.goal,
               dob: d.dob,
               age: d.age != null ? Number(d.age) : null,
+              plan_pace: d.plan_pace,
             },
           );
           resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
