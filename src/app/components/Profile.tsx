@@ -27,8 +27,9 @@ interface ProfileProps {
   onOpenNutrition?: () => void;
 }
 
-export const Profile = memo(function Profile({ userTier, displayName, onUpgrade: _onUpgrade, onOpenNutrition }: ProfileProps) {
+export const Profile = memo(function Profile({ userTier, displayName, onUpgrade, onOpenNutrition }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
+  const [scoreInfoOpen, setScoreInfoOpen] = useState(false);
   const {
     nutritionTargets,
     setNutritionTargets,
@@ -37,7 +38,22 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
     setProfileMeasurementSystem,
     nutritionByDay,
     savedRecipesForLibrary,
+    // Goals & Targets surface (Pass 6 mobile parity, 2026-04-18) —
+    // shown as quick-glance rows beneath Daily Targets so users can
+    // see current Caffeine + Alcohol limits without leaving Profile.
+    targetCaffeineMg,
+    targetAlcoholGWeekly,
   } = useAppData();
+  // Local mirrors of two profile fields not in AppDataContext —
+  // weekStartDay and trackedMacros (a.k.a. Dashboard Widgets) — so we
+  // can show their current values in the new Profile rows. Same DB
+  // columns Settings.tsx reads.
+  const [profileWeekStartDay, setProfileWeekStartDay] = useState<"monday" | "sunday">("monday");
+  const [profileTrackedMacros, setProfileTrackedMacros] = useState<string[]>([
+    "protein",
+    "carbs",
+    "fat",
+  ]);
 
   const loggingStats = useMemo(() => {
     const daysWithLogs = Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k]?.length ?? 0) > 0);
@@ -93,10 +109,21 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
       if (!uid || cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary, notification_prefs")
+        .select(
+          "sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary, notification_prefs, week_start_day, tracked_macros",
+        )
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
+
+      // Goals & Targets parity rows (Pass 6, 2026-04-18). Same DB
+      // shape Settings.tsx reads.
+      const wsd = (profile as { week_start_day?: unknown }).week_start_day;
+      if (wsd === "monday" || wsd === "sunday") setProfileWeekStartDay(wsd);
+      const tm = (profile as { tracked_macros?: unknown }).tracked_macros;
+      if (Array.isArray(tm) && tm.length > 0) {
+        setProfileTrackedMacros(tm.filter((x): x is string => typeof x === "string"));
+      }
 
       setAge(profile.age as number | null);
       setWeight(profile.weight_kg as number | null);
@@ -274,7 +301,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
         </div>
       </div>
 
-      {/* Stat Pills — real data (recipes / streak / score) */}
+      {/* Stat Pills — real data (recipes / streak / score). The Score
+          tile is interactive — opens an info popover explaining the
+          0–100 formula (mobile parity:
+          `apps/mobile/app/(tabs)/more.tsx` 397). */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
           <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
@@ -284,11 +314,93 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
           <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
         </div>
-        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+        <button
+          type="button"
+          onClick={() => setScoreInfoOpen(true)}
+          className="flex-1 text-center p-3 rounded-xl bg-card border border-border hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Show how Suppr Score is calculated"
+        >
           <p className="text-lg font-bold text-warning tabular-nums">{adherenceScore}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Score</p>
-        </div>
+          <div className="flex items-center justify-center gap-1 mt-0.5">
+            <span className="text-[10px] text-muted-foreground">Score</span>
+            <Icons.info className="h-2.5 w-2.5 text-muted-foreground" aria-hidden />
+          </div>
+        </button>
       </div>
+
+      {/* Upgrade banner — shown to free + base users (mobile parity:
+          `apps/mobile/app/(tabs)/more.tsx` 416). Pro users see no
+          banner. The CTA navigates to the canonical /pricing route via
+          the parent's `onUpgrade` handler when provided, else falls
+          back to a direct URL push. */}
+      {userTier !== "pro" ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (onUpgrade) onUpgrade();
+            else if (typeof window !== "undefined") window.location.href = "/pricing?from=settings";
+          }}
+          className="w-full flex items-center gap-3 mb-4 p-3.5 rounded-xl border bg-primary/10 border-primary/30 hover:bg-primary/15 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Upgrade to Pro"
+        >
+          <span className="grid place-items-center w-9 h-9 rounded-lg bg-primary/20 shrink-0">
+            <Icons.premium className="h-4 w-4 text-primary" aria-hidden />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-bold text-foreground">Upgrade to Pro</span>
+            <span className="block text-xs text-muted-foreground mt-0.5">
+              Multi-day plans, adaptive TDEE, and AI logging
+            </span>
+          </span>
+          <Icons.forward className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+        </button>
+      ) : null}
+
+      {/* Suppr Score info popover — modal-style overlay so it works on
+          desktop + mobile-web. Same explanatory copy as mobile's
+          Alert (`apps/mobile/app/(tabs)/more.tsx` 397). */}
+      {scoreInfoOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="score-info-title"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={() => setScoreInfoOpen(false)}
+        >
+          <div
+            className="max-w-sm w-full rounded-2xl border border-border bg-card p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="score-info-title" className="text-base font-bold text-foreground mb-2">
+              Your Suppr Score
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your score (0–100) reflects how actively you&apos;re using Suppr.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-foreground">
+              <li className="flex gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><strong>Logging streak</strong> — log meals consistently to build your streak (up to 40 pts)</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><strong>Saved recipes</strong> — save recipes to your library (up to 30 pts)</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><strong>Active account</strong> — you get 30 pts just for being here</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => setScoreInfoOpen(false)}
+              className="mt-4 w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Settings Section */}
       <div className="mb-4">
@@ -305,6 +417,85 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade:
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
+
+          {/* Goals & Targets parity rows (Pass 6, 2026-04-18) — mobile
+              has a dedicated "Goals & Targets" section with these as
+              separate rows so values are scannable at a glance. We
+              expose them inside Settings on web (rather than create a
+              new section) to avoid disturbing the existing IA. Each
+              row navigates to /?view=settings where the editor lives. */}
+
+          {/* Dashboard Widgets — which macros render as tiles on Today */}
+          <a
+            href="/?view=settings"
+            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+          >
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.layoutGrid className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Dashboard Widgets</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {profileTrackedMacros.length > 0
+                  ? profileTrackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")
+                  : "Defaults"}
+              </p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </a>
+
+          {/* Week starts on */}
+          <a
+            href="/?view=settings"
+            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+          >
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.plan className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Week starts on</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {profileWeekStartDay === "monday" ? "Monday" : "Sunday"}
+              </p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </a>
+
+          {/* Caffeine limit */}
+          <a
+            href="/?view=settings"
+            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+          >
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.energy className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Caffeine limit</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {targetCaffeineMg} mg/day · FDA guideline is 400 mg
+              </p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </a>
+
+          {/* Alcohol limit */}
+          <a
+            href="/?view=settings"
+            className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+          >
+            <IconBox tone="primary" size="sm" className="w-7 h-7">
+              <Icons.water className="w-4 h-4" />
+            </IconBox>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Alcohol limit</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {targetAlcoholGWeekly > 0
+                  ? `${targetAlcoholGWeekly} g/week`
+                  : "Off · set a target to show the row"}
+              </p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+          </a>
 
           {/* Preferences Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">

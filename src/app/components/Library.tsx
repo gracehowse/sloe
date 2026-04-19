@@ -53,6 +53,16 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | LibraryEntryKind>("all");
+  // Mobile parity: a cycle button switches the sort key between
+  // Recent (default) / Calories / Protein. See
+  // `apps/mobile/app/(tabs)/library.tsx` 24-57.
+  const [sortKey, setSortKey] = useState<"recent" | "calories" | "protein">("recent");
+  const cycleSort = () => {
+    setSortKey((prev) =>
+      prev === "recent" ? "calories" : prev === "calories" ? "protein" : "recent",
+    );
+  };
+  const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
 
   const savedCount = savedRecipesForLibrary.length;
 
@@ -64,11 +74,25 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
         (r) => r.title.toLowerCase().includes(q) || r.creatorName.toLowerCase().includes(q),
       );
     }
-    if (kindFilter === "all") return list;
-    return list.filter(
-      (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === kindFilter,
-    );
-  }, [savedRecipesForLibrary, searchQuery, kindFilter, libraryEntryKindByRecipeId, uid]);
+    if (kindFilter !== "all") {
+      list = list.filter(
+        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === kindFilter,
+      );
+    }
+    // Apply sort. Higher-is-better for Calories / Protein; Recent uses
+    // `savedAt` if present (some entries don't carry it — those go to
+    // the bottom). Stable ordering for ties via slice() before sort.
+    const sorted = list.slice();
+    if (sortKey === "calories") {
+      sorted.sort((a, b) => (b.calories ?? 0) - (a.calories ?? 0));
+    } else if (sortKey === "protein") {
+      sorted.sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0));
+    } else {
+      // recent — default order from context is already created_at desc,
+      // so no-op (just preserve existing order).
+    }
+    return sorted;
+  }, [savedRecipesForLibrary, searchQuery, kindFilter, libraryEntryKindByRecipeId, uid, sortKey]);
 
   if (selectedRecipe) {
     return (
@@ -119,9 +143,20 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                 {k === "all" ? "All sources" : kindLabel(k)}
               </button>
             ))}
-            <span className="hidden sm:inline-flex items-center gap-2 text-muted-foreground text-sm ml-1" aria-hidden>
-              <Icons.filter className="w-4 h-4" />
-            </span>
+            {/* Sort cycle button — mobile parity
+                (`apps/mobile/app/(tabs)/library.tsx` `cycleSort`). Cycles
+                Recent → Calories → Protein → Recent. Web previously had
+                no sort control; mobile previously had no kind filter.
+                Both surfaces now expose both. */}
+            <button
+              type="button"
+              onClick={cycleSort}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted/60 transition-all inline-flex items-center gap-1.5"
+              aria-label={`Sort by ${sortLabel}, click to change`}
+            >
+              <Icons.adjust className="w-3.5 h-3.5" aria-hidden />
+              {sortLabel}
+            </button>
           </div>
         </div>
       </div>

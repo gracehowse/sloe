@@ -419,8 +419,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       </header>
 
       <div className="px-0 sm:px-2">
-        {/* Search bar — rounded pill */}
-        <div className="mx-4 mt-4 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2.5">
+        {/* Search bar — rectangular to match mobile
+            (`apps/mobile/app/(tabs)/discover.tsx` 247: borderRadius: 10
+            ≈ `rounded-md`). Rounded pill was a visual divergence
+            without a UX reason. */}
+        <div className="mx-4 mt-4 flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
@@ -509,8 +512,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-4 rounded-xl p-3.5 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow"
-          style={{ background: "linear-gradient(135deg, var(--primary-soft, rgba(76,108,224,0.06)), var(--success-soft, rgba(34,168,96,0.06)))", border: "1px solid rgba(76,108,224,0.13)" }}
+          className="mx-4 mt-4 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+          style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
         >
           <IconBox size="lg" tone="primary">
             <Icons.import />

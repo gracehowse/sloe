@@ -22,12 +22,41 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
 type SortKey = "recent" | "calories" | "protein";
+type KindFilter = "all" | "saved" | "created" | "imported";
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
   calories: "Calories",
   protein: "Protein",
 };
+
+const KIND_FILTERS: ReadonlyArray<{ key: KindFilter; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "saved", label: "Saved" },
+  { key: "created", label: "Created" },
+  { key: "imported", label: "Imported" },
+];
+
+/** Derive entry-kind for a mobile library row.
+ *
+ *  Web uses an explicit `libraryEntryKindByRecipeId` map populated by
+ *  AppDataContext when the user creates / imports a recipe. Mobile
+ *  doesn't have that map, so we derive locally from `authorId` and
+ *  `sourceUrl`:
+ *    - own author + has source URL → imported (came in via the
+ *      import-shared flow)
+ *    - own author + no source URL  → created (built in the app)
+ *    - someone else's author       → saved (came from Discover)
+ */
+function entryKindForCard(
+  card: RecipeCard,
+  userId: string | null,
+): Exclude<KindFilter, "all"> {
+  if (userId && card.authorId && card.authorId === userId) {
+    return card.sourceUrl ? "imported" : "created";
+  }
+  return "saved";
+}
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
@@ -48,6 +77,10 @@ export default function LibraryScreen() {
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
+  // Web parity (Pass 6, 2026-04-18): kindFilter pills below the
+  // search row. Web Library has had this since launch; mobile was
+  // sort-only.
+  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
 
   const cycleSort = useCallback(() => {
     setSortKey((prev) => {
@@ -62,13 +95,16 @@ export default function LibraryScreen() {
       const q = search.toLowerCase();
       list = list.filter((r) => r.title.toLowerCase().includes(q));
     }
+    if (kindFilter !== "all") {
+      list = list.filter((r) => entryKindForCard(r, userId) === kindFilter);
+    }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
     } else if (sortKey === "protein") {
       list = [...list].sort((a, b) => b.protein - a.protein);
     }
     return list;
-  }, [savedRecipes, search, sortKey]);
+  }, [savedRecipes, search, sortKey, kindFilter, userId]);
 
   const confirmRemove = useCallback(
     (item: RecipeCard) => {
@@ -127,6 +163,34 @@ export default function LibraryScreen() {
     },
     sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
+    filterRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: Spacing.sm,
+    },
+    filterPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    filterPillActive: {
+      backgroundColor: Accent.primary + "1A",
+      borderColor: Accent.primary,
+    },
+    filterPillText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+    filterPillTextActive: {
+      color: Accent.primary,
+      fontWeight: "600",
+    },
     searchInput: {
       backgroundColor: colors.card,
       borderRadius: Radius.md,
@@ -278,6 +342,31 @@ export default function LibraryScreen() {
           style={styles.searchInput}
           accessibilityLabel="Search saved recipes"
         />
+      </View>
+
+      {/* Kind filter pills — web parity (Pass 6, 2026-04-18). Filter
+          by entry kind (Saved / Created / Imported), derived locally
+          from authorId + sourceUrl. */}
+      <View style={styles.filterRow}>
+        {KIND_FILTERS.map((f) => {
+          const active = kindFilter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              onPress={() => setKindFilter(f.key)}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`Filter: ${f.label}`}
+            >
+              <Text
+                style={[styles.filterPillText, active && styles.filterPillTextActive]}
+              >
+                {f.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {isLoading && savedRecipes.length === 0 ? (
