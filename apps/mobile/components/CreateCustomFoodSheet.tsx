@@ -1,23 +1,33 @@
 /**
- * CreateCustomFoodSheet (Batch 3.9) — mobile mirror of the web
- * `CreateCustomFoodDialog`. Collects name + optional brand + macros
- * per gram basis + repeatable named servings, with a live preview.
+ * CreateCustomFoodSheet — mobile mirror of the web
+ * `CreateCustomFoodDialog`. Collects the fields needed to match
+ * MyFitnessPal / LoseIt's "add food" form:
+ *   - Name + optional brand (always).
+ *   - A single natural serving (label + grams) + optional servings per
+ *     container — surfaced prominently above the macros so users reason
+ *     about the label, not grams (TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI`).
+ *   - Macros per 100 g (MFP / USDA convention) with a live "per serving"
+ *     preview computed from the per-100 g macros × serving grams.
+ *   - A collapsed "Add detailed nutrition" disclosure with sugar / sat
+ *     fat / sodium — hidden by default so the primary form stays short.
+ *   - An optional barcode text input (no scanner — scanner is a
+ *     follow-up piece of work that needs `expo-camera` permissions).
  *
  * Does no I/O; hands the payload back via `onSave` so the caller
  * can run it through the shared `createCustomFood` / `updateCustomFood`
- * helpers. Shares all pure logic (scaling, dedupe, normalisation) with
- * web via `src/lib/nutrition/customFoods.ts` so platforms can't drift.
+ * helpers. Shares all pure logic (scaling, dedupe, normalisation,
+ * barcode validation) with web via `src/lib/nutrition/customFoods.ts`
+ * so platforms can't drift.
  *
- * Accessibility:
- *  - Inputs carry `accessibilityLabel`s.
- *  - Macro inputs use `keyboardType="decimal-pad"`.
- *  - Add / remove serving-row buttons have per-row labels.
+ * Validation rules encoded in `canSave`:
+ *  - `name` non-empty after normalisation.
+ *  - `baseGrams > 0`.
+ *  - Serving label and grams are both empty, or both set (grams > 0).
+ *  - Barcode, if provided, validates to 8 / 12 / 13 / 14 digits.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -26,12 +36,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import KeyboardSafeView from "./KeyboardSafeView";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   CUSTOM_FOOD_NAME_MAX,
-  dedupeServings,
+  customFoodToMacrosPer100g,
   normaliseCustomFoodName,
-  scaleMacrosForGrams,
+  validateCustomFoodBarcode,
   type CustomFood,
   type CustomFoodServing,
 } from "../../../src/lib/nutrition/customFoods";
@@ -55,6 +66,11 @@ export type CreateCustomFoodPayload = {
   fat: number;
   fiber?: number;
   servings: CustomFoodServing[];
+  servingsPerContainer?: number;
+  sugarG?: number;
+  saturatedFatG?: number;
+  sodiumMg?: number;
+  barcode?: string;
 };
 
 type Props = {
@@ -67,14 +83,6 @@ type Props = {
   onSave: (payload: CreateCustomFoodPayload) => void | Promise<void>;
   colors: Theme;
 };
-
-type ServingDraft = { id: string; label: string; gramsText: string };
-
-let servingDraftCounter = 0;
-function nextServingDraftId(): string {
-  servingDraftCounter += 1;
-  return `sd_${servingDraftCounter}`;
-}
 
 function toNumber(text: string): number {
   const t = String(text ?? "").trim();
@@ -98,13 +106,20 @@ export default function CreateCustomFoodSheet({
 }: Props) {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
+  const [servingLabel, setServingLabel] = useState("");
+  const [servingGramsText, setServingGramsText] = useState("");
+  const [servingsPerContainerText, setServingsPerContainerText] = useState("");
   const [baseGramsText, setBaseGramsText] = useState("100");
   const [caloriesText, setCaloriesText] = useState("");
   const [proteinText, setProteinText] = useState("");
   const [carbsText, setCarbsText] = useState("");
   const [fatText, setFatText] = useState("");
   const [fiberText, setFiberText] = useState("");
-  const [servings, setServings] = useState<ServingDraft[]>([]);
+  const [sugarText, setSugarText] = useState("");
+  const [satFatText, setSatFatText] = useState("");
+  const [sodiumText, setSodiumText] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -112,29 +127,54 @@ export default function CreateCustomFoodSheet({
     if (initialFood) {
       setName(initialFood.name);
       setBrand(initialFood.brand ?? "");
+      // Natural serving lives as the first `servings[]` entry.
+      const first = (initialFood.servings ?? []).find(
+        (s) => s.label.trim() !== "" && s.grams > 0,
+      );
+      setServingLabel(first?.label ?? "");
+      setServingGramsText(first ? formatNumber(first.grams) : "");
+      setServingsPerContainerText(
+        initialFood.servingsPerContainer != null
+          ? formatNumber(initialFood.servingsPerContainer)
+          : "",
+      );
       setBaseGramsText(formatNumber(initialFood.baseGrams) || "100");
       setCaloriesText(formatNumber(initialFood.calories));
       setProteinText(formatNumber(initialFood.protein));
       setCarbsText(formatNumber(initialFood.carbs));
       setFatText(formatNumber(initialFood.fat));
       setFiberText(initialFood.fiber != null ? formatNumber(initialFood.fiber) : "");
-      setServings(
-        (initialFood.servings ?? []).map((s) => ({
-          id: nextServingDraftId(),
-          label: s.label,
-          gramsText: formatNumber(s.grams),
-        })),
+      setSugarText(initialFood.sugarG != null ? formatNumber(initialFood.sugarG) : "");
+      setSatFatText(
+        initialFood.saturatedFatG != null ? formatNumber(initialFood.saturatedFatG) : "",
+      );
+      setSodiumText(initialFood.sodiumMg != null ? formatNumber(initialFood.sodiumMg) : "");
+      setBarcode(initialFood.barcode ?? "");
+      // Open the disclosure if the food already has any detailed micros
+      // or a barcode — so users editing an existing food see their data.
+      setDetailsOpen(
+        initialFood.sugarG != null ||
+          initialFood.saturatedFatG != null ||
+          initialFood.sodiumMg != null ||
+          Boolean(initialFood.barcode),
       );
     } else {
       setName(initialName ?? "");
       setBrand("");
+      setServingLabel("");
+      setServingGramsText("");
+      setServingsPerContainerText("");
       setBaseGramsText("100");
       setCaloriesText("");
       setProteinText("");
       setCarbsText("");
       setFatText("");
       setFiberText("");
-      setServings([{ id: nextServingDraftId(), label: "", gramsText: "" }]);
+      setSugarText("");
+      setSatFatText("");
+      setSodiumText("");
+      setBarcode("");
+      setDetailsOpen(false);
     }
     setSaving(false);
   }, [visible, initialFood, initialName]);
@@ -147,17 +187,24 @@ export default function CreateCustomFoodSheet({
       carbs: toNumber(carbsText),
       fat: toNumber(fatText),
       fiber: fiberText.trim() ? toNumber(fiberText) : undefined,
+      sugarG: sugarText.trim() ? toNumber(sugarText) : undefined,
+      sodiumMg: sodiumText.trim() ? toNumber(sodiumText) : undefined,
     }),
-    [baseGramsText, caloriesText, proteinText, carbsText, fatText, fiberText],
+    [baseGramsText, caloriesText, proteinText, carbsText, fatText, fiberText, sugarText, sodiumText],
   );
 
-  const cleanedServings = useMemo(
-    () =>
-      dedupeServings(
-        servings.map((s) => ({ label: s.label, grams: toNumber(s.gramsText) })),
-      ),
-    [servings],
-  );
+  const servingGrams = toNumber(servingGramsText);
+  const servingLabelClean = servingLabel.trim();
+  const hasServingLabel = servingLabelClean.length > 0;
+  const hasServingGrams = servingGrams > 0;
+  // Both fields are "required together or both empty". Disallow half-
+  // filled combos (label without grams, grams without label).
+  const servingValid =
+    (!hasServingLabel && !hasServingGrams) ||
+    (hasServingLabel && hasServingGrams);
+
+  const barcodeParsed = useMemo(() => validateCustomFoodBarcode(barcode), [barcode]);
+  const barcodeValid = barcodeParsed.ok;
 
   const trimmedName = normaliseCustomFoodName(name);
   const hasValidBase = macros.baseGrams > 0;
@@ -168,29 +215,39 @@ export default function CreateCustomFoodSheet({
     macros.fat === 0 &&
     (macros.fiber == null || macros.fiber === 0);
 
-  const canSave = trimmedName.length > 0 && hasValidBase && !saving;
+  const canSave =
+    trimmedName.length > 0 &&
+    hasValidBase &&
+    servingValid &&
+    barcodeValid &&
+    !saving;
 
-  const previewServing = cleanedServings[0];
-  const previewGrams = previewServing ? previewServing.grams : macros.baseGrams;
-  const previewScaled = useMemo(
-    () => scaleMacrosForGrams(macros, previewGrams),
-    [macros, previewGrams],
-  );
-
-  const handleAddServing = () => {
-    setServings((prev) => [
-      ...prev,
-      { id: nextServingDraftId(), label: "", gramsText: "" },
-    ]);
-  };
-  const handleRemoveServing = (id: string) => {
-    setServings((prev) => prev.filter((s) => s.id !== id));
-  };
+  // Live preview: scale the food's macros to the natural serving, if the
+  // user has set one; else to `baseGrams`. Uses `customFoodToMacrosPer100g`
+  // so the math agrees with the per-100g path search + log uses.
+  const previewGrams = hasServingLabel && hasServingGrams ? servingGrams : macros.baseGrams;
+  const previewScaled = useMemo(() => {
+    if (!(previewGrams > 0) || !hasValidBase) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    }
+    const per100g = customFoodToMacrosPer100g(macros);
+    const f = previewGrams / 100;
+    return {
+      calories: Math.round(per100g.calories * f),
+      protein: Math.round(per100g.protein * f * 10) / 10,
+      carbs: Math.round(per100g.carbs * f * 10) / 10,
+      fat: Math.round(per100g.fat * f * 10) / 10,
+    };
+  }, [macros, previewGrams, hasValidBase]);
 
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
     try {
+      const servings: CustomFoodServing[] =
+        hasServingLabel && hasServingGrams
+          ? [{ label: servingLabelClean, grams: servingGrams }]
+          : [];
       const payload: CreateCustomFoodPayload = {
         name: trimmedName,
         baseGrams: macros.baseGrams,
@@ -198,11 +255,17 @@ export default function CreateCustomFoodSheet({
         protein: macros.protein,
         carbs: macros.carbs,
         fat: macros.fat,
-        servings: cleanedServings,
+        servings,
       };
       const brandTrimmed = brand.trim();
       if (brandTrimmed) payload.brand = brandTrimmed;
       if (macros.fiber != null && fiberText.trim()) payload.fiber = macros.fiber;
+      const spc = toNumber(servingsPerContainerText);
+      if (servingsPerContainerText.trim() && spc > 0) payload.servingsPerContainer = spc;
+      if (sugarText.trim()) payload.sugarG = toNumber(sugarText);
+      if (satFatText.trim()) payload.saturatedFatG = toNumber(satFatText);
+      if (sodiumText.trim()) payload.sodiumMg = toNumber(sodiumText);
+      if (barcodeParsed.ok && barcodeParsed.value) payload.barcode = barcodeParsed.value;
       await onSave(payload);
       onClose();
     } finally {
@@ -229,8 +292,9 @@ export default function CreateCustomFoodSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardSafeView
+        scroll={false}
+        dismissOnBackgroundTap={false}
         style={{ flex: 1 }}
       >
         <Pressable
@@ -323,12 +387,85 @@ export default function CreateCustomFoodSheet({
                 returnKeyType="next"
               />
 
+              {/* Natural serving row — prominent, above the macro grid. */}
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
+                }}
+              >
+                Serving size (optional)
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  marginBottom: 6,
+                }}
+              >
+                <TextInput
+                  value={servingLabel}
+                  onChangeText={setServingLabel}
+                  placeholder="e.g. 1 slice"
+                  placeholderTextColor={colors.textTertiary}
+                  maxLength={40}
+                  accessibilityLabel="Serving size label"
+                  style={[inputStyle, { flex: 1 }]}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  value={servingGramsText}
+                  onChangeText={setServingGramsText}
+                  keyboardType="decimal-pad"
+                  placeholder="grams"
+                  placeholderTextColor={colors.textTertiary}
+                  accessibilityLabel="Serving size grams"
+                  style={[inputStyle, { width: 90 }]}
+                />
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: Spacing.sm,
+                }}
+              >
+                <TextInput
+                  value={servingsPerContainerText}
+                  onChangeText={setServingsPerContainerText}
+                  keyboardType="decimal-pad"
+                  placeholder=""
+                  placeholderTextColor={colors.textTertiary}
+                  accessibilityLabel="Servings per container"
+                  style={[inputStyle, { width: 70 }]}
+                />
+                <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
+                  servings per container (optional)
+                </Text>
+              </View>
+              {!servingValid && (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: Accent.destructive,
+                    marginBottom: 6,
+                  }}
+                  accessibilityLiveRegion="polite"
+                >
+                  Enter both a serving size label and grams, or leave both blank.
+                </Text>
+              )}
+
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: colors.text,
+                  marginBottom: 6,
+                  marginTop: 4,
                 }}
               >
                 Macros per
@@ -437,8 +574,43 @@ export default function CreateCustomFoodSheet({
                 onChangeText={setFiberText}
                 keyboardType="decimal-pad"
                 accessibilityLabel="Fibre grams, optional"
-                style={[inputStyle, { marginBottom: Spacing.md }]}
+                style={[inputStyle, { marginBottom: 4 }]}
               />
+
+              {/* Live "per-serving ≈" preview — below the macro grid so the
+                  user sees instant feedback that the label adds up. */}
+              <View
+                style={{
+                  marginTop: 4,
+                  padding: 10,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  backgroundColor: colors.background,
+                  marginBottom: Spacing.md,
+                }}
+                accessibilityLiveRegion="polite"
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 0.5,
+                    color: colors.textSecondary,
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  Per-serving preview
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>
+                  {hasServingLabel && hasServingGrams && hasValidBase
+                    ? `${servingLabelClean} (${servingGrams} g) ≈ ${previewScaled.calories} kcal · P ${previewScaled.protein} · C ${previewScaled.carbs} · F ${previewScaled.fat}`
+                    : hasValidBase
+                      ? `${macros.baseGrams} g: ${previewScaled.calories} kcal · P ${previewScaled.protein} · C ${previewScaled.carbs} · F ${previewScaled.fat}`
+                      : "Add macros above to see preview."}
+                </Text>
+              </View>
 
               {allMacrosZero && (
                 <Text
@@ -453,148 +625,123 @@ export default function CreateCustomFoodSheet({
                 </Text>
               )}
 
-              <View
+              {/* Disclosure: detailed nutrition (sugar / sat fat / sodium) +
+                  barcode. Hidden by default to keep the form short. */}
+              <Pressable
+                onPress={() => setDetailsOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: detailsOpen }}
+                accessibilityLabel={
+                  detailsOpen ? "Hide detailed nutrition" : "Add detailed nutrition"
+                }
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: 6,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 12, fontWeight: "600", color: colors.text }}
-                >
-                  Serving sizes
-                </Text>
-                <Pressable
-                  onPress={handleAddServing}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add serving size"
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: colors.cardBorder,
-                  }}
-                  hitSlop={8}
-                >
-                  <Ionicons name="add" size={14} color={colors.text} />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: colors.text,
-                      marginLeft: 4,
-                    }}
-                  >
-                    Add
-                  </Text>
-                </Pressable>
-              </View>
-              {servings.length === 0 && (
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: colors.textSecondary,
-                    paddingVertical: 8,
-                  }}
-                >
-                  No saved servings. You can still log this food in grams.
-                </Text>
-              )}
-              {servings.map((row, i) => {
-                const labelForAria = row.label.trim() || `serving ${i + 1}`;
-                return (
-                  <View
-                    key={row.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <TextInput
-                      value={row.label}
-                      onChangeText={(text) =>
-                        setServings((prev) =>
-                          prev.map((s) => (s.id === row.id ? { ...s, label: text } : s)),
-                        )
-                      }
-                      placeholder="e.g. 1 bowl"
-                      placeholderTextColor={colors.textTertiary}
-                      maxLength={40}
-                      accessibilityLabel={`Serving ${i + 1} label`}
-                      style={[inputStyle, { flex: 1 }]}
-                    />
-                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>=</Text>
-                    <TextInput
-                      value={row.gramsText}
-                      onChangeText={(text) =>
-                        setServings((prev) =>
-                          prev.map((s) =>
-                            s.id === row.id ? { ...s, gramsText: text } : s,
-                          ),
-                        )
-                      }
-                      keyboardType="decimal-pad"
-                      placeholder="grams"
-                      placeholderTextColor={colors.textTertiary}
-                      accessibilityLabel={`Serving ${i + 1} grams`}
-                      style={[inputStyle, { width: 78 }]}
-                    />
-                    <Pressable
-                      onPress={() => handleRemoveServing(row.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${labelForAria}`}
-                      hitSlop={8}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons
-                        name="close"
-                        size={18}
-                        color={Accent.destructive}
-                      />
-                    </Pressable>
-                  </View>
-                );
-              })}
-
-              <View
-                style={{
-                  marginTop: Spacing.sm,
-                  padding: 10,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
                   borderRadius: Radius.md,
                   borderWidth: 1,
                   borderColor: colors.cardBorder,
-                  backgroundColor: colors.background,
+                  marginBottom: detailsOpen ? Spacing.sm : 4,
                 }}
-                accessibilityLiveRegion="polite"
               >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "700",
-                    letterSpacing: 0.5,
-                    color: colors.textSecondary,
-                    textTransform: "uppercase",
-                    marginBottom: 4,
-                  }}
-                >
-                  Preview
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+                  {detailsOpen ? "Hide detailed nutrition" : "Add detailed nutrition"}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.text }}>
-                  {previewServing
-                    ? `${previewServing.label} (${previewServing.grams}g): ${previewScaled.calories} kcal · P ${previewScaled.protein} · C ${previewScaled.carbs} · F ${previewScaled.fat}`
-                    : hasValidBase
-                      ? `${macros.baseGrams}g: ${previewScaled.calories} kcal · P ${previewScaled.protein} · C ${previewScaled.carbs} · F ${previewScaled.fat}`
-                      : "Add macros above to see preview."}
-                  {previewScaled.fiber != null ? ` · Fi ${previewScaled.fiber}` : ""}
-                </Text>
-              </View>
+                <Ionicons
+                  name={detailsOpen ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+
+              {detailsOpen && (
+                <View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 8,
+                      marginBottom: Spacing.sm,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}
+                      >
+                        Sugar (g)
+                      </Text>
+                      <TextInput
+                        value={sugarText}
+                        onChangeText={setSugarText}
+                        keyboardType="decimal-pad"
+                        accessibilityLabel="Sugar grams, optional"
+                        style={inputStyle}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}
+                      >
+                        Sat fat (g)
+                      </Text>
+                      <TextInput
+                        value={satFatText}
+                        onChangeText={setSatFatText}
+                        keyboardType="decimal-pad"
+                        accessibilityLabel="Saturated fat grams, optional"
+                        style={inputStyle}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}
+                      >
+                        Sodium (mg)
+                      </Text>
+                      <TextInput
+                        value={sodiumText}
+                        onChangeText={setSodiumText}
+                        keyboardType="decimal-pad"
+                        accessibilityLabel="Sodium milligrams, optional"
+                        style={inputStyle}
+                      />
+                    </View>
+                  </View>
+
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Barcode (optional)
+                  </Text>
+                  <TextInput
+                    value={barcode}
+                    onChangeText={setBarcode}
+                    keyboardType="number-pad"
+                    placeholder="e.g. 5012345678900"
+                    placeholderTextColor={colors.textTertiary}
+                    maxLength={14}
+                    accessibilityLabel="Barcode, optional"
+                    style={inputStyle}
+                  />
+                  {!barcodeValid && (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: Accent.destructive,
+                        marginTop: 4,
+                      }}
+                      accessibilityLiveRegion="polite"
+                    >
+                      Enter a valid 8, 12, 13, or 14-digit barcode, or leave blank.
+                    </Text>
+                  )}
+                </View>
+              )}
             </ScrollView>
 
             <View
@@ -651,7 +798,7 @@ export default function CreateCustomFoodSheet({
             </View>
           </Pressable>
         </Pressable>
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </Modal>
   );
 }

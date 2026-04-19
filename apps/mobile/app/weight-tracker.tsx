@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
+import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { MacroColors, Accent, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
@@ -553,9 +554,14 @@ export default function ProgressScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardSafeView
+      scroll={false}
+      dismissOnBackgroundTap={false}
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -948,6 +954,6 @@ export default function ProgressScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </KeyboardSafeView>
   );
 }

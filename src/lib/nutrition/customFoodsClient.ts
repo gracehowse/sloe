@@ -20,7 +20,11 @@
  */
 
 import type { CustomFood, CustomFoodServing } from "./customFoods";
-import { dedupeServings, normaliseCustomFoodName } from "./customFoods";
+import {
+  dedupeServings,
+  normaliseCustomFoodName,
+  validateCustomFoodBarcode,
+} from "./customFoods";
 
 /** Supabase-js-compatible shape. Typed as `any` on purpose — this file
  * must import from neither workspace's generated types. */
@@ -29,7 +33,7 @@ type SupabaseLike = {
 };
 
 /** Input for `createCustomFood` — all macro fields required (with zero
- * defaults enforced at the UI boundary), `servings` optional. */
+ * defaults enforced at the UI boundary), everything else optional. */
 export type CreateCustomFoodInput = {
   name: string;
   brand?: string;
@@ -40,6 +44,14 @@ export type CreateCustomFoodInput = {
   fat: number;
   fiber?: number;
   servings?: CustomFoodServing[];
+  /** Packaged-food display-only hint; not used in per-portion math. */
+  servingsPerContainer?: number;
+  /** Optional detailed micros. g for sugar / sat fat, mg for sodium. */
+  sugarG?: number;
+  saturatedFatG?: number;
+  sodiumMg?: number;
+  /** Optional barcode (EAN-8 / UPC-A / EAN-13 / GTIN-14 — digits only). */
+  barcode?: string;
 };
 
 /** Partial update — every field optional, undefined fields left alone. */
@@ -53,6 +65,11 @@ export type UpdateCustomFoodPatch = Partial<{
   fat: number;
   fiber: number | null;
   servings: CustomFoodServing[];
+  servingsPerContainer: number | null;
+  sugarG: number | null;
+  saturatedFatG: number | null;
+  sodiumMg: number | null;
+  barcode: string | null;
 }>;
 
 const PG_UNIQUE_VIOLATION = "23505";
@@ -97,6 +114,26 @@ function rowToCustomFood(row: any): CustomFood {
   if (row.fiber != null && Number.isFinite(Number(row.fiber))) {
     food.fiber = safeNonNegative(row.fiber);
   }
+  // Detailed micros + packaging fields (TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI`).
+  if (
+    row.servings_per_container != null &&
+    Number.isFinite(Number(row.servings_per_container))
+  ) {
+    const v = safeNumber(row.servings_per_container);
+    if (v > 0) food.servingsPerContainer = v;
+  }
+  if (row.sugar_g != null && Number.isFinite(Number(row.sugar_g))) {
+    food.sugarG = safeNonNegative(row.sugar_g);
+  }
+  if (row.saturated_fat_g != null && Number.isFinite(Number(row.saturated_fat_g))) {
+    food.saturatedFatG = safeNonNegative(row.saturated_fat_g);
+  }
+  if (row.sodium_mg != null && Number.isFinite(Number(row.sodium_mg))) {
+    food.sodiumMg = safeNonNegative(row.sodium_mg);
+  }
+  if (typeof row.barcode === "string" && row.barcode.trim()) {
+    food.barcode = row.barcode.trim();
+  }
   return food;
 }
 
@@ -123,6 +160,35 @@ function payloadForInsert(userId: string, input: CreateCustomFoodInput, nameOver
   if (brand) row.brand = brand;
   if (input.fiber != null && Number.isFinite(Number(input.fiber))) {
     row.fiber = Math.round(safeNonNegative(input.fiber) * 10) / 10;
+  }
+  if (
+    input.servingsPerContainer != null &&
+    Number.isFinite(Number(input.servingsPerContainer)) &&
+    Number(input.servingsPerContainer) > 0
+  ) {
+    // Packaging hint — round to 2dp because labels commonly read "2.5
+    // servings per container"; any more precision is spurious.
+    row.servings_per_container = Math.round(Number(input.servingsPerContainer) * 100) / 100;
+  }
+  if (input.sugarG != null && Number.isFinite(Number(input.sugarG))) {
+    row.sugar_g = Math.round(safeNonNegative(input.sugarG) * 10) / 10;
+  }
+  if (input.saturatedFatG != null && Number.isFinite(Number(input.saturatedFatG))) {
+    row.saturated_fat_g = Math.round(safeNonNegative(input.saturatedFatG) * 10) / 10;
+  }
+  if (input.sodiumMg != null && Number.isFinite(Number(input.sodiumMg))) {
+    // Sodium stored in mg, rounded to integer (labels report mg as whole).
+    row.sodium_mg = Math.round(safeNonNegative(input.sodiumMg));
+  }
+  // Barcode is validated at the input boundary; reject a bad one loudly
+  // rather than silently drop it — the user's intent was clearly "this
+  // is the package".
+  if (input.barcode != null) {
+    const parsed = validateCustomFoodBarcode(input.barcode);
+    if (!parsed.ok) {
+      throw new Error(`createCustomFood: ${parsed.reason}`);
+    }
+    if (parsed.value) row.barcode = parsed.value;
   }
   return row;
 }
@@ -220,6 +286,46 @@ export async function updateCustomFood(
         : Math.round(safeNonNegative(patch.fiber) * 10) / 10;
   }
   if (patch.servings !== undefined) update.servings = dedupeServings(patch.servings);
+  if (patch.servingsPerContainer !== undefined) {
+    if (patch.servingsPerContainer == null) {
+      update.servings_per_container = null;
+    } else {
+      const v = Number(patch.servingsPerContainer);
+      if (!Number.isFinite(v) || v <= 0) {
+        throw new Error("updateCustomFood: servingsPerContainer must be > 0 or null");
+      }
+      update.servings_per_container = Math.round(v * 100) / 100;
+    }
+  }
+  if (patch.sugarG !== undefined) {
+    update.sugar_g =
+      patch.sugarG == null || !Number.isFinite(Number(patch.sugarG))
+        ? null
+        : Math.round(safeNonNegative(patch.sugarG) * 10) / 10;
+  }
+  if (patch.saturatedFatG !== undefined) {
+    update.saturated_fat_g =
+      patch.saturatedFatG == null || !Number.isFinite(Number(patch.saturatedFatG))
+        ? null
+        : Math.round(safeNonNegative(patch.saturatedFatG) * 10) / 10;
+  }
+  if (patch.sodiumMg !== undefined) {
+    update.sodium_mg =
+      patch.sodiumMg == null || !Number.isFinite(Number(patch.sodiumMg))
+        ? null
+        : Math.round(safeNonNegative(patch.sodiumMg));
+  }
+  if (patch.barcode !== undefined) {
+    if (patch.barcode == null) {
+      update.barcode = null;
+    } else {
+      const parsed = validateCustomFoodBarcode(patch.barcode);
+      if (!parsed.ok) {
+        throw new Error(`updateCustomFood: ${parsed.reason}`);
+      }
+      update.barcode = parsed.value ?? null;
+    }
+  }
 
   const { data, error } = await supabase
     .from("user_custom_foods")

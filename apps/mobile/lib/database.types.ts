@@ -631,6 +631,7 @@ export type Database = {
           height_cm: number | null
           high_days: Json | null
           id: string
+          last_weekly_recap_push_sent_at: string | null
           measurement_system: string | null
           notification_prefs: Json
           notifications_seeded: boolean
@@ -675,6 +676,7 @@ export type Database = {
           height_cm?: number | null
           high_days?: Json | null
           id: string
+          last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
           notification_prefs?: Json
           notifications_seeded?: boolean
@@ -719,6 +721,7 @@ export type Database = {
           height_cm?: number | null
           high_days?: Json | null
           id?: string
+          last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
           notification_prefs?: Json
           notifications_seeded?: boolean
@@ -1125,6 +1128,76 @@ export type Database = {
         }
         Update: {
           items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      /**
+       * Batch 3.9 — user-defined foods (e.g. "Homemade granola"). See
+       * migration `20260421150000_user_custom_foods.sql` for the base table
+       * and `20260424100000_custom_foods_servings_micros_barcode.sql` for
+       * the five optional columns added in response to TestFlight
+       * `AE52_fIRZ-ZIupmoJ8T4yaI`.
+       */
+      user_custom_foods: {
+        Row: {
+          barcode: string | null
+          base_grams: number
+          brand: string | null
+          calories: number
+          carbs: number
+          created_at: string
+          fat: number
+          fiber: number | null
+          id: string
+          name: string
+          protein: number
+          saturated_fat_g: number | null
+          servings: Json
+          servings_per_container: number | null
+          sodium_mg: number | null
+          sugar_g: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          barcode?: string | null
+          base_grams?: number
+          brand?: string | null
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fat?: number
+          fiber?: number | null
+          id?: string
+          name: string
+          protein?: number
+          saturated_fat_g?: number | null
+          servings?: Json
+          servings_per_container?: number | null
+          sodium_mg?: number | null
+          sugar_g?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          barcode?: string | null
+          base_grams?: number
+          brand?: string | null
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fat?: number
+          fiber?: number | null
+          id?: string
+          name?: string
+          protein?: number
+          saturated_fat_g?: number | null
+          servings?: Json
+          servings_per_container?: number | null
+          sodium_mg?: number | null
+          sugar_g?: number | null
           updated_at?: string
           user_id?: string
         }

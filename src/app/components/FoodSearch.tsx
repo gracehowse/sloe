@@ -25,6 +25,7 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
+  customFoodToPrimaryServing,
   type CustomFood,
 } from "../../lib/nutrition/customFoods";
 import {
@@ -396,16 +397,25 @@ function resolveInitialPortion(
  * Project a custom food into the same `SearchResult` shape USDA/OFF use so
  * rendering stays uniform. The `_source` discriminator lets the row
  * render a "Custom" badge and show the edit/delete overflow menu.
+ *
+ * `primaryServing` is populated from the food's first saved serving via
+ * `customFoodToPrimaryServing` so custom-food rows render with the same
+ * natural-portion primary line A2 gave Pret sandwiches (e.g. "Homemade
+ * granola · 120 kcal · 1 slice (30 g)"). Falls back to `null` when the
+ * food has no natural serving — existing /100g-only display unchanged.
+ * TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI` (fix B + A2 integration).
  */
 function customFoodToSearchResult(food: CustomFood): SearchResult {
   const macrosPer100g = customFoodToMacrosPer100g(food);
   const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
+  const primaryServing = customFoodToPrimaryServing(food);
   return {
     key: `custom-${food.id}`,
     name: displayName,
     calsPer100g: macrosPer100g.calories,
     macrosPer100g,
     verified: false,
+    primaryServing: primaryServing ?? null,
     _source: "CUSTOM",
     _custom: food,
   };

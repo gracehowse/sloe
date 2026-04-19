@@ -33,7 +33,7 @@ PostgreSQL via Supabase. Row-Level Security (RLS) enabled on all tables.
 | `user_favorite_foods` | Starred meals for one-tap re-log (Quick add Favourites tab) | Relational |
 | `user_saved_meals` | User-defined meal combos (e.g. "My usual breakfast") parent row | Relational |
 | `user_saved_meal_items` | Child items belonging to a saved-meal combo, ordered by `position` | Relational |
-| `user_custom_foods` | User-defined custom foods (e.g. homemade granola) with multiple named serving sizes | Relational |
+| `user_custom_foods` | User-defined custom foods (e.g. homemade granola). Macros per `base_grams`, natural-portion shortcuts in `servings jsonb`, optional detailed micros (`sugar_g`, `saturated_fat_g`, `sodium_mg`), `servings_per_container`, and `barcode` for scan-same-package recall | Relational |
 | `user_plan_templates` | Named reusable snapshots of a 1–7 day meal plan slice (Batch 3.10) | Relational — JSONB `slots` array |
 
 ## Key Design Decisions
@@ -150,7 +150,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | `profiles.tracked_macros`, `profiles.week_start_day` | Used by Settings and Today dashboard (added to generated types) |
 | `profiles.target_caffeine_mg`, `profiles.target_alcohol_g_weekly`, `profiles.extra_caffeine_by_day`, `profiles.extra_alcohol_g_by_day` | Migration `20260421110000` — Batch 2.5 hydration & stimulants. `target_water_ml` and `extra_water_by_day` stay millilitres on both platforms; the `HydrationStimulantsCard` display respects `profiles.measurement_system` via the shared `formatWaterAmount` / `imperialWaterQuickAdds` helpers (audit C3 fix, 2026-04-18). |
 | `user_saved_meals`, `user_saved_meal_items` | Migration `20260421120000` — Batch 2.6 saved-meal combos |
-| `user_custom_foods` | Migration `20260421150000` — Batch 3.9 user-defined custom foods with multiple serving sizes |
+| `user_custom_foods` | Migration `20260421150000` — Batch 3.9 user-defined custom foods with multiple serving sizes. Extended by migration `20260424100000_custom_foods_servings_micros_barcode.sql` (TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI`) with `servings_per_container`, `sugar_g`, `saturated_fat_g`, `sodium_mg`, and `barcode` (partial unique index on `(user_id, barcode) where barcode is not null`) — all nullable, non-negative check constraints on the numeric micros |
 | `user_plan_templates` | Migration `20260421160000` — Batch 3.10 named plan templates (1–7 day slices, JSONB slots) |
 | `meal_plan_days.servings_used`, `meal_plan_meals.is_leftover`, `meal_plan_meals.leftover_of_recipe_id` | Migration `20260421160000` — Batch 3.10 leftovers distribution state |
 | `profiles.streak_freeze_budget_max`, `profiles.streak_freezes_earned_at`, `profiles.streak_freezes_used_history`, `profiles.weekly_recap_push_enabled`, `profiles.weekly_recap_last_seen_week_key` | Migration `20260421170000` — Batch 4.11 streak freeze + weekly recap |

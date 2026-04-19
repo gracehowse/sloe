@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import KeyboardSafeView from "@/components/KeyboardSafeView";
 
 function createAppleRawNonce(): string {
   const c = globalThis.crypto;
@@ -250,7 +251,9 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardSafeView
+      contentContainerStyle={[styles.container, { paddingTop: insets.top }]}
+    >
       {/* Brand */}
       <View style={styles.brandSection}>
         <View style={styles.brandCircle}>
@@ -357,6 +360,6 @@ export default function LoginScreen() {
           </Pressable>
         )}
       </View>
-    </View>
+    </KeyboardSafeView>
   );
 }

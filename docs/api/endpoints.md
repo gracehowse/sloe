@@ -223,6 +223,84 @@ Community barcode correction mapping.
 
 ---
 
+## Push — Weekly recap fan-out
+
+### `POST /api/push/weekly-recap`
+
+Server-to-server cron endpoint that fans out the weekly recap push to
+every opted-in user whose `profiles.expo_push_token` is non-null. Calls
+the Expo push API, which delivers via APNs (iOS) / FCM (Android). Shipped
+2026-04-19 — see `docs/testflight-feedback/resolved.md` entry "Server-side
+weekly recap push fan-out" for rationale.
+
+**Auth:** shared-secret header, NOT user auth.
+
+- Header: `X-Cron-Secret: <SUPPR_CRON_SECRET>` — must match
+  `process.env.SUPPR_CRON_SECRET` exactly. `401` on missing/wrong.
+- No Supabase session needed. Vercel crons are configured in
+  `vercel.json` at the repo root; each cron invocation must carry the
+  secret header.
+
+**Query parameters:**
+
+- `weekStartDay` *(optional)* — `monday` | `sunday`. When present, the
+  fan-out is filtered to profiles matching that cohort. Any other value
+  is ignored and the route fans out to both cohorts. The shipped Vercel
+  config runs one cron per cohort at 18:00 UTC on their respective
+  end-of-week days (Sunday for Monday-start, Saturday for Sunday-start).
+
+**Behaviour:**
+
+- Selects `profiles` where `weekly_recap_push_enabled = true` and
+  `expo_push_token IS NOT NULL`, capped at 5000 rows per invocation.
+- Skips rows whose `last_weekly_recap_push_sent_at` is within the last
+  6 days (dedupe across back-to-back cron runs).
+- Fans out via Expo push API in batches of 100, with a single retry on
+  5xx / network failure. No retry on 4xx.
+- For every successfully-ticketed user, stamps
+  `last_weekly_recap_push_sent_at = now()`.
+- For every ticket returned with `details.error === "DeviceNotRegistered"`
+  the route nulls the offending `profiles.expo_push_token` so we stop
+  pushing to dead installs.
+- Copy is aligned with the mobile local-push fallback in
+  `apps/mobile/lib/weeklyRecapPush.ts` — title `"Your week in Suppr"`,
+  body `"Tap to see your weekly recap — avg calories, protein, streak,
+  and weight trend."`, deep link `/progress`.
+
+**Response (success):**
+
+```json
+{
+  "ok": true,
+  "attempted": 128,
+  "succeeded": 124,
+  "deregistered": 3
+}
+```
+
+(`attempted - succeeded - deregistered` covers rows that came back with
+other `status: "error"` tickets — e.g. `MessageTooBig` — which are not
+stamped so the next cron re-tries them.)
+
+**Error responses:**
+
+- `401` — missing/wrong `X-Cron-Secret`
+- `503` — `SUPPR_CRON_SECRET` or `SUPABASE_SERVICE_ROLE_KEY` unset on
+  the server
+- `500` — Supabase select failed
+- `502` — Expo push API failed after the single retry
+
+**Env vars (production):**
+
+- `SUPPR_CRON_SECRET` — 32-byte random value, shared with Vercel cron
+  config. Generate with `openssl rand -hex 32`.
+- `SUPABASE_SERVICE_ROLE_KEY` — existing server-only key. The route
+  uses service-role access because the fan-out needs to read every
+  opted-in profile (RLS would hide other users' rows) and to write
+  back to `profiles` without a user session.
+
+---
+
 ## Related Documents
 - [Technical Architecture](../technical/architecture.md)
 - [Data Schema](../data/schema.md)

@@ -22,8 +22,10 @@
 
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { captureException } from "./errorTracking";
+import { LAST_PUSH_TOKEN_CACHE_KEY } from "./expoPushToken";
 import { nextRecapFireDate } from "./weeklyRecap";
 
 /** Identifier reused on every reschedule so we only ever hold one entry. */
@@ -80,6 +82,25 @@ export async function scheduleWeeklyRecapPush(
   await cancelWeeklyRecapPush();
 
   if (!enabled) return null;
+
+  // Server delivery wins when present. If a synced Expo push token is
+  // cached locally (written by `registerExpoPushTokenForUser`), the
+  // server cron at `/api/push/weekly-recap` owns weekly-recap delivery
+  // — scheduling a local notification here would produce two pings per
+  // week on the same device. Skip the local path in that case. Users
+  // without a token (permission denied, simulator, pre-upgrade installs)
+  // continue to get the local fallback so we don't regress a working
+  // flow while server delivery rolls out.
+  try {
+    const cachedToken = await AsyncStorage.getItem(LAST_PUSH_TOKEN_CACHE_KEY);
+    if (typeof cachedToken === "string" && cachedToken.length > 0) {
+      return null;
+    }
+  } catch {
+    // AsyncStorage read failed — fall through and schedule the local
+    // push. Worst case: temporary double-delivery until the next
+    // successful storage read.
+  }
 
   try {
     // Require permission. If not granted we simply skip — the user can

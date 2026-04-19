@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/push/weekly-recap?weekStartDay=monday",
+      "schedule": "0 18 * * 0"
+    },
+    {
+      "path": "/api/push/weekly-recap?weekStartDay=sunday",
+      "schedule": "0 18 * * 6"
+    }
+  ]
+}

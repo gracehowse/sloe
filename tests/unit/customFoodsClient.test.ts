@@ -313,6 +313,121 @@ describe("createCustomFood", () => {
       { label: "1 tbsp", grams: 12 },
     ]);
   });
+
+  // ── TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI` (2026-04-19) — round-trip
+  // the five new optional fields (natural serving → servings[0],
+  // servings_per_container, sugar / sat-fat / sodium, barcode).
+  it("persists the natural serving as servings[0] and the new micros + barcode", async () => {
+    let seenPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "insert:single") {
+          seenPayload = ctx.payload;
+          return {
+            data: sampleRow({
+              servings: [{ label: "1 slice", grams: 30 }],
+              servings_per_container: 8,
+              sugar_g: 4,
+              saturated_fat_g: 0.5,
+              sodium_mg: 120,
+              barcode: "5012345678900",
+            }),
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const out = await createCustomFood(sb as any, "u1", {
+      name: "Sliced bread",
+      calories: 240,
+      protein: 9,
+      carbs: 45,
+      fat: 3,
+      servings: [{ label: "1 slice", grams: 30 }],
+      servingsPerContainer: 8,
+      sugarG: 4,
+      saturatedFatG: 0.5,
+      sodiumMg: 120,
+      barcode: " 5012345678900 ", // trims
+    });
+    // Payload into the DB — snake_case, rounded per the UI precision rules.
+    expect(seenPayload.servings).toEqual([{ label: "1 slice", grams: 30 }]);
+    expect(seenPayload.servings_per_container).toBe(8);
+    expect(seenPayload.sugar_g).toBe(4);
+    expect(seenPayload.saturated_fat_g).toBe(0.5);
+    expect(seenPayload.sodium_mg).toBe(120);
+    expect(seenPayload.barcode).toBe("5012345678900");
+    // Returned row projects back into the camelCase domain shape.
+    expect(out.servings).toEqual([{ label: "1 slice", grams: 30 }]);
+    expect(out.servingsPerContainer).toBe(8);
+    expect(out.sugarG).toBe(4);
+    expect(out.saturatedFatG).toBe(0.5);
+    expect(out.sodiumMg).toBe(120);
+    expect(out.barcode).toBe("5012345678900");
+  });
+
+  it("rounds sugar / sat fat to 1dp and sodium to an integer mg", async () => {
+    let seenPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "insert:single") {
+          seenPayload = ctx.payload;
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await createCustomFood(sb as any, "u1", {
+      name: "Cheese",
+      calories: 100,
+      protein: 7,
+      carbs: 1,
+      fat: 8,
+      sugarG: 1.23,
+      saturatedFatG: 4.567,
+      sodiumMg: 182.4,
+    });
+    expect(seenPayload.sugar_g).toBe(1.2);
+    expect(seenPayload.saturated_fat_g).toBe(4.6);
+    expect(seenPayload.sodium_mg).toBe(182);
+  });
+
+  it("rejects a malformed barcode loudly (never silently drops)", async () => {
+    const sb = makeSupabase({});
+    await expect(
+      createCustomFood(sb as any, "u1", {
+        name: "Cereal",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        barcode: "12345", // 5 digits — not an allowed GTIN length
+      }),
+    ).rejects.toThrow(/valid 8, 12, 13, or 14-digit barcode/);
+  });
+
+  it("omits servings_per_container when absent or non-positive", async () => {
+    let seenPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "insert:single") {
+          seenPayload = ctx.payload;
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await createCustomFood(sb as any, "u1", {
+      name: "Muffin",
+      calories: 100,
+      protein: 2,
+      carbs: 20,
+      fat: 2,
+      servingsPerContainer: 0, // ignored — not positive
+    });
+    expect("servings_per_container" in seenPayload).toBe(false);
+  });
 });
 
 // ── updateCustomFood ────────────────────────────────────────────────
@@ -377,6 +492,72 @@ describe("updateCustomFood", () => {
     await expect(
       updateCustomFood(sb as any, "u1", "cf-1", { name: "   " }),
     ).rejects.toThrow(/name cannot be empty/);
+  });
+
+  // ── TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI` (2026-04-19) — the five
+  // new fields must round-trip through update with nullable semantics.
+  it("patches the new micros + packaging + barcode fields", async () => {
+    let payloadSeen: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "update:single") {
+          payloadSeen = ctx.payload;
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await updateCustomFood(sb as any, "u1", "cf-1", {
+      servingsPerContainer: 10,
+      sugarG: 2.37,
+      saturatedFatG: 1.2,
+      sodiumMg: 140,
+      barcode: "012345678905",
+    });
+    expect(payloadSeen.servings_per_container).toBe(10);
+    expect(payloadSeen.sugar_g).toBe(2.4);
+    expect(payloadSeen.saturated_fat_g).toBe(1.2);
+    expect(payloadSeen.sodium_mg).toBe(140);
+    expect(payloadSeen.barcode).toBe("012345678905");
+  });
+
+  it("clears micros + barcode + servings_per_container when patch provides null", async () => {
+    let payloadSeen: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "update:single") {
+          payloadSeen = ctx.payload;
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await updateCustomFood(sb as any, "u1", "cf-1", {
+      servingsPerContainer: null,
+      sugarG: null,
+      saturatedFatG: null,
+      sodiumMg: null,
+      barcode: null,
+    });
+    expect(payloadSeen.servings_per_container).toBeNull();
+    expect(payloadSeen.sugar_g).toBeNull();
+    expect(payloadSeen.saturated_fat_g).toBeNull();
+    expect(payloadSeen.sodium_mg).toBeNull();
+    expect(payloadSeen.barcode).toBeNull();
+  });
+
+  it("rejects a non-positive servings_per_container on update", async () => {
+    const sb = makeSupabase({});
+    await expect(
+      updateCustomFood(sb as any, "u1", "cf-1", { servingsPerContainer: 0 }),
+    ).rejects.toThrow(/servingsPerContainer must be > 0 or null/);
+  });
+
+  it("rejects a malformed barcode on update (soft error, never silent)", async () => {
+    const sb = makeSupabase({});
+    await expect(
+      updateCustomFood(sb as any, "u1", "cf-1", { barcode: "12345" }),
+    ).rejects.toThrow(/valid 8, 12, 13, or 14-digit barcode/);
   });
 });
 

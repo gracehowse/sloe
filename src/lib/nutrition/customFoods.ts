@@ -37,7 +37,28 @@ export type CustomFood = {
   fat: number;
   /** Optional: homemade items often genuinely lack a fiber value. */
   fiber?: number;
+  /**
+   * Natural-portion shortcuts, e.g. `[{"label":"1 slice","grams":30}]`.
+   * By convention the first entry — when present — is treated as the
+   * canonical natural serving (matches MFP / LoseIt's "1 slice" default).
+   */
   servings: CustomFoodServing[];
+  /**
+   * Optional "servings per container" for packaged foods. Captured
+   * verbatim from the label; not derivable from `servings` because the
+   * serving array describes natural shortcuts (1 slice, 1 bowl), not
+   * package topology. Display-only for now — no calculation branching.
+   */
+  servingsPerContainer?: number;
+  /** Optional detailed micros — grams for sugar / sat fat, mg for sodium.
+   * All nullable because a homemade or unlabelled food genuinely may
+   * not have these values and we refuse to invent nutrition data. */
+  sugarG?: number;
+  saturatedFatG?: number;
+  sodiumMg?: number;
+  /** Optional barcode (8/12/13/14-digit GTIN). Text on purpose — leading
+   * zeros matter on UPC-A and we do not coerce to number. */
+  barcode?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -82,6 +103,47 @@ export type CustomFoodMacrosPer100g = {
 
 /** Maximum length of a custom-food name. Matches the DB CHECK. */
 export const CUSTOM_FOOD_NAME_MAX = 120;
+
+/**
+ * Valid barcode lengths for a custom food: EAN-8, UPC-A (12), EAN-13,
+ * GTIN-14. Everything else rejects with an inline error — we never
+ * silently drop a bad barcode, because the user's intent is clearly
+ * "this is the package" and a mismatched number would silently break
+ * the scan-the-same-package path.
+ */
+export const CUSTOM_FOOD_BARCODE_LENGTHS: ReadonlyArray<number> = [8, 12, 13, 14];
+
+/**
+ * Validate + normalise a barcode string. Trims, rejects whitespace in
+ * the middle, accepts only pure digits of an allowed length. Empty (or
+ * whitespace-only) input returns `{ ok: true, value: undefined }` — the
+ * form is optional.
+ *
+ * Returned shape:
+ *  - `ok: true`  — either `value` is a canonical numeric string, or
+ *                  `value` is `undefined` meaning "leave unset".
+ *  - `ok: false` — `reason` carries the copy the UI can surface inline.
+ */
+export function validateCustomFoodBarcode(
+  raw: string | null | undefined,
+): { ok: true; value: string | undefined } | { ok: false; reason: string } {
+  if (raw == null) return { ok: true, value: undefined };
+  const trimmed = String(raw).trim();
+  if (!trimmed) return { ok: true, value: undefined };
+  if (!/^\d+$/.test(trimmed)) {
+    return {
+      ok: false,
+      reason: "Enter a valid 8, 12, 13, or 14-digit barcode, or leave blank.",
+    };
+  }
+  if (!CUSTOM_FOOD_BARCODE_LENGTHS.includes(trimmed.length)) {
+    return {
+      ok: false,
+      reason: "Enter a valid 8, 12, 13, or 14-digit barcode, or leave blank.",
+    };
+  }
+  return { ok: true, value: trimmed };
+}
 
 function safeNumber(n: unknown): number {
   const v = typeof n === "number" ? n : Number(n);
@@ -187,15 +249,25 @@ export function normaliseCustomFoodName(name: string): string {
  * can scale it using the same `scaleMacros` path as USDA/OFF results.
  *
  * Defensive: if `baseGrams` is non-finite or ≤ 0 we fall back to 100 so
- * the caller never divides by zero. Fiber is echoed as `0` (not omitted)
- * when the food has no fiber value so downstream code can rely on the
- * shape. `sugarG` / `sodiumMg` are always zero — custom foods don't
- * collect them. Math deliberately mirrors `scaleMacrosForGrams`
- * rounding so scaled custom foods and edit-preview output agree to the
- * byte.
+ * the caller never divides by zero. Fiber / sugar / sodium are echoed as
+ * `0` (not omitted) when the food has no saved value so downstream code
+ * can rely on the shape; they scale when the user did save them
+ * (TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI`). Math deliberately mirrors
+ * `scaleMacrosForGrams` rounding so scaled custom foods and edit-preview
+ * output agree to the byte.
  */
 export function customFoodToMacrosPer100g(
-  food: Pick<CustomFood, "baseGrams" | "calories" | "protein" | "carbs" | "fat" | "fiber">,
+  food: Pick<
+    CustomFood,
+    | "baseGrams"
+    | "calories"
+    | "protein"
+    | "carbs"
+    | "fat"
+    | "fiber"
+    | "sugarG"
+    | "sodiumMg"
+  >,
 ): CustomFoodMacrosPer100g {
   const baseRaw = safeNumber(food.baseGrams);
   const base = Number.isFinite(baseRaw) && baseRaw > 0 ? baseRaw : 100;
@@ -208,8 +280,14 @@ export function customFoodToMacrosPer100g(
     fiberG: typeof food.fiber === "number" && Number.isFinite(food.fiber)
       ? roundTo(safeNonNegative(food.fiber) * factor, 1)
       : 0,
-    sugarG: 0,
-    sodiumMg: 0,
+    sugarG:
+      typeof food.sugarG === "number" && Number.isFinite(food.sugarG)
+        ? roundTo(safeNonNegative(food.sugarG) * factor, 1)
+        : 0,
+    sodiumMg:
+      typeof food.sodiumMg === "number" && Number.isFinite(food.sodiumMg)
+        ? Math.round(safeNonNegative(food.sodiumMg) * factor)
+        : 0,
   };
 }
 
@@ -256,4 +334,58 @@ export function dedupeServings(servings: CustomFoodServing[]): CustomFoodServing
     out.push({ label, grams: roundTo(grams, 2) });
   }
   return out;
+}
+
+/**
+ * Derive the `PrimaryServing` for a custom food from its first saved
+ * serving, if any. Connects the TestFlight A2 work (natural-portion
+ * default in the picker) with fix B: a custom food saved with
+ * `servings: [{label:"1 slice",grams:30}]` surfaces in search with the
+ * same primary / secondary display as a Pret sandwich or OFF item.
+ *
+ * Returns `null` when the food has no valid first serving. Deliberately
+ * does not fall back to `baseGrams` — `{"baseGrams":100}` alone is not
+ * a natural portion and would re-introduce the "per 100 g" primary line
+ * fix A2 removed.
+ *
+ * Label is echoed verbatim (after trim / whitespace collapse) so
+ * "1 slice" stays "1 slice" rather than being lowercased into `1 slice`
+ * or prefixed with `"1 "`.
+ */
+export function customFoodToPrimaryServing(
+  food: Pick<
+    CustomFood,
+    | "baseGrams"
+    | "calories"
+    | "protein"
+    | "carbs"
+    | "fat"
+    | "fiber"
+    | "sugarG"
+    | "sodiumMg"
+    | "servings"
+  >,
+): {
+  label: string;
+  grams: number;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+} | null {
+  const cleaned = dedupeServings(food.servings ?? []);
+  const first = cleaned[0];
+  if (!first) return null;
+  const grams = safeNumber(first.grams);
+  if (!(grams > 0)) return null;
+  const per100g = customFoodToMacrosPer100g(food);
+  const factor = grams / 100;
+  return {
+    label: first.label,
+    grams: roundTo(grams, 1),
+    kcal: Math.round(per100g.calories * factor),
+    protein: roundTo(per100g.protein * factor, 1),
+    carbs: roundTo(per100g.carbs * factor, 1),
+    fat: roundTo(per100g.fat * factor, 1),
+  };
 }

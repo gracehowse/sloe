@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -964,9 +964,10 @@ export default function OnboardingScreen() {
   })();
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardSafeView
+      scroll={false}
+      dismissOnBackgroundTap={false}
       style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {/* Top bar */}
       <View style={styles.topBar}>
@@ -1014,6 +1015,6 @@ export default function OnboardingScreen() {
           </Pressable>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }

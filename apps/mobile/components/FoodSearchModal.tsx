@@ -42,12 +42,14 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
+  customFoodToPrimaryServing,
   type CustomFood,
 } from "../../../src/lib/nutrition/customFoods";
 import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "./CreateCustomFoodSheet";
 import Badge from "./Badge";
+import KeyboardSafeView from "./KeyboardSafeView";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
@@ -234,16 +236,27 @@ function resolveInitialPortion(
 
 /** Adapter that wraps the shared `customFoodToMacrosPer100g` helper into a
  *  SearchRow — mobile keeps the adapter local because it also attaches the
- *  `_custom` reference the long-press action-sheet needs. */
+ *  `_custom` reference the long-press action-sheet needs.
+ *
+ *  `primaryServing` is populated from the food's first saved serving via
+ *  `customFoodToPrimaryServing` so custom-food rows in search render with
+ *  the same natural-portion primary line A2 gave Pret sandwiches — e.g.
+ *  "Homemade granola · 120 kcal · 1 slice (30 g)" rather than
+ *  "… · 400 kcal · per 100 g". Returns `null` when the food has no
+ *  natural serving; the row then falls back to the per-100 g display
+ *  path unchanged. (TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI`, 2026-04-19 —
+ *  fix B integrates with fix A2.) */
 function customFoodToRow(food: CustomFood): SearchRow {
   const macrosPer100g = customFoodToMacrosPer100g(food);
   const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
+  const primaryServing = customFoodToPrimaryServing(food);
   return {
     key: `custom-${food.id}`,
     name: displayName,
     calsPer100g: macrosPer100g.calories,
     macrosPer100g,
     verified: false,
+    primaryServing: primaryServing ?? null,
     _source: "CUSTOM",
     _custom: food,
   };
@@ -873,7 +886,11 @@ export default function FoodSearchModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <KeyboardSafeView
+        scroll={false}
+        dismissOnBackgroundTap={false}
+        style={[styles.container, { paddingTop: insets.top + 8 }]}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Search Foods</Text>
           <Pressable onPress={onClose} hitSlop={12}>
@@ -1170,7 +1187,7 @@ export default function FoodSearchModal({
             }}
           />
         )}
-      </View>
+      </KeyboardSafeView>
     </Modal>
   );
 }

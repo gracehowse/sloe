@@ -10,10 +10,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
+  customFoodToPrimaryServing,
   dedupeServings,
   normaliseCustomFoodName,
   resolvePortionToGrams,
   scaleMacrosForGrams,
+  validateCustomFoodBarcode,
   type CustomFood,
 } from "@/lib/nutrition/customFoods";
 
@@ -422,5 +424,194 @@ describe("buildCustomFoodPortions", () => {
     // Rare but possible: a partially-hydrated row from a stale cache.
     const out = buildCustomFoodPortions({ servings: undefined as unknown as CustomFood["servings"] });
     expect(out).toEqual([{ label: "g", gramWeight: 1, amount: 1 }]);
+  });
+});
+
+// ── Barcode validation ──────────────────────────────────────────────
+//
+// TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI` (2026-04-19). Users told us the
+// custom-food form was missing a barcode field. We accept only the four
+// GTIN lengths (EAN-8, UPC-A, EAN-13, GTIN-14) and reject anything else
+// with an inline error. Empty is OK — the form is optional.
+describe("validateCustomFoodBarcode", () => {
+  it("accepts empty / whitespace / nullish as 'leave unset'", () => {
+    expect(validateCustomFoodBarcode("")).toEqual({ ok: true, value: undefined });
+    expect(validateCustomFoodBarcode("   ")).toEqual({ ok: true, value: undefined });
+    expect(validateCustomFoodBarcode(null)).toEqual({ ok: true, value: undefined });
+    expect(validateCustomFoodBarcode(undefined)).toEqual({ ok: true, value: undefined });
+  });
+
+  it("accepts the four allowed GTIN lengths (8 / 12 / 13 / 14) and trims", () => {
+    expect(validateCustomFoodBarcode("12345678")).toEqual({
+      ok: true,
+      value: "12345678",
+    });
+    expect(validateCustomFoodBarcode(" 012345678905 ")).toEqual({
+      ok: true,
+      value: "012345678905",
+    });
+    expect(validateCustomFoodBarcode("5012345678900")).toEqual({
+      ok: true,
+      value: "5012345678900",
+    });
+    expect(validateCustomFoodBarcode("12345678901234")).toEqual({
+      ok: true,
+      value: "12345678901234",
+    });
+  });
+
+  it("rejects lengths outside the GTIN set", () => {
+    // 7 chars — too short.
+    expect(validateCustomFoodBarcode("1234567")).toMatchObject({ ok: false });
+    // 9 chars — neither EAN-8 nor UPC-A.
+    expect(validateCustomFoodBarcode("123456789")).toMatchObject({ ok: false });
+    // 15 chars — over GTIN-14.
+    expect(validateCustomFoodBarcode("123456789012345")).toMatchObject({ ok: false });
+  });
+
+  it("rejects non-digit input and internal whitespace, with user-facing copy", () => {
+    const hyphen = validateCustomFoodBarcode("012-345-678-905");
+    expect(hyphen.ok).toBe(false);
+    if (!hyphen.ok) {
+      expect(hyphen.reason).toBe(
+        "Enter a valid 8, 12, 13, or 14-digit barcode, or leave blank.",
+      );
+    }
+    expect(validateCustomFoodBarcode("abcd1234")).toMatchObject({ ok: false });
+    // Internal whitespace after trim is still rejected (digits-only regex).
+    expect(validateCustomFoodBarcode("123 4567")).toMatchObject({ ok: false });
+    // Empty-after-digits is the unset path, not an error.
+    expect(validateCustomFoodBarcode("\t")).toEqual({ ok: true, value: undefined });
+  });
+});
+
+// ── customFoodToMacrosPer100g respects new micros ───────────────────
+//
+// Sugar + sodium round-trip through the per-100g projection so search
+// rows + log-time scaling don't silently zero out what the user saved.
+describe("customFoodToMacrosPer100g — sugar / sodium passthrough", () => {
+  it("scales sugar (1dp) and sodium (integer mg) alongside macros", () => {
+    const out = customFoodToMacrosPer100g({
+      baseGrams: 80,
+      calories: 200,
+      protein: 8,
+      carbs: 20,
+      fat: 6,
+      sugarG: 4,
+      sodiumMg: 160,
+    });
+    // 100 / 80 = 1.25 factor applied to every value.
+    expect(out.sugarG).toBe(5);
+    expect(out.sodiumMg).toBe(200);
+  });
+
+  it("echoes sugar / sodium as 0 when the food has no saved values", () => {
+    const out = customFoodToMacrosPer100g({
+      baseGrams: 100,
+      calories: 100,
+      protein: 5,
+      carbs: 10,
+      fat: 2,
+    });
+    expect(out.sugarG).toBe(0);
+    expect(out.sodiumMg).toBe(0);
+  });
+});
+
+// ── Natural serving → PrimaryServing (A2 × B integration) ───────────
+//
+// TestFlight `AE52_fIRZ-ZIupmoJ8T4yaI` (fix B) wires fix A2's natural-
+// portion primary display into custom foods. A custom food saved with
+// `servings: [{label:"1 slice", grams:30}]` and per-100g macros of
+// `400 kcal / 10 P / 60 C / 12 F` must surface a PrimaryServing with
+// the same per-portion numbers in both the search row and the picker.
+describe("customFoodToPrimaryServing", () => {
+  const granola = {
+    baseGrams: 100,
+    calories: 400,
+    protein: 10,
+    carbs: 60,
+    fat: 12,
+    servings: [{ label: "1 slice", grams: 30 }],
+  };
+
+  it("derives a PrimaryServing from the first saved serving", () => {
+    expect(customFoodToPrimaryServing(granola)).toEqual({
+      label: "1 slice",
+      grams: 30,
+      kcal: 120,
+      protein: 3,
+      carbs: 18,
+      fat: 3.6,
+    });
+  });
+
+  it("scales from a non-100g base using the per-100g projection", () => {
+    // 30g → 400kcal means per-100g rounds to 1333. A "1 bowl = 80 g"
+    // portion then scales to 1333 × 0.8 = 1066.4, rounded to 1066.
+    // Pins the two-step (baseGrams → per100g → portion) rounding path
+    // so custom-food search rows and per-portion previews agree to the
+    // byte with the same path USDA/OFF use.
+    const food = {
+      baseGrams: 30,
+      calories: 400,
+      protein: 6,
+      carbs: 70,
+      fat: 10,
+      servings: [{ label: "1 bowl", grams: 80 }],
+    };
+    const out = customFoodToPrimaryServing(food);
+    expect(out).not.toBeNull();
+    expect(out!.label).toBe("1 bowl");
+    expect(out!.grams).toBe(80);
+    expect(out!.kcal).toBe(1066);
+  });
+
+  it("returns null when the food has no servings (fall back to /100g display)", () => {
+    expect(
+      customFoodToPrimaryServing({
+        baseGrams: 100,
+        calories: 400,
+        protein: 10,
+        carbs: 60,
+        fat: 12,
+        servings: [],
+      }),
+    ).toBeNull();
+  });
+
+  it("ignores invalid first servings (empty label / 0 grams) and falls back", () => {
+    expect(
+      customFoodToPrimaryServing({
+        baseGrams: 100,
+        calories: 400,
+        protein: 10,
+        carbs: 60,
+        fat: 12,
+        servings: [{ label: "  ", grams: 30 }],
+      }),
+    ).toBeNull();
+    expect(
+      customFoodToPrimaryServing({
+        baseGrams: 100,
+        calories: 400,
+        protein: 10,
+        carbs: 60,
+        fat: 12,
+        servings: [{ label: "1 slice", grams: 0 }],
+      }),
+    ).toBeNull();
+  });
+
+  it("preserves the label casing the user saved (no forced lowercase)", () => {
+    const out = customFoodToPrimaryServing({
+      baseGrams: 100,
+      calories: 100,
+      protein: 1,
+      carbs: 20,
+      fat: 1,
+      servings: [{ label: "1 Slice", grams: 30 }],
+    });
+    expect(out?.label).toBe("1 Slice");
   });
 });
