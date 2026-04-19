@@ -1,6 +1,40 @@
 import type Stripe from "stripe";
 import { tierFromStripePriceIds } from "@/lib/stripe/tierFromPrice";
 import { updateProfileTierServiceRole } from "@/lib/stripe/updateProfileTier";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
+
+/**
+ * Persist the Stripe customer ID onto `profiles.stripe_customer_id` so
+ * `/account/billing` can open the Stripe Customer Portal without an
+ * extra Stripe API round-trip to resolve customer → subscription.
+ *
+ * `session.customer` is either a string customer ID (`cus_…`) or an
+ * expanded `Customer` object, depending on whether the webhook
+ * subscriber expanded the field. We normalise to the ID string.
+ *
+ * Failure is logged but non-throwing — tier update is the critical
+ * write and must not regress on a cosmetic column write.
+ */
+async function persistStripeCustomerId(
+  userId: string,
+  customerRef: Stripe.Checkout.Session["customer"],
+): Promise<void> {
+  const customerId =
+    typeof customerRef === "string" ? customerRef : customerRef?.id ?? null;
+  if (!customerId) return;
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return;
+  const { error } = await sb
+    .from("profiles")
+    .update({ stripe_customer_id: customerId })
+    .eq("id", userId);
+  if (error) {
+    console.warn(
+      "[stripe_webhook] failed to persist stripe_customer_id",
+      error.message,
+    );
+  }
+}
 
 function isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
@@ -84,6 +118,12 @@ export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Ev
       if (session.mode !== "subscription") break;
       const userId = resolveUserIdFromCheckoutSession(session);
       if (!userId) break;
+      // Persist the Stripe customer ID so `/account/billing` can open
+      // the Customer Portal for this user without a secondary Stripe
+      // API call. Runs before the tier update so a failure on the tier
+      // update doesn't leave us without a customer id; the column
+      // write is best-effort (warn-only) by design.
+      await persistStripeCustomerId(userId, session.customer);
       const subRef = session.subscription;
       const subId = typeof subRef === "string" ? subRef : subRef?.id;
       if (!subId) break;

@@ -5,7 +5,12 @@ Suppr uses **two purchase systems** by design; they must stay aligned on **entit
 ## Web (Next.js)
 
 - **Provider:** Stripe Checkout / Customer Portal (see app pricing and webhook handlers).
-- **Truth:** Stripe webhook updates `profiles.user_tier` after payment events.
+- **Truth:** Stripe webhook updates `profiles.user_tier` after payment events. The same `checkout.session.completed` webhook captures `session.customer` onto `profiles.stripe_customer_id` so the billing portal can open without a Stripe API lookup round-trip (round 3, 2026-04-19).
+- **Billing portal route:** `/account/billing` is a server component (`app/account/billing/page.tsx`) that opens the Stripe Customer Portal for the signed-in user.
+  - Unauthenticated → redirects to `/login?redirect=/account/billing`.
+  - No `stripe_customer_id` (Free users, or paid users pre-migration) → redirects to `/pricing?ref=billing`.
+  - `STRIPE_SECRET_KEY` unset or Stripe API error → renders a static support-email fallback (`support@suppr-club.com`). Never 404, never 5xx.
+  - Decision logic is unit tested via the pure `resolveBillingPortalOutcome` helper in `src/lib/stripe/billingPortalDecision.ts` — see `tests/unit/accountBilling.test.tsx`.
 - **Copy:** Pricing page and upgrade modals should describe **card / web** checkout, not App Store or Google Play.
 
 ## Mobile (Expo)

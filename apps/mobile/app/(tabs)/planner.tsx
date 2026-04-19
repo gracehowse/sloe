@@ -24,6 +24,11 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+import {
+  buildDayTotalVsGoalLine,
+  formatDayTotalCell,
+  type DayTotalTone,
+} from "../../../../src/lib/planning/dayTotalVsGoal";
 import Badge from "@/components/Badge";
 import {
   countLeftoversOfRecipe,
@@ -1063,9 +1068,9 @@ export default function PlannerScreen() {
                     style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
-                        Alert.alert("Upgrade required", "Multi-day plans are available on Base and Pro plans.", [
+                        Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available on Base and above.", [
                           { text: "Continue for free", style: "cancel" },
-                          { text: "See plans", onPress: () => router.push("/paywall" as any) },
+                          { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
                         ]);
                         return;
                       }
@@ -1148,12 +1153,61 @@ export default function PlannerScreen() {
         )}
 
         {/* Plan display */}
-        {plan && plan.map((dp, dayIdx) => (
+        {plan && plan.map((dp, dayIdx) => {
+          // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
+          // 2026-04-19): "Plan doesn't tell me how close it is to my
+          // macro targets." The shared helper builds an explicit
+          // "Day total · X / Y kcal · P / C / F" line with symmetric
+          // ±10% / ±20% tolerance bands. Totals respect per-meal
+          // portionMultiplier via dayPlanTotalsFromMeals. When the
+          // user has no goals yet (hasTargets=false) we omit the line
+          // entirely — never show "—". `planTargets` falsy → skip
+          // the helper too (gate belt-and-braces).
+          const goalLine = planTargets
+            ? buildDayTotalVsGoalLine(dp.meals, {
+                calories: planTargets.calories,
+                protein: planTargets.protein,
+                carbs: planTargets.carbs,
+                fat: planTargets.fat,
+              })
+            : null;
+          const toneColor = (tone: DayTotalTone): string =>
+            tone === "neutral"
+              ? colors.textSecondary
+              : tone === "amber"
+                ? Accent.warning
+                : Accent.destructive;
+          return (
           <View key={dp.day} style={styles.card}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>Day {dp.day}</Text>
               <Text style={styles.dayTotals}>{Math.round(dp.totals.calories)} kcal</Text>
             </View>
+            {goalLine && goalLine.hasTargets && (
+              <View
+                accessibilityRole="text"
+                accessibilityLabel={`Day total ${Math.round(goalLine.totals.calories)} of ${planTargets!.calories} kcal, protein ${Math.round(goalLine.totals.protein)} of ${planTargets!.protein} grams, carbs ${Math.round(goalLine.totals.carbs)} of ${planTargets!.carbs} grams, fat ${Math.round(goalLine.totals.fat)} of ${planTargets!.fat} grams`}
+                style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 2, marginBottom: 6 }}
+                testID={`day-total-vs-goal-${dp.day}`}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginRight: 4 }}>
+                  Day total
+                </Text>
+                {goalLine.cells.map((cell) => (
+                  <Text
+                    key={cell.key}
+                    style={{
+                      fontSize: 12,
+                      fontVariant: ["tabular-nums"],
+                      color: toneColor(cell.tone),
+                    }}
+                  >
+                    {" · "}
+                    {formatDayTotalCell(cell)}
+                  </Text>
+                ))}
+              </View>
+            )}
             {planTargets && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
                 {([
@@ -1447,7 +1501,8 @@ export default function PlannerScreen() {
               </Pressable>
             ))}
           </View>
-        ))}
+          );
+        })}
 
         {/* Shopping list CTA */}
         {plan && (

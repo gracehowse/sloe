@@ -233,9 +233,39 @@ function extractRecipeObjects(node: unknown): Record<string, unknown>[] {
   return [];
 }
 
+/**
+ * Hostnames we will not persist as `recipes.image_url`. Hotlinking publisher
+ * CDN imagery on a commercial SaaS is direct reproduction under 17 USC § 106
+ * (and UK CDPA 1988 § 17, § 19). When a JSON-LD image points at one of these
+ * hosts we drop it; the recipe still imports with a placeholder, and the user
+ * can still navigate to `source_url` to see the original photography.
+ */
+const BLOCKED_IMAGE_HOSTS = [
+  "images.immediate.co.uk",
+  "bbcgoodfood.com",
+  "cdninstagram.com",
+  "fbcdn.net",
+  "tiktokcdn.com",
+  "tiktokcdn-us.com",
+  "ytimg.com",
+];
+
+function isBlockedImageHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return BLOCKED_IMAGE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`));
+  } catch {
+    return false;
+  }
+}
+
 function firstImageUrl(image: unknown): string | null {
   if (image == null) return null;
-  if (typeof image === "string") return image.trim() || null;
+  if (typeof image === "string") {
+    const trimmed = image.trim();
+    if (!trimmed) return null;
+    return isBlockedImageHost(trimmed) ? null : trimmed;
+  }
   if (Array.isArray(image)) {
     for (const x of image) {
       const u = firstImageUrl(x);
@@ -245,7 +275,11 @@ function firstImageUrl(image: unknown): string | null {
   }
   if (typeof image === "object" && image !== null) {
     const o = image as Record<string, unknown>;
-    if (typeof o.url === "string") return o.url.trim() || null;
+    if (typeof o.url === "string") {
+      const trimmed = o.url.trim();
+      if (!trimmed) return null;
+      return isBlockedImageHost(trimmed) ? null : trimmed;
+    }
   }
   return null;
 }

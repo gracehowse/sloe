@@ -24,6 +24,10 @@ import type {
   WeeklyRecap,
 } from "../../../lib/nutrition/weeklyRecap";
 import { formatRecapForShare } from "../../../lib/nutrition/weeklyRecap";
+import {
+  formatMaintenanceRecapLine,
+  type ResolvedMaintenance,
+} from "../../../lib/nutrition/resolveMaintenance";
 import { selectMostFrequentSlotSeed } from "../../../lib/nutrition/usualMealHint";
 import type { FoodHistoryMealLike } from "../../../lib/nutrition/foodHistory";
 import type { SavedMealItem } from "../../../lib/nutrition/savedMeals";
@@ -63,6 +67,17 @@ export interface WeeklyRecapCardProps {
     slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
     seedItems: Array<Omit<SavedMealItem, "id" | "position">>,
   ) => void;
+  /**
+   * Action 5 Item 7 (2026-04-19) — resolved maintenance for the week.
+   * When supplied AND `formatMaintenanceRecapLine` returns a non-null
+   * string (adaptive branch won, confidence ≥ medium, formula known and
+   * differs), the card surfaces a one-line "Your maintenance landed
+   * at X kcal this week (formula said Y)." between the stat row and
+   * the share button. Suppressed in every other case — the formula
+   * fallback would say "landed at X (formula said X)" which isn't
+   * informative.
+   */
+  maintenance?: ResolvedMaintenance | null;
 }
 
 export function WeeklyRecapCard({
@@ -73,6 +88,7 @@ export function WeeklyRecapCard({
   onStartUsualMealSave,
   byDay,
   onOpenSaveCombo,
+  maintenance,
 }: WeeklyRecapCardProps) {
   const shareText = useMemo(() => formatRecapForShare(recap), [recap]);
 
@@ -182,6 +198,26 @@ export function WeeklyRecapCard({
   const weightCopy = hasWeight
     ? `${recap.weightDeltaKg! > 0 ? "+" : ""}${recap.weightDeltaKg} kg`
     : "No weigh-ins this week";
+  // Action 13 Item #13 (2026-04-19) — relabel the weight headline from
+  // "Change this week" (which sounds like a smoothed average) to a
+  // plain "First → Last weigh-in" line that names what the user is
+  // actually reading. Suppressed when we don't have both endpoints.
+  const weightFirstLastLine =
+    recap.weightFirstKg != null &&
+    recap.weightLastKg != null &&
+    recap.weightDeltaKg != null
+      ? `First → Last weigh-in: ${recap.weightFirstKg} → ${recap.weightLastKg} kg (${
+          recap.weightDeltaKg > 0 ? "+" : ""
+        }${recap.weightDeltaKg} kg)`
+      : null;
+
+  // Action 5 Item 7 — adaptive-vs-formula one-liner. `null` when the
+  // line should not render (formula fallback, low confidence, or values
+  // identical). Memoised so referential equality keeps React quiet.
+  const maintenanceLine = useMemo(
+    () => formatMaintenanceRecapLine(maintenance),
+    [maintenance],
+  );
 
   return (
     <section
@@ -246,14 +282,38 @@ export function WeeklyRecapCard({
         <Stat
           label="Weight"
           value={weightCopy}
-          hint={hasWeight ? "change this week" : "log weight any day"}
+          hint={hasWeight ? "first → last weigh-in" : "log weight any day"}
           muted={!hasWeight}
         />
       </div>
 
+      {/* Action 13 Item #13 (2026-04-19) — explicit "First → Last
+          weigh-in" line. Replaces the old "change this week" framing
+          which read as a smoothed average; the underlying number was
+          actually the first vs last weigh-in difference, with up to
+          7 days of water/glycogen noise embedded. Naming it explicitly
+          lets the user discount the noise rather than read the number
+          as a multi-day average. */}
+      {weightFirstLastLine ? (
+        <p
+          className="text-xs text-muted-foreground mb-4"
+          data-testid="weekly-recap-weight-first-last"
+        >
+          {weightFirstLastLine}
+        </p>
+      ) : null}
+
       {recap.bestDay ? (
-        <p className="text-xs text-muted-foreground mb-4">
-          Best day — <span className="text-foreground font-semibold">{recap.bestDay.label}</span>
+        /* Action 13 Item #9 (2026-04-19) — relabelled from "Best day"
+           (highest protein) to "Closest to target" (smallest summed
+           L1 deviation across logged macros). The function name in
+           the recap type stays `bestDay` for back-compat with the
+           share-string and analytics events. */
+        <p
+          className="text-xs text-muted-foreground mb-4"
+          data-testid="weekly-recap-closest-to-target"
+        >
+          Closest to target — <span className="text-foreground font-semibold">{recap.bestDay.label}</span>
           {" · "}
           {recap.bestDay.protein}g protein, {recap.bestDay.calories} kcal
         </p>
@@ -278,8 +338,16 @@ export function WeeklyRecapCard({
           <p className="text-[13px] font-semibold text-foreground">
             Got a usual {promptDisplaySlot.toLowerCase()}?
           </p>
+          {/* Action 5 Item 8 (2026-04-19) — when the loosened gate
+              fires, the helper passes a `repeats` count. Surface it so
+              the user sees concrete evidence ("logged the same one 4
+              times in 2 weeks") rather than a generic prompt. Falls
+              back to the generic line for the original zero-saved-meals
+              path which doesn't carry a repeat count. */}
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Save it once, log it in one tap.
+            {usualMealInsight.repeats && usualMealInsight.repeats >= 3
+              ? `You've logged the same one ${usualMealInsight.repeats} times in 2 weeks.`
+              : "Save it once, log it in one tap."}
           </p>
           {onStartUsualMealSave || onOpenSaveCombo ? (
             <button
@@ -293,6 +361,17 @@ export function WeeklyRecapCard({
             </button>
           ) : null}
         </div>
+      ) : null}
+
+      {/* Action 5 Item 7 (2026-04-19) — adaptive-vs-formula one-liner.
+          Suppressed unless adaptive won and differs from formula. */}
+      {maintenanceLine ? (
+        <p
+          className="text-xs text-muted-foreground mb-4"
+          data-testid="weekly-recap-maintenance-line"
+        >
+          {maintenanceLine}
+        </p>
       ) : null}
 
       <div className="flex items-center gap-2">

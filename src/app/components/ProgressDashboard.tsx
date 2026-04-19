@@ -19,14 +19,15 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight } from "../../lib/weightProjection.ts";
+import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
-import { buildWeekStats } from "../../lib/nutrition/progressWeekReport.ts";
+import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "../../lib/nutrition/progressWeekReport.ts";
+import { computeWeightTrendCopy } from "../../lib/nutrition/weightTrendTile.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
   availableFreezes,
@@ -236,6 +237,19 @@ function ProgressDashboardContent() {
       setIsAdaptive(eff.isAdaptive);
     }
 
+    // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): unblock
+    // first paint here. `daily_targets` was previously awaited in
+    // series with the profile read — that turned `loading` into a
+    // `profile + daily_targets` RTT, past the 1s budget on warm
+    // loads. Mirrors the mobile fix in
+    // `apps/mobile/app/(tabs)/progress.tsx` so web and mobile unblock
+    // first paint at the same point. `buildWeekStats` inherits the
+    // current `targets` wherever the snapshot map has no entry, so
+    // initial numbers are correct; a past-day bar colour may briefly
+    // reflect the current plan and flip once snapshots arrive (only
+    // if the user edited their plan mid-week).
+    setLoading(false);
+
     // F-2 — fetch `daily_targets` for this week's 7 day keys so past
     // days don't move when the user later edits their plan. Days with
     // no snapshot (pre-migration) keep `null` in the map and the UI
@@ -256,11 +270,14 @@ function ProgressDashboardContent() {
         const day = String(d.getDate()).padStart(2, "0");
         weekKeys.push(`${y}-${m}-${day}`);
       }
-      const snapshots = await getDailyTargets(supabase, authedUserId, weekKeys);
-      setDailyTargetsByDay(snapshots);
+      void getDailyTargets(supabase, authedUserId, weekKeys)
+        .then((snapshots) => {
+          setDailyTargetsByDay(snapshots);
+        })
+        .catch(() => {
+          /* fallback already in place (empty map → current targets). */
+        });
     }
-
-    setLoading(false);
   }, [authedUserId]);
 
   useEffect(() => {
@@ -399,17 +416,34 @@ function ProgressDashboardContent() {
 
   // F-2 — each row carries its own target so the "over/under" colour
   // on the bar chart reflects the frozen target for the day.
+  // Action 5 Item 2 (2026-04-19) — preserve `key` so the chart can dim
+  // *today's* bar (matched on `dateKey === todayKey()`) rather than
+  // hard-coding the last index. For Monday-start users on Wednesday the
+  // last index is Sunday (a future day) — dimming index 6 was wrong.
   const dailyCaloriesData = weekStatsBundle.days.map((d) => ({
+    key: d.key,
     day: d.label,
     calories: Math.round(d.calories),
     target: d.targetCalories,
+    // Action 13 Item #11 (2026-04-19) — surface whether this day's
+    // target is a real `daily_targets` snapshot or the current-target
+    // fallback. The chart uses this to add a subtle striped border on
+    // approximate days so the user can tell the bar's colour decision
+    // wasn't necessarily made against the target they had at the time.
+    isSnapshot: d.isSnapshot,
   }));
+  const todayDateKey = todayKey();
   const proteinAdherence = weekStatsBundle.proteinAdherence;
   const carbsAdherence = weekStatsBundle.carbsAdherence;
   const fatAdherence = weekStatsBundle.fatAdherence;
 
   const avgCalories = weekStatsBundle.avgCalories;
   const proteinOnTarget = weekStatsBundle.proteinOnTarget;
+  // Action 5 Item 3 (2026-04-19) — explicit denominator on partial weeks
+  // (e.g. "Avg on logged days (2/7)") so the headline number isn't
+  // misread as "average per day this week". Shared helper keeps web +
+  // mobile copy identical.
+  const avgCaloriesTileLabel = formatAvgCaloriesLabel(weekStatsBundle.daysWithFood);
   // Raw streak — `streak_freeze` only augments this; we never hide the
   // raw value from callers that need it.
   const rawStreakDays = computeLoggingStreak(nutritionByDay);
@@ -421,6 +455,34 @@ function ProgressDashboardContent() {
   const freezesAvailable = useMemo(
     () => availableFreezes(freezeLedger, freezeBudgetMax),
     [freezeLedger, freezeBudgetMax],
+  );
+
+  // Action 5 Item 7 (2026-04-19) — resolved maintenance for the recap
+  // card's adaptive-vs-formula one-liner. Computed at the host level
+  // (not inside the WeeklyRecapCard) so we can pass it as a plain prop;
+  // the card stays presentational and the resolver stays a pure call.
+  const recapMaintenance = useMemo(
+    () =>
+      resolveMaintenance({
+        adaptive_tdee: adaptiveTdee,
+        adaptive_tdee_confidence: adaptiveConfidence,
+        adaptive_tdee_updated_at: adaptiveUpdatedAt,
+        sex: profileSexCached,
+        weight_kg: weightKg ?? 70,
+        height_cm: profileHeightCmCached,
+        age: profileAgeCached,
+        activity_level: profileActivityLevelCached,
+      }),
+    [
+      adaptiveTdee,
+      adaptiveConfidence,
+      adaptiveUpdatedAt,
+      profileSexCached,
+      weightKg,
+      profileHeightCmCached,
+      profileAgeCached,
+      profileActivityLevelCached,
+    ],
   );
 
   // Batch 4.11 — build recap for the *previous* week and gate visibility.
@@ -525,11 +587,27 @@ function ProgressDashboardContent() {
       logCountBySavedMealId[sm.id] = dayMatches;
     }
 
+    // Action 5 Item 8 (2026-04-19) — extend the gate to a 14-day window
+    // so the loosened "user has saved meals but not in the most-repeated
+    // unsaved slot" check has enough history to fire. Walks back 7
+    // additional days from the start of the recap window.
+    const extendedWeekKeys: string[] = [...weekKeys];
+    const earliest = new Date(weekKeys[0]);
+    for (let i = 1; i <= 7; i++) {
+      const back = new Date(earliest);
+      back.setDate(earliest.getDate() - i);
+      const y = back.getFullYear();
+      const m = String(back.getMonth() + 1).padStart(2, "0");
+      const day = String(back.getDate()).padStart(2, "0");
+      extendedWeekKeys.unshift(`${y}-${m}-${day}`);
+    }
+
     return buildUsualMealRecapInsight({
       byDay: nutritionByDay,
       weekKeys,
       savedMeals: hostSavedMealsForRecap,
       logCountBySavedMealId,
+      extendedWeekKeys,
     });
   }, [recapVisible, hostSavedMealsForRecap, nutritionByDay, weekStartDay]);
 
@@ -604,6 +682,7 @@ function ProgressDashboardContent() {
           recap={recap}
           onDismiss={dismissRecap}
           usualMealInsight={usualMealInsight}
+          maintenance={recapMaintenance}
           // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to the
           // `SaveMealDialog` on Today, pre-seeded with the user's most-
           // frequent items from their history. `byDay` lets the card
@@ -642,7 +721,12 @@ function ProgressDashboardContent() {
         >
           <div className="flex items-center gap-1.5 mb-2">
             <IconBox size="sm" tone="warning"><Icons.calories /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Calories</span>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+              data-testid="progress-avg-calories-label"
+            >
+              {avgCaloriesTileLabel}
+            </span>
           </div>
           <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
           <p className="text-[11px] text-muted-foreground">vs {targets.calories.toLocaleString()} target</p>
@@ -683,22 +767,48 @@ function ProgressDashboardContent() {
             <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trend</span>
           </div>
-          <p className="text-[22px] font-bold text-primary tabular-nums mb-0.5">{(() => {
-            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
-            if (entries.length < 2) return "—";
-            const recent = entries[0][1];
-            const weekAgo = entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1];
-            const delta = recent - weekAgo;
-            const val = profileMeasurementSystem === "imperial" ? Math.round(kgToLb(Math.abs(delta)) * 10) / 10 : Math.round(Math.abs(delta) * 10) / 10;
-            const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
-            return `${delta <= 0 ? "−" : "+"}${val} ${unit}`;
-          })()}</p>
-          <p className="text-[11px] text-muted-foreground">{(() => {
-            const entries = Object.entries(weightKgByDay).sort(([a], [b]) => b.localeCompare(a));
-            if (entries.length < 2) return "no data yet";
-            const delta = entries[0][1] - (entries.find(([k]) => k <= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })())?.[1] ?? entries[entries.length - 1][1]);
-            return goalWeightKg != null && ((goalWeightKg < (weightKg ?? Infinity) && delta <= 0) || (goalWeightKg > (weightKg ?? 0) && delta >= 0)) ? "on track" : entries.length < 2 ? "no data yet" : "this week";
-          })()}</p>
+          {/* Action 13 Item #2 (2026-04-19) — single shared
+              `computeWeightTrendCopy` helper drives both the headline
+              delta and the on-track copy so they can't diverge. The
+              earlier two-IIFE version evaluated `weightKg ?? Infinity`
+              and `weightKg ?? 0` independently, which trivially flagged
+              a "gain" user with no logged weight as "on track"
+              (Infinity > 0). Helper returns `{ delta: null, copy: "Log
+              weight to see trend" }` when we don't have ≥2 weigh-ins. */}
+          {(() => {
+            const trend = computeWeightTrendCopy({
+              weightKgByDay,
+              weightKg,
+              goalKg: goalWeightKg,
+            });
+            const headline = trend.delta == null
+              ? "—"
+              : (() => {
+                  const abs = Math.abs(trend.delta);
+                  const val = profileMeasurementSystem === "imperial"
+                    ? Math.round(kgToLb(abs) * 10) / 10
+                    : Math.round(abs * 10) / 10;
+                  const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
+                  const sign = trend.delta < 0 ? "−" : trend.delta > 0 ? "+" : "";
+                  return `${sign}${val} ${unit}`;
+                })();
+            return (
+              <>
+                <p
+                  className="text-[22px] font-bold text-primary tabular-nums mb-0.5"
+                  data-testid="progress-trend-headline"
+                >
+                  {headline}
+                </p>
+                <p
+                  className="text-[11px] text-muted-foreground"
+                  data-testid="progress-trend-copy"
+                >
+                  {trend.copy}
+                </p>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -740,34 +850,77 @@ function ProgressDashboardContent() {
         </div>
       ) : null}
 
-      {/* DAILY CALORIES CHART */}
+      {/* DAILY CALORIES CHART
+          Action 13 Item #5 (2026-04-19) — denominator scales to the
+          largest day so over-target bars visually tower above target
+          bars. Previous code hard-capped at `targets.calories * 1.15`,
+          which made a 200%-of-target day clip identically to a 115%
+          day. Mirrors mobile's `Math.max(targets.calories,
+          ...weekStats.days.map(...))` rule.
+          Action 13 Item #11 — past days that fall back to today's
+          target (no `daily_targets` snapshot) render with a small
+          striped border + tooltip so the user knows the bar's
+          colour decision is approximate. */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
         <div className="flex items-end gap-2" style={{ height: 90 }}>
-          {dailyCaloriesData.map((d, i) => {
-            const overTarget = d.calories > d.target;
-            const barH = (d.calories / Math.max(targets.calories * 1.15, 1)) * 70;
-            return (
-              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-muted-foreground tabular-nums">
-                  {d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : d.calories}
-                </span>
-                <div
-                  className="w-full rounded-md"
-                  style={{
-                    height: barH,
-                    background: overTarget ? "var(--warning)" : "var(--success)",
-                    opacity: i === 6 ? 0.4 : 0.75,
-                  }}
-                />
-                <span className="text-[10px] text-muted-foreground font-medium">{d.day}</span>
-              </div>
+          {(() => {
+            const maxCal = Math.max(
+              targets.calories,
+              ...dailyCaloriesData.map((dd) => dd.calories),
+              1,
             );
-          })}
+            return dailyCaloriesData.map((d) => {
+              const overTarget = d.calories > d.target;
+              const barH = (d.calories / maxCal) * 70;
+              // Action 5 Item 2 — match by date key. Mirror of mobile's
+              // `isDayToday = d.key === todayKey` rule in
+              // `apps/mobile/app/(tabs)/progress.tsx`. Future days in
+              // the week (e.g. Sunday for a Wednesday user) render at
+              // the 0.75 baseline; only today renders dimmed.
+              const isDayToday = d.key === todayDateKey;
+              // Item #11 — past days without a target snapshot render
+              // with a dashed outline. Today and future days are
+              // skipped (no historical-target ambiguity for those).
+              const isPast = d.key < todayDateKey;
+              const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
+              return (
+                <div key={d.key} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-muted-foreground tabular-nums">
+                    {d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : d.calories}
+                  </span>
+                  <div
+                    className="w-full rounded-md"
+                    data-testid={`progress-day-bar-${d.key}`}
+                    data-today={isDayToday ? "true" : "false"}
+                    data-approx={showApproxCue ? "true" : "false"}
+                    title={showApproxCue ? "Compared against today's target (no snapshot for that day)" : undefined}
+                    style={{
+                      height: barH,
+                      background: overTarget ? "var(--warning)" : "var(--success)",
+                      opacity: isDayToday ? 0.4 : 0.75,
+                      ...(showApproxCue
+                        ? {
+                            border: "1px dashed var(--muted-foreground)",
+                            outlineOffset: -1,
+                          }
+                        : {}),
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground font-medium">{d.day}</span>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 
-      {/* MACRO ADHERENCE */}
+      {/* MACRO ADHERENCE — Action 13 Item #4 (2026-04-19): bar fill is
+          now capped at 150% via the shared `formatMacroAdherenceBar`
+          helper so a user at 200% protein renders as a 150%-wide bar
+          with the literal figure preserved in the label
+          ("200% (capped at 150)"). Mobile mirrors this via the same
+          helper. */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
         <div className="space-y-2">
@@ -775,47 +928,39 @@ function ProgressDashboardContent() {
             ["Protein", proteinAdherence, "var(--macro-protein)"],
             ["Carbs", carbsAdherence, "var(--macro-carbs)"],
             ["Fat", fatAdherence, "var(--macro-fat)"],
-          ] as const).map(([name, pct, color]) => (
-            <div key={name} className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
-              <span className="text-xs text-muted-foreground w-12">{name}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+          ] as const).map(([name, pct, color]) => {
+            const bar = formatMacroAdherenceBar({ adherencePct: pct });
+            return (
+              <div key={name} className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
+                <span className="text-xs text-muted-foreground w-12">{name}</span>
+                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    data-testid={`macro-adherence-bar-${name.toLowerCase()}`}
+                    style={{ width: `${bar.barFillPct}%`, background: color }}
+                  />
+                </div>
+                <span
+                  className="text-xs font-semibold tabular-nums text-right"
+                  style={{ color, minWidth: "5rem" }}
+                  data-testid={`macro-adherence-label-${name.toLowerCase()}`}
+                >
+                  {bar.label}
+                </span>
               </div>
-              <span className="text-xs font-semibold tabular-nums w-8 text-right" style={{ color }}>{pct}%</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* WEEKLY INSIGHT */}
-      {avgCalories > 0 ? (
-        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Weekly insight</span>
-          </div>
-          <p className="text-xs text-foreground leading-relaxed">
-            {proteinOnTarget >= 5
-              ? `Protein on target ${proteinOnTarget} of 7 days this week.`
-              : proteinOnTarget > 0
-              ? `Protein on target ${proteinOnTarget} of 7 days this week.`
-              : "Protein target not reached on any tracked day this week."}{" "}
-            Average intake is {avgCalories} kcal vs your {targets.calories.toLocaleString()} target.{" "}
-            {avgCalories <= targets.calories * 1.1 && avgCalories >= targets.calories * 0.9 ? "Calories within 10% of target this week." : avgCalories < targets.calories * 0.9 ? "Average intake below target this week." : "Average intake above target this week."}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-xl p-3.5" style={{ background: "var(--primary-soft, rgba(76,108,224,0.06))", border: "1px solid rgba(76,108,224,0.13)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <IconBox size="sm" tone="primary"><Icons.star /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Get started</span>
-          </div>
-          <p className="text-xs text-foreground leading-relaxed">
-            Log your meals on the Today tab to see weekly stats, macro adherence, and personalized insights here.
-          </p>
-        </div>
-      )}
+      {/* WEEKLY INSIGHT — removed (Action 5 Item 1, 2026-04-19).
+          The card restated numbers already on screen above (avg calories,
+          protein on target). Replacement is being scoped by
+          `ui-product-designer` as a card-grammar-conformant component;
+          re-introduce when the new spec lands. The empty-week
+          "Get started" hint also lives here, but the empty-state copy
+          on the dashboard surrounding cards already covers that case. */}
 
       {/* MAINTENANCE CARD — F-3 (2026-04-19, TestFlight
           `ADFYpDgEEb0QH-j3BXshPTo`). Was "Your TDEE"; value + label now
@@ -842,9 +987,31 @@ function ProgressDashboardContent() {
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="text-sm font-semibold text-foreground">Maintenance</p>
-            {showAdaptiveExtras && (
-              <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success">
+            {showAdaptiveExtras ? (
+              <span
+                data-testid="maintenance-source-pill"
+                data-source="adaptive"
+                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success"
+              >
                 Adaptive
+              </span>
+            ) : (
+              /* Action 13 Item #14 (2026-04-19) — explicit "Formula
+                 estimate" pill when the resolver fell back to the
+                 formula. Previously only the "Adaptive" pill rendered
+                 and formula-fallback users saw a bare number with no
+                 source label, while the "Confidence: low" badge (when
+                 it was rendered conditionally on `adaptiveConfidence`)
+                 implied the displayed kcal was the low-confidence
+                 adaptive value — when in fact it was the formula. The
+                 confidence bar block below stays gated on
+                 `showAdaptiveExtras`, so it still hides for formula. */
+              <span
+                data-testid="maintenance-source-pill"
+                data-source="formula"
+                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+              >
+                Formula estimate
               </span>
             )}
           </div>
@@ -1079,7 +1246,14 @@ function ProgressDashboardContent() {
         // the break-even number, so the projection respects actual burn and doesn't
         // flag a genuine deficit as a gain. See TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
         const maintenanceTdeeKcal = isAdaptive && adaptiveTdee != null ? adaptiveTdee : staticTdee;
-        const dailyProjection = avgRecentCals > 0
+        // Action 13 Item #8 (2026-04-19) — gate the projection on
+        // `shouldRenderDailyProjection(daysWithFood.length)`. Below the
+        // 5-day floor the recent average is too noisy to honestly
+        // project from (a 2-day average can be 700 kcal off the
+        // long-term mean). The block is suppressed entirely below the
+        // floor — we don't backfill with placeholder copy.
+        const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+        const dailyProjection = projectionEligible && avgRecentCals > 0
           ? projectWeight({
               currentWeightKg: weightKg,
               todayCalories: avgRecentCals,
@@ -1096,12 +1270,20 @@ function ProgressDashboardContent() {
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
                 <p className="text-sm font-semibold text-foreground">Journey</p>
               </div>
-              {timeline.daysToGoal != null && (
+              {timeline.daysToGoal != null ? (
                 <p className="text-right">
                   <span className="text-[22px] font-bold text-primary tabular-nums">{timeline.daysToGoal}</span>
                   <span className="text-xs text-muted-foreground ml-1">days to goal</span>
                 </p>
-              )}
+              ) : timeline.cappedAtMaxDays ? (
+                /* Action 13 Item #15 (2026-04-19) — past the 365-day
+                   cap we render an honest "more than 1 year" copy
+                   instead of an empty headline. The rate is surfaced
+                   below the bar so the user can do their own math. */
+                <p className="text-right" data-testid="progress-journey-capped">
+                  <span className="text-xs font-semibold text-muted-foreground">More than 1 year at current rate</span>
+                </p>
+              ) : null}
             </div>
 
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">

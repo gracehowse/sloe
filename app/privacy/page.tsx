@@ -71,6 +71,17 @@ export default function PrivacyPage() {
             similar (errors, if enabled), and OpenAI (optional AI features). The exact list for your deployment should be
             confirmed with the operator of that environment.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Apple Health (iOS)</h2>
+          <p>
+            If you enable the Apple Health integration on iOS, Suppr reads the following data to keep your tracker in sync:
+            steps, active energy, basal energy, workouts, weight, body fat percentage, and any dietary entries already in
+            Apple Health (for example logs you created in other apps). Suppr writes the calories, protein, carbohydrates,
+            fat, and fibre of the meals you log back to Apple Health so other apps on your phone can read them. Data shared
+            with Apple Health is governed by{" "}
+            <a href="https://www.apple.com/legal/privacy/en-ww/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Apple&rsquo;s privacy policy</a>{" "}
+            and stored on your device; Suppr does not send your Health data to our servers unless you explicitly log a meal.
+            You can revoke Suppr&rsquo;s Health access at any time in iOS Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Suppr.
+          </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data retention</h2>
           <p>
             We retain your account data for as long as your account is active. If you delete your account, we will

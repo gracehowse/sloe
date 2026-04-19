@@ -183,8 +183,8 @@ Retired phrasings (enforced by `tests/unit/todayCopyParity.test.ts`):
 | "Does it work on iOS, Android, web?" | Web + iOS (TestFlight). Android **not** on roadmap | Matches `docs/product/overview.md` Platforms | `landingParity` forbidden-claim list |
 | "Recipe import from 400+ sources" | Retired — imports any JSON-LD recipe site + Instagram/TikTok/YouTube | No curated 400-source list; JSON-LD is the implementation | `landingParity` |
 | "Voice control" in cook mode | Retired — cook mode has timers + step highlighting; voice logging is a Pro tracker feature, separate | `CookMode.tsx` has no voice nav | `landingParity` |
-| Annual-plan pricing | "Not yet, but it's coming" | Matches `/pricing` FAQ | `landingParity` (forbids hard-coded $50/$120 annual) |
-| Pricing tier names + prices | Free $0 / Base $5 / Pro $12 (headline) | Stripe price IDs in env; same numbers in `/pricing` | `landingParity` |
+| Annual-plan pricing | Live: Base £29.99/yr, Pro £59.99/yr (37% off monthly). Toggle on `/pricing`. | Four Stripe price IDs in env (monthly + annual × Base + Pro); same numbers on landing and `/pricing` via `PRICING_TIERS` SSOT | `landingParity` (paid tiers must carry `annualPrice`/`annualPeriod`/`annualSavings`, GBP-only) |
+| Pricing tier names + prices | Free £0 / Base £3.99 mo £29.99 yr / Pro £7.99 mo £59.99 yr (headline, GBP) | Four Stripe price IDs in env; same numbers rendered on landing + `/pricing` from `PRICING_TIERS` | `landingParity` |
 
 ### Ring + hero-stats block (web desktop, 2026-04-18)
 

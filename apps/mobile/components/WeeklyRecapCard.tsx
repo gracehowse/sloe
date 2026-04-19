@@ -26,6 +26,10 @@ import type { UsualMealRecapInsight } from "../../../src/lib/nutrition/weeklyRec
 import { selectMostFrequentSlotSeed } from "../../../src/lib/nutrition/usualMealHint";
 import type { FoodHistoryMealLike } from "../../../src/lib/nutrition/foodHistory";
 import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
+import {
+  formatMaintenanceRecapLine,
+  type ResolvedMaintenance,
+} from "../../../src/lib/nutrition/resolveMaintenance";
 import { Radius as RadiusTokens } from "@/constants/theme";
 
 /** Loose journal-meal shape accepted by the save-prompt deep-link.
@@ -55,6 +59,15 @@ export interface WeeklyRecapCardProps {
     slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
     seedItems: Array<Omit<SavedMealItem, "id" | "position">>,
   ) => void;
+  /**
+   * Action 5 Item 7 (2026-04-19) — resolved maintenance for the week.
+   * When `formatMaintenanceRecapLine` returns a non-null string the
+   * card surfaces a one-line "Your maintenance landed at X kcal this
+   * week (formula said Y)." between the stat row and the share button.
+   * Suppressed for formula-fallback / low confidence / matching values.
+   * Identical contract on web (`suppr/weekly-recap-card.tsx`).
+   */
+  maintenance?: ResolvedMaintenance | null;
 }
 
 export function WeeklyRecapCard({
@@ -64,9 +77,17 @@ export function WeeklyRecapCard({
   onStartUsualMealSave,
   byDay,
   onOpenSaveCombo,
+  maintenance,
 }: WeeklyRecapCardProps) {
   const colors = useThemeColors();
   const shareText = useMemo(() => formatRecapForShare(recap), [recap]);
+  // Action 5 Item 7 — adaptive-vs-formula one-liner. `null` when the
+  // line should not render (formula fallback, low confidence, or values
+  // identical). Memoised so referential equality keeps React quiet.
+  const maintenanceLine = useMemo(
+    () => formatMaintenanceRecapLine(maintenance),
+    [maintenance],
+  );
 
   const handleShare = useCallback(async () => {
     track(AnalyticsEvents.weekly_recap_shared, {
@@ -151,6 +172,16 @@ export function WeeklyRecapCard({
   const weightCopy = hasWeight
     ? `${recap.weightDeltaKg! > 0 ? "+" : ""}${recap.weightDeltaKg} kg`
     : "No weigh-ins this week";
+  // Action 13 Item #13 (2026-04-19) — explicit "First → Last weigh-in"
+  // copy; mirrors web. Suppressed when both endpoints aren't present.
+  const weightFirstLastLine =
+    recap.weightFirstKg != null &&
+    recap.weightLastKg != null &&
+    recap.weightDeltaKg != null
+      ? `First → Last weigh-in: ${recap.weightFirstKg} → ${recap.weightLastKg} kg (${
+          recap.weightDeltaKg > 0 ? "+" : ""
+        }${recap.weightDeltaKg} kg)`
+      : null;
 
   return (
     <View
@@ -217,14 +248,34 @@ export function WeeklyRecapCard({
         <Stat
           label="Weight"
           value={weightCopy}
-          hint={hasWeight ? "change this week" : "log weight any day"}
+          hint={hasWeight ? "first → last weigh-in" : "log weight any day"}
           muted={!hasWeight}
         />
       </View>
 
+      {/* Action 13 Item #13 (2026-04-19) — explicit "First → Last
+          weigh-in" line. Replaces the implicit "change this week"
+          framing — naming it lets the user discount water/glycogen
+          noise rather than read the number as an average. */}
+      {weightFirstLastLine ? (
+        <Text
+          testID="weekly-recap-weight-first-last"
+          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+        >
+          {weightFirstLastLine}
+        </Text>
+      ) : null}
+
       {recap.bestDay ? (
-        <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}>
-          Best day —{" "}
+        /* Action 13 Item #9 (2026-04-19) — relabelled from "Best day"
+           (highest protein) to "Closest to target" (smallest summed
+           L1 deviation across logged macros). Field name in the recap
+           type stays `bestDay` for back-compat with share + analytics. */
+        <Text
+          testID="weekly-recap-closest-to-target"
+          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+        >
+          Closest to target —{" "}
           <Text style={{ fontWeight: "700", color: colors.text }}>{recap.bestDay.label}</Text>
           {" · "}
           {recap.bestDay.protein}g protein, {recap.bestDay.calories} kcal
@@ -257,8 +308,14 @@ export function WeeklyRecapCard({
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
             Got a usual {promptDisplaySlot.toLowerCase()}?
           </Text>
+          {/* Action 5 Item 8 (2026-04-19) — when the loosened gate fires
+              the helper passes `repeats`; surface the concrete count.
+              Falls back to the generic "save once, log in one tap"
+              copy for the original zero-saved-meals path. */}
           <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-            Save it once, log it in one tap.
+            {usualMealInsight.repeats && usualMealInsight.repeats >= 3
+              ? `You've logged the same one ${usualMealInsight.repeats} times in 2 weeks.`
+              : "Save it once, log it in one tap."}
           </Text>
           {onStartUsualMealSave || onOpenSaveCombo ? (
             <Pressable
@@ -284,6 +341,17 @@ export function WeeklyRecapCard({
             </Pressable>
           ) : null}
         </View>
+      ) : null}
+
+      {/* Action 5 Item 7 (2026-04-19) — adaptive-vs-formula one-liner.
+          Suppressed unless adaptive won and differs from formula. */}
+      {maintenanceLine ? (
+        <Text
+          testID="weekly-recap-maintenance-line"
+          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+        >
+          {maintenanceLine}
+        </Text>
       ) : null}
 
       {/* Actions */}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AnalyticsEvents } from "../../src/lib/analytics/events";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events";
 
 /**
  * Guards that every analytics event name the product relies on stays
@@ -197,5 +199,239 @@ describe("rename-cycle dual-emit (post-ship #1, 2026-04-18 → retire 2026-05-18
     const values = Object.values(AnalyticsEvents);
     const unique = new Set(values);
     expect(unique.size).toBe(values.length);
+  });
+});
+
+/**
+ * `paywall_viewed` contract (2026-04-19 round-2, analytics-engineer spec).
+ *
+ * Every call site must carry `{ from, tier, surface, platform }`. `from`
+ * is drawn from the canonical `PaywallViewedFrom` union. The canonical
+ * set gains `"meal_planner"` this round so the Base-gated planner
+ * upgrade path can be sliced separately in F2.
+ *
+ * These tests are intentionally source-grep / enum-membership level —
+ * the three live emit sites (`app/pricing/page.tsx`,
+ * `apps/mobile/app/paywall.tsx`, `src/app/App.tsx`) are guarded by the
+ * grep assertion at the bottom so any new emit site (or any drift on
+ * an existing one) surfaces at CI time rather than in PostHog weeks
+ * later when a dashboard goes empty.
+ */
+describe("paywall_viewed contract (L6 G9 + 2026-04-19 round-2)", () => {
+  const CANONICAL_FROM_VALUES: readonly PaywallViewedFrom[] = [
+    "voice_log",
+    "photo_log",
+    "settings",
+    "onboarding",
+    "trial_end",
+    "deep_link",
+    "meal_planner",
+    // Round-3 additions (2026-04-19, analytics-engineer spec): one
+    // value per distinct `openUpgradePromo` call site under
+    // `src/app/App.tsx` so F2 can slice which in-app surface drove the
+    // upgrade intent. The matching `normalisePaywallFrom` branches on
+    // both platforms, and the `paywallAttribution` parity test, keep
+    // these pinned in place.
+    "recipes_library",
+    "shopping_list",
+    "profile",
+    "recipe_create",
+    "recipe_import",
+  ] as const;
+
+  it("PaywallViewedFrom contains exactly the canonical set", () => {
+    // We enumerate every branch in the shared `normalisePaywallFrom`
+    // helpers to prove the two platforms stay in sync with the type
+    // and with each other. Every value below must round-trip through
+    // both helpers; any missing case would be caught by the
+    // source-grep below.
+    const pricingSrc = readFileSync(
+      join(process.cwd(), "app/pricing/page.tsx"),
+      "utf8",
+    );
+    const mobilePaywallSrc = readFileSync(
+      join(process.cwd(), "apps/mobile/app/paywall.tsx"),
+      "utf8",
+    );
+    for (const v of CANONICAL_FROM_VALUES) {
+      expect(pricingSrc).toContain(`case "${v}":`);
+      expect(mobilePaywallSrc).toContain(`case "${v}":`);
+    }
+    // And there is no extra `case "…":` inside the `normalisePaywallFrom`
+    // helper on either platform. We scope the match to the helper body
+    // by finding the function and slicing to the trailing `return s;`.
+    function casesInHelper(src: string): string[] {
+      const start = src.indexOf("function normalisePaywallFrom");
+      expect(start).toBeGreaterThan(-1);
+      const body = src.slice(start, src.indexOf("default:", start));
+      return [...body.matchAll(/case\s+"([^"]+)":/g)].map((m) => m[1]);
+    }
+    expect(new Set(casesInHelper(pricingSrc))).toEqual(
+      new Set(CANONICAL_FROM_VALUES),
+    );
+    expect(new Set(casesInHelper(mobilePaywallSrc))).toEqual(
+      new Set(CANONICAL_FROM_VALUES),
+    );
+  });
+
+  it('normalisePaywallFrom("meal_planner") returns "meal_planner" on both platforms', () => {
+    // Behavioural check via the single-branch semantics of a pure
+    // switch statement: if the source contains `case "meal_planner":`
+    // inside the shared helper AND the helper's default arm returns
+    // `"deep_link"`, then the function returns `"meal_planner"` for
+    // input `"meal_planner"`. We assert both halves here.
+    const pricingSrc = readFileSync(
+      join(process.cwd(), "app/pricing/page.tsx"),
+      "utf8",
+    );
+    const mobilePaywallSrc = readFileSync(
+      join(process.cwd(), "apps/mobile/app/paywall.tsx"),
+      "utf8",
+    );
+    expect(pricingSrc).toMatch(/case "meal_planner":\s*\n\s*return s;/);
+    expect(mobilePaywallSrc).toMatch(/case "meal_planner":\s*\n\s*return s;/);
+    expect(pricingSrc).toMatch(/default:\s*\n\s*return "deep_link";/);
+    expect(mobilePaywallSrc).toMatch(/default:\s*\n\s*return "deep_link";/);
+  });
+
+  /**
+   * Mobile source-grep: every `router.push("/paywall` and
+   * `router.replace("/paywall` call under `apps/mobile/app/**` must
+   * include `?from=` in the URL string so the paywall's `useLocalSearchParams`
+   * read yields a non-empty value the canonical `normalisePaywallFrom`
+   * helper can attribute. A bare `/paywall` push would silently
+   * degrade to `from: "deep_link"` and the funnel F2 slice would
+   * attribute the conversion to the wrong surface.
+   */
+  it('every mobile router.push/replace("/paywall...") call includes "?from="', () => {
+    const mobileAppDir = resolve(process.cwd(), "apps/mobile/app");
+    const offenders: string[] = [];
+    function walk(dir: string): void {
+      for (const entry of readdirSync(dir)) {
+        if (entry === "node_modules" || entry.startsWith(".")) continue;
+        const full = join(dir, entry);
+        let s;
+        try {
+          s = statSync(full);
+        } catch {
+          continue;
+        }
+        if (s.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!/\.(tsx?|jsx?)$/.test(entry)) continue;
+        const src = readFileSync(full, "utf8");
+        // Match both `router.push("/paywall…")` and
+        // `router.replace("/paywall…")` regardless of type-assertion
+        // tail (`as any` etc.).
+        const matches = src.matchAll(
+          /router\.(?:push|replace)\(\s*(["'`])(\/paywall[^"'`]*)\1/g,
+        );
+        for (const m of matches) {
+          const url = m[2];
+          if (!url.includes("?from=")) {
+            offenders.push(`${full}: ${url}`);
+          }
+        }
+      }
+    }
+    walk(mobileAppDir);
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * Codebase source-grep: every `track(AnalyticsEvents.paywall_viewed, …)`
+   * emit site AND every `<PageViewTracker event={AnalyticsEvents.paywall_viewed} />`
+   * emit site must pass all four required keys
+   * (`from`, `tier`, `surface`, `platform`) in its argument /
+   * `properties` object. Drift on any of these four would collapse
+   * the F2 funnel's slice.
+   */
+  it("every paywall_viewed emit carries { from, tier, surface, platform }", () => {
+    const ROOTS = [
+      resolve(process.cwd(), "src"),
+      resolve(process.cwd(), "app"),
+      resolve(process.cwd(), "apps/mobile"),
+    ];
+    const REQUIRED_KEYS = ["from", "tier", "surface", "platform"] as const;
+
+    const offenders: string[] = [];
+
+    function walk(dir: string): string[] {
+      const out: string[] = [];
+      for (const entry of readdirSync(dir)) {
+        if (
+          entry === "node_modules" ||
+          entry === ".next" ||
+          entry === "dist" ||
+          entry === "build" ||
+          entry.startsWith(".")
+        ) {
+          continue;
+        }
+        const full = join(dir, entry);
+        let s;
+        try {
+          s = statSync(full);
+        } catch {
+          continue;
+        }
+        if (s.isDirectory()) {
+          out.push(...walk(full));
+          continue;
+        }
+        if (!/\.(tsx?|jsx?)$/.test(entry)) continue;
+        out.push(full);
+      }
+      return out;
+    }
+
+    const files = ROOTS.flatMap((r) => {
+      try {
+        return walk(r);
+      } catch {
+        return [];
+      }
+    });
+
+    for (const file of files) {
+      const src = readFileSync(file, "utf8");
+
+      // Pattern 1: `track(AnalyticsEvents.paywall_viewed, { … })`
+      const trackMatches = src.matchAll(
+        /track\(\s*AnalyticsEvents\.paywall_viewed\s*,\s*\{([\s\S]*?)\}\s*\)/g,
+      );
+      for (const m of trackMatches) {
+        const body = m[1];
+        const missing = REQUIRED_KEYS.filter(
+          (k) => !new RegExp(`\\b${k}\\s*:`).test(body),
+        );
+        if (missing.length > 0) {
+          offenders.push(
+            `${file}: track(paywall_viewed) missing ${missing.join(", ")}`,
+          );
+        }
+      }
+
+      // Pattern 2: `<PageViewTracker event={AnalyticsEvents.paywall_viewed}
+      //              properties={{ … }} />` (multi-line).
+      const pvtMatches = src.matchAll(
+        /<PageViewTracker\b[\s\S]*?event=\{AnalyticsEvents\.paywall_viewed\}[\s\S]*?properties=\{\{([\s\S]*?)\}\}[\s\S]*?\/>/g,
+      );
+      for (const m of pvtMatches) {
+        const body = m[1];
+        const missing = REQUIRED_KEYS.filter(
+          (k) => !new RegExp(`\\b${k}\\s*:`).test(body),
+        );
+        if (missing.length > 0) {
+          offenders.push(
+            `${file}: <PageViewTracker paywall_viewed> missing ${missing.join(", ")}`,
+          );
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });

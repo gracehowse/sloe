@@ -58,6 +58,18 @@ export default function TermsPage() {
             You can restore previous purchases at any time from the app's paywall or settings screen. Refund
             policies follow the respective platform's guidelines (Apple, Google, or Stripe).
           </p>
+          <section id="refunds" className="scroll-mt-24">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Refunds (7-day policy)</h2>
+            <p>
+              If you're unhappy with a Suppr subscription purchased on the web within the first 7 days of
+              your billing period, email <a
+                href="mailto:support@suppr-club.com"
+                className="text-violet-600 dark:text-violet-400 underline underline-offset-2 font-medium hover:text-violet-700 dark:hover:text-violet-300"
+              >support@suppr-club.com</a> and we'll process a refund manually via Stripe. Mobile purchases
+              made through the Apple App Store or Google Play are governed by the respective store's refund
+              policy — please use Apple's "Report a Problem" or Google Play's refund flow for those.
+            </p>
+          </section>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>
             To the maximum extent permitted by law, Suppr and its contributors are not liable for indirect or

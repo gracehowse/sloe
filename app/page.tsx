@@ -8,7 +8,7 @@ import { LandingPage } from "./(landing)/LandingPage.tsx";
 export const metadata: Metadata = {
   title: "Suppr — The recipe and nutrition platform for people who actually cook",
   description:
-    "Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient against USDA data so you know exactly what's on the plate.",
+    "Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases.",
 };
 
 export default async function Page() {

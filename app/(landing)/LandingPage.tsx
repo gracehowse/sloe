@@ -168,8 +168,8 @@ function Hero() {
           </h1>
           <p className="lp-lead">
             Suppr is the recipe and nutrition platform for people who actually cook. Paste a link from
-            Instagram, TikTok, or any recipe blog — Suppr parses every ingredient against USDA data so
-            you know exactly what’s on the plate.
+            Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against
+            USDA FoodData Central and other public food databases so you know what’s on the plate.
           </p>
           <div className="lp-hero-ctas">
             <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
@@ -183,7 +183,7 @@ function Hero() {
           <div className="lp-hero-sub">
             <div className="lp-item">
               <Check width={14} height={14} aria-hidden />
-              USDA-verified nutrition
+              Matched against USDA FoodData Central
             </div>
             <div className="lp-item">
               <Check width={14} height={14} aria-hidden />
@@ -213,10 +213,6 @@ function Hero() {
                   {src}
                 </span>
               ))}
-              <span>
-                <HeartPulse aria-hidden />
-                Apple Health
-              </span>
             </div>
           </div>
         </div>
@@ -456,7 +452,7 @@ function HowItWorks() {
             Recipes you actually save, tracked the way food actually works.
           </h2>
           <p className="lp-lead">
-            Suppr matches every ingredient across multiple verified databases and shows a confidence
+            Suppr matches ingredients against multiple verified databases and shows a confidence
             score when a match is ambiguous, so you can see what&apos;s certain and what isn&apos;t.
           </p>
           <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -507,9 +503,9 @@ function Features() {
       Icon: Flame,
       title: "Macro tracking",
       body:
-        "Every ingredient checked against USDA. Calories, protein, carbs, fat, fiber, sodium, sugar — all present, all honest.",
+        "Every ingredient matched against USDA FoodData Central (public domain) and other verified sources. Calories, protein, carbs, fat, fiber, sodium, sugar — all present.",
       meta: [
-        { Icon: Database, text: "USDA + OFF" },
+        { Icon: Database, text: "USDA FDC + OFF" },
         { Icon: Activity, text: "Confidence scores" },
       ],
     },
@@ -1003,6 +999,20 @@ function Pricing() {
           <span>
             <Download width={14} height={14} aria-hidden style={{ color: "#e04888" }} />
             Export your data anytime
+          </span>
+          <span>
+            {/* Monetisation-architect round-2 (2026-04-19): surface the
+                refund policy on the landing's pricing trust strip so
+                the commitment shows up *before* the CTA, not only in
+                the FAQ or the per-tier disclosure. Links into the
+                Terms page anchor added in B2. */}
+            <Shield width={14} height={14} aria-hidden style={{ color: "#4c6ce0" }} />
+            <a
+              href="/terms#refunds"
+              style={{ color: "var(--lp-fg-secondary)", textDecoration: "underline", textUnderlineOffset: "2px" }}
+            >
+              7-day refund policy
+            </a>
           </span>
         </div>
       </div>

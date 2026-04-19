@@ -7,8 +7,12 @@
  */
 export {
   buildWeekStats,
+  formatAvgCaloriesLabel,
+  formatMacroAdherenceBar,
   getStreakContributingDays,
+  MACRO_ADHERENCE_BAR_CAP_PCT,
   type ByDayOf,
+  type MacroAdherenceBar,
   type MealMacros,
   type WeekDayTotals,
   type WeekStatsBundle,

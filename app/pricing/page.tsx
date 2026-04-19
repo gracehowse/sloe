@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Check, Shield, Cloud, Download, ChevronDown } from "lucide-react";
+import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
-import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
-import { CheckoutButton } from "./CheckoutButton.tsx";
+import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
  *  `paywall_viewed.from` cannot drift from the PostHog dashboard slice.
@@ -19,6 +18,15 @@ function normalisePaywallFrom(raw: string | string[] | undefined): PaywallViewed
     case "onboarding":
     case "trial_end":
     case "deep_link":
+    // Round-3 additions (2026-04-19) — one branch per new
+    // `PaywallViewedFrom` value so the helper stays exhaustive. See
+    // `tests/unit/analyticsEvents.test.ts` for the parity guard.
+    case "recipes_library":
+    case "shopping_list":
+    case "profile":
+    case "recipe_create":
+    case "recipe_import":
+    case "meal_planner":
       return s;
     default:
       return "deep_link";
@@ -33,24 +41,22 @@ export const metadata: Metadata = {
 /**
  * Tier rendering reads PRICING_TIERS from the shared SSOT so the
  * landing page and /pricing cannot drift. Only the fields specific
- * to this page (cta label, description paragraph) are mapped here.
+ * to this page (cta label, `featHead` rewritten for bullet-list
+ * rendering) are derived here. The tier grid itself lives in the
+ * `PricingTiersGrid` client component so it can own the monthly ↔
+ * annual toggle state.
  */
-const TIERS = PRICING_TIERS.map((t) => ({
-  name: t.name,
-  price: t.price,
-  period: t.period,
-  description: t.tag.replace(/\.$/, ""),
-  /** "Everything in Free, plus" → "Everything in Free" for the
-   *  /pricing bullet list rendering style. */
-  features: t.featHead
-    ? [t.featHead.replace(/,\s*plus$/i, ""), ...t.features]
-    : t.features,
-  nutritionNote: t.nutritionNote,
+const TIERS_FOR_GRID = PRICING_TIERS.map((t) => ({
+  ...t,
   // Parity with `app/(landing)/LandingPage.tsx` — the free-tier CTA
   // reads "Continue for free" on both surfaces.
   cta: t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`,
-  checkoutTier: t.checkoutTier,
-  highlighted: t.highlighted,
+  // "Everything in Free, plus" → "Everything in Free" for the
+  // /pricing bullet-list rendering style (the grid renders the head
+  // line as its own bullet rather than inline).
+  featHeadStripped: t.featHead
+    ? t.featHead.replace(/,\s*plus$/i, "")
+    : undefined,
 }));
 
 const FAQ = [
@@ -62,13 +68,14 @@ const FAQ = [
     q: "What happens to my data if I downgrade?",
     // Copy aligned to `FAQS` in `src/lib/landing/content.ts` — see the
     // matching note there; the client only blocks *new* saves above the
-    // limit rather than making existing ones read-only.
-    a: `Your recipes, logs, and plans are never deleted. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved; you won't be able to add more until you're back under the limit or on Base. Everything else stays fully accessible and exportable.`,
+    // limit rather than making existing ones read-only. Round-2 legal
+    // pass (2026-04-19) softened again: recipes "stay saved and editable".
+    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Base.`,
   },
-  {
-    q: "Is there an annual plan?",
-    a: "Not yet, but it's coming. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
-  },
+  // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
+  // (monetisation-architect round-2): parking a placeholder with no
+  // shipped SKU created an implied promise. Matches the parallel
+  // removal in `src/lib/landing/content.ts` FAQS.
   {
     q: "How is nutrition data sourced?",
     // Reads from the shared `NUTRITION_SOURCES` SSOT so pipeline order
@@ -110,9 +117,20 @@ export default async function PricingPage({
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageViewTracker event={AnalyticsEvents.pricing_page_viewed} />
+      {/* Canonical `paywall_viewed` contract (L6 G9 + 2026-04-19
+          round-2): every emit carries `{ from, tier, surface, platform }`.
+          `/pricing` is the full-route commercial surface, so
+          `surface: "route"`. `tier: "pro"` tracks the *primary* tier
+          being sold; the page does also advertise Base but the
+          monetisation funnel's conversion target is Pro. */}
       <PageViewTracker
         event={AnalyticsEvents.paywall_viewed}
-        properties={{ from: paywallFrom }}
+        properties={{
+          from: paywallFrom,
+          tier: "pro",
+          surface: "route",
+          platform: "web",
+        }}
       />
 
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
@@ -140,79 +158,12 @@ export default async function PricingPage({
           </p>
         </div>
 
-        {/* Tier cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-          {TIERS.map((tier) => (
-            <div
-              key={tier.name}
-              className={`relative rounded-2xl p-8 flex flex-col ${
-                tier.highlighted
-                  ? "bg-gradient-to-b from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-300 dark:border-violet-700 shadow-xl shadow-violet-500/10 md:scale-105 md:-my-2"
-                  : tier.name === "Pro"
-                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"
-              }`}
-            >
-              {tier.highlighted && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold shadow-md">
-                  Most popular
-                </div>
-              )}
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className={`text-lg font-semibold ${tier.name === "Pro" ? "text-white" : "text-slate-900 dark:text-white"}`}>
-                  {tier.name}
-                </h3>
-                <CurrentTierBadge tierName={tier.name} />
-              </div>
-              <div className="mb-2">
-                <span className={`text-4xl font-bold ${tier.name === "Pro" ? "text-white" : "text-slate-900 dark:text-white"}`}>{tier.price}</span>
-                <span className={`text-sm ml-1 ${tier.name === "Pro" ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>{tier.period}</span>
-              </div>
-              <p className={`text-sm mb-6 ${tier.name === "Pro" ? "text-slate-300" : "text-slate-600 dark:text-slate-400"}`}>
-                {tier.description}
-              </p>
-
-              <ul className="space-y-2.5 mb-6 flex-1">
-                {tier.features.map((feature) => (
-                  <li key={feature} className={`flex items-start gap-2 text-sm ${tier.name === "Pro" ? "text-slate-200" : "text-slate-700 dark:text-slate-300"}`}>
-                    <Check className={`w-4 h-4 shrink-0 mt-0.5 ${tier.highlighted ? "text-violet-600 dark:text-violet-400" : tier.name === "Pro" ? "text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <div className={`text-xs font-medium mb-4 px-2.5 py-1.5 rounded-md inline-block ${
-                tier.name === "Pro"
-                  ? "bg-violet-500/20 text-violet-300"
-                  : tier.highlighted
-                    ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-              }`}>
-                {tier.nutritionNote}
-              </div>
-
-              <CheckoutButton
-                tier={tier.checkoutTier}
-                label={tier.cta}
-                highlighted={tier.highlighted}
-              />
-              {/* Billing-honesty disclosure adjacent to the CTA so the
-                  user sees the renewal commitment before clicking
-                  through to Stripe (monetisation-architect finding,
-                  2026-04-19). Only shown for paid tiers; the Free tier
-                  has no billing to disclose. */}
-              {tier.checkoutTier !== null ? (
-                <p className={`mt-2 text-[11px] leading-snug text-center ${
-                  tier.name === "Pro"
-                    ? "text-slate-400"
-                    : "text-slate-500 dark:text-slate-400"
-                }`}>
-                  Billed monthly until cancelled. Cancel anytime.
-                </p>
-              ) : null}
-            </div>
-          ))}
-        </div>
+        {/* Tier cards — client component owns the monthly ↔ annual
+            toggle state. Price, period, and billing-renewal disclosure
+            all read from the PRICING_TIERS SSOT so drift between copy
+            and checkout (which hit the same PRICING_TIERS-backed
+            Stripe price IDs) is impossible. */}
+        <PricingTiersGrid tiers={TIERS_FOR_GRID} />
 
         {/* Trust signals */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-8">

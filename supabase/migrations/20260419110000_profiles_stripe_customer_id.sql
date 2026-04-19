@@ -1,0 +1,25 @@
+-- profiles.stripe_customer_id — Stripe customer ID (cus_…) captured on
+-- first successful `checkout.session.completed` so the `/account/billing`
+-- server component can open the Stripe Customer Portal for the user
+-- without an extra round-trip to the Stripe API to look the customer up.
+--
+-- The column is `text` (Stripe customer IDs are short strings like
+-- `cus_NeGfQL1tGc9bv3`) and nullable because:
+--   - Free-tier users never complete checkout and therefore have no
+--     Stripe customer row (server component redirects them to `/pricing`
+--     rather than opening the portal);
+--   - Users who subscribed before this migration landed have no backfill
+--     — the first webhook event after the migration will populate the
+--     column, and the server component falls back to a soft redirect to
+--     `/pricing?ref=billing` until then.
+--
+-- RLS: no change — `profiles` already has row-owner RLS
+-- (`profiles_select_own` / `profiles_update_own` / `profiles_insert_own`
+-- in `supabase/schema.sql`), and the webhook writes via the service-role
+-- client which bypasses RLS by design.
+--
+-- Added 2026-04-19 as part of the `/account/billing` → Stripe Customer
+-- Portal wiring; see `monetisation-architect` spec and
+-- `app/account/billing/page.tsx`.
+alter table public.profiles
+  add column if not exists stripe_customer_id text;

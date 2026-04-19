@@ -18,14 +18,21 @@ import {
   formatWeightJourneyProgressCopy,
   projectWeight,
   resolveLatestWeightKg,
+  shouldRenderDailyProjection,
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { buildMaintenanceChain } from "../../../../src/lib/nutrition/maintenanceChain";
 import type { PlanPace } from "../../../../src/lib/nutrition/tdee";
+import {
+  coerceMeasurementSystem,
+  formatWeightForUnit,
+  type MeasurementSystem,
+} from "../../../../src/lib/measurements";
+import { computeWeightTrendCopy } from "../../../../src/lib/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-import { buildWeekStats } from "@/lib/progressWeekReport";
+import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "@/lib/progressWeekReport";
 import { getDailyTargets, type DailyTarget } from "../../../../src/lib/nutrition/dailyTargetRead";
 import {
   availableFreezes,
@@ -140,6 +147,43 @@ export default function ProgressScreen() {
   const [profileHeightCmState, setProfileHeightCmState] = useState<number>(170);
   const [profileAgeState, setProfileAgeState] = useState<number>(30);
   const [profileActivityLevelState, setProfileActivityLevelState] = useState<string>("sedentary");
+  // Action 13 Item #6 + #7 (2026-04-19) — `measurement_system` column
+  // drives every weight readout on this screen (Trend tile delta,
+  // Weight card current/goal). Was previously unread on Progress;
+  // every other weight surface respected the preference, so an imperial
+  // user saw "lb" everywhere except here where it stuck on "kg".
+  const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>("metric");
+
+  // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
+  // heavy below-the-fold blocks (daily-calories chart, maintenance
+  // card, journey card) by one frame after data lands so the first
+  // post-load paint is the cheap stat-grid + weekly-recap card. Prior
+  // code rendered everything on the sync render path, which on warm
+  // focus pushed first meaningful paint past the 1s budget even with
+  // the data-fetch optimisations. `chartsReady` flips in an effect
+  // after `loading` goes false, so the next render tree includes the
+  // charts. Computed numbers are identical either way; this only
+  // controls WHEN the chart JSX evaluates.
+  const [chartsReady, setChartsReady] = useState(false);
+
+  /**
+   * Action 13 Item #10 (2026-04-19) — HealthKit sync status for the
+   * Steps card. Tri-state so we can distinguish:
+   *   - "pending"  — never called HK yet (initial mount, fresh focus)
+   *                  → render skeleton, NOT a literal 0
+   *   - "success"  — HK call resolved (with or without samples)
+   *                  → render `stepsToday` honestly (0 means 0)
+   *   - "failed"   — HK call rejected (permissions, native bridge)
+   *                  → render "Steps sync paused — open Health
+   *                    permissions" with a tap-to-retry, NOT a 0
+   *
+   * Previously the HK call was `.catch(() => {})` and the card always
+   * rendered `(stepsByDay[todayKey] ?? 0)`. A failed sync looked
+   * indistinguishable from "you haven't walked yet" — the user reads
+   * "0 / 10,000" and assumes the count is real.
+   */
+  const [stepsSyncStatus, setStepsSyncStatus] = useState<"pending" | "success" | "failed">("pending");
+  const [stepsSyncRetrying, setStepsSyncRetrying] = useState(false);
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
@@ -165,12 +209,40 @@ export default function ProgressScreen() {
     // this screen looks back further (90d trend chart is the longest
     // window). Prior unbounded select pulled the user's entire history
     // every focus.
+    //
+    // Perf fix H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`):
+    // `getDailyTargets` used to run *after* the `profile` read and
+    // before `setLoading(false)`. That made it a second serial RTT on
+    // the critical path — total TTI was `profile + daily_targets`,
+    // which on a cold/warm focus pushed the spinner past the 1-2s
+    // budget. We now let the profile read unblock the first paint and
+    // hydrate `daily_targets` in the background. Past-day bar colour
+    // briefly uses the current target (shared `resolveDisplayTarget`
+    // fallback is lossless) and reconciles the instant snapshots
+    // arrive. Today's bar was never snapshot-dependent — `daily_targets`
+    // only snapshots *past* days, so no computed number flips for the
+    // current day.
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 3600 * 1000)
       .toISOString()
       .slice(0, 10);
-    const syncPromise = isHealthSyncAvailable()
-      ? syncHealthDataThrottled(userId).catch(() => {})
-      : Promise.resolve();
+    // Action 13 Item #10 — track HK sync status so the Steps card
+    // can render "Sync paused" instead of a misleading bare 0 when
+    // HealthKit refuses (permissions, native bridge crash, etc.).
+    // When HK isn't available at all (e.g. simulator without health,
+    // Expo Go, Android), we treat the sync as "success" — the card
+    // falls back to manual `stepsByDay` and the user-supplied value
+    // is honestly what we know.
+    setStepsSyncStatus("pending");
+    const syncPromise: Promise<void> = isHealthSyncAvailable()
+      ? syncHealthDataThrottled(userId).then(
+          () => {
+            setStepsSyncStatus("success");
+          },
+          () => {
+            setStepsSyncStatus("failed");
+          },
+        )
+      : (setStepsSyncStatus("success"), Promise.resolve());
 
     const [{ data: rows }, { data: profile }] = await Promise.all([
       supabase
@@ -181,7 +253,7 @@ export default function ProgressScreen() {
         .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system")
         .eq("id", userId)
         .maybeSingle(),
     ]);
@@ -260,6 +332,9 @@ export default function ProgressScreen() {
       setProfileHeightCmState(heightCm);
       setProfileAgeState(ageVal);
       setProfileActivityLevelState(actLevel);
+      // Action 13 #6 + #7 — single source for the imperial / metric
+      // preference on every weight readout on this screen.
+      setMeasurementSystem(coerceMeasurementSystem((profile as any).measurement_system));
       const eff = getEffectiveTDEE({
         adaptive_tdee: aTdee,
         adaptive_tdee_confidence: aConf,
@@ -287,9 +362,19 @@ export default function ProgressScreen() {
       setByDay(loaded);
     }
 
+    // H-4 — first paint unblocks here. `daily_targets` hydrates in the
+    // background (see below); the UI renders with current-target
+    // fallback until snapshots arrive.
+    setLoading(false);
+
     // F-2 — fetch `daily_targets` for this week's 7 day keys so past
     // days render against their frozen target. Missing snapshots
     // (pre-migration) stay null → UI falls back to current target.
+    // Deferred off the first-paint critical path (H-4). Safe because
+    // `buildWeekStats` inherits the current `targets` for every day
+    // the map doesn't have a snapshot for, so numbers are correct from
+    // the very first frame — only a past-day bar's colour could briefly
+    // flip if the user edited their plan mid-week.
     {
       const nowD = new Date();
       const dow = nowD.getDay();
@@ -303,14 +388,32 @@ export default function ProgressScreen() {
         d.setDate(weekFirst.getDate() + i);
         weekKeys.push(dateKeyFromDate(d));
       }
-      const snapshots = await getDailyTargets(supabase, userId, weekKeys);
-      setDailyTargetsByDay(snapshots);
+      void getDailyTargets(supabase, userId, weekKeys)
+        .then((snapshots) => {
+          setDailyTargetsByDay(snapshots);
+        })
+        .catch(() => {
+          /* fallback already in place (map stays empty → current targets). */
+        });
     }
-
-    setLoading(false);
   }, [userId]);
 
   useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
+
+  // H-4 — after the initial data-fetch unblocks, defer mounting the
+  // heavy chart + journey blocks by one frame so the first post-load
+  // paint shows header + stat grid + recap card only. RAF hands back
+  // control to RN's render loop, then the second paint adds the charts.
+  useEffect(() => {
+    if (loading) {
+      // Reset when we re-enter the loading state so a fresh focus
+      // (e.g. pull-to-refresh) re-stages the paint.
+      setChartsReady(false);
+      return;
+    }
+    const handle = requestAnimationFrame(() => setChartsReady(true));
+    return () => cancelAnimationFrame(handle);
+  }, [loading]);
 
   // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
   // When a day has no snapshot, the helper falls back to the current
@@ -345,6 +448,34 @@ export default function ProgressScreen() {
   const freezesAvailable = useMemo(
     () => availableFreezes(freezeLedger, freezeBudgetMax),
     [freezeLedger, freezeBudgetMax],
+  );
+
+  // Action 5 Item 7 (2026-04-19) — resolved maintenance for the recap
+  // card's adaptive-vs-formula one-liner. Computed at host level so the
+  // card stays presentational and the shared `formatMaintenanceRecapLine`
+  // helper drives identical render conditions on web + mobile.
+  const recapMaintenance = useMemo(
+    () =>
+      resolveMaintenance({
+        adaptive_tdee: adaptiveTdee,
+        adaptive_tdee_confidence: adaptiveConfidence,
+        adaptive_tdee_updated_at: adaptiveUpdatedAt,
+        sex: profileSexState as any,
+        weight_kg: latestWeightKg ?? 70,
+        height_cm: profileHeightCmState,
+        age: profileAgeState,
+        activity_level: profileActivityLevelState as any,
+      }),
+    [
+      adaptiveTdee,
+      adaptiveConfidence,
+      adaptiveUpdatedAt,
+      profileSexState,
+      latestWeightKg,
+      profileHeightCmState,
+      profileAgeState,
+      profileActivityLevelState,
+    ],
   );
 
   // Batch 4.11 — weekly recap derivation + visibility gating.
@@ -430,11 +561,26 @@ export default function ProgressScreen() {
       }
       logCountBySavedMealId[sm.id] = dayMatches;
     }
+    // Action 5 Item 8 (2026-04-19) — extend window to 14 days so the
+    // loosened gate has enough history. Mirror of the web derivation
+    // in `ProgressDashboard.tsx`.
+    const extendedWeekKeys: string[] = [...weekKeys];
+    const earliest = new Date(weekKeys[0]);
+    for (let i = 1; i <= 7; i++) {
+      const back = new Date(earliest);
+      back.setDate(earliest.getDate() - i);
+      const y = back.getFullYear();
+      const m = String(back.getMonth() + 1).padStart(2, "0");
+      const day = String(back.getDate()).padStart(2, "0");
+      extendedWeekKeys.unshift(`${y}-${m}-${day}`);
+    }
+
     return buildUsualMealRecapInsight({
       byDay: byDay as any,
       weekKeys,
       savedMeals: hostSavedMealsForRecap,
       logCountBySavedMealId,
+      extendedWeekKeys,
     });
   }, [recapVisible, hostSavedMealsForRecap, byDay, weekStartDay]);
 
@@ -526,9 +672,47 @@ export default function ProgressScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: t.bg, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color={t.accent} />
-      </View>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: t.bg }}
+        contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}
+        testID="progress-skeleton"
+      >
+        {/* Header chrome — same position as post-load render so the
+            layout doesn't jump when data arrives. */}
+        <Text style={{ fontSize: 22, fontWeight: "700", color: t.text, letterSpacing: -0.4 }}>Progress</Text>
+        <Text style={{ fontSize: 12, color: t.dim, marginTop: 1, marginBottom: 14 }}>Weekly report</Text>
+
+        {/* 2x2 tile skeletons — match real tile footprint (47% width,
+            padding 14, radius). No numbers are shown; placeholders are
+            a neutral block so we never invent data. */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              testID={`progress-skeleton-tile-${i}`}
+              style={{
+                width: "47%",
+                padding: 14,
+                borderRadius: Radius.lg,
+                backgroundColor: t.elevated,
+                borderWidth: 1,
+                borderColor: t.border,
+                minHeight: 86,
+              }}
+            >
+              <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: 10 }} />
+              <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: 6 }} />
+              <View style={{ width: 100, height: 10, borderRadius: 3, backgroundColor: t.border }} />
+            </View>
+          ))}
+        </View>
+
+        {/* Inline spinner under the skeleton — reassures the user that
+            the view is live without starving the initial paint. */}
+        <View style={{ alignItems: "center", paddingVertical: 12 }}>
+          <ActivityIndicator size="small" color={t.accent} />
+        </View>
+      </ScrollView>
     );
   }
 
@@ -557,6 +741,7 @@ export default function ProgressScreen() {
               recap={recap}
               onDismiss={dismissRecap}
               usualMealInsight={usualMealInsight}
+              maintenance={recapMaintenance}
               // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to
               // the Today `SaveMealSheet` pre-seeded with the user's
               // most-frequent items. `byDay` enables the card to run
@@ -586,11 +771,15 @@ export default function ProgressScreen() {
             />
           ) : null}
 
-          {/* 2x2 Stat Grid */}
+          {/* 2x2 Stat Grid
+              Action 5 Item 3 (2026-04-19) — partial-week label uses
+              `formatAvgCaloriesLabel(daysWithFood)` so the headline
+              number isn't misread as "average per day this week".
+              Shared helper keeps web + mobile copy identical. */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
             {([
               [
-                "Avg Calories",
+                formatAvgCaloriesLabel(weekStats.daysWithFood),
                 String(weekStats.avgCalories.toLocaleString()),
                 `vs ${targets.calories.toLocaleString()} target`,
                 weekStats.avgCalories > targets.calories ? t.amber : t.green,
@@ -614,10 +803,16 @@ export default function ProgressScreen() {
               ],
               [
                 "Trend",
+                // Action 13 Item #6 (2026-04-19) — render the delta in
+                // the user's preferred unit. Was hard-coded to "kg"
+                // suffix even for imperial users, who saw "lb" on every
+                // other weight surface — pure unit drift. The signed
+                // formatter handles "+" / "−" so we don't repeat the
+                // sign logic at the call site.
                 weightTrend
-                  ? `${weightTrend.diff > 0 ? "+" : ""}${weightTrend.diff} kg`
+                  ? formatWeightForUnit({ kg: weightTrend.diff, system: measurementSystem, signed: true })
                   : latestWeightKg != null
-                    ? `${latestWeightKg} kg`
+                    ? formatWeightForUnit({ kg: latestWeightKg, system: measurementSystem })
                     : "—",
                 weightTrend
                   ? weightTrend.direction === "down"
@@ -650,21 +845,27 @@ export default function ProgressScreen() {
                 borderWidth: 1,
                 borderColor: t.border,
               };
+              // Action 5 Item 3 — the "Avg Calories" tile title now varies
+              // ("Avg Calories" full week, "Avg on logged days (X/7)"
+               // partial). Match by prefix so the routing + a11y branches
+              // still resolve cleanly without hard-coding both shapes.
+              const isAvgCaloriesTile =
+                title === "Avg Calories" || title.startsWith("Avg on logged days");
               const openTile = () => {
                 if (title === "Trend") {
                   router.push("/weight-tracker" as const);
                   return;
                 }
                 const metric =
-                  title === "Avg Calories" ? "calories" : title === "Protein Hit" ? "protein" : title === "Streak" ? "streak" : null;
+                  isAvgCaloriesTile ? "calories" : title === "Protein Hit" ? "protein" : title === "Streak" ? "streak" : null;
                 if (metric) {
                   router.push({ pathname: "/progress-metric" as any, params: { metric } });
                 }
               };
               const a11yLabel =
                 title === "Trend"
-                  ? `Weight trend, ${val} kilograms, ${sub}`
-                  : title === "Avg Calories"
+                  ? `Weight trend, ${val}, ${sub}`
+                  : isAvgCaloriesTile
                     ? `Average calories ${val}, ${sub}`
                     : title === "Protein Hit"
                       ? `Protein on target ${val}, ${sub}`
@@ -689,6 +890,28 @@ export default function ProgressScreen() {
             })}
           </View>
 
+          {/* H-4 — `chartsReady` defers mounting the heavy chart + card
+              stack by one frame after load so the stat-grid + recap
+              paint first. Placeholder card keeps the scroll position
+              stable; swap happens within ~16ms on warm focus. */}
+          {!chartsReady ? (
+            <View
+              testID="progress-charts-pending"
+              style={{
+                backgroundColor: t.elevated,
+                borderRadius: Radius.lg,
+                borderWidth: 1,
+                borderColor: t.border,
+                padding: 16,
+                marginBottom: 14,
+                minHeight: 140,
+              }}
+            >
+              <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+              <ActivityIndicator size="small" color={t.accent} />
+            </View>
+          ) : (
+          <>
           {/* Daily Calories Bar Chart
               TestFlight `AISAWnLgU9cjRBOuEY-HuJU` (2026-04-18) — tester
               said "not intuitive". The bars were green/amber with no
@@ -715,18 +938,45 @@ export default function ProgressScreen() {
                       // the current profile target (pre-migration).
                       const overTarget = d.calories > d.targetCalories;
                       const isDayToday = d.key === todayKey;
+                      // Action 13 Item #11 (2026-04-19) — past days
+                      // without a snapshot render with a dashed border
+                      // so the user can tell the bar's colour was
+                      // judged against today's target (the current
+                      // fallback) rather than the target they actually
+                      // had on that day. Today and future days don't
+                      // have historical-target ambiguity, so skip the
+                      // cue there.
+                      const isPast = d.key < todayKey;
+                      const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
                       return (
                         <Pressable
                           key={d.key}
                           onPress={() => {
                             router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
                           }}
+                          accessibilityHint={showApproxCue ? "Compared against today's target. No saved target for that day." : undefined}
                           style={{ flex: 1, alignItems: "center", gap: 4 }}
                         >
                           <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
                             {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
                           </Text>
-                          <View style={{ width: "100%", height: barH, borderRadius: 5, backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green, opacity: isDayToday ? 1 : 0.75 }} />
+                          <View
+                            testID={`progress-day-bar-${d.key}`}
+                            style={{
+                              width: "100%",
+                              height: barH,
+                              borderRadius: 5,
+                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
+                              opacity: isDayToday ? 1 : 0.75,
+                              ...(showApproxCue
+                                ? {
+                                    borderWidth: 1,
+                                    borderStyle: "dashed",
+                                    borderColor: t.dim,
+                                  }
+                                : {}),
+                            }}
+                          />
                           <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
                         </Pressable>
                       );
@@ -780,19 +1030,36 @@ export default function ProgressScreen() {
               Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
             </Text>
             {([
-              ["Protein", Math.min(weekStats.proteinAdherence, 150), t.protein],
-              ["Carbs", Math.min(weekStats.carbsAdherence, 150), t.carbs],
-              ["Fat", Math.min(weekStats.fatAdherence, 150), t.fat],
-            ] as const).map(([name, pct, color]) => (
-              <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
-                <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
-                <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: t.border }}>
-                  <View style={{ width: `${Math.min(pct, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: color }} />
+              // Action 13 Item #4 (2026-04-19) — pass the raw adherence
+              // through `formatMacroAdherenceBar` so the bar fill caps
+              // at 150% and the label preserves the actual value with
+              // a "(capped at 150)" suffix when over the cap. Identical
+              // helper drives web `ProgressDashboard.tsx` so the figure
+              // can't drift between platforms.
+              ["Protein", weekStats.proteinAdherence, t.protein],
+              ["Carbs", weekStats.carbsAdherence, t.carbs],
+              ["Fat", weekStats.fatAdherence, t.fat],
+            ] as const).map(([name, pct, color]) => {
+              const bar = formatMacroAdherenceBar({ adherencePct: pct });
+              return (
+                <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
+                  <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
+                  <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: t.border }}>
+                    <View
+                      testID={`macro-adherence-bar-${name.toLowerCase()}`}
+                      style={{ width: `${bar.barFillPct}%`, height: "100%", borderRadius: 3, backgroundColor: color }}
+                    />
+                  </View>
+                  <Text
+                    testID={`macro-adherence-label-${name.toLowerCase()}`}
+                    style={{ fontSize: 12, fontWeight: "600", color, minWidth: 80, textAlign: "right", fontVariant: ["tabular-nums"] }}
+                  >
+                    {bar.label}
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 12, fontWeight: "600", color, width: 36, textAlign: "right", fontVariant: ["tabular-nums"] }}>{pct}%</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           {/* Maintenance card — F-3 (2026-04-19, TestFlight
@@ -827,9 +1094,31 @@ export default function ProgressScreen() {
                   </IconBox>
                   <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Maintenance</Text>
                 </View>
-                {showAdaptiveExtras && (
-                  <View style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                {showAdaptiveExtras ? (
+                  <View
+                    testID="maintenance-source-pill"
+                    accessibilityLabel="Maintenance source: adaptive"
+                    style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  >
                     <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                  </View>
+                ) : (
+                  /* Action 13 Item #14 (2026-04-19) — explicit
+                     "Formula estimate" pill when the resolver fell
+                     back to the formula. Previously formula-fallback
+                     users got no source label at all; coupled with
+                     the prior confidence-bar layout this read as if
+                     the displayed kcal was a low-confidence adaptive
+                     number when in fact it was the formula. The
+                     confidence bar below remains gated on
+                     `showAdaptiveExtras` so it still hides for
+                     formula. */
+                  <View
+                    testID="maintenance-source-pill"
+                    accessibilityLabel="Maintenance source: formula estimate"
+                    style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
                   </View>
                 )}
               </View>
@@ -995,23 +1284,90 @@ export default function ProgressScreen() {
             );
           })()}
 
-          {/* Steps Card */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+          {/* Steps Card
+              Action 13 Item #10 (2026-04-19) — render the card against
+              the HK sync status, not just the raw `stepsByDay` map.
+                - pending: skeleton (we haven't asked HK yet — never
+                  show "0" we can't justify)
+                - failed:  honest "Steps sync paused — open Health
+                  permissions" with a tap-to-retry; never a 0
+                - success: real count (0 = legitimate 0)
+              Previous version always rendered "(stepsByDay[todayKey]
+              ?? 0)", which made a permissions failure look like a
+              normal "you haven't walked yet". */}
+          <View
+            testID="progress-steps-card"
+            style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}
+          >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <IconBox color={t.green} size={28}>
                 <Ionicons name="footsteps-outline" size={14} color={t.green} />
               </IconBox>
               <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Steps Today</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-              <Text style={{ fontSize: 28, fontWeight: "700", color: stepsToday >= dailyStepsGoal ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
-                {stepsToday.toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 13, color: t.sub }}>/ {dailyStepsGoal.toLocaleString()}</Text>
-            </View>
-            <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8 }}>
-              <View style={{ width: `${Math.min((stepsToday / dailyStepsGoal) * 100, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: t.green }} />
-            </View>
+            {stepsSyncStatus === "pending" ? (
+              <View testID="progress-steps-skeleton" style={{ height: 30, justifyContent: "center" }}>
+                <ActivityIndicator size="small" color={t.accent} />
+              </View>
+            ) : stepsSyncStatus === "failed" ? (
+              <View testID="progress-steps-sync-failed">
+                <Text style={{ fontSize: 13, color: t.amber, marginBottom: 6 }}>
+                  Steps sync paused — open Health permissions
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry Apple Health sync"
+                  testID="progress-steps-sync-retry"
+                  disabled={stepsSyncRetrying}
+                  onPress={async () => {
+                    if (!userId) return;
+                    setStepsSyncRetrying(true);
+                    setStepsSyncStatus("pending");
+                    try {
+                      await syncHealthDataThrottled(userId, { bypassThrottle: true });
+                      setStepsSyncStatus("success");
+                      // Re-read steps so the card reflects the new value.
+                      const { data: refreshed } = await supabase
+                        .from("profiles")
+                        .select("steps_by_day")
+                        .eq("id", userId)
+                        .maybeSingle();
+                      if (refreshed) setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
+                    } catch {
+                      setStepsSyncStatus("failed");
+                    } finally {
+                      setStepsSyncRetrying(false);
+                    }
+                  }}
+                  style={({ pressed }) => ({
+                    alignSelf: "flex-start",
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    backgroundColor: t.accent + "18",
+                    borderWidth: 1,
+                    borderColor: t.accent + "40",
+                    opacity: pressed || stepsSyncRetrying ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: t.accent }}>
+                    {stepsSyncRetrying ? "Retrying…" : "Retry sync"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+                  <Text style={{ fontSize: 28, fontWeight: "700", color: stepsToday >= dailyStepsGoal ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+                    {stepsToday.toLocaleString()}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: t.sub }}>/ {dailyStepsGoal.toLocaleString()}</Text>
+                </View>
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8 }}>
+                  <View style={{ width: `${Math.min((stepsToday / dailyStepsGoal) * 100, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: t.green }} />
+                </View>
+              </>
+            )}
           </View>
 
           {/* Weight Card */}
@@ -1040,15 +1396,27 @@ export default function ProgressScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={t.dim} />
               </View>
+              {/* Action 13 Item #7 (2026-04-19) — weight readouts go
+                  through the shared `formatWeightForUnit` helper so
+                  imperial users see "lb" and the start/current/change
+                  numbers on this card all use the same unit. The
+                  goal-suffix used to be a separate template literal
+                  with " kg" hard-coded — same drift class. */}
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
                 <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {latestWeightKg ?? "—"}
+                  {latestWeightKg != null
+                    ? formatWeightForUnit({ kg: latestWeightKg, system: measurementSystem })
+                    : "—"}
                 </Text>
-                <Text style={{ fontSize: 13, color: t.sub }}>kg{goalWeightKg ? ` → ${goalWeightKg} kg goal` : ""}</Text>
+                <Text style={{ fontSize: 13, color: t.sub }}>
+                  {goalWeightKg
+                    ? ` → ${formatWeightForUnit({ kg: goalWeightKg, system: measurementSystem })} goal`
+                    : ""}
+                </Text>
               </View>
               {weightTrend && (
                 <Text style={{ fontSize: 12, color: weightTrend.direction === "down" ? t.green : t.amber, marginTop: 4 }}>
-                  {weightTrend.diff > 0 ? "+" : ""}{weightTrend.diff} kg overall trend
+                  {formatWeightForUnit({ kg: weightTrend.diff, system: measurementSystem, signed: true })} overall trend
                 </Text>
               )}
               <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for graph & log weight</Text>
@@ -1096,8 +1464,16 @@ export default function ProgressScreen() {
               // actual burn and doesn't flag a genuine deficit as a gain. See
               // TestFlight `ALkK-XrcMz_V-D6NrjuVYbo`.
               const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
+              // Action 13 Item #8 (2026-04-19) — gate the projection on
+              // ≥5 recent food-logged days via the shared
+              // `shouldRenderDailyProjection`. Projecting from 2 days
+              // of food was dishonest — a single high or low day
+              // dragged the projection ±2-3 kg out. Below the floor we
+              // suppress the entire projection line; the journey card
+              // still renders progress + days-to-goal.
+              const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
               const dailyProjection =
-                avgCals > 0 && latestWeightKg != null
+                projectionEligible && avgCals > 0 && latestWeightKg != null
                   ? projectWeight({
                       currentWeightKg: latestWeightKg,
                       todayCalories: avgCals,
@@ -1131,11 +1507,23 @@ export default function ProgressScreen() {
                       <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Journey</Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      {timeline.daysToGoal != null && (
+                      {timeline.daysToGoal != null ? (
                         <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
                           {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
                         </Text>
-                      )}
+                      ) : timeline.cappedAtMaxDays ? (
+                        /* Action 13 Item #15 (2026-04-19) — > 365 days
+                           projected, surface honest "more than 1 year"
+                           copy instead of an empty headline. Rate
+                           continues to render in the line below so the
+                           user can see the current pace. */
+                        <Text
+                          testID="progress-journey-capped"
+                          style={{ fontSize: 12, fontWeight: "600", color: t.sub }}
+                        >
+                          More than 1 year at current rate
+                        </Text>
+                      ) : null}
                       <Ionicons name="chevron-forward" size={18} color={t.dim} />
                     </View>
                   </View>
@@ -1195,25 +1583,13 @@ export default function ProgressScreen() {
             })()
           )}
 
-          {/* Weekly Insight */}
-          <View style={{ padding: 14, borderRadius: Radius.lg, backgroundColor: t.accent + "08", borderWidth: 1, borderColor: t.accent + "22" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <IconBox color={t.accent} size={24}>
-                <Ionicons name="star-outline" size={12} color={t.accent} />
-              </IconBox>
-              <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent, letterSpacing: 0.5, textTransform: "uppercase" }}>Weekly insight</Text>
-            </View>
-            <Text style={{ fontSize: 12, color: t.text, lineHeight: 18 }}>
-              {weekStats.proteinOnTarget >= 5
-                ? `Protein consistency is strong — ${weekStats.proteinOnTarget} of 7 days on target.`
-                : weekStats.proteinOnTarget > 0
-                  ? `Protein on target ${weekStats.proteinOnTarget} of 7 days.`
-                  : "Start tracking protein to build your weekly insights."
-              }
-              {" "}Average intake is {weekStats.avgCalories.toLocaleString()} kcal vs your {targets.calories.toLocaleString()} target.
-              {streakDays > 0 ? ` ${streakDays}-day logging streak.` : ""}
-            </Text>
-          </View>
+          {/* Weekly Insight — removed (Action 5 Item 1, 2026-04-19).
+              The card restated numbers already on screen above (avg
+              calories, protein on target, streak). Replacement is being
+              scoped by `ui-product-designer` as a card-grammar-conformant
+              component; re-introduce when the new spec lands. */}
+          </>
+          )}
         </>
       )}
     </ScrollView>

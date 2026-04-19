@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,16 @@ function normalisePaywallFrom(raw: unknown): PaywallViewedFrom {
     case "onboarding":
     case "trial_end":
     case "deep_link":
+    // Round-3 additions (2026-04-19) — keep web + mobile helpers
+    // exhaustive against the same `PaywallViewedFrom` union. The
+    // parity test in `tests/unit/analyticsEvents.test.ts` asserts
+    // both switches carry identical `case` sets.
+    case "recipes_library":
+    case "shopping_list":
+    case "profile":
+    case "recipe_create":
+    case "recipe_import":
+    case "meal_planner":
       return s;
     default:
       return "deep_link";
@@ -77,7 +88,17 @@ export default function PaywallScreen() {
   );
 
   useEffect(() => {
-    track(AnalyticsEvents.paywall_viewed, { from: paywallFrom });
+    // Canonical `paywall_viewed` contract (L6 G9 + 2026-04-19 round-2):
+    // every emit carries `{ from, tier, surface, platform }`. The
+    // `/paywall` route is the full-route commercial surface (vs the
+    // in-flow `AiPaywallSheet`), so `surface: "route"`. Tier is always
+    // Pro — this screen only sells Pro.
+    track(AnalyticsEvents.paywall_viewed, {
+      from: paywallFrom,
+      tier: "pro",
+      surface: "route",
+      platform: Platform.OS === "ios" ? "ios" : "android",
+    });
     void (async () => {
       await ensurePurchasesUser(userId);
       const pkgs = await getOfferings();
@@ -86,9 +107,21 @@ export default function PaywallScreen() {
     })();
   }, [userId, paywallFrom]);
 
+  // Prefer the annual Pro package so the 7-day trial sell matches the
+  // TIMELINE framing ("Day 7: Trial ends") — annual + trial is the
+  // canonical Pro purchase path on iOS. Fall back to monthly if the
+  // RC offering isn't provisioned with an annual package yet, so
+  // users can still upgrade from the trial surface without hitting
+  // "Subscriptions not available". The disclosure `priceString`
+  // below picks up the right package automatically.
   const annualPkg = packages.find(
     (p) => p.packageType === "ANNUAL" || p.identifier === "$rc_annual",
   );
+  const monthlyPkg = packages.find(
+    (p) => p.packageType === "MONTHLY" || p.identifier === "$rc_monthly",
+  );
+  const primaryPkg = annualPkg ?? monthlyPkg ?? packages[0];
+  const primaryIsAnnual = Boolean(annualPkg) && primaryPkg === annualPkg;
 
   // TestFlight `AFE6h9Tlq0bUCugLAJfVGx8` follow-up (2026-04-19): when
   // IAP isn't provisioned in this build the paywall still renders a
@@ -98,7 +131,7 @@ export default function PaywallScreen() {
   const trialUnavailable = offeringsReady && packages.length === 0;
 
   async function onStartTrial() {
-    const pkg = annualPkg ?? packages[0];
+    const pkg = primaryPkg;
     if (!pkg) {
       // TestFlight `AFE6h9Tlq0bUCugLAJfVGx8` (2026-04-18) — previously
       // this silently advanced to the next screen, making the trial look
@@ -268,9 +301,9 @@ export default function PaywallScreen() {
         </View>
 
         <Text style={styles.priceText}>
-          {annualPkg
-            ? `7 days free, then ${annualPkg.product.priceString} per year. Cancel anytime. No charge today.`
-            : "7 days free trial. Cancel anytime. No charge today."}
+          {primaryPkg
+            ? `7 days free, then ${primaryPkg.product.priceString} per ${primaryIsAnnual ? "year" : "month"}, automatically renewing until cancelled via App Store settings. 7-day refund policy: support@suppr-club.com`
+            : "7 days free trial, automatically renewing until cancelled via App Store settings. 7-day refund policy: support@suppr-club.com"}
         </Text>
 
         {offeringsReady && packages.length === 0 && (

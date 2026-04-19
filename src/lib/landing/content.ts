@@ -71,11 +71,21 @@ export const SUPPORTED_PLATFORMS = {
 
 export type PricingTierName = "Free" | "Base" | "Pro";
 
+export type BillingPeriod = "monthly" | "annual";
+
 export type PricingTier = {
   name: PricingTierName;
   tag: string;
+  /** Monthly-view price (e.g. "£3.99"). Free shows "£0". */
   price: string;
+  /** Monthly-view period suffix (e.g. "/month"). Free shows "forever". */
   period: string;
+  /** Annual-view price (e.g. "£29.99"). Absent for Free. */
+  annualPrice?: string;
+  /** Annual-view period suffix — typically "/year". */
+  annualPeriod?: string;
+  /** Annual saving badge copy (e.g. "Save 37%"). */
+  annualSavings?: string;
   /** Tier key for checkout. `null` for Free. */
   checkoutTier: "base" | "pro" | null;
   /** Bullet used on /pricing as a small tier summary. */
@@ -96,10 +106,10 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: "Free",
     tag: "Track meals and see verified macros.",
-    price: "$0",
+    price: "£0",
     period: "forever",
     checkoutTier: null,
-    nutritionNote: "USDA-verified food data",
+    nutritionNote: "Sourced from USDA FoodData Central",
     features: [
       `Save up to ${FREE_SAVE_LIMIT} recipes`,
       "Browse community recipes",
@@ -117,8 +127,11 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: "Base",
     tag: "The full meal-planning loop.",
-    price: "$5",
+    price: "£3.99",
     period: "/month",
+    annualPrice: "£29.99",
+    annualPeriod: "/year",
+    annualSavings: "Save 37%",
     checkoutTier: "base",
     nutritionNote: "Unlimited recipes + multi-day planning",
     featHead: "Everything in Free, plus",
@@ -133,8 +146,11 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: "Pro",
     tag: "Log by photo and voice, faster.",
-    price: "$12",
+    price: "£7.99",
     period: "/month",
+    annualPrice: "£59.99",
+    annualPeriod: "/year",
+    annualSavings: "Save 37%",
     checkoutTier: "pro",
     nutritionNote: "AI photo & voice logging",
     featHead: "Everything in Base, plus",
@@ -172,7 +188,7 @@ export const HOW_IT_WORKS: HowItWorksStep[] = [
   {
     n: 4,
     title: "Adapts to how you actually eat",
-    body: `Apple Health sync keeps your calorie target honest as activity shifts. Adaptive TDEE learns your real maintenance once you've logged ${TDEE_MIN_LOGGING_DAYS} days and weighed in ${TDEE_MIN_WEIGH_INS} times.`,
+    body: `Adaptive TDEE refines your maintenance estimate once you've logged ${TDEE_MIN_LOGGING_DAYS} days and weighed in ${TDEE_MIN_WEIGH_INS} times.`,
   },
 ];
 
@@ -262,17 +278,20 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
     // (sync-enforcer finding 2026-04-19): the client only blocks *new*
     // saves above `FREE_SAVE_LIMIT`; existing saves above the cap are not
     // enforced as read-only today. Keep the claim aligned to the actual
-    // behaviour until (and unless) read-only enforcement ships.
-    a: `Nothing disappears. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved; you won't be able to add more until you're back under the limit or on Base. History, logs, and targets stay fully accessible.`,
+    // behaviour until (and unless) read-only enforcement ships. Further
+    // softened 2026-04-19 (round-2 legal pass) to clarify recipes stay
+    // editable — "read-only" was the bug, "stay saved and editable" is
+    // the honest promise.
+    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Base.`,
   },
   {
     q: "Is this a diet app?",
     a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. You can opt into a gentle logging streak if you want one; it's off by default.",
   },
-  {
-    q: "Is there an annual plan?",
-    a: "Not yet, but it's coming. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
-  },
+  // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
+  // (monetisation-architect round-2): parking a placeholder with no
+  // shipped SKU created an implied promise; removed to match the
+  // landing's no-vapourware stance.
   {
     q: "Do you offer refunds?",
     a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",

@@ -47,6 +47,7 @@ import {
   type MealPlanNamedSlot,
 } from "./appData/persistence.ts";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
+import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import {
   looksLikeMissingTableError,
   syncDisabledBecauseSchemaMessage,
@@ -704,7 +705,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         creatorName: (row?.author?.display_name as string | null) ?? "Community",
         creatorImage:
           (row?.author?.avatar_url as string | null) ??
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+          NEUTRAL_AVATAR_DATA_URI,
         title: (row.title as string) ?? "Untitled",
         image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
@@ -757,7 +758,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id: row.id as string,
         creatorName: importAttribution || profileDisplayName || "You",
         creatorImage:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+          NEUTRAL_AVATAR_DATA_URI,
         title: (row.title as string) ?? "Untitled",
         image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
@@ -892,7 +893,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           title: nextTitle,
           image: (src as any).image_url ?? null,
           creatorName: profileDisplayName ?? "You",
-          creatorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+          creatorImage: NEUTRAL_AVATAR_DATA_URI,
           calories: 0,
           protein: 0,
           carbs: 0,

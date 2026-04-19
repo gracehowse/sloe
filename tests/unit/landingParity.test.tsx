@@ -109,6 +109,22 @@ describe("landing page — pricing tier parity with /pricing route", () => {
     }
   });
 
+  it("paid tiers carry an annualPrice, annualPeriod, and annualSavings", () => {
+    for (const tier of PRICING_TIERS) {
+      if (tier.checkoutTier === null) continue; // Free has no annual
+      expect(tier.annualPrice, `${tier.name} annualPrice`).toBeTruthy();
+      expect(tier.annualPeriod, `${tier.name} annualPeriod`).toBeTruthy();
+      expect(tier.annualSavings, `${tier.name} annualSavings`).toBeTruthy();
+    }
+  });
+
+  it("SSOT prices are GBP-denominated (no USD dollar sign)", () => {
+    for (const tier of PRICING_TIERS) {
+      expect(tier.price.startsWith("$")).toBe(false);
+      if (tier.annualPrice) expect(tier.annualPrice.startsWith("$")).toBe(false);
+    }
+  });
+
   it("landing tier names match SSOT tier names", () => {
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";

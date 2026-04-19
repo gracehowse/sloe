@@ -48,7 +48,7 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
           <p className="text-sm text-muted-foreground mb-4">
             {feature} requires a {TIER_LABELS[requiredTier]} plan.
             {currentTier === "free" && requiredTier === "base"
-              ? " Unlock unlimited saves, meal planning, shopping lists, and more."
+              ? " Plan your full week and generate a ready-to-shop list."
               : " Get access to creator tools, advanced imports, and deeper analytics."}
           </p>
           <div className="flex items-center gap-3">

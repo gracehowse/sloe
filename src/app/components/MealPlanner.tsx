@@ -38,6 +38,11 @@ import {
   scaledMacro,
 } from "../../lib/nutrition/portionMultiplier.ts";
 import {
+  buildDayTotalVsGoalLine,
+  formatDayTotalCell,
+  type DayTotalTone,
+} from "../../lib/planning/dayTotalVsGoal.ts";
+import {
   buildTemplateFromWeek,
   applyTemplateToWeek,
   type PlanTemplate,
@@ -1321,6 +1326,26 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                 : tone === "low"
                   ? "text-warning"
                   : "text-warning";
+            // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
+            // 2026-04-19): "Plan doesn't tell me how close it is to my
+            // macro targets." The shared helper builds an explicit
+            // compact text line: "Day total · X / Y kcal · P / C / F"
+            // with symmetric ±10% / ±20% tolerance bands. Sits above
+            // the existing DailyRing + MacroCard grid so users can
+            // scan without parsing the ring. `hasTargets=false` →
+            // omit the whole line (new account, no goals set).
+            const goalLine = buildDayTotalVsGoalLine(dp.meals, {
+              calories: targetCalories,
+              protein: targetProtein,
+              carbs: targetCarbs,
+              fat: targetFat,
+            });
+            const toneClassDayTotal = (tone: DayTotalTone): string =>
+              tone === "neutral"
+                ? "text-muted-foreground"
+                : tone === "amber"
+                  ? "text-warning"
+                  : "text-destructive";
             return (
             <div key={dp.day} id={`plan-day-${dp.day}`}>
               <div className="backdrop-blur-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-8 mb-6 shadow-2xl">
@@ -1335,6 +1360,21 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                     </p>
                   </div>
                 </div>
+                {goalLine.hasTargets ? (
+                  <p
+                    className="text-[13px] tabular-nums mb-4 flex flex-wrap items-center gap-x-1"
+                    data-testid={`day-total-vs-goal-${dp.day}`}
+                    aria-label={`Day total ${Math.round(goalLine.totals.calories)} of ${targetCalories} kcal, protein ${Math.round(goalLine.totals.protein)} of ${targetProtein} grams, carbs ${Math.round(goalLine.totals.carbs)} of ${targetCarbs} grams, fat ${Math.round(goalLine.totals.fat)} of ${targetFat} grams`}
+                  >
+                    <span className="font-semibold text-foreground">Day total</span>
+                    {goalLine.cells.map((cell) => (
+                      <span key={cell.key} className={toneClassDayTotal(cell.tone)}>
+                        {" · "}
+                        {formatDayTotalCell(cell)}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-start">
                   <div className="flex justify-center md:col-span-1">
                     <DailyRing consumed={dp.totals.calories} target={targetCalories} size={120} />

@@ -205,14 +205,50 @@ Exported as `FoodLoggedSource`. Grep-level assertion at `tests/unit/foodLoggedSo
 
 ### `paywall_viewed.from` enum (G9)
 ```
-"voice_log"   // Free / Base user tapped Voice on Today
-"photo_log"   // Free / Base user tapped Snap on Today
-"settings"    // "View plans" row in Settings / More
-"onboarding"  // End-of-trial or onboarding handoff
-"trial_end"   // Expired trial landing
-"deep_link"   // Any other entry (fallback for unknown ?from=)
+"voice_log"     // Free / Base user tapped Voice on Today
+"photo_log"     // Free / Base user tapped Snap on Today
+"settings"      // "View plans" row in Settings / More
+"onboarding"    // End-of-trial or onboarding handoff
+"trial_end"     // Expired trial landing
+"deep_link"     // Any other entry (fallback for unknown ?from=)
+"meal_planner"  // Free user hit the Base-gated multi-day planner
 ```
 Exported as `PaywallViewedFrom`. Mobile reads `?from=` via `useLocalSearchParams`; web via `searchParams` in the async server component. Both run the value through a shared `normalisePaywallFrom()` guard so a malformed URL never bypasses the dashboard slice.
+
+**Full `paywall_viewed` contract (2026-04-19 round-2).** Every emit site must pass all four keys:
+
+| key | type | values |
+|---|---|---|
+| `from` | `PaywallViewedFrom` | see enum above |
+| `tier` | `"pro"` \| `"base"` | the tier being sold on this surface; today all three live emit sites sell Pro |
+| `surface` | `"route"` \| `"promo_panel"` | `route` = full-route `/pricing` / `/paywall`; `promo_panel` = in-Settings upgrade promo (web `App.openUpgradePromo`) |
+| `platform` | `"web"` \| `"ios"` \| `"android"` | web = `/pricing`, ios/android = mobile `/paywall` derived from `Platform.OS` |
+
+Three live emit sites today: `app/pricing/page.tsx` (web, `surface: "route"`), `apps/mobile/app/paywall.tsx` (mobile, `surface: "route"`), `src/app/App.tsx` → `openUpgradePromo` (web, `surface: "promo_panel"`, debounced 500ms to collapse render-loop double-fires). A CI-time source-grep assertion in `tests/unit/analyticsEvents.test.ts` walks `src/`, `app/`, and `apps/mobile/` and fails if any `track(AnalyticsEvents.paywall_viewed, …)` / `<PageViewTracker event={AnalyticsEvents.paywall_viewed} …>` call is missing one of the four required keys.
+
+#### Precedents (set 2026-04-19 by analytics-engineer)
+
+**Precedent 1 — `from` vs `surface`: intent-origin vs render-context**
+
+`from` and `surface` answer different questions and must never be conflated:
+
+- `from` — where the user's **intent originated**: the feature or location they interacted with that caused them to end up at the paywall. This is the trigger origin.
+- `surface` — where the paywall **renders**: the route or UI component that is actually displaying the paywall. This is the render context.
+
+Example: a Free user taps the locked 7-day tile in the meal planner and is navigated to the in-Settings upgrade promo panel.
+- Correct: `from: "meal_planner"`, `surface: "promo_panel"`
+- Wrong: `from: "settings"` — "settings" describes where the promo panel lives, not what the user intended to do.
+
+This distinction applies to all surface-origin events, not just `paywall_viewed`. Whenever an event has both a trigger-origin and a render-context property, `from` carries the former and `surface` carries the latter.
+
+**Precedent 2 — `"onboarding"` vs `"trial_end"` are distinct funnel stages**
+
+Both values appear on the `paywall_viewed.from` enum but describe fundamentally different conversion moments:
+
+- `"onboarding"` — the first-offer moment. The user has just completed onboarding and is being shown a paid offer for the first time. They have never had paid access.
+- `"trial_end"` — the conversion-or-lose moment. The user previously had paid access (for example via the 7-day free trial) and is now being shown the paywall as that access expires. They are about to lose something they have had.
+
+These map to different funnel stages (acquisition vs retention) and must not be conflated in dashboards or A/B tests. Emitting `"onboarding"` for a trial-expiry screen, or `"trial_end"` for a first-offer screen, will corrupt both funnels.
 
 ### `empty_state_cta_clicked.surface` enum (G5)
 ```

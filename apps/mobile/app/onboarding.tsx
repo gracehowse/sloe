@@ -361,11 +361,11 @@ export default function OnboardingScreen() {
         onboarding_completed: true,
       }, { onConflict: "id" });
     }
-    router.replace("/paywall");
+    router.replace("/paywall?from=onboarding");
   }, [router, userId]);
 
   const saveAndFinish = useCallback(async () => {
-    if (!userId) { router.replace("/paywall"); return; }
+    if (!userId) { router.replace("/paywall?from=onboarding"); return; }
     setSaving(true);
     try {
       const { error } = await supabase.from("profiles").upsert({
@@ -404,7 +404,7 @@ export default function OnboardingScreen() {
     }
     setSaving(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace("/paywall");
+    router.replace("/paywall?from=onboarding");
   }, [userId, data, age, heightCm, weightKg, goalWeightKg, budget, macros, router]);
 
   const update = useCallback(<K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {

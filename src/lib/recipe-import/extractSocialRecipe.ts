@@ -88,18 +88,19 @@ function guessTikTokAuthorDisplay(caption: string, pageTitle: string | null): st
   return null;
 }
 
-/** User-Agent strings to try — platforms serve meta tags to some crawlers but not others. */
+/**
+ * User-Agent strings tried when fetching Instagram/TikTok/YouTube pages.
+ *
+ * We use only an honest, identified Suppr UA that links to a public bot page.
+ * We do NOT impersonate `facebookexternalhit`, WhatsApp, Telegram, or Discord
+ * bots — platforms reserve those UAs for their own infrastructure and
+ * impersonating them is (a) false representation and (b) evidence of knowing
+ * circumvention for CFAA / DMCA § 1201 / platform ToS purposes. Some platforms
+ * will return less metadata to an honest bot UA; that is the correct outcome.
+ * If a fetch returns nothing, the user can paste the recipe text manually.
+ */
 const UA_ATTEMPTS = [
-  // Chrome desktop (default)
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  // Facebook crawler — many platforms whitelist this for link previews
-  "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
-  // WhatsApp link preview bot
-  "WhatsApp/2.23.20.0",
-  // Telegram link preview
-  "TelegramBot (like TwitterBot)",
-  // Discord embed bot
-  "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+  "SupprBot/1.0 (+https://suppr-club.com/bot)",
 ];
 
 /**

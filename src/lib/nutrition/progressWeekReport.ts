@@ -159,6 +159,84 @@ export function buildWeekStats<M extends MealMacros>(
   };
 }
 
+/**
+ * Action 5 Item 3 (2026-04-19) — single-source label for the "Avg Calories"
+ * tile on the Progress dashboard.
+ *
+ * Bug: the tile read "Avg Calories" with the headline number computed as
+ * `sum / daysWithFood`. For a user who logged 2 of 7 days the headline
+ * shows their two-day average but the label reads as if it's an
+ * average-per-day-this-week — misleading on partial weeks.
+ *
+ * Fix: surface the denominator on partial weeks. Full-week → "Avg
+ * Calories" (unchanged). Partial week → "Avg on logged days (X/7)" so
+ * the user understands the headline is averaged across the days they
+ * actually logged.
+ *
+ * Extracted as a pure helper so web (`ProgressDashboard.tsx`) and mobile
+ * (`app/(tabs)/progress.tsx`) cannot drift in copy. Parity pinned by
+ * `tests/unit/avgCaloriesLabel.test.ts`.
+ */
+export function formatAvgCaloriesLabel(daysWithFood: number): string {
+  // Defensive clamp: `daysWithFood` is derived from a 7-day window so it
+  // should already sit in [0, 7], but guard against future schema drift.
+  const clamped = Math.max(0, Math.min(7, Math.trunc(daysWithFood)));
+  if (clamped >= 7) return "Avg Calories";
+  return `Avg on logged days (${clamped}/7)`;
+}
+
+/**
+ * Action 13 Item #4 (2026-04-19) — single source of truth for the
+ * Macro Adherence bar's fill % AND its label.
+ *
+ * Bug history: web (`ProgressDashboard.tsx`) rendered the raw
+ * `adherencePct` straight into the bar width with no cap, while mobile
+ * (`app/(tabs)/progress.tsx`) clamped to 150%. A user at 200% protein
+ * saw a label-shaped bar on web and a clipped 150% bar on mobile —
+ * pure parity drift.
+ *
+ * Decision (Action 13): cap **both** at 150%. The bar height visually
+ * stops at 150%; the label preserves the actual figure with an
+ * "(capped at 150)" suffix when over the cap so the user still sees
+ * the real number.
+ *
+ * Behaviour matrix:
+ *   - 0   → barFillPct = 0,   label = "0%"
+ *   - 80  → barFillPct = 80,  label = "80%"
+ *   - 100 → barFillPct = 100, label = "100%"
+ *   - 175 → barFillPct = 150, label = "175% (capped at 150)"
+ *   - 200 → barFillPct = 150, label = "200% (capped at 150)"
+ *
+ * Also defends against negative / non-finite input by clamping to
+ * `[0, MACRO_ADHERENCE_BAR_CAP_PCT]`. Returns the rounded %s so the
+ * UI never shows "99.999%".
+ *
+ * Pinned by `tests/unit/macroAdherenceBar.test.ts`.
+ */
+export const MACRO_ADHERENCE_BAR_CAP_PCT = 150;
+
+export type MacroAdherenceBar = {
+  /** Bar width as a 0-150 integer; clamped from `adherencePct`. */
+  barFillPct: number;
+  /** User-facing label. Includes the cap suffix when over the cap. */
+  label: string;
+};
+
+export function formatMacroAdherenceBar(opts: {
+  adherencePct: number | null | undefined;
+}): MacroAdherenceBar {
+  const raw = typeof opts.adherencePct === "number" && Number.isFinite(opts.adherencePct)
+    ? opts.adherencePct
+    : 0;
+  const safe = Math.max(0, Math.round(raw));
+  const barFillPct = Math.min(MACRO_ADHERENCE_BAR_CAP_PCT, safe);
+  const label =
+    safe > MACRO_ADHERENCE_BAR_CAP_PCT
+      ? `${safe}% (capped at ${MACRO_ADHERENCE_BAR_CAP_PCT})`
+      : `${safe}%`;
+  return { barFillPct, label };
+}
+
 /** Same rule as `computeLoggingStreak`: consecutive days ending today or yesterday with ≥1 meal. */
 export function getStreakContributingDays<M extends MealMacros>(
   byDay: ByDayOf<M>,

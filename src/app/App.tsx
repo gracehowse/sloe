@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
+import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
 import dynamic from "next/dynamic";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
@@ -175,10 +177,49 @@ export default function App() {
 
   const clearSettingsScrollToPromo = useCallback(() => setSettingsScrollToPromo(false), []);
 
-  const openUpgradePromo = useCallback(() => {
-    setSettingsScrollToPromo(true);
-    navigateToView("settings");
-  }, []);
+  // Debounce guard for the Settings-promo paywall_viewed emit (2026-04-19):
+  // a parent render loop can trigger `openUpgradePromo` twice within a tick
+  // if the button is a child of a component that re-renders on the same
+  // state change. 500ms is long enough to collapse those re-render bursts
+  // without swallowing a deliberate second tap (which is a valid funnel
+  // signal a few seconds later).
+  const upgradePromoTrackedAtRef = useRef<number>(0);
+  // Round-3 (2026-04-19, analytics-engineer spec): `from` is a REQUIRED
+  // non-optional argument so TypeScript fails compile if any new call
+  // site forgets to attribute the surface. Previously every upgrade
+  // entry point (Library, Profile, Shopping List, Recipe create/import,
+  // Meal Planner) collapsed into a single `from: "meal_planner"` emit
+  // that broke the F2 funnel slice. `gateReason` is optional free-text
+  // context (e.g. "over 10 saves", "multi-day plan") that rides along
+  // for deeper slicing when a call site has it.
+  const openUpgradePromo = useCallback(
+    (from: PaywallViewedFrom, gateReason?: string) => {
+      const now = Date.now();
+      if (now - upgradePromoTrackedAtRef.current > 500) {
+        upgradePromoTrackedAtRef.current = now;
+        // Canonical `paywall_viewed` contract (L6 G9 + 2026-04-19 round-2):
+        // every emit carries `{ from, tier, surface, platform }`. The
+        // Settings promo panel is the in-app upsell surface (vs the
+        // `/pricing` route), so `surface: "promo_panel"` stays pinned.
+        // `gate_reason` rides along only when the caller set it —
+        // omitted entirely otherwise so the property doesn't pollute
+        // PostHog with explicit `undefined` values.
+        const payload: Record<string, unknown> = {
+          from,
+          tier: "pro",
+          surface: "promo_panel",
+          platform: "web",
+        };
+        if (gateReason !== undefined) {
+          payload.gate_reason = gateReason;
+        }
+        track(AnalyticsEvents.paywall_viewed, payload);
+      }
+      setSettingsScrollToPromo(true);
+      navigateToView("settings");
+    },
+    [navigateToView],
+  );
 
   useEffect(() => {
     if (currentView !== "settings") {
@@ -256,7 +297,10 @@ export default function App() {
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
-                onUpgrade={openUpgradePromo}
+                // Round-3 (2026-04-19): attribute `paywall_viewed.from`
+                // to the originating surface. Meal Planner's upgrade
+                // gate is the Base-tier multi-day planner.
+                onUpgrade={() => openUpgradePromo("meal_planner")}
                 onNavigate={(view) => navigateToView(view)}
                 onOpenRecipe={openRecipeById}
                 onCookRecipe={(id, portion) => {
@@ -270,7 +314,7 @@ export default function App() {
                 }}
               /></FeatureErrorBoundary>
             ) : (
-              <FeatureErrorBoundary feature="Shopping List"><ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} /></FeatureErrorBoundary>
+              <FeatureErrorBoundary feature="Shopping List"><ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} /></FeatureErrorBoundary>
             )}
           </>
         );
@@ -281,16 +325,19 @@ export default function App() {
           <Profile
             userTier={userTier}
             displayName={displayName}
-            onUpgrade={openUpgradePromo}
+            // Round-3 (2026-04-19): Profile upsell row fires with
+            // `from: "profile"` so F2 can slice which tab surfaced the
+            // upgrade intent.
+            onUpgrade={() => openUpgradePromo("profile")}
             onOpenNutrition={() => navigateToView("today")}
           />
         );
       case "library":
         return (
-          <Library userTier={userTier} onUpgrade={openUpgradePromo} onGoDiscover={() => navigateToView("discover")} />
+          <Library userTier={userTier} onUpgrade={() => openUpgradePromo("recipes_library")} onGoDiscover={() => navigateToView("discover")} />
         );
       case "shopping":
-        return <ShoppingList userTier={userTier} onUpgrade={openUpgradePromo} onNavigate={(view) => navigateToView(view as View)} />;
+        return <ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} />;
       case "settings":
         return (
           <Settings
@@ -307,7 +354,10 @@ export default function App() {
           <FeatureErrorBoundary feature="Recipe Editor">
             <RecipeUpload
               userTier={userTier}
-              onUpgrade={openUpgradePromo}
+              // Round-3 (2026-04-19): mode is known at the wrap site so
+              // the `from` attribution is unambiguous — `recipe_create`
+              // vs `recipe_import` splits on the mode prop below.
+              onUpgrade={() => openUpgradePromo("recipe_create")}
               mode="create"
               onSwitchToImport={() => navigateToView("import")}
             />
@@ -318,7 +368,7 @@ export default function App() {
           <FeatureErrorBoundary feature="Recipe Import">
             <RecipeUpload
               userTier={userTier}
-              onUpgrade={openUpgradePromo}
+              onUpgrade={() => openUpgradePromo("recipe_import")}
               mode="import"
               onSwitchToCreate={() => navigateToView("create")}
             />

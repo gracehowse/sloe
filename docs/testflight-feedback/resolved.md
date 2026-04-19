@@ -2,6 +2,121 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-04-19 — H-5 (build-12): "Day total vs goal" summary line on Plan view (both platforms)
+
+- **ASC feedback id:** `AH8csBqtZsBJJr0uHgXyEcE` (build 11, 2026-04-19) — "Plan doesn't tell me how close it is to my macro targets." Screenshot showed a Saturday plan card with 4 meals and `1,373 kcal` in the header but no P/C/F totals and no explicit comparison to the user's per-day goals.
+- **Cause:** Plan view rendered each meal with its own macros (`Breakfast · 336 kcal · P 9g · C 26g · F 11g`) and a calorie-only total in the day header (`1,373 kcal`). The per-day delta existed as a row of small coloured pills (`P 103g +5`, `C 142g -12`, `F 45g ✓`, `Fi 12.4g`) but those are directional nudges, not the "am I on target?" readout the tester needed. Nothing in the Plan tab said `N / goal` explicitly.
+- **Fix:**
+  - New shared helper `src/lib/planning/dayTotalVsGoal.ts` exporting `buildDayTotalVsGoalLine(meals, goals)`, `classifyDayDelta(actual, goal)`, `formatDayTotalCell(cell)`, `formatDayTotalVsGoalLine(line)`, and the `DAY_TOTAL_NEUTRAL_BAND` / `DAY_TOTAL_AMBER_BAND` constants. Totals delegate to the existing `dayPlanTotalsFromMeals` so `0.5x` / `1.5x` `portionMultiplier`s are respected (same math the tracker and shopping list use). Tolerance bands are **symmetric** over/under the goal: `|delta|/goal ≤ 10%` → neutral, `10–20%` → amber, `> 20%` → red. Goal = 0 / negative / non-finite never divides; the helper short-circuits to neutral and `hasTargets=false` so the caller can omit the line.
+  - Mobile: `apps/mobile/app/(tabs)/planner.tsx` renders the new line right under the `Day N / kcal` header, above the existing macro-delta pills. Line reads `Day total · 1,373 / 1,411 kcal · P 103 / 120g · C 142 / 180g · F 45 / 55g` with each cell coloured per tone — neutral (`colors.textSecondary`), amber (`Accent.warning`), red (`Accent.destructive`). `testID=day-total-vs-goal-{day}` for Maestro. Full `accessibilityLabel` spells out every value. `planTargets` falsy → helper not even called. `hasTargets=false` → line omitted.
+  - Web: `src/app/components/MealPlanner.tsx` renders the same line inside the primary day card, between the `Day {dp.day}` header row and the `DailyRing + MacroCard` grid, keyed on `targetCalories / targetProtein / targetCarbs / targetFat` (the same state the `daySummaries` memo reads). Tones map to Tailwind tokens: `text-muted-foreground` (neutral), `text-warning` (amber), `text-destructive` (red). Same `data-testid` convention as mobile.
+  - Goals are sourced from the existing planner state on each platform — mobile's `planTargets` is the result of `resolveTargets(profile)` (the same call Today tab uses in `apps/mobile/app/(tabs)/index.tsx`), web's `target*` state is seeded from `nutritionTargets` via `AppDataContext`. No second fetch, no duplicated resolution.
+- **UX guardrails held:**
+  - Per-meal layout untouched on both platforms. The new line sits in day-level chrome only.
+  - "Goal" matches the Today tab's per-day target (not `maintenance` — that would double-count deficit/surplus for cut/bulk users).
+  - Colour is neutral on "within band", amber at the edge, red outside. **Symmetric** — over and under carry the same tone at the same `|delta|`. Bulk/gain users aren't punished for exceeding a calorie goal.
+  - New accounts (`hasTargets=false`) get **no line at all** — never `—` or `0 / 0`.
+- **Parity:**
+  - Same helper, same symmetric bands, same per-cell formatter, same `day-total-vs-goal-<day>` testID on both surfaces. Colour tokens differ by necessity (Tailwind classes on web, `Accent.*` colour values on mobile) but map to the same three tones.
+  - No intentional divergence. Any future drift in the line's math/tone breaks the shared helper test + the parity pin.
+
+### Tests
+
+- **`tests/unit/dayTotalVsGoal.test.ts`** (28 tests, passing) — symmetric tolerance bands (neutral/amber/red, inclusive at 20% boundary, direction-agnostic at same `|delta|`), goal=0 / negative / `NaN` / `Infinity` never divides, 0-meal day yields `{0,0,0,0}` totals without a crash, `portionMultiplier` at `0.5x` / `1.5x` / `2x` scales totals correctly, placeholder meals excluded from totals, `hasTargets=false` when any goal is non-positive / non-finite (mapped through all four macros), cells rendered in stable order (calories → protein → carbs → fat), formatter produces the exact spec string `Day total · 1,373 / 1,411 kcal · P 103 / 120g · C 142 / 180g · F 45 / 55g`.
+- **`tests/unit/dayTotalVsGoalLineRender.test.ts`** (13 tests, passing) — source-level pin on `MealPlanner.tsx` + `planner.tsx` that both files import from `src/lib/planning/dayTotalVsGoal`, render a per-day testID, gate on `hasTargets`, map all three tones to a colour token, render the `Day total` label, and share the `day-total-vs-goal-${dp.day}` template. A drift on either surface breaks this loudly.
+- **`apps/mobile/tests/unit/dayTotalVsGoalParity.test.ts`** (9 tests, passing) — mobile-only duplicate pin (CI shards web tests separately) on the planner-tab source and a direct helper call matching the spec's 1373 vs 1411 example.
+
+### Files touched
+
+- `src/lib/planning/dayTotalVsGoal.ts` (new) — shared helper.
+- `tests/unit/dayTotalVsGoal.test.ts` (new) — helper unit tests.
+- `tests/unit/dayTotalVsGoalLineRender.test.ts` (new) — web + mobile wiring pin.
+- `apps/mobile/tests/unit/dayTotalVsGoalParity.test.ts` (new) — mobile wiring pin.
+- `apps/mobile/app/(tabs)/planner.tsx` — helper import + JSX block inside the per-day card.
+- `src/app/components/MealPlanner.tsx` — helper import + JSX block inside the per-day detail card.
+- `docs/testflight-feedback/resolved.md` — this entry.
+
+### Follow-ups
+
+- No net-new telemetry needed — the line is read-only. If we later decide to log "user hit neutral band on all 7 days" as a retention signal, `analytics-engineer` can add a fire-and-forget event off the `goalLine.cells` output.
+- Existing macro-delta pill row on mobile is now partially redundant with the new explicit line. Leaving it in for now — the pills carry the `+/-` hint and fibre, which the summary line omits. Consolidation, if any, is a `ui-critic` call.
+
+## 2026-04-19 — H-4 (build-12): Progress tab skeleton-first paint + deferred daily-targets fetch
+
+- **ASC feedback id:** `AEb7NcjnvK4PpVPHaaVUeI0` (build 11, 2026-04-19) — "Progress page takes a while to load". Screenshot showed a lone centred spinner with tab chrome visible but no content. Tester waited long enough to think the screen was broken.
+- **Cause:** `apps/mobile/app/(tabs)/progress.tsx` `loadData()` was serially awaiting three things before flipping `loading` to `false`:
+  1. `profiles` select (critical path — required for first paint).
+  2. `nutrition_entries` select — 90-day cap, already parallelised with `profiles` via `Promise.all`.
+  3. `getDailyTargets(supabase, userId, weekKeys)` — a **second** round-trip that waited for step 1 to finish, then ran serially before `setLoading(false)` at the end of `loadData`.
+  The loading branch also rendered a bare centred `ActivityIndicator` with no header / stat-grid chrome, so until `loading` flipped the tab looked empty. On a warm focus the combined latency pushed first meaningful paint well past the 1s budget. The tester's screenshot showed exactly the blank-spinner window.
+- **Fix (mobile, `apps/mobile/app/(tabs)/progress.tsx`):**
+  - **Skeleton-first paint.** The `if (loading)` branch now renders a real `ScrollView` with the `Progress` header, the `Weekly report` subline, and four neutral placeholder tiles matching the real 2x2 stat-grid footprint (no numbers — we never invent data). A small inline `ActivityIndicator` under the skeleton tells the user the view is live. TestIDs: `progress-skeleton`, `progress-skeleton-tile-0`..`3`.
+  - **Deferred `getDailyTargets`.** The call is now fire-and-forget (`void getDailyTargets(...).then(setDailyTargetsByDay)`) and runs **after** `setLoading(false)`. Safe because `buildWeekStats` and the chart colouring path inherit the current `targets` for any day the snapshot map has no entry — numbers are correct from the first frame. The only observable reconcile is a past-day bar's colour (green ↔ amber), and only if the user edited their plan mid-week. Today's bar was never snapshot-dependent; `daily_targets` only snapshots past days.
+  - **One-frame chart deferral (`chartsReady`).** After data lands, a `requestAnimationFrame` hands control back to RN's render loop so the first post-load paint is the cheap stat-grid + recap card only. The heavy Daily Calories chart, Maintenance card, Steps card, Weight card, and Journey card mount the very next frame. A `progress-charts-pending` placeholder with a small spinner fills the scroll slot in between so the view doesn't jump.
+- **Fix (web, `src/app/components/ProgressDashboard.tsx`):** same `getDailyTargets` deferral — `setLoading(false)` fires as soon as the `profiles` read returns, then `void getDailyTargets(...).then(setDailyTargetsByDay)` runs in the background. Web didn't get the skeleton treatment: the web `loading` state is already just a cheap `"Loading progress…"` text inside a `Suspense` fallback, and web perf wasn't called out by the tester. The deferral is parity-only.
+- **Scope guardrails held:**
+  - No chart output / computed number changes. Before-vs-after: identical `weekStats.avgCalories`, `proteinOnTarget`, `streakDays`, `weightTrend`, `recap.*`, and Maintenance `resolved.kcal`. The defer only affects WHEN the JSX mounts, not the inputs to any derivation.
+  - No new data-fetching library. Native `void promise.then(...)` only.
+  - No schema change; no new RLS; no new migration.
+  - Other tabs untouched — root cause was Progress-specific (the `daily_targets` RTT + chart-heavy paint), not a shared context hazard.
+- **Budgets hit:**
+  - Tab-chrome + skeleton in the initial render tree (paint budget ~300ms warm — bounded by `useFocusEffect` + React render, no awaits).
+  - First meaningful content (header + stat grid + recap card) now blocks only on `profiles` + `nutrition_entries` (single parallel RTT). `daily_targets` moved off the critical path.
+  - Charts mount one `requestAnimationFrame` after `loading` clears.
+
+### Tests
+
+- **`apps/mobile/tests/unit/progressSkeletonFirstPaint.test.tsx`** — render test. Mounts `ProgressScreen` with a never-resolving supabase mock so the `loading` state holds open. Asserts the render tree contains `progress-skeleton` and all four `progress-skeleton-tile-N` placeholders, and that the `progress-charts-pending` slot is NOT in the tree yet (`chartsReady` has not flipped because `loading` is still `true`). A realistic 180-day dataset isn't materially different during the loading window — the whole point of the skeleton-first budget is that the first paint is dataset-independent.
+- **`apps/mobile/tests/unit/progressSkeletonSource.test.ts`** — 4 structural pins:
+  1. Mobile loading branch has `testID="progress-skeleton"` and uses the `[0, 1, 2, 3].map(...)` tile iterator (the old bare-spinner `<View style={{ ... justifyContent: "center" }}>` block is gone).
+  2. Mobile has `chartsReady` state and a `requestAnimationFrame(() => setChartsReady(true))` deferral, with a reset when `loading` flips back on (pull-to-refresh restages the paint).
+  3. Mobile `getDailyTargets` is called via `void ...then(...)`, not awaited; `setLoading(false)` appears before the deferred fetch in the source.
+  4. Web `getDailyTargets` is called via `void ...then(...)`, not awaited; same ordering invariant — pins the two surfaces together.
+
+### Parity
+
+- Web and mobile both unblock `setLoading(false)` at the same logical point: after `profiles` (and `nutrition_entries` on mobile) resolves. `daily_targets` is deferred on both.
+- Mobile got the skeleton render; web did not. This is deliberate — web's loading screen was already a cheap single-line text inside a `Suspense` fallback, and the tester report was mobile-only. The structural test's parity pin is on the `getDailyTargets` deferral, not on the skeleton shape.
+- `buildWeekStats` and `resolveDisplayTarget` already handled the `null`-snapshot fallback; no shared helper changed.
+
+### Scope guardrails held
+
+- No change to `getDailyTargets`, `resolveDisplayTarget`, or `buildWeekStats` — the whole correctness story rests on those already handling the null-snapshot case.
+- No change to `nutrition_entries` query shape (still capped to the last 90 days).
+- No change to the Daily Calories chart rendering logic, Macro Adherence, Maintenance card, Journey card, or Weekly Recap card. Only the **timing** of when they mount differs.
+- No new DB reads, migrations, or RPCs.
+- No change to files owned by H-2, H-3, G-1..G-6, or F-2.
+
+## 2026-04-19 — H-3 (build-12): Today Activity Bonus Maintenance tile pinned across today + past-day
+
+- **ASC feedback id:** `AAtW7dYcCBPyBdsMU6UqiQQ` — "This is generally helpful but I think we lost some of the clarity around total burn/ projected burn, how all the numbers add up." Screenshot showed the Today Activity Bonus card rendering a 3-column summary (`Burn so far / Food logged / Net deficit`) while the same card on a past day rendered 4 columns (same three + `Maintenance`). Self-inconsistency inside one card blocks the user from "making the numbers add up".
+- **Cause (audit):** After F-3 (`resolveMaintenance` SSOT) both the web host (`src/app/components/NutritionTracker.tsx`) and the mobile host (`apps/mobile/app/(tabs)/index.tsx`) already feed `profileMaintenanceTdeeKcal` from the same shared resolver into `TodayActivityBonusCard`, date-independent. The card's `hasMaintenanceTile = maintenanceTdeeKcal != null && maintenanceTdeeKcal > 0` gate is correct. The drift risk is therefore regression-shaped — the card could silently gain an `isToday` gate (or the host could fork into two maintenance sources with one branch still null), and the symptom the tester saw would reappear.
+- **Fix (belt-and-braces pin, no runtime behaviour change):**
+  - Added two parallel render tests — **web:** `tests/unit/todayActivityBonusCardMaintenanceTile.test.tsx`; **mobile:** `apps/mobile/tests/unit/todayActivityBonusCardMaintenanceTile.test.tsx` — that render `TodayActivityBonusCard` with the exact same positive `maintenanceTdeeKcal` for `isToday === true` AND `isToday === false` (mobile) / two different `selectedDateKey` values (web), and assert the `today-activity-bonus-maintenance-tile` test ID is present in both. A regression that re-introduces an `isToday` dependency on the Maintenance tile fails CI on whichever platform it lands on.
+  - Same tests pin the null/0 omission rule (no misleading "0 kcal · Maintenance" cell for brand-new users whose profile basics can't resolve to a formula number), the positive-value render, and the info-trigger visibility (shown only when the popover has content).
+  - `docs/testflight-feedback/resolved.md` — this entry.
+- **Verify:** On a profile whose `resolveMaintenance` returns a non-null value, swipe from today to any past day with burn data — the card renders 4 tiles in both positions (`Burn so far|Total burn / Food logged / Maintenance / Net deficit|Net surplus`). On a brand-new profile without sex/weight/height/age set, the same swipe renders 3 tiles in both positions (no Maintenance). Info trigger (info-circle icon) is visible whenever the tile is, and dismissed with the tile.
+- **Parity:** Web card (`src/app/components/suppr/today-activity-bonus-card.tsx`) and mobile card (`apps/mobile/components/today/TodayActivityBonusCard.tsx`) share the same `hasMaintenanceTile` condition, the same test-id set (`today-activity-bonus-maintenance-tile`, `today-activity-bonus-summary-row`, `today-activity-bonus-info-trigger`), and the same null/0 gate. Both tests render through their respective testing-library (React DOM vs React Native) against a minimal props surface that exercises the gate alone — other tiles are incidental. Wired via the shared `resolveMaintenance` helper which `apps/mobile/tests/unit/resolveMaintenanceAdoption.test.ts` already pins as the single source.
+- **Scope guardrails held:** No runtime code change in either card or either host — today and past-day already share the same maintenance source via F-3. This entry is a test-coverage pin for the tester's observed symptom; the "which tiles render" contract is now enforced by CI on both platforms.
+
+## 2026-04-19 — H-2: "Per serving" headline in food search results (Edamam + USDA + OFF)
+
+- **ASC feedback ids:**
+  - `AKvgjnbEOcb4aXycX2eW7tM` (build 11, 2026-04-18 21:45Z) — "Everything defaults to 100g rather than showing actual portion sizes." Screenshot: Today → Search Foods for "eggs benedict" — all rows read "per 100g" even on sources (Edamam restaurant hits, USDA Branded) that expose a natural portion.
+  - `APGJJlglIgFLbX8xR4fE_4w` (build 11, 2026-04-19 15:22Z) — "Lots of foods still defaulting to 100g." Screenshot: "taco chicken" — some rows had a subline "4 tacos (99 g) · 263 kcal / 100 g" but the big right-rail kcal number read a mix of per-serving (260) and per-100g (263) with no badge distinguishing them, and the tester read the row as still 100g-default.
+- **Cause:** follow-on to `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19, see entry below). That pass shipped the `primaryServing` inference + right-rail kcal but the row copy still read "per 100g" as the only badge text, and the subline mixed the serving label with `· N kcal / 100 g` on the same line. Testers scanning the list read every row as per-100g because the visible badge never flipped.
+- **Fix:**
+  - **New shared helper** `src/lib/nutrition/foodSearchHeadline.ts`. Pure function `resolveFoodSearchHeadline(row)` returns a tagged union — `{ mode: "per-serving", headlineKcal, macros, badge, servingLabel, per100gReference }`, `{ mode: "per-100g", headlineKcal, macros, badge }`, or `{ mode: "placeholder" }`. Badge strings are exported as `FOOD_SEARCH_PER_SERVING_BADGE = "per serving"` and `FOOD_SEARCH_PER_100G_BADGE = "per 100g"` so both surfaces read the same text from one place. The helper never invents a serving — `primaryServing: null` always routes to `per-100g` or `placeholder`.
+  - **Mobile render** `apps/mobile/components/FoodSearchModal.tsx`. `renderItem` now calls `resolveFoodSearchHeadline(item)` and branches on `mode`. Per-serving rows get an accent-coloured `per serving` badge (new `perLabel` style — 10px, Accent.success, uppercase) above the serving label line (`1 sandwich (230 g) · 211 kcal / 100 g`). Per-100g rows keep the existing subdued `per 100g` badge. Right-rail kcal reads `headline.headlineKcal` in both paths (no more inconsistency between 260 per-serving and 263 per-100g in the same row).
+  - **Web render** `src/app/components/FoodSearch.tsx`. Same helper, same `resolveFoodSearchHeadline` call. Per-serving rows render the `per serving` text in `text-success uppercase tracking-wider` — matches mobile's accent treatment within the web theme tokens. Subline + /100g reference are unchanged in copy but now come from the helper, not inline interpolation.
+- **Parity pin:** `apps/mobile/tests/unit/foodSearchPrimaryServingParity.test.ts` was widened to assert (a) both surfaces import `resolveFoodSearchHeadline` and the two badge constants from the shared helper, (b) both branch on `headline.mode === "per-serving"` and `"per-100g"`, (c) the `kcal / 100 g` literal string lives only in the helper — if either platform re-introduces its own copy the test breaks loudly.
+- **Tests:**
+  - `tests/unit/foodSearchHeadline.test.ts` (15 tests, passing) — pins the full decision table. Pret tuna sandwich (primary present) → `mode === "per-serving"`, headline 485 not 211, macros per-serving, badge "per serving", label "1 sandwich (230 g)", reference "211 kcal / 100 g". Eggs benedict shape (primary null, macros per-100g) → `mode === "per-100g"`, badge "per 100g", headline rounded. No primary + no macros → `mode === "placeholder"`. Calories 0 → placeholder (never invents a per-100g badge). Non-finite `calsPer100g` → reference null.
+  - `apps/mobile/tests/unit/foodSearchHeadline.test.ts` (6 tests, passing) — the taco chicken row from `APGJJlg` asserts headline 260 (per-serving), badge "per serving", label "4 tacos (99 g)", reference "263 kcal / 100 g". Eggs benedict fallback + calories-only + placeholder paths re-asserted on the mobile import so a path-alias drift breaks loudly.
+- **Web parity:** landed in the same pass. Both platforms now render the same per-serving badge text, the same "{label} ({grams} g) · {kcal} kcal / 100 g" secondary line, and the same headline-kcal decision on every row. Per-100g fallback semantics are unchanged — CLAUDE.md rule "don't invent a serving where none exists" is preserved.
+- **Verify:** TestFlight Today → Search Foods → "eggs benedict" / "taco chicken" / "pret sandwich". Every row whose source exposed a natural portion now reads with a green `per serving` label and the serving-sized right-rail kcal number; rows from generic USDA entries with no portion data still show the muted `per 100g` badge with the per-100g right-rail number. No row shows a mix of per-serving macros with a per-100g badge.
+- **Out of scope this pass:** redesigning the per-100g secondary-line treatment (still a subdued parenthetical), expanding the helper to also drive the preview sheet headline (preview already scales correctly via `scaleMacros`), and backfilling historic nutrition-entry display copy (schema unchanged).
+
 ## 2026-04-19 — G-4 + G-5 + G-6: TDEE education, household member labels, CSV export
 
 - **ASC feedback ids:**

@@ -39,4 +39,16 @@ describe("mobile upgrade-banner tier-branching copy", () => {
     expect(src).not.toContain("adaptive TDEE, and AI logging");
     expect(src).not.toContain("Multi-day plans, adaptive TDEE, and AI logging");
   });
+
+  it('routes the More-tab upgrade banner to "/paywall?from=settings"', () => {
+    // 2026-04-19 round-2 (analytics-engineer C2): the More tab is a
+    // Settings-family surface, so `paywall_viewed.from` must attribute
+    // to "settings". A bare `/paywall` push would silently land on the
+    // default `"deep_link"` branch of `normalisePaywallFrom` and
+    // collapse the F2 funnel slice.
+    expect(src).toContain('router.push("/paywall?from=settings"');
+    expect(src).toMatch(/from=settings/);
+    // Regression guard: no bare `/paywall` pushes left in this file.
+    expect(src).not.toMatch(/router\.push\(\s*["'`]\/paywall["'`]/);
+  });
 });

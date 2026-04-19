@@ -1,17 +1,16 @@
 /**
  * Web/mobile parity — per-serving display in food search.
  *
- * TestFlight build 9 `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19): the
- * search result list must render the item's natural portion as the
- * primary line (e.g. "Pret tuna sandwich · 485 kcal · 1 sandwich (230 g)")
- * with the per-100g figure as a subdued secondary reference. To stop
- * the two platforms from drifting, both `src/app/components/FoodSearch.tsx`
- * and `apps/mobile/components/FoodSearchModal.tsx` import the
- * portion-inference helpers from the same shared module at
- * `src/lib/nutrition/primaryServing.ts`.
+ * TestFlight build 9 `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19) shipped the
+ * inference. Build 11 `AKvgjnb` + `APGJJlg` (2026-04-19) extended the
+ * fix into the row copy: both surfaces now render a "per serving" badge
+ * (vs "per 100g" fallback) and delegate the headline decision to a
+ * shared pure helper (`src/lib/nutrition/foodSearchHeadline.ts`) so
+ * they can't drift.
  *
- * If this test fails because someone re-implemented the inference
- * inline, see the linked TestFlight ticket before "fixing" the test.
+ * If this test fails because someone re-implemented the inference or
+ * the headline logic inline, see the linked TestFlight tickets before
+ * "fixing" the test.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -24,11 +23,16 @@ const HELPER_PATH = resolve(
   __dirname,
   "../../../../src/lib/nutrition/primaryServing.ts",
 );
+const HEADLINE_HELPER_PATH = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/foodSearchHeadline.ts",
+);
 
 const MOBILE_MODAL_SRC = readFileSync(MOBILE_MODAL_PATH, "utf8");
 const MOBILE_VERIFY_SRC = readFileSync(MOBILE_VERIFY_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 const HELPER_SRC = readFileSync(HELPER_PATH, "utf8");
+const HEADLINE_HELPER_SRC = readFileSync(HEADLINE_HELPER_PATH, "utf8");
 
 const SOURCE_HELPERS = [
   "pickEdamamPrimaryServing",
@@ -37,7 +41,7 @@ const SOURCE_HELPERS = [
   "parseOffPrimaryServing",
 ];
 
-describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA)", () => {
+describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA + AKvgjnb + APGJJlg)", () => {
   it("exports all four source-specific helpers from the shared module", () => {
     for (const fn of SOURCE_HELPERS) {
       expect(HELPER_SRC).toMatch(new RegExp(`export function ${fn}\\b`));
@@ -70,18 +74,32 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
     expect(WEB_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
   });
 
-  it("both platforms render the primary-serving line from item.primaryServing", () => {
-    // Primary kcal rendered from the shared shape on both surfaces.
-    expect(MOBILE_MODAL_SRC).toMatch(/primary\.kcal/);
-    expect(MOBILE_MODAL_SRC).toMatch(/primary\.grams/);
-    expect(MOBILE_MODAL_SRC).toMatch(/primary\.label/);
-    expect(WEB_SRC).toMatch(/item\.primaryServing\.kcal/);
-    expect(WEB_SRC).toMatch(/item\.primaryServing\.grams/);
-    expect(WEB_SRC).toMatch(/item\.primaryServing\.label/);
+  it("both platforms delegate the row headline to the shared helper", () => {
+    expect(HEADLINE_HELPER_SRC).toMatch(/export function resolveFoodSearchHeadline\b/);
+    expect(HEADLINE_HELPER_SRC).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE\s*=\s*"per serving"/);
+    expect(HEADLINE_HELPER_SRC).toMatch(/FOOD_SEARCH_PER_100G_BADGE\s*=\s*"per 100g"/);
+
+    for (const src of [MOBILE_MODAL_SRC, WEB_SRC]) {
+      expect(src).toMatch(
+        /from\s+["'][^"']*lib\/nutrition\/foodSearchHeadline["']/,
+      );
+      expect(src).toMatch(/\bresolveFoodSearchHeadline\b/);
+      expect(src).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE/);
+      expect(src).toMatch(/FOOD_SEARCH_PER_100G_BADGE/);
+      // The row render must branch on the helper's mode tag.
+      expect(src).toMatch(/headline\.mode\s*===\s*"per-serving"/);
+      expect(src).toMatch(/headline\.mode\s*===\s*"per-100g"/);
+      // Headline kcal number is read from the helper, not recomputed.
+      expect(src).toMatch(/headline\.headlineKcal/);
+    }
   });
 
-  it("both platforms keep a per-100g reference as subdued secondary text", () => {
-    expect(MOBILE_MODAL_SRC).toMatch(/kcal \/ 100 g/);
-    expect(WEB_SRC).toMatch(/kcal \/ 100 g/);
+  it("the shared helper defines the single per-serving reference format", () => {
+    // The `{kcal} kcal / 100 g` secondary reference must live only in
+    // the helper — if either surface reintroduces its own copy, the
+    // assertion below will flag it.
+    expect(HEADLINE_HELPER_SRC).toMatch(/kcal \/ 100 g/);
+    expect(MOBILE_MODAL_SRC).not.toMatch(/kcal \/ 100 g/);
+    expect(WEB_SRC).not.toMatch(/kcal \/ 100 g/);
   });
 });

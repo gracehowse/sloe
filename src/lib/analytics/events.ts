@@ -333,14 +333,32 @@ export type WidgetSnapshotTrigger =
   | "fast_state_changed"
   | "scheduled_refresh";
 
-/** Canonical `from` enum for `paywall_viewed` (L6 G9). */
+/** Canonical `from` enum for `paywall_viewed` (L6 G9). Extended
+ *  2026-04-19 to include `"meal_planner"` — the Base-gated multi-day
+ *  planner now routes to `/paywall?from=meal_planner` on both web
+ *  and mobile, so the funnel can attribute planner-surface conversions
+ *  separately from settings / trial-end entries. Extended again
+ *  2026-04-19 round 3 (analytics-engineer spec) to pin every
+ *  `openUpgradePromo` call site in `src/app/App.tsx` to a distinct
+ *  originating surface — the web Settings promo panel used to emit
+ *  `"meal_planner"` for every trigger regardless of origin, collapsing
+ *  the F2 funnel slice. The five new values (`recipes_library`,
+ *  `shopping_list`, `profile`, `recipe_create`, `recipe_import`)
+ *  correspond 1:1 with the child components that take `onUpgrade` so
+ *  TypeScript + the `paywallAttribution` test can enforce coverage. */
 export type PaywallViewedFrom =
   | "voice_log"
   | "photo_log"
   | "settings"
   | "onboarding"
   | "trial_end"
-  | "deep_link";
+  | "deep_link"
+  | "meal_planner"
+  | "recipes_library"
+  | "shopping_list"
+  | "profile"
+  | "recipe_create"
+  | "recipe_import";
 
 /** Canonical `confidence_bucket` for recipe-ingredient override events
  *  (L6 G4). Mirrors `classifyConfidence` in

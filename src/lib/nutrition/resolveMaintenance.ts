@@ -168,3 +168,35 @@ export function buildMaintenancePopoverCopy(resolved: ResolvedMaintenance): stri
   }
   return "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level.";
 }
+
+/**
+ * Action 5 Item 7 (2026-04-19) — single-line "Your maintenance landed
+ * at X kcal this week (formula said Y)." for the WeeklyRecapCard.
+ *
+ * Returns `null` when the line should be suppressed:
+ *  - `resolved` is `null` (no maintenance number to show).
+ *  - The adaptive branch did not win — i.e. the resolver fell back to
+ *    the formula. In that case the resolved value *is* the formula
+ *    value, so the line would say "landed at X (formula said X)" which
+ *    is not informative.
+ *  - `confidence === "low"` — adaptive can't actually win on low
+ *    confidence (the resolver rejects it), but we belt-and-braces guard
+ *    here so any future relaxation in the resolver doesn't accidentally
+ *    surface a low-signal line on the recap.
+ *  - `formulaKcal` is `null` (incomplete profile).
+ *  - The two values are identical (nothing to compare).
+ *
+ * Shared by web `weekly-recap-card.tsx` and mobile `WeeklyRecapCard.tsx`
+ * so the recap copy can't drift across platforms. Pinned by
+ * `tests/unit/maintenanceRecapLine.test.ts`.
+ */
+export function formatMaintenanceRecapLine(
+  resolved: ResolvedMaintenance | null | undefined,
+): string | null {
+  if (!resolved) return null;
+  if (resolved.source !== "adaptive") return null;
+  if (resolved.confidence === "low") return null;
+  if (resolved.formulaKcal == null) return null;
+  if (resolved.kcal === resolved.formulaKcal) return null;
+  return `Your maintenance landed at ${resolved.kcal.toLocaleString()} kcal this week (formula said ${resolved.formulaKcal.toLocaleString()}).`;
+}

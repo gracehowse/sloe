@@ -274,12 +274,18 @@ describe("formatRecapForShare", () => {
       freezesAvailable: 1,
       bestDay: { key: "2026-04-08", label: "Wed", calories: 2000, protein: 180 },
       weightDeltaKg: -0.4,
+      // Action 13 Item #13 (2026-04-19) — `weightFirstKg` /
+      // `weightLastKg` are populated by `buildWeeklyRecap`. Test
+      // doubles supply matching values so the WeeklyRecap shape stays
+      // valid; the share-string formatter doesn't read them.
+      weightFirstKg: 78.4,
+      weightLastKg: 78.0,
     });
     expect(txt).toContain("My week on Suppr");
     expect(txt).toContain("6/7 days logged");
     expect(txt).toContain("1850 kcal");
     expect(txt).toContain("12-day streak");
-    expect(txt).toContain("Best day: Wed — 180g protein");
+    expect(txt).toContain("Closest to target: Wed — 180g protein");
     expect(txt).toContain("-0.4 kg");
   });
 
@@ -295,6 +301,8 @@ describe("formatRecapForShare", () => {
       freezesAvailable: 0,
       bestDay: null,
       weightDeltaKg: null,
+      weightFirstKg: null,
+      weightLastKg: null,
     });
     expect(txt).not.toContain("Weight:");
   });

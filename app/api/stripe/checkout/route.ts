@@ -44,9 +44,9 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { tier?: string };
+  let body: { tier?: string; period?: string };
   try {
-    body = (await req.json()) as { tier?: string };
+    body = (await req.json()) as { tier?: string; period?: string };
   } catch {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
@@ -56,20 +56,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_tier" }, { status: 400 });
   }
 
-  const priceId =
+  // Default to monthly so older clients that don't send `period` keep
+  // working on the monthly SKU. Annual is opt-in via the /pricing
+  // toggle which passes the period explicitly.
+  const period = body.period === "annual" ? "annual" : "monthly";
+
+  const priceEnvVar =
     tier === "pro"
-      ? process.env.STRIPE_PRICE_PRO_MONTHLY?.trim()
-      : process.env.STRIPE_PRICE_BASE_MONTHLY?.trim();
+      ? period === "annual"
+        ? "STRIPE_PRICE_PRO_ANNUAL"
+        : "STRIPE_PRICE_PRO_MONTHLY"
+      : period === "annual"
+        ? "STRIPE_PRICE_BASE_ANNUAL"
+        : "STRIPE_PRICE_BASE_MONTHLY";
+
+  const priceId = process.env[priceEnvVar]?.trim();
 
   if (!priceId) {
     return NextResponse.json(
       {
         ok: false,
         error: "stripe_prices_missing",
-        message:
-          tier === "pro"
-            ? "Set STRIPE_PRICE_PRO_MONTHLY to your Stripe Price id."
-            : "Set STRIPE_PRICE_BASE_MONTHLY to your Stripe Price id.",
+        message: `Set ${priceEnvVar} to your Stripe Price id.`,
       },
       { status: 503 },
     );
@@ -82,9 +90,9 @@ export async function POST(req: Request) {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: userId,
-      metadata: { supabase_user_id: userId, tier },
+      metadata: { supabase_user_id: userId, tier, period },
       subscription_data: {
-        metadata: { supabase_user_id: userId, tier },
+        metadata: { supabase_user_id: userId, tier, period },
       },
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancel`,

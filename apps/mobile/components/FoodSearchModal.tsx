@@ -27,6 +27,11 @@ import {
   type PrimaryServing,
 } from "../../../src/lib/nutrition/primaryServing";
 import {
+  resolveFoodSearchHeadline,
+  FOOD_SEARCH_PER_SERVING_BADGE,
+  FOOD_SEARCH_PER_100G_BADGE,
+} from "../../../src/lib/nutrition/foodSearchHeadline";
+import {
   projectRemaining,
   type MacroConsumed,
   type MacroTargets,
@@ -815,10 +820,14 @@ export default function FoodSearchModal({
   const renderItem = useCallback(
     ({ item }: { item: SearchRow }) => {
       const isLoading = loadingKey === item.key;
-      const hasMacros = item.macrosPer100g && item.macrosPer100g.calories > 0;
-      const cals = item.calsPer100g ?? item.macrosPer100g?.calories;
       const isCustom = item._source === "CUSTOM";
       const customFood = isCustom ? item._custom : null;
+      // Shared headline resolution — single source of truth for the
+      // per-serving vs per-100g decision table. TestFlight build 11
+      // `AKvgjnb` + `APGJJlg` (2026-04-19): when a row carries a
+      // primaryServing the big number AND the badge both flip to the
+      // per-serving view; the per-100g reference is a secondary line.
+      const headline = resolveFoodSearchHeadline(item);
       const primary = item.primaryServing ?? null;
 
       return (
@@ -851,42 +860,41 @@ export default function FoodSearchModal({
                 {item.name}
               </Text>
             </View>
-            {primary ? (
+            {headline.mode === "per-serving" ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={styles.macroPreviewText}>{primary.kcal} kcal</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{primary.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{primary.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{primary.fat}g</Text>
+                  <Text style={styles.macroPreviewText}>{headline.macros.calories} kcal</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{headline.macros.fat}g</Text>
                 </View>
+                <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
                 <Text style={styles.per100g}>
-                  {primary.label} ({primary.grams} g)
-                  {cals != null && cals > 0 ? ` · ${cals} kcal / 100 g` : ""}
+                  {headline.servingLabel}
+                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
                 </Text>
               </>
-            ) : hasMacros ? (
+            ) : headline.mode === "per-100g" && headline.macros ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={styles.macroPreviewText}>{item.macrosPer100g!.calories} kcal</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{item.macrosPer100g!.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{item.macrosPer100g!.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{item.macrosPer100g!.fat}g</Text>
+                  <Text style={styles.macroPreviewText}>{headline.macros.calories} kcal</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{headline.macros.fat}g</Text>
                 </View>
-                <Text style={styles.per100g}>per 100g</Text>
+                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
               </>
-            ) : cals != null && cals > 0 ? (
+            ) : headline.mode === "per-100g" ? (
               <>
-                <Text style={styles.macroPreviewText}>{cals} kcal</Text>
-                <Text style={styles.per100g}>per 100g</Text>
+                <Text style={styles.macroPreviewText}>{headline.headlineKcal} kcal</Text>
+                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
               </>
             ) : (
               <Text style={styles.per100g}>Tap for nutrition info</Text>
             )}
           </View>
-          {primary ? (
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{primary.kcal}</Text>
-          ) : cals != null && cals > 0 && !isLoading ? (
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{cals}</Text>
+          {headline.mode !== "placeholder" && !isLoading ? (
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
           ) : null}
           {isLoading ? (
             <ActivityIndicator size="small" color={Accent.primary} />
@@ -945,6 +953,18 @@ export default function FoodSearchModal({
     },
     macroPreviewText: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
     per100g: { fontSize: 10, color: colors.textTertiary, marginTop: 2 },
+    /** "per serving" badge — slightly more prominent than the fallback
+     *  per-100g label so the row reads as naturally portioned even
+     *  before the user tilts their eyes to the right-rail number.
+     *  TestFlight build 11 `AKvgjnb` + `APGJJlg` (2026-04-19). */
+    perLabel: {
+      fontSize: 10,
+      color: Accent.success,
+      fontWeight: "700",
+      letterSpacing: 0.4,
+      marginTop: 2,
+      textTransform: "uppercase",
+    },
     emptyText: {
       color: colors.textSecondary,
       fontSize: 14,

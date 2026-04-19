@@ -4,9 +4,10 @@ import { formatRecipeMinutes } from "./formatRecipeMinutes";
 import { supabase } from "./supabase";
 import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
+import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
-const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop";
+const DEFAULT_AVATAR = NEUTRAL_AVATAR_DATA_URI;
 
 /** Fetch published community recipes for the Discover feed. */
 export function useDiscoverRecipes() {

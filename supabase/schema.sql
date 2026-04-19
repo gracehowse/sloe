@@ -51,6 +51,10 @@ alter table public.profiles enable row level security;
 alter table public.profiles add column if not exists target_fiber_g int;
 alter table public.profiles add column if not exists target_water_ml int;
 alter table public.profiles add column if not exists prefer_activity_adjusted_calories boolean not null default false;
+-- stripe_customer_id — captured on `checkout.session.completed` so
+-- `/account/billing` can open the Stripe Customer Portal without a
+-- lookup round-trip. See migration 20260419110000_profiles_stripe_customer_id.sql.
+alter table public.profiles add column if not exists stripe_customer_id text;
 
 do $$
 begin

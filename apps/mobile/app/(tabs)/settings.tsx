@@ -494,7 +494,7 @@ export default function SettingsScreen() {
           {userTier !== "pro" && (
             <Pressable
               style={styles.row}
-              onPress={() => router.push("/paywall" as any)}
+              onPress={() => router.push("/paywall?from=settings" as any)}
             >
               <Text style={[styles.rowLabel, { color: Accent.success }]}>View plans</Text>
               <Ionicons name="chevron-forward" size={16} color={Accent.success} />

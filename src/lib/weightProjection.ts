@@ -13,6 +13,31 @@ import { dateKeyFromDate } from "./nutrition/trackerStats";
 const KCAL_PER_KG = 7700; // ~3500 kcal/lb * 2.2 lb/kg
 
 /**
+ * Action 13 Item #8 (2026-04-19) — minimum number of recent food-logged
+ * days required before the "On track for X kg in N weeks" projection is
+ * shown to the user.
+ *
+ * Below this floor the average is too noisy to project from honestly
+ * (a 2-day average can be 700 kcal off the user's real average). The
+ * Progress dashboard renders the projection block only when the input
+ * has ≥`MIN_DAYS_FOR_PROJECTION` days; below the floor it suppresses
+ * the line entirely rather than back-filling with placeholder copy.
+ *
+ * Pinned by `tests/unit/weightProjectionFloor.test.ts`.
+ */
+export const MIN_DAYS_FOR_PROJECTION = 5;
+
+/**
+ * Pure gate — returns `true` when the projection block can render.
+ * Wraps the floor so both web and mobile can ask the same question
+ * with one helper call (and a future change to the floor lands in one
+ * place).
+ */
+export function shouldRenderDailyProjection(daysWithFood: number): boolean {
+  return Number.isFinite(daysWithFood) && daysWithFood >= MIN_DAYS_FOR_PROJECTION;
+}
+
+/**
  * Most recent logged body weight: latest calendar day in `weight_kg_by_day`, otherwise profile `weight_kg`.
  * (Profile alone can lag behind Health / manual map entries.)
  */
@@ -230,7 +255,24 @@ export type WeightGoalTimeline = {
   remainingKg: number;
   /** Direction: losing, gaining, or stalled */
   trendDirection: "losing" | "gaining" | "stalled";
+  /**
+   * Action 13 Item #15 (2026-04-19) — `true` when the rate-based
+   * projection ran but landed past the `MAX_DAYS_TO_GOAL` cap. The UI
+   * uses this to render "More than 1 year at current rate" copy
+   * instead of an empty space. Distinct from `daysToGoal === null`
+   * caused by stalled / wrong-direction movement (where the rate alone
+   * can't get the user there).
+   */
+  cappedAtMaxDays: boolean;
 };
+
+/**
+ * Action 13 Item #15 (2026-04-19) — projection cap. Beyond this many
+ * days the rate-based projection isn't meaningful (a 0.05 kg/wk rate
+ * over 5 years is just noise), and the UI should fall back to a
+ * "more than 1 year" copy with the current rate surfaced separately.
+ */
+export const MAX_DAYS_TO_GOAL = 365;
 
 /**
  * Calculate timeline to goal weight based on recent weight trend.
@@ -275,14 +317,25 @@ export function calcGoalTimeline(opts: {
         : "gaining";
 
   let daysToGoal: number | null = null;
+  let cappedAtMaxDays = false;
   if (Math.abs(weeklyRateKg) >= 0.1) {
     const dailyRateKg = weeklyRateKg / 7;
     const needsToLose = remainingKg > 0;
     const isMovingRight = needsToLose ? dailyRateKg < 0 : dailyRateKg > 0;
 
     if (isMovingRight) {
-      daysToGoal = Math.round(Math.abs(remainingKg / dailyRateKg));
-      if (daysToGoal > 365) daysToGoal = null;
+      const computed = Math.round(Math.abs(remainingKg / dailyRateKg));
+      if (computed > MAX_DAYS_TO_GOAL) {
+        // Item #15 — past the cap, surface the cap signal so the UI
+        // can render "More than 1 year at current rate" rather than an
+        // empty time-to-goal space. We deliberately keep `daysToGoal`
+        // null so callers that haven't adopted the cap signal yet
+        // continue to suppress the days-to-goal headline (their
+        // existing behaviour); only the new copy path opts in.
+        cappedAtMaxDays = true;
+      } else {
+        daysToGoal = computed;
+      }
     }
   }
 
@@ -293,6 +346,7 @@ export function calcGoalTimeline(opts: {
     goalKg: goalWeightKg,
     remainingKg: Math.abs(remainingKg),
     trendDirection,
+    cappedAtMaxDays,
   };
 }
 

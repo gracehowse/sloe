@@ -36,6 +36,11 @@ import {
   primaryServingToPortionChip,
   type PrimaryServing,
 } from "../../lib/nutrition/primaryServing";
+import {
+  resolveFoodSearchHeadline,
+  FOOD_SEARCH_PER_SERVING_BADGE,
+  FOOD_SEARCH_PER_100G_BADGE,
+} from "../../lib/nutrition/foodSearchHeadline";
 import { AnalyticsEvents } from "../../lib/analytics/events";
 import { track } from "../../lib/analytics/track";
 
@@ -1133,6 +1138,11 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                   {results.map((item) => {
                     const isCustom = item._source === "CUSTOM";
                     const customFood = isCustom ? item._custom : null;
+                    // Shared headline resolution — single source of truth
+                    // for per-serving vs per-100g display. TestFlight
+                    // build 11 `AKvgjnb` + `APGJJlg` (2026-04-19). Flips
+                    // both the badge and the right-rail number together.
+                    const headline = resolveFoodSearchHeadline(item);
                     return (
                       <div
                         key={item.key}
@@ -1154,41 +1164,40 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                               )}
                               <span className="text-sm font-medium text-foreground truncate">{item.name}</span>
                             </div>
-                            {item.primaryServing ? (
+                            {headline.mode === "per-serving" ? (
                               <>
                                 <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                  <span>{item.primaryServing.kcal} kcal</span>
-                                  <span className="text-destructive">P:{item.primaryServing.protein}g</span>
-                                  <span className="text-primary">C:{item.primaryServing.carbs}g</span>
-                                  <span className="text-warning">F:{item.primaryServing.fat}g</span>
+                                  <span>{headline.macros.calories} kcal</span>
+                                  <span className="text-destructive">P:{headline.macros.protein}g</span>
+                                  <span className="text-primary">C:{headline.macros.carbs}g</span>
+                                  <span className="text-warning">F:{headline.macros.fat}g</span>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground/80">
-                                  {item.primaryServing.label} ({item.primaryServing.grams} g)
-                                  {item.calsPer100g != null && item.calsPer100g > 0
-                                    ? ` · ${item.calsPer100g} kcal / 100 g`
-                                    : ""}
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-success">
+                                  {FOOD_SEARCH_PER_SERVING_BADGE}
+                                </span>
+                                <span className="block text-[10px] text-muted-foreground/80">
+                                  {headline.servingLabel}
+                                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
                                 </span>
                               </>
-                            ) : item.macrosPer100g ? (
+                            ) : headline.mode === "per-100g" && headline.macros ? (
                               <>
                                 <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                  <span>{item.macrosPer100g.calories} kcal</span>
-                                  <span className="text-destructive">P:{item.macrosPer100g.protein}g</span>
-                                  <span className="text-primary">C:{item.macrosPer100g.carbs}g</span>
-                                  <span className="text-warning">F:{item.macrosPer100g.fat}g</span>
+                                  <span>{headline.macros.calories} kcal</span>
+                                  <span className="text-destructive">P:{headline.macros.protein}g</span>
+                                  <span className="text-primary">C:{headline.macros.carbs}g</span>
+                                  <span className="text-warning">F:{headline.macros.fat}g</span>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground/80">per 100 g</span>
+                                <span className="text-[10px] text-muted-foreground/80">{FOOD_SEARCH_PER_100G_BADGE}</span>
                               </>
-                            ) : item.calsPer100g != null && item.calsPer100g > 0 ? (
-                              <span className="text-[11px] text-muted-foreground">{item.calsPer100g} kcal per 100g</span>
+                            ) : headline.mode === "per-100g" ? (
+                              <span className="text-[11px] text-muted-foreground">{headline.headlineKcal} kcal {FOOD_SEARCH_PER_100G_BADGE}</span>
                             ) : (
                               <span className="text-xs text-muted-foreground">Tap for nutrition info</span>
                             )}
                           </div>
-                          {item.primaryServing ? (
-                            <span className="text-sm font-bold text-foreground tabular-nums">{item.primaryServing.kcal}</span>
-                          ) : item.calsPer100g != null && item.calsPer100g > 0 && loadingKey !== item.key ? (
-                            <span className="text-sm font-bold text-foreground tabular-nums">{item.calsPer100g}</span>
+                          {headline.mode !== "placeholder" && loadingKey !== item.key ? (
+                            <span className="text-sm font-bold text-foreground tabular-nums">{headline.headlineKcal}</span>
                           ) : null}
                           {loadingKey === item.key ? (
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />

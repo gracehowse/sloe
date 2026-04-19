@@ -46,7 +46,27 @@ export type WeeklyRecap = {
   streakLength: number;
   /** Freezes the user currently holds (after any streak protection). */
   freezesAvailable: number;
-  /** The single highest-logged-protein day; `null` if no food logged. */
+  /**
+   * Action 13 Item #9 (2026-04-19) — renamed concept: was "best day"
+   * (highest protein), now "closest to target" using a normalised L1
+   * deviation across the day's macros.
+   *
+   * Selection rule (pinned by `tests/unit/weeklyRecap.test.ts`):
+   *   - score = sum(|actual - target| / target) per macro where the
+   *     target > 0. Lower = closer to target.
+   *   - Day must have ≥80% of macro targets logged (i.e. at least
+   *     `0.8 * macrosWithTarget` macros with non-zero actuals) to be
+   *     eligible. A protein-only log doesn't crown the day just
+   *     because the other macros are zero.
+   *   - Lowest score wins; ties broken by most-recent date.
+   *   - Returns `null` when no eligible day exists, or when no macro
+   *     target is set (we don't surface a winner without a frame of
+   *     reference).
+   *
+   * Field name kept as `bestDay` for back-compat with the share-string
+   * formatter and existing analytics events; the user-facing label is
+   * "Closest to target" everywhere it surfaces.
+   */
   bestDay: { key: string; label: string; calories: number; protein: number } | null;
   /**
    * Weight change across the week in kg, rounded to 0.1. `null` if we
@@ -54,6 +74,20 @@ export type WeeklyRecap = {
    * "+0.0 kg" as a faux result.
    */
   weightDeltaKg: number | null;
+  /**
+   * Action 13 Item #13 (2026-04-19) — surface the first and last
+   * weigh-in for the week so the WeeklyRecapCard can render an
+   * honest "First → Last weigh-in: 78.4 → 77.8 kg (-0.6 kg)" line
+   * instead of a misleading "Change this week" headline (which
+   * implies an average rather than a noisy first-vs-last delta).
+   *
+   * Both `null` when fewer than 2 weigh-ins inside the window —
+   * mirrors the `weightDeltaKg` rule. The card uses the presence /
+   * absence of these to decide whether to render the explanatory
+   * line vs the existing fallback ("No weigh-ins this week").
+   */
+  weightFirstKg: number | null;
+  weightLastKg: number | null;
 };
 
 /**
@@ -95,14 +129,14 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
       ? Math.round((avgProtein / params.targets.protein) * 100)
       : 0;
 
-  // Best day = highest protein among days with food. Ties → first.
-  let bestDay: WeeklyRecap["bestDay"] = null;
-  for (const d of bundle.days) {
-    if (d.calories <= 0) continue;
-    if (!bestDay || d.protein > bestDay.protein) {
-      bestDay = { key: d.key, label: d.label, calories: d.calories, protein: d.protein };
-    }
-  }
+  // Action 13 Item #9 (2026-04-19) — "Closest to target" selection.
+  // Replaces the prior "highest protein" rule, which crowned a high-
+  // protein but otherwise-blown-budget day over a balanced one. The
+  // new rule rewards effort: smallest summed normalised L1 deviation
+  // across logged macros wins, gated on ≥80% of macro targets logged.
+  // Tie → most recent day. Helper is invoked inline (not exported)
+  // because the day-shape it consumes is internal to this module.
+  const bestDay: WeeklyRecap["bestDay"] = selectClosestToTargetDay(bundle.days);
 
   // Weight delta across the same 7-day window. Need ≥2 entries; we
   // refuse to guess otherwise.
@@ -113,11 +147,15 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
     .filter(([k]) => k >= firstKey && k <= lastKey)
     .sort(([a], [b]) => a.localeCompare(b));
   let weightDeltaKg: number | null = null;
+  let weightFirstKg: number | null = null;
+  let weightLastKg: number | null = null;
   if (withinWeek.length >= 2) {
     const first = withinWeek[0][1];
     const last = withinWeek[withinWeek.length - 1][1];
     if (Number.isFinite(first) && Number.isFinite(last)) {
       weightDeltaKg = Math.round((last - first) * 10) / 10;
+      weightFirstKg = Math.round(first * 10) / 10;
+      weightLastKg = Math.round(last * 10) / 10;
     }
   }
 
@@ -140,6 +178,99 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
     freezesAvailable,
     bestDay,
     weightDeltaKg,
+    weightFirstKg,
+    weightLastKg,
+  };
+}
+
+/**
+ * Action 13 Item #9 (2026-04-19) — pick the "Closest to target" day
+ * from a weekly bundle.
+ *
+ * Score: per macro with `target > 0`, accumulate `|actual - target| /
+ * target`. Smallest sum wins (lower deviation = closer to target).
+ *
+ * Eligibility:
+ *   - Day must have at least one positive macro (must have food).
+ *   - Day must log ≥80% of macros with a non-null target. e.g. when
+ *     all four macros have targets, 4 × 0.8 = 3.2 → ≥4 macros must be
+ *     non-zero (rounded up). When only protein + calories have
+ *     targets, ≥2 macros must be non-zero.
+ *   - At least one macro target must be > 0 across the bundle —
+ *     otherwise no frame of reference, return null.
+ *
+ * Tie-break: most recent date (later `key` wins).
+ *
+ * Exported for unit tests; the recap builder is the only production
+ * consumer.
+ */
+export function selectClosestToTargetDay(
+  days: ReadonlyArray<{
+    key: string;
+    label: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    targetCalories: number;
+    targetProtein: number;
+    targetCarbs: number;
+    targetFat: number;
+  }>,
+): WeeklyRecap["bestDay"] {
+  type DayScore = {
+    key: string;
+    label: string;
+    calories: number;
+    protein: number;
+    score: number;
+  };
+  const scored: DayScore[] = [];
+
+  for (const d of days) {
+    if (d.calories <= 0) continue;
+
+    const macroPairs = [
+      { actual: d.calories, target: d.targetCalories },
+      { actual: d.protein, target: d.targetProtein },
+      { actual: d.carbs, target: d.targetCarbs },
+      { actual: d.fat, target: d.targetFat },
+    ];
+    const macrosWithTarget = macroPairs.filter((m) => m.target > 0);
+    if (macrosWithTarget.length === 0) continue;
+
+    const macrosLogged = macrosWithTarget.filter((m) => m.actual > 0).length;
+    const requiredLogged = Math.ceil(macrosWithTarget.length * 0.8);
+    if (macrosLogged < requiredLogged) continue;
+
+    let score = 0;
+    for (const { actual, target } of macrosWithTarget) {
+      score += Math.abs(actual - target) / target;
+    }
+
+    scored.push({
+      key: d.key,
+      label: d.label,
+      calories: d.calories,
+      protein: d.protein,
+      score,
+    });
+  }
+
+  if (scored.length === 0) return null;
+
+  scored.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    // Tie-break: most recent date wins (descending key).
+    return b.key.localeCompare(a.key);
+  });
+
+  const winner = scored[0];
+  return {
+    key: winner.key,
+    label: winner.label,
+    calories: Math.round(winner.calories),
+    protein: Math.round(winner.protein),
   };
 }
 
@@ -254,8 +385,11 @@ export function formatRecapForShare(recap: WeeklyRecap): string {
     `• ${recap.streakLength}-day streak`,
   ];
   if (recap.bestDay) {
+    // Action 13 Item #9 — relabelled from "Best day" to "Closest to
+    // target" to match the new selection rule (smallest summed L1
+    // deviation, not raw protein volume).
     lines.push(
-      `• Best day: ${recap.bestDay.label} — ${recap.bestDay.protein}g protein`,
+      `• Closest to target: ${recap.bestDay.label} — ${recap.bestDay.protein}g protein`,
     );
   }
   if (recap.weightDeltaKg != null) {
@@ -334,6 +468,15 @@ export type UsualMealRecapInsight =
       /** Slot with the largest item-count across the week — the "pre-seed"
        * target when the user taps the prompt CTA. */
       suggestedSlot: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
+      /**
+       * Action 5 Item 8 (2026-04-19) — when the loosened gate fires
+       * (user has saved meals but none for this slot, and the same
+       * (title, kcal) was logged ≥3 distinct days in the 14-day
+       * window), this carries the repeat count so the card can show
+       * "You've logged the same one N times in 2 weeks." Omitted by
+       * the original zero-saved-meals path.
+       */
+      repeats?: number;
     }
   | null;
 
@@ -357,7 +500,25 @@ export type UsualMealRecapInsightInput<M extends MealMacros> = {
    * distinct-days gate is met.
    */
   logCountBySavedMealId: Readonly<Record<string, number>>;
+  /**
+   * Action 5 Item 8 (2026-04-19) — extended 14-day window for the
+   * loosened prompt gate. When supplied AND the user has saved meals
+   * but none was logged this week, the helper checks whether any
+   * unsaved slot has a (title, kcal) pattern repeated ≥3 times across
+   * the 14 days. If so, it surfaces a prompt naming that slot.
+   *
+   * Optional for back-compat — older callers that omit this still get
+   * the original gate (zero-saved-meals only).
+   */
+  extendedWeekKeys?: readonly string[];
 };
+
+/**
+ * Action 5 Item 8 — minimum number of distinct-day repeats of the same
+ * (title, kcal) pattern in a slot before we consider it a "usual". Below
+ * this floor the signal is too weak to invite the user to save a combo.
+ */
+export const USUAL_MEAL_REPEAT_FLOOR = 3;
 
 /**
  * Pure helper — see `UsualMealRecapInsight` for the three states.
@@ -365,7 +526,7 @@ export type UsualMealRecapInsightInput<M extends MealMacros> = {
 export function buildUsualMealRecapInsight<M extends MealMacros>(
   input: UsualMealRecapInsightInput<M>,
 ): UsualMealRecapInsight {
-  const { byDay, weekKeys, savedMeals, logCountBySavedMealId } = input;
+  const { byDay, weekKeys, savedMeals, logCountBySavedMealId, extendedWeekKeys } = input;
 
   // Celebration path — pick the most-logged saved meal in the window.
   if (savedMeals.length > 0) {
@@ -394,9 +555,32 @@ export function buildUsualMealRecapInsight<M extends MealMacros>(
         return { kind: "celebration", name, count: topCount };
       }
     }
-    // User owns a saved meal but it wasn't logged this week — suppress
-    // both the celebration line (there's nothing concrete to celebrate)
-    // and the prompt (they already know the feature exists).
+
+    // Action 5 Item 8 (2026-04-19) — loosened gate. The user owns a
+    // saved meal but didn't log it this week. Look at the last 14 days
+    // for a *different* slot they've been logging the same item into.
+    // If we find an unsaved slot with ≥USUAL_MEAL_REPEAT_FLOOR (=3)
+    // distinct-day repeats of the same (title, kcal) pattern, surface
+    // a prompt for that slot.
+    if (!extendedWeekKeys || extendedWeekKeys.length === 0) return null;
+    const savedSlotSet = collectSavedMealSlots(savedMeals);
+    const unsavedSlotPattern = findMostRepeatedUnsavedSlot(
+      byDay,
+      extendedWeekKeys,
+      savedSlotSet,
+    );
+    if (
+      unsavedSlotPattern &&
+      unsavedSlotPattern.repeats >= USUAL_MEAL_REPEAT_FLOOR
+    ) {
+      return {
+        kind: "prompt",
+        suggestedSlot: unsavedSlotPattern.slot,
+        repeats: unsavedSlotPattern.repeats,
+      };
+    }
+
+    // No qualifying unsaved slot — suppress.
     return null;
   }
 
@@ -432,4 +616,95 @@ export function buildUsualMealRecapInsight<M extends MealMacros>(
     ["Breakfast", 0],
   );
   return { kind: "prompt", suggestedSlot: suggested[0] };
+}
+
+/**
+ * Action 5 Item 8 helper — bucket saved meals by their `defaultMealSlot`
+ * so the loosened gate can ask "is there already a usual for this
+ * slot?". Saved meals without a default slot don't cover any slot
+ * (they're not tied to a specific time of day).
+ */
+function collectSavedMealSlots(
+  savedMeals: ReadonlyArray<{ defaultMealSlot?: string }>,
+): Set<"Breakfast" | "Lunch" | "Dinner" | "Snacks"> {
+  const out = new Set<"Breakfast" | "Lunch" | "Dinner" | "Snacks">();
+  for (const m of savedMeals) {
+    const raw = (m.defaultMealSlot ?? "").trim();
+    if (raw === "Breakfast" || raw === "Lunch" || raw === "Dinner" || raw === "Snacks") {
+      out.add(raw);
+    } else if (raw === "Snack") {
+      out.add("Snacks");
+    }
+  }
+  return out;
+}
+
+/**
+ * Action 5 Item 8 helper — for each *unsaved* slot, count distinct-day
+ * repeats of the dominant (title, kcal) pattern across the supplied
+ * window of date-keys. Returns the slot with the highest such count
+ * and the count itself. Ties broken deterministically by canonical
+ * slot order (Breakfast < Lunch < Dinner < Snacks). Returns `null`
+ * when no unsaved slot has any repeats at all.
+ */
+function findMostRepeatedUnsavedSlot<M extends MealMacros>(
+  byDay: ByDayOf<M>,
+  windowKeys: readonly string[],
+  savedSlotSet: ReadonlySet<"Breakfast" | "Lunch" | "Dinner" | "Snacks">,
+): { slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks"; repeats: number } | null {
+  const slots: ReadonlyArray<"Breakfast" | "Lunch" | "Dinner" | "Snacks"> = [
+    "Breakfast",
+    "Lunch",
+    "Dinner",
+    "Snacks",
+  ];
+
+  let best: { slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks"; repeats: number } | null = null;
+
+  for (const slot of slots) {
+    if (savedSlotSet.has(slot)) continue;
+    // For this slot, build (title|kcal) → set of distinct days where
+    // that pattern appeared. The dominant pattern's day-count is the
+    // "repeats" value for the slot.
+    const patternDays = new Map<string, Set<string>>();
+    for (const dayKey of windowKeys) {
+      const meals = byDay[dayKey] ?? [];
+      for (const m of meals) {
+        const slotName = ((m as unknown as { name?: string }).name ?? "").trim();
+        const normalisedSlot =
+          slotName === "Snack"
+            ? "Snacks"
+            : slotName === "Breakfast" ||
+                slotName === "Lunch" ||
+                slotName === "Dinner" ||
+                slotName === "Snacks"
+              ? slotName
+              : null;
+        if (normalisedSlot !== slot) continue;
+        const title = ((m as unknown as { recipeTitle?: string | null }).recipeTitle ?? "")
+          .trim()
+          .toLowerCase();
+        if (!title) continue;
+        const cal = Math.round(
+          (m as unknown as { calories?: number | null }).calories ?? 0,
+        );
+        const key = `${title}|${cal}`;
+        const set = patternDays.get(key) ?? new Set<string>();
+        set.add(dayKey);
+        patternDays.set(key, set);
+      }
+    }
+    let topRepeats = 0;
+    for (const set of patternDays.values()) {
+      if (set.size > topRepeats) topRepeats = set.size;
+    }
+    if (topRepeats === 0) continue;
+    // Strict greater-than means canonical slot order wins ties (we
+    // iterate Breakfast → Snacks).
+    if (!best || topRepeats > best.repeats) {
+      best = { slot, repeats: topRepeats };
+    }
+  }
+
+  return best;
 }

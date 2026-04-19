@@ -424,7 +424,7 @@ export default function ProfileScreen() {
       {/* Upgrade Banner (free users) / Subscription row (pro users) */}
       {profileData.userTier !== "pro" ? (
         <Pressable
-          onPress={() => router.push("/paywall" as any)}
+          onPress={() => router.push("/paywall?from=settings" as any)}
           style={{
             flexDirection: "row", alignItems: "center", gap: 12,
             backgroundColor: Accent.primary + "14", borderRadius: Radius.lg,

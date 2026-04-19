@@ -398,16 +398,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
     }
 
-    // Rotate user agents to reduce Cloudflare bot-detection blocks on production IPs
-    const userAgents = [
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
-    ];
+    // Declared, honest User-Agent: identifies Suppr and links to a public-facing
+    // bot page so site operators can contact us or block us cleanly. We do not
+    // rotate UAs or impersonate another crawler — that would be evidence of
+    // knowing circumvention under CFAA / DMCA § 1201 / platform ToS.
     const fetchHeaders = {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-      "User-Agent": userAgents[Math.floor(Math.random() * userAgents.length)],
+      "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
     };
     // Follow redirects manually to re-validate each hop against the SSRF allowlist
     let currentUrl = effectiveUrl;

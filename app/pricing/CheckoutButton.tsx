@@ -9,10 +9,12 @@ const supabase = createClient(supabaseUrl, publicAnonKey);
 
 export function CheckoutButton({
   tier,
+  period = "monthly",
   label,
   highlighted,
 }: {
   tier: "base" | "pro" | null;
+  period?: "monthly" | "annual";
   label: string;
   highlighted: boolean;
 }) {
@@ -42,7 +44,7 @@ export function CheckoutButton({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({ tier, period }),
       });
 
       const data = (await res.json()) as {

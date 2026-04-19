@@ -24,8 +24,10 @@ Without these, auth and data sync will not work.
 | `SUPABASE_SERVICE_ROLE_KEY` | Tier-gated APIs (`profiles.user_tier`), Stripe webhook profile updates, **`DELETE /api/account/delete`** (auth user removal), other privileged server ops (keep secret) |
 | `STRIPE_SECRET_KEY` | Checkout session creation |
 | `STRIPE_WEBHOOK_SECRET` | Verify Stripe webhook signatures |
-| `STRIPE_PRICE_BASE_MONTHLY` | Stripe Price ID for Base tier |
-| `STRIPE_PRICE_PRO_MONTHLY` | Stripe Price ID for Pro tier |
+| `STRIPE_PRICE_BASE_MONTHLY` | Stripe Price ID for Base tier — £3.99/mo |
+| `STRIPE_PRICE_BASE_ANNUAL` | Stripe Price ID for Base tier — £29.99/yr |
+| `STRIPE_PRICE_PRO_MONTHLY` | Stripe Price ID for Pro tier — £7.99/mo |
+| `STRIPE_PRICE_PRO_ANNUAL` | Stripe Price ID for Pro tier — £59.99/yr |
 
 ## Optional: rate limits
 

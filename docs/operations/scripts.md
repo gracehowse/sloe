@@ -10,8 +10,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `seed-discover-recipes.ts` | Seed the public Discover feed from `scripts/seed-recipe-urls.txt`. Provisions a "Downshiftology" system author (auth user + profile + verified `creators` row) and imports each URL via the schema.org JSON-LD parser. Idempotent: skips already-imported URLs and refuses to write recipes whose source page lacks per-serving nutrition (no guessing). | `npm run seed:discover-recipes` (add `--dry-run` to preview) |
-| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, demo creators; optionally deletes rows whose `source_url` matches lines in `scripts/seed-recipe-urls.txt` (so seed + delete are symmetric) | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
+| `delete-seeded-recipes.ts` | Removes demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, and demo creators. Used for ad-hoc cleanup of residual seeded data. | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
 | `fix-servings.ts` | Re-fetch servings from source URLs for recipes stuck at `servings=1` | `npx tsx scripts/fix-servings.ts [--dry-run]` |
 | `fix-html-entities.ts` | Decode HTML entities in existing recipe data | `npx tsx scripts/fix-html-entities.ts [--dry-run]` |
 | `classify-meals.ts` | Auto-classify `meal_type` for untagged recipes | `npx tsx scripts/classify-meals.ts [--dry-run]` |
@@ -29,9 +28,9 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 | `verify-production-env.ts` | Check Stripe / Supabase production vars (warns; exits 1 only with `VERIFY_STRICT=1` when Stripe is misconfigured) | `npm run verify:production-env` — on `main` CI sets `VERIFY_STRICT=1` |
 | `production-smoke.ts` | HTTP smoke test against production URL | `npm run smoke:production` |
 
-## Trusted recipe domains (import quality)
+## Trusted recipe domains (user-import quality)
 
-When importing or curating URLs, these sites tend to have reliable structure and photography:
+Sites whose schema.org JSON-LD is reliable when a **user** pastes one of their own recipes into their private account. Suppr does **not** republish content from these sites to the public Discover feed — doing so would be a copyright / ToS violation. Per-user imports stay private to that user's account.
 
 - fitfoodiefinds.com
 - downshiftology.com (Lisa Bryan)
