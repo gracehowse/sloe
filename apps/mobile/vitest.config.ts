@@ -95,6 +95,12 @@ export default defineConfig({
     // via a per-file `// @vitest-environment jsdom` directive so this
     // config stays flat and free of the deprecated `environmentMatchGlobs`.
     environment: "node",
+    // Bumped from default 5s to 10s (2026-04-19): mealPlanAlgo.test.ts
+    // flaked intermittently in parallel runs where CPU contention pushed
+    // the 7-day plan generator past the 5s budget. Real code runs in
+    // ~1s alone; 10s gives a comfortable headroom without hiding real
+    // regressions.
+    testTimeout: 10_000,
     setupFiles: ["./tests/setup.ts"],
     include: [
       "tests/**/*.test.ts",

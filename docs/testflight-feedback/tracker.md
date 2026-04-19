@@ -215,6 +215,7 @@ Quick reverse-lookup: which IDs were closed by which shipped build.
 ## Related files
 
 - **[resolved.md](./resolved.md)** — narrative per-incident log (what, why, the fix, verification).
+- **[../planning/testflight-followups-2026-04-19.md](../planning/testflight-followups-2026-04-19.md)** — prioritised backlog of work still to do (B-tracks).
 - **[README.md](./README.md)** — how to pull feedback from App Store Connect.
 - **`data/`** — gitignored raw + deduped pulls (`feedback-YYYY-MM-DD.json`).
 - **`scripts/fetch-testflight-feedback.mjs`** — the pull script.

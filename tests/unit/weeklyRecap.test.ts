@@ -135,7 +135,69 @@ describe("buildWeeklyRecap", () => {
     expect(recap.weightDeltaKg).toBeCloseTo(-0.6, 1);
   });
 
-  it("picks the highest-protein day as bestDay", () => {
+  /**
+   * Action 13 Item #13 (2026-04-19) — the recap also surfaces the
+   * first and last weigh-in so the WeeklyRecapCard can render an
+   * honest "First → Last weigh-in: 78.4 → 77.8 kg (−0.6 kg)" line
+   * instead of the implicit "Change this week" framing.
+   */
+  it("surfaces weightFirstKg + weightLastKg with ≥2 weigh-ins", () => {
+    const now = new Date(2026, 3, 15, 12, 0, 0);
+    const byDay = { "2026-04-06": [meal(1500)], "2026-04-12": [meal(2000)] };
+    const recap = buildWeeklyRecap({
+      byDay,
+      weightKgByDay: { "2026-04-06": 80.4, "2026-04-12": 79.8 },
+      targets: TARGETS,
+      weekStartDay: "monday",
+      ledger: EMPTY_LEDGER,
+      budgetMax: 3,
+      now,
+    });
+    expect(recap.weightFirstKg).toBeCloseTo(80.4, 1);
+    expect(recap.weightLastKg).toBeCloseTo(79.8, 1);
+  });
+
+  it("surfaces weightFirstKg + weightLastKg with 5 weigh-ins", () => {
+    const now = new Date(2026, 3, 15, 12, 0, 0);
+    const byDay = { "2026-04-06": [meal(1500)] };
+    const recap = buildWeeklyRecap({
+      byDay,
+      weightKgByDay: {
+        "2026-04-06": 80.4,
+        "2026-04-08": 80.1,
+        "2026-04-09": 79.9,
+        "2026-04-11": 79.7,
+        "2026-04-12": 79.6,
+      },
+      targets: TARGETS,
+      weekStartDay: "monday",
+      ledger: EMPTY_LEDGER,
+      budgetMax: 3,
+      now,
+    });
+    // First weigh-in chronologically vs last in window.
+    expect(recap.weightFirstKg).toBeCloseTo(80.4, 1);
+    expect(recap.weightLastKg).toBeCloseTo(79.6, 1);
+    expect(recap.weightDeltaKg).toBeCloseTo(-0.8, 1);
+  });
+
+  it("returns null first/last when only 1 weigh-in (matches weightDeltaKg suppression)", () => {
+    const now = new Date(2026, 3, 15, 12, 0, 0);
+    const recap = buildWeeklyRecap({
+      byDay: { "2026-04-06": [meal(1500)] },
+      weightKgByDay: { "2026-04-08": 80 },
+      targets: TARGETS,
+      weekStartDay: "monday",
+      ledger: EMPTY_LEDGER,
+      budgetMax: 3,
+      now,
+    });
+    expect(recap.weightDeltaKg).toBeNull();
+    expect(recap.weightFirstKg).toBeNull();
+    expect(recap.weightLastKg).toBeNull();
+  });
+
+  it("picks the closest-to-target day as bestDay", () => {
     const now = new Date(2026, 3, 15, 12, 0, 0);
     const byDay = {
       "2026-04-06": [meal(2000, 100)],

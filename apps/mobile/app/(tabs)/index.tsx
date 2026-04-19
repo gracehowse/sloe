@@ -3183,6 +3183,7 @@ export default function TrackerScreen() {
         profileWeightKg={profileWeightKg}
         todayCalories={totals.calories}
         targetCalories={effectiveCalorieGoal}
+        maintenanceTdeeKcal={profileMaintenanceTdeeKcal}
         profileGoal={profileGoal}
         onViewProgress={() => {
           setCompleteDayOpen(false);
@@ -3304,6 +3305,8 @@ export default function TrackerScreen() {
               ? "Custom food"
               : result.source === "OFF"
               ? "Open Food Facts"
+              : result.source === "Edamam"
+              ? "Edamam"
               : "USDA FoodData Central";
           // F-13 (2026-04-19) — auto-track caffeine + alcohol for this
           // portion. Stashed under `micros.caffeineMg` / `micros.alcoholG`
