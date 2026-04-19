@@ -58,6 +58,7 @@ import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 import { useShoppingListState } from "./appData/useShoppingListState.ts";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
+import { isAuthLockAbort } from "../lib/supabase/isAuthLockAbort.ts";
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -649,6 +650,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .limit(200);
 
     if (error) {
+      // `@supabase/ssr` uses `navigator.locks` for the auth refresh
+      // critical section. When two queries fire in parallel (e.g.
+      // Today refresh + Discover refresh on app focus) the second can
+      // steal the lock and the first rejects with
+      // `AbortError: Lock was stolen by another request`. The data
+      // fetch is unaffected — the next poll succeeds normally — so
+      // we treat this as benign and skip noisy error logging.
+      if (isAuthLockAbort(error)) return;
       console.error("[refreshDiscoverRecipes] failed:", error.message);
       return;
     }
