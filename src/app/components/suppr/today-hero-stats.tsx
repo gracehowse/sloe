@@ -3,7 +3,7 @@
 import * as React from "react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
-import { TODAY_STAT_LABELS, netDetailFromKcal } from "../../../lib/copy/today";
+import { TODAY_STAT_LABELS } from "../../../lib/copy/today";
 
 /**
  * TodayHeroStats — Today-screen hero block with the calorie ring + 4
@@ -40,12 +40,6 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   /** Total burn = basal + active, from Apple Health where synced. 0
    *  when Health is not connected. */
   burnedKcal: number;
-  /** Short string that explains the target source, e.g. `"Mifflin-St Jeor"`.
-   *  Shown as a detail line below the `Target` tile. */
-  targetDetail?: string;
-  /** Short string that explains the burn source, e.g. `"Apple Health"`.
-   *  Shown as a detail line below the `Burned` tile. Default: empty. */
-  burnedDetail?: string;
 }
 
 export function TodayHeroStats(props: TodayHeroStatsProps) {
@@ -92,8 +86,6 @@ function DesktopHeroStats({
   loggedKcal,
   targetKcal,
   burnedKcal,
-  targetDetail,
-  burnedDetail,
   consumed,
   target,
   proteinPct,
@@ -106,7 +98,6 @@ function DesktopHeroStats({
 }: TodayHeroStatsProps) {
   const net = loggedKcal - targetKcal;
   const netStr = formatNet(net);
-  const netDetail = netDetailFromKcal(net);
 
   return (
     <div className="hidden md:block relative mb-4 rounded-card border border-border bg-card p-6">
@@ -149,22 +140,21 @@ function DesktopHeroStats({
             displayMode={displayMode}
           />
         </div>
+        {/* Sub-labels under each value (e.g. "Mifflin-St Jeor",
+            "Apple Health", "deficit") were removed 2026-04-18 — the
+            tile labels + Net's sign + colour are enough at a glance,
+            and the source / formula are explained in their own
+            surfaces (Settings, Activity Bonus card, etc.). */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-5">
           <StatTile label={TODAY_STAT_LABELS.logged} value={loggedKcal.toLocaleString()} />
-          <StatTile
-            label={TODAY_STAT_LABELS.target}
-            value={targetKcal.toLocaleString()}
-            detail={targetDetail}
-          />
+          <StatTile label={TODAY_STAT_LABELS.target} value={targetKcal.toLocaleString()} />
           <StatTile
             label={TODAY_STAT_LABELS.burned}
             value={burnedKcal > 0 ? burnedKcal.toLocaleString() : "—"}
-            detail={burnedKcal > 0 ? burnedDetail : undefined}
           />
           <StatTile
             label={TODAY_STAT_LABELS.net}
             value={netStr}
-            detail={netDetail}
             valueTone={net < 0 ? "positive" : "neutral"}
           />
         </div>
@@ -176,12 +166,10 @@ function DesktopHeroStats({
 function StatTile({
   label,
   value,
-  detail,
   valueTone = "neutral",
 }: {
   label: string;
   value: string;
-  detail?: string;
   valueTone?: "neutral" | "positive";
 }) {
   const valueColor = valueTone === "positive" ? "text-success" : "text-foreground";
@@ -195,9 +183,6 @@ function StatTile({
       >
         {value}
       </div>
-      {detail ? (
-        <div className="mt-0.5 text-[11px] text-muted-foreground">{detail}</div>
-      ) : null}
     </div>
   );
 }

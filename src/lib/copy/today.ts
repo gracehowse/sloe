@@ -8,7 +8,7 @@
  *  Not for UI composition — just the strings. UI components own layout.
  *
  *  Used by:
- *    - Web:    `NutritionTracker`, `BurnDetailPanel`, `CalorieDeficitInsight`
+ *    - Web:    `NutritionTracker`, `BurnDetailPanel`
  *    - Mobile: `TodayDeficitInsight`, `TodayActivityBonusCard`
  *    - Landing `app/(landing)/LandingPage.tsx`
  */
@@ -78,7 +78,9 @@ export const MEAL_SLOT_HEADERS = {
 } as const;
 
 /** Prose headline for the "today's calorie balance" banner. Used by
- *  web `CalorieDeficitInsight` and mobile `TodayDeficitInsight`. */
+ *  mobile `TodayDeficitInsight`. Web no longer renders an equivalent
+ *  banner — the Net tile + Activity Bonus card cover the same ground
+ *  (2026-04-18 Pass 7 cleanup). */
 export function todayBalanceHeadline(balanceKcal: number): string {
   if (balanceKcal > 0) {
     return `About ${balanceKcal.toLocaleString()} kcal ${NET_DEFICIT_LABEL} so far today`;

@@ -51,7 +51,6 @@ import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialo
 import { TodayHeroRing } from "./suppr/today-hero-ring";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
-import { CalorieDeficitInsight } from "./CalorieDeficitInsight.tsx";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayStreakInsightCard } from "./suppr/today-streak-insight-card";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -431,7 +430,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
-  const [stepsDayInput, setStepsDayInput] = useState("");
   const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
   const calendarInputRef = useRef<HTMLInputElement>(null);
@@ -451,7 +449,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     }
   });
   const [hydrationManualExpanded, setHydrationManualExpanded] = useState(false);
-  const [stepsManualExpanded, setStepsManualExpanded] = useState(false);
   const toggleQuickAddCollapsed = useCallback(() => {
     setQuickAddCollapsed((prev) => {
       const next = !prev;
@@ -1332,7 +1329,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [stepsByDay, activityBurnByDay],
   );
   const showHydrationCard = hydrationCardGateOpen || hydrationManualExpanded;
-  const showStepsCard = stepsCardGateOpen || stepsManualExpanded;
+  // Steps card is purely read-only on web; without a manual-entry
+  // path there's no point in surfacing a "Connect health" expander
+  // that would just open an empty input. Show only when the gate
+  // says there's actual data to display.
+  const showStepsCard = stepsCardGateOpen;
 
   const activeFast = useMemo(() => fastingSessions.find((s) => s.end === null), [fastingSessions]);
   const fastingElapsedLabel = useMemo(() => {
@@ -1343,20 +1344,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     return `${h}h ${m}m`;
   }, [activeFast, fastingNowTick]);
 
-  const saveStepsForSelectedDay = useCallback(async () => {
-    const v = Math.round(Number.parseFloat(stepsDayInput.replace(",", ".")));
-    if (!Number.isFinite(v) || v < 0 || !authedUserId) return;
-    const next = { ...stepsByDay, [selectedDateKey]: v };
-    setStepsByDay(next);
-    setStepsDayInput("");
-    const { error } = await supabase.from("profiles").update({ steps_by_day: next }).eq("id", authedUserId);
-    if (error) toast.error("Could not save steps.");
-  }, [stepsDayInput, stepsByDay, selectedDateKey, authedUserId]);
-
-  useEffect(() => {
-    setStepsDayInput("");
-  }, [selectedDateKey]);
-
+  // Steps + activity are read-only on web (mobile parity, 2026-04-18).
+  // Web has no Health source — `profiles.steps_by_day` is populated by
+  // the iOS app's HealthKit sync. The previous manual-entry input +
+  // Save button were removed because they let web overwrite synced
+  // values and confused users about where the data was coming from.
   const stepsForSelectedDay = Object.prototype.hasOwnProperty.call(stepsByDay, selectedDateKey)
     ? (stepsByDay[selectedDateKey] ?? 0)
     : null;
@@ -1544,8 +1536,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         loggedKcal={Math.round(totals.calories)}
         targetKcal={Math.round(effectiveCalorieTarget)}
         burnedKcal={Math.round(totalBurnKcal)}
-        targetDetail="Mifflin-St Jeor"
-        burnedDetail={totalBurnKcal > 0 ? "Apple Health" : undefined}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
         proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
@@ -1634,25 +1624,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDismissFreezeEarned={dismissFreezeEarned}
       />
 
-      {/* Deficit insight — only on today + when there's calorie
-          headroom left, matching mobile (`TodayDeficitInsight`,
-          `apps/mobile/app/(tabs)/index.tsx` 2799). Web component
-          additionally surfaces 7-day rolling pace + projected weekly
-          deficit when there's enough data. Headline + Net detail use
-          the canonical `todayBalanceHeadline` / `NET_DEFICIT_LABEL`
-          from `src/lib/copy/today.ts`. */}
-      {selectedDateKey === todayKey() &&
-        Math.max(0, Math.round(effectiveCalorieTarget - totals.calories)) > 0 ? (
-        <CalorieDeficitInsight
-          nutritionByDay={nutritionByDay}
-          selectedDateKey={selectedDateKey}
-          caloriesEatenToday={Math.round(totals.calories)}
-          netCalorieGoal={Math.round(effectiveCalorieTarget)}
-          baseCalorieGoal={Math.round(targets.calories)}
-          preferActivityAdjusted={preferActivityAdjustedCalories}
-          activityBurnKcal={Math.round(activityBurnForSelectedDay)}
-        />
-      ) : null}
+      {/* Deficit insight removed (2026-04-18, Pass 7): the standalone
+          web `CalorieDeficitInsight` panel duplicated data already
+          shown in the Activity Bonus card directly above (Activity
+          adjustment kcal) and surfaced a separate "Recent pace" line
+          that contradicted the day's Net tile. Mobile shows only a
+          tiny banner via `TodayDeficitInsight`, not this full panel,
+          so removing it brings web in line with mobile and removes
+          the duplication. The deficit/surplus information is still
+          present on Today via the Net tile (`TodayHeroStats`) and the
+          Activity Bonus card. */}
 
       {/* Eat again — moved here (was above the hero ring) to match
           mobile placement (`TodayEatAgainBanner`,
@@ -1789,29 +1770,17 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {/* Steps & activity card — moved here (was between macro tiles
           and the quick-log strip) to match mobile order
           (`apps/mobile/app/(tabs)/index.tsx` 2960): meals → steps →
-          activity bonus. Gated by `showStepsCard` (Audit M4); the
-          "Connect health" link is the first-run fallback. */}
+          activity bonus. Read-only on web (mobile parity, 2026-04-18) —
+          steps + active energy come from the iOS app's HealthKit
+          sync. No card renders when no Health data has synced yet
+          because there's no manual-entry path on web. */}
       {showStepsCard ? (
         <TodayStepsCard
           stepsForSelectedDay={stepsForSelectedDay}
           dailyStepsGoal={dailyStepsGoal}
-          stepsDayInput={stepsDayInput}
-          onStepsDayInputChange={setStepsDayInput}
-          onSaveSteps={() => void saveStepsForSelectedDay()}
+          activityBurnKcal={activityBurnForSelectedDay > 0 ? Math.round(activityBurnForSelectedDay) : null}
         />
-      ) : (
-        <div className="mb-3 text-center">
-          <button
-            type="button"
-            onClick={() => setStepsManualExpanded(true)}
-            className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
-            aria-expanded={false}
-            aria-controls="today-steps-card"
-          >
-            Connect health
-          </button>
-        </div>
-      )}
+      ) : null}
 
       {/* Activity Bonus */}
       <TodayActivityBonusCard

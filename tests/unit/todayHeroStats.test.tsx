@@ -12,12 +12,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
 import { TodayHeroStats } from "../../src/app/components/suppr/today-hero-stats";
-import {
-  NET_DEFICIT_LABEL,
-  NET_MAINTENANCE_LABEL,
-  NET_SURPLUS_LABEL,
-  TODAY_STAT_LABELS,
-} from "../../src/lib/copy/today";
+import { TODAY_STAT_LABELS } from "../../src/lib/copy/today";
 
 function renderStats(overrides: {
   loggedKcal: number;
@@ -59,25 +54,27 @@ describe("TodayHeroStats", () => {
     expect(text).toContain("1,800");
   });
 
-  it("shows Net with a minus sign + 'deficit' detail when logged < target", () => {
+  it("shows Net with a Unicode-minus prefix when logged < target", () => {
     const { container } = renderStats({ loggedKcal: 1040, targetKcal: 1800 });
     const text = container.textContent ?? "";
-    // net = -760 → U+2212 prefix
+    // net = -760 → U+2212 prefix (no separate "deficit" sub-label —
+    // sub-labels were removed 2026-04-18 as redundant noise; the
+    // sign + colour communicate direction at a glance).
     expect(text).toMatch(/\u2212760/);
-    expect(text).toContain(NET_DEFICIT_LABEL);
   });
 
-  it("shows Net with a plus sign + 'surplus' detail when logged > target", () => {
+  it("shows Net with a plus prefix when logged > target", () => {
     const { container } = renderStats({ loggedKcal: 2100, targetKcal: 1800 });
     const text = container.textContent ?? "";
     expect(text).toContain("+300");
-    expect(text).toContain(NET_SURPLUS_LABEL);
   });
 
-  it("shows 'maintenance' when logged === target", () => {
+  it("shows '0' for Net when logged === target", () => {
     const { container } = renderStats({ loggedKcal: 1800, targetKcal: 1800 });
     const text = container.textContent ?? "";
-    expect(text).toContain(NET_MAINTENANCE_LABEL);
+    // Net value is exactly "0" — no sign prefix, no maintenance text.
+    expect(text).toContain(TODAY_STAT_LABELS.net);
+    expect(text).toMatch(/Net.*0/);
   });
 
   it("shows an em-dash for Burned when no Health data is synced", () => {
