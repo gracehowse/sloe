@@ -50,7 +50,7 @@ describe('More/Profile menu', () => {
       .toBeVisible()
       .whileElement(by.id('profile-scroll'))
       .scroll(200, 'down');
-    await expect(element(by.text('Export Data'))).toBeVisible();
+    await expect(element(by.text('Export nutrition log (CSV)'))).toBeVisible();
     await expect(element(by.text('Help & Information'))).toBeVisible();
   });
 

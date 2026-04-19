@@ -28,6 +28,7 @@ import {
   MIN_WEIGH_INS as TDEE_MIN_WEIGH_INS_RAW,
 } from "@/lib/nutrition/adaptiveTdee";
 import { getLatestChangelog } from "@/lib/changelog/entries";
+import { NUTRITION_SOURCES } from "./nutritionSources";
 
 /** Source-of-truth re-exports so the landing page never copies literals. */
 export const TDEE_MIN_LOGGING_DAYS = TDEE_MIN_LOGGING_DAYS_RAW;
@@ -35,21 +36,17 @@ export const TDEE_MIN_WEIGH_INS = TDEE_MIN_WEIGH_INS_RAW;
 export { FREE_SAVE_LIMIT };
 
 /**
- * Nutrition verification sources, in the exact order
- * `verifyIngredients.ts` traverses them (after the internal
- * `Suppr` user-foods lookup and before the local estimation
- * fallback — both of which are implementation details, not
- * user-facing sources).
+ * `NUTRITION_SOURCES` lives in `./nutritionSources` (a leaf file with
+ * no `@/…` imports) so the React Native mobile app can import it
+ * directly without pulling the whole SSOT and its web-aliased deps
+ * into its `tsconfig` graph. Re-exported here so web consumers keep a
+ * single entry-point.
  *
- * If the pipeline reorders, update this list and the landing
- * page's trust strip + FAQ answer update automatically.
+ * If the pipeline reorders, update the list in `./nutritionSources`
+ * and the landing page's trust strip + FAQ answer, plus the mobile
+ * nutrition-sources screen, update automatically.
  */
-export const NUTRITION_SOURCES = [
-  "USDA FoodData Central",
-  "Edamam",
-  "Open Food Facts",
-  "FatSecret",
-] as const;
+export { NUTRITION_SOURCES };
 
 /**
  * Rolling version string for the roadmap "Now" header. Reads the
@@ -224,7 +221,7 @@ export const ROADMAP: RoadmapBucket[] = [
     when: "Coming builds",
     summary: "What's on the bench and visible in the codebase.",
     items: [
-      { text: "Creator analytics for published recipes", status: "building" },
+      { text: "Creator analytics for published recipes", status: "planned" },
       { text: "Home screen widgets (iOS)", status: "building" },
       { text: "Richer macro trend reports", status: "building" },
     ],
@@ -261,7 +258,12 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
   },
   {
     q: "What happens to my data if I downgrade?",
-    a: `Nothing disappears. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit become read-only until you upgrade again, but they're never deleted. History, logs, and targets stay fully accessible.`,
+    // Copy intentionally softened from the prior "become read-only" claim
+    // (sync-enforcer finding 2026-04-19): the client only blocks *new*
+    // saves above `FREE_SAVE_LIMIT`; existing saves above the cap are not
+    // enforced as read-only today. Keep the claim aligned to the actual
+    // behaviour until (and unless) read-only enforcement ships.
+    a: `Nothing disappears. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved; you won't be able to add more until you're back under the limit or on Base. History, logs, and targets stay fully accessible.`,
   },
   {
     q: "Is this a diet app?",

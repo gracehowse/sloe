@@ -19,6 +19,10 @@ import {
   fetchShoppingListJsonItems,
   upsertShoppingListJsonItems,
 } from "../../../src/lib/supabase/shoppingJsonFallback";
+import {
+  dedupeShoppingLabel,
+  shoppingItemsTiedToCurrentPlan,
+} from "../../../src/lib/planning/shoppingListLifecycle";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -56,16 +60,58 @@ export default function ShoppingListScreen() {
         .order("created_at", { ascending: true });
 
       if (!cancelled && rows && rows.length > 0 && !relErr) {
-        setItems(rows.map((r) => ({
-          id: r.id as string,
-          name: (r.name as string) ?? "",
-          amount: (r.amount as string) ?? "",
-          unit: (r.unit as string) ?? "",
-          category: (r.category as string) ?? "Other",
-          checked: (r.checked as boolean) ?? false,
-          from: (r.source as string) ?? "",
-        })));
-        setLoading(false);
+        // G-2 reconciliation: drop rows whose `source` recipe is no
+        // longer in the live plan. Covers historical drift from
+        // pre-G-2 builds where regenerate didn't purge. Two small
+        // queries (plan_day ids, then meals) — cheaper than a
+        // cross-table join RLS-wise and easier to reason about.
+        const { data: dayRows } = await supabase
+          .from("meal_plan_days")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("slot_id", "default");
+        const dayIds = Array.isArray(dayRows)
+          ? (dayRows as Array<{ id: string }>).map((d) => d.id)
+          : [];
+        let liveTitles: string[] = [];
+        if (dayIds.length > 0) {
+          const { data: planMeals } = await supabase
+            .from("meal_plan_meals")
+            .select("recipe_title")
+            .in("plan_day_id", dayIds);
+          if (Array.isArray(planMeals)) {
+            liveTitles = (planMeals as Array<{ recipe_title: string | null }>)
+              .map((m) => m.recipe_title ?? "")
+              .filter(Boolean);
+          }
+        }
+
+        const kept = liveTitles.length > 0
+          ? shoppingItemsTiedToCurrentPlan({
+              items: rows as Array<{ source: string | null } & Record<string, unknown>>,
+              currentPlanRecipeTitles: liveTitles,
+            })
+          : (rows as Array<Record<string, unknown>>);
+
+        const staleIds = (rows as Array<{ id: string }>)
+          .filter((r) => !kept.some((k) => (k as { id: string }).id === r.id))
+          .map((r) => r.id);
+        if (staleIds.length > 0) {
+          void supabase.from("shopping_items").delete().in("id", staleIds);
+        }
+
+        if (!cancelled) {
+          setItems(kept.map((r) => ({
+            id: (r as { id: string }).id,
+            name: ((r as { name?: string }).name) ?? "",
+            amount: ((r as { amount?: string }).amount) ?? "",
+            unit: ((r as { unit?: string }).unit) ?? "",
+            category: ((r as { category?: string }).category) ?? "Other",
+            checked: ((r as { checked?: boolean }).checked) ?? false,
+            from: ((r as { source?: string }).source) ?? "",
+          })));
+          setLoading(false);
+        }
         return;
       }
 
@@ -167,7 +213,10 @@ export default function ShoppingListScreen() {
     for (const [cat, catItems] of grouped) {
       lines.push(`📌 ${cat}`);
       for (const i of catItems) {
-        lines.push(`  ☐ ${i.amount} ${i.unit} ${i.name}`.trim());
+        // G-2: share the same dedupe path as the on-screen render,
+        // so exported text doesn't leak "60 g 60 g protein powder".
+        const d = dedupeShoppingLabel({ amount: i.amount, unit: i.unit, name: i.name });
+        lines.push(`  ☐ ${d.amount} ${d.unit} ${d.name}`.replace(/\s+/g, " ").trim());
       }
       lines.push("");
     }
@@ -372,7 +421,17 @@ export default function ShoppingListScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
-                          {item.amount} {item.unit} {item.name}
+                          {(() => {
+                            // G-2: dedupe `<amount> <unit>` when it
+                            // already prefixes `name`. See helper
+                            // docstring in shoppingListLifecycle.ts.
+                            const d = dedupeShoppingLabel({
+                              amount: item.amount,
+                              unit: item.unit,
+                              name: item.name,
+                            });
+                            return `${d.amount} ${d.unit} ${d.name}`.replace(/\s+/g, " ").trim();
+                          })()}
                         </Text>
                         <Text style={styles.itemFrom}>{item.from}</Text>
                       </View>

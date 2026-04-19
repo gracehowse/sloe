@@ -144,13 +144,25 @@ export function useSavedRecipes(userId: string | null) {
 
         if (error) {
           console.error("[toggleSave] failed:", error.message, "| userId:", userId, "| recipeId:", recipeId);
-          // Roll back
+          // Roll back the optimistic update first so the UI stays truthful.
           setSavedIds((curr) => {
             const rollback = new Set(curr);
             if (isSaved) rollback.add(recipeId);
             else rollback.delete(recipeId);
             return rollback;
           });
+          // When the RLS policy `saves_insert_own` rejects the insert
+          // (see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`),
+          // Postgres returns code 42501 or a "row-level security" message.
+          // Surface the paywall-style prompt instead of a generic failure.
+          const msg = (error.message ?? "").toLowerCase();
+          const code = (error as { code?: string }).code;
+          if (!isSaved && (code === "42501" || msg.includes("row-level security") || msg.includes("row level security"))) {
+            Alert.alert(
+              "Save limit reached",
+              `Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes. Upgrade to save more.`,
+            );
+          }
         }
       })();
 

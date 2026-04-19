@@ -40,7 +40,7 @@ name: "Settings hub — sections, navigation, profile info"
     element: ".*Appearance.*"
     direction: DOWN
 - assertVisible: ".*Appearance.*"
-- assertVisible: ".*Export Data.*"
+- assertVisible: ".*Export nutrition log.*"
 - assertVisible: ".*Help & Information.*"
 
 # Verify Legal section

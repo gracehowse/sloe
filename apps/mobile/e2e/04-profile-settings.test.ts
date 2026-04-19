@@ -21,8 +21,10 @@ describe('Profile & settings', () => {
     await expect(element(by.text('Help & Information'))).toBeVisible();
   });
 
-  it('shows Export Data', async () => {
-    await expect(element(by.text('Export Data'))).toBeVisible();
+  it('shows Export nutrition log row', async () => {
+    // G-6 (2026-04-19) — primary CSV export row. JSON row renders
+    // just beneath ("Export all data").
+    await expect(element(by.text('Export nutrition log (CSV)'))).toBeVisible();
   });
 
   it('scrolls to Legal section', async () => {

@@ -17,11 +17,14 @@ name: "Profile & settings — sections, navigation, data export"
     direction: DOWN
 - assertVisible: ".*Connections.*"
 
-# Help link / Export Data live in the App section further down
+# Help link / Export rows live in the App section further down. G-6
+# (2026-04-19) replaced the single "Export Data" row with a CSV-primary
+# row + JSON-secondary row; pin the primary label here.
 - scrollUntilVisible:
-    element: ".*Export Data.*"
+    element: ".*Export nutrition log.*"
     direction: DOWN
-- assertVisible: ".*Export Data.*"
+- assertVisible: ".*Export nutrition log.*"
+- assertVisible: ".*Export all data.*"
 - assertVisible: ".*Help & Information.*"
 
 # Legal section is near the bottom

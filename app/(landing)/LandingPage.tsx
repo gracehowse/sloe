@@ -456,8 +456,8 @@ function HowItWorks() {
             Recipes you actually save, tracked the way food actually works.
           </h2>
           <p className="lp-lead">
-            Suppr doesn’t guess. Every ingredient is parsed and matched against verified nutrition
-            databases, so your meals, plans, and progress are built on real numbers — not an average.
+            Suppr matches every ingredient across multiple verified databases and shows a confidence
+            score when a match is ambiguous, so you can see what&apos;s certain and what isn&apos;t.
           </p>
           <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link className="lp-btn lp-btn-primary" href={SIGNUP_HREF}>

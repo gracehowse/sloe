@@ -176,9 +176,20 @@ begin
       and tablename = 'recipes'
       and policyname = 'recipes_insert_own'
   ) then
+    -- Base/Pro tier gate for published=true enforced in-line (see
+    -- supabase/migrations/20260426100100_recipes_publish_tier_gate.sql).
     create policy "recipes_insert_own"
     on public.recipes for insert
-    with check (auth.uid() = author_id);
+    with check (
+      auth.uid() = author_id
+      and (
+        published = false
+        or coalesce(
+          (select user_tier from public.profiles where id = auth.uid()),
+          'free'
+        ) in ('base', 'pro')
+      )
+    );
   end if;
 
   if not exists (
@@ -188,10 +199,26 @@ begin
       and tablename = 'recipes'
       and policyname = 'recipes_update_own'
   ) then
+    -- Publish-on-update gate (keeps in sync with migrations
+    -- 20260414120100_publish_moderation.sql and
+    -- 20260426100100_recipes_publish_tier_gate.sql): publishing requires
+    -- is_verified + tier in (base, pro); drafts are unrestricted.
     create policy "recipes_update_own"
     on public.recipes for update
     using (auth.uid() = author_id)
-    with check (auth.uid() = author_id);
+    with check (
+      auth.uid() = author_id
+      and (
+        published = false
+        or (
+          is_verified = true
+          and coalesce(
+            (select user_tier from public.profiles where id = auth.uid()),
+            'free'
+          ) in ('base', 'pro')
+        )
+      )
+    );
   end if;
 
   if not exists (
@@ -488,7 +515,16 @@ begin
   ) then
     create policy "saves_insert_own"
     on public.saves for insert
-    with check (auth.uid() = user_id);
+    with check (
+      auth.uid() = user_id
+      and (
+        coalesce(
+          (select user_tier from public.profiles where id = auth.uid()),
+          'free'
+        ) <> 'free'
+        or (select count(*) from public.saves where user_id = auth.uid()) < 10
+      )
+    );
   end if;
 
   if not exists (

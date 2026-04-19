@@ -376,16 +376,27 @@ export function HouseholdCard() {
           row shows remaining-today numbers. Other members show name +
           role only — the server already strips targets/remaining from
           those rows, and this UI matches so a future code path that
-          accidentally re-shared them would render nothing. */}
-      <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+          accidentally re-shared them would render nothing.
+
+          G-5 (2026-04-19, TestFlight `AJKHqJeCi83sCHF3_7CZMhY`): the
+          four numbers under a member's row were ambiguous ("target?
+          consumed? remaining?"). Column labels now read "Cal left /
+          Protein left / Carbs left / Fat left" and a one-line
+          caption under MEMBERS states what the numbers represent.
+          Structural parity with web is pinned by
+          `tests/unit/householdMemberNumberLabels.test.ts`. */}
+      <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
         Members
+      </Text>
+      <Text style={{ fontSize: 11, color: t.dim, marginBottom: 8, lineHeight: 15 }}>
+        Remaining today — your totals left to hit your targets.
       </Text>
       {data.members.map((m) => {
         const isSelf = m.userId === userId;
         return (
-          <View key={m.userId} style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+          <View key={m.userId} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4 }}>
             <Text
-              style={{ fontSize: 12, fontWeight: "500", color: t.text, width: 100 }}
+              style={{ fontSize: 12, fontWeight: "500", color: t.text, width: 100, marginTop: 8 }}
               numberOfLines={1}
             >
               {m.displayName}{isSelf ? " (you)" : ""}
@@ -393,20 +404,25 @@ export function HouseholdCard() {
             <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
               {isSelf && m.remaining ? (
                 ([
-                  ["Cal", m.remaining.calories, m.remaining.calories > 0 ? t.green : t.amber],
-                  ["P", m.remaining.protein, t.protein],
-                  ["C", m.remaining.carbs, t.carbs],
-                  ["F", m.remaining.fat, t.fat],
-                ] as const).map(([label, val, color]) => (
+                  ["Cal left", m.remaining.calories, m.remaining.calories > 0 ? t.green : t.amber, false],
+                  ["Protein left", m.remaining.protein, t.protein, true],
+                  ["Carbs left", m.remaining.carbs, t.carbs, true],
+                  ["Fat left", m.remaining.fat, t.fat, true],
+                ] as const).map(([label, val, color, withGrams]) => (
                   <View key={label} style={{ flex: 1, alignItems: "center" }}>
-                    <Text style={{ fontSize: 9, color: t.dim }}>{label}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color, fontVariant: ["tabular-nums"] }}>
-                      {Math.round(val as number)}{label !== "Cal" ? "g" : ""}
+                    <Text
+                      style={{ fontSize: 9, color: t.dim, textAlign: "center", lineHeight: 11 }}
+                      numberOfLines={2}
+                    >
+                      {label}
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color, fontVariant: ["tabular-nums"], marginTop: 2 }}>
+                      {Math.round(val as number)}{withGrams ? "g" : ""}
                     </Text>
                   </View>
                 ))
               ) : (
-                <Text style={{ fontSize: 10, color: t.dim }}>
+                <Text style={{ fontSize: 10, color: t.dim, marginTop: 8 }}>
                   {m.role === "owner" ? "Owner" : "Member"}
                 </Text>
               )}

@@ -10,6 +10,7 @@ import {
   singleRecipeTitleFromFromField,
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
+import { dedupeShoppingLabel } from "../../lib/planning/shoppingListLifecycle.ts";
 import type { UserTier } from "../../types/recipe.ts";
 import { EmptyState } from "./suppr/empty-state.tsx";
 import { Button } from "./ui/button.tsx";
@@ -104,12 +105,22 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
       lines.push(`## ${cat}`, "");
       for (const g of groups) {
         const box = isShoppingGroupFullyChecked(g) ? "[x]" : "[ ]";
-        const qty =
-          g.items.length === 1
-            ? `${g.items[0]!.amount} ${g.items[0]!.unit}`
-            : formatMixedShoppingAmounts(g.items);
+        // Share the same dedupe path as the on-screen render for
+        // single-item groups so the exported list doesn't leak the
+        // "60 g 60 g protein powder" artefact.
+        const single = g.items.length === 1
+          ? dedupeShoppingLabel({
+              amount: g.items[0]!.amount,
+              unit: g.items[0]!.unit,
+              name: g.displayName,
+            })
+          : null;
+        const qty = single
+          ? `${single.amount} ${single.unit}`.trim()
+          : formatMixedShoppingAmounts(g.items);
+        const name = single ? single.name : g.displayName;
         const from = mergeShoppingFromFields(g.items);
-        lines.push(`${box} ${g.displayName} — ${qty} (${from})`);
+        lines.push(`${box} ${name} — ${qty} (${from})`);
       }
       lines.push("");
     }
@@ -318,10 +329,28 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
                 const someChecked = group.items.some((i) => i.checked);
                 const dimmed = allChecked;
                 const lineThrough = allChecked;
-                const qtyLine =
+                // G-2 (TestFlight `ALU8hrB1…`, 2026-04-19): when a
+                // single row's `name` already encodes the amount +
+                // unit prefix (importer leak, e.g. "60 g protein
+                // powder"), `dedupeShoppingLabel` strips it so the
+                // rendered line is "60 g protein powder" not "60 g
+                // 60 g protein powder". The multi-item merge path
+                // joins distinct quantities ("200 g + 2 breast")
+                // and displayName is picked as the shortest name,
+                // so the same leak can't chain there.
+                const dedupedSingle =
                   group.items.length === 1
-                    ? `${group.items[0]!.amount} ${group.items[0]!.unit}`
+                    ? dedupeShoppingLabel({
+                        amount: group.items[0]!.amount,
+                        unit: group.items[0]!.unit,
+                        name: group.displayName,
+                      })
+                    : null;
+                const qtyLine =
+                  dedupedSingle
+                    ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
                     : formatMixedShoppingAmounts(group.items);
+                const displayName = dedupedSingle ? dedupedSingle.name : group.displayName;
                 const fromMerged = mergeShoppingFromFields(group.items);
                 const multiFrom = fromMerged.includes(",");
                 const thumb = resolveRecipeThumb(fromMerged);
@@ -365,7 +394,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
                       <p
                         className={`font-medium ${lineThrough ? "line-through text-muted-foreground" : "text-foreground"}`}
                       >
-                        {qtyLine} {group.displayName}
+                        {qtyLine} {displayName}
                       </p>
                       {group.items.length > 1 ? (
                         <p className="text-xs text-muted-foreground mt-0.5">

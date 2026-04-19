@@ -22,6 +22,8 @@ import {
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { buildMaintenanceChain } from "../../../../src/lib/nutrition/maintenanceChain";
+import type { PlanPace } from "../../../../src/lib/nutrition/tdee";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats } from "@/lib/progressWeekReport";
 import { getDailyTargets, type DailyTarget } from "../../../../src/lib/nutrition/dailyTargetRead";
@@ -100,6 +102,15 @@ export default function ProgressScreen() {
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
+  // Plan pace is read from `profiles.plan_pace` alongside goal. Used by
+  // the G-4 Maintenance chain explainer (2026-04-19) to derive the
+  // daily-deficit row. Defaults to `steady` so the explainer can still
+  // render on profiles predating the column.
+  const [planPace, setPlanPace] = useState<PlanPace>("steady");
+  // G-4 (2026-04-19) — "How this works" expandable under the
+  // Maintenance card. In-memory only; a collapse on one visit shouldn't
+  // persist past next focus.
+  const [maintenanceExplainerOpen, setMaintenanceExplainerOpen] = useState(false);
 
   // F-2 (2026-04-19) — `daily_targets` snapshots keyed by `YYYY-MM-DD`.
   // Past days render "% of goal" against the target that was active
@@ -170,7 +181,7 @@ export default function ProgressScreen() {
         .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
         .eq("id", userId)
         .maybeSingle(),
     ]);
@@ -210,6 +221,13 @@ export default function ProgressScreen() {
         setWeekStartDay(profile.week_start_day);
       }
       setUserGoal((profile as any).goal ?? null);
+      // Coerce plan_pace to the PlanPace union; fall back to "steady"
+      // when the column is missing or carries an unexpected value so
+      // the explainer has a sensible default deficit to show.
+      const pace = String((profile as any).plan_pace ?? "").toLowerCase();
+      if (pace === "relaxed" || pace === "steady" || pace === "accelerated" || pace === "vigorous") {
+        setPlanPace(pace);
+      }
 
       // Batch 4.11 — freeze ledger + recap state
       const rawEarned = (profile as any).streak_freezes_earned_at;
@@ -887,6 +905,92 @@ export default function ProgressScreen() {
                   </View>
                 </View>
               )}
+
+              {/* G-4 (2026-04-19, TestFlight `ALcwMFPjfmJvyBLjs4CRt1k`)
+                  — "How this works" expandable. Chain from BMR through
+                  Maintenance, Calorie goal, and projected weekly loss
+                  so the tester can see how every number connects. No
+                  new DB reads; all inputs are already loaded for this
+                  screen. Parity pinned by
+                  `tests/unit/maintenanceChain.test.ts`. */}
+              {(() => {
+                const chain = buildMaintenanceChain(
+                  {
+                    sex: profileSexState as any,
+                    weight_kg: latestWeightKg ?? 70,
+                    height_cm: profileHeightCmState,
+                    age: profileAgeState,
+                    activity_level: profileActivityLevelState as any,
+                  },
+                  resolved,
+                  planPace,
+                  userGoal,
+                );
+                if (!chain) return null;
+                return (
+                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                    <Pressable
+                      onPress={() => setMaintenanceExplainerOpen((v) => !v)}
+                      accessibilityRole="button"
+                      accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
+                      accessibilityState={{ expanded: maintenanceExplainerOpen }}
+                      hitSlop={8}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
+                        {maintenanceExplainerOpen ? "Hide" : "How this works"}
+                      </Text>
+                      <Ionicons
+                        name={maintenanceExplainerOpen ? "chevron-up" : "chevron-down"}
+                        size={14}
+                        color={t.accent}
+                      />
+                    </Pressable>
+                    {maintenanceExplainerOpen && (
+                      <View style={{ marginTop: 10, gap: 6 }}>
+                        {chain.steps.map((step, i) => {
+                          const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
+                          return (
+                            <View
+                              key={`${step.kind}-${i}`}
+                              style={{
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                gap: 12,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  flex: 1,
+                                  fontSize: 12,
+                                  lineHeight: 17,
+                                  color: isSummary ? t.sub : t.text,
+                                  fontWeight: step.emphasis ? "700" : "500",
+                                }}
+                              >
+                                {step.label}
+                              </Text>
+                              {step.value ? (
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: step.emphasis ? t.text : t.sub,
+                                    fontWeight: step.emphasis ? "700" : "500",
+                                    fontVariant: ["tabular-nums"],
+                                  }}
+                                >
+                                  {step.value}
+                                </Text>
+                              ) : null}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
             </View>
             );
           })()}

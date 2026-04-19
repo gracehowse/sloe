@@ -2,6 +2,122 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-04-19 — G-4 + G-5 + G-6: TDEE education, household member labels, CSV export
+
+- **ASC feedback ids:**
+  - G-4 `ALcwMFPjfmJvyBLjs4CRt1k` (build 11, 2026-04-19 18:20Z) — "Tdee/ maintenance still not explained well enough". Tester on the Progress tab could see the Maintenance number and the "formula estimate / +95 actual" subline (shipped with F-3) but couldn't see how Maintenance connects to her calorie goal, daily deficit, or projected weekly loss.
+  - G-5 `AJKHqJeCi83sCHF3_7CZMhY` (build 11, 2026-04-19 18:17Z) — "what are the numbers it's showing?" Household card renders four numbers under a member's own row (`648 / 71g / 58g / 21g` under `Cal / P / C / F`); the column labels were too terse to disambiguate "target / consumed / remaining".
+  - G-6 `AC4oDEnQ0SuPruUtCr_Lvyc` (build 11, 2026-04-19 18:21Z) — "Does json make sense for a regular user? Shouldn't it be csv or something?" Settings → Export Data produced a JSON file via the native share sheet.
+
+### G-4 — Maintenance chain explainer
+
+- **Cause:** F-3 shipped the adaptive Maintenance tile with `formulaKcal`, `kcal`, and a confidence chip, but the card stopped there. The user had to mentally join Maintenance → calorie goal → deficit → weekly loss, and the app never showed the arithmetic. Tester concluded "still not explained well enough".
+- **Fix:**
+  - New shared helper `src/lib/nutrition/maintenanceChain.ts` exporting `buildMaintenanceChain(profile, resolved, planPace, goal)` → `{ steps, weeklyLossKg, dailyDeficitKcal, budgetKcal }`. Pure function, no network / storage. Uses `calculateBMR`, `ACTIVITY_MULTIPLIERS`, `ACTIVITY_SHORT_LABELS`, and `calculateBudget` from `src/lib/nutrition/tdee.ts` so every row is derived from the same constants the rest of the app relies on. Weekly-loss math is `7 × deficit / 7700` via `KCAL_PER_KG_FAT` (the existing project-wide conversion).
+  - Chain order: `BMR → × activity level → (+ adaptive adjustment, only if adaptive source won) → = Maintenance → − plan deficit (or + surplus when bulking) → = Calorie goal → If you hit your goal daily: ~N kcal/day below Maintenance → Projected weekly loss: ~X kg`. When adaptive confidence is `low` or the resolver fell back to formula, the adaptive line is omitted and `= Maintenance` equals the formula total. When the profile inputs are incomplete the whole chain is `null` and the UI renders nothing (never fabricates a number).
+  - Web: `src/app/components/ProgressDashboard.tsx` now renders a `How this works` button underneath the Maintenance caption. Tap expands a `<dl>` with the chain rows. Collapsed by default, in-memory state only. Imports `buildMaintenanceChain`.
+  - Mobile: `apps/mobile/app/(tabs)/progress.tsx` does the same — `Pressable` with a chevron toggles a native `<View>` list. Accessibility: `accessibilityRole="button"`, `accessibilityState={{ expanded }}`, explicit `accessibilityLabel` switch.
+  - Mobile also now reads `profiles.plan_pace` into local `planPace` state (previously only the web surface read this column on Progress); coerced to the `PlanPace` union with a `"steady"` default so an unseeded column can't break the explainer.
+- **Scope guardrails held:** Maintenance card's visual tier is unchanged — the explainer is a collapsible row at the bottom of the existing card, not a new tile. No new DB reads beyond the mobile-only `plan_pace` column; all other inputs were already fetched. Maintenance value rendered by the `= Maintenance` step is `resolved.kcal` verbatim, matching the big number above.
+
+### G-5 — Household member-number labels
+
+- **Cause:** `HouseholdCard` (mobile) and `HouseholdPanel` (web) rendered a 4-column grid under the user's own row with single-letter headers `Cal / P / C / F` and no caption. Tester couldn't tell whether the numbers were their targets, what they'd eaten, or what was left.
+- **Fix (both platforms):**
+  - Column headers expanded to `Cal left`, `Protein left`, `Carbs left`, `Fat left`. Small enough to fit in the existing grid (10px) but unambiguous on read.
+  - One-line caption immediately under `MEMBERS`: `Remaining today — your totals left to hit your targets.` Reads to both the header and the row below.
+  - Values still come from the server-trimmed `m.remaining` — legal scope is unchanged (members see name + role only; the caller sees their own remaining).
+  - Structural copy-parity pin: `tests/unit/householdMemberNumberLabels.test.ts` asserts all four expanded labels and the caption render in both files, and that the old `P` / `C` / `F` renders are gone.
+- **Deferred:** The tester also hinted at moving household management into Settings (Netflix-style profile switcher). That's a redesign; logged as follow-up. G-5 changes copy only.
+
+### G-6 — CSV export option
+
+- **Cause:** Settings → App → Export Data (mobile) and Settings → Privacy → "Download your data (JSON)" (web) both produced a single `.json` payload. A regular user wanting to see their nutrition log in Numbers / Excel / Sheets had no path.
+- **Fix:**
+  - New shared helper `src/lib/export/nutritionLogToCsv.ts`. Pure function `nutritionLogToCsv(entries)` that maps `nutrition_entries` rows into a `CRLF`-separated CSV with columns `date, meal_type, food_name, grams, calories, protein_g, carbs_g, fat_g, fibre_g, source`. Quoting follows RFC 4180 (fields with commas / quotes / CR / LF get wrapped; `"` is escaped as `""`). Numeric columns are blank when the source is null/missing — we never invent zeros. Also exports `nutritionLogCsvFilename(now)` → `suppr-nutrition-log-YYYY-MM-DD.csv` so both platforms emit identical filenames.
+  - Mobile: `apps/mobile/app/(tabs)/more.tsx` Settings → App replaces the single `Export Data` row with two: `Export nutrition log (CSV)` (primary, `download-outline`) and `Export all data (JSON)` (secondary, `code-slash-outline`, muted icon colour). CSV path reads the log via Supabase and shares via the native share sheet; JSON path retains the previous behaviour byte-identical.
+  - Web: `src/app/components/Settings.tsx` Privacy panel replaces `Download your data (JSON)` with `Export nutrition log (CSV)` + `Export all data (JSON)`. CSV button triggers a direct file download via `Blob` + synthetic anchor click — no new dependency, same pattern as the existing `downloadJsonFile` helper. Toast acknowledges "CSV download started."
+  - Filename and column order are locked by `tests/unit/nutritionLogToCsv.test.ts` so a change on either side breaks loudly.
+  - **v1 scope:** `nutrition_entries` only. `weight_entries`, `custom_foods`, `saves`, `profile`, etc. remain JSON-only. Expansion is a follow-up.
+- **Mobile E2E / Maestro updates:** `apps/mobile/.maestro/04_profile_settings.yaml`, `.maestro/29_more_menu.yaml`, `.maestro/31_settings_hub.yaml`, `apps/mobile/e2e/04-profile-settings.test.ts`, and `apps/mobile/e2e/29-more-menu.test.ts` updated to assert the new `Export nutrition log (CSV)` label (and, where relevant, the JSON follow-up row).
+
+### Tests
+
+- **`tests/unit/maintenanceChain.test.ts`** (9 tests, passing) — pins the ordered step list for the adaptive-wins and low-confidence/formula cases; asserts BMR value matches `calculateBMR()` (no placeholder); asserts the activity label includes the multiplier for the current level; asserts adaptive adjustment delta parses as `+N kcal`; asserts weekly-loss matches `7 × deficit / 7700`; asserts a `"bulk"` goal produces a `surplus` row, not a `deficit` row; asserts `= Maintenance` value equals `resolved.kcal.toLocaleString()`; asserts missing profile inputs yield `null`.
+- **`tests/unit/nutritionLogToCsv.test.ts`** (11 tests, passing) — header row shape, field mapping (date, meal_type, food_name, grams, 4 macros, fibre, source), quoting of commas / quotes / newlines in food names, `recipe_title → name` fallback, blank cells for null/undefined numerics, preserved input order, header-only output for `[]`, CRLF row separator, and ISO-dated filename builder.
+- **`tests/unit/householdMemberNumberLabels.test.ts`** (12 tests, passing) — structural pin on both `HouseholdPanel.tsx` (web) and `HouseholdCard.tsx` (mobile) that every expanded label (`Cal left` / `Protein left` / `Carbs left` / `Fat left`) plus the `Remaining today — …` caption renders on both surfaces; legacy single-letter renders (`>P</p>` / `>C</p>` / `>F</p>` on web, tuple `["P", m.remaining.protein, …]` on mobile) are gone.
+
+### Parity
+
+- G-4 — both platforms got the expandable explainer with the same chain ordering and the same helper. Mobile mirrors web's conditional adaptive step, deficit/surplus wording, and weekly-loss summary. Profile activity / age / height / weight already lived on both surfaces; only mobile needed to add the `plan_pace` read.
+- G-5 — both platforms; copy changes only. Structural test pins verbatim strings.
+- G-6 — mobile is the primary target (Export Data row was always mobile-first). Web picks up the same CSV primary button in Settings → Privacy so the export choice stays consistent. JSON path unchanged on both.
+
+### Scope guardrails held
+
+- No change to `nutrition_entries` schema, the JSON export payload, or the JSON filename.
+- No change to household legal scope — members still only see name + role; only the caller sees their own `remaining`.
+- No change to the Maintenance card's big-number area, adaptive badge, or confidence bars. Expandable sits under the existing caption.
+- No change to files owned by G-1 (native patch), G-2 (shopping list), or G-3 (weight graph).
+
+## 2026-04-19 — G-1: Apple Health native ObjC try/catch for correlation enumeration
+
+- **ASC feedback ids:**
+  - `AGC7oEKypuMAb49WziGv468` (build 11, 2026-04-19 18:13Z): "Apple health issues persist".
+  - `AIIUzBeKpng0jH4nNkXecBY` (build 11, 2026-04-19 18:13Z, hard crash): "Still crashing when I click connect apple health".
+  - Same iPhone 18,1 / iOS 26.5 device that originally reported F-1 (`AC0AeyMF3Ehhq0lJ1AXQmyk`, `AHhgUl6i1lax8FBuUU0bprg`, `AEXP_nvFy4c7Fde3PhCdK6w`) on build 10.
+- **Why F-1 wasn't enough:** F-1 (build 11) added JS defensive guards in `apps/mobile/lib/healthSyncCorrelation.ts`, top-level `try/catch` + Sentry capture in `apps/mobile/lib/healthSync.ts`, and a recoverable Alert wrap around `handleConnect` in `apps/mobile/app/health-sync.tsx`. Those layers are necessary but **insufficient**: JavaScript `try/catch` cannot catch an Objective-C `NSException` thrown on the bridge callback thread. The Sentry stack confirmed the repeat crash originated inside the native `dietary_getFoodCorrelationSamples` handler block, specifically the per-correlation enumeration where `[corr objects]` / `[corr metadata]` are read. iOS 26.5 appears to raise there for food correlations authored by certain third-party writers (MFP bulk-syncs are the plausible trigger given this user's profile).
+- **Cause:** In the patched build of `react-native-health@1.19.0` (our own patch-package diff added `dietary_getFoodCorrelationSamples`), the `for (id raw in results)` loop read `[corr objects]` and `[corr metadata]` without an `@try`. If either getter raises — which they can do inside HealthKit's own accessor code when the underlying store row is malformed — the exception propagates up through the dispatch block and tears down the RN bridge, producing the user-visible hard crash on tap.
+- **Fix:** Wrapped the per-correlation body in `@try { ... } @catch (NSException *ex) { NSLog(...); continue; }` inside `apps/mobile/patches/react-native-health+1.19.0.patch`. The catch logs the exception name + reason and `continue`s to the next correlation so a single malformed row never kills the batch. Both getters are also nil-coalesced (`[corr objects] ?: [NSSet set]`, `[corr metadata] ?: @{}`) so a post-exception nil return degrades to empty rather than an NSFastEnumeration crash. The JS layer's legacy `effectiveMinute|bundleId` keying in `healthSyncCorrelation.ts` already covers meals we drop on the native side — no JS change needed.
+- **Scope guardrails held:**
+  - No change to the JS surface (`healthSync.ts`, `healthSyncCorrelation.ts`, `app/health-sync.tsx`). F-1 stays verbatim.
+  - No new native module, no new dependency, no package bump (`react-native-health@1.19.0` still).
+  - No wrapping of unrelated methods — only the specific correlation-enumeration call path that throws.
+  - `FoodCorrelation` read permission is untouched (regression-pinned by `healthSyncCrashSafetyStructural.test.ts`).
+
+### Tests
+
+- **`apps/mobile/tests/unit/healthSyncNativePatchPin.test.ts`** (7 tests) — structural pin that reads the patch file as a string and asserts: (a) the patch still targets `RCTAppleHealthKit+Methods_Dietary.m`, (b) the `dietary_getFoodCorrelationSamples` method header is present, (c) a matching `@try { ... } @catch (NSException *...)` wrap exists, (d) `[corr objects] ?: [NSSet set]` nil-coalesce is present and the naked `for (HKSample *child in [corr objects])` form is gone, (e) `[corr metadata] ?: @{}` is present, (f) the catch block logs the HealthKit skip message and contains a `continue;`, (g) the inline comment references `healthSyncCorrelation.ts` / `effectiveMinute|bundleId` fallback so a future reader finds the JS layer. Native ObjC isn't unit-testable from vitest, so this pin is the backstop: a future `npm install` that overwrites the patch, or a `react-native-health` bump that renames the file, breaks the test loudly.
+- `apps/mobile/tests/unit/healthSyncCrashSafetyStructural.test.ts` from F-1 continues to pin the JS-side layer unchanged.
+
+### Parity
+
+- **iOS-only.** Apple Health is an iOS-exclusive surface; web has no equivalent. The patch itself lives under `apps/mobile/patches/` and only affects the iOS build. Web code was not touched and did not need to be.
+
+### Follow-up watchlist
+
+- If Sentry still shows a native crash after this ships, the next candidates to `@try`-wrap are (1) `fetchQuantitySamplesOfType:` completion handlers inside the other dietary `getXSamples` methods, and (2) the `sourceRevision` chain (`[[[corr sourceRevision] source] bundleIdentifier]`) which in theory could also raise on a malformed row — for now it stays outside the try on the assumption that HealthKit-issued correlations always have a valid `sourceRevision`, but we should revisit if telemetry suggests otherwise.
+- If we ever bump `react-native-health` past 1.19.0, the patch file is renamed and this guard must be re-ported. The structural pin fails in that scenario and forces the port.
+
+## 2026-04-19 — G-3: Weight chart y-axis scaling + range filter + selector disambiguation
+
+- **ASC feedback id:** `AGJmliHTxnmt7sC1VpTZz5E` (2026-04-19 18:20Z, build 11) — "Graphs still not working properly". Screenshot of Weight & Trends showed: (a) the weight line sitting in the top ~20% of the chart with the rest of the plot empty white space down to the 50 kg goal; (b) `3M` pill highlighted but the x-axis reading `16 Feb → 14 Apr` (~57 days, not 90); (c) two visually identical pill rows stacked — the top one zooms the chart, the bottom "Apple Health range" one controls import depth. Same shape, same colours, different purposes.
+- **Cause — y-axis squish (`apps/mobile/components/charts/TrendLine.tsx`):** the y-domain was computed from `[...data, ...projected, goalValue]` with `padding = max((rawMax - rawMin) * 0.08, 1)`. For the tester's data (54.2–55.5 kg) + goal (50 kg) that yielded `rawMin=50, rawMax=55.5`, pushing the real data to the top edge and leaving a ~4 kg empty strip between the goal line and the data. The goal anchoring the y-axis was the bug — the spec was always "scale to the data, render the goal as a reference".
+- **Cause — range filter "off-by-N":** `filterByDateRangeDays` is correct (`daysForRange("3M") === 90`, now pinned in test). The 57-day window in the screenshot is a data-supply artefact — the tester's `weight_kg_by_day` only spans 16 Feb → 14 Apr. The filter returns every row that exists in the requested window. Pinning added so future regressions to calendar-month subtraction (`setMonth(-3)` drifts 89/91/92 depending on which months are spanned) fail loudly.
+- **Cause — dual range selectors:** the weight-tracker screen hosts two pill rows. The top (`TimeRangeSelector`: 1W / 1M / 3M / 6M / 9M / 12M / All) sets the chart's visible range. The second (card previously titled "Apple Health range", backed by `HEALTH_BODY_LOOKBACK_PRESETS`) controls how many months HealthKit is queried on sync. Both rendered as identical-looking pill rows on the same screen; the tester read them as duplicate chart filters. The Apple Health depth is a real setting with a real purpose — folding or removing it was rejected; relabelling won.
+
+### Fixes
+
+- **Y-axis (`src/lib/weightProjection.ts` + `apps/mobile/components/charts/TrendLine.tsx`):** new pure helper `computeWeightChartDomain(values, goal)` pads `[dataMin, dataMax]` by `max(span * 0.1, 0.5)` and includes the goal in the domain only when it lies within one extra span beyond the padded window. Returns `{ yMin, yMax, includesGoal }`. `TrendLine.tsx` now passes only the plotted values (primary + projected) to the helper, draws the dashed goal line + inline label only when `includesGoal`, and otherwise renders a muted "Goal: 50 kg ↓" hint pinned to the bottom edge of the plot so the user still sees the target without it dominating the axis.
+- **Range filter:** no code change — the filter was already correct. Tests now document the contract.
+- **Selector disambiguation (`apps/mobile/app/weight-tracker.tsx`):** card title changed from "Apple Health range" to "Historical import depth"; helper copy rewritten to "Choose how many months of past weights and steps to pull from Apple Health. Doesn't change what's visible on the chart above — use the range pills at the top for that." Pill geometry and colours intact — only the copy changed. The chart-zoom vs import-depth intent is now lexically distinct.
+
+### Tests
+
+- **`apps/mobile/tests/unit/weightChartDomain.test.ts`** (10 tests) — pins the domain helper's contract: ~10% padding with ≥ 0.5 headroom; G-3 shape (data `[54.2, 55.5]` + goal 50 → axis stays tight around the data, goal flagged off-chart); goal-inside-range inclusion; flat-series safety; empty-data fallbacks; non-finite input filtering; symmetric behaviour for gain journeys (goal above data).
+- **`apps/mobile/tests/unit/weightChartRangeFilter.test.ts`** (extended) — new `G-3 off-by-N-days pin` describe block with four tests: (1) 3M = exactly 90 nominal days, earliest kept key `2026-01-19`; (2) `now`-stability across months; (3) short-history reproduction of the screenshot (data 2026-02-16 → 2026-04-14, filter returns all 58 rows); (4) boundary exactness for every finite `TimeRange` (1W=8, 1M=31, 6M=181, 9M=276, 12M=367 entries). No calendar-month subtraction can pass these.
+
+### Parity
+
+- **Mobile only.** Web's `src/app/components/ProgressDashboard.tsx` weight chart uses recharts `YAxis domain={["dataMin - 1", "dataMax + 1"]}` and renders the goal as a `ReferenceLine` outside the axis calculation, so web has never suffered the same squish. The dual-selector ambiguity is mobile-specific because HealthKit is iOS-only; web has no import-depth selector. No web change required.
+- **Shared helper.** `computeWeightChartDomain` lives in `src/lib/weightProjection.ts` alongside `filterByDateRangeDays`. If web ever migrates off recharts the helper is pre-wired and pre-tested.
+
+### Scope guardrails held
+
+- Y-axis fix is confined to a new helper + ~8 lines of `TrendLine.tsx` — no chart rewrite.
+- Apple Health lookback selector retained (legitimate purpose), only relabelled.
+- No touch of files owned by other G-tracks, no new dependencies, no breaking change to the `TrendLine` public API.
+
 ## 2026-04-19 — F-12: Emoji → Ionicons / MaterialCommunityIcons on mobile (snack parity + weight-journey anchors)
 
 - **ASC feedback id:** `AOOBv-1OwtDIoRVDRwH-S5k` (build 11) — screenshot of Weight Tracker showed `⛺` / `🏁` on the Journey card with the note "use icons not emojis". Paired with an in-session product report (2026-04-19) flagging that mobile's Snacks slot on Today rendered an Ionicons coffee cup (`cafe-outline`) while web rendered lucide `Cookie` for the same slot.
@@ -736,3 +852,35 @@ Short log of tester-reported issues that were fixed in production (or schema), w
 - **Fix:** caffeine row now self-hides when `targets.caffeineMg === 0` (mirrors alcohol). Whole `HydrationStimulantsCard` moved to bottom of Today on both platforms (after `TodayActivityBonusCard`, before Complete Day). Water quick-add at the top of Today stays via the macro tile row.
 - **Tests:** two new cases in `apps/mobile/tests/unit/hydrationStimulantsCardParity.test.tsx` (caffeine hidden when target 0, visible when > 0).
 - **Decision log:** `memory/decisions_hydration_card_position_caffeine_hide_2026_04_18.md`.
+
+## 2026-04-19 — G-2: Shopping list fully follows plan regenerate + label dedup
+
+- **ASC feedback id:** `ALU8hrB1I9Sn4ysqoR_ocEs` (2026-04-19 18:17Z, TestFlight build 11). Tester: "Shopping list still pre populated with stuff not from the current plan. The shopping list should auto generate from the current plan." Screenshot showed 37 items including "Almond Croissant Baked Oats" and "JACKED REESE'S BALLS" on an account whose active plan only contained "Green Goddess Chopped Chicken Salad" + "Sweet Potato Curry". Same screenshot also showed a label regression — "60 g 60g protein powder", "220 g Oats, whole grain, rolled, old fashioned" — the `"60 g"` prefix rendered twice.
+- **Cause — stale rows after regenerate:** F-9 (build 11) added `shoppingListShouldClear` to keep `shopping_items` in lockstep with the meal plan, but the rule only fires on plan→null transitions. Regenerate keeps the plan truthy (truthy→truthy), so the lifecycle effect is a no-op. `shopping_items` has a `user_id` only (no `plan_id` FK), so rows from a previous plan version survived every regenerate and re-hydrated from the DB on next shopping-screen mount. On mobile, `generatePlan` in `apps/mobile/app/(tabs)/planner.tsx` rewrote `meal_plan_days` / `meal_plan_meals` but never touched `shopping_items`. On web, `generateShoppingListFromPlan` in `src/context/AppDataContext.tsx` updated local state only (`setShoppingItems(list)`) — the server copy was left alone and re-loaded stale rows on the next cold start via `useShoppingListState`'s load effect.
+- **Cause — duplicate gram prefix:** importers (`apps/mobile/lib/saveImportedRecipe.ts`, `src/app/components/RecipeUpload.tsx`) store the raw ingredient string (e.g. `"60 g protein powder"`) in `recipe_ingredients.name` while also populating `amount` ("60") + `unit` ("g"). Downstream, `generateShoppingList` carries `ing.name` straight through to `ShoppingItem.name`. Render sites then did `${amount} ${unit} ${name}` and produced "60 g 60 g protein powder".
+- **Fix — client-purge on regenerate (no schema change):**
+  - `src/lib/planning/shoppingListLifecycle.ts` gains two new helpers alongside `shoppingListShouldClear`:
+    - `shoppingItemsTiedToCurrentPlan({ items, currentPlanRecipeTitles })` filters persisted rows so only ones whose `source` field still references at least one live recipe title survive. Case-insensitive, whitespace-tolerant. Rows with an empty `source` (manually added items) always pass through.
+    - `dedupeShoppingLabel({ amount, unit, name })` strips a duplicate `<amount><opt-space><unit>` prefix from `name` with word-break guards so "60 g protein powder" collapses but "1 gram jar of honey" stays intact. No-unit rows (e.g. "2 eggs") strip the amount when it's followed by whitespace. Null/undefined inputs normalise to empty strings.
+  - **Web** (`src/context/AppDataContext.tsx` `generateShoppingListFromPlan`): after computing the fresh list and updating local state, fires `DELETE FROM shopping_items WHERE user_id = auth.uid()` and re-inserts the fresh list in batches of 50. Mirrors the mobile "Generate Shopping List" path. Gated on `authedUserId` so signed-out users stay local-only. The lifecycle effect is untouched — it still handles plan→null.
+  - **Mobile** (`apps/mobile/app/(tabs)/planner.tsx` `generatePlan`): after `setPlan(newPlan)` and before the relational `meal_plan_days` rewrite, fires `DELETE FROM shopping_items WHERE user_id = userId` and resets `shoppingItemCount` to 0. The shopping screen rebuilds from the fresh plan on next open (the existing "Generate Shopping List" action or — for historical drift — the reconciliation path below).
+  - **Mobile backfill** (`apps/mobile/app/shopping.tsx` load effect): on first load of the shopping screen, the existing `shopping_items` fetch is followed by a 2-query lookup of the live plan's recipe titles (`meal_plan_days` → `meal_plan_meals.recipe_title`, scoped by user + `slot_id='default'`). Loaded rows are filtered through `shoppingItemsTiedToCurrentPlan`; rows that don't match any live title are dropped locally *and* deleted from the server (`DELETE ... IN (staleIds)`). Cheap, one-time reconciliation for drift from pre-G-2 builds that never purged.
+- **Fix — label dedup at the render site:**
+  - **Mobile** (`apps/mobile/app/shopping.tsx`): item-row render and `buildListText` (share export) both route through `dedupeShoppingLabel`.
+  - **Web** (`src/app/components/ShoppingList.tsx`): single-item group render and the `textContent` export both route through `dedupeShoppingLabel`. Multi-item merged groups (different units merged into "200 g + 2 breast") keep their existing `formatMixedShoppingAmounts` path — `groupShoppingItemsByIngredientName` already picks the shortest distinct name as `displayName`, so the "full ingredient string" leak can't chain in that branch.
+- **Verify:**
+  1. Mobile — save 6+ recipes. Tap `Regenerate`. Open the Shopping List screen → the list should be empty (prompts "Generate a shopping list from your plan"). Tap Generate. Only items from recipes in the current plan should render. Repeat regenerate with a different recipe mix: again empty, then a fresh list after Generate.
+  2. Web — same drill on `/planner`. Regenerate now clears both local state and `shopping_items` server rows before writing the new list. Opening `/shopping` after reload shows only the current plan's ingredients.
+  3. Backfill (mobile) — on build 12 against an account that last regenerated on build 10 with stale rows still present: opening `/shopping` should silently drop rows whose `source` recipe is no longer in `meal_plan_meals` for that user. One `DELETE ... IN (staleIds)` goes out in the background.
+  4. Label dedup — import a recipe that stores "60 g protein powder" in `recipe_ingredients.name` with `amount=60`/`unit=g`. The shopping line renders "60 g protein powder", not "60 g 60 g protein powder". Export copy matches. Same check for "220 g Oats, whole grain, rolled, old fashioned" — the commas inside the ingredient name are preserved; only the leading "220 g" on `name` is stripped.
+  5. Don't-over-strip — a row with `amount=1`, `unit=g`, `name="1 gram jar of honey"` must render the whole name unchanged (the word-break guard defends the leading "g" of "gram"). Pinned by the unit test.
+- **Tests (new + extended):**
+  - `tests/unit/shoppingListEmptyState.test.ts` — new `describe("shoppingItemsTiedToCurrentPlan (G-2)")` block with 5 tests: regenerate purges items tied to recipes no longer in the plan (direct evidence replay using the exact recipe titles from the TestFlight screenshot); merged-source rows stay when at least one referenced recipe is live; manually-added rows (empty `source`) stay; case-insensitive / whitespace-tolerant matching; empty plan + stale rows drops everything sourced from a recipe but keeps manual additions.
+  - `tests/unit/shoppingListDedupeLabel.test.ts` (new) — 11 tests pinning `dedupeShoppingLabel`: exact "60 g protein powder" evidence, "60g" stuck-form variant, "220 g Oats, whole grain, …" with inner commas, no-op on correctly-formatted names, over-match guard ("1 gram jar"), amount-missing guard, prefix-mismatch guard, case-insensitive unit, null/undefined safety, empty-name safety, no-unit count row ("2 eggs").
+  - Existing suites green: `tests/unit/shoppingListGeneration.test.ts` (10), `tests/unit/shoppingDisplayGroups.test.ts` (5), `tests/unit/shoppingListEmptyState.test.tsx` (3), the eight prior cases in `tests/unit/shoppingListEmptyState.test.ts` lifecycle block.
+- **Parity:** identical regenerate-purge contract on web (via `generateShoppingListFromPlan` in `AppDataContext.tsx`) and mobile (via `generatePlan` in `planner.tsx`) — both fire `DELETE FROM shopping_items WHERE user_id = …` before the new list is written. Both render sites share `dedupeShoppingLabel`, so the duplicate-prefix behaviour is byte-identical. Intentional difference: mobile additionally runs the `shoppingItemsTiedToCurrentPlan` reconciliation on every shopping-screen mount (fresh-install shape of `apps/mobile/app/shopping.tsx`, which reads directly from Supabase and has no in-memory context); web reads through `useShoppingListState` which re-hydrates from the DB once per session — the regenerate-time purge is sufficient there because the next session's load sees only the fresh rows.
+- **Scope guardrails held:** did NOT add a `plan_id` / `meal_plan_id` column to `shopping_items` (would have required a migration + backfill); did NOT redesign the shopping list; did NOT touch files owned by G-1 (native patch), G-3 (weight graph), G-4 (TDEE education), G-5 (household labels), or G-6 (CSV export). The multi-item merged-group render path on web (`formatMixedShoppingAmounts`) is untouched — it can't chain the leak because `displayName` is picked as the shortest distinct name.
+- **Follow-up:**
+  - Web reconciliation parity — the web shopping screen relies on the regenerate-time purge being reliable. If a tester reports drift after a multi-device regenerate (one device regenerates, another doesn't see the cleanup until next reload), we'd add the same 2-query reconciliation to `useShoppingListState`'s load effect. Not needed for today's evidence.
+  - `plan_id` FK — if a future task requires multi-plan coexistence (saved-plan vs active-plan, which the Named Plans feature hints at), adding a `plan_id` column to `shopping_items` with `on delete cascade` becomes the cleaner long-term fix. Noted for `data-integrity` when that requirement actually lands; don't migrate speculatively.
+  - Upstream dedup — the real fix for the duplicate-prefix case is to stop writing the amount/unit prefix into `recipe_ingredients.name` in the first place. The render-site dedupe defends all historical rows; a followup owned by `integration-manager` can audit `apps/mobile/lib/saveImportedRecipe.ts` + `src/app/components/RecipeUpload.tsx` importers to normalise on write.

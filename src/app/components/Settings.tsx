@@ -14,6 +14,14 @@ import {
   normaliseDietaryFromProfile,
 } from "../../constants/dietaryPreferences.ts";
 import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
+// G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) — CSV path
+// replaces JSON as the primary export for regular users. JSON stays as
+// a secondary "full backup" option. Shared helper so web + mobile emit
+// identical bytes (pin: `tests/unit/nutritionLogToCsv.test.ts`).
+import {
+  nutritionLogToCsv,
+  nutritionLogCsvFilename,
+} from "../../lib/export/nutritionLogToCsv.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
 import {
   loadWeekStartDay,
@@ -916,9 +924,55 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h3 className="text-foreground">Privacy & Security</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Download includes nutrition snapshots, library saves, collections, and profile data stored on this device.
+          Download your nutrition log in a spreadsheet-friendly CSV, or take a full JSON backup for developers and migrations.
         </p>
         <div className="space-y-3">
+          {/* G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) —
+              CSV is the primary, one-click path so regular users can
+              open their log in Numbers / Excel / Sheets. JSON stays
+              available below for full backups. */}
+          <button
+            type="button"
+            onClick={() => {
+              void (async () => {
+                try {
+                  const { data: session } = await supabase.auth.getSession();
+                  const uid = session.session?.user.id;
+                  if (!uid) {
+                    toast.error("Please sign in to export.");
+                    return;
+                  }
+                  const { data, error } = await supabase
+                    .from("nutrition_entries")
+                    .select(
+                      "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+                    )
+                    .eq("user_id", uid)
+                    .order("date_key", { ascending: true })
+                    .order("created_at", { ascending: true });
+                  if (error) {
+                    toast.error("Could not build CSV export.");
+                    return;
+                  }
+                  const csv = nutritionLogToCsv(data ?? []);
+                  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = nutritionLogCsvFilename();
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("CSV download started.");
+                } catch {
+                  toast.error("Could not build CSV export.");
+                }
+              })();
+            }}
+            className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
+          >
+            <p className="font-medium">Export nutrition log (CSV)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets.</p>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -959,9 +1013,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 }
               })();
             }}
-            className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
+            className="w-full text-left px-4 py-3 bg-muted/60 hover:bg-muted rounded-lg transition-all text-muted-foreground"
           >
-            Download your data (JSON)
+            <p className="font-medium text-foreground">Export all data (JSON)</p>
+            <p className="text-xs mt-0.5">Full backup for developers or migration.</p>
           </button>
           <Link
             href="/privacy"

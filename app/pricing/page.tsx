@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Check, Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
-import { FREE_SAVE_LIMIT, PRICING_TIERS } from "../../src/lib/landing/content.ts";
+import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
@@ -46,7 +46,9 @@ const TIERS = PRICING_TIERS.map((t) => ({
     ? [t.featHead.replace(/,\s*plus$/i, ""), ...t.features]
     : t.features,
   nutritionNote: t.nutritionNote,
-  cta: t.checkoutTier === null ? "Get Started" : `Upgrade to ${t.name}`,
+  // Parity with `app/(landing)/LandingPage.tsx` — the free-tier CTA
+  // reads "Continue for free" on both surfaces.
+  cta: t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`,
   checkoutTier: t.checkoutTier,
   highlighted: t.highlighted,
 }));
@@ -58,7 +60,10 @@ const FAQ = [
   },
   {
     q: "What happens to my data if I downgrade?",
-    a: `Your recipes, logs, and plans are never deleted. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit become read-only until you upgrade again, but everything else stays fully accessible and exportable.`,
+    // Copy aligned to `FAQS` in `src/lib/landing/content.ts` — see the
+    // matching note there; the client only blocks *new* saves above the
+    // limit rather than making existing ones read-only.
+    a: `Your recipes, logs, and plans are never deleted. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved; you won't be able to add more until you're back under the limit or on Base. Everything else stays fully accessible and exportable.`,
   },
   {
     q: "Is there an annual plan?",
@@ -66,7 +71,10 @@ const FAQ = [
   },
   {
     q: "How is nutrition data sourced?",
-    a: "Every ingredient is matched against USDA FoodData Central first, then Edamam, then Open Food Facts, then FatSecret for branded items. Photo and voice use AI models cross-referenced against the same database stack. You can verify and edit any entry.",
+    // Reads from the shared `NUTRITION_SOURCES` SSOT so pipeline order
+    // (see `src/lib/nutrition/verifyIngredients.ts`) stays pinned to the
+    // copy — the parity test catches drift.
+    a: `Every ingredient is matched against ${NUTRITION_SOURCES[0]} first, then ${NUTRITION_SOURCES[1]}, then ${NUTRITION_SOURCES[2]}, then ${NUTRITION_SOURCES[3]} for branded items. Photo and voice use AI models cross-referenced against the same database stack. You can verify and edit any entry.`,
   },
   {
     q: "Do you offer refunds?",
@@ -188,6 +196,20 @@ export default async function PricingPage({
                 label={tier.cta}
                 highlighted={tier.highlighted}
               />
+              {/* Billing-honesty disclosure adjacent to the CTA so the
+                  user sees the renewal commitment before clicking
+                  through to Stripe (monetisation-architect finding,
+                  2026-04-19). Only shown for paid tiers; the Free tier
+                  has no billing to disclose. */}
+              {tier.checkoutTier !== null ? (
+                <p className={`mt-2 text-[11px] leading-snug text-center ${
+                  tier.name === "Pro"
+                    ? "text-slate-400"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}>
+                  Billed monthly until cancelled. Cancel anytime.
+                </p>
+              ) : null}
             </div>
           ))}
         </div>

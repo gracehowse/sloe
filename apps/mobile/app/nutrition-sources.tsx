@@ -5,27 +5,38 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { NUTRITION_SOURCES } from "../../../src/lib/landing/nutritionSources";
 
-const SOURCES = [
-  {
-    name: "USDA FoodData Central",
+/**
+ * Per-source description + public URL. Keyed on the canonical names that
+ * live in `NUTRITION_SOURCES` (the landing-page SSOT, which mirrors the
+ * real pipeline order in `src/lib/nutrition/verifyIngredients.ts`). If a
+ * source is added or removed in the SSOT, the screen picks it up
+ * automatically — the only manual step is adding its description + URL
+ * here. Missing entries log once to the console so QA spots drift.
+ */
+const SOURCE_DETAILS: Record<string, { description: string; url: string }> = {
+  "USDA FoodData Central": {
     description:
       "Laboratory-tested nutrition data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey datasets.",
     url: "https://fdc.nal.usda.gov",
   },
-  {
-    name: "Open Food Facts",
+  "Edamam": {
+    description:
+      "A nutrition database with strong coverage of restaurant meals, recipes, and generic foods. Backed by the Edamam Food & Measures database used by major food publishers.",
+    url: "https://www.edamam.com/",
+  },
+  "Open Food Facts": {
     description:
       "A free, open-source database of food products from around the world. Built by volunteers who scan barcodes and record nutrition labels. Strong coverage across the UK, EU, US, and Australia.",
     url: "https://world.openfoodfacts.org",
   },
-  {
-    name: "FatSecret Platform API",
+  "FatSecret": {
     description:
       "A comprehensive food and nutrition database with detailed serving-size information for branded and generic foods.",
     url: "https://platform.fatsecret.com",
   },
-];
+};
 
 export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
@@ -89,17 +100,33 @@ export default function NutritionSourcesScreen() {
           these sources and pick the best match.
         </Text>
 
-        {SOURCES.map((s) => (
-          <View key={s.name} style={styles.card}>
-            <Text style={styles.sourceName}>{s.name}</Text>
-            <Text style={styles.sourceDesc}>{s.description}</Text>
-            <Pressable onPress={() => Linking.openURL(s.url)}>
-              <Text style={styles.sourceLink}>
-                {s.url.replace("https://", "")} <Ionicons name="open-outline" size={12} color={Accent.primary} />
-              </Text>
-            </Pressable>
-          </View>
-        ))}
+        {NUTRITION_SOURCES.map((name) => {
+          const detail = SOURCE_DETAILS[name];
+          if (!detail) {
+            // Drift guard: new SSOT source without a description here.
+            // Fails loud in dev; renders the name only so the list stays
+            // complete in production.
+            if (__DEV__) {
+              console.warn(`[nutrition-sources] missing description for "${name}"`);
+            }
+            return (
+              <View key={name} style={styles.card}>
+                <Text style={styles.sourceName}>{name}</Text>
+              </View>
+            );
+          }
+          return (
+            <View key={name} style={styles.card}>
+              <Text style={styles.sourceName}>{name}</Text>
+              <Text style={styles.sourceDesc}>{detail.description}</Text>
+              <Pressable onPress={() => Linking.openURL(detail.url)}>
+                <Text style={styles.sourceLink}>
+                  {detail.url.replace("https://", "")} <Ionicons name="open-outline" size={12} color={Accent.primary} />
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
 
         <Text style={styles.disclaimer}>
           Nutrition values are estimates and may vary depending on brand, preparation method, and portion

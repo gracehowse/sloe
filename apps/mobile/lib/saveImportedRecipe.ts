@@ -173,6 +173,18 @@ export async function saveImportedRecipe(
 
   const { error: saveErr } = await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
   if (saveErr) {
+    // Free-tier cap enforcement lives in the `saves_insert_own` RLS
+    // policy (see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`).
+    // When it fires, Postgres returns code 42501 or a "row-level
+    // security" message — surface the user-visible paywall copy so the
+    // caller can render a clear prompt rather than a generic failure.
+    const msg = (saveErr.message ?? "").toLowerCase();
+    const code = (saveErr as { code?: string }).code;
+    if (code === "42501" || msg.includes("row-level security") || msg.includes("row level security")) {
+      return {
+        error: "Free plan is limited to 10 saved recipes. Upgrade to save more.",
+      };
+    }
     return { error: saveErr.message ?? "Recipe saved but could not add to library." };
   }
 

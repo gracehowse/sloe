@@ -37,7 +37,7 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
     element: ".*Appearance.*"
     direction: DOWN
 - assertVisible: ".*Appearance.*"
-- assertVisible: ".*Export Data.*"
+- assertVisible: ".*Export nutrition log.*"
 - assertVisible: ".*Help & Information.*"
 
 # Verify Legal section

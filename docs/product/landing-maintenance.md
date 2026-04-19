@@ -36,8 +36,9 @@ algorithm constants, and the real changelog.
 ### Add or remove a nutrition source
 
 1. Add or remove the source in the real pipeline (`src/lib/nutrition/verifyIngredients.ts`).
-2. Update `NUTRITION_SOURCES` in `src/lib/landing/content.ts` to match the user-facing order.
-3. The parity test asserts the trust strip lists every SSOT source. (Adding a source without updating the trust strip is also enforced — the test renders the landing and checks every SSOT source appears.)
+2. Update `NUTRITION_SOURCES` in `src/lib/landing/nutritionSources.ts` (the leaf file re-exported from `content.ts` — lives in its own module so the mobile `apps/mobile/app/nutrition-sources.tsx` screen can import it without pulling web-only `@/...` deps).
+3. Add a `SOURCE_DETAILS` entry (description + public URL) in `apps/mobile/app/nutrition-sources.tsx` — the mobile parity test (`apps/mobile/tests/unit/nutritionSourcesParity.test.ts`) asserts every SSOT source has a detail row.
+4. The web parity test asserts the trust strip lists every SSOT source. (Adding a source without updating the trust strip is also enforced — the test renders the landing and checks every SSOT source appears.)
 
 ### Retire a marketing claim
 
@@ -54,10 +55,33 @@ The audit on 2026-04-19 found a set of features that the landing page used to pr
 | Activity-adjusted calories | Ungated | Was listed as a Pro bullet | Same as above — free-for-all until a gate lands. |
 | Macro trend reports | Ungated | Was listed as a Pro bullet | Same — free until a gate lands. |
 | Publish recipes publicly | Base+ (`isCreator = base \|\| pro` in `RecipeUpload.tsx`) | Was listed as Pro-only | Landing now promises this at Base (matches code). If product wants Pro-only, tighten the `isCreator` check and move the bullet in the SSOT. |
-| Creator analytics | Not built | Was a Pro bullet | Removed from landing entirely until it exists. |
+| Creator analytics | Not built | Was a Pro bullet | Roadmap status is `planned` (2026-04-19 sync-enforcer sweep — previously `building`, which falsely implied active scaffolding). The parity test's new `BUILDING_ANCHORS` check (see below) catches regressions. |
 | Direct / priority support | Not enforced anywhere | Was a Pro bullet | Pro now says "Priority email support" — honestly minor ops work, no code change required, but copy is narrower. |
 | AI photo meal recognition | Client-gated Pro; server rate-limited by tier (free 10/day, base 50/day, pro 100/day) | Pro | Landing correctly says Pro. Note that free users hitting the API directly can still use it — that's an API-authorisation gap, not a copy gap. |
-| Voice food logging | Client-gated Pro; server blocks free tier (`tier === "free"` → 403) but allows Base | Pro | Landing says Pro. Base users hit the server route successfully; client guards the UI. Close the Base loophole if Pro-only is the intent. |
+| Voice food logging | Server-gated Pro (`tier !== "pro"` → 403); 100/day Pro rate limit matches landing copy. | Pro | Base loophole closed 2026-04-19 — `POST /api/nutrition/voice-log` now rejects non-Pro tiers with `upgrade_required`, mirroring the client gate in `apps/mobile/app/(tabs)/index.tsx` and `voice-log-dialog.tsx`. |
+
+## Building-item anchors (parity test)
+
+The parity test at `tests/unit/landingParity.test.tsx` includes a
+`BUILDING_ANCHORS` map: for every roadmap item whose `status ===
+"building"` in `src/lib/landing/content.ts`, there must be a matching
+entry in `BUILDING_ANCHORS` pointing at a real file in the repo. This
+stops the landing page from advertising work-in-progress that has no
+scaffolding (the exact failure mode that let "Creator analytics for
+published recipes" sit as `building` without any code behind it).
+
+When you move an item into the `Next` bucket with `status: "building"`:
+
+1. Add the item's text → anchor path to `BUILDING_ANCHORS` in the test.
+2. The anchor must resolve to a real file (or a non-empty directory)
+   at test time. Prefer the most stable, load-bearing file for the
+   feature — a hook, a screen, or a lib module.
+3. If there is genuinely no anchor yet, the item should be `planned`,
+   not `building`.
+
+Conversely, when an item ships (`building` → `shipped`), remove its
+row from `BUILDING_ANCHORS`; stale rows are tolerated (they no-op if
+the text is not in the building set) but should be cleaned up.
 
 ## Don'ts
 

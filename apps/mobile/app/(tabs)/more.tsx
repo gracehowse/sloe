@@ -21,6 +21,14 @@ import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPr
 import { saveWeekStartDay } from "../../../../src/lib/nutrition/weekStartDayClient";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { track } from "@/lib/analytics";
+// G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) — CSV export
+// is the primary path for regular users. Shared helper so web + mobile
+// emit identical CSV bytes (structural pin:
+// `tests/unit/nutritionLogToCsv.test.ts`).
+import {
+  nutritionLogToCsv,
+  nutritionLogCsvFilename,
+} from "../../../../src/lib/export/nutritionLogToCsv";
 
 /* ── Icon Box ── */
 function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -428,8 +436,22 @@ export default function ProfileScreen() {
             <Ionicons name="diamond-outline" size={18} color={Accent.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Upgrade to Pro</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>Multi-day plans, adaptive TDEE, and AI logging</Text>
+            {/*
+              Copy branches by tier so the pitch matches the feature map:
+              - Free → Base gives unlimited recipes + multi-day plans;
+                Pro adds AI photo/voice logging on top.
+              - Base → already has plans; only AI logging is the Pro-only
+                upsell. Adaptive TDEE is ungated, so we never claim it
+                here (landing-maintenance.md §Known monetisation gaps).
+            */}
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+              {profileData.userTier === "free" ? "Upgrade your plan" : "Upgrade to Pro"}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
+              {profileData.userTier === "free"
+                ? "Unlimited recipes, multi-day plans, and AI logging"
+                : "Unlock AI photo and voice logging with Pro"}
+            </Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
         </Pressable>
@@ -517,11 +539,50 @@ export default function ProfileScreen() {
           sub="Theme and display"
           onPress={() => router.push("/(tabs)/settings" as any)}
         />
+        {/* G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) —
+            CSV is the primary export path; JSON stays for full
+            backup / developer use. The single "Export Data" row was
+            replaced with two, not hidden behind a sub-menu, because
+            the tester's ask was about visibility of the option, not
+            its placement. */}
         <SettingsRow
           icon="download-outline"
           iconColor={t.accent}
-          label="Export Data"
-          sub="Download all your data as JSON"
+          label="Export nutrition log (CSV)"
+          sub="Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets."
+          onPress={async () => {
+            if (!userId) return;
+            try {
+              const { data: entries, error } = await supabase
+                .from("nutrition_entries")
+                .select(
+                  "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+                )
+                .eq("user_id", userId)
+                .order("date_key", { ascending: true })
+                .order("created_at", { ascending: true });
+              if (error) {
+                Alert.alert("Export failed", error.message);
+                return;
+              }
+              const csv = nutritionLogToCsv(entries ?? []);
+              const filename = nutritionLogCsvFilename();
+              // Share.share on iOS/Android surfaces a native sheet. We
+              // pass the CSV body as the message so the user can paste
+              // into Numbers/Excel/Sheets. A file-backed share via
+              // expo-file-system is a follow-up if message-size becomes
+              // a problem for power users with multi-year logs.
+              await Share.share({ message: csv, title: filename });
+            } catch (e) {
+              Alert.alert("Export failed", e instanceof Error ? e.message : "Unknown error");
+            }
+          }}
+        />
+        <SettingsRow
+          icon="code-slash-outline"
+          iconColor={colors.textTertiary}
+          label="Export all data (JSON)"
+          sub="Full backup for developers or migration."
           onPress={async () => {
             if (!userId) return;
             try {

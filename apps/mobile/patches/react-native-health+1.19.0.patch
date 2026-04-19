@@ -32,7 +32,7 @@ index 9d532ee..e43436a 100644
  @implementation RCTAppleHealthKit (Methods_Dietary)
  
  - (void)dietary_getEnergyConsumedSamples:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback
-@@ -139,6 +144,246 @@ - (void)dietary_getFiberSamples:(NSDictionary *)input callback:(RCTResponseSende
+@@ -139,6 +144,264 @@ - (void)dietary_getFiberSamples:(NSDictionary *)input callback:(RCTResponseSende
      }];
  }
  
@@ -195,27 +195,45 @@ index 9d532ee..e43436a 100644
 +                    continue;
 +                }
 +                HKCorrelation *corr = (HKCorrelation *)raw;
-+                NSString *startDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.startDate];
-+                NSString *endDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.endDate];
-+                NSMutableArray *qtyIds = [NSMutableArray array];
-+                for (HKSample *child in [corr objects]) {
-+                    if ([child isKindOfClass:[HKQuantitySample class]]) {
-+                        [qtyIds addObject:[[child UUID] UUIDString]];
++                // G-1 (2026-04-19): iOS 26.5 can raise an NSException while
++                // enumerating `[corr objects]` or reading `[corr metadata]`
++                // for food correlations authored by certain third-party
++                // writers (e.g. MyFitnessPal). JS `try/catch` from F-1
++                // cannot catch Objective-C exceptions thrown on this
++                // bridge callback thread, so we guard per-correlation here
++                // and skip the offending row. JS falls back to legacy
++                // `effectiveMinute|bundleId` keying for any meals we drop.
++                @try {
++                    NSString *startDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.startDate];
++                    NSString *endDateString = [RCTAppleHealthKit buildISO8601StringFromDate:corr.endDate];
++                    NSMutableArray *qtyIds = [NSMutableArray array];
++                    NSSet<HKSample *> *children = [corr objects] ?: [NSSet set];
++                    for (HKSample *child in children) {
++                        if ([child isKindOfClass:[HKQuantitySample class]]) {
++                            [qtyIds addObject:[[child UUID] UUIDString]];
++                        }
 +                    }
++                    NSDictionary *meta = [corr metadata] ?: @{};
++                    NSString *bundleId = [[[corr sourceRevision] source] bundleIdentifier];
++                    NSString *srcName = [[[corr sourceRevision] source] name];
++                    NSDictionary *row = @{
++                        @"id" : [[corr UUID] UUIDString],
++                        @"startDate" : startDateString,
++                        @"endDate" : endDateString,
++                        @"quantitySampleIds" : qtyIds,
++                        @"metadata" : meta,
++                        @"sourceBundleId" : bundleId ? bundleId : @"",
++                        @"sourceName" : srcName ? srcName : @"",
++                    };
++                    [data addObject:row];
++                } @catch (NSException *ex) {
++                    // Skip this correlation entirely. The JS side will
++                    // fall back to legacy `effectiveMinute|bundleId`
++                    // keying (see `healthSyncCorrelation.ts`).
++                    NSLog(@"[HealthKit] Skipping correlation due to native exception: %@ — %@",
++                          ex.name, ex.reason);
++                    continue;
 +                }
-+                NSDictionary *meta = [corr metadata];
-+                NSString *bundleId = [[[corr sourceRevision] source] bundleIdentifier];
-+                NSString *srcName = [[[corr sourceRevision] source] name];
-+                NSDictionary *row = @{
-+                    @"id" : [[corr UUID] UUIDString],
-+                    @"startDate" : startDateString,
-+                    @"endDate" : endDateString,
-+                    @"quantitySampleIds" : qtyIds,
-+                    @"metadata" : meta ? meta : @{},
-+                    @"sourceBundleId" : bundleId ? bundleId : @"",
-+                    @"sourceName" : srcName ? srcName : @"",
-+                };
-+                [data addObject:row];
 +            }
 +            callback(@[[NSNull null], data]);
 +        });

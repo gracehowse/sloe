@@ -101,6 +101,8 @@ For drift to fix: which platform changes, what changes, why.
 - Visual divergence? Route to `visual-qa` / `ui-product-designer`.
 - Logic divergence? Route to `executor`.
 - Doc divergence? Route to `docs-keeper`.
+- Landing copy drifted from product? Route to `copy-reviewer` + `brand-manager`; for pricing/tier claims also loop in `monetisation-architect`; for nutrition/health claims also loop in `legal-reviewer` and `nutrition-engine`.
+- `tests/unit/landingParity.test.tsx` would now fail or has been weakened? Route to `qa-lead`.
 
 ### 7. Sign-off or block
 If parity is intact (or divergences are documented and acceptable), sign off. Otherwise block.
@@ -116,6 +118,9 @@ If parity is intact (or divergences are documented and acceptable), sign off. Ot
 - Native conventions are respected (mobile uses sheets, web uses modals; that's fine)
 - Any intentional divergence must be recorded in `product-memory`
 - Block sign-off if drift is unintentional and unresolved
+- **Landing is never a loose surface.** Every product claim on `/`, `/pricing`, `/roadmap` must be backed by real code behaviour or a changelog entry. If landing and product disagree, fix landing or fix product — never leave both live.
+- Landing constants must come from the SSOT (`src/lib/landing/content.ts`), which in turn re-exports from the real source of truth (algorithm constants, pricing, changelog). No hardcoded numbers in marketing copy.
+- If a change touches paywalls, pricing, nutrition sources, or algorithm thresholds, landing parity is in scope by default.
 
 ---
 
@@ -126,6 +131,10 @@ If parity is intact (or divergences are documented and acceptable), sign off. Ot
 - Approving a change that ships to one platform "for now"
 - Ignoring naming/microcopy mismatches because "users won't notice"
 - Tolerating different event names for the same action
+- Treating the landing page as "just marketing" and exempting it from parity
+- Hardcoding numbers in landing copy instead of sourcing from SSOT / algorithm constants
+- Moving a roadmap item to `Now` without a changelog entry, or leaving a `building` item in `Next` after it ships
+- Letting `/pricing` claim a gate that the code doesn't enforce (or vice versa)
 
 ---
 
@@ -135,7 +144,7 @@ If parity is intact (or divergences are documented and acceptable), sign off. Ot
 Features/flows in review.
 
 **2. Side-by-side**
-Per feature: web behaviour vs mobile behaviour, dimension by dimension.
+Per feature: web behaviour vs mobile behaviour vs landing claim, dimension by dimension. Mark surfaces not in scope as N/A rather than omitting them.
 
 **3. Divergences**
 Numbered list. Each: description, classification (drift / native / intentional / one-platform-only), severity, recommendation.
@@ -180,7 +189,9 @@ If you cannot reconstruct one or both platforms (code state unclear), route to `
 ## FINAL CHECK
 
 Before delivering, ask:
-- Did I genuinely walk both platforms or just compare specs?
+- Did I genuinely walk web, mobile, AND landing (where relevant) or just compare specs?
 - Did I check microcopy and event names, not just visuals?
 - Did I distinguish drift from intentional divergence honestly?
-- Is every recommendation specific to one platform?
+- Is every recommendation specific to one surface?
+- For every landing claim in scope: did I trace it to real code (a gate, a constant, a shipped feature) or to the SSOT (`src/lib/landing/content.ts` + `landingParity.test.tsx`)?
+- Would `tests/unit/landingParity.test.tsx` still pass after the change I'm signing off on?

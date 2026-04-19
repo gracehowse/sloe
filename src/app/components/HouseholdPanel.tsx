@@ -347,8 +347,19 @@ export function HouseholdPanel() {
             row shows remaining-today numbers. Other members show name
             + role only — the server already strips targets/remaining
             from those rows; this UI matches so a future code path
-            that accidentally re-shared them would render nothing. */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Members</p>
+            that accidentally re-shared them would render nothing.
+
+            G-5 (2026-04-19, TestFlight `AJKHqJeCi83sCHF3_7CZMhY`): the
+            four numbers under a member's row were ambiguous ("target?
+            consumed? remaining?"). Column labels now read "Cal left /
+            Protein left / Carbs left / Fat left" and a one-line
+            caption under MEMBERS states what the numbers represent.
+            Structural parity with mobile is pinned by
+            `tests/unit/householdMemberNumberLabels.test.ts`. */}
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Members</p>
+        <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+          Remaining today — your totals left to hit your targets.
+        </p>
         <div className="space-y-1.5">
           {data.members.map((m) => {
             const isSelf = m.userId === authedUserId;
@@ -360,19 +371,19 @@ export function HouseholdPanel() {
                 {isSelf && m.remaining ? (
                   <div className="flex-1 grid grid-cols-4 gap-1">
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Cal</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Cal left</p>
                       <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--warning)" }}>{m.remaining.calories}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">P</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Protein left</p>
                       <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-protein)" }}>{m.remaining.protein}g</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">C</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Carbs left</p>
                       <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-carbs)" }}>{m.remaining.carbs}g</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">F</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Fat left</p>
                       <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-fat)" }}>{m.remaining.fat}g</p>
                     </div>
                   </div>

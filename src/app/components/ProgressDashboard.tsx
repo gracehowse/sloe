@@ -21,6 +21,7 @@ import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
@@ -131,6 +132,12 @@ function ProgressDashboardContent() {
   const [profileHeightCmCached, setProfileHeightCmCached] = useState<number>(170);
   const [profileAgeCached, setProfileAgeCached] = useState<number>(30);
   const [profileActivityLevelCached, setProfileActivityLevelCached] = useState<ActivityLevel>("sedentary");
+
+  // G-4 (2026-04-19) — controls the "How this works" expandable under
+  // the Maintenance card. Default collapsed; persisted only in memory
+  // so a user who just dismissed it doesn't get re-opened rows on next
+  // render.
+  const [maintenanceExplainerOpen, setMaintenanceExplainerOpen] = useState(false);
 
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
@@ -907,6 +914,72 @@ function ProgressDashboardContent() {
               </>
             )}
           </p>
+
+          {/* G-4 (2026-04-19, TestFlight `ALcwMFPjfmJvyBLjs4CRt1k`) —
+              "How this works" expandable. Shows the chain from BMR →
+              Maintenance → Calorie goal → projected weekly loss so the
+              user can see how every number in the app is derived. No
+              new DB reads; numbers come from the same state the card
+              already uses. */}
+          {(() => {
+            const chain = buildMaintenanceChain(
+              {
+                sex: profileSexCached,
+                weight_kg: weightKg ?? 70,
+                height_cm: profileHeightCmCached,
+                age: profileAgeCached,
+                activity_level: profileActivityLevelCached,
+              },
+              resolved,
+              planPace,
+              userGoal,
+            );
+            if (!chain) return null;
+            return (
+              <div className="mt-3 pt-3 border-t border-border" data-testid="maintenance-explainer">
+                <button
+                  type="button"
+                  onClick={() => setMaintenanceExplainerOpen((v) => !v)}
+                  aria-expanded={maintenanceExplainerOpen}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                >
+                  <span>{maintenanceExplainerOpen ? "Hide" : "How this works"}</span>
+                  <span aria-hidden="true" className="text-[10px]">
+                    {maintenanceExplainerOpen ? "▴" : "▾"}
+                  </span>
+                </button>
+                {maintenanceExplainerOpen && (
+                  <dl className="mt-3 space-y-1.5">
+                    {chain.steps.map((step, i) => (
+                      <div
+                        key={`${step.kind}-${i}`}
+                        className="flex items-baseline justify-between gap-3 text-xs"
+                      >
+                        <dt
+                          className={
+                            step.kind === "summary" || step.kind === "weeklyLoss"
+                              ? "text-muted-foreground leading-snug"
+                              : step.emphasis
+                              ? "font-semibold text-foreground"
+                              : "text-foreground"
+                          }
+                        >
+                          {step.label}
+                        </dt>
+                        {step.value && (
+                          <dd
+                            className={`tabular-nums ${step.emphasis ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                          >
+                            {step.value}
+                          </dd>
+                        )}
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Data progress for non-adaptive users */}
           {!showAdaptiveExtras && (

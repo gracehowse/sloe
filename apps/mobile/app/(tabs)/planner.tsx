@@ -799,6 +799,21 @@ export default function PlannerScreen() {
       setPlanTargets(resolved);
       setGenerating(false);
 
+      // G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19):
+      // regenerate must purge the previous plan's `shopping_items`
+      // rows. The lifecycle effect at line ~207 only fires on plan
+      // → null; regenerate stays truthy, so old rows survived and
+      // re-hydrated on next shopping-screen mount. The "Generate
+      // Shopping List" flow further below already purges — but
+      // Regenerate is the primary path on mobile and can't depend
+      // on the user tapping that button again. Fire-and-forget; the
+      // shopping screen will rebuild from the fresh plan next time
+      // the user opens it.
+      if (userId) {
+        void supabase.from("shopping_items").delete().eq("user_id", userId);
+        setShoppingItemCount(0);
+      }
+
       // Persist — relational tables with legacy fallback
       if (userId) {
         (async () => {

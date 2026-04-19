@@ -34,16 +34,21 @@ export async function POST(req: Request) {
   }
 
   const tier = await getUserTier(userId);
-  if (tier === "free") {
+  // Voice is Pro-only by product intent (mirrors the client gates in
+  // `apps/mobile/app/(tabs)/index.tsx` and `voice-log-dialog.tsx`, the
+  // `.maestro/08_voice_log.yaml` test, and `docs/journeys/food-tracking.md`).
+  // Close the previous Base loophole (2026-04-19 sync-enforcer finding)
+  // so the server matches what the UI tells Free + Base users.
+  if (tier !== "pro") {
     return NextResponse.json(
-      { ok: false, error: "upgrade_required", message: "Voice logging is a Base+ feature." },
+      { ok: false, error: "upgrade_required", message: "Voice logging is a Pro feature." },
       { status: 403 },
     );
   }
 
   const limited = await rateLimit({
     keyPrefix: `voice_log_${userId}`,
-    limit: 50,
+    limit: 100,
     windowMs: 24 * 60 * 60_000,
   });
   if (!limited.ok) {

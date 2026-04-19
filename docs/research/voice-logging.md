@@ -160,9 +160,11 @@ Most apps use Approach A or C. MacroFactor explicitly states they use "several L
 
 ### API (`app/api/nutrition/voice-log/route.ts`)
 
+> **Superseded — 2026-04-19.** The paywall and rate-limit entries below describe the state before 2026-04-19. See [`docs/decisions/2026-04-19-voice-logging-pro-only-server-enforced.md`](../decisions/2026-04-19-voice-logging-pro-only-server-enforced.md) for the current settled decision.
+
 - **Auth:** Requires authenticated user
-- **Paywall:** Gated to Base+ tier (`tier === "free"` returns 403)
-- **Rate limit:** 50 requests per user per 24 hours
+- **Paywall:** ~~Gated to Base+ tier (`tier === "free"` returns 403)~~ **Pro-only** (`tier !== "pro"` returns 403) as of 2026-04-19.
+- **Rate limit:** ~~50 requests per user per 24 hours~~ **100 requests per user per 24 hours** (matches Pro landing claim) as of 2026-04-19.
 - **Model:** GPT-4o-mini (temperature 0.2, max 1000 tokens)
 - **Approach:** Receives a plain-text transcript, sends it to OpenAI with a prompt that instructs it to parse into structured food items with estimated nutrition
 - **Output:** Returns `{ items: [{ name, quantity, calories, protein, carbs, fat }], totalCalories, totalProtein, totalCarbs, totalFat }`

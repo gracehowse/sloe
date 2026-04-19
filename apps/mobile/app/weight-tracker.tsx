@@ -585,11 +585,20 @@ export default function ProgressScreen() {
 
         {isHealthSyncAvailable() && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Apple Health range</Text>
+            {/* Deliberately NOT another chart-zoom range. G-3
+                (TestFlight `AGJmliHTxnmt7sC1VpTZz5E`, build 11): the
+                tester read the two stacked pill rows as duplicate
+                chart filters. This card controls *import depth* —
+                how far back HealthKit is queried on sync — and does
+                not change what is visible on the chart above.
+                Relabel + helper copy disambiguate the two surfaces.
+                "All" reads up to ~11 years (HealthKit cap). */}
+            <Text style={styles.sectionTitle}>Historical import depth</Text>
             <Text style={styles.muted}>
-              Choose how far back to import weight and steps. &quot;All&quot; reads up to ~11 years (HealthKit cap).
-              Journey &quot;lost&quot; uses roughly the last 18 months of saved weights and trims statistical outliers so one
-              bad reading does not dominate the bar.
+              Choose how many months of past weights and steps to pull from Apple Health. Doesn&apos;t change what&apos;s
+              visible on the chart above — use the range pills at the top for that. Journey &quot;lost&quot; uses roughly
+              the last 18 months of saved weights and trims statistical outliers so one bad reading does not
+              dominate the bar.
             </Text>
             <View
               style={{

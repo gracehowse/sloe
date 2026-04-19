@@ -1006,9 +1006,40 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setShoppingItems(list);
     setShoppingListSourceFingerprint(fingerprintMealPlanForShopping(mealPlan));
+
+    // G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19): on
+    // regenerate, purge the old `shopping_items` rows *before*
+    // writing the fresh list — otherwise rows tied to recipes that
+    // are no longer in the plan survive forever and re-hydrate on
+    // next cold start from the DB load in `useShoppingListState`.
+    // The null-transition effect above only fires on plan → null,
+    // so regenerate (truthy → truthy) never touches the server.
+    if (authedUserId) {
+      const { error: delErr } = await supabase
+        .from("shopping_items")
+        .delete()
+        .eq("user_id", authedUserId);
+      if (!delErr && list.length > 0) {
+        const inserts = list.map((item) => ({
+          user_id: authedUserId,
+          name: item.name,
+          amount: item.amount,
+          unit: item.unit,
+          category: item.category,
+          checked: item.checked,
+          source: item.from,
+        }));
+        // Batch 50 to avoid payload limits (matches mobile's
+        // `planner.tsx` insert loop).
+        for (let i = 0; i < inserts.length; i += 50) {
+          await supabase.from("shopping_items").insert(inserts.slice(i, i + 50));
+        }
+      }
+    }
+
     toast.success("Shopping list generated");
     track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
-  }, [mealPlan, uploadedRecipes]);
+  }, [mealPlan, uploadedRecipes, authedUserId]);
 
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
   useEffect(() => {
@@ -1571,6 +1602,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   setDbSavesWarned(true);
                   toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
                 }
+                return;
+              }
+              // Server-side Free-tier cap (RLS policy `saves_insert_own`,
+              // see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`).
+              // Roll back the optimistic in-memory save and show the same
+              // paywall toast the client guard shows, so the UI stays honest
+              // even when the client and server disagree on the count (e.g.
+              // a second device just saved the 10th recipe).
+              const code = (error as { code?: string }).code;
+              const lowered = msg.toLowerCase();
+              if (code === "42501" || lowered.includes("row-level security") || lowered.includes("row level security")) {
+                setSavedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
+                setSavedAtById((prev) => {
+                  const { [recipeId]: _drop, ...rest } = prev;
+                  return rest;
+                });
+                setLibraryEntryKindByRecipeId((prev) => {
+                  const { [recipeId]: _drop, ...rest } = prev;
+                  return rest;
+                });
+                toast.error(`Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes.`, {
+                  action: { label: "See plans", onClick: () => { window.location.href = "/pricing"; } },
+                });
                 return;
               }
               toast.error(syncFailedRetryMessage("saved recipe", error.message ?? ""));

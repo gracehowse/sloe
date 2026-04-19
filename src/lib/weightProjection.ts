@@ -383,3 +383,61 @@ export function formatWeightJourneyProgressCopy(pct: number | null): string {
   if (rounded >= 100) return "Goal reached";
   return `${rounded}% of the way there`;
 }
+
+/**
+ * Compute the y-axis domain for the Weight & Trends chart.
+ *
+ * G-3 (TestFlight `AGJmliHTxnmt7sC1VpTZz5E`, 2026-04-19, build 11):
+ * when the goal weight (e.g. 50 kg) sat far below the visible data
+ * (e.g. 54.2–55.5 kg) the previous implementation included the goal
+ * in the min/max directly, anchoring the chart to ~50 kg and squishing
+ * the real data into the top ~20% of the plot. The fix: compute min
+ * and max from the plotted data points only (primary + projected),
+ * pad by ~10% of the span (≥ 0.5 unit headroom), then include the
+ * goal in the domain only when it sits within the padded range plus
+ * one extra span either side. When the goal is outside that window,
+ * the caller should render a muted "off-chart" hint instead of
+ * dragging the y-axis down to meet it.
+ *
+ * @param values   plotted data values (kg or lb — units-agnostic)
+ * @param goal     optional goal value in the same unit
+ * @returns        `{ yMin, yMax, includesGoal }`. Always finite, always
+ *                 `yMin < yMax`.
+ */
+export function computeWeightChartDomain(
+  values: readonly number[],
+  goal?: number | null,
+): { yMin: number; yMax: number; includesGoal: boolean } {
+  const finiteValues = values.filter((v) => Number.isFinite(v));
+  if (finiteValues.length === 0) {
+    if (goal != null && Number.isFinite(goal)) {
+      return { yMin: goal - 1, yMax: goal + 1, includesGoal: true };
+    }
+    return { yMin: 0, yMax: 1, includesGoal: false };
+  }
+  const dataMin = Math.min(...finiteValues);
+  const dataMax = Math.max(...finiteValues);
+  const span = dataMax - dataMin;
+  // At least 0.5 unit headroom so a single-value / flat series still
+  // renders a visible line instead of collapsing onto the axis.
+  const padding = Math.max(span * 0.1, 0.5);
+  let yMin = dataMin - padding;
+  let yMax = dataMax + padding;
+  let includesGoal = false;
+  if (goal != null && Number.isFinite(goal)) {
+    // "Reasonable range" = the data span on either side of the padded
+    // window. Goal lands on-chart only when it is within one extra
+    // data-span of the visible data — i.e. close enough that pulling
+    // the axis down a little still leaves the data legible.
+    const proximity = Math.max(span, padding * 2);
+    if (goal >= yMin - proximity && goal <= yMax + proximity) {
+      yMin = Math.min(yMin, goal - 0.5);
+      yMax = Math.max(yMax, goal + 0.5);
+      includesGoal = true;
+    }
+  }
+  if (yMax - yMin < 1e-6) {
+    yMax = yMin + 1;
+  }
+  return { yMin, yMax, includesGoal };
+}

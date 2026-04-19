@@ -25,7 +25,10 @@
  * for this file name; no collision because the extensions differ.
  */
 import { describe, expect, it } from "vitest";
-import { shoppingListShouldClear } from "../../src/lib/planning/shoppingListLifecycle";
+import {
+  shoppingItemsTiedToCurrentPlan,
+  shoppingListShouldClear,
+} from "../../src/lib/planning/shoppingListLifecycle";
 
 // A non-empty plan for the "real plan" cases. The helper only reads
 // `.length`, so a single opaque day is enough.
@@ -132,5 +135,87 @@ describe("shoppingListShouldClear (F-9)", () => {
       hasSourceFingerprint: true,
     });
     expect(r).toEqual({ clearLocal: false, clearServer: false });
+  });
+});
+
+// G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19). The
+// lifecycle `shouldClear` rule only fires on plan→null transitions,
+// so a regenerate (truthy→truthy) left rows tied to deleted
+// `meal_plan_meals` in the `shopping_items` table. The G-2 fix is
+// the callers purging on regenerate; the shopping-screen load then
+// applies `shoppingItemsTiedToCurrentPlan` as a reconciliation net
+// for historical drift. These cases pin that net.
+describe("shoppingItemsTiedToCurrentPlan (G-2)", () => {
+  type Row = { id: string; source: string };
+
+  it("regenerate purges items tied to recipes no longer in the plan", () => {
+    // The TestFlight screenshot: plan was regenerated to contain
+    // only "Green Goddess Salad" + "Sweet Potato Curry", but the
+    // shopping list still showed lines from "Almond Croissant
+    // Baked Oats" and "JACKED REESE'S BALLS" — both from a
+    // previous version of the plan.
+    const items: Row[] = [
+      { id: "a", source: "Green Goddess Salad" },
+      { id: "b", source: "Sweet Potato Curry" },
+      { id: "c", source: "Almond Croissant Baked Oats" }, // stale
+      { id: "d", source: "JACKED REESE'S BALLS" }, // stale
+    ];
+    const kept = shoppingItemsTiedToCurrentPlan({
+      items,
+      currentPlanRecipeTitles: ["Green Goddess Salad", "Sweet Potato Curry"],
+    });
+    expect(kept.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps rows that reference any live recipe (merged from multiple)", () => {
+    // When a shopping item came from two meals (same ingredient
+    // merged across recipes), dropping one of them must not drop
+    // the row — the ingredient still belongs to the live one.
+    const items: Row[] = [
+      { id: "a", source: "Green Goddess Salad, Almond Croissant Baked Oats" },
+    ];
+    const kept = shoppingItemsTiedToCurrentPlan({
+      items,
+      currentPlanRecipeTitles: ["Green Goddess Salad"],
+    });
+    expect(kept.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("keeps rows with an empty `source` (manually added items)", () => {
+    // Manually-added items don't reference a recipe. The
+    // regenerate purge should leave them alone.
+    const items: Row[] = [{ id: "a", source: "" }];
+    const kept = shoppingItemsTiedToCurrentPlan({
+      items,
+      currentPlanRecipeTitles: ["Green Goddess Salad"],
+    });
+    expect(kept.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("matches titles case-insensitively and ignores surrounding whitespace", () => {
+    // Defensive: importers / manual edits occasionally normalise
+    // whitespace or casing differently across call sites.
+    const items: Row[] = [{ id: "a", source: "  green goddess salad  " }];
+    const kept = shoppingItemsTiedToCurrentPlan({
+      items,
+      currentPlanRecipeTitles: ["Green Goddess Salad"],
+    });
+    expect(kept.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("empty plan + stale rows → drops everything sourced from a recipe", () => {
+    // If the live plan is empty, any row with a recipe source is
+    // by definition stale. Callers gate this on a non-empty live
+    // title list (see `apps/mobile/app/shopping.tsx`), but the
+    // helper's own contract should stay sound.
+    const items: Row[] = [
+      { id: "a", source: "Green Goddess Salad" },
+      { id: "b", source: "" }, // manual — stays
+    ];
+    const kept = shoppingItemsTiedToCurrentPlan({
+      items,
+      currentPlanRecipeTitles: [],
+    });
+    expect(kept.map((r) => r.id)).toEqual(["b"]);
   });
 });

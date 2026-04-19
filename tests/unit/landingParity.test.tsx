@@ -29,7 +29,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { LandingPage } from "../../app/(landing)/LandingPage";
@@ -194,6 +194,68 @@ describe("landing page — roadmap parity", () => {
       expect(building.has(s)).toBe(false);
     }
   });
+
+  /**
+   * Every `building` roadmap item must point at a real anchor file so
+   * marketing can't advertise work that doesn't exist yet — this is
+   * exactly the failure mode that let "Creator analytics for published
+   * recipes" sit at `status: "building"` with zero scaffolding until
+   * the 2026-04-19 sync-enforcer sweep caught it.
+   *
+   * Adding a new `building` item requires adding its anchor here. The
+   * anchor must be a path to a file that exists today; a directory
+   * path (e.g. `apps/mobile/widgets/`) also counts, provided the
+   * directory contains at least one file. If the work hasn't started,
+   * the item should stay `planned`.
+   */
+  const BUILDING_ANCHORS: Record<string, string> = {
+    "Home screen widgets (iOS)": "apps/mobile/lib/widgetSnapshot.ts",
+    "Richer macro trend reports": "src/app/components/ProgressDashboard.tsx",
+  };
+
+  function anchorExists(relPath: string): boolean {
+    const abs = join(process.cwd(), relPath);
+    if (!existsSync(abs)) return false;
+    const s = statSync(abs);
+    if (s.isFile()) return true;
+    if (s.isDirectory()) {
+      // Consider the anchor resolved if the directory contains any file.
+      try {
+        const entries = readdirSync(abs);
+        return entries.some((e) => {
+          try {
+            return statSync(join(abs, e)).isFile();
+          } catch {
+            return false;
+          }
+        });
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  it("every 'building' roadmap item has an entry in BUILDING_ANCHORS", () => {
+    const building = ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text);
+    const missing = building.filter((t) => !(t in BUILDING_ANCHORS));
+    expect(missing).toEqual([]);
+  });
+
+  it("every BUILDING_ANCHORS entry resolves to at least one real file", () => {
+    const building = new Set(
+      ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text),
+    );
+    const unresolved: string[] = [];
+    for (const [text, anchor] of Object.entries(BUILDING_ANCHORS)) {
+      if (!building.has(text)) continue; // stale map entry — tolerated, not a test fail
+      if (!anchorExists(anchor)) {
+        unresolved.push(`${text} → ${anchor}`);
+      }
+    }
+    expect(unresolved).toEqual([]);
+  });
+
 });
 
 describe("landing page — forbidden marketing claims", () => {

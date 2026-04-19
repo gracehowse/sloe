@@ -9,6 +9,7 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 
 import { Accent } from "@/constants/theme";
+import { computeWeightChartDomain } from "@/lib/weightProjection";
 
 type DataPoint = { label: string; value: number };
 
@@ -52,17 +53,21 @@ export default function TrendLine({
 
   if (data.length === 0) return null;
 
-  const allValues = [
+  // Domain is derived from the plotted data (+ projected), NOT from the
+  // goal. G-3 (TestFlight `AGJmliHTxnmt7sC1VpTZz5E`, 2026-04-19, build
+  // 11): including the goal in min/max anchored the chart far below
+  // the data and squished the weight line into the top ~20% of the
+  // plot. `computeWeightChartDomain` now pulls the goal in only when
+  // it sits reasonably close to the data; when it doesn't, we render
+  // it as a muted off-chart hint at the bottom of the plot.
+  const plottedValues = [
     ...data.map((d) => d.value),
     ...(projectedData?.map((d) => d.value) ?? []),
-    ...(goalValue != null ? [goalValue] : []),
   ];
-  const rawMin = Math.min(...allValues);
-  const rawMax = Math.max(...allValues);
-  // Ensure at least 2 units of visible range so small changes don't look exaggerated
-  const padding = Math.max((rawMax - rawMin) * 0.08, 1);
-  const minVal = rawMin - padding;
-  const maxVal = rawMax + padding;
+  const { yMin: minVal, yMax: maxVal, includesGoal } = computeWeightChartDomain(
+    plottedValues,
+    goalValue,
+  );
   const range = maxVal - minVal || 1;
 
   const chartH = height - 24;
@@ -95,7 +100,18 @@ export default function TrendLine({
     projPointsStr = projPts.join(" ");
   }
 
-  const goalY = goalValue != null ? toY(goalValue) : null;
+  // goalY renders the dashed reference line ONLY when the goal is
+  // inside the computed domain. When the goal sits outside the
+  // padded data window we keep `goalY` null and render a muted
+  // "Goal: <value>" hint pinned to the bottom edge of the plot (see
+  // below) — matching the G-3 spec from TestFlight
+  // `AGJmliHTxnmt7sC1VpTZz5E`.
+  const goalY =
+    goalValue != null && includesGoal ? toY(goalValue) : null;
+  const goalOffChart = goalValue != null && !includesGoal;
+  const goalOffChartLabel = goalOffChart
+    ? `Goal: ${formatValue ? formatValue(goalValue!) : String(goalValue)} ↓`
+    : null;
 
   const lastPt = data[data.length - 1];
   const lastX = paddingX + (data.length - 1) * stepX;
@@ -186,6 +202,25 @@ export default function TrendLine({
                   {formatValue ? formatValue(goalValue!) : String(goalValue)}
                 </SvgText>
               </>
+            )}
+
+            {/* Off-chart goal hint — rendered when the goal falls
+                outside the auto-scaled y-domain (G-3,
+                `AGJmliHTxnmt7sC1VpTZz5E`). Pinned to the bottom edge
+                of the plot, muted, with a ↓ arrow so the user knows
+                the goal lies further below than what's shown. */}
+            {goalOffChartLabel != null && (
+              <SvgText
+                x={viewW - 2}
+                y={chartH - 3}
+                fontSize={10}
+                fontWeight="700"
+                textAnchor="end"
+                fill={goalColor ?? Accent.success}
+                opacity={0.55}
+              >
+                {goalOffChartLabel}
+              </SvgText>
             )}
 
             {/* Vertical guide at selected historical point */}
