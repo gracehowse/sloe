@@ -24,6 +24,10 @@ import {
   type FoodPortion,
 } from "@/lib/verifyRecipe";
 import {
+  primaryServingToPortionChip,
+  type PrimaryServing,
+} from "../../../src/lib/nutrition/primaryServing";
+import {
   projectRemaining,
   type MacroConsumed,
   type MacroTargets,
@@ -123,11 +127,22 @@ type Props = {
   onClose: () => void;
 };
 
-function buildPortionList(apiPortions: FoodPortion[]): FoodPortion[] {
+function buildPortionList(
+  apiPortions: FoodPortion[],
+  primary?: PrimaryServing | null,
+): FoodPortion[] {
   const seen = new Set<string>();
   const result: FoodPortion[] = [];
+  // Primary (natural) portion goes first so it's the visual + tap default.
+  if (primary) {
+    const chip = primaryServingToPortionChip(primary);
+    seen.add(chip.label.toLowerCase());
+    result.push(chip);
+  }
   for (const u of STANDARD_UNITS) {
-    seen.add(u.label.toLowerCase());
+    const key = u.label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     result.push(u);
   }
   for (const p of apiPortions) {
@@ -388,8 +403,13 @@ export default function FoodSearchModal({
         const result = await getFoodMacros(item._fdcId);
         setLoadingKey(null);
         if (!result) return;
-        const allPortions = buildPortionList(result.portions);
-        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        const allPortions = buildPortionList(result.portions, item.primaryServing);
+        // Default to the natural portion when the source exposes one —
+        // TestFlight `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19): MFP/LoseIt
+        // parity. Otherwise fall back to the recipe-hint resolution.
+        const { portion, quantity } = item.primaryServing
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
         setPreview({
           name: item.name,
           source: "USDA",
@@ -402,8 +422,10 @@ export default function FoodSearchModal({
         });
       } else if (item._source === "OFF" && item.macrosPer100g) {
         setLoadingKey(null);
-        const allPortions = buildPortionList([]);
-        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        const allPortions = buildPortionList([], item.primaryServing);
+        const { portion, quantity } = item.primaryServing
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
         setPreview({
           name: item.name,
           source: "OFF",
@@ -419,8 +441,10 @@ export default function FoodSearchModal({
         // 2026-04-18. Macros come back per-100 g already inline so the
         // tap path is the same shape as OFF — no extra fetch.
         setLoadingKey(null);
-        const allPortions = buildPortionList([]);
-        const { portion, quantity } = resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        const allPortions = buildPortionList([], item.primaryServing);
+        const { portion, quantity } = item.primaryServing
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
         setPreview({
           name: item.name,
           source: "OFF", // re-uses the OFF preview rendering path; full Edamam-branded UI is a follow-up
@@ -709,6 +733,7 @@ export default function FoodSearchModal({
       const cals = item.calsPer100g ?? item.macrosPer100g?.calories;
       const isCustom = item._source === "CUSTOM";
       const customFood = isCustom ? item._custom : null;
+      const primary = item.primaryServing ?? null;
 
       return (
         <Pressable
@@ -720,7 +745,9 @@ export default function FoodSearchModal({
           accessibilityLabel={
             isCustom
               ? `Custom food: ${item.name}. Long-press for edit or delete.`
-              : item.name
+              : primary
+                ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
+                : item.name
           }
         >
           {item.imageUrl && (
@@ -736,25 +763,43 @@ export default function FoodSearchModal({
                 {item.name}
               </Text>
             </View>
-            {hasMacros ? (
-              <View style={styles.macroPreview}>
-                <Text style={styles.macroPreviewText}>{item.macrosPer100g!.calories} kcal</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{item.macrosPer100g!.protein}g</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{item.macrosPer100g!.carbs}g</Text>
-                <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{item.macrosPer100g!.fat}g</Text>
-              </View>
+            {primary ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={styles.macroPreviewText}>{primary.kcal} kcal</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{primary.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{primary.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{primary.fat}g</Text>
+                </View>
+                <Text style={styles.per100g}>
+                  {primary.label} ({primary.grams} g)
+                  {cals != null && cals > 0 ? ` · ${cals} kcal / 100 g` : ""}
+                </Text>
+              </>
+            ) : hasMacros ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={styles.macroPreviewText}>{item.macrosPer100g!.calories} kcal</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{item.macrosPer100g!.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{item.macrosPer100g!.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{item.macrosPer100g!.fat}g</Text>
+                </View>
+                <Text style={styles.per100g}>per 100g</Text>
+              </>
             ) : cals != null && cals > 0 ? (
-              <Text style={styles.macroPreviewText}>{cals} kcal</Text>
+              <>
+                <Text style={styles.macroPreviewText}>{cals} kcal</Text>
+                <Text style={styles.per100g}>per 100g</Text>
+              </>
             ) : (
               <Text style={styles.per100g}>Tap for nutrition info</Text>
             )}
-            {(hasMacros || (cals != null && cals > 0)) && (
-              <Text style={styles.per100g}>per 100g</Text>
-            )}
           </View>
-          {cals != null && cals > 0 && !isLoading && (
+          {primary ? (
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{primary.kcal}</Text>
+          ) : cals != null && cals > 0 && !isLoading ? (
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{cals}</Text>
-          )}
+          ) : null}
           {isLoading ? (
             <ActivityIndicator size="small" color={Accent.primary} />
           ) : (

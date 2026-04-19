@@ -9,6 +9,13 @@ import {
 import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
 import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
 import {
+  pickEdamamPrimaryServing,
+  pickUsdaBrandedPrimaryServing,
+  pickUsdaFoodPortionsPrimaryServing,
+  parseOffPrimaryServing,
+  type PrimaryServing,
+} from "../../../src/lib/nutrition/primaryServing";
+import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
   type IngredientOverride,
@@ -85,6 +92,22 @@ export type FoodSearchResult = {
   protein?: number;
   fat?: number;
   carbs?: number;
+  /**
+   * Branded-food per-serving fields passed through from `/api/usda/search`
+   * so the display layer can show a per-portion primary line (TestFlight
+   * build 9 `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
+   */
+  servingSize?: number;
+  servingSizeUnit?: string;
+  householdServingFullText?: string;
+  /** Non-branded portions; empty for branded hits. */
+  foodPortions?: Array<{
+    gramWeight?: number;
+    amount?: number;
+    modifier?: string;
+    portionDescription?: string;
+    measureUnit?: { name?: string; abbreviation?: string };
+  }>;
 };
 
 export type BarcodeProduct = {
@@ -295,6 +318,12 @@ export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
       protein: h.protein,
       fat: h.fat,
       carbs: h.carbs,
+      ...(typeof h.servingSize === "number" ? { servingSize: h.servingSize } : {}),
+      ...(typeof h.servingSizeUnit === "string" ? { servingSizeUnit: h.servingSizeUnit } : {}),
+      ...(typeof h.householdServingFullText === "string"
+        ? { householdServingFullText: h.householdServingFullText }
+        : {}),
+      ...(Array.isArray(h.foodPortions) ? { foodPortions: h.foodPortions } : {}),
     }));
   } catch (e) {
     console.error("[searchUsda] failed:", e instanceof Error ? e.message : e);
@@ -315,6 +344,8 @@ export type OffSearchResult = {
   sugarG: number;
   sodiumMg: number;
   imageUrl: string | null;
+  /** Free-text serving string from OFF, e.g. "1 slice (28 g)". */
+  servingSize: string | null;
 };
 
 /** Search Open Food Facts by text (real products with barcodes). */
@@ -325,7 +356,7 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url,serving_size`,
       {
         signal: ac.signal,
         headers: {
@@ -361,6 +392,9 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
           sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
           imageUrl: p.image_small_url ?? null,
+          servingSize: typeof p.serving_size === "string" && p.serving_size.trim()
+            ? p.serving_size.trim()
+            : null,
         };
       });
   } catch (e) {
@@ -381,6 +415,14 @@ export type UnifiedSearchResult = {
   imageUrl?: string | null;
   /** Trusted source (USDA Foundation/SR Legacy/Survey) */
   verified?: boolean;
+  /**
+   * Natural portion derived from the source (Edamam `servingSizes`, USDA
+   * branded `servingSize`, USDA `foodPortions`, OFF `serving_size`).
+   * Null when the source exposes only a per-gram fallback — display
+   * layer falls back to the /100g-only format in that case (TestFlight
+   * `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
+   */
+  primaryServing?: PrimaryServing | null;
   /** Internal: source type for fetching full data on tap */
   _source: "USDA" | "OFF" | "Edamam";
   _fdcId?: number;
@@ -404,6 +446,13 @@ export type EdamamSearchResult = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /**
+   * `servingSizes[]` — Edamam often exposes the "real" gram weight of
+   * the natural portion here (e.g. `{label:"Serving", quantity:230}` for
+   * a Pret sandwich). Passed straight through from the API route so the
+   * primary-serving inference helper can pick the non-"Gram" entry.
+   */
+  servingSizes?: Array<{ uri?: string; label?: string; quantity?: number }>;
 };
 
 /**
@@ -429,6 +478,8 @@ export async function searchEdamam(
     clearTimeout(t);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
+    // Route already shapes each hit to the EdamamSearchResult envelope
+    // (including `servingSizes`), so we pass the array through.
     return json.hits as EdamamSearchResult[];
   } catch (e) {
     console.error("[searchEdamam] failed:", e instanceof Error ? e.message : e);
@@ -520,6 +571,21 @@ function mergeResults(
   for (const item of usda) {
     const isVerified = /foundation|sr legacy|survey/i.test(item.dataType ?? "");
     const hasCals = (item.calories ?? 0) > 0 || (item.protein ?? 0) > 0 || (item.fat ?? 0) > 0 || (item.carbs ?? 0) > 0;
+    const per100g = {
+      calories: item.calories ?? 0,
+      protein: item.protein ?? 0,
+      carbs: item.carbs ?? 0,
+      fat: item.fat ?? 0,
+    };
+    // Branded foods → `servingSize` + `householdServingFullText`.
+    // Foundation / Survey / SR Legacy → `foodPortions[]`.
+    const primaryServing = hasCals
+      ? (pickUsdaBrandedPrimaryServing(per100g, {
+          servingSize: item.servingSize ?? null,
+          servingSizeUnit: item.servingSizeUnit ?? null,
+          householdServingFullText: item.householdServingFullText ?? null,
+        }) ?? pickUsdaFoodPortionsPrimaryServing(per100g, item.foodPortions ?? null))
+      : null;
     results.push({
       key: `usda-${item.fdcId}`,
       name: titleCase(item.description),
@@ -534,6 +600,7 @@ function mergeResults(
         sodiumMg: 0,
       } : undefined,
       verified: isVerified,
+      primaryServing,
       _source: "USDA",
       _fdcId: item.fdcId,
       _relevance: searchRelevance(query, item.description),
@@ -544,6 +611,10 @@ function mergeResults(
     const brand = titleCase(item.brand);
     const name = titleCase(item.name);
     const displayName = [brand, name].filter(Boolean).join(" · ");
+    const primaryServing = parseOffPrimaryServing(
+      { calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat },
+      item.servingSize,
+    );
     results.push({
       key: `off-${item.code}`,
       name: displayName,
@@ -558,6 +629,7 @@ function mergeResults(
         sodiumMg: item.sodiumMg,
       },
       imageUrl: item.imageUrl,
+      primaryServing,
       _source: "OFF",
       _offCode: item.code,
       _relevance: searchRelevance(query, displayName),
@@ -571,6 +643,10 @@ function mergeResults(
     const isMeal =
       item.category?.toLowerCase().includes("meal") ||
       Boolean(item.brand && item.category?.toLowerCase().includes("packaged"));
+    const primaryServing = pickEdamamPrimaryServing(
+      { calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat },
+      item.servingSizes ?? null,
+    );
     results.push({
       key: `edamam-${item.foodId}`,
       name: displayName,
@@ -586,6 +662,7 @@ function mergeResults(
         sodiumMg: item.sodiumMg,
       },
       imageUrl: item.imageUrl,
+      primaryServing,
       _source: "Edamam",
       _edamamFoodId: item.foodId,
       _relevance: searchRelevance(query, displayName),

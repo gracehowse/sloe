@@ -140,11 +140,19 @@ Search USDA FoodData Central.
       "calories": 120,
       "protein": 22.5,
       "fat": 2.6,
-      "carbs": 0
+      "carbs": 0,
+      "servingSize": 230,
+      "servingSizeUnit": "g",
+      "householdServingFullText": "1 SANDWICH",
+      "foodPortions": [
+        { "gramWeight": 120, "amount": 1, "portionDescription": "1 cup, sliced" }
+      ]
     }
   ]
 }
 ```
+
+`servingSize` / `servingSizeUnit` / `householdServingFullText` are present on Branded foods; `foodPortions[]` is present on Foundation / Survey / SR Legacy. Both are optional. The display layer uses them to show a per-portion primary line alongside the /100g reference (TestFlight `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
 
 ---
 

@@ -13,6 +13,28 @@ export type FdcFoodSearchHit = {
   protein?: number;
   fat?: number;
   carbs?: number;
+  /**
+   * Branded-food per-serving size (number + unit). USDA exposes these
+   * directly on branded search hits so we pass them through — the
+   * display layer uses them to show a per-portion kcal line alongside
+   * the /100g reference. TestFlight `APo0qS9vcFvmBJEJJ_-61YA`.
+   */
+  servingSize?: number;
+  servingSizeUnit?: string;
+  householdServingFullText?: string;
+  /**
+   * Non-branded `foodPortions[]` — Survey/Foundation/SR Legacy. Empty
+   * for branded hits (they use the serving fields above). Forwarded as
+   * a narrow subset of the full USDA shape so the display helper can
+   * pick the first non-placeholder row.
+   */
+  foodPortions?: Array<{
+    gramWeight?: number;
+    amount?: number;
+    modifier?: string;
+    portionDescription?: string;
+    measureUnit?: { name?: string; abbreviation?: string };
+  }>;
 };
 
 export type FdcNutrient = {
@@ -121,6 +143,46 @@ export async function fdcFoodsSearch(
           }
         }
       }
+      // Branded-food per-serving fields (TestFlight `APo0qS9vcFvmBJEJJ_-61YA`,
+      // 2026-04-19). Present on Branded hits; absent on Foundation /
+      // SR Legacy / Survey where `foodPortions[]` is the equivalent.
+      const rawServingSize = (f as any).servingSize;
+      const servingSize = typeof rawServingSize === "number" && rawServingSize > 0
+        ? rawServingSize
+        : undefined;
+      const rawServingUnit = (f as any).servingSizeUnit;
+      const servingSizeUnit = typeof rawServingUnit === "string" && rawServingUnit.trim()
+        ? rawServingUnit.trim()
+        : undefined;
+      const rawHousehold = (f as any).householdServingFullText;
+      const householdServingFullText = typeof rawHousehold === "string" && rawHousehold.trim()
+        ? rawHousehold.trim()
+        : undefined;
+      // `foodPortions[]` — narrow to the fields the display helper needs.
+      const rawPortions = (f as any).foodPortions;
+      const foodPortions = Array.isArray(rawPortions)
+        ? rawPortions
+            .map((p: any) => {
+              const gramWeight = typeof p?.gramWeight === "number" && p.gramWeight > 0
+                ? p.gramWeight : undefined;
+              if (gramWeight == null) return null;
+              const out: NonNullable<FdcFoodSearchHit["foodPortions"]>[number] = { gramWeight };
+              if (typeof p?.amount === "number" && p.amount > 0) out.amount = p.amount;
+              if (typeof p?.modifier === "string" && p.modifier.trim()) out.modifier = p.modifier.trim();
+              if (typeof p?.portionDescription === "string" && p.portionDescription.trim()) {
+                out.portionDescription = p.portionDescription.trim();
+              }
+              if (p?.measureUnit && typeof p.measureUnit === "object") {
+                const mu: { name?: string; abbreviation?: string } = {};
+                if (typeof p.measureUnit.name === "string") mu.name = p.measureUnit.name;
+                if (typeof p.measureUnit.abbreviation === "string") mu.abbreviation = p.measureUnit.abbreviation;
+                if (mu.name || mu.abbreviation) out.measureUnit = mu;
+              }
+              return out;
+            })
+            .filter(Boolean) as NonNullable<FdcFoodSearchHit["foodPortions"]>
+        : undefined;
+
       return {
         fdcId: f.fdcId,
         description: f.description,
@@ -131,6 +193,10 @@ export async function fdcFoodsSearch(
         protein,
         fat,
         carbs,
+        ...(servingSize != null ? { servingSize } : {}),
+        ...(servingSizeUnit != null ? { servingSizeUnit } : {}),
+        ...(householdServingFullText != null ? { householdServingFullText } : {}),
+        ...(foodPortions && foodPortions.length > 0 ? { foodPortions } : {}),
       };
     });
 }

@@ -27,6 +27,14 @@ import {
   customFoodToMacrosPer100g,
   type CustomFood,
 } from "../../lib/nutrition/customFoods";
+import {
+  pickEdamamPrimaryServing,
+  pickUsdaBrandedPrimaryServing,
+  pickUsdaFoodPortionsPrimaryServing,
+  parseOffPrimaryServing,
+  primaryServingToPortionChip,
+  type PrimaryServing,
+} from "../../lib/nutrition/primaryServing";
 import { AnalyticsEvents } from "../../lib/analytics/events";
 import { track } from "../../lib/analytics/track";
 
@@ -53,6 +61,13 @@ type SearchResult = {
   macrosPer100g?: MacrosPer100g;
   verified?: boolean;
   imageUrl?: string | null;
+  /**
+   * Natural portion derived from the source (Edamam `servingSizes`, USDA
+   * branded `servingSize`, OFF `serving_size`). Null when the source
+   * exposes only a per-gram fallback — display falls back to /100g only.
+   * TestFlight `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19).
+   */
+  primaryServing?: PrimaryServing | null;
   _source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   _fdcId?: number;
   _offCode?: string;
@@ -171,15 +186,35 @@ async function searchUsda(query: string): Promise<SearchResult[]> {
     const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}`);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
-    return json.hits.map((h: any) => ({
-      key: `usda-${h.fdcId}`,
-      name: titleCase(h.description ?? "Unknown"),
-      calsPer100g: h.calories,
-      macrosPer100g: h.calories != null ? { calories: h.calories, protein: h.protein ?? 0, carbs: h.carbs ?? 0, fat: h.fat ?? 0, fiberG: 0, sugarG: 0, sodiumMg: 0 } : undefined,
-      verified: /foundation|sr legacy|survey/i.test(h.dataType ?? ""),
-      _source: "USDA" as const,
-      _fdcId: h.fdcId,
-    }));
+    return json.hits.map((h: any) => {
+      const per100g = {
+        calories: h.calories ?? 0,
+        protein: h.protein ?? 0,
+        carbs: h.carbs ?? 0,
+        fat: h.fat ?? 0,
+      };
+      const primaryServing =
+        pickUsdaBrandedPrimaryServing(per100g, {
+          servingSize: typeof h.servingSize === "number" ? h.servingSize : null,
+          servingSizeUnit: typeof h.servingSizeUnit === "string" ? h.servingSizeUnit : null,
+          householdServingFullText:
+            typeof h.householdServingFullText === "string" ? h.householdServingFullText : null,
+        }) ??
+        pickUsdaFoodPortionsPrimaryServing(
+          per100g,
+          Array.isArray(h.foodPortions) ? h.foodPortions : null,
+        );
+      return {
+        key: `usda-${h.fdcId}`,
+        name: titleCase(h.description ?? "Unknown"),
+        calsPer100g: h.calories,
+        macrosPer100g: h.calories != null ? { calories: h.calories, protein: h.protein ?? 0, carbs: h.carbs ?? 0, fat: h.fat ?? 0, fiberG: 0, sugarG: 0, sodiumMg: 0 } : undefined,
+        verified: /foundation|sr legacy|survey/i.test(h.dataType ?? ""),
+        primaryServing,
+        _source: "USDA" as const,
+        _fdcId: h.fdcId,
+      };
+    });
   } catch { return []; }
 }
 
@@ -188,7 +223,7 @@ async function searchOff(query: string): Promise<SearchResult[]> {
   if (!q.trim()) return [];
   try {
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,serving_size`,
     );
     const data = await res.json();
     if (!Array.isArray(data.products)) return [];
@@ -200,19 +235,29 @@ async function searchOff(query: string): Promise<SearchResult[]> {
         const name = titleCase(p.product_name ?? "Unknown");
         const displayName = [brand, name].filter(Boolean).join(" · ");
         const cals = Math.round(n["energy-kcal_100g"] ?? 0);
+        const macros = cals > 0
+          ? {
+              calories: cals,
+              protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
+              carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
+              fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+              fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
+              sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
+              sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+            }
+          : undefined;
+        const primaryServing = macros
+          ? parseOffPrimaryServing(
+              { calories: macros.calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat },
+              typeof p.serving_size === "string" ? p.serving_size : null,
+            )
+          : null;
         return {
           key: `off-${p.code}`,
           name: displayName,
           calsPer100g: cals,
-          macrosPer100g: cals > 0 ? {
-            calories: cals,
-            protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-            carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-            fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
-            fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
-            sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
-            sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
-          } : undefined,
+          macrosPer100g: macros,
+          primaryServing,
           _source: "OFF" as const,
           _offCode: p.code,
         };
@@ -240,6 +285,7 @@ async function searchEdamam(query: string): Promise<SearchResult[]> {
       category: string; categoryLabel: string; imageUrl: string | null;
       calories: number; protein: number; carbs: number; fat: number;
       fiberG: number; sugarG: number; sodiumMg: number;
+      servingSizes?: Array<{ uri?: string; label?: string; quantity?: number }>;
     }>).map((h) => {
       const brand = h.brand ? titleCase(h.brand) : "";
       const label = titleCase(h.label);
@@ -247,6 +293,10 @@ async function searchEdamam(query: string): Promise<SearchResult[]> {
       const isMeal =
         h.category?.toLowerCase().includes("meal") ||
         Boolean(h.brand && h.category?.toLowerCase().includes("packaged"));
+      const primaryServing = pickEdamamPrimaryServing(
+        { calories: h.calories, protein: h.protein, carbs: h.carbs, fat: h.fat },
+        h.servingSizes ?? null,
+      );
       return {
         key: `edamam-${h.foodId}`,
         name: displayName,
@@ -262,6 +312,7 @@ async function searchEdamam(query: string): Promise<SearchResult[]> {
           sodiumMg: h.sodiumMg,
         },
         imageUrl: h.imageUrl,
+        primaryServing,
         _source: "Edamam" as const,
         _edamamFoodId: h.foodId,
       };
@@ -556,13 +607,20 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       const detail = await fetchUsdaDetail(item._fdcId);
       setLoadingKey(null);
       if (!detail) return;
-      const portions = buildPortions(detail.portions);
-      const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);
+      const portions = buildPortions(detail.portions, item.primaryServing);
+      // Default to natural portion when present — TestFlight
+      // `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19). Otherwise honour the
+      // recipe-hint resolution used elsewhere in the codebase.
+      const { portion, quantity } = item.primaryServing
+        ? { portion: portions[0], quantity: 1 }
+        : resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else if (item._source === "OFF" && item.macrosPer100g) {
       setLoadingKey(null);
-      const portions = buildPortions([]);
-      const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);
+      const portions = buildPortions([], item.primaryServing);
+      const { portion, quantity } = item.primaryServing
+        ? { portion: portions[0], quantity: 1 }
+        : resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
       // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
@@ -570,8 +628,10 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       // path mirrors OFF — no extra fetch. The OFF preview source value
       // is reused so the existing log path doesn't need a new branch.
       setLoadingKey(null);
-      const portions = buildPortions([]);
-      const { portion, quantity } = resolveInitialPortion(portions, initialAmount, initialUnit);
+      const portions = buildPortions([], item.primaryServing);
+      const { portion, quantity } = item.primaryServing
+        ? { portion: portions[0], quantity: 1 }
+        : resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else {
       setLoadingKey(null);
@@ -672,10 +732,24 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     [customEnabled, supabase, userId, refreshCustomLibrary],
   );
 
-  function buildPortions(apiPortions: FoodPortion[]): FoodPortion[] {
+  function buildPortions(
+    apiPortions: FoodPortion[],
+    primary?: PrimaryServing | null,
+  ): FoodPortion[] {
     const seen = new Set<string>();
     const result: FoodPortion[] = [];
-    for (const u of STANDARD_UNITS) { seen.add(u.label.toLowerCase()); result.push(u); }
+    // Primary (natural) portion first — TestFlight `APo0qS9vcFvmBJEJJ_-61YA`.
+    if (primary) {
+      const chip = primaryServingToPortionChip(primary);
+      seen.add(chip.label.toLowerCase());
+      result.push(chip);
+    }
+    for (const u of STANDARD_UNITS) {
+      const key = u.label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(u);
+    }
     for (const p of apiPortions) {
       const key = p.label.toLowerCase().trim();
       if (!seen.has(key) && key !== "100 g") { seen.add(key); result.push(p); }
@@ -956,24 +1030,42 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                               )}
                               <span className="text-sm font-medium text-foreground truncate">{item.name}</span>
                             </div>
-                            {item.macrosPer100g && (
-                              <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                <span>{item.macrosPer100g.calories} kcal</span>
-                                <span className="text-destructive">P:{item.macrosPer100g.protein}g</span>
-                                <span className="text-primary">C:{item.macrosPer100g.carbs}g</span>
-                                <span className="text-warning">F:{item.macrosPer100g.fat}g</span>
-                              </div>
-                            )}
-                            {!item.macrosPer100g && item.calsPer100g != null && item.calsPer100g > 0 && (
+                            {item.primaryServing ? (
+                              <>
+                                <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                                  <span>{item.primaryServing.kcal} kcal</span>
+                                  <span className="text-destructive">P:{item.primaryServing.protein}g</span>
+                                  <span className="text-primary">C:{item.primaryServing.carbs}g</span>
+                                  <span className="text-warning">F:{item.primaryServing.fat}g</span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground/80">
+                                  {item.primaryServing.label} ({item.primaryServing.grams} g)
+                                  {item.calsPer100g != null && item.calsPer100g > 0
+                                    ? ` · ${item.calsPer100g} kcal / 100 g`
+                                    : ""}
+                                </span>
+                              </>
+                            ) : item.macrosPer100g ? (
+                              <>
+                                <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                                  <span>{item.macrosPer100g.calories} kcal</span>
+                                  <span className="text-destructive">P:{item.macrosPer100g.protein}g</span>
+                                  <span className="text-primary">C:{item.macrosPer100g.carbs}g</span>
+                                  <span className="text-warning">F:{item.macrosPer100g.fat}g</span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground/80">per 100 g</span>
+                              </>
+                            ) : item.calsPer100g != null && item.calsPer100g > 0 ? (
                               <span className="text-[11px] text-muted-foreground">{item.calsPer100g} kcal per 100g</span>
-                            )}
-                            {!item.macrosPer100g && !(item.calsPer100g != null && item.calsPer100g > 0) && (
+                            ) : (
                               <span className="text-xs text-muted-foreground">Tap for nutrition info</span>
                             )}
                           </div>
-                          {item.calsPer100g != null && item.calsPer100g > 0 && loadingKey !== item.key && (
+                          {item.primaryServing ? (
+                            <span className="text-sm font-bold text-foreground tabular-nums">{item.primaryServing.kcal}</span>
+                          ) : item.calsPer100g != null && item.calsPer100g > 0 && loadingKey !== item.key ? (
                             <span className="text-sm font-bold text-foreground tabular-nums">{item.calsPer100g}</span>
-                          )}
+                          ) : null}
                           {loadingKey === item.key ? (
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
                           ) : (
