@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Alert, Modal, Pressable, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -60,12 +60,27 @@ export interface TodayMealsSectionProps {
   onAcceptUsualMealHint: (slot: string) => void;
 }
 
-const SLOT_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  Breakfast: "cafe-outline",
-  Lunch: "sunny-outline",
-  Dinner: "restaurant-outline",
-  Snacks: "cafe-outline",
-  Snack: "cafe-outline",
+/**
+ * F-12 (in-session snack-parity report 2026-04-19) — web's Snacks slot uses
+ * lucide-react `Cookie` (`src/app/components/ui/icons.ts` → `snack: Cookie`).
+ * Mobile historically mapped Snacks to Ionicons `"cafe-outline"` (a coffee
+ * cup), so the two platforms showed two different glyphs for the same slot.
+ * MaterialCommunityIcons ships `cookie-outline`, which matches the web
+ * lucide shape closely; Ionicons has no cookie glyph. We use a tiny
+ * discriminated union per slot so Snacks can pull from
+ * MaterialCommunityIcons while the other slots stay on Ionicons (where
+ * their current glyphs live).
+ */
+type SlotIconSpec =
+  | { family: "ionicons"; name: keyof typeof Ionicons.glyphMap }
+  | { family: "material-community"; name: keyof typeof MaterialCommunityIcons.glyphMap };
+
+const SLOT_ICON: Record<string, SlotIconSpec> = {
+  Breakfast: { family: "ionicons", name: "cafe-outline" },
+  Lunch: { family: "ionicons", name: "sunny-outline" },
+  Dinner: { family: "ionicons", name: "restaurant-outline" },
+  Snacks: { family: "material-community", name: "cookie-outline" },
+  Snack: { family: "material-community", name: "cookie-outline" },
 };
 
 const SLOT_COLOR: Record<string, string> = {
@@ -76,12 +91,27 @@ const SLOT_COLOR: Record<string, string> = {
   Snack: MacroColors.fat,
 };
 
-function slotIcon(s: string): keyof typeof Ionicons.glyphMap {
-  return SLOT_ICON[s] ?? ("restaurant-outline" as keyof typeof Ionicons.glyphMap);
+function slotIcon(s: string): SlotIconSpec {
+  return SLOT_ICON[s] ?? { family: "ionicons", name: "restaurant-outline" };
 }
 
 function slotColor(s: string): string {
   return SLOT_COLOR[s] ?? Accent.primary;
+}
+
+function SlotIcon({
+  spec,
+  size,
+  color,
+}: {
+  spec: SlotIconSpec;
+  size: number;
+  color: string;
+}) {
+  if (spec.family === "material-community") {
+    return <MaterialCommunityIcons name={spec.name} size={size} color={color} />;
+  }
+  return <Ionicons name={spec.name} size={size} color={color} />;
 }
 
 /** Pull the saved meals whose `defaultMealSlot === slot`, newest-logged first. */
@@ -203,7 +233,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     justifyContent: "center",
                   }}
                 >
-                  <Ionicons name={ic} size={16} color={col} />
+                  <SlotIcon spec={ic} size={16} color={col} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{slot}</Text>

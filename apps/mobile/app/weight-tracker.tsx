@@ -749,8 +749,10 @@ export default function ProgressScreen() {
                 <Text style={styles.sectionTitle}>Journey</Text>
                 {/* Start-of-journey + goal anchors with pill amounts either
                     side of the fill bar — mirrors the LoseIt reference in
-                    TestFlight `AF7bS2DQrH_wZWxGosBJ3K8`. Emoji-only so no
-                    asset pipeline is needed. */}
+                    TestFlight `AF7bS2DQrH_wZWxGosBJ3K8`. F-12 (TestFlight
+                    `AOOBv-1OwtDIoRVDRwH-S5k`, 2026-04-19) flipped the
+                    original tent / flag / trophy emoji to Ionicons vectors
+                    so they render crisp on every device. */}
                 <View
                   style={{
                     flexDirection: "row",
@@ -760,7 +762,11 @@ export default function ProgressScreen() {
                   }}
                 >
                   <View style={{ alignItems: "center", width: 52 }}>
-                    <Text style={{ fontSize: 20 }}>{"\u26FA"}</Text>
+                    <Ionicons
+                      name="flag-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
                     <View
                       style={{
                         marginTop: 2,
@@ -784,9 +790,11 @@ export default function ProgressScreen() {
                     />
                   </View>
                   <View style={{ alignItems: "center", width: 52 }}>
-                    <Text style={{ fontSize: 20 }}>
-                      {journey.pct >= 1 ? "\uD83C\uDFC6" : "\uD83C\uDFC1"}
-                    </Text>
+                    <Ionicons
+                      name={journey.pct >= 1 ? "trophy-outline" : "flag"}
+                      size={20}
+                      color={journey.pct >= 1 ? Accent.success : Accent.primary}
+                    />
                     <View
                       style={{
                         marginTop: 2,

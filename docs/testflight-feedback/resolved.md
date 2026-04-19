@@ -2,6 +2,57 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-04-19 — F-12: Emoji → Ionicons / MaterialCommunityIcons on mobile (snack parity + weight-journey anchors)
+
+- **ASC feedback id:** `AOOBv-1OwtDIoRVDRwH-S5k` (build 11) — screenshot of Weight Tracker showed `⛺` / `🏁` on the Journey card with the note "use icons not emojis". Paired with an in-session product report (2026-04-19) flagging that mobile's Snacks slot on Today rendered an Ionicons coffee cup (`cafe-outline`) while web rendered lucide `Cookie` for the same slot.
+- **Cause — weight journey anchors:** `apps/mobile/app/weight-tracker.tsx` rendered the start / goal anchors on the Journey progress bar as literal emoji (`"\u26FA"` tent; `"\uD83C\uDFC1"` finish flag / `"\uD83C\uDFC6"` trophy once pct ≥ 1). The 2026-04-18 dev note explicitly chose emoji "so no asset pipeline change" — the tester's feedback invalidates that tradeoff.
+- **Cause — Today Snacks icon divergence:** mobile's `SLOT_ICON` map in `apps/mobile/components/today/TodayMealsSection.tsx` pointed Snacks (and the singular `Snack` alias) at Ionicons `"cafe-outline"` — the same glyph used for Breakfast. Web's icon registry (`src/app/components/ui/icons.ts` → `snack: Cookie`) uses lucide's Cookie. Two different glyphs for the same slot on two platforms — a parity bug that predated the 2026-04-18 today-composition rework.
+- **Fix — weight journey anchors:**
+  - Start pill: Ionicons `flag-outline` at `colors.textSecondary` (neutral grey, matches "journey begins here" tone, does not compete with the fill bar).
+  - Goal pill: Ionicons `flag` (filled, `Accent.primary`) until `journey.pct >= 1`, then Ionicons `trophy-outline` (`Accent.success`). Reuses existing theme tokens — no new colour added.
+  - Pill geometry, the `0 kg` / total-to-lose labels, and the fill-bar math are unchanged — only the glyph inside the anchor changed.
+- **Fix — Today Snacks icon parity:**
+  - Imported `MaterialCommunityIcons` from `@expo/vector-icons` (already a transitive dep — no `yarn add`).
+  - Replaced the flat `Record<string, keyof typeof Ionicons.glyphMap>` slot-icon map with a tiny discriminated union `SlotIconSpec = { family: "ionicons"; name } | { family: "material-community"; name }` plus a local `<SlotIcon spec size color>` component that branches on family. Keeps the change narrow: Breakfast / Lunch / Dinner still use Ionicons exactly as before; only the `Snacks` + `Snack` rows switched to `{ family: "material-community", name: "cookie-outline" }`. MaterialCommunityIcons' `cookie-outline` is the closest visual match to web's lucide `Cookie`.
+  - Ionicons has no cookie glyph, which is why we pulled in the second family rather than force-fitting an Ionicons fallback.
+
+### Audit table (mobile emoji-as-icon sweep)
+
+| File | Line | Glyph | Role | Decision |
+|---|---|---|---|---|
+| apps/mobile/app/weight-tracker.tsx | 763 (pre-fix) | ⛺ U+26FA | Chrome — journey start anchor | **Replaced** → Ionicons `flag-outline` |
+| apps/mobile/app/weight-tracker.tsx | 788 (pre-fix) | 🏁 U+1F3C1 | Chrome — journey goal anchor | **Replaced** → Ionicons `flag` |
+| apps/mobile/app/weight-tracker.tsx | 788 (pre-fix) | 🏆 U+1F3C6 | Chrome — journey complete anchor | **Replaced** → Ionicons `trophy-outline` |
+| apps/mobile/components/today/TodayMealsSection.tsx | 67 (pre-fix) | Ionicons `cafe-outline` (coffee cup) on Snacks | Chrome — slot icon, diverged from web | **Replaced** → MaterialCommunityIcons `cookie-outline` (parity with web lucide `Cookie`) |
+| apps/mobile/app/(tabs)/planner.tsx | 1061 | 🔒 | Inline `{locked ? " 🔒" : ""}` text content inside a day-count button label | Leave — sits inside a `<Text>` run alongside "N days", not a standalone icon slot |
+| apps/mobile/app/(tabs)/planner.tsx | 1157 | ✓ | Macro-close tick inside a `<Text>` delta indicator | Leave — text glyph, not emoji; consistent with other inline `✓` throughout the app |
+| apps/mobile/app/(tabs)/planner.tsx | 1382 | 🍱 | Leftover badge icon | Leave — not in the tester's screenshot, out of F-12 scope; revisit in a future parity pass |
+| apps/mobile/app/shopping.tsx | 166 / 168 / 170 | 🛒 / 📌 / ☐ | Plain-text export string (share / copy to clipboard) | Leave — user-facing share content, not an icon slot |
+| apps/mobile/app/shopping.tsx | 318 | 🛒 | Empty-state hero glyph | Leave — intentional empty-state voice (same family as cook.tsx `🎉`) |
+| apps/mobile/app/shopping.tsx | 371 | ✓ | Inline checkbox tick in a `<Text>` | Leave — text glyph |
+| apps/mobile/app/(tabs)/barcode.tsx | 513 | ✓ | "✓ Verified" label prefix | Leave — text glyph |
+| apps/mobile/app/cook.tsx | 312 | 🎉 | Celebration hero on the "Enjoy your meal" done state | Leave — celebration/voice, explicit scope guardrail |
+| apps/mobile/components/NutritionSourceBadge.tsx | 17–19 | ✓ / ~ / ✎ | Single-char badge abbreviations | Leave — text glyphs inside a `<Text>` |
+| apps/mobile/app/(tabs)/index.tsx | 1514 | ❄ | Inside a code comment describing DayStrip freeze glyph | Leave — not rendered |
+
+### Tests
+
+- **`apps/mobile/tests/unit/mealSlotIconFamilyParity.test.ts`** (3 tests, passing) — structural pins asserting (a) mobile imports `MaterialCommunityIcons` from `@expo/vector-icons`, (b) `Snacks` + `Snack` both declare `{ family: "material-community", name: "cookie-outline" }`, (c) the old Ionicons `"cafe-outline"` mapping is gone from Snacks, (d) Breakfast / Lunch / Dinner remain on Ionicons with their original glyphs, (e) web `src/app/components/ui/icons.ts` still imports `Cookie` from `lucide-react` and still maps `snack: Cookie`. Breaks loudly in either direction of drift.
+- **`apps/mobile/tests/unit/weightJourneyIconsNoEmoji.test.ts`** (5 tests, passing) — pins that `weight-tracker.tsx` does not contain the tent / flag / trophy emoji as literal glyphs *or* as `"\u…"` escape-string literals, and that the replacements (`flag-outline` / `trophy-outline` / conditional `flag` fallback, Ionicons import) are all in place.
+
+### Parity
+
+- **Target 2 brings mobile into parity with web.** Web's Today snack slot is lucide `Cookie`; mobile is now MaterialCommunityIcons `cookie-outline`. Same visual family (outlined cookie), same semantic. Parity pinned structurally.
+- **Target 1 is mobile-only.** Web's weight tracker is a different surface and has never rendered the journey tent/flag/trophy anchors; no web change needed. The Weight Tracker screen on mobile is the only host that drew the anchors.
+
+### Scope guardrails held
+
+- No new dependencies. `MaterialCommunityIcons` is already shipped by `@expo/vector-icons`.
+- No web changes (snack-parity fix intentionally one-directional — mobile onto web's existing choice).
+- No touch of Accent token names; reused `Accent.primary` / `Accent.success` / `colors.textSecondary` only.
+- No replacement of celebration emoji (cook.tsx `🎉`, shopping.tsx empty-state `🛒`) or user-facing share-text emoji.
+- Pill geometry on the journey card is byte-identical — only the glyph inside swapped.
+
 ## 2026-04-19 — F-10 + F-11: Search pagination + image consistency + recipe score removal
 
 - **ASC feedback ids:**
