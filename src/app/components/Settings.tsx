@@ -889,6 +889,26 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
 
       {/* Subscription plans are hidden for now. */}
 
+      {/* About — houses the "What's new in Suppr" link. F-0
+          (2026-04-19): single reliable entry point for testers to see
+          which of their feedback items shipped in the latest build.
+          Mirrors the mobile Settings "About" section. */}
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+        <div className="flex items-center gap-2 mb-6">
+          <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">About</h3>
+        </div>
+        <div className="space-y-3">
+          <Link
+            href="/whats-new"
+            data-testid="settings-whats-new-link"
+            className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
+          >
+            What&rsquo;s new in Suppr
+          </Link>
+        </div>
+      </div>
+
       {/* Privacy */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
         <div className="flex items-center gap-2 mb-6">

@@ -43,6 +43,14 @@ export async function GET(req: Request) {
   if (!q) return NextResponse.json({ ok: false, error: "missing_q" }, { status: 400 });
   const mode = searchParams.get("mode") === "meals" ? "meals" : "foods";
 
+  // Pagination — Edamam's `parser` endpoint returns one flat list of
+  // `hints`. We short-circuit pages beyond 1 with an empty hits array
+  // so USDA carries the load past the first page. TestFlight F-10
+  // (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Defaults preserve
+  // historical behaviour.
+  const rawPage = Number(searchParams.get("page") ?? "1");
+  const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
+
   if (!hasEdamamConfig()) {
     return NextResponse.json(
       {
@@ -63,6 +71,9 @@ export async function GET(req: Request) {
   }
 
   try {
+    if (pageNumber > 1) {
+      return NextResponse.json({ ok: true, mode, page: pageNumber, hits: [] });
+    }
     const raw = await edamamFoodSearch(cfg, q, { pageSize: mode === "meals" ? 20 : 12 });
     const filtered = mode === "meals"
       ? raw.filter((h) => {
@@ -90,7 +101,7 @@ export async function GET(req: Request) {
         servingSizes: h.food.servingSizes ?? [],
       };
     });
-    return NextResponse.json({ ok: true, mode, hits });
+    return NextResponse.json({ ok: true, mode, page: pageNumber, hits });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: "edamam_failed", message: e instanceof Error ? e.message : "Edamam request failed" },

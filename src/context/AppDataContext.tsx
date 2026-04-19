@@ -59,6 +59,9 @@ import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 import { useShoppingListState } from "./appData/useShoppingListState.ts";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
 import { isAuthLockAbort } from "../lib/supabase/isAuthLockAbort.ts";
+import { filterOrphanSaves } from "../lib/recipes/filterOrphanSaves.ts";
+import { composeLibraryEntries } from "../lib/recipes/composeLibraryEntries.ts";
+import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -387,6 +390,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return fingerprintMealPlanForShopping(mealPlan) !== shoppingListSourceFingerprint;
   }, [shoppingItems.length, shoppingListSourceFingerprint, mealPlan]);
 
+  // F-9 (TestFlight `AMXSjeaXJeCf6QtKgUTMkD0`, 2026-04-18): the
+  // shopping list is ephemeral — it belongs to the active meal plan.
+  // When there is no plan on the active slot (fresh account, slot
+  // deleted, or user switched to an empty slot) any leftover
+  // `shopping_items` rows from a previous plan should NOT show. The
+  // tester saw "37 items from this week" on the Plan tab before ever
+  // generating a plan; the rule below (pure helper in
+  // src/lib/planning/shoppingListLifecycle.ts) guards against that
+  // without clobbering a freshly-built list during a regenerate.
+  const priorMealPlanRef = useRef<typeof mealPlan>(mealPlan);
+  useEffect(() => {
+    const prev = priorMealPlanRef.current;
+    priorMealPlanRef.current = mealPlan;
+    const decision = shoppingListShouldClear({
+      previousPlan: prev,
+      currentPlan: mealPlan,
+      hasLocalItems: shoppingItems.length > 0,
+      hasSourceFingerprint: shoppingListSourceFingerprint !== null,
+    });
+    if (!decision.clearLocal && !decision.clearServer) return;
+    if (decision.clearLocal) {
+      setShoppingItems([]);
+      setShoppingListSourceFingerprint(null);
+    }
+    if (decision.clearServer && authedUserId) {
+      void supabase.from("shopping_items").delete().eq("user_id", authedUserId);
+    }
+  }, [mealPlan, shoppingItems.length, shoppingListSourceFingerprint, setShoppingItems, authedUserId]);
+
   // Load profile basics (tier/display name). Falls back to local profile if needed.
   useEffect(() => {
     if (!authedUserId) {
@@ -709,7 +741,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, prep_time_min, cook_time_min",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
@@ -743,6 +775,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         creatorId: (row.creator_id as string | null) ?? null,
         mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
         isPublished: Boolean((row as { published?: boolean | null }).published),
+        // F-7 (2026-04-18): expose `source_url` so Library can
+        // distinguish imported (`source_url` set) vs created drafts —
+        // parity with mobile `useSavedLibraryRecipes` / `entryKindForCard`.
+        sourceUrl: (row as { source_url?: string | null }).source_url ?? null,
         prepTimeMin: prepOk ? Math.round(prepM) : null,
         cookTimeMin: cookOk ? Math.round(cookM) : null,
         prepTime: formatRecipeMinutes(prepOk ? prepM : null),
@@ -1002,11 +1038,51 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         toast.error(syncFailedRetryMessage("saved recipes", msg));
         return;
       }
-      const ids = (data ?? []).map((r) => r.recipe_id as string);
+      const rawIds = (data ?? []).map((r) => r.recipe_id as string);
       const savedAt: Record<string, string> = {};
       for (const r of data ?? []) {
         savedAt[r.recipe_id as string] = (r.created_at as string) ?? new Date().toISOString();
       }
+
+      // F-8 (TestFlight `AAHS7CjeXNC-mwzyLgWFuKQ`, 2026-04-18): drop
+      // saves that reference a recipe that no longer exists. The
+      // `saves` table is not FK-cascade on all historical projects,
+      // so deleting a recipe can leave orphan rows. Rendering those
+      // produced "Unavailable" cards ("defaults to recipes that don't
+      // exist" in the tester's words). One short query; silent log
+      // only when we actually find orphans.
+      let ids = rawIds;
+      if (rawIds.length > 0) {
+        const { data: live, error: liveErr } = await supabase
+          .from("recipes")
+          .select("id")
+          .in("id", rawIds);
+        if (!liveErr && Array.isArray(live)) {
+          const { validIds, orphanIds } = filterOrphanSaves(
+            rawIds,
+            live.map((r) => r.id as string),
+          );
+          ids = validIds;
+          if (orphanIds.length > 0) {
+            console.info("[saves] dropping orphan save rows:", orphanIds.length);
+            // Evict cached meta for the orphan ids so the snapshot
+            // store doesn't resurrect them on next cold start.
+            setSavedRecipeMetaById((prev) => {
+              if (orphanIds.every((id) => !(id in prev))) return prev;
+              const next = { ...prev };
+              for (const id of orphanIds) delete next[id];
+              return next;
+            });
+            for (const id of orphanIds) delete savedAt[id];
+            void supabase
+              .from("saves")
+              .delete()
+              .eq("user_id", authedUserId)
+              .in("recipe_id", orphanIds);
+          }
+        }
+      }
+
       setSavedRecipeIds(ids);
       setSavedAtById(savedAt);
     })();
@@ -1575,45 +1651,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const communityFeedCount = uploadedRecipes.length;
 
   const savedRecipesForLibrary = useMemo((): Array<RecipeCard & { savedAt: Date }> => {
-    const enriched = savedRecipeIds
-      .map((id) => {
-        const base =
-          uploadedRecipes.find((r) => r.id === id) ??
-          myLibraryRecipes.find((r) => r.id === id) ??
-          null;
-        if (!base) {
-          const meta = savedRecipeMetaById[id];
-          if (!meta?.title) return null;
-          const fallback: RecipeCard = {
-            id,
-            creatorName: meta.creatorName ?? "Unavailable",
-            creatorImage:
-              meta.creatorImage ??
-              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-            title: meta.title,
-            image:
-              meta.image ??
-              "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
-            servings: 1,
-            calories: Math.max(0, Math.round(Number(meta.calories ?? 0) || 0)),
-            protein: Math.max(0, Math.round(Number(meta.protein ?? 0) || 0)),
-            carbs: Math.max(0, Math.round(Number(meta.carbs ?? 0) || 0)),
-            fat: Math.max(0, Math.round(Number(meta.fat ?? 0) || 0)),
-            isVerified: false,
-            savedCount: 0,
-            isSaved: true,
-            isPublished: false,
-          };
-          const savedAt = new Date(savedAtById[id] ?? Date.now());
-          return { ...fallback, savedAt };
-        }
-        const savedAt = new Date(savedAtById[id] ?? Date.now());
-        return { ...base, isSaved: true, savedAt };
-      })
-      .filter((x): x is RecipeCard & { savedAt: Date } => x !== null);
-    enriched.sort((a, b) => b.savedAt.getTime() - a.savedAt.getTime());
-    return enriched;
-  }, [savedRecipeIds, savedAtById, uploadedRecipes, myLibraryRecipes, savedRecipeMetaById]);
+    // F-7 (TestFlight `AO2jdncS2GxyJaeXPPFR30M`, 2026-04-18):
+    // imports / created drafts are "mine by nature" — they stay in
+    // Library even when the user has unsaved them. The composer
+    // (src/lib/recipes/composeLibraryEntries.ts) owns the union
+    // rules and is shared with mobile's matching hook.
+    //
+    // F-8: the old `savedRecipeMetaById` "Unavailable" fallback is
+    // gone — orphan saves are filtered at load time (see saves
+    // effect) and the composer drops anything whose recipe can't be
+    // found instead of synthesising a placeholder card.
+    return composeLibraryEntries({
+      userId: authedUserId,
+      saves: savedRecipeIds.map((id) => ({
+        recipeId: id,
+        createdAt: savedAtById[id] ?? null,
+      })),
+      authoredRecipes: myLibraryRecipes,
+      communityRecipes: uploadedRecipes,
+    });
+  }, [savedRecipeIds, savedAtById, uploadedRecipes, myLibraryRecipes, authedUserId]);
 
   const value = useMemo(
     (): AppDataContextValue => ({

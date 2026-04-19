@@ -25,10 +25,13 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
+import {
+  PORTION_MULTIPLIER_CLAMP,
+  clampPlannerMultiplier,
+} from "../../lib/nutrition/mealPlanAlgo.ts";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
-  clampPortionMultiplier,
   dayPlanTotalsFromMeals,
   effectivePortionMultiplier,
   isMealPlanPlaceholderLikeTitle,
@@ -336,7 +339,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           if (idx !== mealIndex || isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder })) {
             return m;
           }
-          const next = clampPortionMultiplier(effectivePortionMultiplier(m.portionMultiplier) + delta);
+          // F-15 — shared planner clamp (0.2..2.5, 0.1 step). Adopted
+          // from mobile for parity (was 0.5..8 at 0.5 step on web).
+          const next = clampPlannerMultiplier(effectivePortionMultiplier(m.portionMultiplier) + delta);
           return { ...m, portionMultiplier: next };
         });
         return { ...dp, meals, totals: dayPlanTotalsFromMeals(meals) };
@@ -1341,6 +1346,35 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                     <MacroCard macro="fat" value={dp.totals.fat} target={targetFat} unit="g" />
                   </div>
                 </div>
+                {/* F-15 — residual protein gap hint. Only rendered when the
+                    joint-fit scaler left the day more than 10g under the
+                    protein target. Points at the lowest-protein slot so
+                    the user can act: scale that slot up, or swap to a
+                    higher-protein recipe via the existing stepper / Swap
+                    button on the meal row below. */}
+                {(() => {
+                  const gap = dp.residualProteinGap;
+                  if (gap == null || gap >= -10) return null;
+                  const scorable = dp.meals.filter(
+                    (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+                  );
+                  if (scorable.length === 0) return null;
+                  const lowest = scorable.reduce((low, m) => {
+                    const pLow = scaledMacro(low.protein, effectivePortionMultiplier(low.portionMultiplier));
+                    const pM = scaledMacro(m.protein, effectivePortionMultiplier(m.portionMultiplier));
+                    return pM < pLow ? m : low;
+                  }, scorable[0]!);
+                  const under = Math.abs(gap);
+                  return (
+                    <p
+                      className="mt-4 text-[13px] text-warning"
+                      role="status"
+                      data-testid="residual-protein-gap-hint"
+                    >
+                      Protein {under}g under target — try scaling {lowest.name} up or swap to a higher-protein recipe.
+                    </p>
+                  );
+                })()}
               </div>
 
               <div className="space-y-5">
@@ -1428,7 +1462,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                             <button
                               type="button"
                               aria-label="Decrease portions"
-                              onClick={() => bumpMealPortion(dp.day, index, -0.5)}
+                              onClick={() => bumpMealPortion(dp.day, index, -PORTION_MULTIPLIER_CLAMP.step)}
                               className="w-9 h-9 rounded-lg text-lg font-semibold text-foreground hover:bg-muted"
                             >
                               −
@@ -1439,7 +1473,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                             <button
                               type="button"
                               aria-label="Increase portions"
-                              onClick={() => bumpMealPortion(dp.day, index, 0.5)}
+                              onClick={() => bumpMealPortion(dp.day, index, PORTION_MULTIPLIER_CLAMP.step)}
                               className="w-9 h-9 rounded-lg text-lg font-semibold text-foreground hover:bg-muted"
                             >
                               +

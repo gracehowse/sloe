@@ -531,7 +531,7 @@ _Last updated: 2026-04-13_
 | `DailyRing` SVG progress ring | Done | `suppr/daily-ring.tsx` — animated circular progress for calorie target. |
 | `MacroCard` colour-coded macro display | Done | `suppr/macro-card.tsx` — compact + full modes with progress bar. |
 | `ConfidenceDot` indicator | Done | `suppr/confidence-dot.tsx` — high (green), medium (amber), low (red). |
-| `FitBadge` macro-fit pill | Done | `suppr/fit-badge.tsx` — "Great Fit" / "Good Fit" / "Over Budget". |
+| ~~`FitBadge` macro-fit pill~~ | Removed | Build 10 F-11 (2026-04-19, TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`) — tester reported the score felt irrelevant. Component + file deleted; no ranking consumed it. |
 | `SourceBadge` platform origin | Done | `suppr/source-badge.tsx` — Instagram, TikTok, YouTube, Pinterest, Web, User. |
 | Barrel export | Done | `suppr/index.ts` |
 | Home "Today at a Glance" | Done | `TodayAtAGlance.tsx` — DailyRing + MacroCard grid + fiber/water tiles. |
@@ -543,7 +543,7 @@ _Last updated: 2026-04-13_
 | Screen | Components wired | Notes |
 |---|---|---|
 | NutritionTracker | Icons, IconBox, semantic tokens | ~130 hardcoded colours replaced. |
-| DiscoverFeed | FitBadge, SourceBadge, Icons, IconBox | Fit computation based on daily macro targets. SourceBadge shows when `sourcePlatform` set on recipe. |
+| DiscoverFeed | SourceBadge, Icons, IconBox | FitBadge removed in build 10 F-11 (2026-04-19). SourceBadge shows when `sourcePlatform` set on recipe. |
 | RecipeDetail | MacroCard, ConfidenceDot, Icons | Macro grid uses MacroCard compact. Ingredients show ConfidenceDot per verification status. |
 | MealPlanner | DailyRing, MacroCard, Icons | Daily summary uses DailyRing + MacroCard grid for P/C/F. |
 | ProgressDashboard | IconBox, Icons | Section headers use IconBox (activity, scale, target). |

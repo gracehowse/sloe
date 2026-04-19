@@ -14,13 +14,17 @@ import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import {
   calcGoalTimeline,
+  computeWeightJourneyProgressPct,
+  formatWeightJourneyProgressCopy,
   projectWeight,
   resolveLatestWeightKg,
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
+import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats } from "@/lib/progressWeekReport";
+import { getDailyTargets, type DailyTarget } from "../../../../src/lib/nutrition/dailyTargetRead";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -97,6 +101,12 @@ export default function ProgressScreen() {
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
+  // F-2 (2026-04-19) — `daily_targets` snapshots keyed by `YYYY-MM-DD`.
+  // Past days render "% of goal" against the target that was active
+  // *on that day*. Days with no snapshot (pre-migration) fall back to
+  // the current target and the UI marks that row as approximate.
+  const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+
   // Batch 4.11 — streak freeze + weekly recap state
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
     earnedAt: [],
@@ -110,7 +120,15 @@ export default function ProgressScreen() {
   const [staticTdee, setStaticTdee] = useState<number | null>(null);
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
+  const [adaptiveUpdatedAt, setAdaptiveUpdatedAt] = useState<string | null>(null);
   const [isAdaptiveTdee, setIsAdaptiveTdee] = useState(false);
+  // Profile basics cached for the shared `resolveMaintenance` resolver —
+  // lets us fall back to the Mifflin formula when adaptive TDEE is
+  // missing / low-confidence / stale (F-3, 2026-04-19).
+  const [profileSexState, setProfileSexState] = useState<string>("unspecified");
+  const [profileHeightCmState, setProfileHeightCmState] = useState<number>(170);
+  const [profileAgeState, setProfileAgeState] = useState<number>(30);
+  const [profileActivityLevelState, setProfileActivityLevelState] = useState<string>("sedentary");
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
@@ -152,7 +170,7 @@ export default function ProgressScreen() {
         .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled")
         .eq("id", userId)
         .maybeSingle(),
     ]);
@@ -219,6 +237,11 @@ export default function ProgressScreen() {
       setAdaptiveTdee(Number.isFinite(aTdee) ? aTdee : null);
       const aConf = ((profile as any).adaptive_tdee_confidence as string) ?? null;
       setAdaptiveConfidence(aConf);
+      setAdaptiveUpdatedAt(((profile as any).adaptive_tdee_updated_at as string | null) ?? null);
+      setProfileSexState(sex);
+      setProfileHeightCmState(heightCm);
+      setProfileAgeState(ageVal);
+      setProfileActivityLevelState(actLevel);
       const eff = getEffectiveTDEE({
         adaptive_tdee: aTdee,
         adaptive_tdee_confidence: aConf,
@@ -246,12 +269,52 @@ export default function ProgressScreen() {
       setByDay(loaded);
     }
 
+    // F-2 — fetch `daily_targets` for this week's 7 day keys so past
+    // days render against their frozen target. Missing snapshots
+    // (pre-migration) stay null → UI falls back to current target.
+    {
+      const nowD = new Date();
+      const dow = nowD.getDay();
+      const wsd = (profile as any)?.week_start_day === "sunday" ? "sunday" : "monday";
+      const startOffset = wsd === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+      const weekFirst = new Date(nowD);
+      weekFirst.setDate(nowD.getDate() + startOffset);
+      const weekKeys: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekFirst);
+        d.setDate(weekFirst.getDate() + i);
+        weekKeys.push(dateKeyFromDate(d));
+      }
+      const snapshots = await getDailyTargets(supabase, userId, weekKeys);
+      setDailyTargetsByDay(snapshots);
+    }
+
     setLoading(false);
   }, [userId]);
 
   useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
 
-  const weekStats = useMemo(() => buildWeekStats(byDay, targets, weekStartDay), [byDay, targets, weekStartDay]);
+  // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
+  // When a day has no snapshot, the helper falls back to the current
+  // `targets` with `isSnapshot: false`.
+  const weekTargetsByDay = useMemo(() => {
+    const out: Record<string, { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [dailyTargetsByDay]);
+  const weekStats = useMemo(
+    () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay),
+    [byDay, targets, weekStartDay, weekTargetsByDay],
+  );
 
   // Raw streak retained so the "Raw streak" disclosure row can surface it
   // alongside the protected value — never misrepresented.
@@ -628,7 +691,11 @@ export default function ProgressScreen() {
                   <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
                     {weekStats.days.map((d) => {
                       const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
-                      const overTarget = d.calories > targets.calories;
+                      // F-2 — colour each bar against the target that
+                      // was active *on that day*. `d.targetCalories`
+                      // resolves to the snapshot when one exists, else
+                      // the current profile target (pre-migration).
+                      const overTarget = d.calories > d.targetCalories;
                       const isDayToday = d.key === todayKey;
                       return (
                         <Pressable
@@ -710,17 +777,39 @@ export default function ProgressScreen() {
             ))}
           </View>
 
-          {/* Adaptive TDEE Insight Card */}
-          {staticTdee != null && (
-            <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
+          {/* Maintenance card — F-3 (2026-04-19, TestFlight
+              `ADFYpDgEEb0QH-j3BXshPTo`). Was "Your TDEE"; value + label
+              now read from the shared `resolveMaintenance` so Today's
+              Activity Bonus card and this card can't drift. Adaptive
+              badge, confidence bars, and the "Formula estimate / +N
+              actual" subline are preserved so power users still see
+              the underlying spread. */}
+          {staticTdee != null && (() => {
+            const resolved = resolveMaintenance({
+              adaptive_tdee: adaptiveTdee,
+              adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt,
+              sex: profileSexState as any,
+              weight_kg: latestWeightKg ?? 70,
+              height_cm: profileHeightCmState,
+              age: profileAgeState,
+              activity_level: profileActivityLevelState as any,
+            });
+            if (!resolved) return null;
+            const showAdaptiveExtras = resolved.source === "adaptive";
+            return (
+            <View
+              testID="progress-maintenance-card"
+              style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}
+            >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <IconBox color={t.accent} size={28}>
                     <Ionicons name="flash-outline" size={14} color={t.accent} />
                   </IconBox>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Your TDEE</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Maintenance</Text>
                 </View>
-                {isAdaptiveTdee && (
+                {showAdaptiveExtras && (
                   <View style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
                   </View>
@@ -728,25 +817,25 @@ export default function ProgressScreen() {
               </View>
 
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-                <Text style={{ fontSize: 32, fontWeight: "700", color: isAdaptiveTdee ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
-                  {(isAdaptiveTdee && adaptiveTdee ? adaptiveTdee : staticTdee).toLocaleString()}
+                <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+                  {resolved.kcal.toLocaleString()}
                 </Text>
                 <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
               </View>
 
-              {isAdaptiveTdee && adaptiveTdee && staticTdee && (
+              {showAdaptiveExtras && resolved.formulaKcal != null && (
                 <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
-                  Formula estimate: {staticTdee.toLocaleString()} kcal
-                  {Math.abs(adaptiveTdee - staticTdee) >= 50 && (
+                  Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
+                  {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
                     <Text style={{ fontWeight: "600", color: t.text }}>
-                      {" "}({adaptiveTdee > staticTdee ? "+" : ""}{adaptiveTdee - staticTdee} actual)
+                      {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
                     </Text>
                   )}
                 </Text>
               )}
 
-              {/* Confidence bars */}
-              {adaptiveConfidence && (
+              {/* Confidence bars — only meaningful when adaptive won. */}
+              {showAdaptiveExtras && adaptiveConfidence && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
                   <View style={{ flexDirection: "row", gap: 3 }}>
@@ -767,14 +856,14 @@ export default function ProgressScreen() {
               )}
 
               <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
-                {isAdaptiveTdee
-                  ? "Calculated from your actual intake and weight changes — more accurate than a formula."
-                  : "Based on the Mifflin-St Jeor formula. Log meals and weigh in regularly to unlock your personalised adaptive TDEE."
+                {showAdaptiveExtras
+                  ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
+                  : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
                 }
               </Text>
 
               {/* Data progress for non-adaptive users */}
-              {!isAdaptiveTdee && (
+              {!showAdaptiveExtras && (
                 <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
                   <View style={{ flexDirection: "row", gap: 12 }}>
                     <View style={{ flex: 1 }}>
@@ -799,7 +888,8 @@ export default function ProgressScreen() {
                 </View>
               )}
             </View>
-          )}
+            );
+          })()}
 
           {/* Steps Card */}
           <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
@@ -876,11 +966,21 @@ export default function ProgressScreen() {
                 latestKg: latestWeightKg,
                 weightKgByDay,
               });
-              const progressPct = journeyProg
-                ? Math.max(3, Math.min(100, Math.round(journeyProg.pct * 100)))
-                : timeline.remainingKg <= 0.1
-                  ? 100
-                  : 3;
+              // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`):
+              // formula is `(start - current) / (start - goal)` clamped
+              // to [0, 1], via the shared helper. The old
+              // `Math.max(3, …)` floor made 0% render as 3% which looked
+              // like a broken progress bar on day-one accounts. At 0 we
+              // now render an empty bar + "Just starting" copy.
+              const pctFrac = journeyProg
+                ? computeWeightJourneyProgressPct({
+                    startKg: journeyProg.baselineKg,
+                    currentKg: latestWeightKg,
+                    goalKg: goalWeightKg,
+                  })
+                : null;
+              const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
+              const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
               // Also show daily projection based on average recent intake
               const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
               const recentDays = daysWithFood.slice(-7);
@@ -953,14 +1053,19 @@ export default function ProgressScreen() {
                       </View>
                       <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
                         <View style={{
-                          width: `${Math.max(progressPct, 3)}%` as any,
+                          width: `${progressPct}%` as any,
                           height: "100%",
                           borderRadius: 3,
                           backgroundColor: progressPct >= 100 ? t.green : t.accent,
                         }} />
                       </View>
-                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}>
-                        Now: {latestWeightKg} kg ({progressPct}% of the way)
+                      <Text
+                        testID="progress-journey-copy"
+                        style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}
+                      >
+                        {progressCopy
+                          ? `Now: ${latestWeightKg} kg \u00B7 ${progressCopy}`
+                          : `Now: ${latestWeightKg} kg`}
                       </Text>
                     </View>
                   )}

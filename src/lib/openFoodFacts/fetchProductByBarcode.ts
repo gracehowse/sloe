@@ -16,6 +16,9 @@ export interface OffProductMacros {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** F-13 auto-track; null when OFF doesn't expose it. */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
   servingLabel: string;
   /** If OFF provides a serving size like "50 g", parse to grams. */
   servingSizeG?: number;

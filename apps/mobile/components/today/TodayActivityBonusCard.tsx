@@ -12,6 +12,11 @@ import {
   type ActivityLevel,
   type Sex,
 } from "@/lib/tdee";
+import {
+  buildMaintenancePopoverCopy,
+  type MaintenanceConfidence,
+  type MaintenanceSource,
+} from "../../../../src/lib/nutrition/resolveMaintenance";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
@@ -63,6 +68,15 @@ export interface TodayActivityBonusCardProps {
   profileHeightCm?: number | null;
   profileAge?: number | null;
   profileActivityLevel?: ActivityLevel | null;
+  /**
+   * F-3 (2026-04-19) — when present, the popover uses the canonical
+   * shared copy and picks the adaptive / formula sentence from
+   * `maintenanceSource`. When omitted the card falls back to the
+   * richer BMR × multiplier breakdown for hosts that haven't wired
+   * `resolveMaintenance` yet.
+   */
+  maintenanceSource?: MaintenanceSource | null;
+  maintenanceConfidence?: MaintenanceConfidence;
 }
 
 export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
@@ -95,6 +109,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     profileHeightCm,
     profileAge,
     profileActivityLevel,
+    maintenanceSource,
+    maintenanceConfidence,
   } = props;
   const [infoOpen, setInfoOpen] = React.useState(false);
 
@@ -108,15 +124,26 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
       ? Math.round(calculateBMR(profileSex, profileWeightKg, profileHeightCm, profileAge))
       : null;
   const popoverActivity: ActivityLevel = profileActivityLevel ?? "sedentary";
+  // F-3 (2026-04-19): prefer the canonical shared copy when the host
+  // supplies a resolved source. Keeps this popover byte-identical to
+  // web's.
   const popoverCopy =
     hasMaintenanceTile && popoverBmr != null
-      ? buildTdeeExplainerCopy({
-          maintenanceTdeeKcal: maintenanceTdeeKcal!,
-          bmrKcal: popoverBmr,
-          activityLevel: popoverActivity,
-          basalKcal: basalBurnKcal,
-          activeKcal: activityBurnKcal ?? 0,
-        })
+      ? maintenanceSource
+        ? buildMaintenancePopoverCopy({
+            kcal: maintenanceTdeeKcal!,
+            source: maintenanceSource,
+            confidence: maintenanceConfidence ?? null,
+            formulaKcal: null,
+            adaptiveRejectedAsStale: false,
+          })
+        : buildTdeeExplainerCopy({
+            maintenanceTdeeKcal: maintenanceTdeeKcal!,
+            bmrKcal: popoverBmr,
+            activityLevel: popoverActivity,
+            basalKcal: basalBurnKcal,
+            activeKcal: activityBurnKcal ?? 0,
+          })
       : null;
 
   const net = totalBurnKcal - consumedCalories;

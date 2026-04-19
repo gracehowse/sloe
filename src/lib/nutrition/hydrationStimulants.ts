@@ -131,21 +131,38 @@ export function imperialWaterQuickAdds(): ReadonlyArray<{
 
 /**
  * Caffeine quick-add presets in milligrams.
- * Values are reasonable UK/EU averages, rounded to the nearest integer.
- *   - Espresso 30 ml ≈ 64 mg
- *   - Coffee (shop, 240 ml / 8 oz) ≈ 95 mg
- *   - Filter coffee (large mug, ~350 ml) ≈ 120 mg
- *   - Black tea 240 ml ≈ 48 mg
- *   - Green tea 240 ml ≈ 28 mg
- *   - Energy drink 250 ml ≈ 80 mg
- *   - Cola 330 ml ≈ 34 mg
+ *
+ * TestFlight build 10 (in-session 2026-04-19): tester read a single "Espresso"
+ * at 64 mg as wrong because they were mentally comparing a double-shot drink
+ * (128 mg — latte / flat white / americano) against a 350 ml filter-coffee
+ * mug. Labels now carry the serving size inline and common espresso-based
+ * drinks surface directly so the scale is unambiguous.
+ *
+ * Per-serving references (USDA FoodData Central + manufacturer spec sheets):
+ *   - Espresso (single, 30 ml) ≈ 64 mg
+ *   - Espresso (double, 60 ml) ≈ 128 mg
+ *   - Latte / flat white (double shot) ≈ 128 mg
+ *   - Coffee (café, 240 ml) ≈ 95 mg
+ *   - Filter coffee (mug, 350 ml) ≈ 120 mg
+ *   - Black tea (240 ml) ≈ 48 mg
+ *   - Green tea (240 ml) ≈ 28 mg
+ *   - Matcha (240 ml) ≈ 70 mg
+ *   - Energy drink (250 ml) ≈ 80 mg
+ *   - Cola (330 ml) ≈ 34 mg
  */
+// Ordered so the first four (shown by default in the card via `.slice(0, 4)`)
+// cover the highest-frequency drinks: a café coffee, a home filter mug, and
+// the two most common espresso orders. Single espresso + teas + softs are
+// in the overflow.
 export const CAFFEINE_QUICK_ADDS: ReadonlyArray<{ label: string; mg: number }> = [
-  { label: "Espresso", mg: 64 },
-  { label: "Coffee", mg: 95 },
-  { label: "Filter coffee", mg: 120 },
+  { label: "Coffee (240ml)", mg: 95 },
+  { label: "Filter coffee (350ml)", mg: 120 },
+  { label: "Espresso (double)", mg: 128 },
+  { label: "Latte / flat white", mg: 128 },
+  { label: "Espresso (single)", mg: 64 },
   { label: "Black tea", mg: 48 },
   { label: "Green tea", mg: 28 },
+  { label: "Matcha", mg: 70 },
   { label: "Energy drink", mg: 80 },
   { label: "Cola", mg: 34 },
 ] as const;

@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: "Is this a diet app?",
-    a: "No. Suppr is a personal tracking tool, not a medical device. We don’t do streaks, leaderboards, or shaming. Over-budget shows amber, not red. Targets are based on Mifflin-St Jeor and you can override them.",
+    a: "No. Suppr is a personal tracking tool, not a medical device. We don’t do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. You can opt into a gentle logging streak if you want one; it’s off by default.",
   },
   {
     q: "Is there an annual plan?",

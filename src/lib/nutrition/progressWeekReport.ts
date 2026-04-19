@@ -7,6 +7,21 @@ export type WeekDayTotals = {
   protein: number;
   carbs: number;
   fat: number;
+  /**
+   * F-2 (2026-04-19) — per-day target resolved against a snapshot when
+   * one exists, else the current profile target. `isSnapshot` is `true`
+   * only when a row from `daily_targets` was found for this day.
+   *
+   * Callers that render "% of goal" for a past day MUST divide by these
+   * numbers rather than the top-level `targets` passed into
+   * `buildWeekStats`. Otherwise a profile-level plan edit retroactively
+   * moves every past-day percentage (the AEyOuUJrB4l bug).
+   */
+  targetCalories: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  isSnapshot: boolean;
 };
 
 export type WeekStatsBundle = {
@@ -48,12 +63,28 @@ function sumDay<M extends MealMacros>(meals: M[]) {
   );
 }
 
+/**
+ * F-2 (2026-04-19) — optional per-day target overrides. When the UI has
+ * fetched `daily_targets` snapshots, it passes them here so each day's
+ * returned `target*` fields reflect the frozen value for that date.
+ * When no snapshot exists for a day, we fall back to the top-level
+ * `targets` (current profile value) with `isSnapshot = false`, and the
+ * UI visually marks the percentage as approximate.
+ */
+export type DayTargetOverride = {
+  targetCalories: number | null;
+  targetProtein: number | null;
+  targetCarbs: number | null;
+  targetFat: number | null;
+};
+
 /** Current calendar week (based on profile week start) with per-day macro totals. */
 export function buildWeekStats<M extends MealMacros>(
   byDay: ByDayOf<M>,
   targets: { calories: number; protein: number; carbs: number; fat: number },
   weekStartDay: "monday" | "sunday",
   now: Date = new Date(),
+  targetsByDay?: Record<string, DayTargetOverride | null | undefined>,
 ): WeekStatsBundle {
   const days: WeekDayTotals[] = [];
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -67,7 +98,22 @@ export function buildWeekStats<M extends MealMacros>(
     d.setDate(weekFirst.getDate() + i);
     const key = dateKeyFromDate(d);
     const totals = sumDay<M>(byDay[key] ?? []);
-    days.push({ key, label: dayLabels[d.getDay()]!, ...totals });
+    const snap = targetsByDay?.[key] ?? null;
+    // A snapshot counts only when the row actually exists AND its
+    // `target_calories` column is populated. A snapshot with a null
+    // calorie field falls back to the current target — identical
+    // behaviour to "no snapshot", so `isSnapshot = false`.
+    const hasSnapshot = !!snap && snap.targetCalories != null;
+    days.push({
+      key,
+      label: dayLabels[d.getDay()]!,
+      ...totals,
+      targetCalories: snap?.targetCalories ?? targets.calories,
+      targetProtein: snap?.targetProtein ?? targets.protein,
+      targetCarbs: snap?.targetCarbs ?? targets.carbs,
+      targetFat: snap?.targetFat ?? targets.fat,
+      isSnapshot: hasSnapshot,
+    });
   }
 
   const daysWithFoodCount = days.filter((d) => d.calories > 0).length || 1;
@@ -81,8 +127,13 @@ export function buildWeekStats<M extends MealMacros>(
   const safePro = targets.protein > 0 ? targets.protein : 0;
   const safeCarb = targets.carbs > 0 ? targets.carbs : 0;
   const safeFat = targets.fat > 0 ? targets.fat : 0;
+  // F-2 — use each day's own target when judging "on target". A past
+  // day hit its snapshot goal, not the current one.
   const proteinOnTarget = safePro > 0
-    ? days.filter((d) => d.protein >= safePro * 0.9).length
+    ? days.filter((d) => {
+        const dayTarget = d.targetProtein > 0 ? d.targetProtein : safePro;
+        return d.protein >= dayTarget * 0.9;
+      }).length
     : 0;
   const proteinAdherence = safePro > 0 && daysWithFoodCount > 0
     ? Math.round((avgProtein / safePro) * 100)

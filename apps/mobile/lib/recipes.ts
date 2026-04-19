@@ -162,8 +162,31 @@ export function useSavedRecipes(userId: string | null) {
 }
 
 /**
- * Full recipe rows for everything in the user's library (saved IDs), including private imports.
- * Order matches save date (newest first).
+ * Full recipe rows for everything in the user's library, including
+ * private imports and created drafts.
+ *
+ * Library contents (F-7, TestFlight `AO2jdncS2GxyJaeXPPFR30M`,
+ * 2026-04-18): the union of
+ *   1. Explicit saves (`saves` rows) — bookmarked via the Save toggle.
+ *   2. Anything authored by the user (`recipes.author_id = userId`) —
+ *      imports and created drafts are "mine by nature", so they stay
+ *      in Library even when unsaved. Web parity:
+ *      `src/context/AppDataContext.tsx#savedRecipesForLibrary` and the
+ *      shared pure composer `src/lib/recipes/composeLibraryEntries.ts`.
+ *
+ * Order: newest `saves.created_at` first for explicitly-saved rows,
+ * followed by recipes authored by the user but not in `saves`
+ * (ordered by `recipes.created_at` desc). `isSaved` on each card
+ * reflects whether it's in `saves` so the bookmark icon tells the
+ * truth — author-owned rows that are not in `saves` carry
+ * `isSaved: false`.
+ *
+ * F-8 (TestFlight `AAHS7CjeXNC-mwzyLgWFuKQ`, 2026-04-18): when a save
+ * references a recipe that no longer exists (orphan), the `.in("id",
+ * saveIds)` lookup silently drops it — no "Unavailable" card is ever
+ * rendered. We emit a single telemetry log when the drop count is
+ * non-zero so we can track cleanup debt. Server-side orphan cleanup
+ * happens on web (longer-lived auth); mobile observation-only.
  */
 export function useSavedLibraryRecipes(userId: string | null) {
   const [recipes, setRecipes] = useState<RecipeCard[]>([]);
@@ -177,28 +200,65 @@ export function useSavedLibraryRecipes(userId: string | null) {
     }
     setLoading(true);
 
-    const { data: saves, error: savesErr } = await supabase
-      .from("saves")
-      .select("recipe_id, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    // Parallel fetch: saves + author-owned recipes. Either can be
+    // empty independently (brand-new user with one created draft, or
+    // a user who only bookmarks community recipes).
+    const [savesRes, authoredRes] = await Promise.all([
+      supabase
+        .from("saves")
+        .select("recipe_id, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("recipes")
+        .select(
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+        )
+        .eq("author_id", userId)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    if (savesErr || !saves?.length) {
+    const saves = savesRes.data ?? [];
+    const authoredRows = authoredRes.data ?? [];
+
+    if (saves.length === 0 && authoredRows.length === 0) {
       setRecipes([]);
       setLoading(false);
       return;
     }
 
-    const ids = saves.map((s: { recipe_id: string }) => s.recipe_id);
+    const saveIds = saves.map((s: { recipe_id: string }) => s.recipe_id);
+    const saveIdSet = new Set(saveIds);
 
-    const { data: rows, error: recErr } = await supabase
-      .from("recipes")
-      .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, author:profiles!author_id(display_name, avatar_url)",
-      )
-      .in("id", ids);
+    // Fetch full rows for saves that are NOT already in the author
+    // list (authored recipes are fetched in full above). Avoids
+    // re-fetching when a user has saved their own recipe.
+    const authoredIdSet = new Set(authoredRows.map((r: any) => r.id as string));
+    const extraIds = saveIds.filter((id) => !authoredIdSet.has(id));
 
-    if (recErr || !rows?.length) {
+    let savedOnlyRows: any[] = [];
+    if (extraIds.length > 0) {
+      const { data: extraRows, error: recErr } = await supabase
+        .from("recipes")
+        .select(
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+        )
+        .in("id", extraIds);
+      if (!recErr && Array.isArray(extraRows)) {
+        savedOnlyRows = extraRows;
+        if (extraRows.length < extraIds.length) {
+          // F-8 telemetry: orphan saves referenced a deleted recipe.
+          // Silent log only — no user-facing error.
+          console.info(
+            "[useSavedLibraryRecipes] dropping orphan save rows:",
+            extraIds.length - extraRows.length,
+          );
+        }
+      }
+    }
+
+    const rows = [...authoredRows, ...savedOnlyRows];
+    if (rows.length === 0) {
       setRecipes([]);
       setLoading(false);
       return;
@@ -231,7 +291,11 @@ export function useSavedLibraryRecipes(userId: string | null) {
           fiberG: r.fiber_g ?? 0,
           isVerified: r.is_verified ?? false,
           savedCount: 0,
-          isSaved: true,
+          // F-7: `isSaved` reflects `saves` membership only — author-
+          // owned rows unioned in keep `false` so the bookmark icon on
+          // Recipe Detail can toggle between saved/unsaved without
+          // lying about state.
+          isSaved: saveIdSet.has(r.id),
           authorId: r.author_id,
           sourceUrl: r.source_url ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
@@ -244,10 +308,26 @@ export function useSavedLibraryRecipes(userId: string | null) {
       }),
     );
 
+    // Compose the ordered list:
+    //   1. Explicit saves first, in saves.created_at order (newest first).
+    //   2. Author-owned recipes not in saves, in recipes.created_at
+    //      order (authoredRows already sorted desc by the query).
     const ordered: RecipeCard[] = [];
-    for (const id of ids) {
+    const emitted = new Set<string>();
+    for (const id of saveIds) {
       const c = byId.get(id);
-      if (c) ordered.push(c);
+      if (c && !emitted.has(id)) {
+        ordered.push(c);
+        emitted.add(id);
+      }
+    }
+    for (const r of authoredRows as { id: string }[]) {
+      if (emitted.has(r.id)) continue;
+      const c = byId.get(r.id);
+      if (c) {
+        ordered.push(c);
+        emitted.add(r.id);
+      }
     }
 
     setRecipes(ordered);

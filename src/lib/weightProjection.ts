@@ -295,3 +295,91 @@ export function calcGoalTimeline(opts: {
     trendDirection,
   };
 }
+
+/**
+ * Filter a by-day map (weights, steps, water) to the trailing
+ * `maxDays` window ending today, inclusive.
+ *
+ * Single source of truth for the Weight & Trends chart range buttons
+ * (3M / 6M / 9M / 1Y / All). Previously lived inline in
+ * `apps/mobile/app/weight-tracker.tsx` which made the "range buttons
+ * don't actually change the months shown" bug (TestFlight
+ * `ACoMvhUoe_riUvOp5XZ3Sow`, 2026-04-18) impossible to unit-test at
+ * the filter level. Extracted so
+ * `apps/mobile/tests/unit/weightChartRangeFilter.test.ts` can pin
+ * the behaviour per-range.
+ *
+ * @param map      raw `{ "YYYY-MM-DD": number }` record
+ * @param maxDays  trailing window in days. Values >= today - maxDays
+ *                 are kept. `Infinity` / very large numbers → keep all.
+ * @param now      injectable for tests; defaults to `new Date()`.
+ * @returns        a new record containing only the entries whose date
+ *                 key is >= the cutoff, sorted chronologically.
+ */
+export function filterByDateRangeDays(
+  map: Record<string, number>,
+  maxDays: number,
+  now: Date = new Date(),
+): Record<string, number> {
+  if (!Number.isFinite(maxDays) || maxDays < 0) return { ...map };
+  const cutoff = new Date(now);
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - maxDays);
+  const cutoffStr = dateKeyFromDate(cutoff);
+  const entries = Object.entries(map)
+    .filter(([k]) => k >= cutoffStr)
+    .sort(([a], [b]) => a.localeCompare(b));
+  const out: Record<string, number> = {};
+  for (const [k, v] of entries) out[k] = v;
+  return out;
+}
+
+/**
+ * Weight-journey progress as a 0–1 fraction using the canonical formula:
+ *
+ *   pct = (start - current) / (start - goal)
+ *
+ * Clamped to `[0, 1]`. Direction-aware: works for "lose" journeys
+ * (start > goal) and "gain" journeys (start < goal). Returns `null`
+ * when start and goal are within 0.1 kg of each other (no meaningful
+ * journey to measure — avoids a divide-by-near-zero blow-up that
+ * previously showed "3% progress" to a user whose start equals their
+ * current weight, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`, 2026-04-18).
+ *
+ * Shared by mobile `progress.tsx` + `weight-tracker.tsx` and web
+ * `ProgressDashboard.tsx` so the number and the copy agree on every
+ * surface.
+ */
+export function computeWeightJourneyProgressPct(opts: {
+  startKg: number;
+  currentKg: number;
+  goalKg: number;
+}): number | null {
+  const { startKg, currentKg, goalKg } = opts;
+  if (!Number.isFinite(startKg) || !Number.isFinite(currentKg) || !Number.isFinite(goalKg)) {
+    return null;
+  }
+  const span = startKg - goalKg;
+  if (Math.abs(span) < 0.1) return null;
+  const moved = startKg - currentKg;
+  // Single expression works for both lose (span>0) and gain (span<0) cases:
+  //   lose  span>0, moved>0 when current<start
+  //   gain  span<0, moved<0 when current>start
+  const raw = moved / span;
+  if (!Number.isFinite(raw)) return null;
+  return Math.max(0, Math.min(1, raw));
+}
+
+/**
+ * Human-readable copy for the weight-journey progress bar. Avoids the
+ * "0% of the way" that looked like a bug to the tester in
+ * `AHEeeC9a4-lKIyW5n7HgJxs` — at exactly 0% we render "Just starting"
+ * instead of a meaningless percentage.
+ */
+export function formatWeightJourneyProgressCopy(pct: number | null): string {
+  if (pct == null) return "";
+  const rounded = Math.round(pct * 100);
+  if (rounded <= 0) return "Just starting";
+  if (rounded >= 100) return "Goal reached";
+  return `${rounded}% of the way there`;
+}

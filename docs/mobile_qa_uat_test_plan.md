@@ -747,14 +747,14 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 ### 8.5 My Library CTA → `/(tabs)/library`.
 
 ### 8.6 Recipe grid
-- 2-column FlatList; card has hero, source badge, decoded title (2 lines), creator/time, macro dots, kcal, fit badge, saves/made.
+- 2-column FlatList; card has hero, source badge, decoded title (2 lines), creator/time, macro dots, kcal, saves/made.
 - Tap → `/recipe/{id}`.
 - EDGE: HTML entities decoded via `decodeEntities`.
 - EDGE: missing image → gradient placeholder.
 - A11Y: each card Pressable with accessible name.
 
-### 8.7 Fit badge
-- Great=green, Good=accent, High=warn (verify `FitBadge`).
+### 8.7 Fit badge — REMOVED (build 10 F-11, 2026-04-19)
+- TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`: tester reported the score felt irrelevant. `FitBadge` and `fitColor` stripped from `apps/mobile/app/(tabs)/discover.tsx`; web `DiscoverFeed` lost `FitBadge` + `computeFitLevel`; `RecipeCard.fit` dropped from the mobile type. No ranking consumed the value.
 
 ### 8.8 Pull-to-refresh refetches `useDiscoverRecipes`.
 

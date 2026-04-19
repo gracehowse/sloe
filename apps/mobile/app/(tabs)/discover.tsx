@@ -35,16 +35,11 @@ function IconBox({ color, size = 28, children }: { color: string; size?: number;
   );
 }
 
-/* ── Fit Badge ── */
-function FitBadge({ fit }: { fit: string }) {
-  const label = fit === "great" ? "Great" : fit === "warn" ? "High" : "Good";
-  const color = fit === "great" ? Accent.success : fit === "warn" ? Accent.warning : Accent.primary;
-  return (
-    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: color + "18" }}>
-      <Text style={{ fontSize: 9, fontWeight: "600", color }}>{label}</Text>
-    </View>
-  );
-}
+// Build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19):
+// the per-card `FitBadge` + `fitColor` helper were removed — testers
+// reported the score felt irrelevant. Mobile also never populated
+// `item.fit` on any RecipeCard (the badge always showed "Good"), so
+// there's nothing for a ranking fallback to replace. See resolved.md.
 
 /* ── Source Badge ── */
 function SourceBadge({ source }: { source?: string }) {
@@ -149,13 +144,13 @@ export default function DiscoverScreen() {
     fat: MacroColors.fat,
   };
 
-  const fitColor = (fit?: string) =>
-    fit === "great" ? t.green : fit === "warn" ? t.amber : t.accent;
+  // F-11: fit badge removed. Hero gradient now uses a single neutral
+  // accent — the previous per-recipe colour came from the dropped
+  // fit score and read as decorative noise.
+  const heroColor = t.accent;
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
-      const fit = item.fit ?? "good";
-      const fColor = fitColor(fit);
       return (
         <Pressable
           onPress={() => router.push(`/recipe/${item.id}`)}
@@ -170,8 +165,8 @@ export default function DiscoverScreen() {
           }}
         >
           {/* Hero gradient area */}
-          <View style={{ height: 80, alignItems: "center", justifyContent: "center", backgroundColor: fColor + "12" }}>
-            <Ionicons name="restaurant-outline" size={28} color={fColor} />
+          <View style={{ height: 80, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "12" }}>
+            <Ionicons name="restaurant-outline" size={28} color={heroColor} />
             <SourceBadge source={item.source} />
           </View>
 
@@ -198,13 +193,12 @@ export default function DiscoverScreen() {
               ))}
             </View>
 
-            {/* Cal + fit badge */}
+            {/* Calories — fit badge removed (F-11). */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
                 {Math.round(item.calories)}
                 <Text style={{ fontSize: 9, fontWeight: "400", color: colors.textTertiary }}> kcal</Text>
               </Text>
-              <FitBadge fit={fit} />
             </View>
 
             {/* Saves + made */}

@@ -12,6 +12,7 @@ import { NativeModules, Platform } from "react-native";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { supabase } from "./supabase";
 import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
+import { captureException } from "./errorTracking";
 import {
   HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
   buildFiberAndMicrosFromHealthTotals,
@@ -970,41 +971,82 @@ export function isHealthSyncAvailable(): boolean {
 }
 
 export async function requestHealthPermissions(): Promise<boolean> {
-  const hk = loadAppleHealthKit();
-  if (!hk) return false;
-
+  // Top-level try/catch so a native-side throw during `loadAppleHealthKit`
+  // (module-resolution failure in an RN 0.76 newArch build) or during the
+  // permission sheet callback (iOS 26.5 HKHealthStore edge cases)
+  // surfaces as `false` rather than crashing the `Connect Apple Health`
+  // tap. The Sentry capture lets us symbolicate the stack for the next
+  // build (F-1, 2026-04-19).
   try {
-    const available = await isAvailablePromise(hk);
-    if (!available) return false;
+    const hk = loadAppleHealthKit();
+    if (!hk) return false;
 
-    await initHealthKitPromise(hk, {
-      permissions: {
-        read: [
-          "StepCount",
-          "Weight",
-          "BodyFatPercentage",
-          "ActiveEnergyBurned",
-          "BasalEnergyBurned",
-          "Workout",
-          "FoodCorrelation",
-          ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
-        ],
-        write: [
-          "EnergyConsumed",
-          "Protein",
-          "Carbohydrates",
-          "FatTotal",
-          "Fiber",
-        ],
-      },
-    });
-    return true;
-  } catch {
+    try {
+      const available = await isAvailablePromise(hk);
+      if (!available) return false;
+
+      await initHealthKitPromise(hk, {
+        permissions: {
+          read: [
+            "StepCount",
+            "Weight",
+            "BodyFatPercentage",
+            "ActiveEnergyBurned",
+            "BasalEnergyBurned",
+            "Workout",
+            "FoodCorrelation",
+            ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
+          ],
+          write: [
+            "EnergyConsumed",
+            "Protein",
+            "Carbohydrates",
+            "FatTotal",
+            "Fiber",
+          ],
+        },
+      });
+      return true;
+    } catch (inner) {
+      captureException(inner);
+      return false;
+    }
+  } catch (outer) {
+    captureException(outer);
     return false;
   }
 }
 
+const EMPTY_BODY_SYNC_RESULT = {
+  stepsUpdated: false,
+  weightUpdated: false,
+  bodyFatUpdated: false,
+  activeEnergyUpdated: false,
+  workoutsUpdated: false,
+  basalBurnUpdated: false,
+} as const;
+
 export async function syncHealthData(userId: string): Promise<{
+  stepsUpdated: boolean;
+  weightUpdated: boolean;
+  bodyFatUpdated: boolean;
+  activeEnergyUpdated: boolean;
+  workoutsUpdated: boolean;
+  basalBurnUpdated: boolean;
+}> {
+  // F-1 (2026-04-19): top-level try/catch so a native-bridge throw during
+  // body sync does not crash the Today-tab focus effect or the Sync Now
+  // button. Callers (Today, weight-tracker, burn-detail, progress) all
+  // expect a populated result object, never a rejection.
+  try {
+    return await syncHealthDataImpl(userId);
+  } catch (err) {
+    captureException(err);
+    return { ...EMPTY_BODY_SYNC_RESULT };
+  }
+}
+
+async function syncHealthDataImpl(userId: string): Promise<{
   stepsUpdated: boolean;
   weightUpdated: boolean;
   bodyFatUpdated: boolean;
@@ -1352,6 +1394,23 @@ export async function syncNutritionFromHealth(
   userId: string,
   lookbackDays = 120,
 ): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
+  // F-1 (2026-04-19): top-level try/catch so any failure inside the
+  // correlation / bulk-sync pipeline (native bridge returning unexpected
+  // shapes, supabase insert rejection, metadata-parse throws) degrades
+  // to "no import" instead of crashing the Today-tab focus effect that
+  // calls the throttled wrapper on every resume.
+  try {
+    return await syncNutritionFromHealthImpl(userId, lookbackDays);
+  } catch (err) {
+    captureException(err);
+    return { imported: [], skippedOwn: 0, skippedNoName: 0 };
+  }
+}
+
+async function syncNutritionFromHealthImpl(
+  userId: string,
+  lookbackDays = 120,
+): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
   const hk = loadAppleHealthKit();
   if (!hk) return { imported: [], skippedOwn: 0, skippedNoName: 0 };
 
@@ -1576,21 +1635,35 @@ let lastNutritionImportSyncAt = 0;
  * samples on a modest throttle (Today tab focus + manual sync).
  */
 export async function syncNutritionFromHealthThrottled(userId: string): Promise<void> {
-  if (!userId || !isHealthSyncAvailable()) return;
+  // F-1 (2026-04-19): called from the Today-tab focus effect after a
+  // `Connect Apple Health` grant. Must never throw — Today's catch is a
+  // safety net, but letting this propagate hides the root cause and
+  // leaves the throttle timestamp unadvanced (retry storm).
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const imp = await AsyncStorage.getItem("health_import_nutrition");
-    if (imp !== "true") return;
-  } catch {
-    return;
+    if (!userId || !isHealthSyncAvailable()) return;
+    try {
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      const imp = await AsyncStorage.getItem("health_import_nutrition");
+      if (imp !== "true") return;
+    } catch {
+      return;
+    }
+    const now = Date.now();
+    if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
+    await syncNutritionFromHealth(userId, 120);
+    // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
+    // is not imported (see backlog note in `exportDayToHealth`).
+    try {
+      await syncCaffeineFromHealth(userId, 30);
+    } catch (caffeineErr) {
+      // Caffeine import is best-effort; don't let it suppress the primary
+      // nutrition import's completion.
+      captureException(caffeineErr);
+    }
+    lastNutritionImportSyncAt = Date.now();
+  } catch (err) {
+    captureException(err);
   }
-  const now = Date.now();
-  if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
-  await syncNutritionFromHealth(userId, 120);
-  // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
-  // is not imported (see backlog note in `exportDayToHealth`).
-  await syncCaffeineFromHealth(userId, 30);
-  lastNutritionImportSyncAt = Date.now();
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

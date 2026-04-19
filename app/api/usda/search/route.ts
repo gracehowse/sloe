@@ -22,14 +22,21 @@ export async function GET(req: Request) {
   const q = (searchParams.get("q") ?? "").trim();
   if (!q) return NextResponse.json({ ok: false, error: "missing_q" }, { status: 400 });
 
+  // Pagination — defaults preserve historical single-page behaviour for
+  // callers that omit `page`. TestFlight F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`,
+  // 2026-04-19) asked for infinite scroll in food search; USDA is the
+  // primary paginator here.
+  const rawPage = Number(searchParams.get("page") ?? "1");
+  const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
+
   const usdaMissing = misconfiguredUsdaResponse();
   if (usdaMissing) return usdaMissing;
 
   const cfg = fdcConfigFromEnv();
 
   try {
-    const hits = await fdcFoodsSearch(cfg, q);
-    return NextResponse.json({ ok: true, hits });
+    const hits = await fdcFoodsSearch(cfg, q, { pageNumber });
+    return NextResponse.json({ ok: true, hits, page: pageNumber });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: "usda_failed", message: e instanceof Error ? e.message : "USDA request failed" },

@@ -19,12 +19,14 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { calcGoalTimeline, projectWeight } from "../../lib/weightProjection.ts";
+import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight } from "../../lib/weightProjection.ts";
+import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { buildWeekStats } from "../../lib/nutrition/progressWeekReport.ts";
+import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -121,7 +123,14 @@ function ProgressDashboardContent() {
   const [staticTdee, setStaticTdee] = useState<number | null>(null);
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
+  const [adaptiveUpdatedAt, setAdaptiveUpdatedAt] = useState<string | null>(null);
   const [isAdaptive, setIsAdaptive] = useState(false);
+  // Profile basics cached so `resolveMaintenance` can fall back to the
+  // formula when adaptive isn't confident enough (F-3, 2026-04-19).
+  const [profileSexCached, setProfileSexCached] = useState<Sex>("unspecified");
+  const [profileHeightCmCached, setProfileHeightCmCached] = useState<number>(170);
+  const [profileAgeCached, setProfileAgeCached] = useState<number>(30);
+  const [profileActivityLevelCached, setProfileActivityLevelCached] = useState<ActivityLevel>("sedentary");
 
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
@@ -137,6 +146,9 @@ function ProgressDashboardContent() {
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   const [recapLastSeenWeekKey, setRecapLastSeenWeekKey] = useState<string | null>(null);
 
+  // F-2 (2026-04-19) — daily target snapshots for past-day "% of goal".
+  const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+
   const load = useCallback(async () => {
     if (!authedUserId) {
       setLoading(false);
@@ -146,7 +158,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -204,6 +216,11 @@ function ProgressDashboardContent() {
       setAdaptiveTdee(Number.isFinite(aTdee) ? aTdee : null);
       const aConf = ((data as any).adaptive_tdee_confidence as string) ?? null;
       setAdaptiveConfidence(aConf);
+      setAdaptiveUpdatedAt(((data as any).adaptive_tdee_updated_at as string | null) ?? null);
+      setProfileSexCached(sex);
+      setProfileHeightCmCached(heightCm);
+      setProfileAgeCached(age);
+      setProfileActivityLevelCached(actLevel);
       const eff = getEffectiveTDEE({
         adaptive_tdee: aTdee,
         adaptive_tdee_confidence: aConf,
@@ -211,6 +228,31 @@ function ProgressDashboardContent() {
       });
       setIsAdaptive(eff.isAdaptive);
     }
+
+    // F-2 — fetch `daily_targets` for this week's 7 day keys so past
+    // days don't move when the user later edits their plan. Days with
+    // no snapshot (pre-migration) keep `null` in the map and the UI
+    // falls back to the current profile target.
+    {
+      const wsdResolved = String((data as { week_start_day?: string } | null)?.week_start_day ?? "").toLowerCase() === "sunday" ? "sunday" : "monday";
+      const nowD = new Date();
+      const dow = nowD.getDay();
+      const startOffset = wsdResolved === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+      const weekFirst = new Date(nowD);
+      weekFirst.setDate(nowD.getDate() + startOffset);
+      const weekKeys: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekFirst);
+        d.setDate(weekFirst.getDate() + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        weekKeys.push(`${y}-${m}-${day}`);
+      }
+      const snapshots = await getDailyTargets(supabase, authedUserId, weekKeys);
+      setDailyTargetsByDay(snapshots);
+    }
+
     setLoading(false);
   }, [authedUserId]);
 
@@ -328,15 +370,32 @@ function ProgressDashboardContent() {
   };
 
   const targets = normalizeMacroTargets(nutritionTargets);
+  // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
+  const weekTargetsByDay = useMemo(() => {
+    const out: Record<string, { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [dailyTargetsByDay]);
   const weekStatsBundle = useMemo(
-    () => buildWeekStats(nutritionByDay, targets, weekStartDay),
-    [nutritionByDay, targets, weekStartDay],
+    () => buildWeekStats(nutritionByDay, targets, weekStartDay, new Date(), weekTargetsByDay),
+    [nutritionByDay, targets, weekStartDay, weekTargetsByDay],
   );
 
+  // F-2 — each row carries its own target so the "over/under" colour
+  // on the bar chart reflects the frozen target for the day.
   const dailyCaloriesData = weekStatsBundle.days.map((d) => ({
     day: d.label,
     calories: Math.round(d.calories),
-    target: targets.calories,
+    target: d.targetCalories,
   }));
   const proteinAdherence = weekStatsBundle.proteinAdherence;
   const carbsAdherence = weekStatsBundle.carbsAdherence;
@@ -751,40 +810,58 @@ function ProgressDashboardContent() {
         </div>
       )}
 
-      {/* ADAPTIVE TDEE INSIGHT */}
-      {staticTdee != null && (
-        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
+      {/* MAINTENANCE CARD — F-3 (2026-04-19, TestFlight
+          `ADFYpDgEEb0QH-j3BXshPTo`). Was "Your TDEE"; value + label now
+          read from the shared `resolveMaintenance` helper so Today's
+          Activity Bonus tile and this card can't disagree. Adaptive
+          badge, confidence bars, formula estimate subline, and the
+          "+N actual" delta are preserved so power users can still see
+          the underlying spread. */}
+      {staticTdee != null && (() => {
+        const resolved = resolveMaintenance({
+          adaptive_tdee: adaptiveTdee,
+          adaptive_tdee_confidence: adaptiveConfidence,
+          adaptive_tdee_updated_at: adaptiveUpdatedAt,
+          sex: profileSexCached,
+          weight_kg: weightKg ?? 70,
+          height_cm: profileHeightCmCached,
+          age: profileAgeCached,
+          activity_level: profileActivityLevelCached,
+        });
+        if (!resolved) return null;
+        const showAdaptiveExtras = resolved.source === "adaptive";
+        return (
+        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
-            <p className="text-sm font-semibold text-foreground">Your TDEE</p>
-            {isAdaptive && (
+            <p className="text-sm font-semibold text-foreground">Maintenance</p>
+            {showAdaptiveExtras && (
               <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success">
                 Adaptive
               </span>
             )}
           </div>
 
-          <div className="flex gap-6 mb-3">
-            <div className="text-center">
-              <p className={`text-[28px] font-bold tabular-nums ${isAdaptive ? "text-success" : "text-foreground"}`}>
-                {isAdaptive && adaptiveTdee ? adaptiveTdee.toLocaleString() : staticTdee.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {isAdaptive ? "Adaptive TDEE" : "Estimated TDEE"}
-              </p>
-            </div>
-            {isAdaptive && adaptiveTdee && staticTdee && (
-              <div className="text-center">
-                <p className="text-[22px] font-bold text-muted-foreground tabular-nums">
-                  {staticTdee.toLocaleString()}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Formula estimate</p>
-              </div>
-            )}
+          <div className="flex items-baseline gap-2 mb-1">
+            <p className={`text-[32px] font-bold tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
+              {resolved.kcal.toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground">kcal/day</p>
           </div>
 
-          {/* Confidence indicator */}
-          {adaptiveConfidence && (
+          {showAdaptiveExtras && resolved.formulaKcal != null && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
+              {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
+                <span className="font-semibold text-foreground">
+                  {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
+                </span>
+              )}
+            </p>
+          )}
+
+          {/* Confidence indicator — only meaningful when adaptive won. */}
+          {showAdaptiveExtras && adaptiveConfidence && (
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-muted-foreground">Confidence:</span>
               <div className="flex gap-1">
@@ -812,27 +889,27 @@ function ProgressDashboardContent() {
 
           {/* Explanation */}
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {isAdaptive ? (
+            {showAdaptiveExtras ? (
               <>
-                Your TDEE is calculated from your actual intake and weight changes — more accurate than a formula estimate.
+                Maintenance is the calories you&apos;d burn in a normal day. Based on your actual intake and weight changes ({adaptiveConfidence ?? "medium"} confidence).
                 {adaptiveTdee && staticTdee && Math.abs(adaptiveTdee - staticTdee) >= 50 && (
                   <> Your real expenditure is <strong className="text-foreground">{Math.abs(adaptiveTdee - staticTdee)} kcal {adaptiveTdee > staticTdee ? "higher" : "lower"}</strong> than the formula predicted.</>
                 )}
               </>
             ) : (
               <>
-                Based on the Mifflin-St Jeor formula. Log meals and weigh in regularly to unlock your adaptive TDEE — calculated from your actual intake and weight trend.
+                Maintenance is the calories you&apos;d burn in a normal day. Formula estimate from your stats and activity level. Log meals and weigh in regularly to unlock an adaptive value that adjusts to your real burn.
                 {(() => {
                   const weightDays = Object.keys(weightKgByDay).length;
                   if (weightDays < 3) return <> You need at least 3 weigh-ins and 7 days of food logging to get started.</>;
-                  return <> Keep logging — your adaptive TDEE will activate once enough data accumulates.</>;
+                  return <> Keep logging — your adaptive maintenance will activate once enough data accumulates.</>;
                 })()}
               </>
             )}
           </p>
 
           {/* Data progress for non-adaptive users */}
-          {!isAdaptive && (
+          {!showAdaptiveExtras && (
             <div className="mt-3 pt-3 border-t border-border">
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -857,7 +934,8 @@ function ProgressDashboardContent() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* WEIGHT TRACKING */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
@@ -901,11 +979,23 @@ function ProgressDashboardContent() {
       {/* JOURNEY / WEIGHT PROJECTION */}
       {weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
         const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg, weightKgByDay });
-        const progressPct = Math.max(0, Math.min(100,
-          timeline.remainingKg > 0
-            ? ((Math.abs(weightKg - goalWeightKg) - timeline.remainingKg) / Math.abs(weightKg - goalWeightKg)) * 100
-            : 100
-        ));
+        // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`): use
+        // the canonical `(start - current) / (start - goal)` formula
+        // via the shared helper. `start` is the earliest recorded
+        // weight in the user's log, falling back to the current weight
+        // when there's no history. Replaces the previous
+        // "|cur-goal|-remaining / |cur-goal|" approximation + 3% floor
+        // so `start === current` renders a truly empty bar + "Just
+        // starting" copy.
+        const sortedDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
+        const startKg = sortedDays.length > 0 ? sortedDays[0][1] : weightKg;
+        const pctFrac = computeWeightJourneyProgressPct({
+          startKg,
+          currentKg: weightKg,
+          goalKg: goalWeightKg,
+        });
+        const progressPct = pctFrac != null ? pctFrac * 100 : 0;
+        const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
         // Recent 7-day average calories
         const recentKeys = Object.keys(nutritionByDay).sort().slice(-7);
         const daysWithFood = recentKeys.filter((k) => (nutritionByDay[k] ?? []).length > 0);
@@ -949,20 +1039,29 @@ function ProgressDashboardContent() {
                 ` Trending ${timeline.trendDirection} at ${formatRatePerWeek(timeline.weeklyRateKg)}.`}
             </p>
 
-            {/* Progress bar */}
-            <div className="flex items-center gap-2 mb-1">
+            {/* Progress bar — width follows the real percentage (no
+                min-3% floor) so `start === current` renders a truly
+                empty bar + "Just starting" copy instead of a tiny
+                sliver that looked like a broken 3% reading
+                (TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`). */}
+            <div className="flex items-center gap-2 mb-1" data-testid="progress-journey-bar">
               <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(weightKg)}</span>
               <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${Math.max(progressPct, 3)}%`,
+                    width: `${progressPct}%`,
                     background: progressPct >= 100 ? "var(--success)" : "var(--primary)",
                   }}
                 />
               </div>
               <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(goalWeightKg)}</span>
             </div>
+            {progressCopy && (
+              <p className="text-[11px] text-muted-foreground text-center mt-1" data-testid="progress-journey-copy">
+                {progressCopy}
+              </p>
+            )}
 
             {/* Projection based on recent average */}
             {dailyProjection && (

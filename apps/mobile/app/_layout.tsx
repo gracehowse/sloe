@@ -24,6 +24,11 @@ import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
 import { setPendingSiriAction } from '@/lib/siriPending';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvents } from '../../../src/lib/analytics/events';
+import {
+  markWhatsNewSeen,
+  resolveCurrentBuildNumber,
+  shouldAutoShowWhatsNew,
+} from '@/lib/whatsNew';
 
 initErrorTracking();
 configurePurchases();
@@ -208,6 +213,41 @@ function ResumeClipboardToImport() {
   return null;
 }
 
+/**
+ * F-0 "What's new" auto-surface (2026-04-19). On the first launch
+ * after a TestFlight build-number bump, push `/whats-new` once and
+ * persist the build via `markWhatsNewSeen` so it doesn't re-appear.
+ *
+ * Fail-safe: a failed AsyncStorage read or a missing build number
+ * simply no-ops — `shouldAutoShowWhatsNew` returns `false` and we
+ * never block launch. The ref guard prevents the effect firing
+ * twice in Strict Mode / hot-reload.
+ */
+function AutoSurfaceWhatsNew() {
+  const router = useRouter();
+  const hasRunRef = useRef(false);
+
+  useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
+    const currentBuild = resolveCurrentBuildNumber(Constants.expoConfig);
+    if (currentBuild == null) return;
+
+    void (async () => {
+      const should = await shouldAutoShowWhatsNew(currentBuild);
+      if (!should) return;
+      // Mark as seen BEFORE navigation so a second provider mount
+      // can't race in and re-push. Storage write errors are swallowed
+      // inside the helper.
+      await markWhatsNewSeen(currentBuild);
+      router.push('/whats-new' as any);
+    })();
+  }, [router]);
+
+  return null;
+}
+
 /** Full-screen flows — no stack chrome (custom in-screen headers / modals). */
 const STACK_HEADER_HIDDEN = new Set([
   "(tabs)",
@@ -240,6 +280,7 @@ const STACK_TITLES: Record<string, string> = {
   "recipe/[id]": "Recipe",
   "create-recipe": "New recipe",
   "nutrition-sources": "Nutrition sources",
+  "whats-new": "What's new",
   "+not-found": "Not found",
 };
 
@@ -263,6 +304,7 @@ function RootLayoutInner() {
         <ForwardSocialSharesToImport />
         <ForwardShareIntentToImport />
         <ResumeClipboardToImport />
+        <AutoSurfaceWhatsNew />
         <Stack
         screenOptions={({ route }) => ({
           headerShown: !STACK_HEADER_HIDDEN.has(route.name),

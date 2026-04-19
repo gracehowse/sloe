@@ -217,6 +217,36 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </View>
                 {hasMeals ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {/* F-17 (2026-04-19, TestFlight `AIjmgrBMmY-M6B363x_hT8I`)
+                        — populated slots had no "+" affordance, leaving the
+                        tester stuck ("now I've added yogurt for breakfast
+                        I can't add anything else"). Render a compact plus
+                        pill on populated rows that opens the same
+                        slot-scoped food search the empty-state "Tap to add"
+                        uses. `stopPropagation` prevents the outer row
+                        Pressable (which toggles slot collapse) from
+                        firing. */}
+                    <Pressable
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        onOpenFabForSlot(slot);
+                      }}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add another item to ${slot}`}
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 13,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: Accent.primary + "14",
+                        borderWidth: 1,
+                        borderColor: Accent.primary + "40",
+                      }}
+                    >
+                      <Ionicons name="add" size={16} color={Accent.primary} />
+                    </Pressable>
                     {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
                         the picker modal; 1 match logs on tap. */}
                     {hasSaved && primarySaved && (

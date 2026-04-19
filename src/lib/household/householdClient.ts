@@ -50,15 +50,29 @@ export type HouseholdSummary = {
   invite_code: string;
   isOwner: boolean;
   myRole: string;
+  /**
+   * F-16 household-level sharing toggle. `false` (default) means only
+   * dinners are shared with other members. `true` extends sharing to
+   * lunches. Owner-only write (enforced by RLS + UI); members read.
+   */
+  shareLunch: boolean;
 };
 
+/**
+ * Per-member row. The caller's own row always carries `targets`,
+ * `consumed`, and `remaining`. Other members' rows carry ONLY
+ * `userId`, `role`, and `displayName` — targets / consumed / remaining
+ * are stripped in `getMyHousehold` per the F-16 legal-reviewer approved
+ * scope narrowing (TestFlight `AJ1AeYJ--fF`, 2026-04-19). The UI must
+ * render nothing macro-flavoured when those fields are absent.
+ */
 export type MemberSummary = {
   userId: string;
   role: string;
   displayName: string;
-  targets: { calories: number; protein: number; carbs: number; fat: number };
-  consumed: { calories: number; protein: number; carbs: number; fat: number };
-  remaining: { calories: number; protein: number; carbs: number; fat: number };
+  targets?: { calories: number; protein: number; carbs: number; fat: number };
+  consumed?: { calories: number; protein: number; carbs: number; fat: number };
+  remaining?: { calories: number; protein: number; carbs: number; fat: number };
 };
 
 export type HouseholdMeal = {
@@ -169,6 +183,10 @@ export async function createHousehold(
       invite_code: household.invite_code,
       isOwner: true,
       myRole: "owner",
+      // New households default to dinner-only. The owner can flip this
+      // later via the `Share lunches too` toggle on the household
+      // screen (F-16, 2026-04-25 migration).
+      shareLunch: false,
     },
     error: null,
   };
@@ -214,11 +232,14 @@ export async function getMyHousehold(
 
   const householdId = membership.household_id as string;
 
-  // Parallel fan-out to match the REST route's shape.
+  // Parallel fan-out to match the REST route's shape. `share_lunch` is
+  // read from the household row so we can decide which meal labels
+  // leave the server (F-16 scope narrowing — default dinner-only,
+  // lunch added only when the household opts in).
   const [hResp, mResp, mealsResp] = await Promise.all([
     supabase
       .from("households")
-      .select("id, name, owner_id, invite_code, created_at")
+      .select("id, name, owner_id, invite_code, created_at, share_lunch")
       .eq("id", householdId)
       .single(),
     supabase
@@ -226,6 +247,13 @@ export async function getMyHousehold(
       .select("id, user_id, role, display_name, joined_at")
       .eq("household_id", householdId)
       .order("joined_at", { ascending: true }),
+    // Fetch all upcoming meals for the household; the meal_label filter
+    // is applied client-side below. We can't push it into Postgres with
+    // a straight `.in(...)` because `meal_label` is a free-form text
+    // column and historical rows were written as both "Dinner" and
+    // "dinner" (see `app/api/household/meals/route.ts` default vs.
+    // user-typed labels). Normalising case in JS keeps the guard
+    // robust regardless of which casing landed in the row.
     supabase
       .from("household_meals")
       .select(
@@ -248,6 +276,7 @@ export async function getMyHousehold(
     owner_id: string;
     invite_code: string;
     created_at: string;
+    share_lunch?: boolean | null;
   } | null;
   const members = (mResp.data ?? []) as Array<{
     id: string;
@@ -256,7 +285,18 @@ export async function getMyHousehold(
     display_name: string | null;
     joined_at: string;
   }>;
-  const meals = (mealsResp.data ?? []) as HouseholdMeal[];
+  const rawMeals = (mealsResp.data ?? []) as HouseholdMeal[];
+
+  // F-16 scope narrowing (legal-approved, TestFlight `AJ1AeYJ--fF`):
+  // Only dinners are shared by default. Lunches are added when the
+  // household flips `share_lunch`. Breakfasts and snacks are NEVER
+  // shared — no opt-in exists for them.
+  const shareLunch = Boolean(household?.share_lunch);
+  const allowedLabels = shareLunch ? new Set(["dinner", "lunch"]) : new Set(["dinner"]);
+  const meals = rawMeals.filter((m) => {
+    const label = (m.meal_label ?? "").trim().toLowerCase();
+    return allowedLabels.has(label);
+  });
 
   // Member macros: targets from profiles + today's logged entries.
   const memberIds = members.map((m) => m.user_id);
@@ -295,6 +335,22 @@ export async function getMyHousehold(
 
   const memberSummaries: MemberSummary[] = members.map((m) => {
     const profile = profiles.find((p) => p.id === m.user_id);
+    const displayName = m.display_name || profile?.display_name || "Member";
+    const isSelf = m.user_id === userId;
+
+    // F-16 scope narrowing (legal-approved, TestFlight `AJ1AeYJ--fF`,
+    // 2026-04-19): other members' rows MUST NOT include calorie /
+    // macro targets, consumed totals, or remaining-today numbers. Only
+    // the caller's own row keeps them. This stripping is load-bearing
+    // per legal — do not add a code path that re-shares these values.
+    if (!isSelf) {
+      return {
+        userId: m.user_id,
+        role: m.role,
+        displayName,
+      };
+    }
+
     const todays = entries.filter((e) => e.user_id === m.user_id);
     const consumed = {
       calories: todays.reduce((s, e) => s + (Number(e.calories) || 0), 0),
@@ -311,7 +367,7 @@ export async function getMyHousehold(
     return {
       userId: m.user_id,
       role: m.role,
-      displayName: m.display_name || profile?.display_name || "Member",
+      displayName,
       targets,
       consumed: {
         calories: Math.round(consumed.calories),
@@ -337,6 +393,7 @@ export async function getMyHousehold(
             invite_code: household.invite_code,
             isOwner: household.owner_id === userId,
             myRole: membership.role as string,
+            shareLunch: Boolean(household.share_lunch),
           }
         : null,
       members: memberSummaries,
@@ -464,6 +521,28 @@ export async function leaveHousehold(
   }
 
   return { data: { wasOwner }, error: null };
+}
+
+/**
+ * Owner-only toggle for `households.share_lunch`. Writes through RLS
+ * ("Household owner full access" / "Owners can update own household" —
+ * both enforce `owner_id = auth.uid()`), so a member attempting to
+ * flip it gets `PGRST` row-not-found and the caller surfaces an
+ * `update_failed` error. The UI should only render the control for
+ * owners — this function is the belt + braces server-side.
+ */
+export async function setHouseholdShareLunch(
+  supabase: SupabaseLike,
+  householdId: string,
+  shareLunch: boolean,
+): Promise<ClientResult<{ shareLunch: boolean }>> {
+  if (!householdId) return { data: null, error: "missing_household_id" };
+  const { error } = await supabase
+    .from("households")
+    .update({ share_lunch: shareLunch })
+    .eq("id", householdId);
+  if (error) return { data: null, error: (error as any)?.message || "update_failed" };
+  return { data: { shareLunch }, error: null };
 }
 
 export const __test__ = {

@@ -63,13 +63,13 @@ describe("portion scaling", () => {
     expect(hasScaled || day.meals.length === 0).toBe(true);
   });
 
-  it("portionMultiplier is between 0.5 and 2", () => {
+  it("portionMultiplier is between 0.2 and 2.5 (F-15 clamp parity with mobile)", () => {
     const plan = generatePlanFromLibrary({ savedRecipes: recipes, targets, days: 3, seed: 42 });
     for (const day of plan) {
       for (const meal of day.meals) {
         if (meal.portionMultiplier !== undefined) {
-          expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.5);
-          expect(meal.portionMultiplier).toBeLessThanOrEqual(2);
+          expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.2);
+          expect(meal.portionMultiplier).toBeLessThanOrEqual(2.5);
         }
       }
     }

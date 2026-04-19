@@ -722,6 +722,24 @@ export default function SettingsScreen() {
             </View>
             {saving ? <Text style={styles.saving}>Saving…</Text> : null}
 
+            {/* About — houses the "What's new in Suppr" surface.
+                Entry point per F-0 spec (2026-04-19): testers should
+                have a single reliable place to see which of their
+                feedback items shipped in the latest build. */}
+            <Text style={styles.sectionTitle}>About</Text>
+            <View style={styles.card}>
+              <Pressable
+                testID="settings-whats-new-row"
+                style={[styles.row, styles.rowLast]}
+                onPress={() => router.push("/whats-new" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="What's new in Suppr"
+              >
+                <Text style={styles.rowLabel}>What's new in Suppr</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+
             <Text style={styles.sectionTitle}>Data</Text>
             <View style={styles.card}>
               <Pressable

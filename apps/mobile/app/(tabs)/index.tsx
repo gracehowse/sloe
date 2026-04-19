@@ -64,10 +64,12 @@ import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
+import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
+import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
 import {
   syncHealthDataThrottled,
   syncNutritionFromHealthThrottled,
@@ -104,6 +106,8 @@ import {
   serializeQuickAddCollapsed,
 } from "../../../../src/lib/nutrition/todayProgressiveDisclosure";
 import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
+import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
+import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
 import QuickAddPanel from "@/components/QuickAddPanel";
@@ -373,6 +377,13 @@ export default function TrackerScreen() {
   const [profileActivityLevel, setProfileActivityLevel] = useState<
     "sedentary" | "light" | "moderate" | "active" | "very_active" | null
   >(null);
+  // Adaptive TDEE values — cached on Today so the Activity Bonus
+  // Maintenance tile resolves via the shared `resolveMaintenance`
+  // helper (F-3, 2026-04-19, TestFlight `ADFYpDgEEb0QH-j3BXshPTo`).
+  // Today + Progress read the same inputs → can't drift.
+  const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
+  const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
+  const [adaptiveTdeeUpdatedAt, setAdaptiveTdeeUpdatedAt] = useState<string | null>(null);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -932,7 +943,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1043,6 +1054,17 @@ export default function TrackerScreen() {
     const actRaw = typeof d.activity_level === "string" ? d.activity_level.trim().toLowerCase() : "";
     const ACT_OK = ["sedentary", "light", "moderate", "active", "very_active"] as const;
     setProfileActivityLevel((ACT_OK as readonly string[]).includes(actRaw) ? (actRaw as any) : null);
+    // Adaptive TDEE fields — fall back to null when the profile lookup
+    // used the narrow fallback select (see try/catch above) that omits
+    // these columns. `resolveMaintenance` treats null as "use formula".
+    const aTdeeRaw = (d as any).adaptive_tdee;
+    setAdaptiveTdee(typeof aTdeeRaw === "number" && Number.isFinite(aTdeeRaw) ? aTdeeRaw : null);
+    setAdaptiveTdeeConfidence(
+      typeof (d as any).adaptive_tdee_confidence === "string" ? (d as any).adaptive_tdee_confidence : null,
+    );
+    setAdaptiveTdeeUpdatedAt(
+      typeof (d as any).adaptive_tdee_updated_at === "string" ? (d as any).adaptive_tdee_updated_at : null,
+    );
     const np = d.notification_prefs as {
       showMealTimestamps?: boolean;
       weekSummaryMode?: string;
@@ -1090,26 +1112,38 @@ export default function TrackerScreen() {
     [targets.calories, profileGoal, profilePlanPace],
   );
 
-  // Static-Mifflin maintenance for the activity-bonus tile + popover.
-  // Adaptive TDEE lives in Progress only; here we surface the formula
-  // value so the user can see "BMR × multiplier = maintenance" (TestFlight
-  // `AAtW7dYcCBPyBdsMU6UqiQQ` / `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18).
-  const profileMaintenanceTdeeKcal = useMemo(() => {
-    if (
-      profileSex == null ||
-      profileWeightKg == null ||
-      profileHeightCm == null ||
-      profileAge == null
-    )
-      return null;
-    return calculateTDEE(
+  // Maintenance tile + popover single source of truth. Resolves via
+  // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
+  // confidence AND not stale, otherwise the static Mifflin formula.
+  // Progress reads from the same helper so "Maintenance 1,675" and
+  // "Your TDEE 1,777" (TestFlight `ADFYpDgEEb0QH-j3BXshPTo`, build 10)
+  // can no longer disagree.
+  const resolvedMaintenance = useMemo(
+    () =>
+      resolveMaintenance({
+        adaptive_tdee: adaptiveTdee,
+        adaptive_tdee_confidence: adaptiveTdeeConfidence,
+        adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt,
+        sex: profileSex as any,
+        weight_kg: profileWeightKg,
+        height_cm: profileHeightCm,
+        age: profileAge,
+        activity_level: profileActivityLevel as any,
+      }),
+    [
+      adaptiveTdee,
+      adaptiveTdeeConfidence,
+      adaptiveTdeeUpdatedAt,
       profileSex,
       profileWeightKg,
       profileHeightCm,
       profileAge,
-      profileActivityLevel ?? "sedentary",
-    );
-  }, [profileSex, profileWeightKg, profileHeightCm, profileAge, profileActivityLevel]);
+      profileActivityLevel,
+    ],
+  );
+  const profileMaintenanceTdeeKcal = resolvedMaintenance?.kcal ?? null;
+  const profileMaintenanceSource = resolvedMaintenance?.source ?? null;
+  const profileMaintenanceConfidence = resolvedMaintenance?.confidence ?? null;
 
   const persistActivityBonusPref = useCallback(
     async (nextVal: boolean) => {
@@ -2235,7 +2269,15 @@ export default function TrackerScreen() {
           .upsert(rows, { onConflict: "id" })
           .then(({ error }) => {
             if (error) console.error("[tracker] sync failed:", error.message);
-            else void refreshAdaptiveTdeeForUser(supabase, userId);
+            else {
+              void refreshAdaptiveTdeeForUser(supabase, userId);
+              // F-2 (2026-04-19) — freeze today's target on first log of
+              // the day. Past days stop moving when the user later edits
+              // activity_level / plan_pace / goal. Fire-and-forget — the
+              // insert has `on conflict do nothing` so repeat calls are
+              // cheap no-ops.
+              void snapshotDailyTargetIfMissing(supabase, userId);
+            }
           });
       }
     }, 600);
@@ -2273,10 +2315,29 @@ export default function TrackerScreen() {
   }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot]);
 
   const deleteMeal = useCallback((mealId: string) => {
-    setByDay((prev) => ({
-      ...prev,
-      [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
-    }));
+    // F-13 (2026-04-19) — capture the meal's caffeine/alcohol delta
+    // BEFORE we drop it so the same values can be subtracted from
+    // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`.
+    // `dayKey` is captured by scanning every day (edits from the
+    // non-selected day are rare but possible).
+    let doomedCaffeineMg = 0;
+    let doomedAlcoholG = 0;
+    let doomedDayKey: string | null = null;
+    setByDay((prev) => {
+      for (const [dk, meals] of Object.entries(prev)) {
+        const hit = meals.find((m) => m.id === mealId);
+        if (hit) {
+          doomedDayKey = dk;
+          doomedCaffeineMg = Number(hit.micros?.caffeineMg ?? 0) || 0;
+          doomedAlcoholG = Number(hit.micros?.alcoholG ?? 0) || 0;
+          break;
+        }
+      }
+      return {
+        ...prev,
+        [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
+      };
+    });
 
     // Persist deletion to Supabase (relational table).
     // Without this, the meal reappears on next app launch.
@@ -2288,6 +2349,19 @@ export default function TrackerScreen() {
         .then(({ error }) => {
           if (error) {
             console.error("[tracker] delete meal failed:", error.message);
+            return;
+          }
+          // F-13 — decrement daily caffeine / alcohol totals by the
+          // deleted meal's contribution. Clamped at 0 inside the
+          // updater so a stale delete cannot push the total negative.
+          if (
+            doomedDayKey &&
+            (doomedCaffeineMg > 0 || doomedAlcoholG > 0)
+          ) {
+            void updateStimulantsForDay(supabase, userId, doomedDayKey, {
+              caffeineMg: -doomedCaffeineMg,
+              alcoholG: -doomedAlcoholG,
+            });
           }
         });
     }
@@ -2343,6 +2417,9 @@ export default function TrackerScreen() {
         return 0;
       }
       void refreshAdaptiveTdeeForUser(supabase, userId);
+      // F-2 — snapshot today's target regardless of `targetDayKey`
+      // (back-dating a snapshot would defeat the purpose).
+      void snapshotDailyTargetIfMissing(supabase, userId);
       return withIds.length;
     },
     [userId],
@@ -2556,6 +2633,8 @@ export default function TrackerScreen() {
         Alert.alert("Log failed", error.message);
       } else {
         void loadJournal();
+        // F-2 — snapshot today's target on first meal-plan log.
+        void snapshotDailyTargetIfMissing(supabase, userId);
       }
     },
     [userId, selectedDate, loadJournal],
@@ -3012,6 +3091,8 @@ export default function TrackerScreen() {
             profileHeightCm={profileHeightCm}
             profileAge={profileAge}
             profileActivityLevel={profileActivityLevel}
+            maintenanceSource={profileMaintenanceSource}
+            maintenanceConfidence={profileMaintenanceConfidence}
             styles={styles}
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
@@ -3224,6 +3305,19 @@ export default function TrackerScreen() {
               : result.source === "OFF"
               ? "Open Food Facts"
               : "USDA FoodData Central";
+          // F-13 (2026-04-19) — auto-track caffeine + alcohol for this
+          // portion. Stashed under `micros.caffeineMg` / `micros.alcoholG`
+          // so a future delete can decrement by the same delta. Null
+          // per-100 g -> 0 (never invent). Mirrors web's FoodSearch
+          // onSelect commit path byte-for-byte.
+          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+            grams,
+            caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
+            alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
+          });
+          const micros: Record<string, number> = {};
+          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) micros.alcoholG = alcoholG;
           const meal: JournalMeal = {
             id: newMealId(),
             name: activeMealSlot,
@@ -3234,11 +3328,22 @@ export default function TrackerScreen() {
             carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
             fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
             source,
+            ...(Object.keys(micros).length > 0 ? { micros } : {}),
           };
           setByDay((prev) => ({
             ...prev,
             [dayKey]: [...(prev[dayKey] ?? []), meal],
           }));
+          // F-13 — bump `profiles.extra_caffeine_by_day` /
+          // `extra_alcohol_g_by_day` for this day. Fire-and-forget; a
+          // failure here never rolls back the local log. The debounced
+          // sync effect will upsert the meal row + its micros shortly.
+          if (userId && (caffeineMg > 0 || alcoholG > 0)) {
+            void updateStimulantsForDay(supabase, userId, dayKey, {
+              caffeineMg,
+              alcoholG,
+            });
+          }
           // L6 G1 (2026-04-18) — the Today FoodSearchModal commit was
           // the only `food_logged` emit site on mobile without a
           // source. Fire the canonical event with `custom_food` when
@@ -3263,6 +3368,20 @@ export default function TrackerScreen() {
         visible={barcodeOpen}
         onScan={(_code: string, product) => {
           setBarcodeOpen(false);
+          // F-13 (2026-04-19) — auto-track caffeine + alcohol from the
+          // scaled scanned product. `product.servingSizeG` already holds
+          // the grams the scanner dialog used; fall back to 100 g only
+          // if it is missing. Per-100 g caffeine/alcohol came straight
+          // from OFF via `lookupBarcode`.
+          const productGrams =
+            typeof product.servingSizeG === "number" && product.servingSizeG > 0
+              ? product.servingSizeG
+              : 100;
+          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+            grams: productGrams,
+            caffeineMgPer100g: product.caffeineMgPer100g ?? null,
+            alcoholGPer100g: product.alcoholGPer100g ?? null,
+          });
           const meal: JournalMeal = {
             id: newMealId(),
             name: activeMealSlot,
@@ -3278,12 +3397,21 @@ export default function TrackerScreen() {
             micros: {
               ...((product as any).sugarG > 0 ? { sugarG: Math.round((product as any).sugarG * 10) / 10 } : {}),
               ...((product as any).sodiumMg > 0 ? { sodiumMg: Math.round((product as any).sodiumMg) } : {}),
+              ...(caffeineMg > 0 ? { caffeineMg } : {}),
+              ...(alcoholG > 0 ? { alcoholG } : {}),
             },
           };
           setByDay((prev) => ({
             ...prev,
             [dayKey]: [...(prev[dayKey] ?? []), meal],
           }));
+          // F-13 — bump daily caffeine / alcohol totals on profiles.
+          if (userId && (caffeineMg > 0 || alcoholG > 0)) {
+            void updateStimulantsForDay(supabase, userId, dayKey, {
+              caffeineMg,
+              alcoholG,
+            });
+          }
           track(AnalyticsEvents.food_logged, { source: "barcode", slot: activeMealSlot });
           Alert.alert("Logged", `${product.name} added to ${activeMealSlot}.`);
         }}

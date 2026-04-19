@@ -6,7 +6,14 @@
 
 > **Shipping note (2026-04-18):** The Phase 1 read-only shared dinner list is live on web and mobile. Runtime data path for **both** platforms is `src/lib/household/householdClient.ts` — direct Supabase calls under RLS, plus a `security definer` RPC `public.household_join_by_invite_code` for the one operation RLS cannot express. The Next.js routes under `app/api/household/` still exist but are no longer the runtime path for the UI; do not add new household callers to those routes. See `docs/testflight-feedback/resolved.md` (2026-04-18 entry, ASC `AAegi1DJEiscjIFi_pYaep4`).
 >
-> **Privacy / consent note (audit 2026-04-18):** Joining a household exposes per-member daily calorie + macro **targets** and **remaining-today** numbers (sums only — never individual nutrition entries) to every other household member, server-side via the `/api/household` route. This is by design (the value prop is "see what your partner has left for the day"). Both join surfaces (`src/app/components/HouseholdPanel.tsx` web, `apps/mobile/components/HouseholdCard.tsx` mobile) carry an explicit consent disclosure before the user joins. Pinned by `tests/unit/householdJoinDisclosureCopy.test.ts` so the copy can't silently drift. The `/api/household/join` route is rate-limited to 5 attempts/min/IP (audit M1).
+> **Scope narrowing (F-16, 2026-04-25, build 11) — supersedes the previous privacy note.** Following TestFlight feedback `AJ1AeYJ--fF` and legal-reviewer sign-off, household sharing is now tightened:
+>
+> 1. **Dinners shared by default.** Lunches are shared only when the household's owner flips `households.share_lunch` to `true`. Breakfasts and snacks are NEVER shared — there is no opt-in for them.
+> 2. **Macro targets + remaining-today are PRIVATE.** `getMyHousehold` strips `targets`, `consumed`, and `remaining` from every member row that is NOT the caller. The caller's own row keeps them (so "my remaining today" still renders on the household surface). Other members' rows carry `{ userId, role, displayName }` only.
+> 3. **One-time in-app notice.** Both platforms render a dismissible banner (`household_share_narrowing_seen_v1`) on first household-screen load after the upgrade, explaining what has changed.
+> 4. **Copy is legal-approved verbatim.** Card header, join disclosure, and scope-narrowing notice live in `src/lib/household/scopeCopy.ts`. Both `src/app/components/HouseholdPanel.tsx` (web) and `apps/mobile/components/HouseholdCard.tsx` (mobile) import the constants. Rewording any of them requires a new legal review. Pinned verbatim by `tests/unit/householdJoinDisclosureCopy.test.ts`; scope read-path pinned by `tests/unit/householdScopeNarrowing.test.ts`.
+>
+> The `/api/household/join` route is still rate-limited to 5 attempts/min/IP (audit M1).
 
 ---
 
@@ -186,10 +193,11 @@ The existing `meal_plans` (JSON blob per user) and `nutrition_journals` remain u
 - The planner computes: `my calories for this meal = household_meal.calories * my_portion`.
 - This mirrors the existing `portionMultiplier` field already on `PlanMeal`.
 
-### Privacy model
+### Privacy model (post-F-16)
 - RLS ensures users can only read `household_meals` for households they belong to.
 - No access to another member's `nutrition_journals`, `meal_plans`, or any personal data.
-- The only cross-user visible data is the content of `household_meals` (recipe + macros) and membership info (name, portion).
+- The only cross-user visible data is membership info (name, role) plus the content of shared `household_meals` that pass the F-16 scope filter: dinners always, lunches only when `households.share_lunch = true`, breakfasts and snacks never.
+- Per-member `targets` / `consumed` / `remaining` are stripped by `getMyHousehold` for every member that is not the caller. The caller's own row keeps them. No server-side policy covers this — it's a client-layer guarantee because the existing `profiles` / `nutrition_entries` reads are keyed on the member list; stripping happens immediately after the fan-out read and before the function returns.
 
 ### Migration path
 - New migration creates the four tables with RLS policies.

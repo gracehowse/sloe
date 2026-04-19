@@ -12,7 +12,8 @@ export { MacroCard, type MacroType } from "./macro-card";
 export { DailyRing } from "./daily-ring";
 export { RemainingMacrosBar, type RemainingMacrosBarProps } from "./remaining-macros-bar";
 export { ConfidenceDot, type ConfidenceLevel } from "./confidence-dot";
-export { FitBadge, type FitLevel } from "./fit-badge";
+// FitBadge removed — build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`,
+// 2026-04-19). See resolved.md.
 export { SourceBadge, type SourcePlatform } from "./source-badge";
 export { QuickAddPanel, type QuickAddPanelProps } from "./quick-add-panel";
 export { CopyMealDialog } from "./copy-meal-dialog";

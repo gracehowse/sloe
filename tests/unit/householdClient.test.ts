@@ -349,13 +349,20 @@ describe("getMyHousehold", () => {
     expect(res.data?.members).toHaveLength(2);
     const ada = res.data!.members.find((m) => m.userId === "u1")!;
     expect(ada.displayName).toBe("Ada");
-    expect(ada.remaining.calories).toBe(1700); // 2200 - 500
-    expect(ada.remaining.protein).toBe(120); // 150 - 30
+    // Caller's own row keeps targets + remaining-today numbers.
+    expect(ada.remaining?.calories).toBe(1700); // 2200 - 500
+    expect(ada.remaining?.protein).toBe(120); // 150 - 30
     const bea = res.data!.members.find((m) => m.userId === "u2")!;
     // Fallback to profile display_name when membership row has none.
     expect(bea.displayName).toBe("Bea");
-    expect(bea.remaining.calories).toBe(800); // 1800 - 1000
-    // Meals passed through verbatim.
+    // F-16 (2026-04-25): other members' macro targets + remaining-today
+    // are stripped server-side per legal-approved scope narrowing
+    // (`AJ1AeYJ--fF`). This assertion replaces the pre-F-16 check that
+    // Bea's `remaining.calories` equalled 800 (1800 - 1000) — that
+    // exposure is no longer permitted.
+    expect(bea.remaining).toBeUndefined();
+    expect(bea.targets).toBeUndefined();
+    // Meals passed through verbatim (Dinner survives the F-16 filter).
     expect(res.data?.meals).toHaveLength(1);
     expect(res.data?.meals[0]?.recipe_title).toBe("Chili");
   });

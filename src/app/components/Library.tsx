@@ -18,7 +18,16 @@ function entryKindForRecipe(
 ): LibraryEntryKind {
   if (explicit) return explicit;
   if (recipe.creatorName === "Unavailable") return "saved";
-  if (userId && recipe.authorId && recipe.authorId === userId) return "created";
+  // F-7 (TestFlight `AO2jdncS2GxyJaeXPPFR30M`, 2026-04-18): parity
+  // with `apps/mobile/app/(tabs)/library.tsx#entryKindForCard`. When
+  // the explicit map entry is missing (author-owned recipes unioned
+  // in because they're "mine by nature" even after unsave), fall
+  // back to `imported` if the recipe carries a source URL, else
+  // `created`.
+  if (userId && recipe.authorId && recipe.authorId === userId) {
+    const sourceUrl = (recipe as { sourceUrl?: string | null }).sourceUrl;
+    return sourceUrl ? "imported" : "created";
+  }
   return "saved";
 }
 

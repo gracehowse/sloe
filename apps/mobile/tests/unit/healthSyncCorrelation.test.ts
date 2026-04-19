@@ -367,3 +367,140 @@ describe("bucketEnergyShares — proportional macro split (MFP bulk-sync mitigat
     expect(legacyAmbiguousBuckets).toBe(1);
   });
 });
+
+/**
+ * F-1 (2026-04-19) — `Connect Apple Health` crash on iOS 26.5 across
+ * three ASC feedback submissions (`AC0AeyMF3Ehhq0lJ1AXQmyk`,
+ * `AHhgUl6i1lax8FBuUU0bprg`, `AEXP_nvFy4c7Fde3PhCdK6w`). The native
+ * bridge (react-native-health custom patch) was handing the JS helpers
+ * unexpected shapes — non-object metadata, non-array correlation rows,
+ * Proxies that threw on property access. Each exported helper now has
+ * try/catch with a safe legacy fallback so the sync pipeline never
+ * propagates an exception up to the Today-tab focus effect.
+ *
+ * These tests pin the defensive branches so a future refactor that
+ * drops a guard will fail loudly instead of re-introducing the crash.
+ */
+describe("F-1 — defensive guards (Connect Apple Health crash, 2026-04-19)", () => {
+  it("dietaryCorrelationKeyForSample returns a legacy fallback for a non-object sample", () => {
+    // Native bridges have been observed handing the JS side `undefined`
+    // or a raw string for individual rows under memory pressure.
+    const r1 = dietaryCorrelationKeyForSample(undefined as unknown as CorrelationDietarySample, null);
+    const r2 = dietaryCorrelationKeyForSample(null as unknown as CorrelationDietarySample, null);
+    const r3 = dietaryCorrelationKeyForSample("bad" as unknown as CorrelationDietarySample, null);
+    for (const r of [r1, r2, r3]) {
+      expect(r.source).toBe("minuteBundle");
+      expect(typeof r.key).toBe("string");
+      expect(r.key.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("dietaryCorrelationKeyForSample falls back to minuteBundle when metadata access throws", () => {
+    // Simulate a Proxy metadata object that throws on any key read —
+    // the shape we've seen the RN 0.76 newArch callback path hand us.
+    const hostile = new Proxy({}, {
+      get() {
+        throw new Error("boom");
+      },
+      has() {
+        throw new Error("boom");
+      },
+      ownKeys() {
+        throw new Error("boom");
+      },
+    }) as Record<string, unknown>;
+    const sample: CorrelationDietarySample = {
+      id: "e-x",
+      value: 500,
+      startDate: MIDNIGHT,
+      sourceBundleId: "com.example",
+      metadata: hostile,
+    };
+    const r = dietaryCorrelationKeyForSample(sample, null);
+    expect(r.source).toBe("minuteBundle");
+    expect(r.key).toContain("com.example");
+  });
+
+  it("dietaryCorrelationKeyForSample falls back when the parent-map Map.get throws", () => {
+    // Pathological Map-shaped value whose `get` throws — we should still
+    // return a legacy key rather than crash the caller.
+    const hostileMap = {
+      get() {
+        throw new Error("boom");
+      },
+    } as unknown as ReadonlyMap<string, string>;
+    const sample: CorrelationDietarySample = {
+      id: "e-x",
+      value: 500,
+      startDate: MIDNIGHT,
+      sourceBundleId: MFP_BUNDLE,
+    };
+    const r = dietaryCorrelationKeyForSample(sample, hostileMap);
+    expect(r.source).toBe("minuteBundle");
+    expect(r.key).toContain(MFP_BUNDLE);
+  });
+
+  it("buildQuantityIdToCorrelationId returns an empty map for malformed inputs rather than throwing", () => {
+    expect(buildQuantityIdToCorrelationId(null as unknown as CorrelationParentRow[]).size).toBe(0);
+    expect(buildQuantityIdToCorrelationId(undefined).size).toBe(0);
+    expect(buildQuantityIdToCorrelationId("bad" as unknown as CorrelationParentRow[]).size).toBe(0);
+    expect(
+      buildQuantityIdToCorrelationId([
+        { id: "ok", quantitySampleIds: ["a"] },
+        // @ts-expect-error — simulate bridge handing us a non-object row
+        null,
+        // @ts-expect-error — non-array ids
+        { id: "bad", quantitySampleIds: "nope" },
+      ]).get("a"),
+    ).toBe("ok");
+  });
+
+  it("bucketEnergyShares tolerates a non-array samples input and returns a noop share fn", () => {
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares(
+      undefined as unknown as CorrelationDietarySample[],
+      null,
+    );
+    expect(legacyAmbiguousBuckets).toBe(0);
+    expect(shareForSample("anything", "anything")).toBe(1);
+  });
+
+  it("bucketEnergyShares tolerates null entries and continues with the valid ones", () => {
+    const good = energySample("e-good", 400);
+    const samples = [good, null as unknown as CorrelationDietarySample, undefined as unknown as CorrelationDietarySample];
+    const { shareForSample, legacyAmbiguousBuckets } = bucketEnergyShares(samples, null);
+    const key = dietaryCorrelationKeyForSample(good, null).key;
+    expect(legacyAmbiguousBuckets).toBe(0);
+    expect(shareForSample("e-good", key)).toBe(1);
+  });
+
+  it("detectBulkSync returns {detected:false, bundles:[]} for malformed inputs rather than throwing", () => {
+    expect(detectBulkSync(null as unknown as CorrelationDietarySample[], null)).toEqual({
+      detected: false,
+      bundles: [],
+    });
+    expect(detectBulkSync(undefined as unknown as CorrelationDietarySample[], null)).toEqual({
+      detected: false,
+      bundles: [],
+    });
+    expect(detectBulkSync([null as unknown as CorrelationDietarySample], null)).toEqual({
+      detected: false,
+      bundles: [],
+    });
+  });
+
+  it("legacy fallback path is preserved when the parent-map lookup fails — MFP bulk-sync fix (P0-2) does not regress", () => {
+    // Sanity check that the P0-2 fix (per-correlation grouping) still
+    // wins when the bridge data is clean, and only degrades to legacy
+    // bucketing when every correlation path is unusable. Guards against
+    // a future over-aggressive try/catch hiding real correlation data.
+    const clean = energySample("e-clean", 500, { HKCorrelationUUID: "food-clean" });
+    expect(dietaryCorrelationKeyForSample(clean, null).source).toBe("metaUuid");
+    expect(dietaryCorrelationKeyForSample(clean, null).key).toContain("food-clean");
+
+    const withParentMap = energySample("e-pm", 500);
+    const parentMap = buildQuantityIdToCorrelationId([
+      { id: "food-pm", quantitySampleIds: ["e-pm"] },
+    ]);
+    expect(dietaryCorrelationKeyForSample(withParentMap, parentMap).source).toBe("parentMap");
+  });
+});

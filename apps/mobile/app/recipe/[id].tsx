@@ -24,6 +24,7 @@ import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -557,6 +558,8 @@ export default function RecipeDetailScreen() {
       if (error) {
         Alert.alert("Could not log", error.message);
       } else {
+        // F-2 — snapshot today's target on first log.
+        void snapshotDailyTargetIfMissing(supabase, userId);
         Alert.alert("Logged", `${recipe.title} added to today at ${mult}× portion.`, [
           { text: "Stay", style: "cancel" },
           { text: "View Today", onPress: () => router.push("/(tabs)" as any) },

@@ -124,6 +124,24 @@ export default function MealNutritionScreen() {
     const title = meal?.recipeTitle?.trim() || "Meal nutrition";
     navigation.setOptions({
       title,
+      // F-19 (2026-04-19) — the default native-header back was silently
+      // no-op'ing in some cold-start / deep-link entry flows where the
+      // stack held no history. Force a custom `headerLeft` wired to
+      // `safeBack`, which falls back to `replace("/(tabs)")` so the
+      // chevron always resolves. Matches the 20px hit-slop of the
+      // default back button and styles the chevron to the current
+      // text colour so it reads in both light + dark.
+      headerLeft: () => (
+        <Pressable
+          onPress={goBack}
+          hitSlop={20}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
+        >
+          <Ionicons name="chevron-back" size={26} color={colors.text} />
+        </Pressable>
+      ),
       headerRight: () =>
         meal ? (
           <Pressable onPress={openEditOnToday} hitSlop={12} style={{ paddingHorizontal: Spacing.md }}>
@@ -131,7 +149,7 @@ export default function MealNutritionScreen() {
           </Pressable>
         ) : null,
     });
-  }, [navigation, meal, openEditOnToday]);
+  }, [navigation, meal, openEditOnToday, goBack, colors.text]);
 
   if (loading) {
     return (

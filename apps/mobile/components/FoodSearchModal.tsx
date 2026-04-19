@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -72,6 +71,14 @@ type Macros = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g.
+   * `null` when the source did not publish the nutrient; the food-log
+   * commit path treats `null` as 0 via `scaleCaffeineAlcohol` rather
+   * than inventing a fallback (project rule).
+   */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
 };
 
 export type SelectedFood = {
@@ -280,6 +287,14 @@ export default function FoodSearchModal({
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** 1-indexed page counter for infinite scroll. Reset on every new
+   *  query; incremented by `loadMore` when the list end is reached.
+   *  Paired with `hasMoreRef` — once a page returns zero new external
+   *  rows we stop fetching. TestFlight F-10
+   *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+  const pageRef = useRef(1);
+  const hasMoreRef = useRef(true);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
@@ -340,14 +355,25 @@ export default function FoodSearchModal({
 
   /** Merge custom-food matches at the top of USDA/OFF results. Custom
    *  rows are never de-duped against external rows — the user explicitly
-   *  saved the custom version so we preserve that intent. */
+   *  saved the custom version so we preserve that intent. No list cap
+   *  here; infinite scroll (F-10) relies on the caller controlling how
+   *  many external pages have been fetched. */
   const mergeWithCustom = useCallback((external: UnifiedSearchResult[], customs: CustomFood[]): SearchRow[] => {
     const customRows: SearchRow[] = customs.map(customFoodToRow);
-    const merged: SearchRow[] = [...customRows, ...(external as SearchRow[])];
-    // Cap the combined list so a user with a huge library never pushes
-    // USDA results entirely off-screen.
-    return merged.slice(0, 30);
+    return [...customRows, ...(external as SearchRow[])];
   }, []);
+
+  /** Append a freshly-fetched page of external results, dropping any row
+   *  whose key is already present. Custom-food rows stay in place — they
+   *  are page-invariant. F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+  const appendPage = useCallback(
+    (prev: SearchRow[], next: UnifiedSearchResult[]): SearchRow[] => {
+      const seen = new Set<string>(prev.map((r) => r.key));
+      const fresh = (next as SearchRow[]).filter((r) => !seen.has(r.key));
+      return [...prev, ...fresh];
+    },
+    [],
+  );
 
   useEffect(() => {
     if (visible) {
@@ -355,15 +381,21 @@ export default function FoodSearchModal({
       setResults([]);
       setPreview(null);
       backfillRef.current++;
+      pageRef.current = 1;
+      hasMoreRef.current = true;
       if (customEnabled) void refreshCustomLibrary();
       if (initialQuery.trim()) {
         setLoading(true);
-        const externalP = searchFoods(initialQuery, (partial) => {
-          // While waiting for custom results, still show the external
-          // partials so the modal doesn't appear frozen. Once customs
-          // resolve we replace with the merged list below.
-          setResults(partial as SearchRow[]);
-        });
+        const externalP = searchFoods(
+          initialQuery,
+          (partial) => {
+            // While waiting for custom results, still show the external
+            // partials so the modal doesn't appear frozen. Once customs
+            // resolve we replace with the merged list below.
+            setResults(partial as SearchRow[]);
+          },
+          { page: 1 },
+        );
         const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
           ? searchCustomFoods(
               supabase as Parameters<typeof searchCustomFoods>[0],
@@ -375,6 +407,7 @@ export default function FoodSearchModal({
           const merged = mergeWithCustom(r, customs);
           setResults(merged);
           setLoading(false);
+          hasMoreRef.current = r.length > 0;
           backfillMissingMacros(merged);
         });
       }
@@ -385,6 +418,8 @@ export default function FoodSearchModal({
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     backfillRef.current++;
+    pageRef.current = 1;
+    hasMoreRef.current = true;
     const q = text.trim();
     if (!q) {
       setResults([]);
@@ -392,7 +427,11 @@ export default function FoodSearchModal({
     }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      const externalP = searchFoods(q, (partial) => setResults(partial as SearchRow[]));
+      const externalP = searchFoods(
+        q,
+        (partial) => setResults(partial as SearchRow[]),
+        { page: 1 },
+      );
       const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
         ? searchCustomFoods(
             supabase as Parameters<typeof searchCustomFoods>[0],
@@ -404,9 +443,43 @@ export default function FoodSearchModal({
       const merged = mergeWithCustom(r, customs);
       setResults(merged);
       setLoading(false);
+      hasMoreRef.current = r.length > 0;
       backfillMissingMacros(merged);
     }, 400);
   }, [backfillMissingMacros, customEnabled, supabase, userId, mergeWithCustom]);
+
+  /** FlatList onEndReached — fetch the next external page and append.
+   *  Concurrent-safe via `loadingMore` flag and `hasMoreRef` terminal
+   *  latch. Custom-food rows are page-invariant so they stay in place.
+   *  TestFlight F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading) return;
+    if (!hasMoreRef.current) return;
+    const q = query.trim();
+    if (!q) return;
+    const nextPage = pageRef.current + 1;
+    setLoadingMore(true);
+    try {
+      const more = await searchFoods(q, undefined, { page: nextPage });
+      if (more.length === 0) {
+        hasMoreRef.current = false;
+        return;
+      }
+      pageRef.current = nextPage;
+      setResults((prev) => {
+        const appended = appendPage(prev, more);
+        // If de-dup swallowed every new row, treat the source as
+        // exhausted — further fetches would keep returning overlap.
+        if (appended.length === prev.length) {
+          hasMoreRef.current = false;
+        }
+        backfillMissingMacros(appended);
+        return appended;
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, query, appendPage, backfillMissingMacros]);
 
   const onPickResult = useCallback(
     async (item: SearchRow) => {
@@ -763,9 +836,11 @@ export default function FoodSearchModal({
                 : item.name
           }
         >
-          {item.imageUrl && (
-            <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
-          )}
+          {/* Build 10 F-10 (TestFlight `AHnI_fIc7SKbaRcdd5SZB9Q`,
+              2026-04-19): search rows no longer render a product
+              image. Mixed image / no-image rows (Edamam restaurant +
+              USDA Branded had images, USDA generic did not) looked
+              messy; the decision is drop entirely for consistency. */}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               {isCustom && <Badge variant="custom">Custom</Badge>}
@@ -861,12 +936,6 @@ export default function FoodSearchModal({
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       gap: Spacing.md,
-    },
-    productImage: {
-      width: 40,
-      height: 40,
-      borderRadius: Radius.sm,
-      backgroundColor: colors.card,
     },
     resultName: { fontSize: 14, color: colors.text, fontWeight: "500" },
     macroPreview: {
@@ -1125,6 +1194,14 @@ export default function FoodSearchModal({
             renderItem={renderItem}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            // Infinite scroll — TestFlight F-10
+            // (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Threshold 0.4
+            // starts the next fetch a little before the true bottom so
+            // the scroll feels continuous.
+            onEndReached={() => {
+              void loadMore();
+            }}
+            onEndReachedThreshold={0.4}
             ListEmptyComponent={
               !loading && query.trim() ? (
                 <Text style={styles.emptyText}>
@@ -1134,33 +1211,40 @@ export default function FoodSearchModal({
               ) : null
             }
             ListFooterComponent={
-              customEnabled ? (
-                <Pressable
-                  onPress={() => {
-                    setEditingFood(undefined);
-                    setCreateOpen(true);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Create a new custom food"
-                  style={{
-                    marginTop: Spacing.md,
-                    paddingVertical: Spacing.md,
-                    alignItems: "center",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: Spacing.sm,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderStyle: "dashed",
-                    borderRadius: Radius.md,
-                  }}
-                >
-                  <Ionicons name="add" size={16} color={Accent.primary} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
-                    Create custom food
-                  </Text>
-                </Pressable>
-              ) : null
+              <View>
+                {loadingMore ? (
+                  <View style={{ paddingVertical: Spacing.md, alignItems: "center" }}>
+                    <ActivityIndicator size="small" color={Accent.primary} />
+                  </View>
+                ) : null}
+                {customEnabled ? (
+                  <Pressable
+                    onPress={() => {
+                      setEditingFood(undefined);
+                      setCreateOpen(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create a new custom food"
+                    style={{
+                      marginTop: Spacing.md,
+                      paddingVertical: Spacing.md,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderStyle: "dashed",
+                      borderRadius: Radius.md,
+                    }}
+                  >
+                    <Ionicons name="add" size={16} color={Accent.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                      Create custom food
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             }
           />
         )}

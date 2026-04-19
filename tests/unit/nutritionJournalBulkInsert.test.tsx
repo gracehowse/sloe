@@ -39,6 +39,9 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
       // `.select(...)` is used both in the hook's one-time probe
       // (`.select("id").limit(1)`) and in the initial load effect
       // (`.select(...).eq("user_id", …).order("created_at", …)`).
+      // Also used by the F-2 daily-target snapshot helper via
+      // `.select(...).eq("id", userId).maybeSingle()` — the chain must
+      // resolve cleanly rather than fail with "not a function".
       // Return a chainable thenable that resolves empty either way.
       select: (_cols?: string) => {
         const result = Promise.resolve({ data: [], error: null });
@@ -46,6 +49,7 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
           limit: () => result,
           eq: () => chain,
           order: () => result,
+          maybeSingle: () => Promise.resolve({ data: null, error: null }),
         };
         return chain;
       },
@@ -53,6 +57,11 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         insertCalls.push({ rows });
         return Promise.resolve({ error: null });
       },
+      // F-2 snapshot helper uses `.upsert(row, { onConflict, ignoreDuplicates })`.
+      // Swallow the call — the bulk-insert suite doesn't need to
+      // assert its shape (those live in `dailyTargetSnapshot.test.ts`).
+      upsert: (_rows: unknown, _opts?: unknown) =>
+        Promise.resolve({ error: null }),
       delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
     }),
   },

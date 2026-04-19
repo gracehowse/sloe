@@ -25,6 +25,9 @@ import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
+import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -108,6 +111,18 @@ export default function BarcodeScreen() {
     const dateKey = dateKeyFromDate(new Date());
     const mealId = newMealId();
     const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    // F-13 (2026-04-19) — compute caffeine + alcohol for the scanned
+    // portion. Product fields came from OFF `nutriments.caffeine_100g`
+    // / `alcohol_100g`; null when absent so the commit path skips the
+    // bump rather than inventing a fallback.
+    const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+      grams,
+      caffeineMgPer100g: product.caffeineMgPer100g ?? null,
+      alcoholGPer100g: product.alcoholGPer100g ?? null,
+    });
+    const nutritionMicros: Record<string, number> = {};
+    if (caffeineMg > 0) nutritionMicros.caffeineMg = caffeineMg;
+    if (alcoholG > 0) nutritionMicros.alcoholG = alcoholG;
     const { error: dbErr } = await supabase.from("nutrition_entries").insert({
       id: mealId,
       user_id: userId,
@@ -122,11 +137,21 @@ export default function BarcodeScreen() {
       fiber_g: scaled.fiberG ?? null,
       portion_multiplier: 1,
       source: "Open Food Facts",
+      ...(Object.keys(nutritionMicros).length > 0 ? { nutrition_micros: nutritionMicros } : {}),
     });
     setLogging(false);
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);
     } else {
+      // F-2 — freeze today's target on first log of the day.
+      void snapshotDailyTargetIfMissing(supabase, userId);
+      // F-13 — bump daily caffeine / alcohol totals.
+      if (caffeineMg > 0 || alcoholG > 0) {
+        void updateStimulantsForDay(supabase, userId, dateKey, {
+          caffeineMg,
+          alcoholG,
+        });
+      }
       Alert.alert("Logged", `${product.name} (${portionSummary}) added to today's tracker.`, [
         { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
@@ -162,6 +187,8 @@ export default function BarcodeScreen() {
     if (dbErr) {
       Alert.alert("Could not log", dbErr.message);
     } else {
+      // F-2 — freeze today's target on first log of the day.
+      void snapshotDailyTargetIfMissing(supabase, userId);
       Alert.alert("Logged", `${manualName.trim()} added to today's tracker.`, [
         { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },

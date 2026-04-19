@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
-import { FitBadge, type FitLevel } from "./suppr/fit-badge";
 import { SourceBadge } from "./suppr/source-badge";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -85,20 +84,11 @@ function formatFeedTime(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Compute how well a recipe fits the user's daily macro targets. */
-function computeFitLevel(
-  recipe: { calories: number; protein: number; carbs: number; fat: number },
-  targets: { calories: number; protein: number; carbs: number; fat: number },
-): FitLevel {
-  if (targets.calories <= 0) return "good"; // no target set
-  const calPct = recipe.calories / targets.calories;
-  const proRatio = targets.protein > 0 ? recipe.protein / targets.protein : 0;
-  // "Great Fit": ≤40% of daily cal budget AND decent protein ratio
-  if (calPct <= 0.4 && proRatio >= 0.2) return "great";
-  // "Over Budget": >60% of daily cal budget
-  if (calPct > 0.6) return "over";
-  return "good";
-}
+// Build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19):
+// the per-card macro-fit score was removed — testers reported it felt
+// irrelevant. `computeFitLevel` / `FitBadge` have been stripped from
+// the recipe card below. No ranking consumed this value (cards remain
+// sorted by feed scope / quick filter), so no sort fallback is needed.
 
 type StoryCreator = { key: string; name: string; image: string; recipeId: string };
 
@@ -110,7 +100,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   onConsumedDeepLinkRecipe,
   onViewTracker,
 }: DiscoverFeedProps) {
-  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes, nutritionTargets } = useAppData();
+  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -584,8 +574,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           ) : (
             <div className="grid grid-cols-2 gap-2 px-4">
               {recipes.map((recipe) => {
-                const fitLevel = computeFitLevel(recipe, nutritionTargets);
-                const fitColor = fitLevel === "great" ? "var(--success)" : fitLevel === "over" ? "var(--warning)" : "var(--primary)";
+                // F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19): the
+                // fit badge previously rendered here was removed; the
+                // hero gradient now uses a single neutral accent so
+                // no per-recipe colour comes from the dropped score.
+                const heroColor = "var(--primary)";
                 return (
                   <div
                     key={recipe.id}
@@ -594,11 +587,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     className="rounded-xl bg-card border border-border overflow-hidden cursor-pointer"
                   >
                     {/* Hero gradient or image */}
-                    <div className="flex items-center justify-center relative overflow-hidden" style={{ height: 80, background: recipe.image ? undefined : `linear-gradient(135deg, ${fitColor}08, ${fitColor}18)` }}>
+                    <div className="flex items-center justify-center relative overflow-hidden" style={{ height: 80, background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}>
                       {recipe.image ? (
                         <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <Icons.dinner className="w-7 h-7" style={{ color: `${fitColor}60` }} />
+                        <Icons.dinner className="w-7 h-7" style={{ color: `${heroColor}60` }} />
                       )}
                       {recipe.sourcePlatform && (
                         <div className="absolute top-2 left-2">
@@ -630,13 +623,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         ))}
                       </div>
 
-                      {/* Cal + fit */}
+                      {/* Calories — fit badge removed (F-11). */}
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-foreground tabular-nums">
                           {recipe.calories}
                           <span className="text-[9px] font-normal text-muted-foreground"> kcal</span>
                         </span>
-                        <FitBadge fit={fitLevel} />
                       </div>
 
                       {/* Stats */}

@@ -33,6 +33,7 @@ import { resolve as pathResolve } from "node:path";
 // which vite-node owns.
 const RN_SHIM_PATH = pathResolve(__dirname, "shims", "react-native.cjs");
 const RN_SVG_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-svg.cjs");
+const RN_GH_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-gesture-handler.cjs");
 
 type RequireInternal = typeof require & {
   resolve: RequireResolve;
@@ -66,6 +67,12 @@ ModuleRef._resolveFilename = function patchedResolveFilename(
   if (request === "react-native-svg" || request === "react-native-svg/") {
     return RN_SVG_SHIM_PATH;
   }
+  if (
+    request === "react-native-gesture-handler" ||
+    request === "react-native-gesture-handler/"
+  ) {
+    return RN_GH_SHIM_PATH;
+  }
   return originalResolveFilename.call(
     ModuleRef,
     request,
@@ -84,6 +91,8 @@ const REDIRECTS: Record<string, string> = {
   "react-native/": RN_SHIM_PATH,
   "react-native-svg": RN_SVG_SHIM_PATH,
   "react-native-svg/": RN_SVG_SHIM_PATH,
+  "react-native-gesture-handler": RN_GH_SHIM_PATH,
+  "react-native-gesture-handler/": RN_GH_SHIM_PATH,
 };
 
 const originalCreateRequire = Module.createRequire;

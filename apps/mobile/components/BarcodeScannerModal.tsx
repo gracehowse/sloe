@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 
 type Props = {
@@ -66,6 +67,16 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
   const [corrCarbs, setCorrCarbs] = useState("");
   const [corrFat, setCorrFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
+  // F-20 (2026-04-19, TestFlight `AIOek8w6GKW5DdY1XK9avkE`) — many
+  // products only list nutrition per serving (e.g. PBfit: per 16 g). The
+  // tester typed per-serving numbers into a form that silently stored
+  // them as per-100g, wildly inflating calories. New basis toggle lets
+  // users choose "Per 100 g" (default) or "Per serving" with a
+  // serving-size input; macros scale to per-100g before save so the DB
+  // contract is unchanged. Matches Custom Food's established "Per 100 g /
+  // Per serving" wording.
+  const [corrBasis, setCorrBasis] = useState<CorrectionBasis>("per100g");
+  const [corrServingG, setCorrServingG] = useState("");
 
   const scaled = useMemo(() => {
     if (!product) return null;
@@ -100,15 +111,36 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     [loading, scanned],
   );
 
+  // F-18 (2026-04-19, TestFlight `ABs9n0AyFkA8VeH7WPbwdGE`) — when OFF
+  // gives no real label serving the builder falls back to a generic
+  // `1 serving (N g)` chip. Saying "1 serving" is meaningless when the
+  // product has no manufacturer serving, so collapse that display to
+  // the gram weight alone. Pattern matches both the literal fallback
+  // string and the close-paren form so we don't accidentally strip a
+  // true label like "1 cup (240 g)".
+  const GENERIC_1_SERVING_LABEL = /^1\s+serving\s*\(\s*\d+(?:\.\d+)?\s*g\s*\)\s*$/i;
+
+  const displayServingLabel = useCallback((label: string, grams: number): string => {
+    if (GENERIC_1_SERVING_LABEL.test(label.trim())) {
+      return `${Math.round(grams)} g`;
+    }
+    return label;
+  }, []);
+
   const portionSummary = useMemo(() => {
     const opts = product?.servingOptions ?? [];
     const hit = opts.find((o) => Math.abs(o.grams - grams) < 0.51);
-    return hit?.label ?? `${grams} g`;
-  }, [product, grams]);
+    if (hit) return displayServingLabel(hit.label, hit.grams);
+    return `${grams} g`;
+  }, [product, grams, displayServingLabel]);
 
   const onConfirm = useCallback(() => {
     if (scanned && product && scaled) {
       // Pass a scaled product to the parent
+      // F-13 (2026-04-19) — preserve caffeine/alcohol per 100 g from the
+      // OFF lookup so the host screen can call `scaleCaffeineAlcohol` on
+      // commit and auto-track the daily totals. These are NOT pre-scaled
+      // — the per-100 g reference is what the commit path needs.
       const scaledProduct: BarcodeProduct = {
         ...product,
         calories: scaled.calories,
@@ -159,40 +191,68 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     setCorrProtein(String(product.protein));
     setCorrCarbs(String(product.carbs));
     setCorrFat(String(product.fat));
+    // F-20 — default to per-100g because that matches the DB contract
+    // and the existing product fields we just copied in.
+    setCorrBasis("per100g");
+    setCorrServingG(
+      product.servingSizeG && product.servingSizeG > 0
+        ? String(Math.round(product.servingSizeG))
+        : "",
+    );
     setCorrectionMode(true);
   }, [product]);
 
+  // F-20 — derived per-100g values from whatever basis the user picked.
+  // Delegates to the pure `scaleCorrectionToPer100g` helper so mobile
+  // and any future surface share the same rounding + validity rules.
+  const corrPer100g = useMemo(
+    () =>
+      scaleCorrectionToPer100g({
+        basis: corrBasis,
+        calories: Number(corrCalories) || 0,
+        protein: Number(corrProtein) || 0,
+        carbs: Number(corrCarbs) || 0,
+        fat: Number(corrFat) || 0,
+        servingGrams: Number(corrServingG) || 0,
+      }),
+    [corrBasis, corrCalories, corrProtein, corrCarbs, corrFat, corrServingG],
+  );
+
   const submitCorrection = useCallback(async () => {
     if (!scanned || !userId) return;
-    const cal = Number(corrCalories) || 0;
-    if (!corrName.trim() || cal <= 0) return;
+    if (!corrName.trim() || corrPer100g == null) return;
     setCorrSaving(true);
+    const per100 = corrPer100g;
     const result = await submitFoodCorrection({
       barcode: scanned,
       name: corrName.trim(),
-      calories: Math.round(cal),
-      protein: Math.round((Number(corrProtein) || 0) * 10) / 10,
-      carbs: Math.round((Number(corrCarbs) || 0) * 10) / 10,
-      fat: Math.round((Number(corrFat) || 0) * 10) / 10,
+      calories: per100.calories,
+      protein: per100.protein,
+      carbs: per100.carbs,
+      fat: per100.fat,
       userId,
     });
     setCorrSaving(false);
     if (result.ok) {
-      // Update the product in place with corrected data
+      // Update the product in place with corrected data (always stored
+      // as per-100g so downstream scaling is consistent).
       const corrected: BarcodeProduct = {
         name: corrName.trim(),
-        calories: Math.round(cal),
-        protein: Math.round((Number(corrProtein) || 0) * 10) / 10,
-        carbs: Math.round((Number(corrCarbs) || 0) * 10) / 10,
-        fat: Math.round((Number(corrFat) || 0) * 10) / 10,
+        calories: per100.calories,
+        protein: per100.protein,
+        carbs: per100.carbs,
+        fat: per100.fat,
         fiberG: product?.fiberG ?? 0,
-        servingSizeG: product?.servingSizeG ?? 100,
+        servingSizeG:
+          corrBasis === "perServing" && Number(corrServingG) > 0
+            ? Number(corrServingG)
+            : (product?.servingSizeG ?? 100),
       };
       setProduct(corrected);
       setCorrectionMode(false);
       setGramsInput("100");
     }
-  }, [scanned, userId, corrName, corrCalories, corrProtein, corrCarbs, corrFat, product]);
+  }, [scanned, userId, corrName, corrPer100g, corrBasis, corrServingG, product]);
 
   const onReset = useCallback(() => {
     setScanned(null);
@@ -260,8 +320,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: Accent.success + "40",
-      padding: Spacing.xl,
-      gap: Spacing.sm,
+      padding: Spacing.lg,
+      // F-18 (2026-04-19) — tighten vertical rhythm. `xs` between card
+      // rows puts the chips closer to the Log button so the detected-
+      // product card stops feeling tall below the camera preview.
+      gap: Spacing.xs,
     },
     productName: { fontSize: 16, fontWeight: "600", color: colors.text },
     macroRow: { flexDirection: "row", gap: Spacing.lg },
@@ -299,7 +362,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       borderColor: Accent.primary,
     },
     presetChipText: { fontSize: 11, fontWeight: "600", color: Accent.primary },
-    btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm },
+    // F-18 (2026-04-19) — reduced top margin ~8px so the Log/Scan-again
+    // pair sits tighter below the chip row.
+    btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: 0 },
     useBtn: {
       flex: 1,
       flexDirection: "row",
@@ -363,6 +428,28 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       marginTop: Spacing.xs,
     },
     manualEntryBtnText: { color: Accent.primary, fontWeight: "600", textAlign: "center" },
+    // F-20 basis toggle — segmented-style chip row for Per 100 g / Per serving.
+    basisRow: { flexDirection: "row", gap: Spacing.sm },
+    basisChip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      backgroundColor: colors.inputBg,
+    },
+    basisChipSelected: {
+      borderColor: Accent.primary,
+      backgroundColor: Accent.primary + "18",
+    },
+    basisChipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    basisChipTextSelected: { color: Accent.primary },
+    basisReference: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontVariant: ["tabular-nums"],
+    },
   }), [colors]);
 
   return (
@@ -517,7 +604,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                     />
                     <Text style={styles.servingUnit}>g</Text>
                   </View>
-                  <Text style={[styles.per100g, { marginBottom: 4 }]}>Tap a label serving or edit grams (macros scale from per 100 g).</Text>
+                  {/* F-18 (2026-04-19) — simplified helper copy. The old
+                      "macros scale from per 100 g" aside leaked internal
+                      model onto the user; the chip row already tells them
+                      what they need to know. */}
+                  <Text style={[styles.per100g, { marginBottom: 2 }]}>Tap a chip or edit grams.</Text>
                   <View style={styles.presetRow}>
                     {(product.servingOptions ?? []).map((o) => {
                       const selected = Math.abs(o.grams - grams) < 0.51;
@@ -527,7 +618,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                           style={[styles.presetChip, selected && styles.presetChipSelected]}
                           onPress={() => setGramsInput(String(o.grams))}
                         >
-                          <Text style={styles.presetChipText}>{o.label}</Text>
+                          <Text style={styles.presetChipText}>{displayServingLabel(o.label, o.grams)}</Text>
                         </Pressable>
                       );
                     })}
@@ -551,7 +642,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                   <View style={styles.btnRow}>
                     <Pressable style={styles.useBtn} onPress={onConfirm}>
                       <Ionicons name="checkmark" size={18} color="#fff" />
-                      <Text style={styles.useBtnText}>Log ({portionSummary})</Text>
+                      {/* F-18 (2026-04-19) — replace nested-parens
+                          "Log (1 serving (100 g))" with a mid-dot divider
+                          so the serving context reads cleanly in one
+                          pass. `portionSummary` is already collapsed via
+                          `displayServingLabel` when the label is a
+                          generic fallback. */}
+                      <Text style={styles.useBtnText}>Log · {portionSummary}</Text>
                     </Pressable>
                     <Pressable style={styles.scanAgainBtn} onPress={onReset}>
                       <Text style={styles.scanAgainText}>Scan again</Text>
@@ -581,10 +678,71 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                         onChangeText={setCorrName}
                         autoFocus
                       />
+
+                      {/* F-20 — basis toggle. Mirrors the Custom Food
+                          "Per 100 g / Per serving" convention so users
+                          don't have to relearn the model across the two
+                          entry surfaces. */}
+                      <View style={styles.basisRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: corrBasis === "per100g" }}
+                          accessibilityLabel="Enter nutrition per 100 g"
+                          onPress={() => setCorrBasis("per100g")}
+                          style={[
+                            styles.basisChip,
+                            corrBasis === "per100g" && styles.basisChipSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.basisChipText,
+                              corrBasis === "per100g" && styles.basisChipTextSelected,
+                            ]}
+                          >
+                            Per 100 g
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: corrBasis === "perServing" }}
+                          accessibilityLabel="Enter nutrition per serving"
+                          onPress={() => setCorrBasis("perServing")}
+                          style={[
+                            styles.basisChip,
+                            corrBasis === "perServing" && styles.basisChipSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.basisChipText,
+                              corrBasis === "perServing" && styles.basisChipTextSelected,
+                            ]}
+                          >
+                            Per serving
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      {/* F-20 — serving-size input appears only in the
+                          per-serving branch. Required when per-serving is
+                          active (submit stays disabled until > 0). */}
+                      {corrBasis === "perServing" && (
+                        <TextInput
+                          style={styles.manualInput}
+                          placeholder="Serving size (g)"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="numeric"
+                          value={corrServingG}
+                          onChangeText={setCorrServingG}
+                          accessibilityLabel="Serving size in grams"
+                        />
+                      )}
+
                       <View style={styles.manualInputRow}>
                         <TextInput
                           style={[styles.manualInput, { flex: 1 }]}
-                          placeholder="Calories (per 100g)"
+                          placeholder={corrBasis === "perServing" ? "Calories (per serving)" : "Calories (per 100 g)"}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="numeric"
                           value={corrCalories}
@@ -617,10 +775,28 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                           onChangeText={setCorrFat}
                         />
                       </View>
+
+                      {/* F-20 — live per-100g reference so the user can
+                          sanity-check that what they typed maps to a
+                          sensible per-100g figure. Only shown for the
+                          per-serving branch where the scaling is
+                          non-identity. */}
+                      {corrBasis === "perServing" && corrPer100g != null && (
+                        <Text
+                          accessibilityLiveRegion="polite"
+                          style={styles.basisReference}
+                        >
+                          = {corrPer100g.calories} kcal / 100 g
+                        </Text>
+                      )}
+
                       <Pressable
-                        style={[styles.manualSubmitBtn, { opacity: corrName.trim() && Number(corrCalories) > 0 ? 1 : 0.4 }]}
+                        style={[
+                          styles.manualSubmitBtn,
+                          { opacity: corrName.trim() && corrPer100g != null ? 1 : 0.4 },
+                        ]}
                         onPress={submitCorrection}
-                        disabled={!corrName.trim() || !(Number(corrCalories) > 0) || corrSaving}
+                        disabled={!corrName.trim() || corrPer100g == null || corrSaving}
                       >
                         <Text style={styles.manualSubmitText}>{corrSaving ? "Saving..." : "Save Correction"}</Text>
                       </Pressable>

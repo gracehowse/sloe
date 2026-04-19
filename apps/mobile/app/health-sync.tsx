@@ -84,14 +84,27 @@ export default function HealthSyncScreen() {
       );
       return;
     }
-    const granted = await requestHealthPermissions();
-    if (granted) {
-      setConnected(true);
-      Alert.alert("Connected", "Health data sync is now enabled.");
-    } else {
+    // F-1 (2026-04-19): belt-and-suspenders top-level try/catch so a
+    // native-bridge throw on iOS 26.5 cannot take the app down from this
+    // tap. `requestHealthPermissions` is itself wrapped in try/catch and
+    // should only ever resolve `true | false`, never reject — but this
+    // handler is the most likely crash surface reported by testers, so we
+    // guard it here too and surface a user-visible recovery path.
+    try {
+      const granted = await requestHealthPermissions();
+      if (granted) {
+        setConnected(true);
+        Alert.alert("Connected", "Health data sync is now enabled.");
+      } else {
+        Alert.alert(
+          "Permission or Health access",
+          "Apple didn’t grant access, or Health isn’t available on this device. Try again and tap Allow in the Health prompt. On Simulator, Health data is limited — use a real iPhone if it still fails.",
+        );
+      }
+    } catch {
       Alert.alert(
-        "Permission or Health access",
-        "Apple didn’t grant access, or Health isn’t available on this device. Try again and tap Allow in the Health prompt. On Simulator, Health data is limited — use a real iPhone if it still fails.",
+        "Couldn’t connect",
+        "Something went wrong talking to Apple Health. We’ve logged the error — please try again in a moment.",
       );
     }
   }, [available]);

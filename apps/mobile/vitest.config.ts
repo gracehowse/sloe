@@ -131,6 +131,11 @@ export default defineConfig({
       // touch the PostHog client or load SVG's native Touchable mixin.
       { find: /^@\/lib\/analytics$/, replacement: path.resolve(__dirname, "./tests/shims/analytics.ts") },
       { find: /^react-native-svg$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-svg.cjs") },
+      // F-17 (2026-04-19) — `TodayMealsSection` mounts `Swipeable` from
+      // `react-native-gesture-handler`. The real package loads a native
+      // spec at import time, which blows up under vitest. Shim forwards
+      // children verbatim so RNTL can still walk the tree.
+      { find: /^react-native-gesture-handler$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-gesture-handler.cjs") },
     ],
   },
 });

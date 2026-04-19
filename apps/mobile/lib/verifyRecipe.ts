@@ -38,6 +38,14 @@ export type MacrosPer100g = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g.
+   * `null` when the source did not publish the nutrient; the food-log
+   * commit path treats `null` as 0 via `scaleCaffeineAlcohol` rather
+   * than inventing a fallback (project rule: no invented nutrition values).
+   */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
 };
 
 export type FoodPortion = {
@@ -93,6 +101,13 @@ export type FoodSearchResult = {
   fat?: number;
   carbs?: number;
   /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g
+   * from the USDA inline nutrient envelope. Null when USDA didn't
+   * publish for the hit.
+   */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
+  /**
    * Branded-food per-serving fields passed through from `/api/usda/search`
    * so the display layer can show a per-portion primary line (TestFlight
    * build 9 `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
@@ -118,6 +133,14 @@ export type BarcodeProduct = {
   fat: number;
   fiberG: number;
   servingSizeG: number | null;
+  /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g ethanol) per 100 g.
+   * Populated from OFF when available, null otherwise. Scanner confirm
+   * flow scales with `scaleCaffeineAlcohol` on commit and auto-increments
+   * `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`.
+   */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
   /** OFF-style presets (label + grams) for scaling per-100g macros. */
   servingOptions?: OffServingOption[];
   /** Filled by scanner when confirming (e.g. "4 dumplings"). */
@@ -294,17 +317,20 @@ export async function fetchIngredientsForVerification(
   });
 }
 
-/** Search USDA foods via the Next.js API. */
-export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
+/** Search USDA foods via the Next.js API. `page` is 1-indexed and
+ *  forwarded as `pageNumber`. TestFlight F-10
+ *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+export async function searchUsda(query: string, opts?: { page?: number }): Promise<FoodSearchResult[]> {
   const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
   if (!base || !q.trim()) return [];
+  const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
 
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 15000);
     const res = await authedFetch(
-      `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}`,
+      `${base}/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
@@ -318,6 +344,10 @@ export async function searchUsda(query: string): Promise<FoodSearchResult[]> {
       protein: h.protein,
       fat: h.fat,
       carbs: h.carbs,
+      // F-13 (2026-04-19) — pass caffeine + alcohol per 100 g through
+      // from the USDA inline envelope so the Today log path can auto-track.
+      caffeineMgPer100g: typeof h.caffeineMgPer100g === "number" ? h.caffeineMgPer100g : null,
+      alcoholGPer100g: typeof h.alcoholGPer100g === "number" ? h.alcoholGPer100g : null,
       ...(typeof h.servingSize === "number" ? { servingSize: h.servingSize } : {}),
       ...(typeof h.servingSizeUnit === "string" ? { servingSizeUnit: h.servingSizeUnit } : {}),
       ...(typeof h.householdServingFullText === "string"
@@ -343,20 +373,29 @@ export type OffSearchResult = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g.
+   * `null` when OFF did not publish `caffeine_100g` / `alcohol_100g`.
+   */
+  caffeineMgPer100g: number | null;
+  alcoholGPer100g: number | null;
   imageUrl: string | null;
   /** Free-text serving string from OFF, e.g. "1 slice (28 g)". */
   servingSize: string | null;
 };
 
-/** Search Open Food Facts by text (real products with barcodes). */
-export async function searchOpenFoodFacts(query: string): Promise<OffSearchResult[]> {
+/** Search Open Food Facts by text (real products with barcodes).
+ *  `page` is 1-indexed; OFF supports it natively. TestFlight F-10
+ *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+export async function searchOpenFoodFacts(query: string, opts?: { page?: number }): Promise<OffSearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
+  const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,image_small_url,serving_size`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,image_small_url,serving_size`,
       {
         signal: ac.signal,
         headers: {
@@ -380,6 +419,18 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
       .filter((p: any) => p.product_name && p.nutriments)
       .map((p: any) => {
         const n = p.nutriments ?? {};
+        // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
+        // caffeine in g (convert to mg) and alcohol in g already.
+        const caffRaw = n.caffeine_100g ?? n.caffeine;
+        const caffeineMgPer100g =
+          typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
+            ? Math.round(caffRaw * 1000 * 10) / 10
+            : null;
+        const alcRaw = n.alcohol_100g ?? n.alcohol;
+        const alcoholGPer100g =
+          typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
+            ? Math.round(alcRaw * 100) / 100
+            : null;
         return {
           code: p.code ?? "",
           name: p.product_name ?? "Unknown",
@@ -391,6 +442,8 @@ export async function searchOpenFoodFacts(query: string): Promise<OffSearchResul
           fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
           sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+          caffeineMgPer100g,
+          alcoholGPer100g,
           imageUrl: p.image_small_url ?? null,
           servingSize: typeof p.serving_size === "string" && p.serving_size.trim()
             ? p.serving_size.trim()
@@ -409,7 +462,22 @@ export type UnifiedSearchResult = {
   name: string;
   subtitle?: string;
   /** per 100g macros (available immediately for OFF/Edamam; fetched on tap for USDA) */
-  macrosPer100g?: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
+  macrosPer100g?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    /**
+     * F-13 (2026-04-19) — caffeine (mg) + alcohol (g ethanol) per 100 g.
+     * `null` when the source didn't publish; commit path uses
+     * `scaleCaffeineAlcohol` which returns 0 on null (never invents).
+     */
+    caffeineMgPer100g?: number | null;
+    alcoholGPer100g?: number | null;
+  };
   /** Quick calorie display (per 100g) */
   calsPer100g?: number;
   imageUrl?: string | null;
@@ -447,6 +515,12 @@ export type EdamamSearchResult = {
   sugarG: number;
   sodiumMg: number;
   /**
+   * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g
+   * from Edamam's `CAFFN` / `ALC` nutrients. Null when absent.
+   */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
+  /**
    * `servingSizes[]` — Edamam often exposes the "real" gram weight of
    * the natural portion here (e.g. `{label:"Serving", quantity:230}` for
    * a Pret sandwich). Passed straight through from the API route so the
@@ -462,17 +536,21 @@ export type EdamamSearchResult = {
  */
 export async function searchEdamam(
   query: string,
-  opts?: { mode?: "foods" | "meals" },
+  opts?: { mode?: "foods" | "meals"; page?: number },
 ): Promise<EdamamSearchResult[]> {
   const base = apiBase();
   const q = effectiveFoodSearchQuery(query);
   if (!base || !q.trim()) return [];
   const mode = opts?.mode ?? "foods";
+  // Edamam's parser endpoint is not natively paginated; the API route
+  // returns an empty hits array for page > 1 so fan-out stays uniform.
+  // TestFlight F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19).
+  const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await authedFetch(
-      `${base}/api/edamam/search?q=${encodeURIComponent(q.trim())}&mode=${mode}`,
+      `${base}/api/edamam/search?q=${encodeURIComponent(q.trim())}&mode=${mode}&page=${page}`,
       { signal: ac.signal },
     );
     clearTimeout(t);
@@ -506,18 +584,27 @@ function searchRelevance(query: string, name: string): number {
 /** Search all sources in parallel, return unified ranked list.
  *  Sources: USDA FDC (verified generic foods), OpenFoodFacts (branded /
  *  barcode products), Edamam food DB (branded + restaurant meals —
- *  TestFlight `AOI9xgY88Dx-uphiXI8IzEk`, 2026-04-18). */
+ *  TestFlight `AOI9xgY88Dx-uphiXI8IzEk`, 2026-04-18).
+ *
+ *  `opts.page` (1-indexed, default 1) drives infinite scroll in the
+ *  food-search UI — TestFlight F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`,
+ *  2026-04-19). USDA is the primary paginator; OFF paginates natively;
+ *  Edamam returns empty for page > 1. `opts.limit` caps the merged
+ *  slice per page (default 24 to match pre-pagination behaviour). */
 export async function searchFoods(
   query: string,
   onPartial?: (results: UnifiedSearchResult[]) => void,
+  opts?: { page?: number; limit?: number },
 ): Promise<UnifiedSearchResult[]> {
   const t = query.trim();
   if (!t) return [];
   const qRank = effectiveFoodSearchQuery(t);
   if (!qRank.trim()) return [];
-  const usdaP = searchUsda(t);
-  const offP = searchOpenFoodFacts(t);
-  const edamamP = searchEdamam(t);
+  const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
+  const limit = opts?.limit && opts.limit > 0 ? Math.floor(opts.limit) : 24;
+  const usdaP = searchUsda(t, { page });
+  const offP = searchOpenFoodFacts(t, { page });
+  const edamamP = searchEdamam(t, { page });
 
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
@@ -540,13 +627,13 @@ export async function searchFoods(
       pending.delete(
         done === "usda" ? usdaLabelled : done === "off" ? offLabelled : edaLabelled,
       );
-      onPartial(mergeResults(qRank, usda, off, eda));
+      onPartial(mergeResults(qRank, usda, off, eda, limit));
     }
   } else {
     [usda, off, eda] = await Promise.all([usdaP, offP, edamamP]);
   }
 
-  return mergeResults(qRank, usda, off, eda);
+  return mergeResults(qRank, usda, off, eda, limit);
 }
 
 /** Convert ALL CAPS or all-lowercase to Title Case */
@@ -565,6 +652,7 @@ function mergeResults(
   usda: FoodSearchResult[],
   off: OffSearchResult[],
   edamam: EdamamSearchResult[] = [],
+  limit: number = 24,
 ): UnifiedSearchResult[] {
   const results: (UnifiedSearchResult & { _relevance: number })[] = [];
 
@@ -598,6 +686,10 @@ function mergeResults(
         fiberG: 0,
         sugarG: 0,
         sodiumMg: 0,
+        // F-13 — carry USDA caffeine/alcohol per 100 g through from the
+        // search envelope so auto-track fires on first tap.
+        caffeineMgPer100g: item.caffeineMgPer100g ?? null,
+        alcoholGPer100g: item.alcoholGPer100g ?? null,
       } : undefined,
       verified: isVerified,
       primaryServing,
@@ -627,6 +719,9 @@ function mergeResults(
         fiberG: item.fiberG,
         sugarG: item.sugarG,
         sodiumMg: item.sodiumMg,
+        // F-13 — caffeine/alcohol per 100 g from OFF `nutriments`.
+        caffeineMgPer100g: item.caffeineMgPer100g,
+        alcoholGPer100g: item.alcoholGPer100g,
       },
       imageUrl: item.imageUrl,
       primaryServing,
@@ -660,6 +755,9 @@ function mergeResults(
         fiberG: item.fiberG,
         sugarG: item.sugarG,
         sodiumMg: item.sodiumMg,
+        // F-13 — caffeine/alcohol per 100 g from Edamam `CAFFN` / `ALC`.
+        caffeineMgPer100g: item.caffeineMgPer100g ?? null,
+        alcoholGPer100g: item.alcoholGPer100g ?? null,
       },
       imageUrl: item.imageUrl,
       primaryServing,
@@ -679,7 +777,7 @@ function mergeResults(
     if (seen.has(norm)) continue;
     seen.add(norm);
     deduped.push(r);
-    if (deduped.length >= 24) break;
+    if (deduped.length >= limit) break;
   }
 
   return deduped;
@@ -772,6 +870,19 @@ export async function lookupBarcode(
 
     const servingOptions = buildOffServingOptionsFromProduct(p);
     const servingSizeG = pickDefaultServingGrams(servingOptions);
+    // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
+    // caffeine in g (convert to mg) and alcohol in g already. Null when
+    // absent so the commit path knows to skip rather than assume zero.
+    const caffRaw = n.caffeine_100g ?? n.caffeine;
+    const caffeineMgPer100g =
+      typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
+        ? Math.round(caffRaw * 1000 * 10) / 10
+        : null;
+    const alcRaw = n.alcohol_100g ?? n.alcohol;
+    const alcoholGPer100g =
+      typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
+        ? Math.round(alcRaw * 100) / 100
+        : null;
 
     return {
       name: [brand, baseName].filter(Boolean).join(" · "),
@@ -781,6 +892,8 @@ export async function lookupBarcode(
       fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
       fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
       servingSizeG,
+      caffeineMgPer100g,
+      alcoholGPer100g,
       servingOptions,
       source: "open_food_facts",
       verified: false,

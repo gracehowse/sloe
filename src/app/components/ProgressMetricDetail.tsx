@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
+import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { buildWeekStats, getStreakContributingDays } from "../../lib/nutrition/progressWeekReport.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
+import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 
 export type ProgressMetric = "calories" | "protein" | "streak";
 
@@ -26,12 +29,60 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { nutritionByDay, setSelectedDateKey, nutritionTargets } = useAppData();
+  const { authedUserId } = useAuthSession();
   const targets = normalizeMacroTargets(nutritionTargets);
   const todayDk = todayKey();
 
+  // F-2 (2026-04-19) — snapshot targets for this week so past-day
+  // "% of goal" values don't shift when the user later edits their
+  // activity_level / plan_pace / goal.
+  const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+  useEffect(() => {
+    if (!authedUserId) {
+      setDailyTargetsByDay({});
+      return;
+    }
+    const nowD = new Date();
+    const dow = nowD.getDay();
+    const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+    const weekFirst = new Date(nowD);
+    weekFirst.setDate(nowD.getDate() + startOffset);
+    const weekKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekFirst);
+      d.setDate(weekFirst.getDate() + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      weekKeys.push(`${y}-${m}-${day}`);
+    }
+    let cancelled = false;
+    void getDailyTargets(supabase, authedUserId, weekKeys).then((snapshots) => {
+      if (!cancelled) setDailyTargetsByDay(snapshots);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, weekStartDay]);
+
+  const weekTargetsByDay = useMemo(() => {
+    const out: Record<string, { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [dailyTargetsByDay]);
+
   const weekStats = useMemo(
-    () => buildWeekStats(nutritionByDay, targets, weekStartDay),
-    [nutritionByDay, targets, weekStartDay],
+    () => buildWeekStats(nutritionByDay, targets, weekStartDay, new Date(), weekTargetsByDay),
+    [nutritionByDay, targets, weekStartDay, weekTargetsByDay],
   );
   const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
   const streakDaysDetail = useMemo(() => getStreakContributingDays(nutritionByDay), [nutritionByDay]);
@@ -77,7 +128,8 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
               {weekStats.days.map((d) => {
                 const maxCal = Math.max(targets.calories, ...weekStats.days.map((x) => x.calories), 1);
                 const barH = maxCal > 0 ? Math.max(6, (d.calories / (maxCal * 1.15)) * 96) : 6;
-                const over = d.calories > targets.calories;
+                // F-2 — over/under judged against each day's own target.
+                const over = d.calories > d.targetCalories;
                 const isToday = d.key === todayDk;
                 return (
                   <button
@@ -120,7 +172,14 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                 <div className="text-right">
                   <p className="text-base font-extrabold text-foreground tabular-nums">{d.calories.toLocaleString()} kcal</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {d.calories > 0 ? `${Math.round((d.calories / targets.calories) * 100)}% of goal` : "No meals"}
+                    {/* F-2 — % of goal uses each day's frozen target
+                        when a snapshot exists. Pre-migration days
+                        use the current target and get an "(approx)"
+                        tag so the user knows the comparison is
+                        retroactive. */}
+                    {d.calories > 0
+                      ? `${Math.round((d.calories / Math.max(d.targetCalories, 1)) * 100)}% of goal${!d.isSnapshot && d.key !== todayDk ? " (approx)" : ""}`
+                      : "No meals"}
                   </p>
                 </div>
                 <Icons.forward className="w-4 h-4 text-muted-foreground" />
@@ -147,8 +206,10 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
           </p>
 
           {weekStats.days.map((d) => {
-            const hit = d.protein >= targets.protein * 0.9;
-            const pct = targets.protein > 0 ? Math.round((d.protein / targets.protein) * 100) : 0;
+            // F-2 — per-day protein target.
+            const dayProteinTarget = d.targetProtein > 0 ? d.targetProtein : targets.protein;
+            const hit = dayProteinTarget > 0 && d.protein >= dayProteinTarget * 0.9;
+            const pct = dayProteinTarget > 0 ? Math.round((d.protein / dayProteinTarget) * 100) : 0;
             return (
               <button
                 key={d.key}

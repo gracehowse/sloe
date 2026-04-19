@@ -81,12 +81,19 @@ export function fdcConfigFromEnv(): FdcConfig {
 export async function fdcFoodsSearch(
   cfg: FdcConfig,
   query: string,
-  opts?: { dataType?: string[] },
+  opts?: { dataType?: string[]; pageNumber?: number; pageSize?: number },
 ): Promise<FdcFoodSearchHit[]> {
   const url = new URL(`${API_BASE}/foods/search`);
   url.searchParams.set("api_key", cfg.apiKey);
 
-  const body: Record<string, unknown> = { query, pageSize: 10 };
+  // `pageNumber` is 1-indexed in USDA FDC. Forwarded from the search
+  // route so the food-search UI can scroll through additional pages
+  // (TestFlight F-10, `AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Pre-existing
+  // single-page callers pass no opts and keep the historical page 1 /
+  // size 10 behaviour.
+  const pageSize = opts?.pageSize && opts.pageSize > 0 ? opts.pageSize : 10;
+  const pageNumber = opts?.pageNumber && opts.pageNumber > 0 ? opts.pageNumber : 1;
+  const body: Record<string, unknown> = { query, pageSize, pageNumber };
   if (opts?.dataType?.length) {
     body.dataType = opts.dataType;
   }

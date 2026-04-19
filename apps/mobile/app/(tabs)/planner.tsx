@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppingJsonFallback";
 import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
+import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -94,6 +95,12 @@ type DayPlan = {
   day: number;
   meals: PlanMeal[];
   totals: { calories: number; protein: number; carbs: number; fat: number };
+  /**
+   * F-15 — grams of protein below the day target after the joint-fit
+   * scaler ran. Negative grams when the scaler couldn't close the gap.
+   * Day card surfaces the hint only when `residualProteinGap < -10`.
+   */
+  residualProteinGap?: number;
 };
 
 export default function PlannerScreen() {
@@ -184,9 +191,33 @@ export default function PlannerScreen() {
     };
   }, [templatesOpen, userId]);
 
-  // Load shopping item count
+  // Load shopping item count. The shopping list is ephemeral — it
+  // only makes sense in the context of an active plan. When there is
+  // no plan on the active slot (fresh account, slot deleted, switched
+  // to an empty slot) clear the count so the "N items from this week"
+  // subtitle never references a previous plan's list, and wipe any
+  // stale `shopping_items` rows the user might see if they open the
+  // Shopping screen directly.
+  // F-9 (TestFlight `AMXSjeaXJeCf6QtKgUTMkD0`, 2026-04-18). Web parity
+  // is handled in `src/context/AppDataContext.tsx`'s shopping-clear
+  // effect (same `shoppingListShouldClear` rule); mobile persists
+  // shopping state directly in the DB (no shared context), so the
+  // cleanup lives here.
+  const priorPlanRef = useRef(plan);
   useEffect(() => {
     if (!userId) return;
+    const prev = priorPlanRef.current;
+    priorPlanRef.current = plan;
+    if (!plan) {
+      setShoppingItemCount(0);
+      // Only hit the server when the plan actually transitioned to
+      // null this render; avoids a delete on every cold start with
+      // no plan (there's nothing to clean up then either).
+      if (prev) {
+        void supabase.from("shopping_items").delete().eq("user_id", userId);
+      }
+      return;
+    }
     supabase
       .from("shopping_items")
       .select("id", { count: "exact", head: true })
@@ -1130,6 +1161,29 @@ export default function PlannerScreen() {
                 })}
               </View>
             )}
+            {/* F-15 — residual protein gap hint (web/mobile parity). Only
+                rendered when the joint-fit scaler left this day more than
+                10g under the protein target. Points at the lowest-protein
+                slot so the user can act: tap the meal row to open the
+                portion / swap action sheet. */}
+            {(() => {
+              const gap = dp.residualProteinGap;
+              if (gap == null || gap >= -10) return null;
+              const scorable = dp.meals.filter((m) => !m.isPlaceholder && !!m.recipeTitle);
+              if (scorable.length === 0) return null;
+              const lowest = scorable.reduce((low, m) => (m.protein < low.protein ? m : low), scorable[0]!);
+              const under = Math.abs(gap);
+              return (
+                <Text
+                  accessibilityRole="text"
+                  accessibilityLabel={`Protein ${under} grams under target. Scale ${lowest.name} up or swap to a higher-protein recipe.`}
+                  style={{ fontSize: 12, color: Accent.warning, marginTop: 4, marginBottom: 4, lineHeight: 16 }}
+                  testID="residual-protein-gap-hint"
+                >
+                  Protein {under}g under target — try scaling {lowest.name} up or swap to a higher-protein recipe.
+                </Text>
+              );
+            })()}
 
             {dp.meals.length === 0 ? (
               <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.md }}>
@@ -1365,6 +1419,8 @@ export default function PlannerScreen() {
                       console.error("[planner] log entry failed:", error.message);
                       Alert.alert("Log failed", "Could not save to tracker. " + error.message);
                     } else {
+                      // F-2 — snapshot today's target on first log.
+                      void snapshotDailyTargetIfMissing(supabase, userId);
                       Alert.alert("Logged", `${meal.recipeTitle} added to today's tracker.`);
                     }
                   }}

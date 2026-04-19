@@ -91,7 +91,19 @@ export function normalizeDayPlans(raw: unknown): DayPlan[] | null {
     const rawMeals = (d as Partial<DayPlan>).meals;
     if (!Array.isArray(rawMeals)) continue;
     const meals = rawMeals.map(normalizeDayPlanMeal).filter((x): x is DayPlanMeal => Boolean(x));
-    out.push({ day, meals, totals: dayPlanTotalsFromMeals(meals) });
+    // F-15 — preserve residual protein gap when present on a persisted
+    // plan. Only carries through when the value is a negative finite
+    // number (gap), so stale zero / undefined / NaN don't surface a
+    // misleading hint after a manual edit.
+    const rawGap = (d as Partial<DayPlan>).residualProteinGap;
+    const gap =
+      typeof rawGap === "number" && Number.isFinite(rawGap) && rawGap < 0 ? rawGap : undefined;
+    out.push({
+      day,
+      meals,
+      totals: dayPlanTotalsFromMeals(meals),
+      ...(gap != null ? { residualProteinGap: gap } : {}),
+    });
   }
   return out.length ? out : null;
 }

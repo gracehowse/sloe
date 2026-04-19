@@ -13,6 +13,8 @@ import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
+import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
+import { updateStimulantsForDay } from "../../lib/nutrition/updateStimulantsForDay.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -195,6 +197,25 @@ export function useNutritionJournalState(opts: {
             return;
           }
           void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+          // F-2 (2026-04-19) — freeze today's target on first log of
+          // the day. Past days stop moving when the user later edits
+          // activity_level / plan_pace / goal. Fire-and-forget — a
+          // snapshot write failure must never roll back the log.
+          void snapshotDailyTargetIfMissing(supabase, authedUserId);
+          // F-13 (2026-04-19) — auto-track caffeine / alcohol on every
+          // successful log. The scaled values live in the meal's
+          // `micros` map (set by the host before calling addLoggedMeal).
+          // Null / 0 → no-op; positive → proportionally bump the daily
+          // totals on `profiles`. Fire-and-forget: a failure here never
+          // rolls back the meal row.
+          const caffeineMg = Number(newMeal.micros?.caffeineMg ?? 0) || 0;
+          const alcoholG = Number(newMeal.micros?.alcoholG ?? 0) || 0;
+          if (caffeineMg > 0 || alcoholG > 0) {
+            void updateStimulantsForDay(supabase, authedUserId, dayKey, {
+              caffeineMg,
+              alcoholG,
+            });
+          }
         });
     }
 
@@ -257,6 +278,28 @@ export function useNutritionJournalState(opts: {
         return [];
       }
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+      // F-2 — snapshot today's target even when the user's first
+      // action is a bulk insert (duplicate-day, copy-meal-batch, etc).
+      // The `dayKey` here may be a past day (copy-to-range), but the
+      // snapshot intentionally only writes for *today* regardless of
+      // `dayKey` — past-day snapshots stay empty so the read path's
+      // fallback renders (see `dailyTargetSnapshot.ts` contract).
+      void snapshotDailyTargetIfMissing(supabase, authedUserId);
+      // F-13 — sum every meal's caffeine/alcohol contributions and
+      // post a single bump. Duplicate-day of a day that contained
+      // "1 espresso" carries the micros forward via cloneMealWithoutId.
+      let caffeineMgTotal = 0;
+      let alcoholGTotal = 0;
+      for (const m of withIds) {
+        caffeineMgTotal += Number(m.micros?.caffeineMg ?? 0) || 0;
+        alcoholGTotal += Number(m.micros?.alcoholG ?? 0) || 0;
+      }
+      if (caffeineMgTotal > 0 || alcoholGTotal > 0) {
+        void updateStimulantsForDay(supabase, authedUserId, dayKey, {
+          caffeineMg: caffeineMgTotal,
+          alcoholG: Math.round(alcoholGTotal * 10) / 10,
+        });
+      }
       return withIds;
     },
     [authedUserId, dbNutritionEnabled, buildNutritionEntryRow],
@@ -271,10 +314,31 @@ export function useNutritionJournalState(opts: {
 
   const removeLoggedMeal = useCallback(
     (mealId: string) => {
-      setNutritionByDay((prev) => ({
-        ...prev,
-        [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
-      }));
+      // F-13 (2026-04-19) — capture the meal's caffeine / alcohol
+      // contribution BEFORE we drop it from state so the same delta can
+      // be subtracted from `profiles.extra_caffeine_by_day` /
+      // `extra_alcohol_g_by_day`. `dayKey` is captured from the meal's
+      // storage location, not `selectedDateKey`, so deletes from a
+      // non-selected day (rare, but possible via edit flows) still
+      // decrement the right bucket.
+      let doomedCaffeineMg = 0;
+      let doomedAlcoholG = 0;
+      let doomedDayKey: string | null = null;
+      setNutritionByDay((prev) => {
+        for (const [dk, meals] of Object.entries(prev)) {
+          const hit = meals.find((m) => m.id === mealId);
+          if (hit) {
+            doomedDayKey = dk;
+            doomedCaffeineMg = Number(hit.micros?.caffeineMg ?? 0) || 0;
+            doomedAlcoholG = Number(hit.micros?.alcoholG ?? 0) || 0;
+            break;
+          }
+        }
+        return {
+          ...prev,
+          [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
+        };
+      });
 
       // Delete from relational table
       if (authedUserId && dbNutritionEnabled) {
@@ -283,7 +347,22 @@ export function useNutritionJournalState(opts: {
             toast.error(syncFailedRetryMessage("nutrition log", error.message ?? ""));
             return;
           }
-          if (!error) void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+          if (!error) {
+            void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+            // F-13 — decrement daily totals. Only fires when the deleted
+            // meal actually carried a non-zero caffeine / alcohol micro
+            // and we know which day it lived on. The updater clamps at
+            // 0 so we can't push a stale delta past zero.
+            if (
+              doomedDayKey &&
+              (doomedCaffeineMg > 0 || doomedAlcoholG > 0)
+            ) {
+              void updateStimulantsForDay(supabase, authedUserId, doomedDayKey, {
+                caffeineMg: -doomedCaffeineMg,
+                alcoholG: -doomedAlcoholG,
+              });
+            }
+          }
         });
       }
     },

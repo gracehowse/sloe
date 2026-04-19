@@ -349,6 +349,36 @@ export type Database = {
         }
         Relationships: []
       }
+      households: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          share_lunch: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id: string
+          share_lunch?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+          share_lunch?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           barcode: string | null

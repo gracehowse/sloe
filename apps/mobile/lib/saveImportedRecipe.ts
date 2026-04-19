@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { classifyMealType } from "./classifyMealType";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
+import { normaliseSource } from "../../../src/lib/recipes/persistSourceAttribution";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -92,11 +93,15 @@ export async function saveImportedRecipe(
     (recipe as { cook_time_min?: unknown }).cook_time_min ?? recipe.cookTimeMin,
   );
 
-  const sourceUrl =
-    ((recipe.sourceUrl ?? (recipe as { source_url?: string | null }).source_url) ?? "").trim() || null;
-  /** Human attribution (creator / site). Never use `primarySource` — that is nutrition verification (USDA, etc.). */
-  const sourceName =
-    ((recipe.sourceName ?? (recipe as { source_name?: string | null }).source_name) ?? "").trim() || null;
+  /**
+   * Run URL + name through the shared `normaliseSource` helper so every import
+   * path persists the same shape (TestFlight `AI-CNKcmy7y`, F-5 fix, 2026-04-19).
+   * Human attribution (creator / site). Never use `primarySource` — that is nutrition verification (USDA, etc.).
+   */
+  const { source_url: sourceUrl, source_name: sourceName } = normaliseSource({
+    url: recipe.sourceUrl ?? (recipe as { source_url?: string | null }).source_url ?? null,
+    name: recipe.sourceName ?? (recipe as { source_name?: string | null }).source_name ?? null,
+  });
 
   const { data: row, error: insErr } = await supabase
     .from("recipes")

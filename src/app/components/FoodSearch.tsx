@@ -49,6 +49,9 @@ type MacrosPer100g = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** F-13 auto-track. Optional; null when the source doesn't expose the value. */
+  caffeineMgPer100g?: number | null;
+  alcoholGPer100g?: number | null;
 };
 
 type FoodPortion = { label: string; gramWeight: number; amount: number };
@@ -180,11 +183,11 @@ function scaleMacros(per100g: MacrosPer100g, grams: number): MacrosPer100g {
 
 // ── Search API calls ────────────────────────────────────────────────
 
-async function searchUsda(query: string): Promise<SearchResult[]> {
+async function searchUsda(query: string, page: number = 1): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}`);
+    const res = await fetch(`/api/usda/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return json.hits.map((h: any) => {
@@ -219,12 +222,12 @@ async function searchUsda(query: string): Promise<SearchResult[]> {
   } catch { return []; }
 }
 
-async function searchOff(query: string): Promise<SearchResult[]> {
+async function searchOff(query: string, page: number = 1): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&fields=code,product_name,brands,nutriments,serving_size`,
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,serving_size`,
     );
     const data = await res.json();
     if (!Array.isArray(data.products)) return [];
@@ -274,11 +277,11 @@ async function searchOff(query: string): Promise<SearchResult[]> {
  * `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). Empty on network / server /
  * rate-limit errors so it never blocks USDA / OFF from rendering.
  */
-async function searchEdamam(query: string): Promise<SearchResult[]> {
+async function searchEdamam(query: string, page: number = 1): Promise<SearchResult[]> {
   const q = effectiveFoodSearchQuery(query);
   if (!q.trim()) return [];
   try {
-    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}`);
+    const res = await fetch(`/api/edamam/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.hits)) return [];
     return (json.hits as Array<{
@@ -425,6 +428,15 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** 1-indexed page counter for infinite scroll — F-10
+   *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Reset on every new query;
+   *  incremented when the scroll sentinel enters the viewport. Paired
+   *  with `hasMoreRef` so we stop fetching once a page returns zero
+   *  new external rows. */
+  const pageRef = useRef(1);
+  const hasMoreRef = useRef(true);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
@@ -487,6 +499,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       setPreview(null);
       setMenuOpenFor(null);
       backfillRef.current++;
+      pageRef.current = 1;
+      hasMoreRef.current = true;
       // Load the custom library whenever the modal opens so the "+ Create
       // custom food" row + any zero-query browsing is immediate.
       if (customEnabled) void refreshCustomLibrary();
@@ -500,15 +514,16 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
             )
           : Promise.resolve([] as CustomFood[]);
         Promise.all([
-          searchUsda(initialQuery),
-          searchOff(initialQuery),
-          searchEdamam(initialQuery),
+          searchUsda(initialQuery, 1),
+          searchOff(initialQuery, 1),
+          searchEdamam(initialQuery, 1),
           customPromise,
         ]).then(([usda, off, edamam, custom]) => {
           const rankQ = effectiveFoodSearchQuery(initialQuery);
           const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
           setResults(merged);
           setLoading(false);
+          hasMoreRef.current = usda.length + off.length + edamam.length > 0;
           backfillMissingMacros(merged);
         });
       }
@@ -519,6 +534,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     backfillRef.current++;
+    pageRef.current = 1;
+    hasMoreRef.current = true;
     setMenuOpenFor(null);
     const q = text.trim();
     if (!q) {
@@ -536,14 +553,15 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
           )
         : Promise.resolve([] as CustomFood[]);
       const [usda, off, edamam, custom] = await Promise.all([
-        searchUsda(q),
-        searchOff(q),
-        searchEdamam(q),
+        searchUsda(q, 1),
+        searchOff(q, 1),
+        searchEdamam(q, 1),
         customPromise,
       ]);
       const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
       setResults(merged);
       setLoading(false);
+      hasMoreRef.current = usda.length + off.length + edamam.length > 0;
       backfillMissingMacros(merged);
     }, 400);
   }, [backfillMissingMacros, customEnabled, supabase, userId]);
@@ -554,6 +572,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     off: SearchResult[],
     edamam: SearchResult[] = [],
     customs: CustomFood[] = [],
+    limit: number = 25,
   ): SearchResult[] {
     // Custom foods always surface first, ranked by the same relevance
     // scorer so tapping a search also ordered by name match — never by
@@ -575,10 +594,79 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       if (seen.has(norm)) continue;
       seen.add(norm);
       deduped.push(r);
-      if (deduped.length >= 25) break;
+      if (deduped.length >= limit) break;
     }
     return deduped;
   }
+
+  /** Append a freshly-fetched page of external results onto the existing
+   *  list, dropping any row whose key OR normalised name collides. Custom
+   *  rows are preserved in place (pagination only extends the external
+   *  tail). F-10 (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+  const appendPage = useCallback(
+    (prev: SearchResult[], next: SearchResult[]): SearchResult[] => {
+      const seenKeys = new Set<string>(prev.map((r) => r.key));
+      const seenNames = new Set<string>(
+        prev
+          .filter((r) => r._source !== "CUSTOM")
+          .map((r) => r.name.toLowerCase().replace(/[^a-z0-9]/g, "")),
+      );
+      const fresh: SearchResult[] = [];
+      for (const r of next) {
+        if (seenKeys.has(r.key)) continue;
+        const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (seenNames.has(norm)) continue;
+        seenKeys.add(r.key);
+        seenNames.add(norm);
+        fresh.push(r);
+      }
+      return [...prev, ...fresh];
+    },
+    [],
+  );
+
+  /** Fetch the next page of USDA + OFF + Edamam and append to results.
+   *  Concurrent-safe via `loadingMore` flag and `hasMoreRef` terminal
+   *  latch. Custom-food rows are page-invariant so they're excluded
+   *  from the paginated fetch entirely. F-10. */
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading) return;
+    if (!hasMoreRef.current) return;
+    const q = query.trim();
+    if (!q) return;
+    const nextPage = pageRef.current + 1;
+    setLoadingMore(true);
+    try {
+      const [usda, off, edamam] = await Promise.all([
+        searchUsda(q, nextPage),
+        searchOff(q, nextPage),
+        searchEdamam(q, nextPage),
+      ]);
+      if (usda.length + off.length + edamam.length === 0) {
+        hasMoreRef.current = false;
+        return;
+      }
+      const rankQ = effectiveFoodSearchQuery(q);
+      // Re-use the same ranker + dedup inside the page's own bucket so
+      // the new rows stay ordered by relevance before we splice them on.
+      const pageMerged = mergeAndDedup(rankQ, usda, off, edamam, [], 50);
+      if (pageMerged.length === 0) {
+        hasMoreRef.current = false;
+        return;
+      }
+      pageRef.current = nextPage;
+      setResults((prev) => {
+        const appended = appendPage(prev, pageMerged);
+        if (appended.length === prev.length) {
+          hasMoreRef.current = false;
+        }
+        backfillMissingMacros(appended);
+        return appended;
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, query, appendPage, backfillMissingMacros]);
 
   /**
    * Opens the portion picker for a custom food. Uses its saved servings as
@@ -839,6 +927,32 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       kcalDelta: scaled.calories,
     });
   }, [preview, fitHint, scaled]);
+
+  /** Infinite-scroll sentinel. An IntersectionObserver watches the div
+   *  rendered at the tail of the results list; when it enters the
+   *  viewport, `loadMore` fetches the next page. Re-created whenever
+   *  the dialog opens / closes or the results length changes so the
+   *  observer always targets the current sentinel node. F-10
+   *  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). */
+  useEffect(() => {
+    if (!open) return;
+    if (preview) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            void loadMore();
+          }
+        }
+      },
+      { rootMargin: "120px 0px" },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [open, preview, results.length, loadMore]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -1130,6 +1244,29 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                     );
                   })}
                 </div>
+              )}
+
+              {/* Infinite-scroll sentinel + footer spinner — F-10
+                  (`AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). The ref is
+                  observed by an IntersectionObserver above; when
+                  visible, `loadMore` fetches the next page. Kept
+                  inside the scroll container so entry into the
+                  viewport corresponds to the user reaching the bottom
+                  of the results list. */}
+              {results.length > 0 && (
+                <>
+                  <div
+                    ref={sentinelRef}
+                    aria-hidden="true"
+                    data-testid="food-search-load-more-sentinel"
+                    className="h-px w-full"
+                  />
+                  {loadingMore ? (
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                  ) : null}
+                </>
               )}
 
               {!loading && query.trim() && results.length === 0 && (

@@ -27,6 +27,7 @@ import {
   isHealthSyncAvailable,
 } from "@/lib/healthSync";
 import {
+  filterByDateRangeDays,
   resolveLatestWeightKg,
   weightJourneyProgress,
 } from "@/lib/weightProjection";
@@ -58,19 +59,20 @@ function parseNumMap(raw: unknown): Record<string, number> {
   return out;
 }
 
+/**
+ * Thin bridge — the range-button helper lives in the shared
+ * `weightProjection` module so that the unit test at
+ * `apps/mobile/tests/unit/weightChartRangeFilter.test.ts` can pin the
+ * per-range behaviour. Previously the filter was inlined here which
+ * made "range buttons don't change the chart" (TestFlight
+ * `ACoMvhUoe_riUvOp5XZ3Sow`, 2026-04-18) unverifiable at the filter
+ * level. See `src/lib/weightProjection.ts :: filterByDateRangeDays`.
+ */
 function filterByRange(
   map: Record<string, number>,
   range: TimeRange,
 ): Record<string, number> {
-  const maxDays = daysForRange(range);
-  const cutoff = new Date();
-  cutoff.setHours(0, 0, 0, 0);
-  cutoff.setDate(cutoff.getDate() - maxDays);
-  const cutoffStr = dateKeyFromDate(cutoff);
-  const entries = Object.entries(map)
-    .filter(([k]) => k >= cutoffStr)
-    .sort(([a], [b]) => a.localeCompare(b));
-  return Object.fromEntries(entries);
+  return filterByDateRangeDays(map, daysForRange(range));
 }
 
 function formatShortDate(dateStr: string): string {

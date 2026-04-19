@@ -12,6 +12,11 @@ import {
 } from "../../../lib/nutrition/tdee";
 import { weekSummaryHeading } from "../../../lib/nutrition/weekSummaryWindow";
 import type { WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
+import {
+  buildMaintenancePopoverCopy,
+  type MaintenanceConfidence,
+  type MaintenanceSource,
+} from "../../../lib/nutrition/resolveMaintenance";
 
 /**
  * TodayActivityBonusCard — summary + per-workout + weekly deficit.
@@ -59,6 +64,15 @@ export interface TodayActivityBonusCardProps {
   profileHeightCm?: number | null;
   profileAge?: number | null;
   profileActivityLevel?: ActivityLevel | null;
+  /**
+   * F-3 (2026-04-19) — when present, the popover uses the canonical
+   * shared copy and picks the adaptive / formula sentence from
+   * `maintenanceSource`. When omitted, falls back to the richer BMR ×
+   * multiplier breakdown so hosts that haven't wired
+   * `resolveMaintenance` yet don't regress.
+   */
+  maintenanceSource?: MaintenanceSource | null;
+  maintenanceConfidence?: MaintenanceConfidence;
 }
 
 export function TodayActivityBonusCard({
@@ -82,6 +96,8 @@ export function TodayActivityBonusCard({
   profileHeightCm,
   profileAge,
   profileActivityLevel,
+  maintenanceSource,
+  maintenanceConfidence,
 }: TodayActivityBonusCardProps) {
   if (!hasBurnData) return null;
 
@@ -121,15 +137,26 @@ export function TodayActivityBonusCard({
       ? Math.round(calculateBMR(profileSex, profileWeightKg, profileHeightCm, profileAge))
       : null;
   const popoverActivity: ActivityLevel = profileActivityLevel ?? "sedentary";
+  // F-3 (2026-04-19): prefer the canonical shared copy when the host
+  // supplies a resolved source. Keeps this popover byte-identical to
+  // mobile's.
   const popoverCopy =
     hasMaintenanceTile && popoverBmr != null
-      ? buildTdeeExplainerCopy({
-          maintenanceTdeeKcal: maintenanceTdeeKcal!,
-          bmrKcal: popoverBmr,
-          activityLevel: popoverActivity,
-          basalKcal: basalBurnKcal,
-          activeKcal: activityBurnForSelectedDay,
-        })
+      ? maintenanceSource
+        ? buildMaintenancePopoverCopy({
+            kcal: maintenanceTdeeKcal!,
+            source: maintenanceSource,
+            confidence: maintenanceConfidence ?? null,
+            formulaKcal: null,
+            adaptiveRejectedAsStale: false,
+          })
+        : buildTdeeExplainerCopy({
+            maintenanceTdeeKcal: maintenanceTdeeKcal!,
+            bmrKcal: popoverBmr,
+            activityLevel: popoverActivity,
+            basalKcal: basalBurnKcal,
+            activeKcal: activityBurnForSelectedDay,
+          })
       : null;
 
   return (

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
+import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -27,6 +28,7 @@ import {
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
+import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
@@ -321,6 +323,17 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
+  // F-3 (2026-04-19) — track the source + confidence so the Activity
+  // Bonus card's info popover can render the canonical copy shared
+  // with Progress. `null` source means "popover will fall back to the
+  // richer BMR × multiplier breakdown" (for users on the narrow
+  // fallback profile select where adaptive columns aren't available).
+  const [profileMaintenanceSource, setProfileMaintenanceSource] = useState<
+    "adaptive" | "formula" | null
+  >(null);
+  const [profileMaintenanceConfidence, setProfileMaintenanceConfidence] = useState<
+    "low" | "medium" | "high" | null
+  >(null);
   // Cached profile basics (sex / height / age / activity_level) needed
   // by the activity-bonus info popover so it can show "BMR × multiplier"
   // without a second profile fetch (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
@@ -905,7 +918,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     supabase
       .from("profiles")
       .select(
-        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -964,23 +977,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         } else {
           setProfileActivityLevel(null);
         }
-        // Compute maintenance TDEE for surplus-only activity adjustment.
-        // Prefer adaptive TDEE if available (more accurate), else compute from profile.
-        const adaptive = Number(data.adaptive_tdee);
-        if (Number.isFinite(adaptive) && adaptive > 0) {
-          setProfileMaintenanceTdee(Math.round(adaptive));
-        } else {
-          const sex = data.sex ?? "female";
-          const age = Number(data.age);
-          const hCm = Number(data.height_cm);
-          const wKg = Number(data.weight_kg);
+        // F-3 (2026-04-19, TestFlight `ADFYpDgEEb0QH-j3BXshPTo`):
+        // single source of truth for the Activity Bonus Maintenance
+        // tile + the Progress "Maintenance" card. Previously Today
+        // used raw adaptive with no confidence gate while Progress
+        // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
+        // `resolveMaintenance` is the shared gate: adaptive wins at
+        // medium/high confidence AND not stale, else formula.
+        const resolved = resolveMaintenance({
+          adaptive_tdee: (data as any).adaptive_tdee,
+          adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
+          adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
+          sex: (data.sex ?? "unspecified") as any,
+          weight_kg: Number(data.weight_kg),
+          height_cm: Number(data.height_cm),
+          age: Number(data.age),
           // Default to "sedentary" (1.2) when missing — "moderate" (1.55)
           // silently over-inflated TDEE by ~14% for users who never picked a
           // level (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
-          const act = data.activity_level ?? "sedentary";
-          if (Number.isFinite(age) && Number.isFinite(hCm) && Number.isFinite(wKg) && age > 0 && hCm > 0 && wKg > 0) {
-            setProfileMaintenanceTdee(calculateTDEE(sex, wKg, hCm, age, act));
-          }
+          activity_level: (data.activity_level ?? "sedentary") as any,
+        });
+        if (resolved) {
+          setProfileMaintenanceTdee(resolved.kcal);
+          setProfileMaintenanceSource(resolved.source);
+          setProfileMaintenanceConfidence(resolved.confidence);
         }
       });
   }, [authedUserId]);
@@ -1804,6 +1824,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         profileHeightCm={profileHeightCm}
         profileAge={profileAge}
         profileActivityLevel={profileActivityLevel}
+        maintenanceSource={profileMaintenanceSource}
+        maintenanceConfidence={profileMaintenanceConfidence}
       />
 
       {/* Hydration & stimulants card (Batch 2.5).
@@ -1913,6 +1935,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               ? "Open Food Facts"
               : "USDA FoodData Central";
           const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
+          // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash
+          // scaled values on the meal's `micros` map so the insert path
+          // in `useNutritionJournalState` can bump
+          // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`
+          // and the delete path can decrement by the same delta. Null
+          // per-100 g → 0 (never invented). Mirrors the mobile Today
+          // FoodSearchModal commit flow byte-for-byte.
+          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+            grams,
+            caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
+            alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
+          });
+          const micros: Record<string, number> = {};
+          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) micros.alcoholG = alcoholG;
           addLoggedMeal(
             {
               name: mealSlot,
@@ -1924,6 +1961,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
               source: sourceLabel,
               ...(fiberG > 0 ? { fiberG } : {}),
+              ...(Object.keys(micros).length > 0 ? { micros } : {}),
             },
             // Mirror mobile's `food_logged.source` mapping: custom food
             // logs fire with `"custom_food"`, USDA/OFF with `"manual"`
@@ -2039,6 +2077,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onConfirm={(payload: TodayBarcodeConfirmPayload) => {
           pushRecentFood(payload.titleForLog);
           setRecentFoods(loadRecentFoods());
+          // F-13 (2026-04-19) — auto-track caffeine + alcohol from the
+          // scanned product. OFF surfaces `caffeine_100g` for colas /
+          // energy drinks and `alcohol_100g` for beer / wine / cider.
+          // `scaleCaffeineAlcohol` handles nulls by returning 0, so a
+          // non-stimulant product adds no micros.
+          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+            grams: payload.grams,
+            caffeineMgPer100g: payload.product.caffeineMgPer100g ?? null,
+            alcoholGPer100g: payload.product.alcoholGPer100g ?? null,
+          });
+          const micros: Record<string, number> = {};
+          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) micros.alcoholG = alcoholG;
           addLoggedMeal(
             {
               name: mealSlot,
@@ -2050,6 +2101,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               fat: payload.fat,
               source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
               ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
+              ...(Object.keys(micros).length > 0 ? { micros } : {}),
             },
             "barcode",
           );

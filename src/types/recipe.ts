@@ -42,6 +42,12 @@ export interface RecipeCard {
   mealSlots?: readonly PlannerMealSlot[];
   /** Platform the recipe was imported from (social import feature). */
   sourcePlatform?: "instagram" | "tiktok" | "youtube" | "pinterest" | "web" | "user";
+  /**
+   * Original source URL when the recipe was imported from a link. Used
+   * to distinguish "imported" vs "created" drafts in Library (F-7,
+   * 2026-04-18). Parity with mobile `RecipeCard.sourceUrl`.
+   */
+  sourceUrl?: string | null;
   /** Human-readable prep time (e.g. "15 min"). */
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */
@@ -156,4 +162,11 @@ export interface DayPlan {
     carbs: number;
     fat: number;
   };
+  /**
+   * F-15 — grams of protein below the day target after the joint-fit
+   * scaler ran. Negative grams (e.g. `-25` = 25g under). Undefined /
+   * 0 when the scaler closed the gap. Day card surfaces the hint only
+   * when `residualProteinGap < -10`.
+   */
+  residualProteinGap?: number;
 }

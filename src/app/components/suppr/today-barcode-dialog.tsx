@@ -31,6 +31,13 @@ export interface TodayBarcodeConfirmPayload {
   product: OffProductMacros;
   titleForLog: string;
   portion: string;
+  /**
+   * F-13 (2026-04-19) — the raw gram weight the dialog used to scale
+   * macros. Forwarded so the host can compute caffeine/alcohol deltas
+   * with `scaleCaffeineAlcohol` against the original per-100 g
+   * envelope.
+   */
+  grams: number;
   calories: number;
   protein: number;
   carbs: number;
@@ -444,6 +451,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                       product: p,
                       titleForLog,
                       portion,
+                      grams: barcodeGramsParsed,
                       calories,
                       protein,
                       carbs,

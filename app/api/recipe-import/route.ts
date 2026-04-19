@@ -12,6 +12,7 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 
 /** Block private/reserved IP ranges to prevent SSRF attacks. */
 function isPrivateHost(hostname: string): boolean {
@@ -259,6 +260,11 @@ export async function POST(req: Request) {
             caption: captionText,
           });
 
+          const linkedAttribution = normaliseSource({
+            url: trimmed,
+            name: websiteRecipe.sourceName ?? siteNameFromUrl(trimmed),
+          });
+
           return NextResponse.json({
             ok: true,
             recipe: {
@@ -270,8 +276,8 @@ export async function POST(req: Request) {
               prepTimeMin: websiteRecipe.prepTimeMin,
               cookTimeMin: websiteRecipe.cookTimeMin,
               imageUrl: meta.imageUrl ?? websiteRecipe.imageUrl,
-              sourceUrl: trimmed,
-              sourceName: websiteRecipe.sourceName ?? siteNameFromUrl(trimmed),
+              sourceUrl: linkedAttribution.source_url,
+              sourceName: linkedAttribution.source_name,
               mealType,
               calories: nutrition?.perServing.calories ?? websiteRecipe.siteNutrition?.calories ?? 0,
               protein: nutrition?.perServing.protein ?? websiteRecipe.siteNutrition?.protein ?? 0,
@@ -327,6 +333,11 @@ export async function POST(req: Request) {
         caption: captionText,
       });
 
+      const socialAttribution = normaliseSource({
+        url: trimmed,
+        name: socialImportSourceName(socialPlatform, trimmed, meta.authorDisplay ?? null, captionText),
+      });
+
       return NextResponse.json({
         ok: true,
         source: socialPlatform,
@@ -339,8 +350,8 @@ export async function POST(req: Request) {
           prepTimeMin: recipe.prepTimeMin ?? null,
           cookTimeMin: recipe.cookTimeMin ?? null,
           imageUrl: meta.imageUrl,
-          sourceUrl: trimmed,
-          sourceName: socialImportSourceName(socialPlatform, trimmed, meta.authorDisplay ?? null, captionText),
+          sourceUrl: socialAttribution.source_url,
+          sourceName: socialAttribution.source_name,
           mealType,
           calories: nutrition?.perServing.calories ?? 0,
           protein: nutrition?.perServing.protein ?? 0,
@@ -487,14 +498,28 @@ export async function POST(req: Request) {
         caption: [parsed.description, parsed.title].filter(Boolean).join("\n\n"),
       });
 
-      const resolvedSourceName =
-        typeof parsed.sourceName === "string" && parsed.sourceName.trim().length > 0
-          ? parsed.sourceName.trim()
-          : siteNameFromUrl(currentUrl);
+      /**
+       * Persist both URL and name whenever the URL is known (F-5, `AI-CNKcmy7y`).
+       * The web-scrape branch previously returned only `sourceName`, so saves on
+       * both platforms inserted rows with a name and no URL — the source card
+       * rendered as flat text.
+       */
+      const attribution = normaliseSource({
+        url: currentUrl,
+        name:
+          typeof parsed.sourceName === "string" && parsed.sourceName.trim().length > 0
+            ? parsed.sourceName.trim()
+            : siteNameFromUrl(currentUrl),
+      });
 
       return NextResponse.json({
         ok: true,
-        recipe: { ...parsed, mealType, sourceName: resolvedSourceName },
+        recipe: {
+          ...parsed,
+          mealType,
+          sourceUrl: attribution.source_url,
+          sourceName: attribution.source_name,
+        },
       });
     }
     if (!res.ok) {

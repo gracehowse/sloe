@@ -15,6 +15,7 @@ import { track } from "../../lib/analytics/track.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
+import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
@@ -177,6 +178,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [importBusy, setImportBusy] = useState(false);
+  // Captured at URL-import time so the upsert persists `recipes.source_url` +
+  // `recipes.source_name`. F-5 fix (`AI-CNKcmy7y`, 2026-04-19): previously the
+  // import path dropped both columns and the source card rendered as text.
+  const [importedSourceUrl, setImportedSourceUrl] = useState<string | null>(null);
+  const [importedSourceName, setImportedSourceName] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
@@ -373,6 +379,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     setCoverImageFile(null);
     setImportUrl("");
     setImportHint(null);
+    setImportedSourceUrl(null);
+    setImportedSourceName(null);
     setVerifiedLines(null);
     setVerifiedTotals(null);
   };
@@ -462,6 +470,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           prepTimeMin: number | null;
           cookTimeMin: number | null;
           imageUrl: string | null;
+          sourceUrl?: string | null;
+          sourceName?: string | null;
         };
         message?: string;
       };
@@ -497,6 +507,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       if (r.instructions.length) {
         setInstructions(r.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n"));
       }
+      // Persist URL + name at the write boundary via `normaliseSource`. We run
+      // the helper here so the imported-state values are already cleaned before
+      // they reach `saveRecipe` (and so a tester inspecting React state sees
+      // exactly what will hit Supabase).
+      const attribution = normaliseSource({ url: r.sourceUrl ?? u, name: r.sourceName ?? null });
+      setImportedSourceUrl(attribution.source_url);
+      setImportedSourceName(attribution.source_name);
       toast.success("Imported — review amounts and nutrition before publishing");
       // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
       // `recipe_import_url` is retired in favour of the consolidated
@@ -819,6 +836,15 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         finalImageUrl = DEFAULT_COVER_IMAGE;
       }
 
+      // F-5 (`AI-CNKcmy7y`): route every write through `normaliseSource` so web
+      // import saves the URL + name whenever they are known at import time.
+      // `mode === "create"` bypasses this entirely — manual originals have no
+      // upstream attribution to preserve.
+      const { source_url: attributionUrl, source_name: attributionName } =
+        mode === "import"
+          ? normaliseSource({ url: importedSourceUrl, name: importedSourceName })
+          : { source_url: null, source_name: null };
+
       const { data: recipeRow, error: recipeError } = await supabase
         .from("recipes")
         .upsert(
@@ -839,6 +865,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             verified_source: verifiedOk ? "FatSecret" : null,
             verified_confidence: verifiedOk ? verifiedTotals.minConfidence : null,
             verified_at: verifiedOk ? new Date().toISOString() : null,
+            source_url: attributionUrl,
+            source_name: attributionName,
             calories: chosenPerServing.calories,
             protein: chosenPerServing.protein,
             carbs: chosenPerServing.carbs,

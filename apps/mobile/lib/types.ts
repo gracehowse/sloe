@@ -44,8 +44,6 @@ export interface RecipeCard {
   cookTime?: string;
   prepTimeMin?: number | null;
   cookTimeMin?: number | null;
-  /** Macro fit indicator for discover feed. */
-  fit?: "great" | "good" | "warn";
   /** Source platform label for discover feed (e.g. "TikTok"). */
   source?: string;
   /** Number of saves. */
