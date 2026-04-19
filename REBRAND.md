@@ -43,3 +43,19 @@ All localStorage keys now use the `suppr-*` prefix. Rebrand complete.
 
 - Root `package.json` **name**: `suppr`.
 - Mobile workspace: `suppr-mobile`.
+
+## Brand mark / icons
+
+Single source of truth: `public/suppr-mark.svg` (full mark) and `public/suppr-mark-mono.svg` (white S only).
+
+Regenerate every PNG icon — web favicons, apple-touch, PWA manifest, mobile iOS/Android, splash — from the master SVGs:
+
+```bash
+npm run build:icons
+```
+
+Outputs:
+- `public/icon.svg`, `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/icon-maskable-512.png`
+- `apps/mobile/assets/images/{icon,favicon,splash-icon,android-icon-{foreground,background,monochrome}}.png`
+
+Brand blue: `#4c6ce0`. Update the master SVGs, then re-run `npm run build:icons` to fan out.

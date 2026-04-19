@@ -164,7 +164,7 @@ export function HouseholdCard() {
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Household Meals</Text>
         </View>
         <Text style={{ fontSize: 12, color: t.sub, marginBottom: 12, lineHeight: 17 }}>
-          Share dinner plans with your household. Each member sees their own remaining macros.
+          Share dinner plans with your household. Members see each other&apos;s daily calorie + macro targets and remaining-today numbers — nothing else from your account is shared.
         </Text>
 
         {mode === "idle" ? (
@@ -186,6 +186,15 @@ export function HouseholdCard() {
               onChangeText={setInputValue}
               autoFocus
             />
+            {mode === "join" && (
+              // Privacy audit M2 (2026-04-18): household members can see
+              // each other's daily macro totals + targets server-side.
+              // Surface this on the join surface so consent is informed.
+              // Copy MUST stay in sync with web HouseholdPanel.tsx.
+              <Text style={{ fontSize: 11, color: t.dim, lineHeight: 15 }}>
+                Joining shares your daily calorie + macro targets and your remaining-today numbers with every other member of this household. Nothing else from your account is shared.
+              </Text>
+            )}
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Pressable onPress={() => void (mode === "create" ? createHousehold() : joinHousehold())} style={{ flex: 1, backgroundColor: t.accent, borderRadius: Radius.md, paddingVertical: 10, alignItems: "center" }}>
                 <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{mode === "create" ? "Create" : "Join"}</Text>

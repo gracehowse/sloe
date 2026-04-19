@@ -1,0 +1,36 @@
+# Downshiftology — 10 recipes for the public Discover feed.
+#
+# Selection: balanced across breakfast / lunch / dinner / snack so the
+# feed feels useful immediately to a brand-new user regardless of what
+# meal they're planning first. URLs verified against
+# downshiftology.com on 2026-04-18 (each returns 200 + schema.org
+# JSON-LD with per-serving nutrition).
+#
+# How this list is consumed:
+#   - scripts/seed-discover-recipes.ts        → imports each URL into the
+#     `recipes` + `recipe_ingredients` tables under the seeded
+#     "Downshiftology" system author. Idempotent (skips already-imported
+#     URLs by `source_url`).
+#   - scripts/delete-seeded-recipes.ts        → if you need to nuke the
+#     batch, this script already deletes any recipe whose `source_url`
+#     matches a line in this file (see docs/operations/scripts.md).
+#
+# Lines starting with `#` and blank lines are ignored.
+
+# Breakfast
+https://downshiftology.com/recipes/overnight-oats/
+https://downshiftology.com/recipes/egg-muffins/
+https://downshiftology.com/recipes/super-moist-banana-bread/
+
+# Lunch / salads
+https://downshiftology.com/recipes/mediterranean-chickpea-salad/
+https://downshiftology.com/recipes/greek-chicken-salad/
+
+# Dinner
+https://downshiftology.com/recipes/best-baked-salmon/
+https://downshiftology.com/recipes/sheet-pan-chicken-fajitas/
+https://downshiftology.com/recipes/turkey-meatballs/
+
+# Snacks / sides
+https://downshiftology.com/recipes/3-minute-hummus/
+https://downshiftology.com/recipes/tzatziki/

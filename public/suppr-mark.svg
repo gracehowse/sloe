@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Suppr">
+  <title>Suppr</title>
   <rect width="1024" height="1024" rx="229" ry="229" fill="#4c6ce0"/>
   <path
     d="M 619 320 L 405 320 Q 299 320 299 427 Q 299 512 405 512 L 619 512 Q 725 512 725 619 Q 725 704 619 704 L 405 704"

@@ -10,7 +10,8 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, demo creators; optionally deletes rows whose `source_url` matches lines in `scripts/seed-recipe-urls.txt` if you create that file | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
+| `seed-discover-recipes.ts` | Seed the public Discover feed from `scripts/seed-recipe-urls.txt`. Provisions a "Downshiftology" system author (auth user + profile + verified `creators` row) and imports each URL via the schema.org JSON-LD parser. Idempotent: skips already-imported URLs and refuses to write recipes whose source page lacks per-serving nutrition (no guessing). | `npm run seed:discover-recipes` (add `--dry-run` to preview) |
+| `delete-seeded-recipes.ts` | Remove demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, demo creators; optionally deletes rows whose `source_url` matches lines in `scripts/seed-recipe-urls.txt` (so seed + delete are symmetric) | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
 | `fix-servings.ts` | Re-fetch servings from source URLs for recipes stuck at `servings=1` | `npx tsx scripts/fix-servings.ts [--dry-run]` |
 | `fix-html-entities.ts` | Decode HTML entities in existing recipe data | `npx tsx scripts/fix-html-entities.ts [--dry-run]` |
 | `classify-meals.ts` | Auto-classify `meal_type` for untagged recipes | `npx tsx scripts/classify-meals.ts [--dry-run]` |

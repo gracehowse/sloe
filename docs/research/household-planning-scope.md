@@ -5,6 +5,8 @@
 **Depends on:** Stable single-user meal planning (Phase A/C), day totals, profiles with macro targets
 
 > **Shipping note (2026-04-18):** The Phase 1 read-only shared dinner list is live on web and mobile. Runtime data path for **both** platforms is `src/lib/household/householdClient.ts` — direct Supabase calls under RLS, plus a `security definer` RPC `public.household_join_by_invite_code` for the one operation RLS cannot express. The Next.js routes under `app/api/household/` still exist but are no longer the runtime path for the UI; do not add new household callers to those routes. See `docs/testflight-feedback/resolved.md` (2026-04-18 entry, ASC `AAegi1DJEiscjIFi_pYaep4`).
+>
+> **Privacy / consent note (audit 2026-04-18):** Joining a household exposes per-member daily calorie + macro **targets** and **remaining-today** numbers (sums only — never individual nutrition entries) to every other household member, server-side via the `/api/household` route. This is by design (the value prop is "see what your partner has left for the day"). Both join surfaces (`src/app/components/HouseholdPanel.tsx` web, `apps/mobile/components/HouseholdCard.tsx` mobile) carry an explicit consent disclosure before the user joins. Pinned by `tests/unit/householdJoinDisclosureCopy.test.ts` so the copy can't silently drift. The `/api/household/join` route is rate-limited to 5 attempts/min/IP (audit M1).
 
 ---
 

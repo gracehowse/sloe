@@ -8,7 +8,7 @@ For each table below, confirm in the Supabase SQL editor (or `psql`) that **RLS 
 
 | Table | Intent | Policies |
 | --- | --- | --- |
-| `profiles` | Select/insert/update own row only (`auth.uid() = id`) | select_own, insert_own, update_own |
+| `profiles` | Select/insert/update own row only (`auth.uid() = id`); delete_own added 20260419100001 | select_own, insert_own, update_own, delete_own |
 | `saves` | Own saves only | select_own, insert_own, delete_own |
 | `author_follows` | Follower can read/insert/delete own follow rows only | for_all (follower_id) |
 | `recipe_plan_add_events` | Own rows + recipe authors read aggregates via RPC | select_own, insert_own |
@@ -23,10 +23,17 @@ For each table below, confirm in the Supabase SQL editor (or `psql`) that **RLS 
 | `shopping_items` | Per-user shopping items | for_all (user_id) |
 | `app_notifications` | User's notification inbox | select_own, update_own |
 | `creator_publish_notifications` | Publish notifications (insert via trigger) | select_own, update_own |
-| `recipes` | Public select for discovery; insert/update/delete where `author_id = auth.uid()` | select (public), insert/update/delete (author) |
+| `recipes` | `published = true` is publicly selectable; unpublished = author-only (`recipes_select_published_or_own`, fix migration 20260419100000); insert/update/delete restricted to `author_id = auth.uid()` | select_published_or_own, insert_own, update_own, delete_own |
 | `recipe_ingredients` | Public read; write via recipe author | select (public), insert/update/delete (author) |
 | `foods` / `food_sources` / `barcode_mappings` | Public read; write via service role | select (public) |
 | `ingredients` | Legacy food catalog; public read | select (public) |
+| `user_foods` | Community barcode contributions; public read; **owner-only insert/update/delete** — UPDATE has `with check (submitted_by = auth.uid())` (added 20260425100000) so authorship can't be reassigned | select (authenticated), insert_own, update_own (with check), delete_own |
+| `user_favorite_foods` / `user_saved_meals` / `user_saved_meal_items` / `user_recipe_notes` / `user_custom_foods` / `user_plan_templates` | Per-user private; full CRUD scoped to `auth.uid() = user_id` | for_all (user_id) |
+| `recipe_ingredients_overrides` | Per-recipe-owner; gated by parent `recipes` author check | parent-row owner check |
+| `fasting_sessions` / `caffeine_logs` / `alcohol_logs` / `streak_freeze_*` | Per-user private | for_all (user_id) |
+| `households` | Owner full access + members read | owner_full_access, members_read (via `auth_household_ids()` helper) |
+| `household_members` | Self-CRUD + owner manage | self_insert, self_delete, members_read, owner_manage |
+| `household_meals` | Members read + creator/owner write — UPDATE has `with check` mirroring USING (added 20260425100100) so `household_id` can't be re-assigned across boundaries | members_read, members_insert, creator_or_owner_update (with check), creator_or_owner_delete |
 
 ## Quick verification queries
 

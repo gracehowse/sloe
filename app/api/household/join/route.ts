@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserIdFromRequest, createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
 import { misconfiguredServiceRoleResponse } from "@/lib/server/serverEnv";
+import { rateLimit } from "@/lib/server/rateLimit";
 
 /**
  * POST /api/household/join
@@ -9,6 +10,18 @@ import { misconfiguredServiceRoleResponse } from "@/lib/server/serverEnv";
  * Body: { inviteCode: string, displayName?: string }
  */
 export async function POST(req: Request) {
+  // Privacy audit M1 (2026-04-18): invite codes are 12-hex (~48 bits), so
+  // brute-force is impractical, but stuffing wasn't blocked. Cap to 5
+  // attempts per minute per IP to make automated guessing pointless and
+  // keep the failure surface small for honest users who mistype once.
+  const limited = await rateLimit({ keyPrefix: "household_join", limit: 5, windowMs: 60_000 });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many attempts. Try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

@@ -141,7 +141,7 @@ export function HouseholdPanel() {
           <p className="text-sm font-semibold text-foreground">Household Meal Planning</p>
         </div>
         <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-          Share dinner plans with your household. Each member sees their own remaining macros after shared meals.
+          Share dinner plans with your household. Members see each other&apos;s daily calorie + macro targets and remaining-today numbers — nothing else from your account is shared.
         </p>
 
         {error && <p className="text-xs text-destructive mb-3">{error}</p>}
@@ -168,6 +168,14 @@ export function HouseholdPanel() {
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
             />
+            {/* Privacy audit M2 (2026-04-18): household members can see each
+                other's daily macro totals + targets server-side. Surface
+                this on the join surface — and only the join surface,
+                because creators see the disclosure in the create flow
+                separately and we don't want it to read as a roadblock. */}
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Joining shares your daily calorie + macro targets and your remaining-today numbers with every other member of this household. Nothing else from your account is shared.
+            </p>
             <div className="flex gap-2">
               <button onClick={() => void joinHousehold()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Join</button>
               <button onClick={() => setShowJoin(false)} className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm hover:opacity-90 transition-opacity">Cancel</button>
