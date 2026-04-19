@@ -1262,6 +1262,51 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             </div>
           ) : null}
 
+          {/* Compact day strip — mobile parity
+              (`apps/mobile/app/(tabs)/planner.tsx` 815). One narrow
+              card per day with weekday label, kcal progress bar, and
+              total kcal. Multi-day plans only — single-day plans
+              don't need a week overview. Click jumps to that day's
+              detailed card below. */}
+          {generatedPlan.length > 1 ? (
+            <div className="grid gap-1.5 mb-4" style={{ gridTemplateColumns: `repeat(${generatedPlan.length}, minmax(0, 1fr))` }}>
+              {generatedPlan.map((dp) => {
+                const dayKcal = Math.round(dp.totals.calories);
+                const pct = targetCalories > 0
+                  ? Math.min((dayKcal / targetCalories) * 100, 100)
+                  : 0;
+                const tone =
+                  targetCalories > 0 && dayKcal > targetCalories * 1.05
+                    ? "var(--warning)"
+                    : "var(--success)";
+                return (
+                  <a
+                    key={`strip-${dp.day}`}
+                    href={`#plan-day-${dp.day}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const el = document.getElementById(`plan-day-${dp.day}`);
+                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="flex flex-col items-center gap-1 rounded-md border border-border bg-card px-2 py-2 hover:bg-muted/50 transition-colors text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={`Jump to day ${dp.day}: ${dayKcal} kcal`}
+                  >
+                    <span className="text-[11px] font-bold text-foreground">Day {dp.day}</span>
+                    <span className="block w-full h-[3px] rounded-full bg-border overflow-hidden">
+                      <span
+                        className="block h-full rounded-full"
+                        style={{ width: `${pct}%`, background: tone }}
+                      />
+                    </span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      {dayKcal.toLocaleString()}
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
+
           {/* Detailed day breakdowns (original structure) */}
           {generatedPlan.map((dp) => {
             const summary = daySummaries.find((s) => s.day === dp.day);
@@ -1272,7 +1317,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   ? "text-warning"
                   : "text-warning";
             return (
-            <div key={dp.day}>
+            <div key={dp.day} id={`plan-day-${dp.day}`}>
               <div className="backdrop-blur-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-8 mb-6 shadow-2xl">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/50">

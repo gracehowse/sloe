@@ -48,6 +48,7 @@ import * as Haptics from "expo-haptics";
 import { HouseholdCard } from "@/components/HouseholdCard";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
+import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -105,8 +106,25 @@ export default function PlannerScreen() {
   const { recipes: discoverRecipes } = useDiscoverRecipes();
   const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
 
-  const [plan, setPlan] = useState<DayPlan[] | null>(null);
+  // Named meal-plan slots — mobile parity for web's
+  // `mealPlanSlots / activeMealPlanSlotId / switchMealPlanSlot`
+  // (`src/context/AppDataContext.tsx`). The hook persists slot
+  // metadata to AsyncStorage; the cloud syncs only the active plan
+  // via `upsertMealPlanJson` (same as web localStorage). Aliasing
+  // `activePlan → plan` and `setActivePlan → setPlan` so the rest of
+  // this file's existing logic doesn't need to change.
+  const {
+    slots: planSlots,
+    activeSlotId: activePlanSlotId,
+    activePlan: plan,
+    setActivePlan: setPlan,
+    switchSlot: switchPlanSlot,
+    createNewSlot: createPlanSlot,
+    renameExistingSlot: renamePlanSlot,
+    deleteExistingSlot: deletePlanSlot,
+  } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
+  const [planSlotMenuOpen, setPlanSlotMenuOpen] = useState(false);
   const [days, setDays] = useState<1 | 3 | 7>(1);
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
@@ -807,6 +825,139 @@ export default function PlannerScreen() {
             <Text style={styles.autoFillBtnText}>{plan ? "Regenerate" : "Generate Plan"}</Text>
           </Pressable>
         </View>
+
+        {/* Named plan slots — mobile parity for web's "Named plans"
+            switcher (`MealPlanner.tsx` 679). Horizontal scrollable
+            row of pills, one per slot, plus a "+ New" affordance.
+            Long-press a pill for rename / delete. Cloud syncs only
+            the active slot's plan; slot names + ids stay device-local. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, paddingBottom: 4, paddingRight: 4 }}
+          style={{ marginBottom: Spacing.md }}
+        >
+          {planSlots.map((s) => {
+            const active = s.id === activePlanSlotId;
+            return (
+              <Pressable
+                key={s.id}
+                onPress={() => switchPlanSlot(s.id)}
+                onLongPress={() => {
+                  Alert.alert(
+                    s.name,
+                    "Rename or delete this plan?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Rename",
+                        onPress: () => {
+                          Alert.prompt(
+                            "Rename plan",
+                            "Choose a new name for this plan slot.",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Save",
+                                onPress: (next?: string) => {
+                                  if (next && next.trim()) renamePlanSlot(s.id, next);
+                                },
+                              },
+                            ],
+                            "plain-text",
+                            s.name,
+                          );
+                        },
+                      },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                          if (planSlots.length <= 1) {
+                            Alert.alert("Can't delete", "You need at least one plan slot.");
+                            return;
+                          }
+                          Alert.alert(
+                            "Delete plan?",
+                            `"${s.name}" will be removed from this device. Other devices keep their copy.`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Delete", style: "destructive", onPress: () => deletePlanSlot(s.id) },
+                            ],
+                          );
+                        },
+                      },
+                    ],
+                  );
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: active ? Accent.primary : colors.border,
+                  backgroundColor: active ? Accent.primary + "1A" : colors.card,
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Plan: ${s.name}${active ? ", active" : ""}. Long-press to rename or delete.`}
+              >
+                {active ? (
+                  <Ionicons name="checkmark" size={11} color={Accent.primary} />
+                ) : null}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: active ? "700" : "500",
+                    color: active ? Accent.primary : colors.textSecondary,
+                  }}
+                >
+                  {s.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => {
+              Alert.prompt(
+                "New plan",
+                "Name this plan (e.g. \"Cut week\", \"Family dinners\").",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Create",
+                    onPress: (name?: string) => {
+                      const trimmed = (name ?? "").trim();
+                      if (trimmed) createPlanSlot(trimmed);
+                    },
+                  },
+                ],
+                "plain-text",
+                "",
+              );
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderStyle: "dashed",
+              backgroundColor: "transparent",
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new plan slot"
+          >
+            <Ionicons name="add" size={12} color={colors.textSecondary} />
+            <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textSecondary }}>New</Text>
+          </Pressable>
+        </ScrollView>
 
         {/* Household shared meals */}
         <HouseholdCard />
