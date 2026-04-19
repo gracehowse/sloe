@@ -735,7 +735,7 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="What's new in Suppr"
               >
-                <Text style={styles.rowLabel}>What's new in Suppr</Text>
+                <Text style={styles.rowLabel}>What&apos;s new in Suppr</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </Pressable>
             </View>

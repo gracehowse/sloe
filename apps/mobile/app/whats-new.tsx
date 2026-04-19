@@ -170,7 +170,7 @@ export default function WhatsNewScreen() {
 
         {groups.length === 0 ? (
           <Text style={styles.emptyNote} testID="whats-new-empty">
-            We're cooking up the next set of improvements. Check back after the
+            We&apos;re cooking up the next set of improvements. Check back after the
             next TestFlight build lands.
           </Text>
         ) : (
