@@ -1,4 +1,4 @@
--- Platemate Phase 0 schema (minimal)
+-- Suppr Phase 0 schema (minimal)
 -- Apply in Supabase SQL editor (Dashboard) or via CLI later.
 
 -- Extensions

@@ -118,7 +118,7 @@ begin
   ) then
     insert into public.promo_codes (code, tier, max_uses)
     values
-      ('PLATEMATE_PRO', 'pro', 10000),
+      ('SUPPR_PRO', 'pro', 10000),
       ('SUPPR_TEST_PREMIUM', 'pro', 100000)
     on conflict (code) do nothing;
   end if;
