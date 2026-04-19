@@ -69,99 +69,23 @@ export const SUPPORTED_PLATFORMS = {
 
 /* ─────────────── Pricing tiers ─────────────── */
 
-export type PricingTierName = "Free" | "Base" | "Pro";
-
-export type BillingPeriod = "monthly" | "annual";
-
-export type PricingTier = {
-  name: PricingTierName;
-  tag: string;
-  /** Monthly-view price (e.g. "£3.99"). Free shows "£0". */
-  price: string;
-  /** Monthly-view period suffix (e.g. "/month"). Free shows "forever". */
-  period: string;
-  /** Annual-view price (e.g. "£29.99"). Absent for Free. */
-  annualPrice?: string;
-  /** Annual-view period suffix — typically "/year". */
-  annualPeriod?: string;
-  /** Annual saving badge copy (e.g. "Save 37%"). */
-  annualSavings?: string;
-  /** Tier key for checkout. `null` for Free. */
-  checkoutTier: "base" | "pro" | null;
-  /** Bullet used on /pricing as a small tier summary. */
-  nutritionNote: string;
-  /** First line shown above the feature list ("Everything in …, plus"). */
-  featHead?: string;
-  features: string[];
-  highlighted: boolean;
-};
-
 /**
- * Pricing matches the actual gating in code. Any feature claimed
- * in a tier must have a real gate (server check or client guard);
- * claims without a gate are treated as monetisation bugs and are
- * tracked in `docs/product/landing-maintenance.md`.
+ * `PRICING_TIERS` lives in `./pricingTiers` (a leaf file with no
+ * `@/…` imports) so the React Native mobile app can import it
+ * directly without pulling the whole SSOT and its web-aliased
+ * deps into its `tsconfig` graph. Re-exported here so web
+ * consumers keep a single entry-point.
+ *
+ * Any pricing / tier / feature-list change goes in
+ * `./pricingTiers`, NOT this file. `docs/decisions/2026-04-19-pricing-v1.md`
+ * records the numbers.
  */
-export const PRICING_TIERS: PricingTier[] = [
-  {
-    name: "Free",
-    tag: "Track meals and see verified macros.",
-    price: "£0",
-    period: "forever",
-    checkoutTier: null,
-    nutritionNote: "Sourced from USDA FoodData Central",
-    features: [
-      `Save up to ${FREE_SAVE_LIMIT} recipes`,
-      "Browse community recipes",
-      "Macro tracking with confidence scores",
-      "Recipe import from URL, Instagram, TikTok, YouTube",
-      "Barcode scanning",
-      "Cook mode with inline timers",
-      "Fiber & water tracking",
-      "Single-day meal plan",
-      "Apple Health sync (iOS)",
-      "Export your data (JSON)",
-    ],
-    highlighted: false,
-  },
-  {
-    name: "Base",
-    tag: "The full meal-planning loop.",
-    price: "£3.99",
-    period: "/month",
-    annualPrice: "£29.99",
-    annualPeriod: "/year",
-    annualSavings: "Save 37%",
-    checkoutTier: "base",
-    nutritionNote: "Unlimited recipes + multi-day planning",
-    featHead: "Everything in Free, plus",
-    features: [
-      "Unlimited saved recipes",
-      "Multi-day meal plans matched to your macro targets",
-      "Shopping list from plan",
-      "Publish recipes to the community",
-    ],
-    highlighted: true,
-  },
-  {
-    name: "Pro",
-    tag: "Log by photo and voice, faster.",
-    price: "£7.99",
-    period: "/month",
-    annualPrice: "£59.99",
-    annualPeriod: "/year",
-    annualSavings: "Save 37%",
-    checkoutTier: "pro",
-    nutritionNote: "AI photo & voice logging",
-    featHead: "Everything in Base, plus",
-    features: [
-      "AI photo meal recognition (100/day)",
-      "Voice food logging (100/day)",
-      "Priority email support",
-    ],
-    highlighted: false,
-  },
-];
+export type {
+  PricingTierName,
+  BillingPeriod,
+  PricingTier,
+} from "./pricingTiers";
+export { PRICING_TIERS } from "./pricingTiers";
 
 /* ─────────────── How-it-works ─────────────── */
 
@@ -286,7 +210,7 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
   },
   {
     q: "Is this a diet app?",
-    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. You can opt into a gentle logging streak if you want one; it's off by default.",
+    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. A gentle logging streak shows after your first day logged — no pressure, no punishing copy if you miss a day.",
   },
   // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
   // (monetisation-architect round-2): parking a placeholder with no

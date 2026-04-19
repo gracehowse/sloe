@@ -88,7 +88,7 @@ type Macros = {
 
 export type SelectedFood = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM";
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   macrosPer100g: Macros;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
@@ -303,7 +303,7 @@ export default function FoodSearchModal({
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF" | "CUSTOM";
+    source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
     macrosPer100g: Macros;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
@@ -530,7 +530,10 @@ export default function FoodSearchModal({
       } else if (item._source === "Edamam" && item.macrosPer100g) {
         // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
         // 2026-04-18. Macros come back per-100 g already inline so the
-        // tap path is the same shape as OFF — no extra fetch.
+        // tap path is the same shape as OFF — no extra fetch. Source label
+        // is "Edamam" so the "Powered by Edamam" attribution required by
+        // Edamam's API ToS can be rendered on the surface that shows the
+        // match.
         setLoadingKey(null);
         const allPortions = buildPortionList([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
@@ -538,7 +541,7 @@ export default function FoodSearchModal({
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
         setPreview({
           name: item.name,
-          source: "OFF", // re-uses the OFF preview rendering path; full Edamam-branded UI is a follow-up
+          source: "Edamam",
           macrosPer100g: item.macrosPer100g,
           portions: allPortions,
           chosenPortion: portion,

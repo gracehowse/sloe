@@ -336,6 +336,10 @@ export default function SettingsScreen() {
       ? {
           ...baseUpdate,
           target_calories: recomputed.target_calories,
+          // A2 provenance — activity-level recompute path. Only stamp when
+          // we're actually rewriting target_calories. (migration 20260427110000)
+          target_calories_set_at: new Date().toISOString(),
+          target_calories_source: "recompute",
           target_protein: recomputed.target_protein,
           target_carbs: recomputed.target_carbs,
           target_fat: recomputed.target_fat,

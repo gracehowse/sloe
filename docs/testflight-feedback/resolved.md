@@ -2,6 +2,52 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-04-19 — Sunday push body now content-specific (cascade headline + recap summary)
+
+- **Context:** the Sunday-evening weekly recap push currently fires generic body copy ("Tap to see your weekly recap — avg calories, protein, streak, and weight trend.") for every user via the server-fanout cron at `app/api/push/weekly-recap/route.ts`. Generic body has near-zero open-rate signal — every user gets the same line regardless of what their week actually looked like. Sunday push rewrite (planner, 2026-04-19) decided to compose a content-specific body that carries the Weekly Digest cascade headline + the recap data summary.
+- **What shipped (combined T3 + T4 + T6, deadline 2026-05-03, first content-specific firing 2026-04-27):**
+  - **T3 — per-user nutrition data fetch in the route.** The `profiles` select now pulls `weight_kg_by_day`, `target_*`, `streak_freeze_*`, `target_calories_set_at`, `target_calories_source`, `adaptive_tdee*`, `goal`, `goal_weight_kg`, and the formula inputs the maintenance resolver needs. A second `nutrition_entries IN(user_id, date_key range)` query pulls the previous-week meal rows for all eligible users in one round-trip (uses the existing `idx_ne_user_date` index). A third `saves IN(user_id)` query feeds the cascade's `saves.count` / `recentlyAddedCount` signal. Reshape helper `entriesToByDay` (new file `src/lib/push/weeklyRecapPayload.ts`) buckets rows into the `ByDayOf<MealMacros>` shape `buildWeeklyRecap` consumes.
+  - **T4 — formatter + cascade wired into the route.** New `with_suggestion` variant on `formatWeeklyRecapPushBody` accepts an optional `DigestSuggestion` argument; when present, prepends `suggestion.headline + " · "` to the recap sentence. ≤178-char APNs ceiling enforced with intelligent recap truncation (drop calories segment first, keep weight delta; collapse to days-only if still too long). The cascade headline is never truncated. Push payload `data` field now carries `weekKey` (T5) AND `bodyVariant` (T4) so the open-listener can later attribute opens by variant.
+  - **T6 — server-side delivery analytics.** New `serverTrack` helper in `src/lib/analytics/serverTrack.ts` POSTs directly to PostHog `/capture/` (no SDK; one fetch per emit, fire-and-forget). Per successful push, the route emits `weekly_recap_push_sent { userId, weekKey, bodyVariant, suggestionRule }`. The `weekKey` is the recap-window key (previous completed week) — fixes the off-by-one against `weekly_recap_push_opened` for users on the cron path. (The mobile-local fallback's `weekly_recap_push_sent` emit at `apps/mobile/app/(tabs)/progress.tsx:625-627` still uses `currentWeekKey` and remains off by one — that surface is out of scope for this work; ticket stays open in TODO §"Push analytics off-by-one bug".)
+- **Honest-claims guardrails held:**
+  - `daysLogged === 0` always lands on the zero-days fallback ("Nothing logged this week. Open Suppr to get back on track."). Suggestions are never prepended onto this branch.
+  - Per-user compute failure is silently skipped + structured-logged (`{ at: "push.weekly_recap", phase: "recap_failed", userId, error }`). The route does NOT fall back to the generic body — masking a real bug with a generic line is the wrong default.
+  - Dedupe filter (`last_weekly_recap_push_sent_at` within 6 days) runs BEFORE the nutrition_entries fetch — no compute spent on users we'll skip.
+  - Optimisation: users with 0 entries in the previous-week window short-circuit to the zero-days variant without running `buildWeeklyRecap` / `selectDigestSuggestion`.
+- **Cascade Rule 1 caveat:** the server route does not compute `usualMealInsight` (would require fetching `saved_meals` per user). Rule 1 is structurally suppressed in the server-fanout path; Rules 2–5 fire normally. Documented in `docs/journeys/progress.md` §"Server-route wiring caveat". Worst case: a user who would have hit Rule 1 lands on Rule 2/3/4/5 or the unsuggested recap variant. The Digest UI on Progress (when shipped) computes the full cascade from in-page state, so Rule 1 fires there.
+- **Live-DB dependency:** the route assumes the A2 schema migration (`supabase/migrations/20260427110000_profiles_target_calories_provenance.sql`) has been applied. Without it, the select throws at runtime against `target_calories_set_at` / `target_calories_source`. Migration is shipped to the repo but not yet applied to the live DB — must be applied before 2026-04-27 (first content-specific firing). No defensive fallback by design (a defensive fallback would mask the migration-not-applied condition forever).
+
+### Tests
+
+- **`tests/unit/weeklyRecapPayload.test.ts`** (new, 20 tests, passing) — `entriesToByDay` reshape: empty input, single day, full week, missing macro fields coerced to 0, duplicate entries on same day bucketed in input order, rows outside the window dropped, per-user filter, week-boundary correctness (Mon-start vs Sun-start). `previousWeekKeys` / `previousWeekDescriptor` snap-to-week math. `parseWeightKgByDay` / `parseFreezeLedger` tolerate null / non-object / malformed shapes.
+- **`tests/unit/weeklyRecapPushBody.test.ts`** (extended, 17 tests, passing) — added 8 new `with_suggestion` tests: falls through when suggestion is null/omitted, composes headline + recap (with weight + calories-only), defensive guard against suggestions on the zero-days fallback, ≤178 char budget with both present, intelligent truncation (drop calories first, keep weight), collapse to days-only when needed, no exclamation marks, ignores empty-headline suggestions.
+- **`tests/unit/weeklyRecapPushRoute.test.ts`** (extended, 21 tests, passing) — added 12 new tests: extended profile column set including A2 columns, zero-days body for users with no entries, calories_only body for logged users with no weight, scoped `nutrition_entries IN(...)` fetch, dedupe-before-compute ordering, `entries_select_failed` propagation, saves-select-failed continue, push payload carries `bodyVariant`, T6 PostHog ingest payload shape, no analytics for DeviceNotRegistered tickets, server-side `weekKey` matches push-payload `weekKey` (off-by-one fix verification).
+- **`tests/unit/serverTrack.test.ts`** (new, 6 tests, passing) — happy path POST shape, host override, no-op when project key missing, `ok=false` on non-2xx, never throws on fetch error, rejects empty distinct_id.
+
+### Files touched
+
+- `src/lib/push/weeklyRecapPayload.ts` (new) — `entriesToByDay`, `previousWeekKeys`, `previousWeekDescriptor`, `parseWeightKgByDay`, `parseFreezeLedger`.
+- `src/lib/analytics/serverTrack.ts` (new) — server-side PostHog `/capture/` emit (no SDK).
+- `src/lib/nutrition/weeklyRecapPushBody.ts` — added `with_suggestion` variant + composition + truncation.
+- `app/api/push/weekly-recap/route.ts` — extended profile select, `nutrition_entries` + `saves` per-user fetch, dedupe-before-compute, recap + cascade compose, `with_suggestion` body wiring, T6 server-track per success.
+- `tests/unit/weeklyRecapPayload.test.ts` (new) — 20 tests for the reshape helpers.
+- `tests/unit/weeklyRecapPushBody.test.ts` — 8 new `with_suggestion` tests.
+- `tests/unit/weeklyRecapPushRoute.test.ts` — 12 new T3/T4/T6 tests.
+- `tests/unit/serverTrack.test.ts` (new) — 6 tests for the server-side analytics path.
+- `docs/journeys/progress.md` — Push body formatter section updated for `with_suggestion`; Push body content + Analytics sections updated for the wired state.
+- `docs/testflight-feedback/resolved.md` — this entry.
+
+### Parity
+
+- Web vs mobile: the route is server-only by design (the cron fans out to whichever device has a synced Expo push token). Mobile receives the push and renders it natively — no mobile code change required for the body composition. The reshape helpers in `src/lib/push/weeklyRecapPayload.ts` are pure and importable from both surfaces; today only the route consumes them.
+- Mobile-local fallback (`apps/mobile/lib/weeklyRecapPush.ts`) still uses the legacy generic copy for installs without a synced Expo push token. Promoting it to the formatter is tracked as a follow-up (low priority — installs without a token are a small minority and they don't have the per-user data the cascade needs anyway).
+
+### Follow-ups
+
+- Mobile-local push body is still generic — promote to the formatter once a way exists to compute the cascade input on-device cheaply (today's gating uses adaptive TDEE + freeze ledger; both are already on-device, but `proteinOnTarget` requires running `buildWeekStats` against the previous week which the local push scheduler doesn't currently do).
+- Mobile dual-emit `weekly_recap_push_sent` at `apps/mobile/app/(tabs)/progress.tsx:625-627` still uses `currentWeekKey` (off by one). The server emit fixed by this work uses the recap-window key correctly. Mobile fix tracked separately in TODO §"Push analytics off-by-one bug".
+- Cascade Rule 1 (re-log prompt) suppressed in the server-fanout path — needs a `saved_meals` per-user fetch in the route to fire. Not in scope for the 2026-05-03 deadline.
+
 ## 2026-04-19 — H-5 (build-12): "Day total vs goal" summary line on Plan view (both platforms)
 
 - **ASC feedback id:** `AH8csBqtZsBJJr0uHgXyEcE` (build 11, 2026-04-19) — "Plan doesn't tell me how close it is to my macro targets." Screenshot showed a Saturday plan card with 4 meals and `1,373 kcal` in the header but no P/C/F totals and no explicit comparison to the user's per-day goals.

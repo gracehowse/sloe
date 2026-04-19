@@ -180,6 +180,33 @@ Competitor analysis must not anchor only to nutrition apps. Where relevant, incl
 - funnels, drop-offs, or event design are needed
 - a feature needs measurable success criteria
 
+### Always use `brand-manager` when
+- any new surface, screen, or messaging change lands on a user-facing area
+- naming, tone, positioning, visual direction, or identity consistency is in question
+- marketing and product copy need to reconcile
+- required collaborator with `copy-reviewer` on any meaningful copy change
+
+### Always use `copy-reviewer` when
+- any product or website copy is added or changed
+- CTAs, labels, empty states, error messages, onboarding, paywall, emails, or legal-adjacent wording are touched
+- required collaborator with `brand-manager` for tone alignment
+
+### Always use `diversity-inclusion` when
+- a surface touches body, weight, identity, gender, sex-at-birth, household, cuisine naming, imagery, or onboarding defaults
+- copy could shame, exclude, flatten, or assume a default user
+- accessibility or equitable defaults are relevant
+- required sign-off for any of the above — not optional
+
+### Always use `user-sentiment` when
+- understanding what real users love, hate, complain about, or request
+- validating assumptions about user pain before building
+- researching category reaction on Reddit, App Store, forums, social
+
+### Always use `feature-scout` when
+- deciding what to build next from public user feedback
+- translating raw sentiment into ranked, actionable opportunities
+- identifying unmet needs competitors are missing
+
 ### Always use `qa-lead` before completion
 No meaningful change is complete without testing review.
 

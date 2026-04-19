@@ -4,7 +4,7 @@ Use this before a major release or store submission.
 
 ## Environment
 
-- [ ] Production Supabase: all migrations from `supabase/migrations/` applied (`supabase db push` or hosted SQL).
+- [ ] Production Supabase: all migrations from `supabase/migrations/` applied via **`supabase db push --linked` only** — do **not** use Supabase MCP `apply_migration` or the Dashboard SQL editor's "Save as migration" for files committed to `supabase/migrations/`. Both paths call the Management API without a `version` parameter, which rewrites `schema_migrations.version` to `NOW()` and causes drift from the deliberately-ordered file timestamps. Use `npm run check:migrations` to confirm matched/drifted/local-only/remote-only state before shipping; see [`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md#why-drift-recurs) for the why.
 - [ ] Vercel (or host): env vars match `.env.example` — no placeholders for required keys.
 - [ ] `NEXT_PUBLIC_APP_URL` / domain correct for auth redirects and Stripe.
 - [ ] **Apple Sign-In (Supabase):** Dashboard → Authentication → Providers → Apple — **Secret** (JWT from Apple `.p8` key) set and rotated before expiry (~6 months). See [`docs/environment.md`](../environment.md#supabase-cli-local-stack-supabase-start) and [`supabase/.env.example`](../../supabase/.env.example) for local `supabase start` (`SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in `supabase/.env`).

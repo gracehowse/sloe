@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 import { createSupabaseServiceRoleClient } from "../../../src/lib/supabase/serverAnonClient.ts";
 import { resolveBillingPortalOutcome } from "../../../src/lib/stripe/billingPortalDecision.ts";
+import { BillingUnavailableFallback } from "./BillingUnavailableFallback.tsx";
 
 /**
  * `/account/billing` — opens the Stripe Customer Portal for the signed-in
@@ -43,35 +44,6 @@ function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) return null;
   return new Stripe(key);
-}
-
-/**
- * Static fallback shown when Stripe is unavailable (unset key, API
- * error). Copy pending legal-reviewer sign-off — kept deliberately
- * plain so a user who hits this path still gets an actionable next
- * step (email support). See the round-3 ship report for the
- * legal-reviewer handoff.
- */
-function BillingUnavailableFallback() {
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-6">
-      <div className="max-w-md text-center">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-          Manage your billing
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Manage your billing by emailing{" "}
-          <a
-            href="mailto:support@suppr-club.com"
-            className="text-violet-600 dark:text-violet-400 underline underline-offset-2"
-          >
-            support@suppr-club.com
-          </a>
-          . We&apos;ll reply within one business day.
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default async function AccountBillingPage() {

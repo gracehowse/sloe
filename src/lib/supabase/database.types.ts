@@ -1,3 +1,9 @@
+// TODO(infra): wire `supabase gen types typescript` into a script and regen
+//   both `src/lib/supabase/database.types.ts` and
+//   `apps/mobile/lib/database.types.ts` from the live schema. Until then,
+//   these files are hand-edited in lockstep when migrations land — the most
+//   recent hand-edit was migration 20260427110000_profiles_target_calories_provenance
+//   (added profiles.target_calories_set_at + target_calories_source).
 export type Json =
   | string
   | number
@@ -673,6 +679,8 @@ export type Database = {
           sex: string | null
           steps_by_day: Json
           target_calories: number | null
+          target_calories_set_at: string | null
+          target_calories_source: string | null
           target_carbs: number | null
           target_fat: number | null
           target_fiber_g: number | null
@@ -719,6 +727,8 @@ export type Database = {
           sex?: string | null
           steps_by_day?: Json
           target_calories?: number | null
+          target_calories_set_at?: string | null
+          target_calories_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null
@@ -768,6 +778,8 @@ export type Database = {
           sex?: string | null
           steps_by_day?: Json
           target_calories?: number | null
+          target_calories_set_at?: string | null
+          target_calories_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null

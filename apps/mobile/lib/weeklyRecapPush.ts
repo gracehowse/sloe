@@ -26,7 +26,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { captureException } from "./errorTracking";
 import { LAST_PUSH_TOKEN_CACHE_KEY } from "./expoPushToken";
-import { nextRecapFireDate } from "./weeklyRecap";
+import { nextRecapFireDate, weekKeyFor } from "./weeklyRecap";
 
 /** Identifier reused on every reschedule so we only ever hold one entry. */
 const WEEKLY_RECAP_ID = "weekly-recap-v1";
@@ -119,14 +119,23 @@ export async function scheduleWeeklyRecapPush(
     // expo-notifications; for Monday-start users we fire on Sunday (1),
     // for Sunday-start users on Saturday (7).
     const weekday = weekStartDay === "monday" ? 1 : 7;
+    // Sunday push rewrite — T5 (2026-04-19): include the recap's
+    // `weekKey` in the data payload so the in-app tap listener
+    // (`apps/mobile/app/_layout.tsx`) can attribute the open event to
+    // the correct week. The recap describes the *previous completed
+    // week*, mirroring `buildWeeklyRecap`'s anchor (`now - 7d`).
+    const previousWeekAnchor = new Date(now);
+    previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
+    const weekKey = weekKeyFor(previousWeekAnchor, weekStartDay);
     await Notifications.scheduleNotificationAsync({
       identifier: WEEKLY_RECAP_ID,
       content: {
         title: "Your week in Suppr",
         body: "Tap to see your weekly recap — avg calories, protein, streak, and weight trend.",
         // Deep-link handled by the notification-tap listener in the app
-        // shell (opens `/progress`).
-        data: { deepLink: "/progress", kind: "weekly_recap" },
+        // shell (opens `/progress`). `weekKey` powers the
+        // `weekly_recap_push_opened` analytics attribution.
+        data: { deepLink: "/progress", kind: "weekly_recap", weekKey },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -140,4 +149,55 @@ export async function scheduleWeeklyRecapPush(
     captureException(err);
     return null;
   }
+}
+
+/**
+ * Sunday push rewrite — T5 (2026-04-19) — pure handler that decides
+ * whether a `Notifications.NotificationResponse` corresponds to the
+ * weekly-recap push and, if so, what `weekKey` to attribute the open
+ * event to.
+ *
+ * Extracted as a standalone pure function (instead of inlining inside
+ * the listener registration in `apps/mobile/app/_layout.tsx`) so the
+ * branching logic has unit coverage without having to mock the entire
+ * `expo-notifications` native surface — see
+ * `apps/mobile/tests/unit/weeklyRecapPushOpenHandler.test.ts`.
+ *
+ * Contract:
+ *   - `shouldTrack` is `true` iff the response was delivered for a
+ *     weekly-recap push (`data.kind === "weekly_recap"`).
+ *   - `weekKey` is the recap's stable `YYYY-Www` key when it was
+ *     supplied in the data payload, otherwise `null`. Older devices
+ *     that received pushes scheduled before the `weekKey` field was
+ *     added will fall through with `null`; analytics treats that as a
+ *     legacy bucket rather than dropping the event.
+ *
+ * Tolerance:
+ *   - Returns `{ shouldTrack: false, weekKey: null }` for any
+ *     malformed input (missing `notification`, missing `request`,
+ *     non-object `data`, etc.) instead of throwing — the listener must
+ *     never crash a launch.
+ */
+export type WeeklyRecapResponseDecision = {
+  shouldTrack: boolean;
+  weekKey: string | null;
+};
+
+export function handleWeeklyRecapNotificationResponse(
+  response: unknown,
+): WeeklyRecapResponseDecision {
+  const notification = (response as { notification?: unknown } | null | undefined)?.notification;
+  const request = (notification as { request?: unknown } | null | undefined)?.request;
+  const content = (request as { content?: unknown } | null | undefined)?.content;
+  const data = (content as { data?: unknown } | null | undefined)?.data;
+  if (!data || typeof data !== "object") {
+    return { shouldTrack: false, weekKey: null };
+  }
+  const kind = (data as { kind?: unknown }).kind;
+  if (kind !== "weekly_recap") {
+    return { shouldTrack: false, weekKey: null };
+  }
+  const wk = (data as { weekKey?: unknown }).weekKey;
+  const weekKey = typeof wk === "string" && wk.length > 0 ? wk : null;
+  return { shouldTrack: true, weekKey };
 }

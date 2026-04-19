@@ -70,6 +70,12 @@ vi.mock("../../lib/errorTracking", () => ({
 
 vi.mock("../../lib/weeklyRecap", () => ({
   nextRecapFireDate: vi.fn(() => new Date("2026-04-26T18:00:00.000Z")),
+  // Sunday push rewrite — T5 (2026-04-19): scheduler now stamps the
+  // recap's `weekKey` into the notification data payload so the
+  // tap-listener in `_layout.tsx` can attribute opens. Mocked here
+  // because importing the real helper would pull in
+  // `progressWeekReport` and friends just to satisfy the module graph.
+  weekKeyFor: vi.fn(() => "2026-W15"),
 }));
 
 beforeEach(async () => {

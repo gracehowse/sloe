@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Animated,
@@ -117,7 +118,9 @@ type OnboardingData = {
 const INITIAL_DATA: OnboardingData = {
   displayName: "",
   goalType: "lose",
-  sex: "female",
+  // Default "unspecified" so users who skip the sex step are not silently
+  // assigned a value. BMR math falls back to a midpoint floor.
+  sex: "unspecified",
   age: "",
   heightCm: "",
   heightFt: "",
@@ -321,7 +324,23 @@ export default function OnboardingScreen() {
   const weeks = data.goalType === "lose" ? weeksToGoal(weightKg, goalWeightKg, data.planPace) : 0;
   const projectedDate = weeks > 0 ? goalDate(weeks) : null;
 
+  const reduceMotionRef = useRef(false);
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active) reduceMotionRef.current = enabled;
+    }).catch(() => { /* non-fatal */ });
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
+      reduceMotionRef.current = enabled;
+    });
+    return () => { active = false; sub?.remove?.(); };
+  }, []);
+
   const animateTransition = useCallback((_direction: 1 | -1) => {
+    if (reduceMotionRef.current) {
+      fadeAnim.setValue(1);
+      return;
+    }
     Animated.sequence([
       Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -349,11 +368,14 @@ export default function OnboardingScreen() {
 
   const skip = useCallback(async () => {
     if (userId) {
-      const defaultBudget = calculateBudget(calculateTDEE("female", 70, 165, 28, "moderate"), "steady", "lose");
+      const defaultBudget = calculateBudget(calculateTDEE("unspecified", 70, 165, 28, "moderate"), "steady", "lose");
       const defaultMacros = calculateMacros(defaultBudget, "balanced", 70);
       await supabase.from("profiles").upsert({
         id: userId,
         target_calories: defaultBudget,
+        // A2 provenance — onboarding skip path writes default budget. (migration 20260427110000)
+        target_calories_set_at: new Date().toISOString(),
+        target_calories_source: "onboarding",
         target_protein: defaultMacros.protein,
         target_carbs: defaultMacros.carbs,
         target_fat: defaultMacros.fat,
@@ -386,6 +408,9 @@ export default function OnboardingScreen() {
         fasting_enabled: data.fastingEnabled,
         fasting_window: data.fastingWindow || null,
         target_calories: budget,
+        // A2 provenance — onboarding saveAndFinish path. (migration 20260427110000)
+        target_calories_set_at: new Date().toISOString(),
+        target_calories_source: "onboarding",
         target_protein: macros.protein,
         target_carbs: macros.carbs,
         target_fat: macros.fat,
@@ -564,7 +589,15 @@ export default function OnboardingScreen() {
         const UnitToggle = ({ options, value, onChange }: { options: { label: string; value: string }[]; value: string; onChange: (v: any) => void }) => (
           <View style={{ flexDirection: "row", gap: 4, alignSelf: "flex-end" }}>
             {options.map((o) => (
-              <Pressable key={o.value} onPress={() => onChange(o.value)} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: value === o.value ? Accent.success + "20" : "transparent" }}>
+              <Pressable
+                key={o.value}
+                onPress={() => onChange(o.value)}
+                hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Switch unit to ${o.label}`}
+                accessibilityState={{ selected: value === o.value }}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: value === o.value ? Accent.success + "20" : "transparent" }}
+              >
                 <Text style={{ fontSize: 12, fontWeight: value === o.value ? "700" : "500", color: value === o.value ? Accent.success : colors.textTertiary }}>{o.label}</Text>
               </Pressable>
             ))}
@@ -975,7 +1008,13 @@ export default function OnboardingScreen() {
       {/* Top bar */}
       <View style={styles.topBar}>
         {step > 0 ? (
-          <Pressable style={styles.backBtn} onPress={goBack} hitSlop={12}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={goBack}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
         ) : (

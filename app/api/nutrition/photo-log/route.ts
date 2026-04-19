@@ -35,11 +35,25 @@ export async function POST(req: Request) {
   }
 
   const tier = await getUserTier(userId);
-  const dailyLimit = tier === "pro" ? 100 : tier === "base" ? 50 : 10;
+  // Photo meal recognition is Pro-only by product intent (mirrors the
+  // client gates in `apps/mobile/app/(tabs)/index.tsx` + photo-log
+  // dialog, and the `PRICING_TIERS` Pro bullet "AI photo meal
+  // recognition (100/day)"). Close the previous Base + Free loophole
+  // (2026-04-19 sync-enforcer finding — documented in
+  // `docs/product/landing-maintenance.md`) so the server matches what
+  // the UI tells Free + Base users. Voice-log was closed the same
+  // day (`app/api/nutrition/voice-log/route.ts` L36–L47); pattern
+  // replicated here verbatim.
+  if (tier !== "pro") {
+    return NextResponse.json(
+      { ok: false, error: "upgrade_required", message: "AI photo logging is a Pro feature." },
+      { status: 403 },
+    );
+  }
 
   const limited = await rateLimit({
     keyPrefix: `photo_log_${userId}`,
-    limit: dailyLimit,
+    limit: 100,
     windowMs: 24 * 60 * 60_000,
   });
   if (!limited.ok) {

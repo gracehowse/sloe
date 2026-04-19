@@ -34,8 +34,9 @@ export default function HelpPage() {
 
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2" id="sources">Nutrition data sources</h2>
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>USDA FoodData Central</strong> &mdash; lab-tested nutritional data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey (FNDDS) datasets.</li>
-            <li><strong>Open Food Facts</strong> &mdash; volunteer-maintained, open database of food products with strong UK, EU, US, and Australian coverage. Data comes from product labels.</li>
+            <li><strong>USDA FoodData Central</strong> &mdash; lab-tested nutritional data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey (FNDDS) datasets. FDC data is in the public domain; USDA does not endorse Suppr.</li>
+            <li><strong>Edamam</strong> &mdash; restaurant and branded-food nutrition data. Food search results that come from Edamam are <em>Powered by Edamam</em> under Edamam&rsquo;s API terms.</li>
+            <li><strong>Open Food Facts</strong> &mdash; volunteer-maintained, open database of food products with strong UK, EU, US, and Australian coverage. Product data is &copy; Open Food Facts contributors and made available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Open Database License (ODbL)</a>.</li>
             <li><strong>FatSecret Platform API</strong> &mdash; curated food database with detailed branded and generic food entries including serving size information.</li>
             <li><strong>Local staples database</strong> &mdash; 176+ common cooking ingredients with per-100g macros and density values for cup/volume conversions. Used as a fallback when no external match is found.</li>
           </ul>

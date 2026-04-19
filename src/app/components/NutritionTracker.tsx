@@ -1933,6 +1933,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               ? "Custom food"
               : selection.source === "OFF"
               ? "Open Food Facts"
+              : selection.source === "Edamam"
+              ? "Edamam"
               : "USDA FoodData Central";
           const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
           // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash

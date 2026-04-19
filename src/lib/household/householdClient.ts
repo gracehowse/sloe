@@ -335,7 +335,10 @@ export async function getMyHousehold(
 
   const memberSummaries: MemberSummary[] = members.map((m) => {
     const profile = profiles.find((p) => p.id === m.user_id);
-    const displayName = m.display_name || profile?.display_name || "Member";
+    // Prefer the live profile display_name over the snapshot captured at
+    // join time. A stale snapshot can leak a user's legacy (pre-transition)
+    // name to other household members after they update their profile.
+    const displayName = profile?.display_name || m.display_name || "Member";
     const isSelf = m.user_id === userId;
 
     // F-16 scope narrowing (legal-approved, TestFlight `AJ1AeYJ--fF`,

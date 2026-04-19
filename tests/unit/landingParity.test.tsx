@@ -33,6 +33,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { LandingPage } from "../../app/(landing)/LandingPage";
+import { PricingTiersGrid } from "../../app/pricing/PricingTiersGrid";
 import {
   TODAY_RING_OVERLINE,
   TODAY_STAT_LABELS,
@@ -272,6 +273,110 @@ describe("landing page — roadmap parity", () => {
     expect(unresolved).toEqual([]);
   });
 
+});
+
+describe("/pricing — paid-tier renewal disclosure (legal round-4 + round-6 flag)", () => {
+  // Build a Tier array shaped the way `app/pricing/page.tsx` passes it
+  // in: every PRICING_TIERS entry, plus the derived `cta` +
+  // `featHeadStripped` fields. We only render the grid in monthly mode
+  // (default state) — that's enough to assert the disclosure copy for
+  // every paid tier.
+  const TIERS = PRICING_TIERS.map((t) => ({
+    ...t,
+    cta: t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`,
+    featHeadStripped: t.featHead
+      ? t.featHead.replace(/,\s*plus$/i, "")
+      : undefined,
+  }));
+
+  // Round-6 (2026-04-19) — the tax-clause copy is flag-gated behind
+  // `STRIPE_TAX_ENABLED` so it tracks the Stripe Checkout route's
+  // `automatic_tax` behaviour. Both states must stay valid so the copy
+  // can ship ahead of the dashboard flip and flip on without a code
+  // change. Two describe blocks below pin both branches.
+
+  describe("flag ON (stripeTaxEnabled=true)", () => {
+    it("renders the round-4 tax-inclusive VAT line — the post-legal wording (round-6 dropped 'shown')", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={true} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      // Round-6 (legal-reviewer): aligned to the mobile wording.
+      // Guard BOTH the presence of the new line and the absence of the
+      // old "Price shown …" variant.
+      expect(text).toContain("Price includes any applicable VAT.");
+      expect(text).not.toContain("Price shown includes any applicable VAT.");
+    });
+
+    it("does not carry the tax-exclusive disclosure", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={true} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      expect(text).not.toContain("Price excludes any applicable taxes");
+    });
+  });
+
+  describe("flag OFF (stripeTaxEnabled=false — default)", () => {
+    it("renders the pre-round-4 tax-EXCLUSIVE line (truthful while Stripe Tax is inactive)", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={false} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      // With the flag off, the /api/stripe/checkout route does NOT pass
+      // `automatic_tax`, so Stripe charges the sticker price — copy must
+      // say so.
+      expect(text).toContain("Price excludes any applicable taxes.");
+      expect(text).not.toContain("Price includes any applicable VAT.");
+    });
+
+    it("defaults to OFF when the prop is omitted (matches .env.example default)", () => {
+      // `paywallFrom` is still required for analytics wiring, but
+      // `stripeTaxEnabled` is opt-in — when absent the disclosure
+      // must render the tax-EXCLUSIVE copy.
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      expect(text).toContain("Price excludes any applicable taxes.");
+    });
+  });
+
+  describe("shared disclosure surface (flag-independent)", () => {
+    it("still carries the renewal + cancel + refund elements with the flag ON", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={true} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      expect(text).toContain("charged today and automatically renews");
+      expect(text).toContain("Cancel anytime in");
+      expect(text).toContain("account settings");
+      expect(text).toContain("7-day refund policy");
+    });
+
+    it("still carries the renewal + cancel + refund elements with the flag OFF", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={false} paywallFrom="deep_link" />,
+      );
+      const text = container.textContent ?? "";
+      expect(text).toContain("charged today and automatically renews");
+      expect(text).toContain("Cancel anytime in");
+      expect(text).toContain("account settings");
+      expect(text).toContain("7-day refund policy");
+    });
+
+    it("does not carry the retired '(billed in USD)' parenthetical on either branch", () => {
+      // Round-3 briefly added this; STOPPED before ship. Guard against
+      // reintroduction in either flag state.
+      for (const flag of [true, false]) {
+        const { container } = render(
+          <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={flag} paywallFrom="deep_link" />,
+        );
+        const text = container.textContent ?? "";
+        expect(text, `flag=${flag}`).not.toContain("billed in USD");
+      }
+    });
+  });
 });
 
 describe("landing page — forbidden marketing claims", () => {

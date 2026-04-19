@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
 import type Stripe from "stripe";
 import { resolveBillingPortalOutcome } from "../../src/lib/stripe/billingPortalDecision";
+import { BillingUnavailableFallback } from "../../app/account/billing/BillingUnavailableFallback";
 
 /**
  * `/account/billing` decision logic — guards the four error branches
@@ -129,5 +131,56 @@ describe("resolveBillingPortalOutcome", () => {
       },
     });
     expect(outcome.kind).toBe("fallback");
+  });
+});
+
+/**
+ * Fallback JSX — legal-reviewer round-6 copy (2026-04-19).
+ *
+ * The four elements below are the non-negotiable parts of the
+ * fallback; drift on any one of them is a legal regression:
+ *   B1. SLA is hedged ("usually") — we do not promise a hard SLA.
+ *   B2. 7-day refund policy link is present and routes to /terms#refunds.
+ *   B3. Cancel-pathway line tells the user replying gets them cancelled.
+ *   B4. App Store disclaimer routes iOS subscribers to iOS Settings
+ *       (we cannot cancel an IAP subscription from the server —
+ *       Apple policy).
+ */
+describe("BillingUnavailableFallback — legal-reviewer round-6 copy", () => {
+  it("renders the support mailto link", () => {
+    const { container } = render(<BillingUnavailableFallback />);
+    const mail = container.querySelector('a[href="mailto:support@suppr-club.com"]');
+    expect(mail).not.toBeNull();
+  });
+
+  it("softens the SLA with 'usually'", () => {
+    const { container } = render(<BillingUnavailableFallback />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("usually reply within one business day");
+    // Guard: the original hard-SLA line is retired.
+    expect(text).not.toMatch(/We['\u2019]ll reply within one business day\./);
+  });
+
+  it("states the cancel-anytime pathway explicitly", () => {
+    const { container } = render(<BillingUnavailableFallback />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("cancel anytime by replying to support");
+    expect(text).toContain("same business day");
+  });
+
+  it("carries the App Store iOS subscribers disclaimer", () => {
+    const { container } = render(<BillingUnavailableFallback />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("If you originally subscribed through the App Store");
+    expect(text).toContain("iOS Settings");
+    expect(text).toContain("Apple ID");
+    expect(text).toContain("Subscriptions");
+  });
+
+  it("links to the 7-day refund policy at /terms#refunds", () => {
+    const { container } = render(<BillingUnavailableFallback />);
+    const refundLink = container.querySelector('a[href="/terms#refunds"]');
+    expect(refundLink).not.toBeNull();
+    expect(refundLink?.textContent).toBe("7-day refund policy");
   });
 });

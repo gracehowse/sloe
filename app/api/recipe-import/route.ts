@@ -7,7 +7,6 @@ import {
   extractRecipeFromCaption,
   socialImportSourceName,
   extractCommentsFromHtml,
-  transcribeVideoAudio,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
@@ -207,16 +206,12 @@ export async function POST(req: Request) {
         }
       }
 
-      // Tier 3: Try video audio transcription via Whisper
-      if (!recipe.ingredients.length && !recipe.steps.length) {
-        if (meta.videoUrl) {
-          const transcript = await transcribeVideoAudio(meta.videoUrl, openaiKey, ac.signal);
-          if (transcript && transcript.length > 50) {
-            const combinedText = captionText + "\n\n--- Video transcript ---\n" + transcript;
-            recipe = await extractRecipeFromCaption(combinedText, openaiKey);
-          }
-        }
-      }
+      // Tier 3: (removed) Video audio transcription via Whisper.
+      // Downloading Instagram/TikTok video content and transcribing its audio
+      // is a reproduction of the audio track (17 USC § 106(1)) and typically
+      // violates the platforms' terms of service. Removed on IP-counsel
+      // advice (2026-04-19). Users whose recipe is only in a video caption
+      // can paste the caption text manually into the importer.
 
       // Tier 4: If still no recipe, look for a URL in the caption and scrape the website
       if (!recipe.ingredients.length && !recipe.steps.length) {
@@ -231,7 +226,7 @@ export async function POST(req: Request) {
                 signal: ac.signal,
                 headers: {
                   Accept: "text/html",
-                  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
+                  "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
                 },
                 redirect: "follow",
               });

@@ -3,6 +3,7 @@
  *
  * Usage: npm run prelaunch:checklist
  */
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -35,6 +36,36 @@ line(
   "Privacy page reads NEXT_PUBLIC_PRIVACY_EMAIL",
   privacyEnv ? `set in env → ${privacyEnv}` : `unset → default ${privacyDefault} (set on Vercel to override)`,
 );
+
+console.log("\n=== Migration drift (linked Supabase project) ===\n");
+{
+  // Default behaviour: warn but never fail the prelaunch checklist on drift.
+  // Run `npm run check:migrations -- --strict` separately to fail on local-only migrations.
+  const drift = spawnSync(
+    process.execPath,
+    ["--import", "tsx", path.join("scripts", "check-migration-drift.ts")],
+    { encoding: "utf8", env: process.env },
+  );
+  if (drift.error || drift.status !== 0) {
+    line(
+      false,
+      "Drift check skipped",
+      drift.error?.message ?? `exit ${drift.status} — see \`npm run check:migrations\` for detail`,
+    );
+    if (drift.stderr) console.log(drift.stderr.trimEnd());
+  } else {
+    // Surface only the summary lines (counts) to keep prelaunch output compact.
+    const summaryLines = drift.stdout
+      .split("\n")
+      .filter((l) =>
+        /^Matched cleanly:|^Drifted \(|^Local only \(|^Remote only \(/.test(l.trim()),
+      );
+    for (const s of summaryLines) console.log(`  ${s.trim()}`);
+    console.log(
+      "  (run `npm run check:migrations` for full detail; add --strict to fail on local-only)",
+    );
+  }
+}
 
 console.log("\n=== Outstanding (your accounts / hosting) ===\n");
 const outstanding = [

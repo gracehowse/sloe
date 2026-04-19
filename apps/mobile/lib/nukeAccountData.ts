@@ -102,6 +102,11 @@ export async function nukeAllUserAppData(supabase: SupabaseClient, userId: strin
       .from("profiles")
       .update({
         target_calories: NUTRITION_DEFAULTS.calories,
+        // A2 provenance — "Erase all my data" reverts to NUTRITION_DEFAULTS.
+        // Tagged reset_default so Rule 2 (Maintenance Recalibrate) can tell
+        // this apart from a real user-set target. (migration 20260427110000)
+        target_calories_set_at: new Date().toISOString(),
+        target_calories_source: "reset_default",
         target_protein: NUTRITION_DEFAULTS.protein,
         target_carbs: NUTRITION_DEFAULTS.carbs,
         target_fat: NUTRITION_DEFAULTS.fat,

@@ -245,6 +245,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             goal,
             measurement_system: measurementSystem,
             target_calories: manualTargets.calories,
+            // A2 provenance — web manual macro/calorie save. `canSave` already
+            // guards manualTargets.calories > 0, so stamping is honest here.
+            // (migration 20260427110000)
+            target_calories_set_at: new Date().toISOString(),
+            target_calories_source: "user",
             target_protein: manualTargets.protein,
             target_carbs: manualTargets.carbs,
             target_fat: manualTargets.fat,

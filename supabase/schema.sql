@@ -26,6 +26,10 @@ create table if not exists public.profiles (
   target_fat int,
   target_fiber_g int,
   target_water_ml int,
+  -- target_calories provenance (migration 20260427110000)
+  -- See migration header for the 5-value enum semantics + Rule 2 contract.
+  target_calories_set_at timestamptz,
+  target_calories_source text check (target_calories_source in ('onboarding','user','recompute','digest_recalibration','reset_default')),
   prefer_activity_adjusted_calories boolean not null default false,
   -- onboarding fields (added via migration 20260412100000)
   goal_weight_kg numeric,
@@ -55,6 +59,27 @@ alter table public.profiles add column if not exists prefer_activity_adjusted_ca
 -- `/account/billing` can open the Stripe Customer Portal without a
 -- lookup round-trip. See migration 20260419110000_profiles_stripe_customer_id.sql.
 alter table public.profiles add column if not exists stripe_customer_id text;
+-- target_calories provenance (migration 20260427110000) — feeds the
+-- Maintenance Recalibrate suggestion's Rule 2 suppression check (don't
+-- re-suggest a number the user just hand-chose). Step 2 will make these
+-- NOT NULL after a clean-write soak period (earliest 2026-05-04).
+alter table public.profiles add column if not exists target_calories_set_at timestamptz;
+alter table public.profiles add column if not exists target_calories_source text;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'profiles_target_calories_source_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_target_calories_source_check
+      check (target_calories_source in ('onboarding','user','recompute','digest_recalibration','reset_default'));
+  end if;
+end $$;
+create index if not exists profiles_target_calories_user_set_idx
+  on public.profiles (id, target_calories_set_at)
+  where target_calories_source = 'user';
 
 do $$
 begin

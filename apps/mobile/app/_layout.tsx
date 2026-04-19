@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
 import { AccessibilityInfo, AppState, Platform } from 'react-native';
@@ -24,6 +25,7 @@ import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
 import { setPendingSiriAction } from '@/lib/siriPending';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvents } from '../../../src/lib/analytics/events';
+import { handleWeeklyRecapNotificationResponse } from '@/lib/weeklyRecapPush';
 import {
   markWhatsNewSeen,
   resolveCurrentBuildNumber,
@@ -214,6 +216,41 @@ function ResumeClipboardToImport() {
 }
 
 /**
+ * Sunday push rewrite — T5 (2026-04-19). Notification-tap listener
+ * for the weekly-recap push.
+ *
+ * Why a top-level component:
+ *   `Notifications.addNotificationResponseReceivedListener` survives
+ *   the OS resuming the app from a notification tap (even from a cold
+ *   start once `expo-router` mounts the root). Registering it here in
+ *   the layout means we never miss a tap because Progress wasn't the
+ *   first screen.
+ *
+ *   The branching logic is in the pure helper
+ *   `handleWeeklyRecapNotificationResponse` (apps/mobile/lib/weeklyRecapPush.ts)
+ *   so it can be unit-tested without mocking the entire native API.
+ *   This component just wires the helper to the listener and emits
+ *   the analytics event when the handler says to.
+ *
+ * Cleanup: the subscription returned by `addNotificationResponseReceivedListener`
+ * has a `.remove()` method we call on unmount. In practice the
+ * component lives for the entire app session, but the cleanup keeps
+ * Strict Mode / hot-reload tidy.
+ */
+function HandleWeeklyRecapPushOpen() {
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const decision = handleWeeklyRecapNotificationResponse(response);
+      if (!decision.shouldTrack) return;
+      track(AnalyticsEvents.weekly_recap_push_opened, { weekKey: decision.weekKey });
+    });
+    return () => sub.remove();
+  }, []);
+
+  return null;
+}
+
+/**
  * F-0 "What's new" auto-surface (2026-04-19). On the first launch
  * after a TestFlight build-number bump, push `/whats-new` once and
  * persist the build via `markWhatsNewSeen` so it doesn't re-appear.
@@ -301,6 +338,7 @@ function RootLayoutInner() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
         <HandleSiriDeepLinks />
+        <HandleWeeklyRecapPushOpen />
         <ForwardSocialSharesToImport />
         <ForwardShareIntentToImport />
         <ResumeClipboardToImport />

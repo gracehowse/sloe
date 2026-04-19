@@ -15,6 +15,11 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
   const [status, setStatus] = useState<"idle" | "working" | "sent" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [showMagicLink, setShowMagicLink] = useState(false);
+  // Positive assent to Terms + Privacy is required at account creation
+  // (browsewrap / implicit assent is unenforceable in California under
+  // Nguyen v. Barnes & Noble, 763 F.3d 1171). The box defaults to
+  // unchecked — never pre-check.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     setMode(initialMode);
@@ -65,6 +70,11 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     if (!password) {
       setStatus("error");
       setMessage("Enter a password.");
+      return;
+    }
+    if (!acceptedTerms) {
+      setStatus("error");
+      setMessage("Please agree to the Terms of Service and Privacy Policy to continue.");
       return;
     }
     setStatus("working");
@@ -146,6 +156,11 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
 
   /** Web: OAuth redirect. Mobile app uses native `signInWithIdToken` instead (see `apps/mobile/app/login.tsx`). */
   const signInWithApple = async () => {
+    if (mode === "signup" && !acceptedTerms) {
+      setStatus("error");
+      setMessage("Please agree to the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setStatus("working");
     setMessage(null);
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -308,10 +323,33 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
             placeholder={mode === "signup" ? "Create a password" : "Your password"}
           />
 
+          {mode === "signup" && (
+            <label className="mt-4 flex items-start gap-2 text-xs cursor-pointer" style={{ color: "var(--muted-foreground)" }}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
+                aria-label="Agree to Terms of Service and Privacy Policy"
+              />
+              <span>
+                I agree to the{" "}
+                <a href="/terms" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--primary)" }}>
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--primary)" }}>
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+          )}
+
           <button
             type="button"
             onClick={mode === "signup" ? signUp : signIn}
-            disabled={status === "working"}
+            disabled={status === "working" || (mode === "signup" && !acceptedTerms)}
             className="w-full mt-4 px-5 py-3.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: "var(--primary)",
@@ -356,7 +394,7 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
           <button
             type="button"
             onClick={() => void signInWithApple()}
-            disabled={status === "working"}
+            disabled={status === "working" || (mode === "signup" && !acceptedTerms)}
             className="w-full px-5 py-3.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{
               background: "#000",

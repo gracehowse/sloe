@@ -509,100 +509,15 @@ export function extractCommentsFromHtml(html: string): string | null {
   }
 }
 
-const WHISPER_MAX_BYTES = 25 * 1024 * 1024; // 25 MB — OpenAI Whisper file size limit
-
-/**
- * Download a video and transcribe its audio using OpenAI Whisper.
- * Returns the transcript text, or null if download/transcription fails.
- * Never throws — callers treat null as "skip to next tier."
- */
-export async function transcribeVideoAudio(
-  videoUrl: string,
-  openaiKey: string,
-  signal?: AbortSignal,
-): Promise<string | null> {
-  try {
-    // --- Download video with size guard ---
-    const downloadSignal = AbortSignal.any
-      ? AbortSignal.any([AbortSignal.timeout(15_000), ...(signal ? [signal] : [])])
-      : AbortSignal.timeout(15_000);
-
-    const res = await fetch(videoUrl, {
-      signal: downloadSignal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      },
-      redirect: "follow",
-    });
-
-    if (!res.ok || !res.body) return null;
-
-    // Check Content-Length if available
-    const cl = res.headers.get("content-length");
-    if (cl && parseInt(cl, 10) > WHISPER_MAX_BYTES) {
-      console.error("[recipe-import] Video too large for transcription:", cl, "bytes");
-      return null;
-    }
-
-    // Stream body with size guard
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > WHISPER_MAX_BYTES) {
-        reader.cancel();
-        console.error("[recipe-import] Video exceeded 25MB during download, aborting");
-        return null;
-      }
-      chunks.push(value);
-    }
-
-    if (totalBytes < 1000) return null; // too small to be a real video
-
-    // Combine chunks into a single buffer
-    const videoBuffer = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) {
-      videoBuffer.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    // --- Transcribe with Whisper ---
-    const whisperSignal = AbortSignal.any
-      ? AbortSignal.any([AbortSignal.timeout(30_000), ...(signal ? [signal] : [])])
-      : AbortSignal.timeout(30_000);
-
-    const form = new FormData();
-    form.append("file", new Blob([videoBuffer], { type: "video/mp4" }), "video.mp4");
-    form.append("model", "whisper-1");
-    form.append("response_format", "text");
-
-    const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${openaiKey}` },
-      body: form,
-      signal: whisperSignal,
-    });
-
-    if (!whisperRes.ok) {
-      console.error("[recipe-import] Whisper API error:", whisperRes.status);
-      return null;
-    }
-
-    const transcript = (await whisperRes.text()).trim();
-    return transcript.length > 0 ? transcript : null;
-  } catch (e) {
-    console.error("[recipe-import] transcribeVideoAudio failed:", e instanceof Error ? e.message : e);
-    return null;
-  }
-}
-
 /**
  * Send social post caption to OpenAI to extract structured recipe data.
+ *
+ * Note (2026-04-19): a Whisper-based video-audio transcription path used to
+ * live here. It was removed on IP-counsel advice — downloading Instagram /
+ * TikTok video content and transcribing its audio is a reproduction of the
+ * audio track (17 USC § 106(1)) and typically breaches the platforms' terms
+ * of service. Recipe extraction now runs from the caption (and any public
+ * URL found in the caption) only.
  */
 export async function extractRecipeFromCaption(
   caption: string,

@@ -45,9 +45,10 @@ A hard streak breaks the moment the user has a sick or travel day — that's a r
 │  AVG CAL   1,950     per day                 │
 │  AVG PRO   142g      93% of target           │
 │  STREAK    12 days   · 2 freezes             │
-│  WEIGHT    -0.6 kg   change                  │  ← "No weigh-ins this week" when null
+│  WEIGHT    -0.6 kg   first → last weigh-in   │  ← "No weigh-ins this week" when null
+│  First → Last weigh-in: 78.4 → 77.8 kg (-0.6) │  ← Action 13 #13 — explicit endpoints
 ├──────────────────────────────────────────────┤
-│  Best day — Wed · 180g, 2,000 kcal           │  ← hidden when no days logged
+│  Closest to target — Wed · 180g, 2,000 kcal  │  ← Action 13 #9 — was "Best day"
 ├──────────────────────────────────────────────┤
 │  Got a usual lunch?                          │  ← usualMealInsight (M1 + Action 5 Item 8)
 │  You've logged the same one 4 times in 2 wks │     OR "Save it once, log it in one tap."
@@ -107,12 +108,65 @@ Floor is `USUAL_MEAL_REPEAT_FLOOR = 3` (exported from `src/lib/nutrition/weeklyR
 
 ### Content
 - Title: "Your week in Suppr"
-- Body: "Tap to see your weekly recap — avg calories, protein, streak, and weight trend."
-- Deep-link data: `{ deepLink: "/progress", kind: "weekly_recap" }`.
+- Body — content-specific from 2026-04-27 (Sunday push rewrite — T3/T4, shipped 2026-04-19). Composed by `formatWeeklyRecapPushBody(recap, suggestion)` in `src/lib/nutrition/weeklyRecapPushBody.ts`. See "Push body formatter" below for variant rules.
+- Body (legacy, mobile-local fallback only — installs without a synced Expo token): "Tap to see your weekly recap — avg calories, protein, streak, and weight trend." Used by `apps/mobile/lib/weeklyRecapPush.ts` when the device has no cached push token; the server cron always uses the composed body for installs that have one.
+- Deep-link data: `{ deepLink: "/progress", kind: "weekly_recap", weekKey, bodyVariant }`. `weekKey` (T5, 2026-04-19) attributes opens to the recap window; `bodyVariant` (T4, 2026-04-19) lets `weekly_recap_push_opened` join against the body variant the user actually saw.
+
+### Suggestion cascade (Sunday push rewrite — T-cascade, 2026-04-19, ready to wire)
+The Weekly Digest's "what should this user do this week" line is produced by a single shared cascade module: `src/lib/nutrition/weeklyDigestSuggestion.ts`, mobile re-export at `apps/mobile/lib/weeklyDigestSuggestion.ts`. Both platforms call `selectDigestSuggestion(input)` — same code path, same first-match-wins order, same copy. Module is pure (no React, no I/O); the caller assembles inputs from the existing helpers (`buildWeeklyRecap`, `resolveMaintenance`, `readFreezeLedger`, `buildUsualMealRecapInsight`).
+
+The cascade is **strict first-match-wins** in this order:
+
+| # | Rule | Gate | CTA | Tier (A1) |
+|---|---|---|---|---|
+| 1 | `re_log_prompt` | `usualMealInsight.kind === "prompt"` AND `saveSeedItemCount >= 2` | `Save {Slot} as a meal` → `/save-meal?slot={Slot}` | free |
+| 2 | `maintenance_recalibration` | `resolved.source === "adaptive"` AND `confidence === "high"` AND `|adaptive − staticTdee| >= 100` AND no manual override in past 14d AND no accepted recalibration in past 21d | `Adjust calorie goal` → `/digest/recalibrate-maintenance` | free |
+| 3 | `protein_nudge` | `proteinOnTarget < daysLogged * 0.5` AND `daysLogged >= 4` | `Browse high-protein recipes` → `/recipes?filter=high-protein` | base |
+| 4 | `streak_protection` | `freezesAvailable === 0` AND `streakLength >= 7` AND no freeze earned in past 14d | _none — informational_ | n/a |
+| 5 | `weight_trend_mismatch` | `goal === "cut"` AND `weightDeltaKg > 0` AND `daysLogged >= 5` AND `avgCalories <= targets.calories` | `Open Maintenance` → `/progress?metric=maintenance` | free |
+
+When no rule fires (`null` return), the Digest UI renders the empty-state copy "Nothing to change this week. Your numbers held." — empty-state copy lives in the UI, not in the cascade module.
+
+Hard rules pinned by `tests/unit/weeklyDigestSuggestion.test.ts`:
+- No exclamation marks anywhere.
+- No "great job" / "amazing" / performance adjectives.
+- Headlines ≤120 chars (push body has ~178-char budget; cascade headline gets the first half, recap data the second).
+- Bodies ≤200 chars.
+- When a gate's required input is missing/null, the rule cannot fire — we never invent data to make a suggestion fit.
+
+Per-rule cooldowns:
+- Rule 2 manual-override: 14 days from `targetCaloriesSetAt` when `targetCaloriesSource === "user"`.
+- Rule 2 accepted-recalibration: 21 days from `targetCaloriesSetAt` when `targetCaloriesSource === "digest_recalibration"`. The `applyMaintenanceRecalibration.ts` helper (separate task) writes that source value when a user accepts.
+- Rule 4 recent-earn: 14 days from the most recent `ledger.earnedAt[*].earnedAt`.
+
+The two new profile columns (`target_calories_source`, `target_calories_set_at`) come from the `data-integrity` migration shipping in parallel — the cascade module does not touch the schema. Older profiles with both columns null are treated as "no override on file" so Rule 2 can fire.
+
+**Status:** module + types + 47 tests in place. Wired into the server-side push route (T4 — see "Push body formatter" below). Not yet wired into the Digest UI (Progress redesign build queue).
+
+#### Server-route wiring caveat (T3, shipped 2026-04-19)
+The server cron route assembles the cascade input from per-user data fetched in the route handler. One signal — `usualMealInsight` (Rule 1's input) — is **not** computed in the v1 server path because it requires fetching the user's `saved_meals` rows + a 14-day extended window. The route passes `null` for `usualMealInsight` and `0` for `saveSeedItemCount`, which **structurally suppresses Rule 1** in the server-fanout path. Rules 2–5 fire normally. Worst case: a user who would have hit Rule 1 lands on Rule 2/3/4/5 instead, or on the unsuggested recap variant. Acceptable for v1; promoting Rule 1 needs a `saved_meals` fetch in the route (not in scope for the 2026-05-03 deadline). The Digest UI on Progress (when it ships) computes the full cascade from in-page state, so Rule 1 fires there.
+
+### Push body formatter (Sunday push rewrite — T2/T4, shipped 2026-04-19)
+- Pure helper at `src/lib/nutrition/weeklyRecapPushBody.ts`. Imports the existing `WeeklyRecap` type and (optionally) `DigestSuggestion`. Returns `{ body, variant }` so analytics attribution is one lookup, not a regex parse.
+- Four honest-claims variants:
+  - **`zero_days`** (`daysLogged === 0`) — "Nothing logged this week. Open Suppr to get back on track." Only acceptable generic fallback. Suggestions are NEVER prepended onto this branch.
+  - **`calories_only`** (`daysLogged > 0` AND `weightDeltaKg === null` AND no suggestion) — "{n} days logged, avg {kcal} kcal — see what changed." Weight is omitted entirely; we never invent a "no change" reading from missing data.
+  - **`with_weight`** (`daysLogged > 0` AND `weightDeltaKg !== null` AND no suggestion) — "{n} days logged, {±X.X} kg this week — see what changed." Sign is always explicit. A `0.0` reading is treated as real data (the caller has already gated on ≥2 weigh-ins) and lands in this variant rather than falling through to calories-only.
+  - **`with_suggestion`** (T4, 2026-04-19) (`daysLogged > 0` AND `selectDigestSuggestion(...) !== null`) — `"{cascade headline} · {recap sentence}"`. The recap sentence is whichever of `calories_only` / `with_weight` would have fired without a suggestion. Headline comes from the cascade module; suggestions are NEVER prepended onto the zero-days fallback.
+- Body composition rules:
+  - Default = `{headline} + " · " + {recap sentence}`.
+  - When the composed body exceeds the APNs 178-char ceiling, the formatter truncates the recap (NOT the headline — the headline is the actionable hook the user opens for):
+    1. Try `{headline} · {n} days logged, ±X.X kg this week.` (drop the "see what changed" + calories segment, keep the weight delta).
+    2. Try `{headline} · {n} days logged.` (collapse the recap to a bare days-line).
+    3. Pathological: headline alone exceeds 178 chars (cannot happen given the cascade's 120-char ceiling). Return the headline as-is and let APNs hard-truncate.
+- Hard rules pinned by `tests/unit/weeklyRecapPushBody.test.ts`: no exclamation marks, no performance adjectives, body ≤178 chars (APNs lock-screen visible threshold).
+- **Status:** wired into `app/api/push/weekly-recap/route.ts` (server cron path). The mobile-local fallback (`apps/mobile/lib/weeklyRecapPush.ts`) still uses the legacy generic copy — only fires for installs without a synced Expo push token (rare). Promoting the mobile-local path to the formatter is tracked as a follow-up.
 
 ### Analytics
-- `weekly_recap_push_sent { weekKey }` — fires when the local notification is (re-)scheduled on mobile.
+- `weekly_recap_push_sent { weekKey }` — fires when the local notification is (re-)scheduled on mobile (legacy emit; the mobile site still uses `currentWeekKey` per the off-by-one ticket in TODO).
+  - **Server-side emit (Sunday push rewrite — T6, shipped 2026-04-19):** also fires from `app/api/push/weekly-recap/route.ts` per successful push send via `serverTrack` (`src/lib/analytics/serverTrack.ts` — direct POST to PostHog `/capture/`). Server payload: `{ weekKey, bodyVariant, suggestionRule }`. The server emit uses the recap-window `weekKey` (previous completed week) to match `weekly_recap_push_opened`, fixing the off-by-one for users on the cron path. The mobile-local emit's off-by-one is unaffected by this work — see TODO §"Push analytics off-by-one bug".
 - `weekly_recap_push_enabled_toggled { enabled }` — fires once per committed flip of the Settings toggle on web or mobile. Added 2026-04-18 (H6 audit fix) so product can measure opt-out rate directly instead of inferring it from `_push_sent` drop-off.
+- `weekly_recap_push_opened { weekKey: string | null }` — fires when the user taps the weekly-recap push and the OS routes the response into the app. Mobile-only — registered in `apps/mobile/app/_layout.tsx` via `Notifications.addNotificationResponseReceivedListener`, gated on `data.kind === "weekly_recap"`. `weekKey` is null when the push payload predates the field (older local schedule). Sunday push rewrite — T5 (2026-04-19).
 - `weekly_recap_shown { weekKey }` — fires once per week when the card renders.
 - `weekly_recap_dismissed { weekKey }` — dismiss / "Got it" / close.
 - `weekly_recap_shared { weekKey, platform }` — share button tap.
@@ -140,6 +194,98 @@ Deferred. Suppr does not currently run a service-worker-backed push registration
 - Replacement is being scoped by `ui-product-designer` as a card-grammar-conformant component; re-introduce when the new spec lands.
 - No new surface to test post-removal; existing tests continue to cover the underlying numbers via `progressWeekReport`.
 
+### Trend tile (Action 13 Item #2, 2026-04-19)
+- Headline = signed delta between the most recent weigh-in and a comparison entry ≥7 days old (or the oldest entry when none sits that far back).
+- Sub-copy is driven by the shared `computeWeightTrendCopy` helper:
+  - `Log weight to see trend` — fewer than 2 weigh-ins.
+  - `on track` — heading toward the goal (lose/down OR gain/up; maintenance within ±0.5 kg).
+  - `this week` — has data but moving away from the goal direction.
+  - `no goal set` — has data but `goalKg` or `weightKg` is missing.
+- Web + mobile both call the same helper; the prior two-IIFE web pattern (one for delta, one for copy) is gone, so the readouts can't drift. Pinned by `tests/unit/weightTrendTile.test.ts`.
+
+### Macro Adherence bars (Action 13 Item #4, 2026-04-19)
+- Bar fill capped at 150% on both platforms via the shared `formatMacroAdherenceBar` helper. A user at 200% protein renders as a 150%-wide bar with the literal figure preserved in the label as `200% (capped at 150)` — never silently clipped.
+- Pinned by `tests/unit/macroAdherenceBar.test.ts`.
+
+### Daily Calories chart denominator (Action 13 Item #5, 2026-04-19)
+- Bar height denominator = `Math.max(targets.calories, ...weekStats.days.map(d => d.calories))`. Prior web code hard-capped at `targets.calories * 1.15`, which clipped any 200%-of-target day to the same height as a 115% day. Mobile already used the new rule; web now mirrors it.
+- Pinned by `tests/unit/dailyCaloriesBarDenominator.test.ts`.
+
+### Daily Calories chart snapshot cue (Action 13 Item #11, 2026-04-19)
+- A past day's bar renders with a small dashed border (web `border: 1px dashed`; mobile `borderStyle: dashed`) when its target is the current-target fallback (`d.isSnapshot === false`). The colour is unchanged so "green = on target" still reads correctly. Today and future days don't have historical-target ambiguity so the cue is skipped for them.
+- Pinned by `tests/unit/dailyCaloriesSnapshotCue.test.ts` (helper-side flag).
+
+### Trend / Weight unit drift (Action 13 Item #6 + #7, 2026-04-19)
+- All weight readouts on the mobile Progress screen go through the new `formatWeightForUnit` helper in `src/lib/measurements.ts`, respecting `profile.measurement_system`. Imperial users see `lb`; metric users see `kg`. Previously the Trend tile and Weight card were hard-coded to `kg` while every other weight surface respected the preference.
+- Pinned by `tests/unit/measurementsFormat.test.ts`.
+
+### Daily projection floor (Action 13 Item #8, 2026-04-19)
+- The "averaging X kcal/day puts you on track for Y kg in N weeks" line on the Journey card renders only when the user has ≥`MIN_DAYS_FOR_PROJECTION` (= 5) days with food logged in the recent window. Below the floor we suppress the line entirely — projecting from 2 days is dishonest.
+- Single source: `shouldRenderDailyProjection(daysWithFood)` in `src/lib/weightProjection.ts`. Pinned by `tests/unit/weightProjectionFloor.test.ts`.
+
+### Days-to-goal cap (Action 13 Item #15, 2026-04-19)
+- `calcGoalTimeline` now exposes `cappedAtMaxDays: boolean`. When a positive rate would land past `MAX_DAYS_TO_GOAL` (= 365), `daysToGoal` stays `null` and `cappedAtMaxDays` flips to `true`. The Journey card then renders `More than 1 year at current rate` (with the rate continuing in the descriptive line below) instead of an empty headline.
+- A stalled or wrong-direction trend keeps `cappedAtMaxDays === false` so the renderer doesn't promise "more than a year" when the math doesn't even land at the goal.
+- Pinned by `tests/unit/calcGoalTimelineCap.test.ts`.
+
+### Maintenance source pill (Action 13 Item #14, 2026-04-19)
+- The Maintenance card now always renders an explicit source pill in the header:
+  - **Adaptive** (success-tinted) when `resolved.source === "adaptive"`.
+  - **Formula estimate** (muted) when the resolver fell back to the formula — including the low-confidence and stale-adaptive paths.
+- The confidence bar block remains gated on `showAdaptiveExtras` (= source is adaptive), so a formula-fallback user no longer sees a confidence bar coupled to a number that didn't come from the adaptive branch.
+- Pinned by `tests/unit/maintenanceSourcePill.test.ts`.
+
+### Maintenance recalibration provenance (A2 schema, migration 20260427110000, 2026-04-19)
+The Maintenance Recalibrate suggestion (Progress Digest, Rule 2) needs to know **whether the user just hand-set their calorie target**. Re-suggesting a number the user picked themselves last week is presumptuous and erodes trust. To enable that without lying about provenance for older rows, `profiles` has two new columns:
+
+- `target_calories_set_at timestamptz` — when the current value was last written.
+- `target_calories_source text` — which write path produced it. Constrained to a 5-value enum:
+
+| Value | Meaning |
+|---|---|
+| `onboarding` | Set during initial onboarding flow (skip path or `saveAndFinish`). |
+| `user` | User manually edited macro/calorie targets in Profile/Settings. |
+| `recompute` | Activity-level change re-ran the BMR/TDEE pipeline. |
+| `digest_recalibration` | "Apply maintenance recalibration" CTA in the Digest. (Future — built when `applyMaintenanceRecalibration.ts` lands.) |
+| `reset_default` | Post-destructive-reset write ("Reset plan", "Erase all my data") that reverts to `NUTRITION_DEFAULTS.calories`. Distinct from the others so Rule 2 can tell a fresh-default-with-no-real-target apart from a user-chosen number. |
+
+**Rule 2 suppression contract:**
+- `target_calories_source = 'user'` AND `target_calories_set_at` within the last 14 days → suppress the Maintenance Recalibrate suggestion.
+- All other source values (`onboarding`, `recompute`, `digest_recalibration`, `reset_default`) do NOT suppress.
+
+**Backfill honesty:** existing rows with a non-null `target_calories` are tagged `'onboarding'` with `set_at = COALESCE(created_at, NOW())` (the only honest historical attribution). Rows with `target_calories IS NULL` are left alone — no fabricated provenance for never-onboarded profiles.
+
+**Step 2 (deferred):** both columns become `NOT NULL` in a follow-up migration after >=1 week of clean writes (earliest 2026-05-04). Verification SQL is pinned in the migration header.
+
+**Write sites covered (9 total):** 2 mobile onboarding (`onboarding.tsx` skip + `saveAndFinish`), 1 web onboarding (`app/onboarding/page.tsx`), 1 mobile manual save (`profile.tsx`), 1 web manual save (`Profile.tsx`), 1 mobile activity recompute (`(tabs)/settings.tsx`), 1 web activity recompute (`Settings.tsx`), 2 reset paths (`(tabs)/more.tsx` + `nukeAccountData.ts`). Pinned by `tests/unit/profileTargetCaloriesProvenance.test.ts`.
+
+### Maintenance chain weekly-loss caveat (Action 13 Item #12, 2026-04-19)
+- The "Projected weekly loss / gain" row in the Maintenance "How this works" chain now appends a long-term-fat caveat: `~0.50 kg* (*long-term fat loss; week-to-week varies with water/glycogen)`. 7700 kcal/kg is correct for fat mass, but week-1 scale weight is dominated by water + glycogen swings — the caveat keeps the projection honest.
+- Pinned by `tests/unit/maintenanceChain.test.ts`.
+
+### Steps card HK sync state (Action 13 Item #10, 2026-04-19, mobile)
+- The Steps card distinguishes three HK sync states:
+  - **pending** — initial mount / fresh focus → renders an `ActivityIndicator` skeleton, never a literal `0`.
+  - **failed** — HK call rejected (permissions, native bridge) → renders `Steps sync paused — open Health permissions` with a tap-to-retry button. No `0 / N` headline.
+  - **success** — HK call resolved → renders the real count (`0` is legitimate).
+- Previous version swallowed errors with `.catch(() => {})` and rendered `(stepsByDay[todayKey] ?? 0)`, making a permissions failure visually identical to "you haven't walked yet".
+- Web doesn't read HealthKit (no equivalent surface), so this fix is mobile-only by construction.
+
+## Weekly Recap Card — Action 13 changes
+
+### Closest to target (Action 13 Item #9, 2026-04-19)
+- **Was** "Best day" — selected the day with the highest protein.
+- **Now** "Closest to target" — selected by the smallest summed normalised L1 deviation (`|actual - target| / target` per macro). Ties broken by the most-recent date.
+- **Eligibility floor** — a day must log ≥80% of macros that have a target (rounded up). A protein-only day no longer crowns the week just because the other macros are zero.
+- **Suppressed** when no eligible day exists or no macro target is set.
+- Field name in code stays `recap.bestDay` for back-compat with the share-string + analytics; user-facing label is "Closest to target" everywhere.
+- Pinned by `tests/unit/closestToTargetDay.test.ts` and the existing `tests/unit/weeklyRecap.test.ts`.
+
+### Weight delta relabel (Action 13 Item #13, 2026-04-19)
+- The recap card's Weight stat tile sub-hint changed from `change this week` to `first → last weigh-in`. A new explanatory line below the stat grid surfaces the explicit `First → Last weigh-in: 78.4 → 77.8 kg (-0.6 kg)` so the user can see exactly what they're reading rather than implying a smoothed average.
+- The recap shape now exposes `weightFirstKg` and `weightLastKg` (both null when fewer than 2 weigh-ins, mirroring `weightDeltaKg`).
+- Pinned by `tests/unit/weeklyRecap.test.ts`.
+
 ## Edge Cases
 - **Zero logs all week** — recap card is suppressed; no push is sent. The Progress dashboard falls back to its existing "Your progress will appear here" empty state.
 - **Only 1 weigh-in in the window** — weight row shows "No weigh-ins this week" (still honest).
@@ -148,4 +294,5 @@ Deferred. Suppr does not currently run a service-worker-backed push registration
 - **Freezes exhausted mid-walk** — the protected streak simply stops at the first unprotected zero day. The raw streak is unchanged.
 
 ## Change log
+- **2026-04-19 — Action 13** — Trend tile uses one shared `computeWeightTrendCopy` helper so the on-track copy + delta can't drift; fixes the `(weightKg ?? Infinity)` "always on track for gain users" bug (Item #2). Macro Adherence bars cap at 150% with truthful labels via shared `formatMacroAdherenceBar` helper (Item #4). Web Daily Calories bar denominator scales to the largest day (Item #5). Mobile Trend tile + Weight card route through `formatWeightForUnit` so imperial users see `lb` everywhere (Item #6, #7). Daily projection block requires ≥5 logged days; below the floor it's suppressed entirely (Item #8). Weekly recap "Best day" → "Closest to target" using normalised L1 deviation (Item #9). Steps card distinguishes HK pending / failed / success states with a retry CTA (Item #10, mobile). Daily Calories chart adds a dashed border on past days using the current-target fallback (Item #11). Maintenance chain weekly-loss line carries a long-term-fat caveat (Item #12). Weekly recap weight delta relabelled "First → Last weigh-in" with both endpoints surfaced (Item #13). Maintenance card always renders an explicit "Adaptive" or "Formula estimate" pill — never a confidence bar coupled to a formula value (Item #14). `calcGoalTimeline` exposes `cappedAtMaxDays` so the Journey card renders "More than 1 year at current rate" instead of an empty headline (Item #15).
 - **2026-04-19 — Action 5** — Removed the Weekly Insight card on web + mobile (Item 1). Fixed the today-bar dim bug on the web Daily Calories chart so it matches mobile's by-key rule (Item 2). Re-labelled the Avg Calories tile so partial weeks show "Avg on logged days (X/7)" via shared helper (Item 3). Added an adaptive-vs-formula maintenance one-liner to the WeeklyRecapCard, suppressed for formula / low-confidence weeks (Item 7). Loosened the `usualMealInsight` gate so it also fires when the most-repeated unsaved slot has ≥3 distinct-day repeats over the last 14 days (Item 8).

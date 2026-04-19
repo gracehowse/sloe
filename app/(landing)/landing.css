@@ -1929,3 +1929,15 @@
   margin: 32px 0 0;
   line-height: 1.6;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp,
+  .lp *,
+  .lp *::before,
+  .lp *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

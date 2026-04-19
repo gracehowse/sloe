@@ -1128,14 +1128,22 @@ function LandingFooter() {
               <li>
                 <Link href="/terms">Terms</Link>
               </li>
+              <li>
+                <Link href="/dmca">DMCA</Link>
+              </li>
+              <li>
+                <Link href="/licences">Licences</Link>
+              </li>
             </ul>
           </div>
         </div>
         <div className="lp-f-bottom">
-          <div>© {new Date().getFullYear()} Suppr, Inc. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} Suppr. All rights reserved.</div>
           <div className="lp-legal">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/dmca">DMCA</Link>
+            <Link href="/licences">Licences</Link>
           </div>
         </div>
         <p className="lp-f-disclaimer">

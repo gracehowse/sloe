@@ -23,12 +23,12 @@ const SOURCE_DETAILS: Record<string, { description: string; url: string }> = {
   },
   "Edamam": {
     description:
-      "A nutrition database with strong coverage of restaurant meals, recipes, and generic foods. Backed by the Edamam Food & Measures database used by major food publishers.",
+      "A nutrition database with strong coverage of restaurant meals, recipes, and generic foods. Backed by the Edamam Food & Measures database used by major food publishers. Powered by Edamam.",
     url: "https://www.edamam.com/",
   },
   "Open Food Facts": {
     description:
-      "A free, open-source database of food products from around the world. Built by volunteers who scan barcodes and record nutrition labels. Strong coverage across the UK, EU, US, and Australia.",
+      "A free, open-source database of food products from around the world. Built by volunteers who scan barcodes and record nutrition labels. Strong coverage across the UK, EU, US, and Australia. Product data © Open Food Facts contributors, available under the Open Database License (ODbL).",
     url: "https://world.openfoodfacts.org",
   },
   "FatSecret": {

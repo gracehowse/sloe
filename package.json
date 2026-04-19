@@ -20,6 +20,7 @@
     "test:e2e:ai": "node scripts/e2e-preflight.mjs && playwright test tests/e2e/ai",
     "build:icons": "node scripts/build-icons.mjs",
     "delete:seeded-recipes": "node --import tsx scripts/delete-seeded-recipes.ts",
+    "check:migrations": "node --import tsx scripts/check-migration-drift.ts",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
     "mobile:lint": "npm run lint --prefix apps/mobile",
     "mobile:typecheck": "npm run typecheck --prefix apps/mobile",

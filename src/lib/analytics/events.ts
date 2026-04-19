@@ -46,6 +46,22 @@ export const AnalyticsEvents = {
   onboarding_completed: "onboarding_completed",
   onboarding_step_completed: "onboarding_step_completed",
   paywall_viewed: "paywall_viewed",
+  /** Fires when the user commits a change to the billing-period
+   *  toggle on the paywall (mobile `/paywall`) or the pricing page
+   *  (web `/pricing`). Dedup: toggle no-ops are suppressed at the
+   *  call site, so every emit represents a real commit.
+   *
+   *  Payload:
+   *    { from: PaywallViewedFrom, fromPeriod: "monthly" | "annual",
+   *      toPeriod: "monthly" | "annual",
+   *      surface: "route" | "web_pricing",
+   *      platform: "web" | "ios" | "android" }
+   *
+   *  Measures annual adoption rate without polluting the
+   *  `paywall_viewed` → `checkout_completed` funnel. Registered
+   *  2026-04-19 per analytics-engineer round-1 decision on the
+   *  paywall v2 spec §11 events. */
+  paywall_period_changed: "paywall_period_changed",
   // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
   // `onboarding_checklist_completed`.
   first_run_checklist_completed: "first_run_checklist_completed",
@@ -155,6 +171,17 @@ export const AnalyticsEvents = {
    *  today, see TODO in `apps/mobile/app/_layout.tsx`). Payload:
    *  `{ weekKey }`. */
   weekly_recap_push_delivered: "weekly_recap_push_delivered",
+  /** User tapped the weekly recap push notification and the OS routed
+   *  the response into the app (Sunday push rewrite — T5, 2026-04-19).
+   *  Mobile-only — fired by the `Notifications.addNotificationResponseReceivedListener`
+   *  registered in `apps/mobile/app/_layout.tsx`, gated on
+   *  `data.kind === "weekly_recap"`. Payload: `{ weekKey: string | null }`
+   *  — null when the push payload predates the `weekKey` data-field
+   *  addition (see `apps/mobile/lib/weeklyRecapPush.ts` and
+   *  `app/api/push/weekly-recap/route.ts`). Drives the open-rate side
+   *  of the scheduled-vs-opened funnel; combined with T6's server-side
+   *  `weekly_recap_push_sent` it gives a real open-rate denominator. */
+  weekly_recap_push_opened: "weekly_recap_push_opened",
   /** User flipped the Settings toggle controlling `profiles.weekly_recap_push_enabled`
    * (web `Settings` / mobile `more.tsx`). Fires once per committed change, never on
    * initial hydration from Supabase, never on dialog-cancel no-ops. Payload:

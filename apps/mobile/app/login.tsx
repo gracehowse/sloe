@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -58,6 +58,10 @@ export default function LoginScreen() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  // Positive assent to Terms + Privacy required at account creation
+  // (browsewrap is unenforceable — Nguyen v. Barnes & Noble). Defaults
+  // to unchecked; never pre-check.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "ios") return;
@@ -157,6 +161,28 @@ export default function LoginScreen() {
       gap: Spacing.sm,
     },
     appleBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+    termsRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: Spacing.sm,
+      marginTop: Spacing.sm,
+    },
+    termsCheckbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+    },
+    termsCheckboxChecked: {
+      backgroundColor: Accent.primary,
+      borderColor: Accent.primary,
+    },
+    termsText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+    termsLink: { color: Accent.primary, textDecorationLine: "underline" },
   }), [colors]);
 
   if (!hasSupabaseConfig()) {
@@ -189,6 +215,10 @@ export default function LoginScreen() {
       setMessage("Enter your email and password.");
       return;
     }
+    if (isSignUp && !acceptedTerms) {
+      setMessage("Please agree to the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setBusy(true);
     try {
       if (isSignUp) {
@@ -219,6 +249,10 @@ export default function LoginScreen() {
 
   async function onAppleSignIn() {
     setMessage(null);
+    if (isSignUp && !acceptedTerms) {
+      setMessage("Please agree to the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setBusy(true);
     try {
       // Apple expects SHA256(rawNonce) on the request; Supabase verifies the ID token using rawNonce.
@@ -298,11 +332,36 @@ export default function LoginScreen() {
           style={styles.input}
         />
 
+        {isSignUp && (
+          <Pressable
+            onPress={() => setAcceptedTerms((v) => !v)}
+            style={styles.termsRow}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acceptedTerms }}
+            accessibilityLabel="Agree to Terms of Service and Privacy Policy"
+          >
+            <View style={[styles.termsCheckbox, acceptedTerms && styles.termsCheckboxChecked]}>
+              {acceptedTerms ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
+            </View>
+            <Text style={styles.termsText}>
+              I agree to the{" "}
+              <Text style={styles.termsLink} onPress={() => void Linking.openURL("https://suppr-club.com/terms")}>
+                Terms of Service
+              </Text>
+              {" "}and{" "}
+              <Text style={styles.termsLink} onPress={() => void Linking.openURL("https://suppr-club.com/privacy")}>
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </Pressable>
+        )}
+
         <Pressable
           testID="login-submit"
-          style={[styles.btn, busy && styles.btnDisabled]}
+          style={[styles.btn, (busy || (isSignUp && !acceptedTerms)) && styles.btnDisabled]}
           onPress={() => void onSubmit()}
-          disabled={busy}
+          disabled={busy || (isSignUp && !acceptedTerms)}
         >
           <Text style={styles.btnText}>{busy ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Create Account" : "Sign In")}</Text>
         </Pressable>
@@ -351,9 +410,9 @@ export default function LoginScreen() {
         {/* Apple Sign-In — hidden when capability not provisioned (e.g. Personal Team dev build) */}
         {Platform.OS === "ios" && appleAuthAvailable && (
           <Pressable
-            style={[styles.appleBtn, busy && styles.btnDisabled]}
+            style={[styles.appleBtn, (busy || (isSignUp && !acceptedTerms)) && styles.btnDisabled]}
             onPress={() => void onAppleSignIn()}
-            disabled={busy}
+            disabled={busy || (isSignUp && !acceptedTerms)}
           >
             <Ionicons name="logo-apple" size={20} color="#fff" />
             <Text style={styles.appleBtnText}>Continue with Apple</Text>

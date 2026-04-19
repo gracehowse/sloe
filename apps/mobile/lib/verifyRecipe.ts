@@ -239,6 +239,7 @@ export function sourceLabel(source: string | null): string {
   if (source === "OFF") return "Product";
   if (source === "USDA") return "USDA";
   if (source === "FatSecret") return "FatSecret";
+  if (source === "Edamam") return "Edamam";
   if (source === "Estimated") return "Estimated";
   return source;
 }

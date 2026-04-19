@@ -200,10 +200,11 @@ export default function ProfileScreen() {
   const save = async () => {
     if (!userId) return;
     setSaving(true);
-    const profileData = {
+    const nextCalories = Number(calories) || null;
+    const profileData: Record<string, unknown> = {
       id: userId,
       display_name: displayName.trim() || null,
-      target_calories: Number(calories) || null,
+      target_calories: nextCalories,
       target_protein: Number(protein) || null,
       target_carbs: Number(carbs) || null,
       target_fat: Number(fat) || null,
@@ -211,6 +212,12 @@ export default function ProfileScreen() {
       target_water_ml: Number(water) || null,
       dietary: dietary.length > 0 ? dietary : null,
     };
+    // A2 provenance — only stamp when a real calorie value is written, else
+    // we'd be lying that the user "set" a null. (migration 20260427110000)
+    if (nextCalories != null) {
+      profileData.target_calories_set_at = new Date().toISOString();
+      profileData.target_calories_source = "user";
+    }
     // Use upsert so it works for both new and existing profiles
     const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });
     setSaving(false);

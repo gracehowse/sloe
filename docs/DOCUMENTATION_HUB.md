@@ -2,6 +2,8 @@
 
 This is the single source of truth for the product.
 
+**Active worklist:** [/TODO.md](../TODO.md) — the master TODO consolidates everything Grace needs to action (Sept 2025 → ongoing). Orchestrator/executor queue is separate at [planning/sweep-2026-04-executor-backlog.md](planning/sweep-2026-04-executor-backlog.md).
+
 ## Sections
 - `planning/` Sequenced backlogs (e.g. orchestrator-full-sweep → executor)
 - `decisions/` Product and release verdicts / decision log
@@ -63,6 +65,7 @@ Standalone decision records live under `docs/decisions/`. Each file carries the 
 
 | Date | File | Topic |
 |------|------|-------|
+| 2026-04-19 | [2026-04-19-diversity-inclusion-audit.md](decisions/2026-04-19-diversity-inclusion-audit.md) | First D&I + a11y audit — P0 household dead-name fix shipped; allergen surfacing, gender identity field, hide-weight mode tracked as backlog |
 | 2026-04-19 | [2026-04-19-shopping-list-tier-gating.md](decisions/2026-04-19-shopping-list-tier-gating.md) | Shopping list Base claim satisfied transitively via MealPlanner gate — no dedicated shopping-list gate exists or is needed |
 | 2026-04-19 | [2026-04-19-renewal-disclosure-rewrite.md](decisions/2026-04-19-renewal-disclosure-rewrite.md) | Legal-required renewal disclosure block on `/pricing` and `paywall.tsx` — minimum font size, full billing terms per tier |
 | 2026-04-19 | [2026-04-19-voice-logging-pro-only-server-enforced.md](decisions/2026-04-19-voice-logging-pro-only-server-enforced.md) | Voice logging is Pro-only, server-enforced at 100 requests/day — Base access closed |

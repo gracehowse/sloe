@@ -625,11 +625,15 @@ export default function ProgressScreen() {
         const pushPayload = { weekKey: currentWeekKey };
         track(AnalyticsEvents.weekly_recap_push_sent, pushPayload);
         track(AnalyticsEvents.weekly_recap_push_scheduled, pushPayload);
+        // Opened-event (`weekly_recap_push_opened`) is wired in
+        // `apps/mobile/app/_layout.tsx` via the `HandleWeeklyRecapPushOpen`
+        // component (Sunday push rewrite — T5, 2026-04-19).
         // TODO(2026-05-18): wire `weekly_recap_push_delivered` from a
         // `Notifications.addNotificationReceivedListener` in
         // `apps/mobile/app/_layout.tsx` (match by
-        // `data.kind === "weekly_recap"`). Until then, delivery rate is
-        // inferred from the scheduled-vs-opened funnel.
+        // `data.kind === "weekly_recap"`). Delivered measures OS-side
+        // arrival; opened measures user-side tap — both are needed for
+        // a real funnel.
       }
     })();
   }, [userId, recapPushEnabled, weekStartDay, currentWeekKey]);

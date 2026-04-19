@@ -162,8 +162,18 @@ export default async function PricingPage({
             toggle state. Price, period, and billing-renewal disclosure
             all read from the PRICING_TIERS SSOT so drift between copy
             and checkout (which hit the same PRICING_TIERS-backed
-            Stripe price IDs) is impossible. */}
-        <PricingTiersGrid tiers={TIERS_FOR_GRID} />
+            Stripe price IDs) is impossible.
+
+            `stripeTaxEnabled` is read server-side from the
+            `STRIPE_TAX_ENABLED` env var and passed to the client so the
+            tax-clause copy stays in lockstep with whether the
+            /api/stripe/checkout route passes `automatic_tax` to Stripe
+            (round-6 flag, 2026-04-19). */}
+        <PricingTiersGrid
+          tiers={TIERS_FOR_GRID}
+          stripeTaxEnabled={process.env.STRIPE_TAX_ENABLED === "true"}
+          paywallFrom={paywallFrom}
+        />
 
         {/* Trust signals */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-8">

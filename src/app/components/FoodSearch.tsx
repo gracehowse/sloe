@@ -88,7 +88,7 @@ type SearchResult = {
 
 export type FoodSearchSelection = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM";
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   macrosPer100g: MacrosPer100g;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
@@ -445,7 +445,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF" | "CUSTOM";
+    source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
     macrosPer100g: MacrosPer100g;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
@@ -727,15 +727,15 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
       // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
-      // 2026-04-18. Macros come back per-100 g already inline so the tap
-      // path mirrors OFF — no extra fetch. The OFF preview source value
-      // is reused so the existing log path doesn't need a new branch.
+      // 2026-04-18. Macros come back per-100 g already inline. Source label
+      // is "Edamam" so Edamam's API ToS attribution requirement (Powered by
+      // Edamam) can be honoured at the surface that renders the preview.
       setLoadingKey(null);
       const portions = buildPortions([], item.primaryServing);
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({ name: item.name, source: "Edamam", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else {
       setLoadingKey(null);
     }

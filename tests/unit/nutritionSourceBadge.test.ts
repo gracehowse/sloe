@@ -22,6 +22,14 @@ describe("classifySource", () => {
     expect(classifySource("fatsecret")).toBe("verified");
   });
 
+  it("classifies Edamam as verified", () => {
+    // Edamam is a paid nutrition API — its rows are as authoritative as the
+    // other database sources. Previously misclassified as manual which
+    // broke the Edamam attribution path at point of use.
+    expect(classifySource("Edamam")).toBe("verified");
+    expect(classifySource("edamam")).toBe("verified");
+  });
+
   it("classifies AI/photo sources as estimated", () => {
     expect(classifySource("AI photo")).toBe("estimated");
     expect(classifySource("voice")).toBe("estimated");

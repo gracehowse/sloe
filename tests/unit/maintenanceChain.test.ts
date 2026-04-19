@@ -166,4 +166,38 @@ describe("buildMaintenanceChain", () => {
     const m = chain!.steps.find((s) => s.kind === "maintenance")!;
     expect(m.value).toBe(`${adaptiveResolved!.kcal.toLocaleString()} kcal`);
   });
+
+  /**
+   * Action 13 Item #12 (2026-04-19) — the projected weekly loss / gain
+   * line carries a caveat suffix because 7700 kcal/kg is correct for
+   * **fat mass**, not week-to-week scale weight (water + glycogen
+   * dominate the first week of any cut/bulk). Without the caveat the
+   * projection reads as a guarantee.
+   */
+  it("attaches the long-term-fat caveat to the weekly-loss row (cut)", () => {
+    const chain = buildMaintenanceChain(
+      baseProfile,
+      adaptiveResolved!,
+      "relaxed",
+      "cut",
+    );
+    const wl = chain!.steps.find((s) => s.kind === "weeklyLoss")!;
+    expect(wl.label).toContain("Projected weekly loss");
+    expect(wl.label).toMatch(/\*long-term fat loss; week-to-week varies with water\/glycogen/);
+  });
+
+  it("attaches the long-term-fat caveat to the weekly-gain row (bulk)", () => {
+    const formulaResolved = (
+      adaptiveResolved as unknown as { source: "adaptive" | "formula" }
+    ); // re-use the resolved value; bulk swaps the deficit sign.
+    const chain = buildMaintenanceChain(
+      baseProfile,
+      formulaResolved as never,
+      "relaxed",
+      "bulk",
+    );
+    const wl = chain!.steps.find((s) => s.kind === "weeklyLoss")!;
+    expect(wl.label).toContain("Projected weekly gain");
+    expect(wl.label).toMatch(/\*long-term fat gain; week-to-week varies with water\/glycogen/);
+  });
 });

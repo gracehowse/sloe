@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { BillingPeriod, PricingTier } from "../../src/lib/landing/content.ts";
+import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
+import { track } from "../../src/lib/analytics/track.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
@@ -25,12 +27,57 @@ type Tier = PricingTier & {
  * pricing moved to GBP — pinning is enforced by the landing parity
  * test.
  */
-export function PricingTiersGrid({ tiers }: { tiers: Tier[] }) {
+export function PricingTiersGrid({
+  tiers,
+  /**
+   * `stripeTaxEnabled` is read from `process.env.STRIPE_TAX_ENABLED` on
+   * the server and passed in here so the client disclosure copy stays
+   * in lockstep with the Stripe Checkout route's `automatic_tax`
+   * behaviour (round-6, 2026-04-19).
+   *
+   *   - Flag OFF → render the pre-round-4 tax-EXCLUSIVE line
+   *     (`"Price excludes any applicable taxes."`). This matches the
+   *     route's behaviour while Stripe Tax is not yet active in the
+   *     dashboard — `automatic_tax` is not passed to Checkout, so the
+   *     price the user pays is the sticker price, and the copy must say
+   *     so to stay truthful.
+   *   - Flag ON  → render the round-4 tax-INCLUSIVE VAT line
+   *     (`"Price includes any applicable VAT."`). At that point the
+   *     route also passes `automatic_tax: { enabled: true }` and Stripe
+   *     surfaces the VAT breakdown in Checkout.
+   */
+  stripeTaxEnabled = false,
+  paywallFrom,
+}: {
+  tiers: Tier[];
+  stripeTaxEnabled?: boolean;
+  /** Canonical `from` surface propagated from the server page so
+   *  `paywall_period_changed` carries the originating surface in
+   *  its payload (analytics-engineer 2026-04-19 — parity with
+   *  `paywall_viewed.from`). Defaults to `"deep_link"` when the
+   *  server could not resolve a specific surface. */
+  paywallFrom: PaywallViewedFrom;
+}) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+
+  function onPeriodCommit(next: BillingPeriod) {
+    if (next === billing) return;
+    // `paywall_period_changed` fires on committed toggle flips only
+    // (no-op early-return above). Mirrors the mobile paywall emit so
+    // annual-adoption slices read identically across platforms.
+    track(AnalyticsEvents.paywall_period_changed, {
+      from: paywallFrom,
+      fromPeriod: billing,
+      toPeriod: next,
+      surface: "web_pricing",
+      platform: "web",
+    });
+    setBilling(next);
+  }
 
   return (
     <>
-      <BillingToggle billing={billing} onChange={setBilling} />
+      <BillingToggle billing={billing} onChange={onPeriodCommit} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {tiers.map((tier) => {
@@ -131,6 +178,7 @@ export function PricingTiersGrid({ tiers }: { tiers: Tier[] }) {
                   period={period}
                   isAnnual={showAnnual}
                   isProDark={tier.name === "Pro"}
+                  stripeTaxEnabled={stripeTaxEnabled}
                 />
               ) : null}
             </div>
@@ -194,13 +242,21 @@ function BillingDisclosure({
   period,
   isAnnual,
   isProDark,
+  stripeTaxEnabled,
 }: {
   price: string;
   period: string;
   isAnnual: boolean;
   isProDark: boolean;
+  stripeTaxEnabled: boolean;
 }) {
   const periodNoun = isAnnual ? "year" : "month";
+  // Tax-clause copy is flag-gated to stay truthful relative to the
+  // Stripe Checkout route's behaviour. See the prop doc on
+  // `PricingTiersGrid` for the full rationale.
+  const taxClause = stripeTaxEnabled
+    ? "Price includes any applicable VAT."
+    : "Price excludes any applicable taxes.";
   return (
     <p
       className={`mt-2 text-xs leading-snug text-center ${
@@ -225,7 +281,7 @@ function BillingDisclosure({
       >
         7-day refund policy
       </a>
-      . Price excludes any applicable taxes.
+      . {taxClause}
     </p>
   );
 }

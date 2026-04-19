@@ -64,3 +64,60 @@ Apply with `supabase db push --linked` once per new file. Each migration is idem
 ```bash
 supabase migration list --linked
 ```
+
+For a name-joined drift report (matched / drifted / local-only / remote-only), use the in-repo
+script which queries `supabase_migrations.schema_migrations` directly:
+
+```bash
+npm run check:migrations            # informational (exit 0)
+npm run check:migrations -- --strict # fail (exit 1) when there are local-only migrations
+```
+
+This is also wired into `npm run prelaunch:checklist` as a non-failing summary step.
+
+---
+
+## Why drift recurs
+
+Drift in `supabase_migrations.schema_migrations.version` is **not** caused by `supabase db push`.
+It comes from two paths that both call the Supabase Management API without a `version` parameter,
+which makes the API stamp the row with wall-clock `NOW()`:
+
+- **Supabase MCP `apply_migration`** — verified from the open-source MCP server source
+  (`supabase-community/supabase-mcp`):
+  - `packages/mcp-server-supabase/src/tools/database-operation-tools.ts` (lines 84–96, 332–347)
+    builds the request without a `version` field.
+  - `packages/mcp-server-supabase/src/platform/api-platform.ts` (lines 214–237) `POST`s to the
+    `/v1/projects/{ref}/database/migrations` Management API endpoint. With no `version` in the body,
+    the platform inserts `to_char(now(), 'YYYYMMDDHH24MISS')` as the row's version.
+- **Supabase Dashboard SQL editor "Save as migration"** — same Management API endpoint, same
+  behaviour. Treat it identically to MCP `apply_migration`.
+
+**Canonical apply path: `supabase db push --linked` only.** It preserves the timestamp encoded in
+the local filename, so `version` matches `<14-digit prefix>` and the row stays in lockstep with the
+file you committed.
+
+**Current state (2026-04-19):** 12 rows in `schema_migrations` are drifted — 4 from earlier
+out-of-band applies (`20260419042534`, `20260419042552`, `20260419174513`, `20260419174524`) and
+8 from a sequence of MCP applies on 2026-04-19 (`20260419214032` through `20260419214138`). They
+are intentionally **left as-is** because:
+
+1. The local file timestamps for those migrations are sometimes deliberately future-dated to
+   preserve monotonic ordering against other planned work, so a `migration repair` would corrupt
+   that ordering.
+2. Every drifted migration in this set is idempotent (`CREATE … IF NOT EXISTS`, `DROP POLICY IF
+   EXISTS`, dedupe-before-constraint, etc.), so a future `supabase db push --linked` will skip them
+   by name match without re-executing the SQL.
+
+The damage is cosmetic (the Dashboard's history view shows the NOW() timestamp instead of the
+filename timestamp). Detection is automated via `npm run check:migrations`; do not run
+`supabase migration repair` against these rows without re-reading this section.
+
+If you need to apply a SQL change in production:
+
+- **Always**: write the file under `supabase/migrations/<timestamp>_<name>.sql`, commit, then
+  `supabase db push --linked`.
+- **Never**: paste into the Dashboard SQL editor's "Save as migration" or call the MCP
+  `apply_migration` for any SQL that lives (or will live) in `supabase/migrations/`. Use the
+  Dashboard SQL editor's plain "Run" mode for one-off ad-hoc reads, never for schema changes.
+

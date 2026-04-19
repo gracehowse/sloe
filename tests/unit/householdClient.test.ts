@@ -430,6 +430,53 @@ describe("getMyHousehold", () => {
     expect(res.data).toEqual({ household: null, members: [], meals: [] });
   });
 
+  it("prefers live profile.display_name over the membership snapshot (dead-name guard)", async () => {
+    // Regression (2026-04-19, diversity-inclusion P0): the
+    // `household_members.display_name` column is a snapshot captured at
+    // join time. If a user updates their profile display name (e.g. a
+    // trans user post-transition), other members of the household must
+    // see the current name, NEVER the legacy snapshot. The client must
+    // prefer `profiles.display_name` over the membership snapshot.
+    const today = new Date().toISOString().slice(0, 10);
+    const sb = makeSupabase({
+      household_members: (op, ctx) => {
+        if (op === "select:maybeSingle") {
+          return { data: { household_id: "h1", role: "member" }, error: null };
+        }
+        if (op === "select") {
+          return {
+            data: [
+              // Caller (u1) sees u2's row. u2's membership row has a
+              // stale snapshot "Legacy" left over from before the name
+              // change; the live profile now says "Current".
+              { id: "m1", user_id: "u1", role: "member", display_name: "Caller", joined_at: "2026-01-01" },
+              { id: "m2", user_id: "u2", role: "member", display_name: "Legacy", joined_at: "2026-02-01" },
+            ],
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+      households: (op) =>
+        op === "select:single"
+          ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "c", created_at: "t" }, error: null }
+          : { data: null, error: null },
+      household_meals: () => ({ data: [], error: null }),
+      profiles: () => ({
+        data: [
+          { id: "u1", target_calories: null, target_protein: null, target_carbs: null, target_fat: null, display_name: "Caller" },
+          { id: "u2", target_calories: null, target_protein: null, target_carbs: null, target_fat: null, display_name: "Current" },
+        ],
+        error: null,
+      }),
+      nutrition_entries: () => ({ data: [], error: null }),
+    });
+    const res = await getMyHousehold(sb as any, "u1");
+    const u2 = res.data!.members.find((m) => m.userId === "u2")!;
+    expect(u2.displayName).toBe("Current");
+    expect(u2.displayName).not.toBe("Legacy");
+  });
+
   it("marks isOwner false when the household owner_id does not match", async () => {
     const sb = makeSupabase({
       household_members: (op) => {

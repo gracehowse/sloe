@@ -16,6 +16,7 @@ This is one product across web and mobile.
 - If nutrition / ingredient matching is uncertain, do not guess
 - Use count-to-weight normalisation where reasonable
 - Ask for clarification only when uncertainty materially affects nutrition accuracy
+- **Never apply Supabase migrations via MCP `apply_migration` for files committed to `supabase/migrations/`.** MCP rewrites `schema_migrations.version` to wall-clock NOW(), causing drift from file timestamps (which are sometimes deliberately future-dated for monotonic ordering). Stage the SQL file and ask Grace to run `supabase db push --linked`. Same forbidance applies to Dashboard "Save as migration".
 
 ## Quality bar
 - Best-in-class UX

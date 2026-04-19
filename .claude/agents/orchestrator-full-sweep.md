@@ -46,35 +46,40 @@ Run agents in this order. Group within phases can run in parallel.
 ### Phase 3 — Surface quality
 6. `visual-qa`
 7. `ui-critic`
-8. `ui-product-designer` — for screens flagged by `ui-critic` or `visual-qa`, assess whether a credible design direction exists or is missing
+8. `brand-manager` — brand identity, tone, visual direction, naming consistency
+9. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
+10. `ui-product-designer` — for screens flagged by `ui-critic` or `visual-qa`, assess whether a credible design direction exists or is missing
 
 ### Phase 4 — Domain correctness
-9. `nutrition-engine`
-10. `data-integrity`
-11. `sync-enforcer`
-12. `integration-manager`
-13. `performance-optimizer`
+11. `nutrition-engine`
+12. `data-integrity`
+13. `sync-enforcer`
+14. `integration-manager`
+15. `performance-optimizer`
 
 ### Phase 5 — Trust and safety
-14. `security-reviewer`
-15. `legal-reviewer`
+16. `security-reviewer`
+17. `legal-reviewer`
+18. `diversity-inclusion` — inclusive language, body-neutral framing, cultural respect, accessibility, equitable defaults
 
 ### Phase 6 — Quality gate
-16. `qa-lead`
+19. `qa-lead`
 
 ### Phase 7 — Market position and growth
-17. `competitor-intelligence`
-18. `growth-strategist`
-19. `monetisation-architect`
-20. `analytics-engineer`
+20. `user-sentiment` — ground truth on what real users love, hate, request
+21. `competitor-intelligence`
+22. `feature-scout` — specific feature gaps and unmet needs from public feedback
+23. `growth-strategist`
+24. `monetisation-architect`
+25. `analytics-engineer`
 
 ### Phase 8 — Documentation and memory
-21. `docs-keeper`
-22. `product-memory`
+26. `docs-keeper`
+27. `product-memory`
 
 ### Phase 9 — Plan and gate
-23. `planner`
-24. `release-gate`
+28. `planner`
+29. `release-gate`
 
 Note: `executor` is intentionally not a sweep phase (the sweep reads, it doesn't write). `executor` is named as the owner on any action in the ranked list that requires implementation, and receives the handoff via `planner`.
 
@@ -113,7 +118,8 @@ After all agents run:
 - Producing an unranked dump
 - Quietly dropping harsh findings during dedupe
 - Anchoring competitor analysis to nutrition apps only
-- Marking nutrition or legal findings as low priority by default
+- Marking nutrition, legal, or diversity-inclusion findings as low priority by default
+- Letting brand/copy drift go unreviewed on any user-facing surface
 
 ---
 

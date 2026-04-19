@@ -85,6 +85,26 @@ export async function POST(req: Request) {
 
   const origin = appOrigin();
 
+  // Stripe Tax wiring is flag-gated (round-6, 2026-04-19). When the
+  // dashboard has not yet activated Tax + set `tax_behavior` on each
+  // Price, passing `automatic_tax.enabled: true` makes Stripe return
+  // a 400 and the user sees a broken checkout. The flag lets the code
+  // ship ahead of the dashboard flip; flipping `STRIPE_TAX_ENABLED=true`
+  // in prod env is what activates the VAT-inclusive behaviour (copy on
+  // /pricing also swaps on the same flag — keep them in lockstep).
+  //
+  // `customer_update: { address: "auto" }` is intentionally omitted —
+  // Stripe errors if it's passed without an existing `customer` id,
+  // and this route lets Checkout mint a fresh Customer via
+  // `client_reference_id` rather than reusing one.
+  const stripeTaxEnabled = process.env.STRIPE_TAX_ENABLED === "true";
+  const taxFields = stripeTaxEnabled
+    ? {
+        automatic_tax: { enabled: true as const },
+        billing_address_collection: "auto" as const,
+      }
+    : {};
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -97,6 +117,7 @@ export async function POST(req: Request) {
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancel`,
       allow_promotion_codes: true,
+      ...taxFields,
     });
 
     if (!session.url) {

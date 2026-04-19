@@ -243,6 +243,9 @@ export default function OnboardingPage() {
           dietary: profile.dietary,
           measurement_system: profile.measurementSystem,
           target_calories: targets.calories,
+          // A2 provenance — web onboarding upsert. (migration 20260427110000)
+          target_calories_set_at: new Date().toISOString(),
+          target_calories_source: "onboarding",
           target_protein: targets.protein,
           target_carbs: targets.carbs,
           target_fat: targets.fat,

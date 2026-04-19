@@ -8,7 +8,7 @@ function classifySource(source?: string | null): SourceTier {
   if (!s) return "manual";
   if (s.includes("adjusted")) return "estimated";
   if (s.includes("quick") || s.includes("barcode")) return "estimated";
-  if (s.includes("usda") || s.includes("fdc") || s.includes("openfoodfacts") || s.includes("open food facts") || s.includes("fatsecret") || s === "off") return "verified";
+  if (s.includes("usda") || s.includes("fdc") || s.includes("openfoodfacts") || s.includes("open food facts") || s.includes("fatsecret") || s.includes("edamam") || s === "off") return "verified";
   if (s.includes("ai") || s.includes("photo") || s.includes("voice") || s.includes("import") || s.includes("openai") || s.includes("recipe")) return "estimated";
   return "manual";
 }

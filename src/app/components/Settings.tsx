@@ -240,7 +240,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           : null;
 
       const update = recomputed
-        ? { ...baseUpdate, ...recomputed }
+        ? {
+            ...baseUpdate,
+            ...recomputed,
+            // A2 provenance — activity-level recompute path. Only stamp when
+            // we actually recomputed targets. (migration 20260427110000)
+            target_calories_set_at: new Date().toISOString(),
+            target_calories_source: "recompute" as const,
+          }
         : baseUpdate;
       // `maintenanceTdee` is exposed for the toast only — not a DB column.
       const { maintenanceTdee: _maintenance, ...writeable } =
