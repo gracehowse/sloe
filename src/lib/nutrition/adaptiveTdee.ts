@@ -16,8 +16,8 @@
  */
 
 const KCAL_PER_KG = 7700;
-const MIN_LOGGING_DAYS = 7;
-const MIN_WEIGH_INS = 3;
+export const MIN_LOGGING_DAYS = 7;
+export const MIN_WEIGH_INS = 3;
 const DEFAULT_WINDOW_DAYS = 28;
 const EMA_ALPHA = 0.1; // Lower = more smoothing
 

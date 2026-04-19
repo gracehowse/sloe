@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Check, Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
+import { FREE_SAVE_LIMIT, PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
@@ -29,68 +30,26 @@ export const metadata: Metadata = {
   description: "Choose a plan that fits your goals. Free, Base, or Pro.",
 };
 
-const TIERS = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Track meals and see verified macros",
-    features: [
-      "Save up to 10 recipes",
-      "Browse community recipes",
-      "Basic nutrition logging",
-      "Daily macro tracking",
-      "USDA food search",
-      "Profile & target setup",
-    ],
-    nutritionNote: "USDA-verified food data",
-    cta: "Get Started",
-    checkoutTier: null,
-    highlighted: false,
-  },
-  {
-    name: "Base",
-    price: "$5",
-    period: "/month",
-    description: "The full meal planning loop",
-    features: [
-      "Unlimited saved recipes",
-      "Meal plans from your saved recipes",
-      "Plans matched to your macro targets",
-      "Shopping list from plan",
-      "Cook mode with timers",
-      "Recipe import from URL",
-      "Barcode scanning",
-      "Fiber & water tracking",
-      "Export data (CSV)",
-    ],
-    nutritionNote: "USDA + barcode + recipe import",
-    cta: "Upgrade to Base",
-    checkoutTier: "base" as const,
-    highlighted: true,
-  },
-  {
-    name: "Pro",
-    price: "$12",
-    period: "/month",
-    description: "Publish recipes and automate your targets",
-    features: [
-      "Everything in Base",
-      "AI photo meal recognition",
-      "Voice food logging",
-      "Publish recipes publicly",
-      "Creator analytics",
-      "Activity-adjusted calories",
-      "Adaptive TDEE",
-      "Macro trend reports",
-      "Direct support response",
-    ],
-    nutritionNote: "All sources + AI photo & voice",
-    cta: "Upgrade to Pro",
-    checkoutTier: "pro" as const,
-    highlighted: false,
-  },
-];
+/**
+ * Tier rendering reads PRICING_TIERS from the shared SSOT so the
+ * landing page and /pricing cannot drift. Only the fields specific
+ * to this page (cta label, description paragraph) are mapped here.
+ */
+const TIERS = PRICING_TIERS.map((t) => ({
+  name: t.name,
+  price: t.price,
+  period: t.period,
+  description: t.tag.replace(/\.$/, ""),
+  /** "Everything in Free, plus" → "Everything in Free" for the
+   *  /pricing bullet list rendering style. */
+  features: t.featHead
+    ? [t.featHead.replace(/,\s*plus$/i, ""), ...t.features]
+    : t.features,
+  nutritionNote: t.nutritionNote,
+  cta: t.checkoutTier === null ? "Get Started" : `Upgrade to ${t.name}`,
+  checkoutTier: t.checkoutTier,
+  highlighted: t.highlighted,
+}));
 
 const FAQ = [
   {
@@ -99,19 +58,19 @@ const FAQ = [
   },
   {
     q: "What happens to my data if I downgrade?",
-    a: "Your recipes, logs, and plans are never deleted. Some features (like unlimited saves) won't be available on the free plan, but your data is always accessible and exportable.",
+    a: `Your recipes, logs, and plans are never deleted. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit become read-only until you upgrade again, but everything else stays fully accessible and exportable.`,
   },
   {
     q: "Is there an annual plan?",
-    a: "Not yet, but it's coming soon. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
+    a: "Not yet, but it's coming. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
   },
   {
     q: "How is nutrition data sourced?",
-    a: "We use USDA FoodData Central for search, Open Food Facts for barcodes, and AI models for photo and voice recognition. Recipe imports are parsed and cross-referenced. You can always verify and edit any entry.",
+    a: "Every ingredient is matched against USDA FoodData Central first, then Edamam, then Open Food Facts, then FatSecret for branded items. Photo and voice use AI models cross-referenced against the same database stack. You can verify and edit any entry.",
   },
   {
     q: "Do you offer refunds?",
-    a: "If you're unhappy within the first 7 days, contact support and we'll issue a full refund — no questions asked.",
+    a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",
   },
 ];
 

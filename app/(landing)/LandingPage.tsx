@@ -41,6 +41,14 @@ import {
   Youtube,
 } from "lucide-react";
 import { MEAL_SLOT_HEADERS } from "../../src/lib/copy/today.ts";
+import {
+  FAQS,
+  HOW_IT_WORKS,
+  NUTRITION_SOURCES,
+  PRICING_TIERS,
+  ROADMAP,
+  type RoadmapItem,
+} from "../../src/lib/landing/content.ts";
 import "./landing.css";
 
 const NAV_LINKS = [
@@ -49,37 +57,6 @@ const NAV_LINKS = [
   { href: "#roadmap", label: "Roadmap" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
-];
-
-const FAQS = [
-  {
-    q: "How accurate are the macros, really?",
-    a: "Every ingredient is matched against USDA FoodData Central first, then Open Food Facts, then FatSecret for branded items. Ambiguous ingredients show a confidence score so you can verify before saving. Values are estimates — actual nutrition varies by preparation method, brand, and portion size.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel from account settings and you’ll keep access until the end of your billing period. Your data stays — you can export it any time from Settings → Export.",
-  },
-  {
-    q: "Does it work on iOS and web?",
-    a: "Yes — the web app is in production and the iOS app is in TestFlight beta. Both share the same Supabase backend, so anything you save or log syncs instantly. Android isn’t on the roadmap right now.",
-  },
-  {
-    q: "What happens to my data if I downgrade?",
-    a: "Nothing disappears. Recipes above the Free tier’s 10-recipe limit become read-only until you upgrade again, but they’re never deleted. History, logs, and targets stay fully accessible.",
-  },
-  {
-    q: "Is this a diet app?",
-    a: "No. Suppr is a personal tracking tool, not a medical device. We don’t do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. You can opt into a gentle logging streak if you want one; it’s off by default.",
-  },
-  {
-    q: "Is there an annual plan?",
-    a: "Not yet, but it's coming. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
-  },
-  {
-    q: "Do you offer refunds?",
-    a: "Yes — if you're unhappy within the first 7 days, contact support and we'll issue a full refund, no questions asked.",
-  },
 ];
 
 const SIGNUP_HREF = "/login?mode=signup";
@@ -230,18 +207,12 @@ function Hero() {
           <div className="lp-trust-inner">
             <div className="lp-lbl">Nutrition data matched against</div>
             <div className="lp-srcs">
-              <span>
-                <Database aria-hidden />
-                USDA FoodData Central
-              </span>
-              <span>
-                <Database aria-hidden />
-                Open Food Facts
-              </span>
-              <span>
-                <Database aria-hidden />
-                FatSecret
-              </span>
+              {NUTRITION_SOURCES.map((src) => (
+                <span key={src}>
+                  <Database aria-hidden />
+                  {src}
+                </span>
+              ))}
               <span>
                 <HeartPulse aria-hidden />
                 Apple Health
@@ -473,33 +444,6 @@ function PhoneTabBar() {
 
 /* ─────────────── How it works ─────────────── */
 function HowItWorks() {
-  const steps = [
-    {
-      n: 1,
-      title: "Paste a link — we handle the rest",
-      body:
-        "Drop a URL from Instagram, TikTok, YouTube, or any recipe blog. Suppr imports ingredients, steps, and photos in under five seconds.",
-    },
-    {
-      n: 2,
-      title: "Real macros, not rounded guesses",
-      body:
-        "Every ingredient gets matched against USDA, Open Food Facts, and FatSecret. Ambiguous ingredients show a confidence score so you can verify before saving.",
-    },
-    {
-      n: 3,
-      title: "Plan weeks that hit your targets",
-      body:
-        "Build plans from your saved recipes and Suppr picks combinations that land on your macro targets. Generate a shopping list, then cook.",
-    },
-    {
-      n: 4,
-      title: "Adapts to how you actually eat",
-      body:
-        "Apple Health sync keeps your calorie target honest as activity shifts. Adaptive TDEE learns your real maintenance over 14 days.",
-    },
-  ];
-
   return (
     <section className="lp-section-pad" id="what">
       <div className="lp-wrap lp-what">
@@ -526,7 +470,7 @@ function HowItWorks() {
           </div>
         </div>
         <div className="lp-steps">
-          {steps.map((s) => (
+          {HOW_IT_WORKS.map((s) => (
             <div className="lp-step" key={s.n}>
               <div className="lp-n">{s.n}</div>
               <div>
@@ -929,148 +873,68 @@ function Roadmap() {
         </div>
 
         <div className="lp-roadmap">
-          <div className="lp-rm-item lp-now">
-            <div className="lp-rm-dot">
-              <Check width={12} height={12} aria-hidden style={{ color: "#fff" }} />
-            </div>
-            <div className="lp-rm-body">
-              <div className="lp-rm-head">
-                <h3>Now</h3>
-                <span className="lp-rm-badge lp-now">In your app</span>
-                <span className="lp-rm-when">v1.4 · May 2026</span>
+          {ROADMAP.map((bucket) => {
+            const cls =
+              bucket.title === "Now"
+                ? "lp-rm-item lp-now"
+                : bucket.title === "Next"
+                  ? "lp-rm-item lp-next"
+                  : "lp-rm-item lp-later";
+            const badgeCls =
+              bucket.title === "Now"
+                ? "lp-rm-badge lp-now"
+                : bucket.title === "Next"
+                  ? "lp-rm-badge lp-next"
+                  : "lp-rm-badge lp-later";
+            return (
+              <div className={cls} key={bucket.title}>
+                <div className="lp-rm-dot">
+                  {bucket.title === "Now" ? (
+                    <Check width={12} height={12} aria-hidden style={{ color: "#fff" }} />
+                  ) : null}
+                </div>
+                <div className="lp-rm-body">
+                  <div className="lp-rm-head">
+                    <h3>{bucket.title}</h3>
+                    <span className={badgeCls}>{bucket.badge}</span>
+                    <span className="lp-rm-when">{bucket.when}</span>
+                  </div>
+                  <p>{bucket.summary}</p>
+                  <div className="lp-rm-ships">
+                    {bucket.items.map((it) => (
+                      <Ship key={it.text} item={it} />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <p>The core loop is shipped and stable on web, with the iOS app in TestFlight beta.</p>
-              <div className="lp-rm-ships">
-                <Ship done text="Recipe import from any recipe site, Instagram, TikTok, YouTube" />
-                <Ship done text="Macro tracking with confidence scores" />
-                <Ship done text="Meal planner with shopping list" />
-                <Ship done text="Cook mode with step highlighting and inline timers" />
-                <Ship done text="Apple Health sync + adaptive TDEE" />
-              </div>
-            </div>
-          </div>
-
-          <div className="lp-rm-item lp-next">
-            <div className="lp-rm-dot" />
-            <div className="lp-rm-body">
-              <div className="lp-rm-head">
-                <h3>Next</h3>
-                <span className="lp-rm-badge lp-next">Building now</span>
-                <span className="lp-rm-when">Q3 2026</span>
-              </div>
-              <p>The features rolling out to Pro tier over the next quarter.</p>
-              <div className="lp-rm-ships">
-                <Ship progress text="AI photo meal recognition (beta in TestFlight)" />
-                <Ship progress text='Voice food logging ("log two eggs and toast")' />
-                <Ship progress text="Recipe publishing with creator analytics" />
-                <Ship text="Barcode scanning for packaged foods" />
-                <Ship text="Home screen widgets (iOS 18 + Android)" />
-              </div>
-            </div>
-          </div>
-
-          <div className="lp-rm-item lp-later">
-            <div className="lp-rm-dot" />
-            <div className="lp-rm-body">
-              <div className="lp-rm-head">
-                <h3>Later</h3>
-                <span className="lp-rm-badge lp-later">On the board</span>
-                <span className="lp-rm-when">2026 · 2027</span>
-              </div>
-              <p>Bigger bets we’re designing, pending research and your feedback.</p>
-              <div className="lp-rm-ships">
-                <Ship text="Wear OS and Apple Watch cook-mode companion" />
-                <Ship text="Grocery delivery integrations (Instacart, Amazon Fresh)" />
-                <Ship text="Recipe Q&A with your own saved library" />
-                <Ship text="Household sharing — plan meals across 2+ people" />
-                <Ship text="Garmin, Fitbit, Whoop integrations" />
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
-
-        <p style={{ textAlign: "center", fontSize: 13, color: "var(--lp-fg-muted)", marginTop: 32 }}>
-          Questions about a feature? Every Pro subscriber gets a monthly roadmap email with direct
-          reply.
-        </p>
       </div>
     </section>
   );
 }
 
-function Ship({ done, progress, text }: { done?: boolean; progress?: boolean; text: string }) {
-  const cls = ["lp-rm-ship", done ? "lp-done" : "", progress ? "lp-progress" : ""]
+function Ship({ item }: { item: RoadmapItem }) {
+  const cls = [
+    "lp-rm-ship",
+    item.status === "shipped" ? "lp-done" : "",
+    item.status === "building" ? "lp-progress" : "",
+  ]
     .filter(Boolean)
     .join(" ");
   return (
     <div className={cls}>
-      <div className="lp-c">{done ? <Check width={10} height={10} aria-hidden /> : null}</div>
-      <div className="lp-txt">{text}</div>
+      <div className="lp-c">
+        {item.status === "shipped" ? <Check width={10} height={10} aria-hidden /> : null}
+      </div>
+      <div className="lp-txt">{item.text}</div>
     </div>
   );
 }
 
 /* ─────────────── Pricing ─────────────── */
 function Pricing() {
-  const tiers = [
-    {
-      name: "Free",
-      hero: false,
-      tag: "Track meals and see verified macros.",
-      price: "$0",
-      per: "forever",
-      cta: { label: "Continue for free", primary: false },
-      featHead: undefined,
-      features: [
-        "Save up to 10 recipes",
-        "Browse community recipes",
-        "Basic nutrition logging",
-        "Daily macro tracking",
-        "USDA food search",
-        "Profile & target setup",
-      ],
-    },
-    {
-      name: "Base",
-      hero: true,
-      tag: "The full meal planning loop.",
-      price: "$5",
-      per: "/ month",
-      cta: { label: "Upgrade to Base", primary: true },
-      featHead: "Everything in Free, plus",
-      features: [
-        "Unlimited saved recipes",
-        "Meal plans from your saved recipes",
-        "Plans matched to your macro targets",
-        "Shopping list from plan",
-        "Cook mode with timers",
-        "Recipe import from URL",
-        "Barcode scanning",
-        "Fiber & water tracking",
-        "Export data (CSV)",
-      ],
-    },
-    {
-      name: "Pro",
-      hero: false,
-      tag: "Publish recipes and automate your targets.",
-      price: "$12",
-      per: "/ month",
-      cta: { label: "Upgrade to Pro", primary: false },
-      featHead: "Everything in Base, plus",
-      features: [
-        "AI photo meal recognition",
-        "Voice food logging",
-        "Publish recipes publicly",
-        "Creator analytics",
-        "Activity-adjusted calories",
-        "Adaptive TDEE",
-        "Macro trend reports",
-        "Direct support response",
-      ],
-    },
-  ];
-
   return (
     <section
       className="lp-section-pad"
@@ -1095,33 +959,37 @@ function Pricing() {
           </p>
         </div>
         <div className="lp-tier-grid">
-          {tiers.map((t) => (
-            <div className={`lp-tier${t.hero ? " lp-tier-hero" : ""}`} key={t.name}>
-              <h3>{t.name}</h3>
-              <p className="lp-tag">{t.tag}</p>
-              <div className="lp-price-row">
-                <span className="lp-price">{t.price}</span>
-                <span className="lp-per">{t.per}</span>
+          {PRICING_TIERS.map((t) => {
+            const ctaLabel =
+              t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`;
+            return (
+              <div className={`lp-tier${t.highlighted ? " lp-tier-hero" : ""}`} key={t.name}>
+                <h3>{t.name}</h3>
+                <p className="lp-tag">{t.tag}</p>
+                <div className="lp-price-row">
+                  <span className="lp-price">{t.price}</span>
+                  <span className="lp-per">{t.period}</span>
+                </div>
+                <div className="lp-tier-btn">
+                  <Link
+                    className={`lp-btn ${t.highlighted ? "lp-btn-primary" : "lp-btn-ghost"}`}
+                    href={SIGNUP_HREF}
+                  >
+                    {ctaLabel}
+                  </Link>
+                </div>
+                {t.featHead ? <div className="lp-feat-head">{t.featHead}</div> : null}
+                <ul className="lp-feat-list">
+                  {t.features.map((f) => (
+                    <li key={f}>
+                      <Check width={16} height={16} aria-hidden />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="lp-tier-btn">
-                <Link
-                  className={`lp-btn ${t.cta.primary ? "lp-btn-primary" : "lp-btn-ghost"}`}
-                  href={SIGNUP_HREF}
-                >
-                  {t.cta.label}
-                </Link>
-              </div>
-              {t.featHead ? <div className="lp-feat-head">{t.featHead}</div> : null}
-              <ul className="lp-feat-list">
-                {t.features.map((f) => (
-                  <li key={f}>
-                    <Check width={16} height={16} aria-hidden />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="lp-pricing-trust">
           <span>

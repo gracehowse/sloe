@@ -1,0 +1,278 @@
+/**
+ * Landing-page / pricing / roadmap single source of truth.
+ *
+ * Any marketing surface that makes a product claim — /, /pricing,
+ * /roadmap, /whats-new — must read from this file. The parity test
+ * in `tests/unit/landingParity.test.tsx` pins rendered copy against
+ * these constants, so drift between code and marketing is caught at
+ * CI time, not by users.
+ *
+ * Ownership rules:
+ *   1. Moving a feature between Free/Base/Pro tiers updates
+ *      `PRICING_TIERS` AND the corresponding gate in code (server
+ *      route or client guard).
+ *   2. Changing the nutrition pipeline updates `NUTRITION_SOURCES`.
+ *   3. Changing Adaptive TDEE thresholds updates the exported
+ *      constants in `src/lib/nutrition/adaptiveTdee.ts` and this
+ *      file re-exports them automatically.
+ *   4. Every roadmap item carries an explicit status
+ *      (`shipped | building | planned`). Shipped items must have
+ *      real code behind them; `building` means actively worked on
+ *      with visible scaffolding; `planned` means a concept with no
+ *      implementation.
+ */
+
+import { FREE_SAVE_LIMIT } from "@/context/appData/constants";
+import {
+  MIN_LOGGING_DAYS as TDEE_MIN_LOGGING_DAYS_RAW,
+  MIN_WEIGH_INS as TDEE_MIN_WEIGH_INS_RAW,
+} from "@/lib/nutrition/adaptiveTdee";
+import { getLatestChangelog } from "@/lib/changelog/entries";
+
+/** Source-of-truth re-exports so the landing page never copies literals. */
+export const TDEE_MIN_LOGGING_DAYS = TDEE_MIN_LOGGING_DAYS_RAW;
+export const TDEE_MIN_WEIGH_INS = TDEE_MIN_WEIGH_INS_RAW;
+export { FREE_SAVE_LIMIT };
+
+/**
+ * Nutrition verification sources, in the exact order
+ * `verifyIngredients.ts` traverses them (after the internal
+ * `Suppr` user-foods lookup and before the local estimation
+ * fallback — both of which are implementation details, not
+ * user-facing sources).
+ *
+ * If the pipeline reorders, update this list and the landing
+ * page's trust strip + FAQ answer update automatically.
+ */
+export const NUTRITION_SOURCES = [
+  "USDA FoodData Central",
+  "Edamam",
+  "Open Food Facts",
+  "FatSecret",
+] as const;
+
+/**
+ * Rolling version string for the roadmap "Now" header. Reads the
+ * latest changelog entry so bumping a build automatically updates
+ * the landing page label — no hand-edited version numbers.
+ */
+export function currentAppVersionLabel(): string {
+  const entry = getLatestChangelog();
+  if (!entry) return "Latest build";
+  return `v${entry.appVersion} · build ${entry.buildNumber}`;
+}
+
+/** Supported client platforms. Android is deliberately not listed —
+ *  the iOS app is in TestFlight; the web app is in production. */
+export const SUPPORTED_PLATFORMS = {
+  web: "production",
+  ios: "testflight",
+  android: "not_on_roadmap",
+} as const;
+
+/* ─────────────── Pricing tiers ─────────────── */
+
+export type PricingTierName = "Free" | "Base" | "Pro";
+
+export type PricingTier = {
+  name: PricingTierName;
+  tag: string;
+  price: string;
+  period: string;
+  /** Tier key for checkout. `null` for Free. */
+  checkoutTier: "base" | "pro" | null;
+  /** Bullet used on /pricing as a small tier summary. */
+  nutritionNote: string;
+  /** First line shown above the feature list ("Everything in …, plus"). */
+  featHead?: string;
+  features: string[];
+  highlighted: boolean;
+};
+
+/**
+ * Pricing matches the actual gating in code. Any feature claimed
+ * in a tier must have a real gate (server check or client guard);
+ * claims without a gate are treated as monetisation bugs and are
+ * tracked in `docs/product/landing-maintenance.md`.
+ */
+export const PRICING_TIERS: PricingTier[] = [
+  {
+    name: "Free",
+    tag: "Track meals and see verified macros.",
+    price: "$0",
+    period: "forever",
+    checkoutTier: null,
+    nutritionNote: "USDA-verified food data",
+    features: [
+      `Save up to ${FREE_SAVE_LIMIT} recipes`,
+      "Browse community recipes",
+      "Macro tracking with confidence scores",
+      "Recipe import from URL, Instagram, TikTok, YouTube",
+      "Barcode scanning",
+      "Cook mode with inline timers",
+      "Fiber & water tracking",
+      "Single-day meal plan",
+      "Apple Health sync (iOS)",
+      "Export your data (JSON)",
+    ],
+    highlighted: false,
+  },
+  {
+    name: "Base",
+    tag: "The full meal-planning loop.",
+    price: "$5",
+    period: "/month",
+    checkoutTier: "base",
+    nutritionNote: "Unlimited recipes + multi-day planning",
+    featHead: "Everything in Free, plus",
+    features: [
+      "Unlimited saved recipes",
+      "Multi-day meal plans matched to your macro targets",
+      "Shopping list from plan",
+      "Publish recipes to the community",
+    ],
+    highlighted: true,
+  },
+  {
+    name: "Pro",
+    tag: "Log by photo and voice, faster.",
+    price: "$12",
+    period: "/month",
+    checkoutTier: "pro",
+    nutritionNote: "AI photo & voice logging",
+    featHead: "Everything in Base, plus",
+    features: [
+      "AI photo meal recognition (100/day)",
+      "Voice food logging (100/day)",
+      "Priority email support",
+    ],
+    highlighted: false,
+  },
+];
+
+/* ─────────────── How-it-works ─────────────── */
+
+export type HowItWorksStep = { n: number; title: string; body: string };
+
+export const HOW_IT_WORKS: HowItWorksStep[] = [
+  {
+    n: 1,
+    title: "Paste a link — we handle the rest",
+    body:
+      "Drop a URL from Instagram, TikTok, YouTube, or any recipe blog with structured data. Suppr imports ingredients, steps, and photos in seconds.",
+  },
+  {
+    n: 2,
+    title: "Real macros, not rounded guesses",
+    body: `Every ingredient is matched against ${NUTRITION_SOURCES.slice(0, 3).join(", ")}, and ${NUTRITION_SOURCES[3]} for branded items. Ambiguous ingredients show a confidence score so you can verify before saving.`,
+  },
+  {
+    n: 3,
+    title: "Plan weeks that hit your targets",
+    body:
+      "Build plans from your saved recipes and Suppr picks combinations that land on your macro targets. Generate a shopping list, then cook.",
+  },
+  {
+    n: 4,
+    title: "Adapts to how you actually eat",
+    body: `Apple Health sync keeps your calorie target honest as activity shifts. Adaptive TDEE learns your real maintenance once you've logged ${TDEE_MIN_LOGGING_DAYS} days and weighed in ${TDEE_MIN_WEIGH_INS} times.`,
+  },
+];
+
+/* ─────────────── Roadmap ─────────────── */
+
+export type RoadmapStatus = "shipped" | "building" | "planned";
+
+export type RoadmapItem = { text: string; status: RoadmapStatus };
+
+export type RoadmapBucket = {
+  title: "Now" | "Next" | "Later";
+  badge: string;
+  /** Short window label. Kept in code so it's easy to audit and
+   *  update as things ship. */
+  when: string;
+  summary: string;
+  items: RoadmapItem[];
+};
+
+/**
+ * Hand-curated but pinned by the parity test: any item tagged
+ * `shipped` must have a grep-able implementation anchor, and any
+ * item tagged `building` must not also appear in the shipped list.
+ */
+export const ROADMAP: RoadmapBucket[] = [
+  {
+    title: "Now",
+    badge: "In your app",
+    when: currentAppVersionLabel(),
+    summary:
+      "The core loop is shipped and stable on web, with the iOS app in TestFlight beta.",
+    items: [
+      { text: "Recipe import from any recipe site, Instagram, TikTok, YouTube", status: "shipped" },
+      { text: "Macro tracking with confidence scores", status: "shipped" },
+      { text: "Meal planner with shopping list", status: "shipped" },
+      { text: "Cook mode with step highlighting and inline timers", status: "shipped" },
+      { text: "Apple Health sync + Adaptive TDEE", status: "shipped" },
+      { text: "Barcode scanning for packaged foods", status: "shipped" },
+      { text: "Voice food logging (Pro)", status: "shipped" },
+      { text: "AI photo meal recognition (Pro)", status: "shipped" },
+    ],
+  },
+  {
+    title: "Next",
+    badge: "Building now",
+    when: "Coming builds",
+    summary: "What's on the bench and visible in the codebase.",
+    items: [
+      { text: "Creator analytics for published recipes", status: "building" },
+      { text: "Home screen widgets (iOS)", status: "building" },
+      { text: "Richer macro trend reports", status: "building" },
+    ],
+  },
+  {
+    title: "Later",
+    badge: "On the board",
+    when: "2026 · 2027",
+    summary: "Bigger bets we're designing, pending research and your feedback.",
+    items: [
+      { text: "Apple Watch cook-mode companion", status: "planned" },
+      { text: "Grocery delivery integrations (Instacart, Amazon Fresh)", status: "planned" },
+      { text: "Recipe Q&A with your own saved library", status: "planned" },
+      { text: "Household sharing — plan meals across 2+ people", status: "planned" },
+      { text: "Garmin, Fitbit, Whoop integrations", status: "planned" },
+    ],
+  },
+];
+
+/* ─────────────── FAQ ─────────────── */
+
+export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
+  {
+    q: "How accurate are the macros, really?",
+    a: `Every ingredient is matched against ${NUTRITION_SOURCES[0]} first, then ${NUTRITION_SOURCES[1]}, ${NUTRITION_SOURCES[2]}, and ${NUTRITION_SOURCES[3]} for branded items. Ambiguous ingredients show a confidence score so you can verify before saving. Values are estimates — actual nutrition varies by preparation method, brand, and portion size.`,
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. Cancel from account settings and you'll keep access until the end of your billing period. Your data stays — you can export it any time from Settings → Export.",
+  },
+  {
+    q: "Does it work on iOS and web?",
+    a: "Yes — the web app is in production and the iOS app is in TestFlight beta. Both share the same Supabase backend, so anything you save or log syncs instantly. Android isn't on the roadmap right now.",
+  },
+  {
+    q: "What happens to my data if I downgrade?",
+    a: `Nothing disappears. Recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit become read-only until you upgrade again, but they're never deleted. History, logs, and targets stay fully accessible.`,
+  },
+  {
+    q: "Is this a diet app?",
+    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. You can opt into a gentle logging streak if you want one; it's off by default.",
+  },
+  {
+    q: "Is there an annual plan?",
+    a: "Not yet, but it's coming. Subscribe monthly now and we'll offer a discounted annual option when it launches.",
+  },
+  {
+    q: "Do you offer refunds?",
+    a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",
+  },
+];
