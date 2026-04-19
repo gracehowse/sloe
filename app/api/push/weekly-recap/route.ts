@@ -667,7 +667,3 @@ function numOrNull(v: unknown): number | null {
   return null;
 }
 
-// Re-export to satisfy older imports / dead-code analyzers — not used
-// by the route itself, but kept as part of the route module's public
-// surface to avoid a breaking change in the import graph.
-export { weekKeyFor };
