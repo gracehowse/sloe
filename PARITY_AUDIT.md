@@ -204,6 +204,73 @@ Retired phrasings (enforced by `tests/unit/todayCopyParity.test.ts`):
 
 Below `lg:` the sidebar is hidden and the bottom tab bar remains — same tab order as the mobile app (`Today / Discover / Plan / Progress / Profile`). This is the deliberate 2026-04-18 decision: *mobile-web should feel like the native mobile app*, desktop-web gets a first-class desktop layout.
 
+### Cross-screen alignment work (Pass 4 + Pass 5 + Pass 6, 2026-04-18)
+
+#### Pass 6 deliverables
+
+- ✅ **Mobile Library — kindFilter pills** added (Saved / Created / Imported / All) in [apps/mobile/app/(tabs)/library.tsx](apps/mobile/app/(tabs)/library.tsx). Kind is derived locally from `authorId + sourceUrl` since mobile doesn't have web's `libraryEntryKindByRecipeId` map: own author + sourceUrl → imported, own author + no sourceUrl → created, other author → saved. Mobile Library now exposes both **sort + filter**, matching web.
+- ✅ **Web Profile — Goals & Targets parity rows**: added Dashboard Widgets, Week starts on, Caffeine limit, Alcohol limit as new rows beneath Daily Targets in the Settings section. Each row shows the current value as the sub-label and links to `/?view=settings` for editing. Mobile parity for the 5 granular rows mobile shows under "Goals & Targets".
+- ✅ **Mobile Named plans switcher** (Pass 7) — ported. Pure CRUD helpers extracted to [src/lib/mealPlan/namedSlots.ts](src/lib/mealPlan/namedSlots.ts) (shared between web `AppDataContext` and mobile). Mobile hook [apps/mobile/hooks/use-meal-plan-slots.ts](apps/mobile/hooks/use-meal-plan-slots.ts) persists slot metadata to AsyncStorage (web uses localStorage). Cloud syncs only the active plan via `upsertMealPlanJson` — slot names + ids stay device-local on both. UI is a horizontal pill row above the planner header with `+ New` and long-press for rename / delete. 23 unit tests on the shared helpers ([tests/unit/mealPlanNamedSlots.test.ts](tests/unit/mealPlanNamedSlots.test.ts)).
+- ✅ **Bug fix: `Lock was stolen by another request`** — added [src/lib/supabase/isAuthLockAbort.ts](src/lib/supabase/isAuthLockAbort.ts) helper that detects benign Supabase auth-lock collisions in browser-side `{ data, error }` callsites that race during page focus / refresh cycles. Wired into `refreshDiscoverRecipes`. Use the same helper in any other frequently-firing `from(...).select(...)` callsite that surfaces the same false-positive error log.
+
+
+
+Pass 5 closed the highest-impact items from the Pass 4 backlog. Remaining items are documented as either intentional divergence or as deferred work with a clear owner.
+
+#### Discover (Pass 5)
+
+- ✅ **fix** Search bar shape changed from `rounded-full` to `rounded-md` to match mobile's `borderRadius: 10`. Cosmetic but visible.
+- ✅ **fix** Import CTA: dropped the primary→success gradient in favour of the flat `Accent.primary + alpha` card mobile uses. Same visual family across platforms.
+
+#### Library (Pass 5)
+
+- ✅ **fix** Added the **sort cycle button** (Recent → Calories → Protein → Recent) on web — mobile parity. Web Library now exposes both filter (Saved/Created/Imported) AND sort, ahead of mobile.
+- **deferred** Mobile kindFilter — needs new data plumbing (`libraryEntryKindByRecipeId` doesn't exist on mobile). Worth doing in a focused mobile pass.
+
+#### Profile / More (Pass 5)
+
+- ✅ **fix** Added the **Upgrade-to-Pro banner** for free + base users on web. Same copy and CTA semantics as mobile (`apps/mobile/app/(tabs)/more.tsx` 416). Pro users see no banner.
+- ✅ **fix** **Suppr Score** is now interactive on web — clicking opens an info modal that explains the 0–100 formula, mirroring mobile's Alert.alert (40 pts logging streak + 30 pts saved recipes + 30 pts active account).
+- **deferred** Web rolls Goals & Targets / Caffeine limit / Alcohol limit / Week starts on / Dashboard Widgets into a single "Daily Targets" row + a separate "Settings" view. Mobile surfaces each as its own row inside a "Goals & Targets" section. Restructuring web into 5 granular rows is its own ~1hr pass.
+
+#### Plan (Pass 5)
+
+- ✅ **fix** Added the **compact day strip** at the top of the multi-day plan on web (`apps/mobile/app/(tabs)/planner.tsx` 815 parity). One narrow card per day with weekday, kcal progress bar, and total. Click jumps to that day's full card (anchor `#plan-day-{n}`).
+- **intentional divergence** `HouseholdPanel` (web, mounted from App.tsx around `MealPlanner`) vs inline `HouseholdCard` (mobile inside `MealPlanner`). Same feature, different mount point. Both work, both connect to the same shared `householdClient`.
+- **deferred** Web has a "Named plans" multi-slot meal-plan switcher; mobile has no equivalent. Either port to mobile (~30 min) or document as a web-only power feature.
+
+#### Progress
+
+- **structurally aligned** Header text (`Progress` / `Weekly report`), `WeeklyRecapCard` first, then stats + charts in matching order. No surgery needed.
+
+### Cross-screen divergence backlog (Pass 4 audit, 2026-04-18)
+
+Audit of every tab's mobile vs web composition. Items marked **fix** were addressed in this batch; items marked **deferred** are followup work the user can prioritise.
+
+#### Discover
+
+- **fix** Web `DiscoverFeed` was missing the **My Library** CTA card that mobile shows next to the Import card. Added below the Import CTA, navigates via the same `view=library` URL pushState pattern. ([src/app/components/DiscoverFeed.tsx](src/app/components/DiscoverFeed.tsx) ~525)
+- **deferred / cosmetic** Search bar shape differs: mobile rectangular, web rounded pill. Both work; pick one before next visual sweep.
+- **deferred / cosmetic** Import CTA visual: mobile uses a flat card on `Accent.primary + alpha`; web uses a primary→success gradient. Pick one canonical treatment.
+
+#### Plan
+
+- **intentional divergence** Compact day-summary strip exists on mobile (above the full day cards) for phone scannability. Web shows only the full day cards because horizontal real estate makes the strip redundant. Documented; do not "fix".
+- **intentional divergence** `HouseholdPanel` (web) vs inline `HouseholdCard` (mobile) — same feature, different mount point. Web wraps `MealPlanner` from `app/App.tsx` case `"plan"`; mobile renders inside the planner.
+- **deferred** Web has a "Named plans" multi-slot meal-plan switcher; mobile has no equivalent. Either port to mobile or document as web-only power feature.
+
+#### Progress
+
+- **structurally aligned** Header (`Progress` / `Weekly report`), `WeeklyRecapCard`, then stats + charts in matching order on both platforms. No surgery needed for Pass 4.
+
+#### Library
+
+- **deferred** Mobile sorts by Recent / Calories / Protein (no kind filter). Web filters by Saved / Created / Imported (no sort). Each platform has a feature the other lacks; both should eventually expose both.
+
+#### Profile / More
+
+- **deferred — substantial** Mobile More has a 3-stat-pill row (Recipes / Streak / Suppr Score), an Upgrade-to-Pro banner for free users, and 7+ sectioned cards (Goals & Targets, Connections, Notifications, Account, About, Sign out / Delete). Web `Profile` surfaces fewer sections and has no Suppr Score concept. Aligning is its own ~2-hour pass; see followup backlog.
+
 ### Today composition order (Pass 1, 2026-04-18)
 
 Web `NutritionTracker.tsx` now renders sub-components in the **same order** as mobile `apps/mobile/app/(tabs)/index.tsx`. This is the canonical Today flow on every platform; a divergence here is a bug.
@@ -219,7 +286,7 @@ Web `NutritionTracker.tsx` now renders sub-components in the **same order** as m
 | 7 | nutrient detail rows (web inline grid; mobile uses a "View all nutrients (N)" link → modal — **intentional divergence**, web has the screen real estate to show inline) | when ≥1 micro present |
 | 8 | `TodayQuickLogStrip` | day mode |
 | 9 | `TodayStreakInsightCard` | day mode |
-| 10 | `CalorieDeficitInsight` (web) / `TodayDeficitInsight` (mobile) | isToday + remaining > 0 |
+| 10 | `TodayDeficitInsight` (mobile) — small banner only | isToday + remaining > 0. Web has **no equivalent** (Pass 7 cleanup, 2026-04-18): the standalone `CalorieDeficitInsight` panel duplicated data already in the Net tile + Activity Bonus card. |
 | 11 | `TodayEatAgainBanner` | isToday + suggestion + not dismissed today |
 | 12 | `QuickAddPanel` (collapsed CTA above) | day mode |
 | 13 | `TodayMealsSection` | day mode |
