@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
+import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 
@@ -63,7 +64,10 @@ async function fetchRecipe(id: string) {
     .eq("recipe_id", id)
     .returns<IngredientRow[]>();
 
-  const instructionSteps = (row.instructions ?? "")
+  // Shared normaliser protects against historic `\n` / `/n` rows typed
+  // into the Create Recipe form before build 10 landed the placeholder fix
+  // (TestFlight `AO4NtyNB`).
+  const instructionSteps = normaliseInstructions(row.instructions)
     .split(/\n+/)
     .map((s: string) => s.trim())
     .filter(Boolean);

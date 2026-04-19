@@ -9,11 +9,10 @@ import {
   calculateTDEE,
   calculateBudget,
   calculateMacros,
-  activityLevelPreviewKcal,
-  ACTIVITY_SHORT_LABELS,
   type PlanPace,
   type NutritionStrategy,
 } from "../../src/lib/nutrition/tdee.ts";
+import { ActivityLevelPreview } from "../../src/app/components/suppr/activity-level-preview.tsx";
 import {
   DEFAULT_MACRO_TARGETS,
   normalizeMacroTargets,
@@ -33,14 +32,6 @@ import {
   normaliseDietaryFromProfile,
 } from "../../src/constants/dietaryPreferences.ts";
 import { ageFromIsoDateString, displayNameFromAuthUser } from "../../src/lib/profile/onboardingHydration.ts";
-
-const ACTIVITY_LEVELS: Array<{ value: ActivityLevel; label: string; desc: string }> = [
-  { value: "sedentary", label: "Sedentary", desc: "Little to no exercise" },
-  { value: "light", label: "Light", desc: "1–3 days/week" },
-  { value: "moderate", label: "Moderate", desc: "3–5 days/week" },
-  { value: "active", label: "Active", desc: "6–7 days/week" },
-  { value: "very_active", label: "Very Active", desc: "Hard training / 2× day" },
-];
 
 const GOALS: Array<{ value: Goal; label: string; desc: string }> = [
   { value: "cut", label: "Lose weight", desc: "Create a calorie deficit" },
@@ -430,60 +421,19 @@ export default function OnboardingPage() {
             </div>
 
             <label className="block mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Activity level</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {ACTIVITY_LEVELS.map((lvl) => (
-                <button key={lvl.value} type="button" onClick={() => setActivityLevel(lvl.value)} className={selBtnCls(activityLevel === lvl.value)}>
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <p className="font-medium text-slate-900 dark:text-white">{lvl.label}</p>
-                  </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{lvl.desc}</p>
-                </button>
-              ))}
-            </div>
-            {/* TDEE preview (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ` /
-                `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18) — show maintenance kcal
-                for every activity level so the user can see how the choice
-                moves the number. Falls back to a quieter helper line when
-                any of height/weight/age/sex is missing. */}
-            {(() => {
-              const a = coerceInt(age);
-              const h = coerceInt(heightCm);
-              const w = coerceInt(weightKg);
-              const preview = activityLevelPreviewKcal(sex, w, h, a);
-              if (!preview) {
-                return (
-                  <p
-                    data-testid="onboarding-activity-preview-fallback"
-                    className="mt-3 mb-6 text-xs text-slate-500 dark:text-slate-400"
-                  >
-                    Pick your activity level — we'll compute your maintenance calories once your basics are in.
-                  </p>
-                );
-              }
-              const order: Array<typeof activityLevel> = [
-                "sedentary",
-                "light",
-                "moderate",
-                "active",
-                "very_active",
-              ];
-              return (
-                <p
-                  data-testid="onboarding-activity-preview-row"
-                  className="mt-3 mb-6 text-xs text-slate-600 dark:text-slate-300 tabular-nums"
-                >
-                  {order.map((lvl, i) => (
-                    <span key={lvl}>
-                      {i > 0 ? <span className="text-slate-400 dark:text-slate-500"> · </span> : null}
-                      <span className={lvl === activityLevel ? "font-bold text-slate-900 dark:text-white" : undefined}>
-                        {ACTIVITY_SHORT_LABELS[lvl]}: {preview[lvl].toLocaleString()} kcal
-                      </span>
-                    </span>
-                  ))}
-                </p>
-              );
-            })()}
+            {/* Shared ActivityLevelPreview (build 10 fix E-2, 2026-04-19).
+                Renders the five tappable rows and the live maintenance
+                preview line via `calculateTDEE`. Same component consumed
+                by Settings → Activity level picker. */}
+            <ActivityLevelPreview
+              sex={sex}
+              weightKg={coerceInt(weightKg)}
+              heightCm={coerceInt(heightCm)}
+              age={coerceInt(age)}
+              selected={activityLevel}
+              onSelect={setActivityLevel}
+              className="mb-6"
+            />
 
             {goal === "cut" && (
               <div className="mb-6">

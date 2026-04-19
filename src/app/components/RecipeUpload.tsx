@@ -14,6 +14,7 @@ import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
+import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
@@ -826,7 +827,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             author_id: uid,
             title: trimmedTitle,
             description: description.trim() || null,
-            instructions: instructions.trim(),
+            instructions: normaliseInstructions(instructions),
             image_url: finalImageUrl || DEFAULT_COVER_IMAGE,
             servings: s,
             prep_time_min: prepTime,

@@ -184,6 +184,38 @@ describe("createHousehold", () => {
     });
   });
 
+  it("does not insert an orphan household_members row when the households insert fails", async () => {
+    // Regression: part of the AB75VswC story is that repeated
+    // failed creates shouldn't stockpile membership rows. If the
+    // `households.insert` fails the function must return early —
+    // never reach the `household_members.insert` step — so a future
+    // retry doesn't accumulate orphans that would trip the new
+    // unique constraint (or the defensive multi-row read).
+    const memberInserts: unknown[] = [];
+    const sb = makeSupabase({
+      household_members: (op, ctx) => {
+        if (op === "select:maybeSingle") return { data: null, error: null };
+        if (op === "insert") {
+          memberInserts.push(ctx.payload);
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+      households: (op) => {
+        if (op === "insert:single") {
+          return { data: null, error: new Error("insert blew up") };
+        }
+        return { data: null, error: null };
+      },
+      profiles: () => ({ data: null, error: null }),
+    });
+    const res = await createHousehold(sb as any, "u1", "Team");
+    expect(res.data).toBeNull();
+    expect(res.error).toBe("insert blew up");
+    // The critical invariant: no membership row was inserted.
+    expect(memberInserts).toHaveLength(0);
+  });
+
   it("defaults to 'My Household' when no name is supplied", async () => {
     let captured: any = null;
     const sb = makeSupabase({
@@ -328,6 +360,69 @@ describe("getMyHousehold", () => {
     expect(res.data?.meals[0]?.recipe_title).toBe("Chili");
   });
 
+  it("resolves to the most recent membership when legacy duplicates exist (AB75VswC)", async () => {
+    // Regression: the 2026-04-19 TestFlight crash on build 9. A
+    // user's `household_members` table carried >1 row for the same
+    // user_id (orphan from pre-unique-constraint join/leave cycles),
+    // so the old `.maybeSingle()` read threw PGRST "multiple rows
+    // returned". The defensive read (`order joined_at desc + limit 1
+    // + maybeSingle`) must pick the most recent membership and
+    // return it without throwing.
+    const today = new Date().toISOString().slice(0, 10);
+    const sb = makeSupabase({
+      household_members: (op, ctx) => {
+        if (op === "select:maybeSingle") {
+          // Pin that the client is using the defensive ordering.
+          expect(ctx.filters["order:joined_at"]).toEqual({ ascending: false });
+          expect(ctx.filters.limit).toBe(1);
+          // Even though the real DB might return multiple rows, the
+          // `.limit(1)` clause collapses to one — emulate that by
+          // returning just the newer of the two here. The important
+          // assertion is that the call shape would produce a single
+          // row against a real Postgres planner.
+          return {
+            data: { household_id: "h-new", role: "owner", joined_at: "2026-04-01" },
+            error: null,
+          };
+        }
+        if (op === "select") {
+          return { data: [], error: null };
+        }
+        return { data: null, error: null };
+      },
+      households: (op) =>
+        op === "select:single"
+          ? {
+              data: {
+                id: "h-new",
+                name: "Current",
+                owner_id: "u1",
+                invite_code: "inv-new",
+                created_at: "2026-04-01",
+              },
+              error: null,
+            }
+          : { data: null, error: null },
+      household_meals: () => ({ data: [], error: null }),
+      profiles: () => ({ data: [], error: null }),
+      nutrition_entries: () => ({ data: [], error: null }),
+    });
+    const res = await getMyHousehold(sb as any, "u1");
+    expect(res.error).toBeNull();
+    expect(res.data?.household?.id).toBe("h-new");
+    expect(res.data?.household?.name).toBe("Current");
+  });
+
+  it("returns empty shape when zero membership rows exist (preserves pre-fix behaviour)", async () => {
+    const sb = makeSupabase({
+      household_members: (op) =>
+        op === "select:maybeSingle" ? { data: null, error: null } : { data: null, error: null },
+    });
+    const res = await getMyHousehold(sb as any, "u1");
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual({ household: null, members: [], meals: [] });
+  });
+
   it("marks isOwner false when the household owner_id does not match", async () => {
     const sb = makeSupabase({
       household_members: (op) => {
@@ -448,6 +543,42 @@ describe("leaveHousehold", () => {
     expect(res.data?.wasOwner).toBe(true);
     expect(ops).toContain("households:delete:h1");
     expect(ops).toContain(`profiles:update:u1:{"household_id":null}`);
+  });
+
+  it("member leave resets BOTH household_members row AND profiles.household_id (invariant)", async () => {
+    // Structural pin of the both-sources-of-truth invariant called
+    // out in `leaveHousehold`'s leading comment: dropping either
+    // side is how duplicate memberships accumulated historically
+    // (AB75VswC). This test fails loudly if someone removes one of
+    // the two writes.
+    const ops: string[] = [];
+    const sb = makeSupabase({
+      household_members: (op, ctx) => {
+        if (op === "select:maybeSingle") {
+          return { data: { household_id: "h1", role: "member" }, error: null };
+        }
+        if (op === "delete") {
+          ops.push(
+            `household_members:delete:${ctx.filters["eq:household_id"]}:${ctx.filters["eq:user_id"]}`,
+          );
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+      profiles: (op, ctx) => {
+        if (op === "update") {
+          ops.push(
+            `profiles:update:${ctx.filters["eq:id"]}:${JSON.stringify(ctx.payload)}`,
+          );
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const res = await leaveHousehold(sb as any, "u7");
+    expect(res.error).toBeNull();
+    expect(ops).toContain("household_members:delete:h1:u7");
+    expect(ops).toContain('profiles:update:u7:{"household_id":null}');
   });
 
   it("member leaves → deletes only their membership row", async () => {

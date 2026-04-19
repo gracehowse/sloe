@@ -32,6 +32,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
+import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -579,12 +580,12 @@ export default function RecipeDetailScreen() {
 
   // Defensive normalisation: some imports (and at least one historical
   // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
-  // "/n" or escaped "\n" 2-char sequences. Replace both with real newlines
-  // before splitting so users never see "/n" as UI text. Keep this on the
-  // client — DB history may contain other imports in the same shape.
-  const instructionSteps = (recipe?.instructions ?? "")
-    .replace(/\\n/g, "\n")
-    .replace(/\s\/n\s?/g, "\n")
+  // "/n" or escaped "\n" 2-char sequences. The shared
+  // `normaliseInstructions` helper also runs on the write side in
+  // `create-recipe.tsx`, `saveImportedRecipe.ts`, and web `RecipeUpload.tsx`
+  // so fresh inserts never land with these typos — this display-time pass
+  // covers DB history from before the write-side fix (build 10, 2026-04-19).
+  const instructionSteps = normaliseInstructions(recipe?.instructions)
     .split(/\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
@@ -1233,17 +1234,30 @@ export default function RecipeDetailScreen() {
               top-of-page byline link is the primary entry point; this is
               the secondary entry + provenance label. TestFlight build 7
               feedback `AMAxKVVxPZtUvGz8I6Yqo3w` (2026-04-18) — the bottom
-              source section had previously been lost in a refactor. */}
-          {recipe.source_url && (
+              source section had previously been lost in a refactor.
+              Build 10 / TestFlight `ACEH_Ilshzp` (2026-04-19) — widen the
+              gate so social-caption imports with `source_name` but no
+              `source_url` still show attribution. Three render modes:
+                - both set       → `source_name` as link text, opens URL
+                - url only       → URL as link text (legacy)
+                - name only      → plain "Source · {name}", no href
+              Never synthesise a URL — a missing source_url stays missing. */}
+          {(recipe.source_url || recipe.source_name) && (
             <View style={styles.sourceCard}>
               <Text style={styles.sourceLabel}>SOURCE</Text>
-              <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
-              <Pressable
-                style={styles.sourceLinkBtn}
-                onPress={() => Linking.openURL(recipe.source_url!)}
-              >
-                <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
-              </Pressable>
+              {recipe.source_url ? (
+                <>
+                  <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
+                  <Pressable
+                    style={styles.sourceLinkBtn}
+                    onPress={() => Linking.openURL(recipe.source_url!)}
+                  >
+                    <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Text style={styles.sourceName}>{`Source · ${recipe.source_name}`}</Text>
+              )}
             </View>
           )}
         </View>

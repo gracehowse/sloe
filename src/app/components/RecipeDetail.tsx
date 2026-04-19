@@ -35,6 +35,7 @@ import {
 } from "./ui/alert-dialog.tsx";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
+import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -501,15 +502,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
   const ingredients = dbIngredients;
   const instructionSteps = useMemo(() => {
-    const text = dbInstructionsText?.trim() ?? "";
+    // Shared normaliser handles `\n` / `/n` typos + whitespace trimming
+    // + paragraph collapse. Identical helper runs on the mobile detail
+    // screen and on every write path so display/write don't drift.
+    const text = normaliseInstructions(dbInstructionsText);
     if (!text) return [];
-    // Defensive normalisation: some imports (and at least one historical
-    // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
-    // "/n" or escaped "\n" 2-char sequences. Replace both with real newlines
-    // before splitting so users never see "/n" as UI text.
     return text
-      .replace(/\\n/g, "\n")
-      .replace(/\s\/n\s?/g, "\n")
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);

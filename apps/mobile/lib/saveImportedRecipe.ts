@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { classifyMealType } from "./classifyMealType";
+import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -57,11 +58,13 @@ export function coercePositiveMinutes(raw: unknown): number | null {
 
 function normalizeInstructions(raw: unknown): string | null {
   if (Array.isArray(raw)) {
-    const lines = raw.map((x) => String(x).trim()).filter(Boolean);
+    const lines = raw
+      .map((x) => normaliseInstructions(String(x)))
+      .filter(Boolean);
     return lines.length ? lines.join("\n\n") : null;
   }
   if (typeof raw === "string") {
-    const t = raw.trim();
+    const t = normaliseInstructions(raw);
     return t.length ? t : null;
   }
   return null;

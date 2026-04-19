@@ -40,16 +40,14 @@ import {
   stLbToKg,
   cmToFtIn,
   ftInToCm,
-  ACTIVITY_LABELS,
-  ACTIVITY_SHORT_LABELS,
   PACE_LABELS,
   STRATEGY_LABELS,
-  activityLevelPreviewKcal,
   type Sex,
   type ActivityLevel,
   type PlanPace,
   type NutritionStrategy,
 } from "@/lib/tdee";
+import ActivityLevelPreview from "@/components/ActivityLevelPreview";
 import { ageFromIsoDateString, displayNameFromAuthUser } from "../../../src/lib/profile/onboardingHydration";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
@@ -671,53 +669,58 @@ export default function OnboardingScreen() {
       }
 
       case "activity": {
-        // TDEE preview (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ` /
-        // `AFdtq8z_FmWRCispqF04Lsk`, 2026-04-18). `age`, `weightKg`, and
+        // TDEE preview via the shared `ActivityLevelPreview` component
+        // (build 10 fix E-2, 2026-04-19). `age`, `weightKg`, and
         // `heightCm` upstream fall back to defaults when the user hasn't
         // typed anything yet — gate the preview on the raw string inputs
-        // being non-empty so the helper line shows on a fresh run.
+        // being non-empty so the helper-line fallback shows on a fresh
+        // run. We render onboarding's own `OptionButton` rows (they
+        // advance the wizard on tap) and set `renderOptions={false}` on
+        // the shared component so only the compact preview line prints.
         const hasBasics =
           data.age.trim().length > 0 &&
           (data.heightCm.trim().length > 0 || (data.heightFt.trim().length > 0 && data.heightIn.trim().length >= 0)) &&
           (data.weightKg.trim().length > 0 || data.weightLb.trim().length > 0 || data.weightSt.trim().length > 0);
-        const preview = hasBasics ? activityLevelPreviewKcal(data.sex, weightKg, heightCm, age) : null;
-        const order: ActivityLevel[] = ["sedentary", "light", "moderate", "active", "very_active"];
+        const previewWeight = hasBasics ? weightKg : null;
+        const previewHeight = hasBasics ? heightCm : null;
+        const previewAge = hasBasics ? age : null;
         return (
           <View style={styles.stepContent}>
             <Text style={styles.heading}>How active are you?</Text>
             <View style={{ gap: Spacing.sm }}>
-              {(Object.entries(ACTIVITY_LABELS) as [ActivityLevel, { title: string; desc: string }][]).map(([key, val]) => (
-                <OptionButton key={key} label={val.title} desc={val.desc} active={data.activity === key} onPress={() => { update("activity", key); goNext(); }} />
+              {ACTIVITIES.map((key) => (
+                <OptionButton
+                  key={key}
+                  label={
+                    key === "sedentary" ? "Sedentary"
+                      : key === "light" ? "Lightly active"
+                      : key === "moderate" ? "Moderately active"
+                      : key === "active" ? "Active"
+                      : "Very active"
+                  }
+                  desc={
+                    key === "sedentary" ? "Little or no exercise, desk job"
+                      : key === "light" ? "Light exercise 1-3 days/week"
+                      : key === "moderate" ? "Moderate exercise 3-5 days/week"
+                      : key === "active" ? "Hard exercise 6-7 days/week"
+                      : "Very hard exercise or physical job"
+                  }
+                  active={data.activity === key}
+                  onPress={() => { update("activity", key); goNext(); }}
+                />
               ))}
             </View>
-            {preview ? (
-              <Text
-                accessibilityLabel="Maintenance calorie preview by activity level"
-                style={{
-                  marginTop: Spacing.md,
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  fontVariant: ["tabular-nums"],
-                  lineHeight: 18,
-                }}
-              >
-                {order
-                  .map((lvl) => `${ACTIVITY_SHORT_LABELS[lvl]}: ${preview[lvl].toLocaleString()} kcal`)
-                  .join(" \u00B7 ")}
-              </Text>
-            ) : (
-              <Text
-                accessibilityLabel="Maintenance preview unavailable"
-                style={{
-                  marginTop: Spacing.md,
-                  fontSize: 12,
-                  color: colors.textTertiary,
-                  lineHeight: 18,
-                }}
-              >
-                Pick your activity level — we&apos;ll compute your maintenance calories once your basics are in.
-              </Text>
-            )}
+            <View style={{ marginTop: Spacing.md }}>
+              <ActivityLevelPreview
+                sex={data.sex}
+                weightKg={previewWeight}
+                heightCm={previewHeight}
+                age={previewAge}
+                selected={data.activity}
+                onSelect={(lvl) => update("activity", lvl)}
+                renderOptions={false}
+              />
+            </View>
           </View>
         );
       }

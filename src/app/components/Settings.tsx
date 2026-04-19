@@ -23,6 +23,15 @@ import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
+import {
+  ACTIVITY_SHORT_LABELS,
+  type ActivityLevel,
+  type NutritionStrategy,
+  type PlanPace,
+  type Sex,
+} from "../../lib/nutrition/tdee.ts";
+import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTargetsForActivity.ts";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -110,6 +119,21 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [caffeineInput, setCaffeineInput] = useState<string>(String(targetCaffeineMg));
   const [alcoholInput, setAlcoholInput] = useState<string>(String(targetAlcoholGWeekly));
+  // Activity-level self-edit (build 10 fix E-2, 2026-04-19 —
+  // TestFlight `AIIm60n` / `AHCSYMATS`). Stored activity level + the
+  // body stats the recompute needs. Null-safe so the row still renders
+  // on profiles without basics (the picker surfaces the same quiet
+  // fallback onboarding uses).
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel | null>(null);
+  const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+  const [profileSex, setProfileSex] = useState<Sex>("unspecified");
+  const [profileAge, setProfileAge] = useState<number | null>(null);
+  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
+  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
+  const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  const [profilePlanPace, setProfilePlanPace] = useState<PlanPace | null>(null);
+  const [profileNutritionStrategy, setProfileNutritionStrategy] =
+    useState<NutritionStrategy | null>(null);
   /** Weekly recap push (Batch 4.11, H6 audit 2026-04-18).
    * Default true until hydrated from Supabase. Treated as server-owned —
    * the web has no scheduler to cancel; the mobile Progress-visit effect
@@ -123,6 +147,130 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   useEffect(() => {
     setAlcoholInput(String(targetAlcoholGWeekly));
   }, [targetAlcoholGWeekly]);
+
+  // Activity-level row + picker prerequisites (build 10 fix E-2,
+  // 2026-04-19). Dedicated fetch because the existing preferences
+  // query is narrowly scoped and we don't want to widen it and risk
+  // regressing the `weekly_recap_push_enabled` fallback.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid || cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select(
+          "activity_level, sex, age, height_cm, weight_kg, goal, plan_pace, nutrition_strategy",
+        )
+        .eq("id", uid)
+        .maybeSingle();
+      if (!data || cancelled) return;
+      const row = data as Record<string, unknown>;
+      const al = row.activity_level;
+      if (
+        al === "sedentary" ||
+        al === "light" ||
+        al === "moderate" ||
+        al === "active" ||
+        al === "very_active"
+      ) {
+        setActivityLevel(al);
+      }
+      const s = row.sex;
+      if (s === "male" || s === "female" || s === "unspecified") setProfileSex(s);
+      const a = row.age;
+      if (typeof a === "number" && Number.isFinite(a) && a > 0) setProfileAge(Math.round(a));
+      const w = row.weight_kg;
+      if (typeof w === "number" && Number.isFinite(w) && w > 0) setProfileWeightKg(w);
+      const h = row.height_cm;
+      if (typeof h === "number" && Number.isFinite(h) && h > 0) setProfileHeightCm(h);
+      const g = row.goal;
+      if (typeof g === "string" && g.length > 0) setProfileGoal(g);
+      const pp = row.plan_pace;
+      if (pp === "relaxed" || pp === "steady" || pp === "accelerated" || pp === "vigorous") {
+        setProfilePlanPace(pp);
+      }
+      const ns = row.nutrition_strategy;
+      if (ns === "balanced" || ns === "high_protein" || ns === "high_satisfaction" || ns === "low_carb") {
+        setProfileNutritionStrategy(ns);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleActivityLevelConfirm = useCallback(
+    async (nextLevel: ActivityLevel) => {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        toast.error("Sign in to change this preference.");
+        return;
+      }
+
+      // Always persist the new activity level — even if basics are
+      // missing we don't want to silently drop the user's choice.
+      const baseUpdate: Record<string, unknown> = { activity_level: nextLevel };
+
+      // Recompute target_calories via the same pipeline onboarding
+      // saveAndFinish uses. If basics are missing we still save the
+      // level change but skip the recompute (no fabricated targets).
+      const recomputed =
+        profileWeightKg != null && profileHeightCm != null && profileAge != null
+          ? recomputeTargetsForActivity({
+              sex: profileSex,
+              weightKg: profileWeightKg,
+              heightCm: profileHeightCm,
+              age: profileAge,
+              activityLevel: nextLevel,
+              goal: profileGoal,
+              planPace: profilePlanPace,
+              nutritionStrategy: profileNutritionStrategy,
+            })
+          : null;
+
+      const update = recomputed
+        ? { ...baseUpdate, ...recomputed }
+        : baseUpdate;
+      // `maintenanceTdee` is exposed for the toast only — not a DB column.
+      const { maintenanceTdee: _maintenance, ...writeable } =
+        update as typeof update & { maintenanceTdee?: number };
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(writeable)
+        .eq("id", uid);
+      if (error) {
+        toast.error("Failed to save activity level.");
+        return;
+      }
+
+      setActivityLevel(nextLevel);
+      track(AnalyticsEvents.profile_targets_saved, {
+        activityAdjusted: preferActivityAdjustedCalories,
+        from: "settings_activity_level_picker",
+      });
+      if (recomputed) {
+        toast.success(
+          `Activity level updated · new calorie target ${recomputed.target_calories.toLocaleString()}`,
+        );
+      } else {
+        toast.success("Activity level updated.");
+      }
+    },
+    [
+      profileAge,
+      profileGoal,
+      profileHeightCm,
+      profileNutritionStrategy,
+      profilePlanPace,
+      profileSex,
+      profileWeightKg,
+      preferActivityAdjustedCalories,
+    ],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -402,6 +550,34 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               })}
             </div>
           </div>
+          {/* Activity level self-edit (build 10 fix E-2, 2026-04-19 —
+              TestFlight `AIIm60n` / `AHCSYMATS`). Opens a picker with a
+              live maintenance preview and writes `activity_level` +
+              recomputed `target_calories` via the same pipeline
+              onboarding saveAndFinish uses. */}
+          <button
+            type="button"
+            onClick={() => setActivityPickerOpen(true)}
+            data-testid="settings-activity-level-row"
+            className="w-full flex items-center justify-between gap-4 text-left hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <span className="block text-sm font-medium text-foreground">
+                Activity level
+              </span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Used to estimate your baseline calorie burn before workouts and steps.
+              </span>
+            </div>
+            <span
+              className="text-sm font-medium text-foreground shrink-0"
+              data-testid="settings-activity-level-value"
+            >
+              {activityLevel ? ACTIVITY_SHORT_LABELS[activityLevel] : "Not set"}
+            </span>
+            <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+          </button>
+
           {/* Activity toggle */}
           <div className="flex items-center justify-between">
             <div className="flex-1 mr-4">
@@ -807,6 +983,20 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           keeps its two-stage pattern so a careless tap cannot wipe the
           account: first dialog warns about permanence, second dialog
           reiterates what will be deleted. */}
+      {/* Activity level picker (build 10 fix E-2, 2026-04-19). */}
+      <ActivityLevelPickerDialog
+        open={activityPickerOpen}
+        onOpenChange={setActivityPickerOpen}
+        currentLevel={activityLevel ?? "sedentary"}
+        sex={profileSex}
+        weightKg={profileWeightKg}
+        heightCm={profileHeightCm}
+        age={profileAge}
+        goal={profileGoal}
+        planPace={profilePlanPace}
+        nutritionStrategy={profileNutritionStrategy}
+        onConfirm={handleActivityLevelConfirm}
+      />
       <DestructiveConfirmDialog
         open={clearLocalOpen}
         onOpenChange={setClearLocalOpen}

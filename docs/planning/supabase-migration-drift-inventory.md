@@ -40,6 +40,18 @@ These were the gap **after `20260418100000`** before reconcile:
 
 ---
 
+## Pending after 2026-04-18 push (not yet on remote)
+
+| Version | Migration file | Notes |
+|---------|----------------|-------|
+| `20260424100000` | `20260424100000_custom_foods_servings_micros_barcode.sql` | Five optional columns + partial unique barcode index on `user_custom_foods`. |
+| `20260424110000` | `20260424110000_weekly_recap_push_last_sent.sql` | `profiles.last_weekly_recap_push_sent_at timestamptz`, dedupe column for the weekly-recap cron. |
+| `20260424120000` | `20260424120000_household_members_unique_user.sql` | Dedupe + add `UNIQUE (user_id)` on `household_members`. Closes the AB75VswC "Couldn't load household" crash. |
+
+Apply with `supabase db push --linked` once per new file. Each migration is idempotent (`DO $$ ... IF NOT EXISTS`, `add column if not exists`, dedupe-before-constraint) so repeated pushes are safe.
+
+---
+
 ## Playbook — if drift happens again
 
 1. **`supabase migration list --linked`** — find first row with empty **Remote**.

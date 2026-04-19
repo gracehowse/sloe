@@ -90,6 +90,13 @@ export default function PaywallScreen() {
     (p) => p.packageType === "ANNUAL" || p.identifier === "$rc_annual",
   );
 
+  // TestFlight `AFE6h9Tlq0bUCugLAJfVGx8` follow-up (2026-04-19): when
+  // IAP isn't provisioned in this build the paywall still renders a
+  // prominent green "Start Free Trial" CTA even though tapping it
+  // surfaces "Subscriptions not available". Flip the hierarchy so the
+  // working action ("Continue for free") is primary until IAP ships.
+  const trialUnavailable = offeringsReady && packages.length === 0;
+
   async function onStartTrial() {
     const pkg = annualPkg ?? packages[0];
     if (!pkg) {
@@ -201,6 +208,18 @@ export default function PaywallScreen() {
     },
     trialBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
 
+    trialBtnPrimary: {
+      backgroundColor: Accent.success, borderRadius: Radius.md,
+      paddingVertical: 18, alignItems: "center", marginBottom: Spacing.sm,
+    },
+    trialBtnMuted: {
+      backgroundColor: colors.inputBg, borderRadius: Radius.md,
+      paddingVertical: 14, alignItems: "center",
+    },
+    trialBtnMutedText: {
+      color: colors.textTertiary, fontWeight: "600", fontSize: 14,
+    },
+
     freeBtn: {
       paddingVertical: 14, alignItems: "center",
     },
@@ -262,21 +281,38 @@ export default function PaywallScreen() {
           </Text>
         )}
 
-        <Pressable
-          style={[styles.trialBtn, purchasing && { opacity: 0.6 }]}
-          onPress={() => void onStartTrial()}
-          disabled={purchasing}
-        >
-          {purchasing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.trialBtnText}>Start Free Trial</Text>
-          )}
-        </Pressable>
-
-        <Pressable style={styles.freeBtn} onPress={onContinueFree}>
-          <Text style={styles.freeBtnText}>Continue for free</Text>
-        </Pressable>
+        {trialUnavailable ? (
+          <>
+            <Pressable style={styles.trialBtnPrimary} onPress={onContinueFree}>
+              <Text style={styles.trialBtnText}>Continue for free</Text>
+            </Pressable>
+            <Pressable
+              style={styles.trialBtnMuted}
+              onPress={() => void onStartTrial()}
+              disabled={purchasing}
+              accessibilityHint="Subscriptions aren't available in this build yet"
+            >
+              <Text style={styles.trialBtnMutedText}>Trial unavailable in this build</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Pressable
+              style={[styles.trialBtn, purchasing && { opacity: 0.6 }]}
+              onPress={() => void onStartTrial()}
+              disabled={purchasing}
+            >
+              {purchasing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.trialBtnText}>Start Free Trial</Text>
+              )}
+            </Pressable>
+            <Pressable style={styles.freeBtn} onPress={onContinueFree}>
+              <Text style={styles.freeBtnText}>Continue for free</Text>
+            </Pressable>
+          </>
+        )}
 
         <Pressable
           style={styles.freeBtn}

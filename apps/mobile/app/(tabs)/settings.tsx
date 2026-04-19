@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -21,6 +22,15 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { normalizeWeekSummaryMode, type WeekSummaryMode } from "../../../../src/lib/nutrition/weekSummaryWindow";
+import ActivityLevelPreview from "@/components/ActivityLevelPreview";
+import {
+  ACTIVITY_SHORT_LABELS,
+  type ActivityLevel,
+  type NutritionStrategy,
+  type PlanPace,
+  type Sex,
+} from "../../../../src/lib/nutrition/tdee";
+import { recomputeTargetsForActivity } from "../../../../src/lib/nutrition/recomputeTargetsForActivity";
 
 type NotificationPrefs = {
   newRecipes: boolean;
@@ -112,6 +122,23 @@ export default function SettingsScreen() {
   const [activityAdjust, setActivityAdjust] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
+  // Activity-level self-edit (build 10 fix E-2, 2026-04-19 —
+  // TestFlight `AIIm60n` / `AHCSYMATS`). Opens a modal with
+  // `ActivityLevelPreview` + live TDEE preview, writes
+  // `activity_level` + recomputed targets via the shared helper.
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel | null>(null);
+  const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+  const [activityPickerSelection, setActivityPickerSelection] =
+    useState<ActivityLevel>("sedentary");
+  const [activityPickerSaving, setActivityPickerSaving] = useState(false);
+  const [profileSex, setProfileSex] = useState<Sex>("unspecified");
+  const [profileAge, setProfileAge] = useState<number | null>(null);
+  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
+  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
+  const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  const [profilePlanPace, setProfilePlanPace] = useState<PlanPace | null>(null);
+  const [profileNutritionStrategy, setProfileNutritionStrategy] =
+    useState<NutritionStrategy | null>(null);
 
   const styles = useMemo(
     () =>
@@ -226,6 +253,127 @@ export default function SettingsScreen() {
         setUserTier(tier);
       });
   }, [userId]);
+
+  // Activity level row + body stats (build 10 fix E-2, 2026-04-19).
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select(
+          "activity_level, sex, age, height_cm, weight_kg, goal, plan_pace, nutrition_strategy",
+        )
+        .eq("id", userId)
+        .maybeSingle();
+      if (!data || cancelled) return;
+      const row = data as Record<string, unknown>;
+      const al = row.activity_level;
+      if (
+        al === "sedentary" ||
+        al === "light" ||
+        al === "moderate" ||
+        al === "active" ||
+        al === "very_active"
+      ) {
+        setActivityLevel(al);
+        setActivityPickerSelection(al);
+      }
+      const s = row.sex;
+      if (s === "male" || s === "female" || s === "unspecified") setProfileSex(s);
+      const a = row.age;
+      if (typeof a === "number" && Number.isFinite(a) && a > 0) setProfileAge(Math.round(a));
+      const w = row.weight_kg;
+      if (typeof w === "number" && Number.isFinite(w) && w > 0) setProfileWeightKg(w);
+      const h = row.height_cm;
+      if (typeof h === "number" && Number.isFinite(h) && h > 0) setProfileHeightCm(h);
+      const g = row.goal;
+      if (typeof g === "string" && g.length > 0) setProfileGoal(g);
+      const pp = row.plan_pace;
+      if (pp === "relaxed" || pp === "steady" || pp === "accelerated" || pp === "vigorous") {
+        setProfilePlanPace(pp);
+      }
+      const ns = row.nutrition_strategy;
+      if (ns === "balanced" || ns === "high_protein" || ns === "high_satisfaction" || ns === "low_carb") {
+        setProfileNutritionStrategy(ns);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const openActivityPicker = useCallback(() => {
+    setActivityPickerSelection(activityLevel ?? "sedentary");
+    setActivityPickerOpen(true);
+  }, [activityLevel]);
+
+  const saveActivityLevel = useCallback(async () => {
+    if (!userId) return;
+    const nextLevel = activityPickerSelection;
+    if (nextLevel === activityLevel) {
+      setActivityPickerOpen(false);
+      return;
+    }
+    setActivityPickerSaving(true);
+
+    const recomputed =
+      profileWeightKg != null && profileHeightCm != null && profileAge != null
+        ? recomputeTargetsForActivity({
+            sex: profileSex,
+            weightKg: profileWeightKg,
+            heightCm: profileHeightCm,
+            age: profileAge,
+            activityLevel: nextLevel,
+            goal: profileGoal,
+            planPace: profilePlanPace,
+            nutritionStrategy: profileNutritionStrategy,
+          })
+        : null;
+
+    const baseUpdate: Record<string, unknown> = { activity_level: nextLevel };
+    const writeable: Record<string, unknown> = recomputed
+      ? {
+          ...baseUpdate,
+          target_calories: recomputed.target_calories,
+          target_protein: recomputed.target_protein,
+          target_carbs: recomputed.target_carbs,
+          target_fat: recomputed.target_fat,
+          target_fiber_g: recomputed.target_fiber_g,
+        }
+      : baseUpdate;
+
+    const { error: uErr } = await supabase
+      .from("profiles")
+      .update(writeable)
+      .eq("id", userId);
+    setActivityPickerSaving(false);
+    if (uErr) {
+      Alert.alert("Couldn't save", "Please try again.");
+      return;
+    }
+    setActivityLevel(nextLevel);
+    setActivityPickerOpen(false);
+    if (recomputed) {
+      Alert.alert(
+        "Activity level updated",
+        `new calorie target ${recomputed.target_calories.toLocaleString()}`,
+      );
+    } else {
+      Alert.alert("Activity level updated");
+    }
+  }, [
+    userId,
+    activityPickerSelection,
+    activityLevel,
+    profileAge,
+    profileGoal,
+    profileHeightCm,
+    profileNutritionStrategy,
+    profilePlanPace,
+    profileSex,
+    profileWeightKg,
+  ]);
 
   const handleChangePassword = useCallback(async () => {
     if (!authEmail) {
@@ -434,6 +582,33 @@ export default function SettingsScreen() {
         ) : (
           <>
             {error ? <Text style={styles.err}>{error}</Text> : null}
+            <Text style={styles.sectionTitle}>Body & activity</Text>
+            <View style={styles.card}>
+              {/* Activity level row (build 10 fix E-2, 2026-04-19 —
+                  TestFlight `AIIm60n` / `AHCSYMATS`). Opens a modal
+                  with the live TDEE preview; writes activity_level +
+                  recomputed target_calories via the shared helper. */}
+              <Pressable
+                testID="settings-activity-level-row"
+                style={[styles.row, styles.rowLast]}
+                onPress={openActivityPicker}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowLabel}>Activity level</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
+                    Used to estimate your baseline calorie burn before workouts and steps.
+                  </Text>
+                </View>
+                <Text
+                  testID="settings-activity-level-value"
+                  style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginRight: 8 }}
+                >
+                  {activityLevel ? ACTIVITY_SHORT_LABELS[activityLevel] : "Not set"}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+
             <Text style={styles.sectionTitle}>Journal display</Text>
             <View style={styles.card}>
               <Row
@@ -599,6 +774,92 @@ export default function SettingsScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19). */}
+      <Modal
+        visible={activityPickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setActivityPickerOpen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.background,
+              borderTopLeftRadius: Radius.xl,
+              borderTopRightRadius: Radius.xl,
+              paddingTop: Spacing.lg,
+              paddingHorizontal: Spacing.xl,
+              paddingBottom: insets.bottom + Spacing.lg,
+              maxHeight: "90%",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: Spacing.md,
+              }}
+            >
+              <Pressable
+                onPress={() => setActivityPickerOpen(false)}
+                disabled={activityPickerSaving}
+                hitSlop={12}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cancel</Text>
+              </Pressable>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+                Activity level
+              </Text>
+              <Pressable
+                onPress={() => void saveActivityLevel()}
+                disabled={
+                  activityPickerSaving ||
+                  activityPickerSelection === activityLevel
+                }
+                hitSlop={12}
+              >
+                <Text
+                  style={{
+                    color:
+                      activityPickerSaving ||
+                      activityPickerSelection === activityLevel
+                        ? colors.textTertiary
+                        : Accent.primary,
+                    fontSize: 15,
+                    fontWeight: "700",
+                  }}
+                >
+                  {activityPickerSaving ? "Saving…" : "Save"}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>
+              How active are you on a typical day?
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: Spacing.md }}>
+              Used to estimate your baseline calorie burn before workouts and steps.
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <ActivityLevelPreview
+                sex={profileSex}
+                weightKg={profileWeightKg}
+                heightCm={profileHeightCm}
+                age={profileAge}
+                selected={activityPickerSelection}
+                onSelect={setActivityPickerSelection}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

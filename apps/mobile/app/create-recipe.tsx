@@ -33,6 +33,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import FoodSearchModal from "@/components/FoodSearchModal";
 import MealTypePicker from "@/components/MealTypePicker";
+import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 
 type Ingredient = {
   id: string;
@@ -173,7 +174,7 @@ export default function CreateRecipeScreen() {
           author_id: userId,
           title: title.trim(),
           description: description.trim() || null,
-          instructions: instructions.trim() || null,
+          instructions: normaliseInstructions(instructions) || null,
           servings: srv,
           published: publish,
           meal_type: mealTags.length > 0 ? mealTags : null,
@@ -407,7 +408,7 @@ export default function CreateRecipeScreen() {
             style={[styles.input, styles.multilineInput]}
             value={instructions}
             onChangeText={setInstructions}
-            placeholder="Step 1: ...\nStep 2: ..."
+            placeholder={"Step 1: ...\nStep 2: ..."}
             placeholderTextColor={colors.textTertiary}
             multiline
           />

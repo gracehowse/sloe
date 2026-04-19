@@ -114,11 +114,20 @@ export async function createHousehold(
 ): Promise<ClientResult<HouseholdSummary>> {
   if (!userId) return { data: null, error: "not_authenticated" };
 
-  // Block if already in a household.
+  // Block if already in a household. `order + limit(1) + maybeSingle` is
+  // the defensive read: a `.maybeSingle()` alone throws PGRST "multiple
+  // rows returned" when legacy duplicates exist for the same user_id
+  // (see TestFlight feedback AB75VswC, 2026-04-19). The unique
+  // constraint added in migration `20260424120000_household_members_unique_user`
+  // formalises the one-membership-per-user invariant at the DB layer,
+  // but the client stays defensive so we don't crash on databases that
+  // haven't applied the migration yet.
   const { data: existing, error: existingErr } = await supabase
     .from("household_members")
-    .select("household_id")
+    .select("household_id, joined_at")
     .eq("user_id", userId)
+    .order("joined_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (existingErr) throw existingErr;
   if (existing) {
@@ -180,10 +189,19 @@ export async function getMyHousehold(
 ): Promise<ClientResult<HouseholdData>> {
   if (!userId) return { data: null, error: "not_authenticated" };
 
+  // Defensive read: `order + limit(1) + maybeSingle` so legacy users
+  // whose `household_members` table carries duplicate rows (orphans
+  // from pre-2026-04-18 join/leave cycles) still resolve to a single
+  // current household instead of throwing PGRST "multiple rows
+  // returned". See TestFlight feedback AB75VswC (2026-04-19) and the
+  // backing unique-constraint migration
+  // `20260424120000_household_members_unique_user.sql`.
   const { data: membership, error: memErr } = await supabase
     .from("household_members")
-    .select("household_id, role")
+    .select("household_id, role, joined_at")
     .eq("user_id", userId)
+    .order("joined_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (memErr) throw memErr;
 
@@ -391,16 +409,30 @@ export async function leaveHousehold(
 ): Promise<ClientResult<{ wasOwner: boolean }>> {
   if (!userId) return { data: null, error: "not_authenticated" };
 
+  // Defensive read: mirrors `getMyHousehold` / `createHousehold` so a
+  // user whose membership table still has legacy duplicates can still
+  // leave cleanly (otherwise they'd be permanently stuck on the
+  // "Couldn't load" alert with no way out). Picks the most recent
+  // membership — that's the one `getMyHousehold` would also resolve,
+  // so leave acts on the same row the user sees.
   const { data: membership, error: memErr } = await supabase
     .from("household_members")
-    .select("household_id, role")
+    .select("household_id, role, joined_at")
     .eq("user_id", userId)
+    .order("joined_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (memErr) throw memErr;
   if (!membership) return { data: null, error: "not_in_household" };
 
   const householdId = membership.household_id as string;
   const wasOwner = membership.role === "owner";
+
+  // Invariant: on leave, both sources-of-truth must be reset to keep
+  // the unique constraint intact. `household_members` (the membership
+  // row) AND `profiles.household_id` (the profile pointer) are both
+  // cleared below. Dropping either side is how duplicate memberships
+  // accumulated historically (AB75VswC) — never skip one.
 
   if (wasOwner) {
     // Owner delete cascades members + meals via FK ON DELETE CASCADE.

@@ -58,6 +58,14 @@ export { WeeklyRecapCard, type WeeklyRecapCardProps } from "./weekly-recap-card"
 export { VoiceLogDialog, type VoiceLogDialogProps } from "./voice-log-dialog";
 export { PhotoLogDialog, type PhotoLogDialogProps } from "./photo-log-dialog";
 export { AiPaywallDialog, type AiPaywallDialogProps, type AiPaywallFeature } from "./ai-paywall-dialog";
+export {
+  ActivityLevelPreview,
+  type ActivityLevelPreviewProps,
+} from "./activity-level-preview";
+export {
+  ActivityLevelPickerDialog,
+  type ActivityLevelPickerDialogProps,
+} from "./activity-level-picker-dialog";
 
 // Today-screen sub-cards (audit H3, 2026-04-18). `NutritionTracker.tsx`
 // is the composition root; every new piece of Today behaviour lands in
