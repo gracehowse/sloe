@@ -12,7 +12,7 @@ const GOALS: { id: Goal; title: string; subtitle: string; icon: keyof typeof Ion
   { id: "lose", title: "Lose fat", subtitle: "Gradual deficit, protein-first", icon: "trending-down-outline" },
   { id: "maintain", title: "Maintain", subtitle: "Keep things steady", icon: "remove-outline" },
   { id: "gain", title: "Gain muscle", subtitle: "Small surplus, high protein", icon: "trending-up-outline" },
-  { id: "recomp", title: "Recomposition", subtitle: "Slight cut, heavy training", icon: "swap-horizontal-outline" },
+  { id: "recomp", title: "Recomposition", subtitle: "Slight deficit, strength-focused", icon: "swap-horizontal-outline" },
 ];
 
 export function MobileGoalStep() {

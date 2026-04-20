@@ -35,6 +35,24 @@ const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
 
 export function PaceStep() {
   const { state, set, targets, warning } = useOnboardingV2();
+  // Reset the danger acknowledgement whenever the warning reason
+  // changes — e.g. user drags out of danger and back in; they should
+  // re-acknowledge per Stage F decision-doc update. The ref is
+  // initialised to the current reason so the mount-tick is a no-op
+  // (otherwise we'd clobber any pre-set acknowledgement, including
+  // tests that pre-tick the box).
+  const initialDangerReason =
+    warning?.level === "danger" ? warning.reason : null;
+  const ackResetRef = React.useRef<string | null>(initialDangerReason);
+  React.useEffect(() => {
+    const current = warning?.level === "danger" ? warning.reason : null;
+    if (ackResetRef.current !== current) {
+      ackResetRef.current = current;
+      if (state.paceDangerAcknowledged) {
+        set({ paceDangerAcknowledged: false });
+      }
+    }
+  }, [warning, set, state.paceDangerAcknowledged]);
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
   const presets = PACE_PRESETS[goal];
@@ -193,10 +211,19 @@ export function PaceStep() {
         </div>
       )}
 
-      {/* Soft-warn safety floor banner. Continue stays enabled — see
-          decision doc + state.canAdvance. Analytics fire from the
-          route component (Stage E). */}
-      {warning && <PaceWarningBanner warning={warning} />}
+      {/* Soft-warn safety floor banner. For info / warn, Continue
+          stays enabled. For `danger`, Continue stays soft-warn but
+          requires the explicit acknowledgement checkbox below the
+          banner per legal-reviewer Stage F sign-off. Analytics fire
+          from the route component for `advanced`, from this step's
+          useEffect for `shown`. */}
+      {warning && (
+        <PaceWarningBanner
+          warning={warning}
+          acknowledged={state.paceDangerAcknowledged}
+          onAcknowledgeChange={(v) => set({ paceDangerAcknowledged: v })}
+        />
+      )}
 
       <MethodologyNote>
         Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors
@@ -211,8 +238,12 @@ export function PaceStep() {
 
 function PaceWarningBanner({
   warning,
+  acknowledged,
+  onAcknowledgeChange,
 }: {
   warning: NonNullable<ReturnType<typeof useOnboardingV2>["warning"]>;
+  acknowledged: boolean;
+  onAcknowledgeChange: (next: boolean) => void;
 }) {
   const config = {
     danger: {
@@ -267,6 +298,25 @@ function PaceWarningBanner({
         <div className="text-xs text-muted-foreground leading-relaxed">
           {warning.body}
         </div>
+        {warning.level === "danger" && (
+          <label
+            className="mt-3 flex items-start gap-2 cursor-pointer select-none"
+            data-testid="pace-danger-acknowledge"
+          >
+            <input
+              type="checkbox"
+              checked={acknowledged}
+              onChange={(e) => onAcknowledgeChange(e.target.checked)}
+              aria-label="I understand and accept responsibility for proceeding below the safety floor"
+              className="mt-0.5 size-4 cursor-pointer accent-current"
+              style={{ accentColor: "var(--destructive)" }}
+            />
+            <span className="text-xs text-foreground leading-snug">
+              I understand this is below the recommended safety floor
+              and accept responsibility for proceeding.
+            </span>
+          </label>
+        )}
       </div>
     </div>
   );

@@ -1,13 +1,50 @@
 import * as React from "react";
-import { View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Accent } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RulerSlider } from "@/components/RulerSlider";
 import { useOnboardingV2 } from "../context";
 import { MobileSegmented } from "../segmented";
 import { MobileStepBody, MobileStepHeader } from "../scaffold";
 
+/**
+ * Weight step mobile mirror. Includes the "Prefer not to enter" path
+ * (diversity-inclusion Stage F) — see web Weight step for rationale.
+ */
+
 export function MobileWeightStep() {
   const { state, set } = useOnboardingV2();
+  const colors = useThemeColors();
   const metric = state.unitSystem === "metric";
+
+  if (state.weightSkipped) {
+    return (
+      <MobileStepBody>
+        <MobileStepHeader
+          overline="Step 07 of 12"
+          title="Skipped — that's fine"
+          subtitle="We'll calibrate your targets from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
+          compact
+        />
+        <Pressable
+          onPress={() => set({ weightSkipped: false })}
+          accessibilityRole="button"
+          style={{ alignSelf: "flex-start", marginTop: 8 }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: Accent.primaryLight,
+            }}
+          >
+            Actually, I&apos;ll enter it
+          </Text>
+        </Pressable>
+      </MobileStepBody>
+    );
+  }
+
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -52,6 +89,38 @@ export function MobileWeightStep() {
             accessibilityLabel="Weight"
           />
         )}
+      </View>
+      <View style={{ alignItems: "center", marginTop: 24 }}>
+        <Pressable
+          onPress={() => set({ weightSkipped: true })}
+          accessibilityRole="button"
+          accessibilityLabel="Prefer not to enter weight"
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "500",
+              color: colors.textSecondary,
+              textDecorationLine: "underline",
+              textDecorationColor: colors.border,
+            }}
+          >
+            Prefer not to enter
+          </Text>
+        </Pressable>
+        <Text
+          style={{
+            fontSize: 11,
+            color: colors.textTertiary,
+            marginTop: 6,
+            maxWidth: 280,
+            textAlign: "center",
+            lineHeight: 16,
+          }}
+        >
+          We&apos;ll calibrate from your meal logs over the first couple of
+          weeks instead.
+        </Text>
       </View>
     </MobileStepBody>
   );

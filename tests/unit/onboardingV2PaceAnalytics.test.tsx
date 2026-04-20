@@ -147,7 +147,7 @@ describe("PaceStep — `shown` event", () => {
 });
 
 describe("WebFlow — `advanced` event", () => {
-  it("fires onboarding_pace_below_safety_floor with acted=advanced when Continue is tapped from the Pace step with a warning", () => {
+  it("fires onboarding_pace_below_safety_floor with acted=advanced when Continue is tapped from the Pace step with a danger warning + acknowledgement", () => {
     withProvider(<WebFlow />, {
       step: 8, // pace step (after auto-skip math)
       goal: "lose",
@@ -156,7 +156,12 @@ describe("WebFlow — `advanced` event", () => {
       heightCm: 155,
       weightKg: 50,
       activity: "sedentary",
-      paceKgPerWeek: 0.9,
+      paceKgPerWeek: 0.7, // sub-floor with the v2 cap; danger fires
+      // Stage F (legal) — danger advance now requires the explicit
+      // acknowledgement checkbox. Pre-set it so this test focuses on
+      // the analytics emission, not the gate. The gate itself is
+      // covered by the canAdvance branch in onboardingV2State.test.ts.
+      paceDangerAcknowledged: true,
     });
     // First call is the `shown` event from PaceStep mounting. Clear
     // it so the assertion below is unambiguous.
@@ -168,6 +173,7 @@ describe("WebFlow — `advanced` event", () => {
         acted: "advanced",
         level: "danger",
         reason: "below_floor",
+        acknowledged: true,
       }),
     );
   });

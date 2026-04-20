@@ -195,6 +195,39 @@ The following actions are required to actually ship those decisions:
 
 ## 🟡 P1 (code / product)
 
+### Onboarding v2 follow-ups (post Stage F sign-off, 2026-04-19)
+
+Phase 2 of the onboarding redesign shipped behind the `onboarding_v2`
+PostHog flag with full sign-off from `nutrition-engine`,
+`legal-reviewer`, and `diversity-inclusion`. Decision doc:
+[2026-04-19-onboarding-redesign-scope.md](docs/decisions/2026-04-19-onboarding-redesign-scope.md).
+The following are tracked separately so they don't block the flag flip
+to an internal cohort:
+
+- [ ] **OB2-1 — Targets persistence.** Stage E adds the flag + redirect
+      but `app/onboarding/v2/page.tsx` does NOT yet write to
+      `daily_targets` or `profiles` on completion. Required before the
+      flag flips to a non-internal cohort. Owner: `executor`. Review:
+      `data-integrity`, `release-gate`.
+- [ ] **OB2-2 — Pace "extended range" disclosure flow.** `lose` slider
+      currently capped at 0.75 kg/week per `diversity-inclusion`
+      Stage F. The deferred design lets users tap a secondary
+      affordance to unlock 0.9 kg/week after a fresh consent
+      gesture. Owner: `ui-product-designer` → `executor`. Review:
+      `legal-reviewer`, `diversity-inclusion`.
+- [ ] **OB2-3 — Account-creation age gate.** `legal-reviewer` flagged
+      under-18 exclusion as an open question for formal counsel before
+      Phase 2 leaves an internal cohort. Owner: Grace (formal counsel
+      decision) → `executor`.
+- [ ] **OB2-4 — UK / EU regulatory check on sub-floor calorie targets.**
+      Tied to the existing non-established-supplier VAT posture.
+      Required before flag flip to UK / EU traffic. Owner: Grace
+      (formal counsel) → revisit this row.
+- [ ] **OB2-5 — Pace clinician-mode toggle.** Deferred per decision
+      doc — would suppress the danger banner entirely for users with
+      explicit medical guidance. Needs legal review before
+      implementation. Owner: `legal-reviewer` → `executor`.
+
 ### TestFlight build 7 P1s
 
 - [ ] **P1-1 TDEE explainability** — onboarding activity preview + Today activity-bonus-card Maintenance tile + info popover. Owner: `executor`. Review: `ui-product-designer`, `qa-lead`.

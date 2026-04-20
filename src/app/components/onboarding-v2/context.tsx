@@ -109,8 +109,8 @@ export function OnboardingV2Provider({ children, initial }: ProviderProps) {
     [state, targets?.target],
   );
   const canAdvance = React.useMemo(
-    () => canAdvanceStep(currentStepId, state),
-    [currentStepId, state],
+    () => canAdvanceStep(currentStepId, state, { paceWarning: warning }),
+    [currentStepId, state, warning],
   );
 
   const value = React.useMemo<OnboardingV2Context>(

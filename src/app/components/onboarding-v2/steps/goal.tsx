@@ -29,7 +29,10 @@ const GOALS: { id: Goal; title: string; subtitle: string; icon: React.ReactNode 
   {
     id: "recomp",
     title: "Recomposition",
-    subtitle: "Slight cut, heavy training",
+    // Diversity-inclusion Stage F sign-off — describe the metabolic
+    // state, not a gym demand. Many recomp-curious users don't lift
+    // heavy.
+    subtitle: "Slight deficit, strength-focused",
     icon: <Shuffle className="size-5" />,
   },
 ];

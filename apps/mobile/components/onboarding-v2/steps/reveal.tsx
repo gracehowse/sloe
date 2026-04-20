@@ -45,10 +45,28 @@ export function MobileRevealStep() {
   }, [target]);
 
   if (targets == null) {
+    const calibrateCopy = state.weightSkipped
+      ? "Your targets will calibrate from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
+      : "Answer the body-stats steps to see your daily targets.";
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: "center" }}>
-          Answer the body-stats steps to see your daily targets.
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: 14,
+            textAlign: "center",
+            maxWidth: 320,
+            lineHeight: 20,
+          }}
+        >
+          {calibrateCopy}
         </Text>
       </View>
     );

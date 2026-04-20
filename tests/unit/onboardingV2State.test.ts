@@ -82,6 +82,15 @@ describe("onboarding v2 — resolveNextStep auto-skip", () => {
     }
   });
 
+  it("also auto-skips the pace step when weightSkipped is true (Stage F diversity-inclusion)", () => {
+    const next = resolveNextStep(
+      7,
+      +1,
+      baseState({ goal: "lose", weightSkipped: true }),
+    );
+    expect(STEP_IDS[next]).toBe("diet");
+  });
+
   it("clamps to [0, TOTAL_STEPS - 1]", () => {
     expect(resolveNextStep(0, -1, baseState())).toBe(0);
     expect(resolveNextStep(TOTAL_STEPS - 1, +1, baseState())).toBe(TOTAL_STEPS - 1);
@@ -125,11 +134,17 @@ describe("onboarding v2 — canAdvance per step", () => {
     ["age", baseState({ age: 14 }), true, "at floor"],
     ["age", baseState({ age: 100 }), true, "at ceiling"],
     ["age", baseState({ age: 101 }), false, "above ceiling"],
-    // height + weight — positive
+    // height + weight — positive (or weight skipped per Stage F)
     ["height", baseState({ heightCm: 0 }), false, "zero height"],
     ["height", baseState({ heightCm: 170 }), true, "positive height"],
     ["weight", baseState({ weightKg: 0 }), false, "zero weight"],
     ["weight", baseState({ weightKg: 60 }), true, "positive weight"],
+    [
+      "weight",
+      baseState({ weightKg: 0, weightSkipped: true }),
+      true,
+      "weight skipped (diversity-inclusion path)",
+    ],
     // activity — required
     ["activity", baseState(), false, "no activity"],
     ["activity", baseState({ activity: "moderate" }), true, "moderate"],
@@ -159,7 +174,7 @@ describe("onboarding v2 — pace safety floor is SOFT-WARN", () => {
    * has been chosen. The danger banner shows; analytics fire on
    * advance-despite-banner; the user proceeds if they choose.
    */
-  it("returns true for a vigorous pace that would put a small female user under 1,200 kcal", () => {
+  it("returns true with no warning context for an aggressive pace (banner + acknowledgement live in the UI layer)", () => {
     const state = baseState({
       goal: "lose",
       sex: "female",
@@ -167,9 +182,59 @@ describe("onboarding v2 — pace safety floor is SOFT-WARN", () => {
       heightCm: 155,
       age: 25,
       activity: "sedentary",
-      paceKgPerWeek: 0.9, // would push target ~700 kcal/day
+      paceKgPerWeek: 0.7,
     });
+    // No `paceWarning` ctx supplied → soft-warn product decision
+    // applies as before (other warning levels never block).
     expect(canAdvance("pace", state)).toBe(true);
+  });
+
+  it("returns false when a `danger` warning is active and the user has not acknowledged (Stage F legal)", () => {
+    const state = baseState({
+      goal: "lose",
+      sex: "female",
+      weightKg: 50,
+      heightCm: 155,
+      age: 25,
+      activity: "sedentary",
+      paceKgPerWeek: 0.7,
+      paceDangerAcknowledged: false,
+    });
+    expect(
+      canAdvance("pace", state, { paceWarning: { level: "danger" } }),
+    ).toBe(false);
+  });
+
+  it("returns true when a `danger` warning is active AND the user has ticked the acknowledgement", () => {
+    const state = baseState({
+      goal: "lose",
+      sex: "female",
+      weightKg: 50,
+      heightCm: 155,
+      age: 25,
+      activity: "sedentary",
+      paceKgPerWeek: 0.7,
+      paceDangerAcknowledged: true,
+    });
+    expect(
+      canAdvance("pace", state, { paceWarning: { level: "danger" } }),
+    ).toBe(true);
+  });
+
+  it("does NOT require acknowledgement for `info` or `warn` levels", () => {
+    const state = baseState({
+      goal: "lose",
+      sex: "male",
+      weightKg: 80,
+      paceKgPerWeek: 0.4,
+      paceDangerAcknowledged: false,
+    });
+    expect(
+      canAdvance("pace", state, { paceWarning: { level: "warn" } }),
+    ).toBe(true);
+    expect(
+      canAdvance("pace", state, { paceWarning: { level: "info" } }),
+    ).toBe(true);
   });
 
   it("returns false only when the user hasn't picked a pace at all", () => {

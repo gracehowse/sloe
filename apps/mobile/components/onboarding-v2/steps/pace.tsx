@@ -38,6 +38,22 @@ const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
 
 export function MobilePaceStep() {
   const { state, set, targets, warning } = useOnboardingV2();
+
+  // Reset the danger acknowledgement whenever the warning reason
+  // changes (Stage F decision-doc update — mirrors web Pace step).
+  // Ref initialised to current reason so mount-tick is a no-op.
+  const initialDangerReason =
+    warning?.level === "danger" ? warning.reason : null;
+  const ackResetRef = React.useRef<string | null>(initialDangerReason);
+  React.useEffect(() => {
+    const current = warning?.level === "danger" ? warning.reason : null;
+    if (ackResetRef.current !== current) {
+      ackResetRef.current = current;
+      if (state.paceDangerAcknowledged) {
+        set({ paceDangerAcknowledged: false });
+      }
+    }
+  }, [warning, set, state.paceDangerAcknowledged]);
   const colors = useThemeColors();
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
@@ -307,7 +323,13 @@ export function MobilePaceStep() {
         </View>
       ) : null}
 
-      {warning ? <PaceWarningBanner warning={warning} /> : null}
+      {warning ? (
+        <PaceWarningBanner
+          warning={warning}
+          acknowledged={state.paceDangerAcknowledged}
+          onAcknowledgeChange={(v) => set({ paceDangerAcknowledged: v })}
+        />
+      ) : null}
 
       <MobileMethodologyNote>
         Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors
@@ -320,7 +342,15 @@ export function MobilePaceStep() {
   );
 }
 
-function PaceWarningBanner({ warning }: { warning: PaceWarning }) {
+function PaceWarningBanner({
+  warning,
+  acknowledged,
+  onAcknowledgeChange,
+}: {
+  warning: PaceWarning;
+  acknowledged: boolean;
+  onAcknowledgeChange: (next: boolean) => void;
+}) {
   const colors = useThemeColors();
   const config = {
     danger: {
@@ -394,6 +424,53 @@ function PaceWarningBanner({ warning }: { warning: PaceWarning }) {
         >
           {warning.body}
         </Text>
+        {warning.level === "danger" ? (
+          <Pressable
+            onPress={() => onAcknowledgeChange(!acknowledged)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acknowledged }}
+            accessibilityLabel="I understand and accept responsibility for proceeding below the safety floor"
+            style={{
+              marginTop: 12,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 4,
+                borderWidth: 1.5,
+                borderColor: acknowledged
+                  ? Accent.destructive
+                  : colors.cardBorder,
+                backgroundColor: acknowledged
+                  ? Accent.destructive
+                  : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 1,
+              }}
+            >
+              {acknowledged ? (
+                <Ionicons name="checkmark" size={12} color="#fff" />
+              ) : null}
+            </View>
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 12,
+                color: colors.text,
+                lineHeight: 17,
+              }}
+            >
+              I understand this is below the recommended safety floor
+              and accept responsibility for proceeding.
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

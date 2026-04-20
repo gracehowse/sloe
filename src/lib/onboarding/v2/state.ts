@@ -104,6 +104,27 @@ export interface OnboardingState {
   healthGranted: PermissionGrant;
   notifGranted: PermissionGrant;
   importSource: ImportSource;
+  /**
+   * Whether the user has explicitly ticked the danger-banner
+   * acknowledgement on the Pace step. Required by `legal-reviewer`
+   * Stage F sign-off (decision doc 2026-04-19): one-tap Continue
+   * with no affirmative tick reads as a dark pattern in reverse.
+   * The acknowledgement re-resets whenever the warning reason
+   * changes (handled in PaceStep) so an intentional advance is
+   * captured per-decision, not per-session.
+   */
+  paceDangerAcknowledged: boolean;
+  /**
+   * Whether the user opted out of entering a body weight on the
+   * Weight step. Required by `diversity-inclusion` Stage F sign-off
+   * (decision doc 2026-04-19) — gives users with active ED or in
+   * recovery a path through onboarding that doesn't force scale
+   * interaction. When true, the Pace step is also auto-skipped (we
+   * can't compute a safety-floor without weight) and the Reveal
+   * step shows a "calibrate from your logs" message instead of
+   * concrete targets.
+   */
+  weightSkipped: boolean;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -116,11 +137,21 @@ export const GOAL_DEFAULT_PACE: Record<Goal, number> = {
   recomp: 0.15,
 };
 
-/** Min / max / step for the pace slider, per goal. The UI clamps to
- *  these; `paceWarning` in `targets.ts` flags anything above 1%
- *  bodyweight/week regardless. */
+/**
+ * Min / max / step for the pace slider, per goal.
+ *
+ * `lose` upper bound was 0.9 kg/week in the prototype draft, lowered
+ * to 0.75 by `diversity-inclusion` Stage F sign-off (decision doc
+ * 2026-04-19): the visible-max equates to ~1.65 lb/week, which is at
+ * the edge of clinical guidance and makes the slider a body-neutral
+ * default rather than ED-normalising. Users wanting a higher rate
+ * still have to acknowledge the danger banner — the safety-floor
+ * machinery is unchanged. (A future "extended range" disclosure flow
+ * may reintroduce the 0.9 ceiling — tracked in
+ * docs/planning/ongoing-backlog.md.)
+ */
 export const PACE_RANGES: Record<Goal, { min: number; max: number; step: number }> = {
-  lose: { min: 0.1, max: 0.9, step: 0.05 },
+  lose: { min: 0.1, max: 0.75, step: 0.05 },
   maintain: { min: 0, max: 0, step: 0 },
   gain: { min: 0.1, max: 0.4, step: 0.025 },
   recomp: { min: 0.05, max: 0.3, step: 0.025 },
@@ -168,34 +199,55 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   healthGranted: null,
   notifGranted: null,
   importSource: null,
+  paceDangerAcknowledged: false,
+  weightSkipped: false,
 };
 
 /** Resolve the step index a navigation should land on, accounting for
- *  the auto-skip of `pace` when goal = maintain. Returns a clamped
- *  index inside [0, TOTAL_STEPS - 1]. */
+ *  the two auto-skips of `pace`:
+ *   - `goal === "maintain"` — no kcal delta to set (decision-doc default)
+ *   - `weightSkipped` — no body data to compute a safe floor against
+ *     (Stage F diversity-inclusion update)
+ *  Returns a clamped index inside [0, TOTAL_STEPS - 1]. */
 export function resolveNextStep(
   current: number,
   delta: number,
-  state: Pick<OnboardingState, "goal">,
+  state: Pick<OnboardingState, "goal" | "weightSkipped">,
 ): number {
   let next = current + delta;
-  if (state.goal === "maintain" && STEP_IDS[next] === "pace") {
+  const skipPace =
+    (state.goal === "maintain" || state.weightSkipped) &&
+    STEP_IDS[next] === "pace";
+  if (skipPace) {
     next += delta > 0 ? 1 : -1;
   }
   return Math.max(0, Math.min(TOTAL_STEPS - 1, next));
 }
 
+/** Optional context for `canAdvance` — provider passes the live
+ *  `paceWarning` so the Pace step's acknowledgement gate can fire
+ *  without state.ts importing from targets.ts (circular). Duck-typed
+ *  on `level` to keep the type cycle out. */
+export interface CanAdvanceContext {
+  paceWarning?: { level: "info" | "warn" | "danger" } | null;
+}
+
 /** Per-step validation. Returns true when "Continue" should enable.
  *
- *  IMPORTANT — Pace step:
- *  the safety floor is SOFT-WARN per decision doc. We do NOT block
- *  advance when projected target falls below 1,200 (F) / 1,500 (M).
- *  Only the unconditional shape requirement (a numeric pace) gates
- *  the button. The danger banner shows; analytics fire; user proceeds
- *  if they choose. Auditable trail via the
- *  `onboarding_pace_below_safety_floor` event.
+ *  IMPORTANT — Pace step (legal-reviewer Stage F sign-off):
+ *  the safety floor is SOFT-WARN — we never block advance based on
+ *  the projected kcal alone. But when the projected target triggers
+ *  the `danger` banner, the user must tick the explicit
+ *  acknowledgement checkbox before Continue activates. Continue
+ *  remains a one-tap action for `info` / `warn` / no-warning states.
+ *
+ *  Decision doc § "Decision 2" + Stage F update.
  */
-export function canAdvance(stepId: StepId, state: OnboardingState): boolean {
+export function canAdvance(
+  stepId: StepId,
+  state: OnboardingState,
+  ctx?: CanAdvanceContext,
+): boolean {
   switch (stepId) {
     case "welcome":
       return true;
@@ -209,9 +261,18 @@ export function canAdvance(stepId: StepId, state: OnboardingState): boolean {
     case "pace":
       // Maintain doesn't reach this branch (auto-skipped) but defend anyway.
       if (state.goal === "maintain") return true;
-      // Soft-warn safety floor — do NOT factor in projected kcal here.
-      // The Pace UI shows the warning banner; advance is the user's call.
-      return state.paceKgPerWeek !== null;
+      if (state.paceKgPerWeek === null) return false;
+      // Danger banner → require explicit acknowledgement. Other
+      // warning levels (info, warn) advance with one tap, so the
+      // soft-warn product decision still holds for the gentler
+      // bands.
+      if (
+        ctx?.paceWarning?.level === "danger" &&
+        !state.paceDangerAcknowledged
+      ) {
+        return false;
+      }
+      return true;
     case "sex":
       return state.sex !== null;
     case "age":
@@ -219,7 +280,12 @@ export function canAdvance(stepId: StepId, state: OnboardingState): boolean {
     case "height":
       return state.heightCm > 0;
     case "weight":
-      return state.weightKg > 0;
+      // Stage F (diversity-inclusion) — `weightSkipped` is the
+      // explicit "no scale interaction" path. When set, advance is
+      // permitted with no weight value and the Pace step is also
+      // auto-skipped; the Reveal step shows a calibration message
+      // instead of concrete kcal targets.
+      return state.weightSkipped || state.weightKg > 0;
     case "activity":
       return state.activity !== null;
     case "diet":

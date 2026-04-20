@@ -45,18 +45,34 @@ import {
  *  change one, change both. */
 const KCAL_PER_KG = 7_700;
 
-/** Map the prototype's goal to the existing `NutritionStrategy` used
- *  by `calculateMacros`. Documented mapping — the only place this
- *  shape change happens, so the rest of the pipeline doesn't have to
- *  know about the goal model split. */
+/**
+ * Map the prototype's goal to the existing `NutritionStrategy` used by
+ * `calculateMacros`. Mapping locked in by `nutrition-engine` review
+ * (Stage F sign-off, see decision doc 2026-04-19):
+ *
+ *   lose      → high_satisfaction (1.8 g/kg protein, 30 % fat)
+ *                 Satiety beats peak hypertrophy in a deficit.
+ *   recomp    → high_protein     (2.2 g/kg protein, 25 % fat)
+ *                 Highest-leverage protein scenario in the literature
+ *                 (Helms / Aragon / Barakat 2020): 1.8–2.7 g/kg in a
+ *                 deficit to spare LBM. We pick the upper end.
+ *   maintain  → balanced         (1.6 g/kg protein, 25 % fat)
+ *                 ISSN floor for active individuals.
+ *   gain      → high_protein     (2.2 g/kg protein, 25 % fat)
+ *                 Stated muscle-building goal — ISSN position stand
+ *                 (Jäger et al. 2017) sets 1.6–2.2 g/kg for muscle
+ *                 accrual; in a surplus, 1.6 is the floor not the
+ *                 target.
+ */
 export function mapGoalToStrategy(goal: Goal): NutritionStrategy {
   switch (goal) {
     case "lose":
+      return "high_satisfaction";
     case "recomp":
-      return "high_satisfaction"; // 1.8 g/kg protein, 30 % fat
-    case "maintain":
     case "gain":
-      return "balanced"; // 1.6 g/kg protein, 25 % fat
+      return "high_protein";
+    case "maintain":
+      return "balanced";
   }
 }
 
@@ -73,14 +89,26 @@ export function paceToKcalAdjustment(
   return dailyMagnitude; // gain
 }
 
-/** Safety floor in kcal — generally-accepted lower bound for
- *  unsupervised dieting. Mirrors `budgetSafety` in `tdee.ts` so a
- *  silent drift fails the `tdeeExplainer` parity test if either side
- *  shifts. */
+/**
+ * Safety floor in kcal — generally-accepted lower bound for
+ * unsupervised dieting. Mirrors `budgetSafety` in `tdee.ts` so a
+ * silent drift fails the `tdeeExplainer` parity test if either side
+ * shifts.
+ *
+ * Sources (per `nutrition-engine` Stage F sign-off):
+ *  - 1,500 (M) / 1,200 (F): NHS guidance + Academy of Nutrition and
+ *    Dietetics adult VLCD threshold. These are POPULATION estimates
+ *    for unsupervised dieting, NOT individual prescriptions — a
+ *    clinician may prescribe lower under supervision.
+ *  - 1,350 (unspecified): Suppr policy choice (no health authority
+ *    defines a midpoint floor for non-binary / undeclared sex). The
+ *    male/female midpoint is the most defensible stand-in given the
+ *    same trade-off the BMR equation makes.
+ */
 export function safetyFloorFor(sex: Sex | null): number {
   if (sex === "male") return 1500;
   if (sex === "female") return 1200;
-  return 1350; // unspecified — midpoint
+  return 1350; // unspecified — Suppr policy midpoint
 }
 
 /** Severity of a pace warning. UI renders one banner per level. */
@@ -109,19 +137,33 @@ export function paceWarning(
   const weeklyLossPct = state.weightKg ? (pace / state.weightKg) * 100 : 0;
 
   if (projectedTarget < floor) {
+    // Copy locked by `legal-reviewer` Stage F sign-off (decision doc
+    // 2026-04-19). Three deliberate moves vs. the prototype draft:
+    //   1. Sources named explicitly (NHS / NIH) — no vague
+    //      "health authorities" attribution.
+    //   2. "Slow the pace" framed as the *primary* recommendation,
+    //      not an alternative to clinician check.
+    //   3. Prescribed-VLCD case explicitly carved out so the
+    //      soft-warn-with-acknowledgement product decision is
+    //      legally coherent.
+    //   4. Pregnancy / under-18 / medical-condition disclaimer
+    //      surfaced inside the danger banner (the methodology
+    //      footer alone is too quiet when this banner fires).
     return {
       level: "danger",
       reason: "below_floor",
       title: `Below the ${floor.toLocaleString()} kcal safety floor`,
-      body: `This pace would put your daily target at ~${projectedTarget.toLocaleString()} kcal. Most health authorities recommend no less than ${floor.toLocaleString()} kcal/day without medical supervision. Please slow the pace, or check with your doctor first.`,
+      body: `This pace would put your daily target at ~${projectedTarget.toLocaleString()} kcal. NHS and NIH guidance generally advises against eating below ${floor.toLocaleString()} kcal/day without medical supervision. We strongly recommend slowing the pace. If a clinician has prescribed a lower intake, continue under their care. Not suitable if you're pregnant, under 18, or managing a medical condition.`,
     };
   }
   if (weeklyLossPct > 1) {
+    // Outcome claim hedged ("can increase lean-mass loss") per
+    // legal-reviewer P2 — same meaning, lower assertiveness.
     return {
       level: "warn",
       reason: "fast_loss",
       title: "Faster than 1% of your bodyweight per week",
-      body: `At ~${pace.toFixed(2)} kg/week that's ~${weeklyLossPct.toFixed(1)}% of your bodyweight. Rapid loss can cost muscle and is harder to sustain — consider a gentler pace, or check in with a clinician.`,
+      body: `At ~${pace.toFixed(2)} kg/week that's ~${weeklyLossPct.toFixed(1)}% of your bodyweight. Rapid loss is often harder to sustain and can increase lean-mass loss — consider a gentler pace, or check in with a clinician.`,
     };
   }
   if (projectedTarget < floor + 200) {
@@ -164,12 +206,16 @@ export interface V2Targets {
 }
 
 /** Compute the user's targets from the current onboarding state.
- *  Returns `null` when the required inputs (sex / age / height /
- *  weight / activity / goal) aren't all set yet — the caller should
- *  render a quieter "answer the body-stats steps to see your numbers"
- *  fallback in that case. */
+ *  Returns `null` when:
+ *   - any required input is missing (the caller renders the quieter
+ *     "answer the body-stats steps to see your numbers" fallback), OR
+ *   - the user opted out of scale interaction (`weightSkipped` —
+ *     diversity-inclusion Stage F). The Reveal step shows a
+ *     calibration message in this case.
+ */
 export function computeV2Targets(state: OnboardingState): V2Targets | null {
-  const { sex, age, heightCm, weightKg, activity, goal, paceKgPerWeek } = state;
+  const { sex, age, heightCm, weightKg, activity, goal, paceKgPerWeek, weightSkipped } = state;
+  if (weightSkipped) return null;
   if (
     sex === null ||
     !Number.isFinite(age) ||

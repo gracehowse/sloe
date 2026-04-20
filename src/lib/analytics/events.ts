@@ -321,6 +321,18 @@ export const AnalyticsEvents = {
    *      projected_target_kcal: number,
    *      sex: "male" | "female" | "unspecified" } */
   onboarding_pace_below_safety_floor: "onboarding_pace_below_safety_floor",
+  /** User created a new account (email+password or Apple SSO) on web.
+   * Fires once, after Supabase `signUp` / `signInWithOAuth` succeeds.
+   * Payload: `{ method: "email" | "apple" }`.
+   * `posthog.identify()` is called at the same callsite so anonymous
+   * pre-signup events are stitched to the new Supabase user ID. */
+  user_signed_up: "user_signed_up",
+  /** User signed in to an existing account on web.
+   * Fires after Supabase `signInWithPassword` / `signInWithOtp`
+   * (magic-link) / `signInWithOAuth` succeeds.
+   * Payload: `{ method: "email" | "magic_link" | "apple" }`.
+   * `posthog.identify()` is called at the same callsite. */
+  user_signed_in: "user_signed_in",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

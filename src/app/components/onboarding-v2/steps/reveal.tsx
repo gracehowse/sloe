@@ -48,10 +48,17 @@ export function RevealStep({ compact = false }: RevealProps) {
   }, [target]);
 
   if (targets == null) {
+    // Diversity-inclusion Stage F — when the user opted out of
+    // entering a weight, show a calibrate-from-logs message instead
+    // of the body-stats prompt. Same null-targets branch otherwise
+    // catches mid-flow tweaks (e.g. design preview deep-links).
+    const calibrateCopy = state.weightSkipped
+      ? "Your targets will calibrate from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
+      : "Answer the body-stats steps to see your daily targets.";
     return (
       <div className="h-full grid place-items-center px-6 text-center">
-        <p className="text-muted-foreground text-sm">
-          Answer the body-stats steps to see your daily targets.
+        <p className="text-muted-foreground text-sm max-w-[320px] leading-relaxed">
+          {calibrateCopy}
         </p>
       </div>
     );

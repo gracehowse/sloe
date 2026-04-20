@@ -21,7 +21,7 @@ const OPTIONS: { id: Sex; title: string; subtitle?: string }[] = [
   {
     id: "unspecified",
     title: "Prefer not to say",
-    subtitle: "Uses the male/female midpoint",
+    subtitle: "Uses a midpoint estimate (~166 kcal between sexes).",
   },
 ];
 
@@ -34,7 +34,7 @@ export function MobileSexStep() {
       <MobileStepHeader
         overline="Step 04 of 12"
         title="Sex"
-        subtitle="Please select which sex we should use to calculate your calorie needs."
+        subtitle="Used to estimate your metabolic rate. You can change this anytime."
       />
       <View style={{ gap: 10 }}>
         {OPTIONS.map((o) => (
@@ -118,11 +118,13 @@ export function MobileSexStep() {
               marginBottom: 10,
             }}
           >
-            If you&apos;re trans, non-binary, or gender non-conforming: if you
-            haven&apos;t started gender-affirming hormones, selecting your sex
-            assigned at birth will most accurately reflect your metabolic
-            rate. If you&apos;ve been on hormones for more than a few months,
-            your metabolism may be closer to your gender identity.
+            If you&apos;re trans, non-binary, or gender non-conforming:
+            there&apos;s no perfect answer here. If you haven&apos;t started
+            gender-affirming hormones, your sex assigned at birth is usually
+            the closer estimate. After several months on hormones, body
+            composition shifts and the other coefficient may begin to fit
+            better — but evidence is limited. Pick what feels right, or
+            choose &ldquo;Prefer not to say&rdquo; for the midpoint.
           </Text>
           <Text
             style={{

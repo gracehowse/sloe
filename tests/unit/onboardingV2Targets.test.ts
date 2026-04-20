@@ -66,14 +66,22 @@ describe("paceToKcalAdjustment", () => {
 });
 
 describe("mapGoalToStrategy", () => {
-  it("uses high_satisfaction (1.8 g/kg) for lose + recomp", () => {
+  // Mapping locked in by `nutrition-engine` Stage F sign-off
+  // (decision doc 2026-04-19). ISSN position stand (Jäger et al. 2017)
+  // sets 1.6–2.2 g/kg for muscle accrual; gain + recomp both target
+  // the upper end. Lose uses high_satisfaction because satiety beats
+  // peak hypertrophy in a deficit. Maintain stays at the 1.6 g/kg floor.
+  it("uses high_satisfaction (1.8 g/kg) for lose", () => {
     expect(mapGoalToStrategy("lose")).toBe("high_satisfaction");
-    expect(mapGoalToStrategy("recomp")).toBe("high_satisfaction");
   });
 
-  it("uses balanced (1.6 g/kg) for maintain + gain", () => {
+  it("uses balanced (1.6 g/kg) for maintain", () => {
     expect(mapGoalToStrategy("maintain")).toBe("balanced");
-    expect(mapGoalToStrategy("gain")).toBe("balanced");
+  });
+
+  it("uses high_protein (2.2 g/kg) for recomp + gain", () => {
+    expect(mapGoalToStrategy("recomp")).toBe("high_protein");
+    expect(mapGoalToStrategy("gain")).toBe("high_protein");
   });
 });
 
@@ -96,6 +104,23 @@ describe("computeV2Targets — pipeline integration", () => {
     expect(
       computeV2Targets(
         baseState({ sex: "female", goal: "lose" /* still missing activity */ }),
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null when weightSkipped is true (Stage F diversity-inclusion path)", () => {
+    expect(
+      computeV2Targets(
+        baseState({
+          weightSkipped: true,
+          sex: "female",
+          age: 28,
+          heightCm: 168,
+          weightKg: 62,
+          activity: "moderate",
+          goal: "lose",
+          paceKgPerWeek: 0.4,
+        }),
       ),
     ).toBeNull();
   });
@@ -123,7 +148,7 @@ describe("computeV2Targets — pipeline integration", () => {
     expect(t!.target).toBe(1682);
     expect(t!.belowSafetyFloor).toBe(false);
     expect(t!.safety).toBe("safe");
-    expect(t!.strategy).toBe("high_satisfaction");
+    expect(t!.strategy).toBe("high_satisfaction"); // lose → high_satisfaction
     // Macros are non-negative + reconcile within rounding tolerance.
     expect(t!.proteinG).toBeGreaterThan(0);
     expect(t!.carbsG).toBeGreaterThanOrEqual(0);

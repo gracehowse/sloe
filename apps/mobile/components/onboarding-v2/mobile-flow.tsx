@@ -52,10 +52,23 @@ export function MobileFlow() {
         pace_kg_per_week: targets.pace,
         projected_target_kcal: targets.target,
         sex: state.sex,
+        // Stage F (legal-reviewer sign-off) — only the danger level
+        // requires the acknowledgement checkbox.
+        acknowledged:
+          warning.level === "danger"
+            ? state.paceDangerAcknowledged
+            : null,
       });
     }
     go(1);
-  }, [currentStepId, warning, targets, state.sex, go]);
+  }, [
+    currentStepId,
+    warning,
+    targets,
+    state.sex,
+    state.paceDangerAcknowledged,
+    go,
+  ]);
 
   // Welcome uses its own layout (full-bleed gradient, own CTA).
   if (isWelcome) {

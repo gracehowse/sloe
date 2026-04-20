@@ -41,10 +41,36 @@ export function WebFlow() {
         pace_kg_per_week: targets.pace,
         projected_target_kcal: targets.target,
         sex: state.sex,
+        // Stage F (legal-reviewer sign-off) — only the danger level
+        // requires the acknowledgement checkbox; for info / warn the
+        // field is null so PostHog filters can distinguish.
+        acknowledged:
+          warning.level === "danger"
+            ? state.paceDangerAcknowledged
+            : null,
       });
     }
+    // Fire before go(1) so the step_id reflects the step being completed,
+    // not the step being entered. goal is included when available because
+    // it drives the pace/reveal branches and is useful for funnel slicing.
+    track(AnalyticsEvents.onboarding_step_completed, {
+      step_id: currentStepId,
+      step_index: displayIndex,
+      step_total: displayTotal,
+      ...(state.goal != null ? { goal: state.goal } : {}),
+    });
     go(1);
-  }, [currentStepId, warning, targets, state.sex, go]);
+  }, [
+    currentStepId,
+    displayIndex,
+    displayTotal,
+    state.goal,
+    warning,
+    targets,
+    state.sex,
+    state.paceDangerAcknowledged,
+    go,
+  ]);
 
   // Welcome takes the whole canvas — no top bar, no split.
   if (isWelcome) {
