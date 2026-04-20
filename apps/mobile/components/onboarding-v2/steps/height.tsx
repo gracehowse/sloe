@@ -31,7 +31,13 @@ export function MobileHeightStep() {
           ariaLabel="Height units"
         />
       </View>
-      <View style={{ alignItems: "center" }}>
+      {/* Fluid wrapper (max 380) so RulerSlider scales with the
+          container instead of sitting at a fixed 320 px — matches
+          the web Height step behaviour after the visual-qa polish
+          sweep. RulerSlider measures its container via onLayout and
+          fills available width automatically. */}
+      <View style={{ alignItems: "center", alignSelf: "stretch" }}>
+        <View style={{ width: "100%", maxWidth: 380 }}>
         {metric ? (
           <RulerSlider
             value={state.heightCm}
@@ -40,7 +46,6 @@ export function MobileHeightStep() {
             max={210}
             step={1}
             unit="cm"
-            width={320}
             accessibilityLabel="Height"
           />
         ) : (
@@ -54,10 +59,10 @@ export function MobileHeightStep() {
             step={1}
             format={formatImperialHeightInches}
             parseInput={parseImperialHeightInches}
-            width={320}
             accessibilityLabel="Height"
           />
         )}
+        </View>
       </View>
     </MobileStepBody>
   );

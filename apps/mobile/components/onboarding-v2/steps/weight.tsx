@@ -65,31 +65,33 @@ export function MobileWeightStep() {
           ariaLabel="Weight units"
         />
       </View>
-      <View style={{ alignItems: "center" }}>
-        {metric ? (
-          <RulerSlider
-            value={state.weightKg}
-            onChange={(v) => set({ weightKg: v })}
-            min={40}
-            max={150}
-            step={0.5}
-            decimals={1}
-            unit="kg"
-            width={320}
-            accessibilityLabel="Weight"
-          />
-        ) : (
-          <RulerSlider
-            value={+(state.weightKg * 2.2046).toFixed(1)}
-            onChange={(v) => set({ weightKg: +(v / 2.2046).toFixed(2) })}
-            min={90}
-            max={330}
-            step={1}
-            unit="lb"
-            width={320}
-            accessibilityLabel="Weight"
-          />
-        )}
+      {/* Fluid wrapper (max 380) — matches the web Weight step's
+          sizing constraint after the visual-qa polish sweep. */}
+      <View style={{ alignItems: "center", alignSelf: "stretch" }}>
+        <View style={{ width: "100%", maxWidth: 380 }}>
+          {metric ? (
+            <RulerSlider
+              value={state.weightKg}
+              onChange={(v) => set({ weightKg: v })}
+              min={40}
+              max={150}
+              step={0.5}
+              decimals={1}
+              unit="kg"
+              accessibilityLabel="Weight"
+            />
+          ) : (
+            <RulerSlider
+              value={+(state.weightKg * 2.2046).toFixed(1)}
+              onChange={(v) => set({ weightKg: +(v / 2.2046).toFixed(2) })}
+              min={90}
+              max={330}
+              step={1}
+              unit="lb"
+              accessibilityLabel="Weight"
+            />
+          )}
+        </View>
       </View>
       <View style={{ alignItems: "center", marginTop: 24 }}>
         <Pressable
