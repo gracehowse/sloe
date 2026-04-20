@@ -16,7 +16,11 @@
  *  - Maintain skips the Pace step automatically (no kcal delta).
  */
 
-import type { ActivityLevel, Sex } from "@/lib/nutrition/tdee";
+// Relative import (not the `@/lib/nutrition/tdee` alias) so the mobile
+// `@/*` alias — which points at the mobile workspace root — doesn't
+// shadow the shared module when mobile typechecks via the
+// `apps/mobile/lib/onboarding-v2.ts` re-export shim.
+import type { ActivityLevel, Sex } from "../../nutrition/tdee";
 
 /** Goals the v2 flow supports. Maps to existing strategy / budget calc
  *  via `mapGoalToStrategy` and `mapGoalToBudgetGoal` in `targets.ts`. */

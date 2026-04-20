@@ -21,6 +21,8 @@
  *    leaves the flag.
  */
 
+// Relative import (see state.ts header comment) so mobile typecheck
+// via `apps/mobile/lib/onboarding-v2.ts` resolves the same file.
 import {
   ACTIVITY_MULTIPLIERS,
   budgetSafety,
@@ -29,7 +31,7 @@ import {
   type ActivityLevel,
   type NutritionStrategy,
   type Sex,
-} from "@/lib/nutrition/tdee";
+} from "../../nutrition/tdee";
 import {
   GOAL_DEFAULT_PACE,
   type Goal,
