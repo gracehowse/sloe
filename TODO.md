@@ -60,6 +60,21 @@ Remaining pre-flip:
 
 _None._ All in-flight work landed 2026-04-19.
 
+**Prototype port in flight (2026-04-19 Claude Design drop — `Whole app experience`):**
+
+The prototype is stashed at [docs/prototypes/2026-04-19-whole-app-experience/](docs/prototypes/2026-04-19-whole-app-experience/). Chat transcript (`chats/chat1.md`) carries the intent — read it before picking up a surface.
+
+- [x] **Today hero — ring / bar / number variant** (mobile). Shipped 2026-04-20. New `TodayHero`, `TodayHeroBar`, `TodayHeroNumber`, `TodayHeroVariantPicker` components. User preference persisted in AsyncStorage (`suppr.hero.variant`). Existing ring gestures (tap = macros, hold = remaining/consumed toggle) unchanged.
+- [ ] **Today hero — web parity.** Port `TodayHeroBar` / `TodayHeroNumber` / variant picker to the web Today surface (`src/app/components/Today*`). Persist variant to the same `suppr.hero.variant` key (localStorage on web).
+- [ ] **Apple Health → Activity rename.** Chat's last explicit unfulfilled ask — Apple Health section should become source-agnostic "Activity" on Today + Progress. Removes the "Apple Health on Today" duplicate the chat flagged.
+- [ ] **Multi-item meal logger.** Prototype `LogMealSheet` supports 5 input methods (Search / Scan / Photo / Voice / Recents) with a cart-and-log flow. Current mobile uses single-item add.
+- [ ] **Household persona + shared-meal config.** Prototype adds a "household" persona with member chips + per-day-per-slot sharing grid (All / Dinners only / Dinners+weekends / Individual / Custom presets). Schema work needed — see also DI-P0-02 (pronouns) + TODO.md plate-loop v2 for related migration.
+- [ ] **Progress range picker (7d / 30d / 90d / All)** + household bar + protein card + trend summary. Aligns with the existing Progress redesign direction (`project_progress_direction.md`).
+- [ ] **Plan per-meal swap action.** Prototype adds a `↻` icon on every meal card that opens a swap modal.
+- [ ] **Web parity for Plan / Progress / Library / Import / Shopping / Targets / Activity / Settings** — second-pass visual alignment once mobile variants land.
+
+---
+
 **Recently shipped (2026-04-20 session — push pre-flight + housekeeping):**
 - ✅ T8 customer-lens re-permission audit (no formal re-permission needed; permission copy reconciled across 3 sites in parity — web + mobile onboarding-v2 + legacy notifications-prompt).
 - ✅ T9 docs + cleanup closed (no stale generic-body literals in server-cron path).

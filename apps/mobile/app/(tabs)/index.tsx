@@ -132,7 +132,8 @@ import {
   parsePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TodayHeroRing } from "@/components/today/TodayHeroRing";
+import { TodayHero } from "@/components/today/TodayHero";
+import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayStreakInsightCard } from "@/components/today/TodayStreakInsightCard";
@@ -287,6 +288,26 @@ export default function TrackerScreen() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(true);
   const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
+  // Today hero variant preference — ring / bar / number (prototype port 2026-04-20).
+  // Persisted under `suppr.hero.variant` so the user's choice survives reload.
+  const HERO_VARIANT_STORAGE_KEY = "suppr.hero.variant";
+  const [heroVariant, setHeroVariantState] = useState<TodayHeroVariant>("ring");
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY)
+      .then((raw) => {
+        if (cancelled) return;
+        if (raw === "ring" || raw === "bar" || raw === "number") {
+          setHeroVariantState(raw);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  const setHeroVariant = useCallback((next: TodayHeroVariant) => {
+    setHeroVariantState(next);
+    AsyncStorage.setItem(HERO_VARIANT_STORAGE_KEY, next).catch(() => {});
+  }, []);
   const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"];
   const [trackedMacros, setTrackedMacros] = useState<string[]>(DEFAULT_TRACKED_MACROS);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
@@ -2787,13 +2808,22 @@ export default function TrackerScreen() {
           />
         ) : (
           <>
-            {/* Calorie Ring — centered, tappable, prototype style */}
-            <TodayHeroRing
+            {/* Today hero — ring / bar / number variant, user-pickable
+                via the grid-icon affordance in the card's top-right.
+                Prototype port (2026-04-20 Claude Design drop). */}
+            <TodayHero
+              variant={heroVariant}
+              onVariantChange={setHeroVariant}
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
+              burned={totalBurnKcal}
+              mealCount={mealsToday.length}
               textColor={colors.text}
-              secondaryColor={colors.textSecondary}
+              textSecondaryColor={colors.textSecondary}
+              textTertiaryColor={colors.textTertiary}
+              cardBackgroundColor={colors.card}
+              borderColor={colors.border}
               trackColor={colors.border}
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
@@ -2802,7 +2832,6 @@ export default function TrackerScreen() {
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
-              textTertiaryColor={colors.textTertiary}
             />
 
             {/* Remaining macros — kcal / P / C / F (+ fiber when tracked) left today. Parity: web RemainingMacrosBar. */}
