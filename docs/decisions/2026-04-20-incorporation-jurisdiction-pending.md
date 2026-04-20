@@ -112,9 +112,20 @@ These are queued, not pending advisor input — trigger them the day the entity 
 | 1 | Book Cayman immigration counsel call — scope in this doc, § "Cayman immigration counsel". Ask specifically about dependant-status ownership + direction of a US LLC + receipt of distributions into personal Cayman bank | Grace | Low (free via sponsor HR, else ~USD 200) | 1–3 business days |
 | 2 | Resolve trademark direction (TM-1 in TODO.md) so the entity isn't formed on a name about to change | Grace + trademark counsel | Already scoped | Concurrent with #1 |
 | 3 | Book US cross-border CPA call — scope in this doc, § "US cross-border CPA". Confirm no-ECI assumption + quote 5472 service fee | Grace | USD 300–600 | 3–5 business days after #1 |
-| 4 | Form Delaware LLC via Stripe Atlas (USD 500 one-off). EIN arrives in 1–3 weeks for non-US founder; Mercury bank opens in parallel | Grace + Stripe Atlas | USD 500 + Mercury fees | 5–15 business days after #3 |
+| 4 | Form Delaware LLC via Stripe Atlas (USD 250 one-off — **50% Founders Hub discount applied**, down from USD 500). EIN arrives in 1–3 weeks for non-US founder; Mercury bank opens in parallel. **Also activate USD 2,500 Stripe processing credits perk during onboarding.** | Grace + Stripe Atlas | USD 250 + Mercury fees | 5–15 business days after #3 |
 | 5 | Onboard Stripe against the new Atlas LLC | Grace | Free (Stripe fees on transactions) | 1–2 days after #4 |
 | 6 | Product-legal review of checkout/ToS/privacy/about to reflect new entity (merchant-of-record line, UK/EU VAT-inclusive pricing, renewal terms, company identifier consistency) | Grace + product-legal-reviewer | Internal | 1–2 days after #5 |
 | 7 | Update `TODO.md` LEGAL-1 — entity name populated across terms/dmca/privacy/landing-footer/licences + vendor DPAs (Stripe, Supabase, RevenueCat, Expo, PostHog, Sentry, OpenAI, Edamam) | Grace | Internal | Concurrent with #6 |
 
 Update this file with the immigration + CPA answers as they come in. When Atlas completes #4 this file's `Status:` flips from `open` to `resolved` and a sibling file at `docs/decisions/2026-MM-DD-incorporation-decided.md` captures the actual decision + resulting entity name + registered office for the audit trail.
+
+## Perks + credits stack (live as of 2026-04-20)
+
+Grace enrolled in Microsoft for Startups Founders Hub on 2026-04-20. Relevant benefits to track and actually activate:
+
+- **Stripe Atlas 50% discount** — formation fee drops from USD 500 → USD 250. Applied at the Atlas signup step (#4 above); verify the discount lands before paying.
+- **Stripe processing credits** — USD 2,500 free processing in year one. Activate during Stripe onboarding (#5 above). Expires; use it or lose it.
+- **Azure credits** — USD 5,000+. Not required for Suppr's current stack (Vercel + Supabase). Worth considering later for: Azure OpenAI Service as a cost/enterprise alternative to OpenAI direct (voice + photo logging, AI agents), or batch-compute for data ingestion. Track as an opportunity, not a dependency. Credits expire 2026-05-09 or later per screenshot — confirm actual expiry date and set a reminder before wasting the perk.
+- **GitHub, Microsoft 365 discounts** — nice-to-haves; evaluate against current spend when next renewing.
+
+Founders Hub is a free program (zero paid obligation), so it's not a vendor row in the conventional sense — but it IS a new relationship worth tracking in Notion Vendors & Subscriptions under category "Credits / Perks" so the expiry dates don't slip.
