@@ -30,6 +30,24 @@ vi.mock("../../src/lib/analytics/track", () => ({
   // /onboarding redirect doesn't fire in test runs.
   isOnboardingV2Enabled: () => false,
   isFeatureEnabled: () => false,
+  subscribeToFlags: () => () => undefined,
+}));
+
+// WebFlow now reads useAuthSession() for OB2-1 completion handler.
+// Stub the context module so the test renders without spinning up
+// the real Supabase session listener.
+vi.mock("../../src/context/AuthSessionContext", () => ({
+  useAuthSession: () => ({ authedUserId: null, authEmail: null }),
+}));
+
+// Stub the persist module — the analytics tests don't exercise the
+// terminal Continue button, but importing WebFlow pulls these in.
+vi.mock("../../src/lib/onboarding/v2/persist", () => ({
+  persistOnboardingV2: vi.fn(() => Promise.resolve({ ok: true })),
+  mapV2GoalToLegacy: (g: string) =>
+    g === "lose" || g === "recomp" ? "cut" : g === "gain" ? "bulk" : "maintain",
+  mapPaceToPreset: () => "steady",
+  buildProfileUpsertRow: () => ({}),
 }));
 
 import {

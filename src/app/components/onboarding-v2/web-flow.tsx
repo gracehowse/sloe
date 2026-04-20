@@ -6,9 +6,14 @@ import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
+import { useAuthSession } from "@/context/AuthSessionContext";
+import { supabase } from "@/lib/supabase/browserClient";
+import { saveLocalProfile } from "@/lib/profile/profileStorage";
+import { type UserProfile } from "@/types/profile";
 import { useOnboardingV2 } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
+import { mapV2GoalToLegacy, persistOnboardingV2 } from "@/lib/onboarding/v2/persist";
 
 /**
  * Web flow shell — split layout with a narrative left column and an
@@ -24,8 +29,91 @@ import { NARRATIVE } from "./narrative";
 export function WebFlow() {
   const { currentStepId, displayIndex, displayTotal, go, canAdvance, state, targets, warning } =
     useOnboardingV2();
+  const { authedUserId } = useAuthSession();
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
+  const isTerminal = currentStepId === "import";
+  const [completing, setCompleting] = React.useState(false);
+
+  /**
+   * OB2-1 — terminal-step completion handler. Mirrors the legacy
+   * `app/onboarding/page.tsx:handleSubmit` write flow so a v2
+   * completer ends up with the same `profiles` row + local profile
+   * cache + analytics emit + dashboard redirect. data-integrity
+   * Stage F sign-off applied (target_calories_source = "onboarding"
+   * not "onboarding_v2"; no daily_targets snapshot from this path;
+   * no target_water_ml column).
+   *
+   * If the user isn't authenticated when they complete (e.g. they
+   * URL-stuffed /onboarding/v2 without signing up), we skip the
+   * upsert and bounce them to /signup with a return-to-onboarding
+   * intent. Local profile still saves so the values aren't lost.
+   */
+  const handleComplete = React.useCallback(async () => {
+    setCompleting(true);
+    try {
+      // Always save local first — UX still works if Supabase is down
+      // or the user is unauthenticated.
+      const localProfile: UserProfile = {
+        id: authedUserId ?? "",
+        displayName: state.name.trim() ? state.name.trim() : null,
+        avatarUrl: null,
+        userTier: "free",
+        dietary: state.diet,
+        measurementSystem: state.unitSystem,
+        age: state.age,
+        heightCm: state.heightCm,
+        weightKg: state.weightSkipped ? null : state.weightKg,
+        sex: state.sex,
+        activityLevel: state.activity,
+        goal: state.goal ? mapV2GoalToLegacy(state.goal) : null,
+        targets: targets
+          ? {
+              calories: targets.target,
+              protein: targets.proteinG,
+              carbs: targets.carbsG,
+              fat: targets.fatG,
+              fiber: targets.fiberG,
+              waterMl: 2400,
+            }
+          : null,
+        preferActivityAdjustedCalories: false,
+      };
+      try {
+        saveLocalProfile(localProfile);
+      } catch {
+        /* localStorage unavailable (private mode etc.) — non-fatal */
+      }
+
+      if (authedUserId) {
+        await persistOnboardingV2(supabase, {
+          userId: authedUserId,
+          state,
+          targets,
+        });
+        track(AnalyticsEvents.onboarding_completed, {
+          flow: "v2",
+          weight_skipped: state.weightSkipped,
+          goal: state.goal,
+        });
+        window.location.href = "/?view=discover";
+      } else {
+        // Anonymous completer — bounce to signup. The local profile
+        // cache means their answers persist across the auth handoff;
+        // a future iteration can re-hydrate state from saved profile
+        // on first authenticated visit.
+        track(AnalyticsEvents.onboarding_completed, {
+          flow: "v2",
+          weight_skipped: state.weightSkipped,
+          goal: state.goal,
+          unauthenticated: true,
+        });
+        window.location.href = "/signup?next=/onboarding/v2";
+      }
+    } finally {
+      setCompleting(false);
+    }
+  }, [authedUserId, state, targets]);
 
   // Stage E — when the user clicks Continue from the Pace step while
   // a soft-warn banner is showing, fire the `advanced` variant of
@@ -183,11 +271,15 @@ export function WebFlow() {
               </button>
               <Button
                 size="lg"
-                onClick={handleContinue}
-                disabled={!canAdvance}
+                onClick={isTerminal ? handleComplete : handleContinue}
+                disabled={!canAdvance || completing}
                 className="h-12 px-6 font-bold"
               >
-                Continue
+                {isTerminal
+                  ? completing
+                    ? "Saving…"
+                    : "Open my dashboard"
+                  : "Continue"}
                 <ArrowRight className="size-4" strokeWidth={2.2} />
               </Button>
             </div>
