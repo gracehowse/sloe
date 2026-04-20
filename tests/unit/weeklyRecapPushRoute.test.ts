@@ -34,10 +34,12 @@ const tableResults: {
   profiles: SelectResult;
   nutrition_entries: SelectResult;
   saves: SelectResult;
+  web_push_subscriptions: SelectResult;
 } = {
   profiles: { data: [], error: null },
   nutrition_entries: { data: [], error: null },
   saves: { data: [], error: null },
+  web_push_subscriptions: { data: [], error: null },
 };
 
 // Convenience getter — keeps the existing per-test setter syntax
@@ -108,7 +110,11 @@ let selectQueryBuilder = makeBuilder("profiles");
 const supabaseMock = {
   from: vi.fn((table: string) => {
     const tableKey = (
-      table === "nutrition_entries" || table === "saves" ? table : "profiles"
+      table === "nutrition_entries" ||
+      table === "saves" ||
+      table === "web_push_subscriptions"
+        ? table
+        : "profiles"
     ) as keyof typeof tableResults;
     const builder = makeBuilder(tableKey);
     return {

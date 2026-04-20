@@ -55,6 +55,7 @@
 import { NextResponse } from "next/server";
 
 import { sendExpoPush, type ExpoPushMessage } from "@/lib/push/expoPush";
+import { sendWebPushFanout } from "@/lib/push/webPushSend";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { buildWeeklyRecap, weekKeyFor } from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
@@ -627,6 +628,87 @@ export async function POST(req: Request) {
     }
   }
 
+  // Web-push fan-out. Best-effort: iterates the same `composed` set and
+  // sends the identical title/body to every web subscription the user
+  // has. Web-only users (no expo_push_token) aren't in `composed` —
+  // the select filter above requires a mobile token — so the first
+  // iteration still misses them. Tracked TODO: broaden eligibility to
+  // users with web subs but no expo token (follow-up).
+  //
+  // VAPID not configured → `sendWebPush` short-circuits; we still log
+  // the phase so Grace can verify the cron loop once keys are set.
+  let webSent = 0;
+  let webDeadCount = 0;
+  let webFailed = 0;
+  let webVapidUnset = false;
+  if (composed.length > 0) {
+    const composedUserIds = composed.map((c) => c.row.id);
+    const { data: webSubRows, error: webSelErr } = await supabase
+      .from("web_push_subscriptions")
+      .select("user_id, endpoint, p256dh, auth")
+      .in("user_id", composedUserIds);
+    if (webSelErr) {
+      console.log(
+        JSON.stringify({
+          at: "push.weekly_recap",
+          phase: "web_select_failed",
+          error: webSelErr.message,
+        }),
+      );
+    } else if (webSubRows && webSubRows.length > 0) {
+      const byUser = new Map<
+        string,
+        Array<{ endpoint: string; p256dh: string; auth: string }>
+      >();
+      for (const row of webSubRows) {
+        const list = byUser.get(row.user_id as string) ?? [];
+        list.push({
+          endpoint: row.endpoint as string,
+          p256dh: row.p256dh as string,
+          auth: row.auth as string,
+        });
+        byUser.set(row.user_id as string, list);
+      }
+      const deadEndpoints: string[] = [];
+      for (const c of composed) {
+        const subs = byUser.get(c.row.id);
+        if (!subs || subs.length === 0) continue;
+        const res = await sendWebPushFanout(subs, {
+          title: c.message.title ?? "Your week in Suppr",
+          body: c.message.body ?? "",
+          url: "/home?view=progress",
+          tag: `weekly_recap:${c.weekKey}`,
+        });
+        webSent += res.sent;
+        webFailed += res.failed;
+        if (res.vapidUnset) {
+          webVapidUnset = true;
+          break;
+        }
+        if (res.dead.length > 0) {
+          deadEndpoints.push(...res.dead);
+        }
+      }
+      if (deadEndpoints.length > 0) {
+        webDeadCount = deadEndpoints.length;
+        const { error: webDelErr } = await supabase
+          .from("web_push_subscriptions")
+          .delete()
+          .in("endpoint", deadEndpoints);
+        if (webDelErr) {
+          console.log(
+            JSON.stringify({
+              at: "push.weekly_recap",
+              phase: "web_delete_failed",
+              count: deadEndpoints.length,
+              error: webDelErr.message,
+            }),
+          );
+        }
+      }
+    }
+  }
+
   console.log(
     JSON.stringify({
       at: "push.weekly_recap",
@@ -635,6 +717,10 @@ export async function POST(req: Request) {
       succeeded: succeededUserIds.length,
       deregistered: deregisteredUserIds.length,
       invalidTokens: result.invalidTokens.length,
+      webSent,
+      webDead: webDeadCount,
+      webFailed,
+      webVapidUnset,
     }),
   );
 

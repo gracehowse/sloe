@@ -3,13 +3,16 @@
 import * as React from "react";
 import { Bell, Check } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { useAuthSessionOptional } from "@/context/AuthSessionContext";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
 import {
   getWebNotificationPermission,
   isWebNotificationSupported,
   requestWebNotificationPermission,
+  subscribeToWebPush,
 } from "@/lib/push/webNotifications";
+import { supabase } from "@/lib/supabase/browserClient";
 import { useOnboardingV2 } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
@@ -29,6 +32,7 @@ import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 export function PermissionsStep() {
   const { state, set } = useOnboardingV2();
+  const { authedUserId } = useAuthSessionOptional();
   const overline = useStepOverline();
 
   // Reflect a pre-existing browser grant / denial on mount so users
@@ -57,6 +61,21 @@ export function PermissionsStep() {
       if (result === "granted") {
         set({ notifGranted: true });
         setBlocked(false);
+        // Kick off the push subscription in the background. If the
+        // user isn't authed yet (they advanced through onboarding
+        // without completing signup, edge case), persistence is
+        // skipped; the browser permission is still granted so local
+        // `new Notification(...)` calls work. The terminal step's
+        // persistence layer can re-trigger subscribe after auth.
+        if (authedUserId) {
+          const subResult = await subscribeToWebPush(supabase, authedUserId);
+          track(AnalyticsEvents.onboarding_step_completed, {
+            step_id: "permissions",
+            detail: "web_push_subscribe_result",
+            result: subResult.ok ? "ok" : subResult.reason,
+            surface: "web",
+          });
+        }
       } else if (result === "denied") {
         // Browser won't re-prompt once denied — surface a hint so
         // the user knows the box won't flip without a settings trip.
@@ -71,7 +90,7 @@ export function PermissionsStep() {
     } finally {
       setPrompting(false);
     }
-  }, [set]);
+  }, [authedUserId, set]);
 
   const handleSkip = React.useCallback(() => {
     set({ notifGranted: false });
