@@ -1,10 +1,24 @@
 # 2026-04-20 — Incorporation jurisdiction (PENDING advisor input)
 
-**Status:** open — blocked on qualified cross-border tax advice + Cayman immigration check.
+**Status:** open — current-preferred path is **Delaware LLC formed via Stripe Atlas**, contingent on two gating advisor checks still outstanding (see § Next actions).
 **Owner:** Grace.
 **Related:**
 - [docs/planning/ip-followups-2026-04-19.md](../planning/ip-followups-2026-04-19.md) — entity incorporation is P0 there.
 - [docs/decisions/2026-04-19-consumer-vat-posture-uk-eu.md](2026-04-19-consumer-vat-posture-uk-eu.md) — UK/EU consumer VAT applies regardless of entity choice.
+
+## Current-preferred path (2026-04-20)
+
+**Delaware single-member LLC, formed via Stripe Atlas.**
+
+Rationale (Grace's read after framing conversation):
+- Pass-through tax treatment. With no US ties / no ECI, US federal tax at the entity level is potentially 0% — this is the load-bearing assumption that the cross-border CPA must confirm against her facts.
+- Stripe Atlas is purpose-built for non-US founders forming US LLCs (EIN via Form SS-4 for non-residents, Mercury bank onboarding with international KYC, template Orrick/Cooley operating agreement). Integrated Stripe onboarding removes one step.
+- Clerky was considered and rejected: Clerky is primarily C-Corp-focused, optimised for VC-backed US founders raising fundraising rounds, and does not provide legal advice itself (it's document automation, same as Atlas). Its value-add (SAFE generation, cap-table software, 83(b) e-filing) doesn't apply to Grace's stage or structure.
+- UK Ltd was the alternative considered. Dropped from the narrow because the UK tax rate (19–25%) at the entity level beats the Delaware LLC's "0% if no ECI" only if Grace wants the compliance simplicity — and the Delaware Form 5472 filing burden is bounded and well-understood (USD 400–800/yr CPA).
+
+**This path is NOT final.** It is a working direction so subsequent checks (immigration, CPA) ask the right questions. If those checks return bad news, the path flips back to UK Ltd or we revisit.
+
+Neither Atlas nor Clerky provides legal advice. Legal / tax questions are handled by the separate advisor workstreams below.
 
 ## Why this file exists (and what it ISN'T)
 
@@ -56,17 +70,21 @@ Scope:
 
 **Do this first.** Output: a plain-English yes/no + caveats that the tax advisor will key off.
 
-### 2. Cross-border tax advisor — 60-90 minute paid consult
+### 2. US cross-border CPA — 60-minute paid consult (Delaware LLC path specifically)
 
 Scope (to book **after** #1 returns):
-- Given the immigration answers, pick ONE primary jurisdiction and one backup.
-- Model company-level + personal-level tax at each lifecycle stage: formation, steady-state operations, profit extraction, scaling (first hire in UK/US/EU), exit/wind-up.
-- Name the specific filings (UK CT600, US Form 5472, IE CT1, etc.) that come with each option.
-- UK Statutory Residence Test — confirm whether sole-directing a UK Ltd from Cayman pulls her into UK tax residence under current rules, and the workday limits she'd need to respect.
-- National Insurance exposure on any director salary paid by a UK Ltd for duties performed in Cayman.
-- US Form 5472 / pro-forma 1120 annual filing if Delaware LLC — penalty exposure and the ongoing compliance cost in realistic money (not just "~$25k penalty" rhetoric).
+- Confirm that Grace's fact pattern (UK citizen, Cayman-resident, no US ties, consumer-SaaS on Stripe, no US employees / offices / inventory) supports the "no ECI → no US federal income tax at the LLC level" assumption. This is the single most load-bearing claim for the Delaware LLC path.
+- Scope the annual Form 5472 + pro-forma Form 1120 filing and quote the ongoing service fee. Target compliance cost is USD 400–800/yr. If a prospective CPA quotes materially higher, get a second opinion before committing.
+- Map the thresholds that would trigger US nexus / ECI as Suppr scales: first US contractor, infrastructure hosted in a specific US state (e.g. Supabase / Vercel regions), US office, US inventory. Need to know what to watch for, not to avoid growth.
+- Confirm no UK or Cayman tax side-effects from owning a Delaware LLC as a Cayman resident.
 
-**Budget estimate:** GBP 400–800 for the consult (one advisor, one meeting). Ask the advisor to produce a short written memo so its claims are attributable.
+**Search terms:** "Stripe Atlas non-resident CPA", "single-member LLC Form 5472 non-US owner". Vendors that serve this niche: James Baker CPA, 1040 Abroad, Greenback, and several solo CPAs with specialist practices. Short-list 2–3 before booking.
+
+**Budget estimate:** USD 300–600 for the consult. Ask for a brief written follow-up so the advice is attributable.
+
+### 2b. UK chartered tax advisor — only if the Delaware path gets blocked
+
+If immigration or the CPA returns blockers that knock out Delaware, fall back to a UK chartered tax advisor (CTA-qualified, offshore-founder experience) to re-evaluate UK Ltd. Brief at that point covers UK Statutory Residence Test day-count thresholds, NIC exposure on director duties performed in Cayman, effective tax on dividends to Cayman, and work-permit side-effects for the husband. Budget GBP 400–800. Skip for now.
 
 ### 3. Stripe onboarding — blocked until advisor output
 
@@ -91,11 +109,12 @@ These are queued, not pending advisor input — trigger them the day the entity 
 
 | # | Action | Owner | Cost | Expected time |
 |---|--------|-------|------|---------------|
-| 1 | Book Cayman immigration counsel call — scope in this doc, § "Cayman immigration counsel" | Grace | Low (free via sponsor HR, else ~USD 200) | 1–3 business days |
-| 2 | Resolve trademark direction (TM-1 in IP followups) so the entity isn't formed on a name about to change | Grace + trademark counsel | Already scoped | Concurrent with #1 |
-| 3 | Book cross-border tax advisor call — scope in this doc, § "Cross-border tax advisor" | Grace | GBP 400–800 | 3–5 business days after #1 |
-| 4 | Incorporate in chosen jurisdiction | Grace + formation provider | Varies | Same week as #3 output |
-| 5 | Onboard Stripe | Grace | Free (Stripe fees on transactions) | Same week as #4 |
-| 6 | Product-legal review of checkout/ToS/privacy/about to reflect new entity | Grace + product-legal-reviewer | Internal | 1–2 days after #5 |
+| 1 | Book Cayman immigration counsel call — scope in this doc, § "Cayman immigration counsel". Ask specifically about dependant-status ownership + direction of a US LLC + receipt of distributions into personal Cayman bank | Grace | Low (free via sponsor HR, else ~USD 200) | 1–3 business days |
+| 2 | Resolve trademark direction (TM-1 in TODO.md) so the entity isn't formed on a name about to change | Grace + trademark counsel | Already scoped | Concurrent with #1 |
+| 3 | Book US cross-border CPA call — scope in this doc, § "US cross-border CPA". Confirm no-ECI assumption + quote 5472 service fee | Grace | USD 300–600 | 3–5 business days after #1 |
+| 4 | Form Delaware LLC via Stripe Atlas (USD 500 one-off). EIN arrives in 1–3 weeks for non-US founder; Mercury bank opens in parallel | Grace + Stripe Atlas | USD 500 + Mercury fees | 5–15 business days after #3 |
+| 5 | Onboard Stripe against the new Atlas LLC | Grace | Free (Stripe fees on transactions) | 1–2 days after #4 |
+| 6 | Product-legal review of checkout/ToS/privacy/about to reflect new entity (merchant-of-record line, UK/EU VAT-inclusive pricing, renewal terms, company identifier consistency) | Grace + product-legal-reviewer | Internal | 1–2 days after #5 |
+| 7 | Update `TODO.md` LEGAL-1 — entity name populated across terms/dmca/privacy/landing-footer/licences + vendor DPAs (Stripe, Supabase, RevenueCat, Expo, PostHog, Sentry, OpenAI, Edamam) | Grace | Internal | Concurrent with #6 |
 
-Update this file with the advisor's recommendation and the resulting decision when #3 returns. At that point this file's `Status:` flips from `open` to `resolved` and a sibling file captures the actual decision.
+Update this file with the immigration + CPA answers as they come in. When Atlas completes #4 this file's `Status:` flips from `open` to `resolved` and a sibling file at `docs/decisions/2026-MM-DD-incorporation-decided.md` captures the actual decision + resulting entity name + registered office for the audit trail.
