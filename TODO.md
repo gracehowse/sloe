@@ -112,7 +112,7 @@ Remaining tasks:
 
 ### Pricing + billing (Pattern A: Stripe web + RC iOS) — **launch-blocking**
 
-- [ ] **[G]** Create RevenueCat account; connect Stripe under Integrations.
+- [x] **[G]** Create RevenueCat account; connect Stripe under Integrations. (Confirmed 2026-04-20.)
 - [ ] **[G]** App Store Connect — 4 iOS subscription products under bundle `com.supprclub.supprapp`:
   - `base_monthly` $4.99 / £3.99 · `base_annual` $37.99 / £29.99
   - `pro_monthly` $9.99 / £7.99 · `pro_annual` $74.99 / £59.99 (7-day free trial)
