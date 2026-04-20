@@ -14,6 +14,9 @@ tsconfig.tsbuildinfo
 
 # Claude Code local scheduler lock (machine-specific)
 .claude/scheduled_tasks.lock
+# Per-user Claude Code skills — installed on demand from the marketplace,
+# not part of the repo. CLAUDE.md (project rules) IS tracked.
+.claude/skills/
 
 # Office
 ~$*.docx
