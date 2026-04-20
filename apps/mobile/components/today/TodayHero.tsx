@@ -40,10 +40,20 @@ export interface TodayHeroProps {
   burned?: number | null;
   mealCount: number;
 
-  // Ring-specific: macro progress
+  // Ring-specific: macro progress (0..1 for the inner rings)
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
+
+  // Ring-specific: macro gram values for the expanded-state rows
+  loggedProtein: number;
+  targetProtein: number;
+  loggedCarbs: number;
+  targetCarbs: number;
+  loggedFat: number;
+  targetFat: number;
+  loggedFiber: number;
+  targetFiber: number;
 
   // Ring-specific: expand-macros state (host-owned)
   expanded: boolean;
@@ -75,6 +85,14 @@ export function TodayHero(props: TodayHeroProps) {
     proteinPct,
     carbsPct,
     fatPct,
+    loggedProtein,
+    targetProtein,
+    loggedCarbs,
+    targetCarbs,
+    loggedFat,
+    targetFat,
+    loggedFiber,
+    targetFiber,
     expanded,
     onToggleExpanded,
     displayMode,
@@ -94,12 +112,23 @@ export function TodayHero(props: TodayHeroProps) {
           consumed={consumed}
           goal={goal}
           baseGoal={baseGoal}
+          burned={burned}
           textColor={textColor}
           secondaryColor={textSecondaryColor}
           trackColor={trackColor}
+          cardBackgroundColor={cardBackgroundColor}
+          borderColor={borderColor}
           proteinPct={proteinPct}
           carbsPct={carbsPct}
           fatPct={fatPct}
+          loggedProtein={loggedProtein}
+          targetProtein={targetProtein}
+          loggedCarbs={loggedCarbs}
+          targetCarbs={targetCarbs}
+          loggedFat={loggedFat}
+          targetFat={targetFat}
+          loggedFiber={loggedFiber}
+          targetFiber={targetFiber}
           expanded={expanded}
           onToggleExpanded={onToggleExpanded}
           displayMode={displayMode}

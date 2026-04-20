@@ -2828,6 +2828,14 @@ export default function TrackerScreen() {
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
               fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
+              loggedProtein={Math.round(totals.protein)}
+              targetProtein={Math.round(targets.protein)}
+              loggedCarbs={Math.round(totals.carbs)}
+              targetCarbs={Math.round(targets.carbs)}
+              loggedFat={Math.round(totals.fat)}
+              targetFat={Math.round(targets.fat)}
+              loggedFiber={Math.round(totals.fiber ?? 0)}
+              targetFiber={Math.round(targets.fiber ?? 30)}
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
