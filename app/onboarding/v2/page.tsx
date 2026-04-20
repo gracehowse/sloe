@@ -19,23 +19,26 @@
  */
 
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { OnboardingV2Provider } from "@/app/components/onboarding-v2/context";
 import { WebFlow } from "@/app/components/onboarding-v2/web-flow";
 
 export const metadata: Metadata = {
   title: "Suppr — Onboarding v2 (preview)",
-  // Don't index the preview route — Stage E will add the proper
-  // production-ready route + redirect handling.
+  // Don't index the preview route. The route is reachable in prod
+  // for authenticated users so Grace (and anyone the `onboarding_v2`
+  // PostHog flag matches) can preview the redesigned flow on real
+  // infra. Middleware auth-gates the path — random unauthenticated
+  // visitors still bounce to /login. The PostHog flag is currently
+  // scoped to one email so the auto-redirect from /onboarding only
+  // fires for that user; everyone else continues on the legacy flow.
+  //
+  // ⚠ The flow does not yet write `daily_targets` / `profiles` on
+  // completion (OB2-1 in TODO.md). Completing it is harmless but
+  // doesn't persist anything yet.
   robots: { index: false, follow: false },
 };
 
 export default function OnboardingV2Page() {
-  // Defence-in-depth: the middleware also denies this path in prod
-  // (only allowed via `isDevPreview` in non-prod). If someone wires
-  // the route into the prod allowlist by mistake, this 404s instead
-  // of leaking the unfinished flow.
-  if (process.env.NODE_ENV === "production") notFound();
   return (
     <OnboardingV2Provider>
       <WebFlow />
