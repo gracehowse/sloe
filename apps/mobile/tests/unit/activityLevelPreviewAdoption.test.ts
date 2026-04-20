@@ -62,8 +62,13 @@ const CONSUMERS: readonly Consumer[] = [
     renderTag: /<ActivityLevelPreview\b/,
   },
   {
-    label: "web onboarding",
-    path: "app/onboarding/page.tsx",
+    // Web `/onboarding` is now a 307 redirect to `/onboarding/v2` (see
+    // app/onboarding/page.tsx). The legacy 4-step form lives in
+    // `app/onboarding/legacy-form.tsx` for emergency rollback only —
+    // pin its imports here so the shared ActivityLevelPreview can't
+    // silently regress to an inline copy on the rollback path.
+    label: "web onboarding (legacy fallback form)",
+    path: "app/onboarding/legacy-form.tsx",
     root: REPO_ROOT,
     importPatterns: [
       /from\s+["']\.\.\/\.\.\/src\/app\/components\/suppr\/activity-level-preview(?:\.tsx)?["']/,
