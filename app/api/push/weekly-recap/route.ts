@@ -72,6 +72,7 @@ import {
   previousWeekDescriptor,
   type NutritionEntryRow,
 } from "@/lib/push/weeklyRecapPayload";
+import { shouldPushWeeklyRecapNow } from "@/lib/push/weeklyRecapTzFilter";
 import { availableFreezes } from "@/lib/nutrition/streakFreeze";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { serverTrack } from "@/lib/analytics/serverTrack";
@@ -100,6 +101,7 @@ type ProfileRow = {
   expo_push_token: string | null;
   last_weekly_recap_push_sent_at: string | null;
   week_start_day?: string | null;
+  tz_iana?: string | null;
 
   // Recap inputs
   weight_kg_by_day?: unknown;
@@ -135,6 +137,7 @@ const PROFILE_SELECT_COLUMNS = [
   "expo_push_token",
   "last_weekly_recap_push_sent_at",
   "week_start_day",
+  "tz_iana",
   "weight_kg_by_day",
   "target_calories",
   "target_protein",
@@ -171,12 +174,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 2. Optional cohort filter (weekStartDay=monday|sunday).
-  const { searchParams } = new URL(req.url);
-  const cohort = searchParams.get("weekStartDay");
-  const cohortFilter =
-    cohort === "monday" || cohort === "sunday" ? cohort : null;
-
+  // 2. Timezone-aware fan-out (T12, 2026-04-20): the cron now fires
+  //    hourly from vercel.json. Each invocation we filter eligible
+  //    users to those whose current local time is 18:00 on their
+  //    end-of-week day (Sunday for monday-start users, Saturday for
+  //    sunday-start users). Filter runs in-memory after the DB
+  //    select because tz math requires Intl and isn't expressible as
+  //    a SQL predicate. The dedupe window (6 days) prevents
+  //    double-fires across the hourly cron.
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json(
@@ -192,15 +197,11 @@ export async function POST(req: Request) {
   // 3. Select profiles. The full column list is required because the
   //    recap + cascade run server-side now (T3/T4) — we can't do per-
   //    user fetches in a follow-up RTT without ballooning latency.
-  let query = supabase
+  const query = supabase
     .from("profiles")
     .select(PROFILE_SELECT_COLUMNS)
     .eq("weekly_recap_push_enabled", true)
     .not("expo_push_token", "is", null);
-
-  if (cohortFilter) {
-    query = query.eq("week_start_day", cohortFilter);
-  }
 
   const { data: rows, error: selectErr } = await query.range(
     0,
@@ -220,19 +221,31 @@ export async function POST(req: Request) {
     );
   }
 
-  // 4. Dedupe BEFORE the nutrition_entries fetch — there is no point
-  //    in pulling 7 days of meal rows for users we won't push to.
-  //    (Sunday push rewrite — T3, 2026-04-19.)
+  // 4. Dedupe + tz filter BEFORE the nutrition_entries fetch — there
+  //    is no point in pulling 7 days of meal rows for users we won't
+  //    push to. Dedupe comes from T3 (2026-04-19); tz filter is T12
+  //    (2026-04-20). Evaluation order doesn't matter for correctness
+  //    since both are user-scoped predicates.
   const now = Date.now();
+  const nowUtc = new Date(now);
   // Cast through `unknown` because supabase-js infers
   // `GenericStringError[]` for the long, comma-joined column list and
   // refuses the direct cast. Runtime shape is the row shape.
   const eligible = ((rows ?? []) as unknown as ProfileRow[]).filter((r) => {
     if (!r.expo_push_token) return false;
-    if (!r.last_weekly_recap_push_sent_at) return true;
-    const lastSentMs = Date.parse(r.last_weekly_recap_push_sent_at);
-    if (!Number.isFinite(lastSentMs)) return true;
-    return now - lastSentMs >= DEDUPE_WINDOW_MS;
+    // Dedupe: skip if pushed within the last 6 days.
+    if (r.last_weekly_recap_push_sent_at) {
+      const lastSentMs = Date.parse(r.last_weekly_recap_push_sent_at);
+      if (Number.isFinite(lastSentMs) && now - lastSentMs < DEDUPE_WINDOW_MS) {
+        return false;
+      }
+    }
+    // Tz filter: fire only when it's 18:00 local on the user's
+    // end-of-week day. Null tz → treated as UTC (preserves
+    // pre-migration behaviour).
+    const wsd: "monday" | "sunday" =
+      r.week_start_day === "sunday" ? "sunday" : "monday";
+    return shouldPushWeeklyRecapNow({ tzIana: r.tz_iana ?? null, weekStartDay: wsd }, nowUtc);
   });
 
   const attempted = eligible.length;
@@ -240,7 +253,6 @@ export async function POST(req: Request) {
     console.log(
       JSON.stringify({
         at: "push.weekly_recap",
-        cohort: cohortFilter,
         attempted: 0,
         succeeded: 0,
         deregistered: 0,
@@ -523,7 +535,6 @@ export async function POST(req: Request) {
     console.log(
       JSON.stringify({
         at: "push.weekly_recap",
-        cohort: cohortFilter,
         attempted,
         succeeded: 0,
         deregistered: 0,
@@ -545,7 +556,6 @@ export async function POST(req: Request) {
     console.log(
       JSON.stringify({
         at: "push.weekly_recap",
-        cohort: cohortFilter,
         phase: "send_failed",
         attempted,
         error: result.error,
@@ -712,7 +722,6 @@ export async function POST(req: Request) {
   console.log(
     JSON.stringify({
       at: "push.weekly_recap",
-      cohort: cohortFilter,
       attempted,
       succeeded: succeededUserIds.length,
       deregistered: deregisteredUserIds.length,

@@ -142,6 +142,16 @@ vi.mock("@/lib/supabase/serverAdminClient", () => ({
   requireSupabaseAdminClient: () => supabaseMock,
 }));
 
+// T12 (2026-04-20) — the route now filters eligible rows through
+// `shouldPushWeeklyRecapNow`, which only returns true when the user's
+// local time is 18:00 on their end-of-week day. Existing tests
+// target the fan-out / dedupe / bookkeeping behaviour, not the tz
+// gate — so bypass it here. Dedicated tz-filter tests live in
+// `weeklyRecapTzFilter.test.ts`.
+vi.mock("@/lib/push/weeklyRecapTzFilter", () => ({
+  shouldPushWeeklyRecapNow: () => true,
+}));
+
 // --- fetch mock -------------------------------------------------------------
 
 const fetchMock = vi.fn();
@@ -387,17 +397,18 @@ describe("fan-out flow", () => {
     expect(dereg?.ids).toEqual(["user-dead"]);
   });
 
-  it("forwards weekStartDay to the query when the cohort param is present", async () => {
+  // T12 (2026-04-20) — the URL-cohort filter was removed when the
+  // cron moved to hourly. The tz filter (`shouldPushWeeklyRecapNow`)
+  // now determines per-user eligibility in-memory, so the route
+  // never applies a DB `week_start_day` filter regardless of what
+  // the URL carries.
+  it("does NOT apply a DB week_start_day filter — tz filter handles cohort", async () => {
     selectResult.current = { data: [], error: null };
     const POST = await loadRoute();
+    // Pass a legacy cohort param in the URL to confirm the route
+    // silently ignores it (backwards-compatible with stale cron
+    // configs during deploy window).
     await POST(makeReq({ secret: "test-cron-secret", cohort: "monday" }));
-    expect(selectQueryBuilder.eq).toHaveBeenCalledWith("week_start_day", "monday");
-  });
-
-  it("ignores bogus weekStartDay values", async () => {
-    selectResult.current = { data: [], error: null };
-    const POST = await loadRoute();
-    await POST(makeReq({ secret: "test-cron-secret", cohort: "garbage" }));
     const cohortCall = selectQueryBuilder.eq.mock.calls.find(
       (args) => args[0] === "week_start_day",
     );

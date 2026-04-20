@@ -91,13 +91,15 @@ The recap surfaces a single growth-loop insight between `bestDay` and the mainte
 
 Floor is `USUAL_MEAL_REPEAT_FLOOR = 3` (exported from `src/lib/nutrition/weeklyRecap.ts`). Pinned by `tests/unit/usualMealInsightLoosenedGate.test.ts` and the existing `tests/unit/usualMealHint.test.ts`.
 
-## Weekly Recap Push (server-cron only, post-kill 2026-04-20)
+## Weekly Recap Push (server-cron, tz-aware — T12, 2026-04-20)
 
 ### Schedule
-- Server cron fires `app/api/push/weekly-recap/route.ts` at 18:00 UTC on the end-of-week day (see `vercel.json`): Sunday for Monday-start users, Saturday for Sunday-start users. Route fans out via Expo push → APNs to every enabled profile with a synced `profiles.expo_push_token`.
-- **Mobile-local `expo-notifications` scheduling was removed 2026-04-20** — see [docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md](../decisions/2026-04-20-weekly-recap-mobile-local-killed.md). Installs without a synced token receive no weekly push. The upstream fix is token-registration coverage (TODO P0-1), not a generic mobile-local fallback.
-- Cron timing is currently UTC wall-clock. This is fine for the UK user base (18:00 UTC = 19:00 BST) but tracks as a known warning for users in UTC+7..+10 zones — see TODO T10 (journey-architect follow-up).
+- Server cron runs hourly (`vercel.json`: `0 * * * *` → `app/api/push/weekly-recap/route.ts`). Each invocation filters eligible users via [`shouldPushWeeklyRecapNow`](../../src/lib/push/weeklyRecapTzFilter.ts): fires only for users whose current local time is 18:00 on their end-of-week day (Sunday for Monday-start, Saturday for Sunday-start). Daylight-saving transitions handled automatically because the filter uses the stored IANA zone name via `Intl.DateTimeFormat`.
+- User's IANA zone lives in `profiles.tz_iana`. Web + mobile clients write `Intl.DateTimeFormat().resolvedOptions().timeZone` through [`src/lib/profile/tzSync.ts`](../../src/lib/profile/tzSync.ts) on session restore + auth-state-change (+ mobile foreground). Fire-and-forget; never blocks auth.
+- Pre-migration users (null `tz_iana`) fall back to 18:00 UTC until their client writes a real value — preserves the pre-2026-04-20 behaviour. See [decision](../decisions/2026-04-20-weekly-recap-tz-aware-fanout.md).
+- **Mobile-local `expo-notifications` scheduling was removed 2026-04-20** — see [the mobile-local kill decision](../decisions/2026-04-20-weekly-recap-mobile-local-killed.md). Installs without a synced Expo token receive no weekly push. Upstream fix is token-registration coverage (TODO P0-1).
 - `cancelWeeklyRecapPush()` runs once on mobile boot (`apps/mobile/app/_layout.tsx` → `HandleWeeklyRecapPushOpen`) so pre-kill installs evict any stale `weekly-recap-v1` schedule from their OS queue. Idempotent.
+- Dedupe: the route already had a 6-day `last_weekly_recap_push_sent_at` window; with the hourly cron that window is the backstop that prevents double-fires on the 24 cron invocations per day.
 
 ### Opt-out
 - Profile flag `weekly_recap_push_enabled` (default `true`). First-class Settings toggle on both platforms (H6 audit fix, 2026-04-18):

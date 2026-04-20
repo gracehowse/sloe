@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { syncProfileTimezone } from "../../../src/lib/profile/tzSync";
 
 type AuthState = {
   session: Session | null;
@@ -50,6 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeout);
       setSession(data.session);
       setLoading(false);
+      // Write IANA tz into profiles so the weekly recap push fires at
+      // the user's local 18:00 (T12, 2026-04-20). Fire-and-forget.
+      if (data.session?.user?.id) {
+        void syncProfileTimezone(supabase, data.session.user.id);
+      }
     }).catch(() => {
       if (!cancelled) {
         clearTimeout(timeout);
@@ -60,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes (sign in, sign out, token refresh)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      if (s?.user?.id) {
+        void syncProfileTimezone(supabase, s.user.id);
+      }
     });
 
     // Proactive token refresh when app comes to foreground
@@ -72,6 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const fiveMinFromNow = Math.floor(Date.now() / 1000) + 300;
             if (expiresAt < fiveMinFromNow) {
               supabase.auth.refreshSession().catch(() => {});
+            }
+            // Re-sync tz on foreground — the user may have travelled
+            // or crossed a DST boundary since last launch.
+            if (data.session.user?.id) {
+              void syncProfileTimezone(supabase, data.session.user.id);
             }
           }
         });

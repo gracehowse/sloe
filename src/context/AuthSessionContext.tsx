@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import posthog from "posthog-js";
 import { supabase } from "../lib/supabase/browserClient.ts";
+import { syncProfileTimezone } from "../lib/profile/tzSync.ts";
 
 export interface AuthSessionValue {
   authedUserId: string | null;
@@ -28,6 +29,10 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
         posthog.identify(userId, email ? { email } : undefined);
       }
+      // Write IANA tz into profiles so the weekly recap push fires at
+      // the user's local 18:00 (T12, 2026-04-20). Fire-and-forget;
+      // syncProfileTimezone swallows errors.
+      if (userId) void syncProfileTimezone(supabase, userId);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       const userId = session?.user.id ?? null;
@@ -40,6 +45,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         // User signed out — reset to prevent cross-user contamination.
         posthog.reset();
       }
+      if (userId) void syncProfileTimezone(supabase, userId);
     });
     return () => {
       cancelled = true;

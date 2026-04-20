@@ -917,15 +917,18 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - EDGE: change `week_start_day` from Monday to Sunday mid-week → next Progress visit rebuilds the recap for the Sunday-start window and the push scheduler reschedules to Saturday 18:00 (ledger key changes).
 - A11Y: card has an `accessibilityRole="header"` on the headline; dismiss and share buttons have explicit `accessibilityLabel`s.
 
-### 10.12 Weekly Recap push (server-cron only, post-kill 2026-04-20)
-- PRE: `weekly_recap_push_enabled = true` on the profile; `profiles.expo_push_token` synced; OS notification permission granted.
-- EXP: server cron (vercel.json → `app/api/push/weekly-recap/route.ts`) at 18:00 UTC on Sunday (Monday-start) or Saturday (Sunday-start) posts via Expo → APNs. Body is per-user, composed by `formatWeeklyRecapPushBody` with cascade suggestion where available.
-- EXP: `weekly_recap_push_sent { weekKey, bodyVariant, suggestionRule }` fires server-side once per successful send. `weekKey` is the previous completed week (matches `weekly_recap_push_opened`).
-- EXP: tap the notification → app opens to `/progress`; `weekly_recap_push_opened { weekKey }` fires via the `HandleWeeklyRecapPushOpen` listener in `apps/mobile/app/_layout.tsx`.
-- EXP: on first boot after the 2026-04-20 kill ships, the mount effect in `HandleWeeklyRecapPushOpen` calls `cancelWeeklyRecapPush()` once so pre-kill installs evict any stale `weekly-recap-v1` schedule from the OS queue. Confirm via Xcode scheduled-notifications inspector that `weekly-recap-v1` is absent after first launch.
-- NEG: `profiles.expo_push_token` null → the device receives no weekly push (mobile-local fallback killed 2026-04-20). The upstream fix is token-sync coverage (TODO P0-1).
-- NEG: toggle `weekly_recap_push_enabled = false` → server cron skips the user on next fire. Settings toggle OFF also calls `cancelWeeklyRecapPush()` for immediate OS-queue cleanup.
-- EDGE: Users in UTC+7..+10 receive the push at potentially anti-social local hours (e.g. 02:00 AWST for 18:00 UTC). Known warning; fix tracked as TODO T10 (journey-architect — `tz_utc_offset_minutes` interim + IANA long-term).
+### 10.12 Weekly Recap push (server-cron, tz-aware — T12, 2026-04-20)
+- PRE: `weekly_recap_push_enabled = true`; `profiles.expo_push_token` synced; `profiles.tz_iana` populated (client writes it on session/auth — confirm via Supabase after first open post-deploy).
+- EXP: cron runs hourly (`vercel.json`: `0 * * * *` → `app/api/push/weekly-recap/route.ts`). Each hour filters users via `shouldPushWeeklyRecapNow`: fires only when the user's local time is 18:00 on their end-of-week day (Sunday / Saturday). For a UK monday-start user in winter the 18:00 UTC cron fires; in BST the 17:00 UTC cron fires; Perth (UTC+8) fires at 10:00 UTC.
+- EXP: body is per-user, composed by `formatWeeklyRecapPushBody`.
+- EXP: `weekly_recap_push_sent { weekKey, bodyVariant, suggestionRule }` fires server-side once per successful send. 6-day dedupe stops the hourly cron from re-firing.
+- EXP: tap → app opens to `/progress`; `weekly_recap_push_opened { weekKey }` via `HandleWeeklyRecapPushOpen` in `_layout.tsx`.
+- EXP: on first boot after 2026-04-20 the layout calls `cancelWeeklyRecapPush()` once to evict any stale local `weekly-recap-v1` schedule. Xcode inspector confirms.
+- NEG: `expo_push_token` null → no push (the mobile-local fallback is killed). Fix is token-sync coverage (TODO P0-1).
+- NEG: `weekly_recap_push_enabled = false` → server cron skips. Settings OFF also calls `cancelWeeklyRecapPush()`.
+- NEG: `tz_iana` null → route treats as UTC (pre-migration behaviour preserved). Fires at 18:00 UTC until the client writes a real value.
+- EDGE: DST transition — handled automatically via the IANA zone lookup. Wall-clock 18:00 is always correct.
+- EDGE: user travels across timezones — next app foreground re-writes `tz_iana`; subsequent pushes land at new local 18:00.
 
 ### 10.12a Weekly Recap Settings toggle (post-kill 2026-04-20)
 - PRE: `weekly_recap_push_enabled = true` on the profile (default), Monday-start user.
