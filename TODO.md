@@ -32,22 +32,16 @@ Legend: `[G]` Grace-only (dashboard / human decision) · `[E]` executor / code �
 
 ### Pre-ship checklist (rounds 1–6 landing-parity sweep)
 
-- [ ] **[E] Commit working tree in 8 chunks** (order per release-gate; do not squash):
-  1. `chore(docs): landing maintenance SSOT + hub refresh`
-  2. `refactor(landing): extract SSOT content + nutrition sources`
-  3. `feat(legal): renewal disclosure, refund anchor, downgrade FAQ, TDEE copy`
-  4. `feat(db): free save cap + publish-tier + stripe_customer_id migrations`
-  5. `feat(billing): stripe_customer_id webhook write + customer portal route + BillingUnavailableFallback`
-  6. `feat(billing): stripe tax flag + VAT-inclusive disclosure (gated) + mobile parity tests + VAT posture decision doc`
-  7. `feat(api): voice-log pro-gate (100/day)`
-  8. `feat(mobile): nutrition-sources SSOT, upgrade banner tier branching, paywall refund line, openUpgradePromo signature`
-- [ ] **[G] Apply 3 Supabase migrations to prod** (order-agnostic):
+_Code landed as of 2026-04-20 — working tree clean, all 8 release-gate chunks committed (see `git log` 2026-04-19..20). Vercel main-branch auto-deploy is the vector; `STRIPE_TAX_ENABLED` defaults to `false` so deploys are safe without the dashboard flip._
+
+Remaining pre-flip:
+
+- [ ] **[G] Apply 3 Supabase migrations to prod** (order-agnostic). Use `supabase db push --linked` (NOT MCP `apply_migration` — CLAUDE.md non-negotiable):
   - `supabase/migrations/20260419110000_profiles_stripe_customer_id.sql`
   - `supabase/migrations/20260426100000_saves_free_tier_cap.sql`
   - `supabase/migrations/20260426100100_recipes_publish_tier_gate.sql`
 - [ ] **[G] Stripe dashboard — activate Stripe Tax.**
 - [ ] **[G] Stripe dashboard — set `tax_behavior: inclusive`** on all 4 Price objects (BASE_MONTHLY, BASE_ANNUAL, PRO_MONTHLY, PRO_ANNUAL). Existing subscribers aren't re-charged; takes effect next renewal.
-- [ ] **[E] Deploy rounds 1–6** (with `STRIPE_TAX_ENABLED=false` — safe default).
 
 ### Flip `STRIPE_TAX_ENABLED=true` (after Stripe dashboard confirmed live)
 
@@ -68,6 +62,13 @@ Legend: `[G]` Grace-only (dashboard / human decision) · `[E]` executor / code �
 ## 🚧 In flight — waiting for agent output
 
 _None._ All in-flight work landed 2026-04-19.
+
+**Recently shipped (2026-04-20 session — push pre-flight + housekeeping):**
+- ✅ T8 customer-lens re-permission audit (no formal re-permission needed; permission copy reconciled across 3 sites in parity — web + mobile onboarding-v2 + legacy notifications-prompt).
+- ✅ T9 docs + cleanup closed (no stale generic-body literals in server-cron path; mobile-local fallback tracked as T11).
+- ✅ Ship-blocking 8-chunk commit plan confirmed fully landed (working tree clean); stale checklist removed.
+- ✅ PostHog wizard report landed in `docs/planning/posthog-setup-2026-04-20.md` + TODO.md tick (RevenueCat account created).
+- New follow-ups added: T10 (cron-timing user-local, journey-architect), T11 (mobile-local fallback fate, product-lead).
 
 **Recently shipped (2026-04-19 session — Progress + Push deep dive):**
 - ✅ A2 schema migration (5-value enum `target_calories_source` + `set_at`), all 9 write sites stamped truthfully, backfill applied
