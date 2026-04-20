@@ -138,25 +138,30 @@ export function TodayHero(props: TodayHeroProps) {
         />
       )}
 
-      {/* Picker affordance — small grid icon absolute top-right of card */}
+      {/* Picker affordance — small grid icon absolute top-right of the
+          hero area. Uses the card background + visible border so the
+          button reads in both light + dark mode (an earlier tint-only
+          treatment disappeared on a light background). */}
       <Pressable
         onPress={() => setPickerOpen(true)}
         accessibilityRole="button"
         accessibilityLabel="Change hero style"
-        hitSlop={8}
+        hitSlop={12}
         style={{
           position: "absolute",
-          top: 10,
-          right: 10,
-          width: 28,
-          height: 28,
-          borderRadius: Radius.sm,
+          top: 6,
+          right: 6,
+          width: 34,
+          height: 34,
+          borderRadius: Radius.full,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: `${textSecondaryColor}18`,
+          backgroundColor: cardBackgroundColor,
+          borderWidth: 1,
+          borderColor: borderColor,
         }}
       >
-        <Ionicons name="grid-outline" size={13} color={textSecondaryColor} />
+        <Ionicons name="grid-outline" size={16} color={textColor} />
       </Pressable>
 
       <TodayHeroVariantPicker
