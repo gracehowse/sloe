@@ -29,7 +29,7 @@ export function MobilePermissionsStep() {
         icon="notifications-outline"
         iconColor={Accent.warning}
         title="Notifications"
-        body="Gentle reminders only — an optional evening nudge if you're below your protein target. Off by default on weekends."
+        body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
         granted={state.notifGranted}
         onAllow={() => set({ notifGranted: true })}
         onSkip={() => set({ notifGranted: false })}

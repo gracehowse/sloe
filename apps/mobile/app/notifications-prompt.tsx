@@ -153,7 +153,7 @@ export default function NotificationsPromptScreen() {
       <Text style={styles.heading}>Stay on top of your meals</Text>
       <Text style={styles.stat}>
         {
-          "We'll send you a gentle nudge to log meals, remind you about your meal plan, and let you know when new recipes match your targets."
+          "Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
         }
       </Text>
 

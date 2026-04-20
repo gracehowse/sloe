@@ -107,7 +107,7 @@ export function PermissionsStep() {
         icon={<Bell className="size-5 text-warning" />}
         iconBg="bg-warning/12"
         title="Notifications"
-        body="Gentle reminders only — an optional evening nudge if you're below your protein target. Off by default on weekends."
+        body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
         granted={state.notifGranted}
         blocked={blocked}
         working={prompting}
