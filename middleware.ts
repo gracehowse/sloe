@@ -13,6 +13,14 @@ const PUBLIC_ROUTES = new Set([
   "/privacy",
   "/terms",
   "/reset-password",
+  // Preview onboarding v2 — temporarily reachable without auth so
+  // Grace can preview the redesigned flow on prod the same way it
+  // works on localhost. PostHog flag still gates the auto-redirect
+  // from /onboarding (only the matched email gets bounced into v2);
+  // direct URL visits work for anyone but the URL isn't published
+  // anywhere, has noindex, and the flow doesn't persist anything
+  // yet (OB2-1 in TODO.md). Lock back behind auth once OB2-1 lands.
+  "/onboarding/v2",
 ]);
 
 /** Dev-only preview routes. Reachable without auth in development so
