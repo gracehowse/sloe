@@ -40,14 +40,20 @@ export function WelcomeStep() {
         }}
       />
 
-      <div className="relative grid h-full grid-cols-[1.1fr_1fr] items-center gap-12 px-16 py-9">
+      {/* Desktop: two-column hero with floating product preview.
+          Mobile-web (Grace 2026-04-20): stacked single column, smaller
+          headline, vertical CTAs, floating visual hidden (it doesn't
+          fit the viewport and the checklist below already shows
+          proof-points). Overflow-auto so tall mobile content can
+          scroll within the canvas. */}
+      <div className="relative grid h-full grid-cols-1 md:grid-cols-[1.1fr_1fr] items-start md:items-center gap-8 md:gap-12 px-5 py-10 md:px-16 md:py-9 overflow-auto">
         {/* Left column — wordmark, headline, body, CTAs, checklist. */}
         <div className="z-10">
-          <div className="mb-10">
-            <SupprWordmark size={28} />
+          <div className="mb-7 md:mb-10">
+            <SupprWordmark size={24} />
           </div>
           <h1
-            className="m-0 mb-5 text-[64px] font-extrabold leading-[1.0] text-foreground"
+            className="m-0 mb-4 md:mb-5 text-[40px] md:text-[64px] font-extrabold leading-[1.05] md:leading-[1.0] text-foreground"
             style={{
               letterSpacing: "-0.04em",
               textWrap: "balance",
@@ -58,39 +64,46 @@ export function WelcomeStep() {
             Suppr Club.
           </h1>
           <p
-            className="m-0 mb-9 max-w-[520px] text-[17px] leading-[1.55] text-muted-foreground"
+            className="m-0 mb-7 md:mb-9 max-w-[520px] text-[15px] md:text-[17px] leading-[1.55] text-muted-foreground"
           >
             Eat well. Cook what you want. Know what&apos;s in it. Import recipes
             from the sites you already use — Suppr breaks down the macros and
             calibrates targets to you.
           </p>
 
-          <div className="mb-10 flex gap-3.5">
+          <div className="mb-8 md:mb-10 flex flex-col sm:flex-row gap-3 md:gap-3.5">
             <Button
               size="lg"
               onClick={() => go(1)}
-              className="h-14 px-7 text-base font-bold"
+              className="h-12 md:h-14 px-6 md:px-7 text-base font-bold"
             >
               Join the club — free
             </Button>
             <Button
               size="lg"
               variant="ghost"
-              className="h-14 px-7 text-base font-semibold text-foreground hover:bg-muted/50"
+              onClick={() => {
+                // "I'm already a member" — send returning visitors to
+                // the canonical sign-in entry point (Grace 2026-04-20).
+                if (typeof window !== "undefined") {
+                  window.location.href = "/login";
+                }
+              }}
+              className="h-12 md:h-14 px-6 md:px-7 text-base font-semibold text-foreground hover:bg-muted/50"
             >
               I&apos;m already a member
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-8 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8 text-xs">
             <Checkline>Adaptive TDEE that learns from you</Checkline>
             <Checkline>One-tap import from any recipe site</Checkline>
             <Checkline>Calm design, private by default</Checkline>
           </div>
         </div>
 
-        {/* Right column — floating product preview. */}
-        <div className="relative flex h-full items-center justify-center">
+        {/* Right column — floating product preview (hidden on mobile). */}
+        <div className="relative hidden md:flex h-full items-center justify-center">
           <WebWelcomeVisual />
         </div>
       </div>

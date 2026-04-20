@@ -165,12 +165,12 @@ export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginC
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6"
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8"
       style={{ background: "var(--background)" }}
     >
       <div className="w-full max-w-md">
         {/* Value proposition — above the form */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div
             className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4"
             style={{
@@ -198,7 +198,7 @@ export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginC
 
         {/* Auth form */}
         <div
-          className="rounded-2xl p-8"
+          className="rounded-2xl p-5 sm:p-8"
           style={{
             background: "var(--card)",
             border: "1px solid var(--border)",

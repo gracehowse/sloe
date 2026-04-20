@@ -198,24 +198,28 @@ export function WebFlow() {
           the eyebrow carries the canonical step number per ui-critic.
           The Save & Exit stub is hidden until the wired-up confirm
           flow lands (tracked in TODO.md OB2 follow-ups). */}
-      <header className="h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-9">
+      <header className="h-14 md:h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-9">
         <div className="justify-self-start">
-          <SupprWordmark size={28} />
+          <SupprWordmark size={24} />
         </div>
         <ProgressBar
           value={displayIndex}
           total={displayTotal}
-          className="w-full max-w-[360px] justify-self-center"
+          className="w-full max-w-[260px] md:max-w-[360px] justify-self-center"
         />
         <div className="justify-self-end" />
       </header>
 
-      {/* Body */}
-      <div className="flex-1 grid grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden">
-        {/* Narrative column */}
+      {/* Body. Mobile-web collapses the split to the card column only —
+          the narrative column's framing role (eyebrow + step-count) is
+          already carried by the in-card StepHeader overline, so hiding
+          the big headline column doesn't lose the user's place. Above
+          768px the desktop split returns (Grace 2026-04-20). */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden">
+        {/* Narrative column — hidden on mobile viewports. */}
         <div
           key={`narr-${displayIndex}`}
-          className="relative overflow-hidden flex flex-col justify-center px-16 py-14"
+          className="hidden md:flex relative overflow-hidden flex-col justify-center px-16 py-14"
           style={{
             background:
               "radial-gradient(ellipse at top left, color-mix(in oklab, var(--primary) 12%, transparent), transparent 55%)",
@@ -259,7 +263,7 @@ export function WebFlow() {
             a triple-stacked transparency mash, AND uses overflow-auto
             on the card so taller states (Pace banner + projection +
             methodology stack) don't clip. */}
-        <div className="border-l border-border bg-card/40 px-12 py-10 overflow-auto flex flex-col">
+        <div className="md:border-l border-border bg-card/40 px-4 py-6 md:px-12 md:py-10 overflow-auto flex flex-col">
           <div
             key={`card-${displayIndex}`}
             className="flex-1 min-h-0 flex flex-col"
