@@ -124,10 +124,13 @@ PostHog flag:
   preferred shape, deferred to follow-up
 - Account-creation age gate — formal-counsel question; not in this
   scope but flagged for the auth flow
-- Targets persistence — Stage E adds the flag + redirect but does
-  NOT yet write to `daily_targets` / `profiles`. The route component
-  (`app/onboarding/v2/page.tsx`) will need the upsert before flag
-  flip to a non-internal cohort.
+- Targets persistence — **shipped** at OB2-1 ([src/lib/onboarding/v2/persist.ts](../../src/lib/onboarding/v2/persist.ts)). v2 completers now upsert a `profiles` row identical in shape to a legacy completer. `daily_targets` snapshot is still "first food log of the day wins" by design (F-2 invariant) — not called from this path.
+
+## Rollout — 2026-04-20
+
+- PostHog flag `onboarding_v2` (id 648164) flipped from `email == gracehowse@outlook.com` to `100% rollout` for everyone. Rationale: no other users on the app yet, and OB2-1 closes the persistence gap that previously blocked broad rollout.
+- Legacy `/onboarding` stays mounted for one validation week as a fallback (its Stage E redirect honours the same flag, so legacy is unreachable while flag=100%). Delete the route + `app/onboarding/page.tsx` after the validation week if no rollback signal surfaces.
+- Middleware preview-window allowlisting of `/onboarding/v2` ([middleware.ts](../../middleware.ts) `PUBLIC_ROUTES`) should be reverted to the auth-gated default once we're confident there's no longer a need for unauthenticated preview links.
 
 ## Phase plan
 
