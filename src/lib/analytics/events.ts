@@ -303,6 +303,24 @@ export const AnalyticsEvents = {
    * transition, never on repeated zero-reads. Added 2026-04-18 (L6 G8)
    * so D3's "freeze save rate" metric has a denominator. */
   streak_reset: "streak_reset",
+  /** Onboarding v2 pace step — the soft-warn safety-floor banner
+   *  surfaced to the user (`acted: "shown"`) or the user advanced
+   *  despite it (`acted: "advanced"`).
+   *
+   *  Auditable trail for the soft-warn policy locked in
+   *  `docs/decisions/2026-04-19-onboarding-redesign-scope.md`. Lets
+   *  product see how often the danger banner fires and what % of
+   *  users advance through it — if advance-rate is alarmingly high
+   *  we revisit the soft-warn-vs-hard-block call without guessing.
+   *
+   *  Payload:
+   *    { acted: "shown" | "advanced",
+   *      level: "info" | "warn" | "danger",
+   *      reason: "below_floor" | "fast_loss" | "near_floor",
+   *      pace_kg_per_week: number,
+   *      projected_target_kcal: number,
+   *      sex: "male" | "female" | "unspecified" } */
+  onboarding_pace_below_safety_floor: "onboarding_pace_below_safety_floor",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

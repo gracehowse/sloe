@@ -9,6 +9,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { useOnboardingV2 } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
@@ -29,10 +31,31 @@ export function MobileFlow() {
     displayTotal,
     go,
     canAdvance,
+    state,
+    targets,
+    warning,
   } = useOnboardingV2();
   const colors = useThemeColors();
   const StepComponent = MOBILE_STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
+
+  // Stage E — fire the soft-warn `advanced` analytics event when the
+  // user taps Continue from the Pace step while a warning is showing.
+  // The matching `shown` event fires from inside MobilePaceStep on
+  // banner mount/reason change.
+  const handleContinue = React.useCallback(() => {
+    if (currentStepId === "pace" && warning && targets) {
+      track(AnalyticsEvents.onboarding_pace_below_safety_floor, {
+        acted: "advanced",
+        level: warning.level,
+        reason: warning.reason,
+        pace_kg_per_week: targets.pace,
+        projected_target_kcal: targets.target,
+        sex: state.sex,
+      });
+    }
+    go(1);
+  }, [currentStepId, warning, targets, state.sex, go]);
 
   // Welcome uses its own layout (full-bleed gradient, own CTA).
   if (isWelcome) {
@@ -113,7 +136,7 @@ export function MobileFlow() {
         }}
       >
         <Pressable
-          onPress={() => go(1)}
+          onPress={handleContinue}
           disabled={!canAdvance}
           accessibilityRole="button"
           accessibilityLabel="Continue"

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Activity, Calculator, CheckCircle2, Sparkles, User } from "lucide-react";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
-import { track } from "../../src/lib/analytics/track.ts";
+import { isOnboardingV2Enabled, track } from "../../src/lib/analytics/track.ts";
 import {
   calculateTDEE,
   calculateBudget,
@@ -74,6 +75,20 @@ export default function OnboardingPage() {
   const [targetsMode, setTargetsMode] = useState<"auto" | "manual">("auto");
   const [manualTargets, setManualTargets] = useState<MacroTargets>({ ...DEFAULT_MACRO_TARGETS });
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
+
+  const router = useRouter();
+  // Stage E gate (decision doc 2026-04-19) — when the `onboarding_v2`
+  // PostHog flag is on for this user, route them to the v2 flow at
+  // /onboarding/v2 instead of rendering the legacy single-page form.
+  // The flag check is sync-on-mount; PostHog is initialised by the
+  // top-level Providers tree. False-default when the flag isn't loaded
+  // yet — the user lands on the legacy flow and we re-evaluate on
+  // subsequent visits. That's acceptable because v2 is opt-in.
+  useEffect(() => {
+    if (isOnboardingV2Enabled()) {
+      router.replace("/onboarding/v2");
+    }
+  }, [router]);
 
   useEffect(() => {
     const cm = coerceInt(heightCm) ?? 170;

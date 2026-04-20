@@ -4,6 +4,8 @@ import * as React from "react";
 import { ArrowRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
 import { useOnboardingV2 } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -20,10 +22,29 @@ import { NARRATIVE } from "./narrative";
  */
 
 export function WebFlow() {
-  const { currentStepId, displayIndex, displayTotal, go, canAdvance, state, targets } =
+  const { currentStepId, displayIndex, displayTotal, go, canAdvance, state, targets, warning } =
     useOnboardingV2();
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
+
+  // Stage E — when the user clicks Continue from the Pace step while
+  // a soft-warn banner is showing, fire the `advanced` variant of
+  // the analytics event so product can compute the through-rate of
+  // the warning. The matching `shown` event fires from inside
+  // PaceStep on banner mount/reason change.
+  const handleContinue = React.useCallback(() => {
+    if (currentStepId === "pace" && warning && targets) {
+      track(AnalyticsEvents.onboarding_pace_below_safety_floor, {
+        acted: "advanced",
+        level: warning.level,
+        reason: warning.reason,
+        pace_kg_per_week: targets.pace,
+        projected_target_kcal: targets.target,
+        sex: state.sex,
+      });
+    }
+    go(1);
+  }, [currentStepId, warning, targets, state.sex, go]);
 
   // Welcome takes the whole canvas — no top bar, no split.
   if (isWelcome) {
@@ -123,7 +144,7 @@ export function WebFlow() {
               </button>
               <Button
                 size="lg"
-                onClick={() => go(1)}
+                onClick={handleContinue}
                 disabled={!canAdvance}
                 className="h-12 px-6 font-bold"
               >

@@ -57,6 +57,26 @@ export function reset(): void {
   getPostHogClient()?.reset();
 }
 
+/** Read a PostHog feature flag synchronously. Returns `false` when
+ *  the client isn't initialised or the flag is unloaded. Mirror of
+ *  `src/lib/analytics/track.ts#isFeatureEnabled` (web). */
+export function isFeatureEnabled(flag: string): boolean {
+  const c = getPostHogClient();
+  if (!c) return false;
+  try {
+    return c.isFeatureEnabled(flag) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Convenience wrapper for the `onboarding_v2` PostHog flag.
+ *  Centralised so every callsite agrees on the flag key and there's
+ *  a single place to flip it for forced rollouts. */
+export function isOnboardingV2Enabled(): boolean {
+  return isFeatureEnabled("onboarding_v2");
+}
+
 async function maybeMarkFirstLog(c: PostHog): Promise<void> {
   try {
     const existing = await AsyncStorage.getItem(FIRST_LOG_LOCAL_KEY);

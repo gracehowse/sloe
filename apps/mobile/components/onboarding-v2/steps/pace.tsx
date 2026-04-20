@@ -3,6 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../../../src/lib/analytics/events";
 import {
   GOAL_DEFAULT_PACE,
   PACE_PRESETS,
@@ -52,6 +54,28 @@ export function MobilePaceStep() {
         : "";
   const dailyMagnitude =
     targets != null ? Math.abs(targets.kcalAdj) : null;
+
+  // Stage E — fire the soft-warn analytics event when a warning
+  // banner first appears for this reason. The flow shell fires the
+  // matching `advanced` variant when the user taps Continue while a
+  // warning is showing. Mirrors the web Pace step's effect.
+  const lastShownReasonRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!warning || projectedTarget == null) {
+      lastShownReasonRef.current = null;
+      return;
+    }
+    if (lastShownReasonRef.current === warning.reason) return;
+    lastShownReasonRef.current = warning.reason;
+    track(AnalyticsEvents.onboarding_pace_below_safety_floor, {
+      acted: "shown",
+      level: warning.level,
+      reason: warning.reason,
+      pace_kg_per_week: pace,
+      projected_target_kcal: projectedTarget,
+      sex: state.sex,
+    });
+  }, [warning, projectedTarget, pace, state.sex]);
 
   return (
     <MobileStepBody>

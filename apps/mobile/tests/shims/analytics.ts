@@ -15,4 +15,19 @@ export const identifyUser = vi.fn((_id?: string, _props?: Record<string, unknown
 export const resetAnalytics = vi.fn(() => undefined);
 export const bootstrapAnalytics = vi.fn(() => undefined);
 
-export default { track, identifyUser, resetAnalytics, bootstrapAnalytics };
+/** Mirrors `apps/mobile/lib/analytics.ts#isFeatureEnabled` — defaults
+ *  to false in tests so flag-gated callsites take their off-branch
+ *  unless a test explicitly mocks this to true. */
+export const isFeatureEnabled = vi.fn((_flag: string) => false);
+
+/** Mirrors `apps/mobile/lib/analytics.ts#isOnboardingV2Enabled`. */
+export const isOnboardingV2Enabled = vi.fn(() => false);
+
+export default {
+  track,
+  identifyUser,
+  resetAnalytics,
+  bootstrapAnalytics,
+  isFeatureEnabled,
+  isOnboardingV2Enabled,
+};

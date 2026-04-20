@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangle, Info } from "lucide-react";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
 import {
   GOAL_DEFAULT_PACE,
   PACE_PRESETS,
@@ -48,6 +50,29 @@ export function PaceStep() {
         : "";
   const dailyMagnitude =
     targets != null ? Math.abs(targets.kcalAdj) : null;
+
+  // Stage E — fire the soft-warn analytics event when a warning
+  // banner first appears for this reason during the step's lifetime.
+  // The flow shell fires the matching `advanced` variant when the
+  // user clicks Continue with a warning showing. Deduplicated via a
+  // ref so rapid slider drags past threshold don't spam PostHog.
+  const lastShownReasonRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!warning || projectedTarget == null) {
+      lastShownReasonRef.current = null;
+      return;
+    }
+    if (lastShownReasonRef.current === warning.reason) return;
+    lastShownReasonRef.current = warning.reason;
+    track(AnalyticsEvents.onboarding_pace_below_safety_floor, {
+      acted: "shown",
+      level: warning.level,
+      reason: warning.reason,
+      pace_kg_per_week: pace,
+      projected_target_kcal: projectedTarget,
+      sex: state.sex,
+    });
+  }, [warning, projectedTarget, pace, state.sex]);
 
   return (
     <StepBody>
