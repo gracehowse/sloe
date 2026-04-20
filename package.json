@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "ci": "npm run verify:production-env && npm run typecheck && npm run test && npm run mobile:typecheck && npm run mobile:test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

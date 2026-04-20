@@ -414,18 +414,51 @@ describe("fan-out flow", () => {
 // Per-user nutrition fetch, content-specific body, server-side analytics.
 // ───────────────────────────────────────────────────────────────────
 
-/** Compute a date-key offset in days from `now`. Used to seed
- *  nutrition_entries fixtures inside the "previous completed week"
- *  window (which the route derives from server `now`). 9 days back is
- *  always inside the previous Mon-start week regardless of which day
- *  of the week the test runs on; using 9 instead of 7/8 also avoids
- *  the boundary case where today === Sunday. */
+/**
+ * Compute a date-key offset in days from `now`. Used to seed
+ * nutrition_entries fixtures inside the "previous completed week"
+ * window (Mon-start, 7 days back from last Monday).
+ *
+ * `daysBack` semantics: 0 = today; this helper exists to support
+ * legacy callsites and arbitrary offsets, but most fixture seeds
+ * should prefer `dateKeyInPreviousWeek(0..6)` instead — that helper
+ * handles the calendar-day-of-week trap that broke CI.
+ *
+ * The 9 / 8 / 7 magic numbers used to be "always inside the previous
+ * Mon-start week" — but on Mondays the previous-week window is
+ * [today-7..today-1] (7 days), and 8+ days back is the week BEFORE
+ * the previous one. That made every test using `dateKeyOffsetDays(8..)`
+ * silently produce zero_days fixtures any time CI ran on a Monday.
+ */
 function dateKeyOffsetDays(daysBack: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Pick a specific day of the previous-completed Mon-start week.
+ * `weekdayOffset` 0..6 maps to Mon..Sun of that week. Always lands
+ * inside the route's window regardless of which weekday CI runs on,
+ * which `dateKeyOffsetDays(8..N)` doesn't (see header comment above).
+ */
+function dateKeyInPreviousWeek(weekdayOffset: number): string {
+  const today = new Date();
+  // ISO weekday: 1=Mon..7=Sun. JS Sunday is 0; treat as 7.
+  const jsDow = today.getDay(); // 0..6
+  const isoToday = jsDow === 0 ? 7 : jsDow;
+  // Days back to last Monday (start of the week containing today).
+  // Then -7 more days to land on the start of the previous-completed
+  // week.
+  const daysToPrevMon = isoToday - 1 + 7;
+  const target = new Date(today);
+  target.setDate(target.getDate() - daysToPrevMon + weekdayOffset);
+  const y = target.getFullYear();
+  const m = String(target.getMonth() + 1).padStart(2, "0");
+  const day = String(target.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -528,15 +561,20 @@ describe("T3 — per-user data fetch + reshape", () => {
     };
     tableResults.nutrition_entries = {
       data: [
-        // 5 distinct days inside the previous-week window. Protein is
-        // set to 150g (== target_protein from makeProfile) so Rule 3
+        // 5 distinct days inside the previous-week window (Mon-Fri of
+        // the previous-completed Mon-start week). Protein is set to
+        // 150g (== target_protein from makeProfile) so Rule 3
         // (protein nudge) does NOT fire — 5 of 5 days hit the >=90%
         // threshold, well above the suppression bar.
-        { user_id: "user-log", date_key: dateKeyOffsetDays(8), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
-        { user_id: "user-log", date_key: dateKeyOffsetDays(9), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
-        { user_id: "user-log", date_key: dateKeyOffsetDays(10), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
-        { user_id: "user-log", date_key: dateKeyOffsetDays(11), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
-        { user_id: "user-log", date_key: dateKeyOffsetDays(12), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
+        // Uses `dateKeyInPreviousWeek` (weekdayOffset 0..4 = Mon..Fri)
+        // so the fixture always lands in window regardless of which
+        // weekday CI runs on. Previous helper `dateKeyOffsetDays(8..)`
+        // silently produced zero_days fixtures on Mondays — broke CI.
+        { user_id: "user-log", date_key: dateKeyInPreviousWeek(0), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
+        { user_id: "user-log", date_key: dateKeyInPreviousWeek(1), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
+        { user_id: "user-log", date_key: dateKeyInPreviousWeek(2), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
+        { user_id: "user-log", date_key: dateKeyInPreviousWeek(3), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
+        { user_id: "user-log", date_key: dateKeyInPreviousWeek(4), name: "Breakfast", recipe_title: "Oats", calories: 1800, protein: 150, carbs: 200, fat: 60 },
       ],
       error: null,
     };
@@ -629,7 +667,7 @@ describe("T3 — failure handling: per-user compute failure → silent skip", ()
     };
     tableResults.nutrition_entries = {
       data: [
-        { user_id: "user-broken", date_key: dateKeyOffsetDays(8), name: "B", recipe_title: "X", calories: 1, protein: 1, carbs: 1, fat: 1 },
+        { user_id: "user-broken", date_key: dateKeyInPreviousWeek(0), name: "B", recipe_title: "X", calories: 1, protein: 1, carbs: 1, fat: 1 },
       ],
       error: null,
     };

@@ -45,6 +45,33 @@ For ingredient matching:
 - reject low-confidence matches
 - only ask for clarification when uncertainty materially affects nutrition
 
+## CI hygiene — non-negotiable
+
+CI runs more gates than a single `npm test` does. Failures are
+visible to Grace + waste deploy slots. Two rules:
+
+1. **Run `npm run ci` locally before every push.** Mirrors the CI
+   workflow — verify-production-env + web typecheck + web vitest +
+   mobile typecheck + mobile vitest. If it fails locally, do not
+   push.
+2. **Watch CI after every push.** `gh run watch` after `git push`,
+   or `gh run list --limit 3` to confirm the latest is green. If
+   the most recent run is red, fix it BEFORE moving to the next
+   task. A red main blocks all collaborators.
+
+Common reasons local-vs-CI diverge:
+- TypeScript build cache. Local `.tsbuildinfo` may carry stale
+  type info from prior runs. CI starts cold. Re-run `tsc --noEmit`
+  with no cache if you suspect drift.
+- Date-dependent tests. Anything using `new Date()` in a fixture
+  is calendar-day-of-week sensitive. Use a deterministic helper
+  (see `dateKeyInPreviousWeek` in `weeklyRecapPushRoute.test.ts`)
+  or `vi.useFakeTimers()` (carefully — async tests with real
+  setTimeouts will hang).
+- Missing env vars. CI has minimal env (`VERIFY_STRICT=0`); local
+  may have more. Check `.github/workflows/ci.yml` for the canonical
+  env set.
+
 ## Git commits
 
 **One-time per clone:** strip tool footers from commit messages (e.g. `Made-with: Cursor`):

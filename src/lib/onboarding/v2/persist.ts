@@ -65,11 +65,11 @@
  * as legacy onboarding's defence-in-depth.
  */
 
-import type {
-  ActivityLevel,
-  Goal as ProductionGoal,
-  Sex,
-} from "@/lib/nutrition/tdee";
+import type { ActivityLevel, Sex } from "@/lib/nutrition/tdee";
+// `Goal` lives in @/types/profile (the legacy DB-aligned enum
+// `"cut" | "maintain" | "bulk"`). tdee.ts uses `goalType: string`
+// because legacy onboarding mixes UI labels in.
+import type { Goal as ProductionGoal } from "@/types/profile";
 import type { Goal as V2Goal, OnboardingState } from "./state";
 import type { V2Targets } from "./targets";
 
