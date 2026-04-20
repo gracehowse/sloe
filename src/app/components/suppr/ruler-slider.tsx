@@ -164,49 +164,40 @@ function RulerSlider({
     return () => window.removeEventListener("resize", onResize);
   }, [draw]);
 
-  React.useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    let startX = 0;
-    let startVal = 0;
-    let pointerId: number | null = null;
+  // Drag state lives in refs so the in-flight pointer capture
+  // survives state updates. The earlier addEventListener-in-useEffect
+  // approach re-ran the effect on every value change (because `value`
+  // was a dep), removing the live listeners mid-drag and stranding
+  // the pointer capture. React event handlers + refs sidestep that
+  // entirely — same pattern as `BrandedSlider`.
+  const pointerIdRef = React.useRef<number | null>(null);
+  const startXRef = React.useRef(0);
+  const startValRef = React.useRef(0);
 
-    const onDown = (e: PointerEvent) => {
-      if (editing) return;
-      pointerId = e.pointerId;
-      track.setPointerCapture(pointerId);
-      startX = e.clientX;
-      startVal = value;
-      setDragging(true);
-    };
-    const onMove = (e: PointerEvent) => {
-      if (pointerId == null) return;
-      const dx = e.clientX - startX;
-      const dv = -dx * (step / PX_PER_STEP);
-      onChange(snap(clamp(startVal + dv)));
-    };
-    const onUp = () => {
-      if (pointerId == null) return;
-      try {
-        track.releasePointerCapture(pointerId);
-      } catch {
-        /* already released */
-      }
-      pointerId = null;
-      setDragging(false);
-    };
-
-    track.addEventListener("pointerdown", onDown);
-    track.addEventListener("pointermove", onMove);
-    track.addEventListener("pointerup", onUp);
-    track.addEventListener("pointercancel", onUp);
-    return () => {
-      track.removeEventListener("pointerdown", onDown);
-      track.removeEventListener("pointermove", onMove);
-      track.removeEventListener("pointerup", onUp);
-      track.removeEventListener("pointercancel", onUp);
-    };
-  }, [value, step, editing, onChange, snap, clamp]);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (editing) return;
+    pointerIdRef.current = e.pointerId;
+    trackRef.current?.setPointerCapture(e.pointerId);
+    startXRef.current = e.clientX;
+    startValRef.current = value;
+    setDragging(true);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current == null) return;
+    const dx = e.clientX - startXRef.current;
+    const dv = -dx * (step / PX_PER_STEP);
+    onChange(snap(clamp(startValRef.current + dv)));
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current == null) return;
+    try {
+      trackRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    pointerIdRef.current = null;
+    setDragging(false);
+  };
 
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (editing) return;
@@ -319,10 +310,14 @@ function RulerSlider({
         aria-valuenow={value}
         aria-valuemin={min}
         aria-valuemax={max}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onWheel={onWheel}
         onKeyDown={onKeyDown}
         className={cn(
-          "relative h-16 w-full rounded-card bg-card border border-border outline-none",
+          "relative h-16 w-full rounded-card bg-card border border-border outline-none select-none",
           "transition-pm focus-visible:border-primary",
           dragging ? "cursor-grabbing" : "cursor-grab",
         )}
