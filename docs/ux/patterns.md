@@ -41,6 +41,22 @@ MacroColors = {
 
 ## Interaction Patterns
 
+### Onboarding redesign primitives (Phase 1, 2026-04-19)
+
+Three new primitives ship in Phase 1 of the onboarding redesign and are
+the canonical building blocks for the new flow + any future picker
+surface. Full rules + per-platform paths live in `docs/ux/design-system.md`
+under "Component patterns":
+
+- **`SupprMark` / `SupprWordmark`** — brand mark as a React component.
+  Replaces ad-hoc inline SVG copies of the logo.
+- **`OptionCard`** — radio-card primitive used by Goal / Sex / Activity /
+  Diet steps. Pass `trailing={null}` for multi-select chip shape.
+- **`RulerSlider`** — iOS-style horizontal ruler picker for height +
+  weight (with imperial/metric helpers).
+
+Decision history: `docs/decisions/2026-04-19-onboarding-redesign-scope.md`.
+
 ### Long-press Actions
 Used throughout for destructive/secondary actions:
 - **Tracker**: long-press logged meal → delete with confirmation

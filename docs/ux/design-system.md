@@ -134,6 +134,88 @@ When calories or macros exceed the target:
 
 Use `opacity: 0.92` for press feedback on cards and list rows. For buttons, use a darkened background (not opacity change).
 
+### Brand mark — `SupprMark` / `SupprWordmark`
+
+The rounded-square "S" logo, exposed as a React component on both
+surfaces so brand placements (sign-in, paywall, marketing pages) stay
+visually identical without copying SVG markup around.
+
+| Surface | File |
+|---------|------|
+| Web | `src/app/components/ui/suppr-mark.tsx` |
+| Mobile | `apps/mobile/components/SupprMark.tsx` |
+
+**Rules:**
+- Background is always brand `--primary` blue. Letter is always white.
+  The dark-mode lift to the brighter blue happens automatically via
+  the `--primary` token — never override the colours per surface.
+- Wordmark composes Mark + the "Suppr" label with proportional spacing
+  (`gap-2.5` web, `gap: 10` mobile). Pass the same `size` prop to both
+  surfaces if you need them to match in side-by-side comparisons.
+- Use the **mark alone** for tab bar / nav / favicon contexts. Use the
+  **wordmark** for sign-in headers, paywall heroes, and marketing.
+
+### Selection card — `OptionCard`
+
+Tappable card for picking one (or many) from a small list. Standard
+shape used by every onboarding step that asks the user to choose
+between a handful of named options (Goal, Sex, Activity, Diet).
+
+| Surface | File |
+|---------|------|
+| Web | `src/app/components/ui/option-card.tsx` |
+| Mobile | `apps/mobile/components/OptionCard.tsx` |
+
+**Anatomy:** optional left icon (auto-tinted to `--primary` when
+selected) → title → optional subtitle → trailing slot (default is a
+check/uncheck radio circle).
+
+**Rules:**
+- Renders a real `<button>` (web) / `<Pressable accessibilityRole="radio">`
+  (mobile) so keyboard + screen reader work without extra ARIA wiring
+  on the consumer.
+- Selected state is announced via `aria-pressed` (web) and
+  `accessibilityState.selected` (mobile).
+- Use `compact` for dense lists (Activity step). Use the default
+  spacing for the Goal-style picker.
+- For multi-select chip patterns (Diet preferences) pass `trailing={null}`
+  to suppress the radio circle. The selected border + tint still
+  communicate state.
+
+### Ruler slider — `RulerSlider`
+
+iOS-style horizontal ruler picker for height + weight. Used by
+onboarding steps 06 + 07. The big number readout is tappable to switch
+into typed-input mode.
+
+| Surface | File |
+|---------|------|
+| Web | `src/app/components/suppr/ruler-slider.tsx` |
+| Mobile | `apps/mobile/components/RulerSlider.tsx` |
+
+**Inputs:**
+- drag horizontally — snapped to `step`
+- mouse wheel / trackpad (web only)
+- keyboard (web): arrows ±step, Page Up/Down ±major, Home/End to clamp
+- tap the big number → typed editor; Enter / return to commit, Esc /
+  blur to cancel
+
+**Custom formatting:**
+- `format(value)` — render override for the big number (e.g.
+  `5′ 10″` for imperial height)
+- `parseInput(text)` — parse override for typed-input mode
+
+Two named helpers ship for imperial height: `formatImperialHeightInches`
+and `parseImperialHeightInches`. Both surfaces export the same names
+with byte-identical behaviour — they are the parity contract for any
+imperial-vs-metric flow.
+
+**Perf note (mobile):** ticks within the visible window are re-rendered
+on each pan event via React state. If perf becomes an issue once
+wired into onboarding on lower-end devices, swap the SVG layer to a
+Reanimated worklet (sharedValue → useDerivedValue → SVG transform)
+and only sync to React state on gesture end.
+
 ## Implementation rules
 
 1. **No hardcoded hex values in component files.** Import from `theme.ts` or use `useThemeColors()`.

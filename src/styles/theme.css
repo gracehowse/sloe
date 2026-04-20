@@ -387,6 +387,17 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
+
+  /** RulerSlider edit-mode input — strip native number spinners. */
+  .ruler-num-input::-webkit-outer-spin-button,
+  .ruler-num-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .ruler-num-input {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 /* ─── Marketing / landing-page utilities (mirrored from Vielum design system) ─── */

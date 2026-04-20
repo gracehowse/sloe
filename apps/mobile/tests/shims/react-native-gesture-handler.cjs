@@ -27,6 +27,48 @@ const Swipeable = function Swipeable(props) {
   return React.createElement(React.Fragment, null, props.children);
 };
 
+// New gesture-handler API (Gesture.Pan(), GestureDetector) used by
+// `RulerSlider` and any future net-new primitive. Tests only need the
+// builder to be chainable and the detector to render children — no
+// pan/drag handling actually fires.
+function makeChainableGesture() {
+  const noop = () => builder; // eslint-disable-line @typescript-eslint/no-use-before-define
+  const builder = {
+    onBegin: noop,
+    onStart: noop,
+    onChange: noop,
+    onUpdate: noop,
+    onEnd: noop,
+    onFinalize: noop,
+    minDistance: noop,
+    activeOffsetX: noop,
+    activeOffsetY: noop,
+    failOffsetX: noop,
+    failOffsetY: noop,
+    enabled: noop,
+    runOnJS: noop,
+  };
+  return builder;
+}
+
+const Gesture = {
+  Pan: makeChainableGesture,
+  Tap: makeChainableGesture,
+  LongPress: makeChainableGesture,
+  Pinch: makeChainableGesture,
+  Rotation: makeChainableGesture,
+  Fling: makeChainableGesture,
+  Native: makeChainableGesture,
+  Manual: makeChainableGesture,
+  Race: () => makeChainableGesture(),
+  Simultaneous: () => makeChainableGesture(),
+  Exclusive: () => makeChainableGesture(),
+};
+
+const GestureDetector = function GestureDetector(props) {
+  return React.createElement(React.Fragment, null, props.children);
+};
+
 module.exports = {
   __esModule: true,
   Swipeable,
@@ -35,6 +77,8 @@ module.exports = {
   PanGestureHandler: passthrough("PanGestureHandler"),
   TapGestureHandler: passthrough("TapGestureHandler"),
   LongPressGestureHandler: passthrough("LongPressGestureHandler"),
+  GestureDetector,
+  Gesture,
   State: {},
   Directions: {},
   gestureHandlerRootHOC: (Component) => Component,
