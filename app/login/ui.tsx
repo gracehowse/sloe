@@ -36,8 +36,18 @@ export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginC
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only redirect on an explicit SIGNED_IN event (user just
+      // submitted the form, Apple OAuth just came back, magic link
+      // completed, etc.). INITIAL_SESSION fires synchronously on
+      // mount if a session cookie already exists — if we redirected
+      // on that, an already-authed user arriving at /login (e.g.
+      // because they clicked "Sign in" on the landing out of habit)
+      // would get involuntarily shipped to /home, and if their
+      // profile isn't onboarding_complete they'd then bounce to
+      // /onboarding. That chain read as "the landing keeps
+      // redirecting" (Grace 2026-04-20).
+      if (event === "SIGNED_IN" && session?.user) {
         // Dashboard lives at /home; / is the marketing landing.
         window.location.href = "/home";
       }

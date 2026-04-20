@@ -27,6 +27,16 @@ export const metadata: Metadata = {
     "Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases.",
 };
 
+// Force dynamic render on every request. The landing page was briefly
+// rendering HomePageClient conditionally on auth, which left Vercel /
+// browsers with stale cached responses that would 307 authed-but-
+// onboarding-incomplete visitors into the onboarding chain on every
+// reload (Grace 2026-04-20). `force-dynamic` guarantees the server
+// always runs the current deploy's page module, so a future conditional
+// regression can't be masked by a stale static prerender.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function Page() {
   return <LandingPage />;
 }
