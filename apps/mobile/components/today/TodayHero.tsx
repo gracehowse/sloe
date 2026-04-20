@@ -15,47 +15,26 @@ import {
  * TodayHero — dispatches between ring / bar / number variants and
  * renders the "change hero style" affordance in the card's corner.
  *
- * Ported from the 2026-04-19 Claude Design prototype
- * (`docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
- *  → `TodayScreen` + `HeroRing` / `HeroBar` / `HeroNumber`).
- *
- * Host (`apps/mobile/app/(tabs)/index.tsx`) owns:
- *   - `variant` state, persisted under `suppr.hero.variant` in
- *     AsyncStorage so the user's choice survives reload.
- *   - `expanded` + `displayMode` for the ring variant (existing state —
- *     unchanged by T12-design-port).
- *
- * This component is presentation-only: render the chosen hero, render
- * the picker trigger, render the picker modal. No async, no writes.
+ * Ported from the 2026-04-19 Claude Design prototype and trimmed
+ * 2026-04-20 (see
+ * `feedback_no_duplicate_today_hero_content.md`) — hero variants are
+ * intentionally minimal because the adherence / macro widgets below
+ * the hero on Today cover the same data more cleanly.
  */
 export interface TodayHeroProps {
-  // Variant selection
   variant: TodayHeroVariant;
   onVariantChange: (next: TodayHeroVariant) => void;
 
-  // Calorie math
   consumed: number;
   goal: number;
   baseGoal?: number;
-  burned?: number | null;
-  mealCount: number;
 
-  // Ring-specific: macro progress (0..1 for the inner rings)
+  // Ring-only: macro progress (0..1) for the inner rings when expanded
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
 
-  // Ring-specific: macro gram values for the expanded-state rows
-  loggedProtein: number;
-  targetProtein: number;
-  loggedCarbs: number;
-  targetCarbs: number;
-  loggedFat: number;
-  targetFat: number;
-  loggedFiber: number;
-  targetFiber: number;
-
-  // Ring-specific: expand-macros state (host-owned)
+  // Ring-only: expand-macros state (host-owned)
   expanded: boolean;
   onToggleExpanded: () => void;
 
@@ -63,7 +42,7 @@ export interface TodayHeroProps {
   displayMode: "remaining" | "consumed";
   onToggleDisplayMode: () => void;
 
-  // Colors (pulled from host's theme hook — no theme import here)
+  // Theme colours (from host's theme hook)
   textColor: string;
   textSecondaryColor: string;
   textTertiaryColor: string;
@@ -80,19 +59,9 @@ export function TodayHero(props: TodayHeroProps) {
     consumed,
     goal,
     baseGoal,
-    burned,
-    mealCount,
     proteinPct,
     carbsPct,
     fatPct,
-    loggedProtein,
-    targetProtein,
-    loggedCarbs,
-    targetCarbs,
-    loggedFat,
-    targetFat,
-    loggedFiber,
-    targetFiber,
     expanded,
     onToggleExpanded,
     displayMode,
@@ -112,7 +81,6 @@ export function TodayHero(props: TodayHeroProps) {
           consumed={consumed}
           goal={goal}
           baseGoal={baseGoal}
-          burned={burned}
           textColor={textColor}
           secondaryColor={textSecondaryColor}
           trackColor={trackColor}
@@ -121,14 +89,6 @@ export function TodayHero(props: TodayHeroProps) {
           proteinPct={proteinPct}
           carbsPct={carbsPct}
           fatPct={fatPct}
-          loggedProtein={loggedProtein}
-          targetProtein={targetProtein}
-          loggedCarbs={loggedCarbs}
-          targetCarbs={targetCarbs}
-          loggedFat={loggedFat}
-          targetFat={targetFat}
-          loggedFiber={loggedFiber}
-          targetFiber={targetFiber}
           expanded={expanded}
           onToggleExpanded={onToggleExpanded}
           displayMode={displayMode}
@@ -140,13 +100,10 @@ export function TodayHero(props: TodayHeroProps) {
         <TodayHeroBar
           consumed={consumed}
           goal={goal}
-          burned={burned}
-          mealCount={mealCount}
           displayMode={displayMode}
           onToggleDisplayMode={onToggleDisplayMode}
           cardBackgroundColor={cardBackgroundColor}
           borderColor={borderColor}
-          textColor={textColor}
           textSecondaryColor={textSecondaryColor}
           textTertiaryColor={textTertiaryColor}
           trackColor={trackColor}
@@ -156,7 +113,6 @@ export function TodayHero(props: TodayHeroProps) {
         <TodayHeroNumber
           consumed={consumed}
           goal={goal}
-          burned={burned}
           displayMode={displayMode}
           onToggleDisplayMode={onToggleDisplayMode}
           cardBackgroundColor={cardBackgroundColor}
@@ -167,10 +123,7 @@ export function TodayHero(props: TodayHeroProps) {
         />
       )}
 
-      {/* Picker affordance — small grid icon absolute top-right of the
-          hero area. Uses the card background + visible border so the
-          button reads in both light + dark mode (an earlier tint-only
-          treatment disappeared on a light background). */}
+      {/* Picker affordance — circular grid icon top-right of the hero. */}
       <Pressable
         onPress={() => setPickerOpen(true)}
         accessibilityRole="button"

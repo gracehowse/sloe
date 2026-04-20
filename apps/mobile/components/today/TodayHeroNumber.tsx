@@ -7,17 +7,18 @@ import { Radius, Spacing } from "@/constants/theme";
  *
  * Ported from the 2026-04-19 Claude Design prototype
  * (`docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
- *  → `HeroNumber`). Prioritises glanceable kcal remaining at the cost
- *  of progress context — suited to users who don't want a ring
- *  cluttering Today.
+ *  → `HeroNumber`). Pared back 2026-04-20 to drop the logged / burned /
+ * net mini-stats row that duplicates the 2x2 macro tile grid + other
+ * widgets below the hero on Today (see
+ * `feedback_no_duplicate_today_hero_content.md`).
  *
- * Gestures: tap to toggle `displayMode` (`remaining` ↔ `consumed`).
- * No macro-expand mode.
+ * Current content: headline label, huge kcal number, "of X kcal · Y%
+ * eaten" caption. Tap toggles the kcal between `remaining` and
+ * `consumed`.
  */
 export interface TodayHeroNumberProps {
   consumed: number;
   goal: number;
-  burned?: number | null;
   displayMode: "remaining" | "consumed";
   onToggleDisplayMode: () => void;
   cardBackgroundColor: string;
@@ -30,7 +31,6 @@ export interface TodayHeroNumberProps {
 export function TodayHeroNumber({
   consumed,
   goal,
-  burned,
   displayMode,
   onToggleDisplayMode,
   cardBackgroundColor,
@@ -43,7 +43,6 @@ export function TodayHeroNumber({
   const shown = displayMode === "remaining" ? remaining : consumed;
   const shownLabel = displayMode === "remaining" ? "Remaining today" : "Logged today";
   const pct = goal > 0 ? Math.round((consumed / goal) * 100) : 0;
-  const net = (burned ?? 0) > 0 ? consumed - (burned ?? 0) : consumed;
 
   return (
     <Pressable
@@ -86,53 +85,7 @@ export function TodayHeroNumber({
       <Text style={{ fontSize: 13, color: textSecondaryColor, marginTop: 6 }}>
         of {goal.toLocaleString()} kcal · {pct}% eaten
       </Text>
-      <View
-        style={{
-          flexDirection: "row",
-          gap: Spacing.xl,
-          marginTop: Spacing.xl,
-          paddingTop: Spacing.lg,
-          borderTopWidth: 1,
-          borderTopColor: borderColor,
-        }}
-      >
-        <MiniStat value={consumed.toLocaleString()} label="logged" textColor={textColor} textTertiaryColor={textTertiaryColor} />
-        <MiniStat value={(burned ?? 0).toLocaleString()} label="burned" textColor={textColor} textTertiaryColor={textTertiaryColor} />
-        <MiniStat value={`${net > 0 ? "+" : ""}${net.toLocaleString()}`} label="net" textColor={textColor} textTertiaryColor={textTertiaryColor} />
-      </View>
     </Pressable>
-  );
-}
-
-function MiniStat({
-  value,
-  label,
-  textColor,
-  textTertiaryColor,
-}: {
-  value: string;
-  label: string;
-  textColor: string;
-  textTertiaryColor: string;
-}) {
-  return (
-    <View style={{ alignItems: "center" }}>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, fontVariant: ["tabular-nums"] }}>
-        {value}
-      </Text>
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "600",
-          color: textTertiaryColor,
-          letterSpacing: 1.1,
-          textTransform: "uppercase",
-          marginTop: 2,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
   );
 }
 

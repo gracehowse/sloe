@@ -38,7 +38,6 @@ import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
-import { RemainingMacrosBar } from "@/components/RemainingMacrosBar";
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
 import CopyMealSheet from "@/components/CopyMealSheet";
@@ -2817,8 +2816,6 @@ export default function TrackerScreen() {
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
-              burned={totalBurnKcal}
-              mealCount={mealsToday.length}
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
@@ -2828,38 +2825,16 @@ export default function TrackerScreen() {
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
               fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
-              loggedProtein={Math.round(totals.protein)}
-              targetProtein={Math.round(targets.protein)}
-              loggedCarbs={Math.round(totals.carbs)}
-              targetCarbs={Math.round(targets.carbs)}
-              loggedFat={Math.round(totals.fat)}
-              targetFat={Math.round(targets.fat)}
-              loggedFiber={Math.round(totals.fiber ?? 0)}
-              targetFiber={Math.round(targets.fiber ?? 30)}
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
             />
 
-            {/* Remaining macros — kcal / P / C / F (+ fiber when tracked) left today. Parity: web RemainingMacrosBar. */}
-            <RemainingMacrosBar
-              style={{ marginBottom: Spacing.md }}
-              targets={{
-                calories: effectiveCalorieGoal,
-                protein: targets.protein,
-                carbs: targets.carbs,
-                fat: targets.fat,
-                fiber: targets.fiber,
-              }}
-              consumed={{
-                calories: totals.calories,
-                protein: totals.protein,
-                carbs: totals.carbs,
-                fat: totals.fat,
-                fiber: totals.fiber,
-              }}
-            />
+            {/* RemainingMacrosBar removed 2026-04-20 — the horizontal
+                5-column kcal/P/C/F/Fi adherence strip duplicated the
+                2x2 macro tile grid below and read as visual noise on
+                Today. See feedback_no_duplicate_today_hero_content.md. */}
 
             {/* Dynamic Macro Cards */}
             <TodayDashboardMacroTiles
