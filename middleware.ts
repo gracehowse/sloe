@@ -15,11 +15,27 @@ const PUBLIC_ROUTES = new Set([
   "/reset-password",
 ]);
 
+/** Dev-only preview routes. Reachable without auth in development so
+ *  Grace + reviewers can interact with in-flight redesign work
+ *  (Phase 1 primitives at `/dev/primitives`, Phase 2 onboarding at
+ *  `/onboarding/v2`). The page components themselves still call
+ *  `notFound()` when `NODE_ENV === "production"`, so even if these
+ *  paths slip into the production middleware allowlist by accident
+ *  the user gets a 404, not the page. */
+const DEV_PREVIEW_PREFIXES = ["/dev/", "/onboarding/v2"];
+function isDevPreview(pathname: string): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return DEV_PREVIEW_PREFIXES.some(
+    (p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p),
+  );
+}
+
 function isPublic(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true;
   if (pathname.startsWith("/api/")) return true;
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/favicon")) return true;
+  if (isDevPreview(pathname)) return true;
   return false;
 }
 
