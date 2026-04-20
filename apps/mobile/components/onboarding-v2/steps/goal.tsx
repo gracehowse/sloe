@@ -6,7 +6,7 @@ import { OptionCard } from "@/components/OptionCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Goal } from "@/lib/onboarding-v2";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 const GOALS: { id: Goal; title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: "lose", title: "Lose fat", subtitle: "Gradual deficit, protein-first", icon: "trending-down-outline" },
@@ -18,10 +18,11 @@ const GOALS: { id: Goal; title: string; subtitle: string; icon: keyof typeof Ion
 export function MobileGoalStep() {
   const { state, set } = useOnboardingV2();
   const colors = useThemeColors();
+  const overline = useStepOverline();
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 03 of 12"
+        overline={overline}
         title="What's your goal?"
         subtitle="We'll tailor your calorie and macro targets to match. You can change this anytime."
       />

@@ -17,6 +17,7 @@ import {
   MobileMethodologyNote,
   MobileStepBody,
   MobileStepHeader,
+  useStepOverline,
 } from "../scaffold";
 import { MobileMiniSlider } from "../slider";
 
@@ -38,6 +39,7 @@ const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
 
 export function MobilePaceStep() {
   const { state, set, targets, warning } = useOnboardingV2();
+  const overline = useStepOverline();
 
   // Reset the danger acknowledgement whenever the warning reason
   // changes (Stage F decision-doc update — mirrors web Pace step).
@@ -96,7 +98,7 @@ export function MobilePaceStep() {
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 09 of 12"
+        overline={overline}
         title={
           goal === "gain"
             ? "How fast should we gain?"

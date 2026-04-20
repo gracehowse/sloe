@@ -50,7 +50,7 @@ import {
 } from "@/lib/tdee";
 import ActivityLevelPreview from "@/components/ActivityLevelPreview";
 import { ageFromIsoDateString, displayNameFromAuthUser } from "../../../src/lib/profile/onboardingHydration";
-import { isOnboardingV2Enabled, track } from "@/lib/analytics";
+import { isOnboardingV2Enabled, subscribeToFlags, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -268,15 +268,22 @@ export default function OnboardingScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const hydrateSeq = useRef(0);
 
-  // Stage E gate (decision doc 2026-04-19) — when the `onboarding_v2`
-  // PostHog flag is on for this user, route them to the v2 stack at
-  // /onboarding-v2 instead of rendering the legacy multi-step form.
-  // False-default when the flag isn't loaded yet — user lands on the
-  // legacy flow and we re-evaluate on subsequent visits. v2 is opt-in.
+  // Stage E gate (decision doc 2026-04-19) — sync check then async
+  // subscriber. PostHog fetches flag values asynchronously after
+  // `identify`, so the sync-on-mount check would otherwise miss the
+  // first flag load and silently strand new users on the legacy flow.
+  // Mirrors the web fix in `app/onboarding/page.tsx`.
   useEffect(() => {
     if (isOnboardingV2Enabled()) {
       router.replace("/onboarding-v2");
+      return;
     }
+    const unsub = subscribeToFlags(() => {
+      if (isOnboardingV2Enabled()) {
+        router.replace("/onboarding-v2");
+      }
+    });
+    return unsub;
   }, [router]);
 
   useEffect(() => {

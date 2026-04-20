@@ -85,21 +85,24 @@ export function WebFlow() {
 
   return (
     <div className="h-screen w-full bg-background text-foreground flex flex-col overflow-hidden">
-      {/* Top bar — brand + progress + exit */}
-      <header className="h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-9">
-        <SupprWordmark size={28} />
-        <div className="flex items-center gap-4 flex-1 max-w-[420px] mx-10">
-          <ProgressBar value={displayIndex} total={displayTotal} />
-          <div className="text-xs font-semibold tabular-nums tracking-wide text-muted-foreground min-w-[80px] text-right">
-            Step {displayIndex} of {displayTotal}
-          </div>
+      {/* Top bar — brand + progress.
+          Grid layout (visual-qa P1) so the progress bar sits at the
+          true horizontal centre regardless of the wordmark / right-
+          slot widths. The dual step-indicator (top-bar counter +
+          eyebrow on the narrative side) was deliberately dropped —
+          the eyebrow carries the canonical step number per ui-critic.
+          The Save & Exit stub is hidden until the wired-up confirm
+          flow lands (tracked in TODO.md OB2 follow-ups). */}
+      <header className="h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-9">
+        <div className="justify-self-start">
+          <SupprWordmark size={28} />
         </div>
-        <button
-          type="button"
-          className="text-[13px] font-semibold text-muted-foreground bg-transparent border-0 cursor-pointer px-2.5 py-2 rounded-md hover:bg-muted/50 transition-pm"
-        >
-          Save &amp; exit
-        </button>
+        <ProgressBar
+          value={displayIndex}
+          total={displayTotal}
+          className="w-full max-w-[360px] justify-self-center"
+        />
+        <div className="justify-self-end" />
       </header>
 
       {/* Body */}
@@ -146,7 +149,11 @@ export function WebFlow() {
           )}
         </div>
 
-        {/* Interactive card column */}
+        {/* Interactive card column. Reveal opts out of the inner card
+            chrome (visual-qa P1) so the brand gradient lands without
+            a triple-stacked transparency mash, AND uses overflow-auto
+            on the card so taller states (Pace banner + projection +
+            methodology stack) don't clip. */}
         <div className="border-l border-border bg-card/40 px-12 py-10 overflow-auto flex flex-col">
           <div
             key={`card-${displayIndex}`}
@@ -156,7 +163,13 @@ export function WebFlow() {
                 "v2NarrativeFade 400ms 60ms cubic-bezier(0.22,1,0.36,1) backwards",
             }}
           >
-            <div className="bg-card border border-border rounded-2xl flex-1 flex flex-col overflow-hidden">
+            <div
+              className={
+                currentStepId === "reveal"
+                  ? "rounded-2xl flex-1 flex flex-col overflow-hidden"
+                  : "bg-card border border-border rounded-2xl flex-1 flex flex-col overflow-auto"
+              }
+            >
               <StepComponent />
             </div>
             <div className="mt-5 flex gap-3 justify-between items-center">
@@ -192,7 +205,15 @@ export function WebFlow() {
   );
 }
 
-function ProgressBar({ value, total }: { value: number; total: number }) {
+function ProgressBar({
+  value,
+  total,
+  className,
+}: {
+  value: number;
+  total: number;
+  className?: string;
+}) {
   const pct = Math.max(4, (value / Math.max(1, total)) * 100);
   return (
     <div
@@ -200,7 +221,7 @@ function ProgressBar({ value, total }: { value: number; total: number }) {
       aria-valuemin={0}
       aria-valuemax={total}
       aria-valuenow={value}
-      className="flex-1 h-1 rounded-sm bg-input-background overflow-hidden"
+      className={`h-1 rounded-sm bg-input-background overflow-hidden ${className ?? ""}`}
     >
       <div
         className="h-full rounded-sm bg-primary transition-[width] duration-300"

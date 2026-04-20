@@ -3,12 +3,20 @@ import { Text, View, ViewStyle, StyleProp } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useOnboardingV2 } from "./context";
 
 /**
  * Mobile scaffolding for v2 onboarding steps. Mirrors the web scaffold
  * at `src/app/components/onboarding-v2/scaffold.tsx` so a step can be
  * read side-by-side without surprises.
  */
+
+/** Derive the canonical step overline from context. Mirror of the
+ *  web helper — same convention, same off-by-one fix. */
+export function useStepOverline(): string {
+  const { displayIndex, displayTotal } = useOnboardingV2();
+  return `Step ${String(displayIndex).padStart(2, "0")} of ${displayTotal}`;
+}
 
 interface MobileStepHeaderProps {
   overline?: React.ReactNode;

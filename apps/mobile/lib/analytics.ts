@@ -77,6 +77,23 @@ export function isOnboardingV2Enabled(): boolean {
   return isFeatureEnabled("onboarding_v2");
 }
 
+/** Subscribe to flag-load events (mirror of the web helper at
+ *  `src/lib/analytics/track.ts#subscribeToFlags`). Necessary because
+ *  posthog-react-native fetches flags asynchronously after `identify`,
+ *  and the redirect from `apps/mobile/app/onboarding.tsx` would
+ *  otherwise miss the first flag load.
+ *
+ *  Returns an unsubscribe function suitable for `useEffect` cleanup. */
+export function subscribeToFlags(callback: () => void): () => void {
+  const c = getPostHogClient();
+  if (!c) return () => {};
+  try {
+    return c.onFeatureFlags(callback);
+  } catch {
+    return () => {};
+  }
+}
+
 async function maybeMarkFirstLog(c: PostHog): Promise<void> {
   try {
     const existing = await AsyncStorage.getItem(FIRST_LOG_LOCAL_KEY);

@@ -6,7 +6,7 @@ import { OptionCard } from "@/components/OptionCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { ActivityLevel } from "@/lib/tdee";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 const ACTIVITIES: {
   id: ActivityLevel;
@@ -24,10 +24,11 @@ const ACTIVITIES: {
 export function MobileActivityStep() {
   const { state, set } = useOnboardingV2();
   const colors = useThemeColors();
+  const overline = useStepOverline();
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 08 of 12"
+        overline={overline}
         title="How active are you?"
         subtitle="Rough estimate — Suppr will refine this using Apple Health data over ~2 weeks."
       />

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
+import { useOnboardingV2 } from "./context";
 
 /**
  * Scaffolding shared by every step in the v2 flow:
@@ -12,7 +13,19 @@ import { cn } from "@/app/components/ui/utils";
  *    typographic rhythm at the top of every step.
  *  - MethodologyNote — the small primary-tinted "what we're doing
  *    with this number" callout used by Pace + Reveal.
+ *  - useStepOverline — returns "Step 02 of 12" derived from context
+ *    so step components don't hardcode the count (and don't ship
+ *    "Step 13 of 12" copy bugs ever again).
  */
+
+/** Derive the canonical step overline from context. Welcome (step 0)
+ *  has no overline, so this is only called from the other 12 steps.
+ *  Convention: 1-indexed display starting at signup, matching the
+ *  prototype's "Step 02 / 03 …" pattern. */
+export function useStepOverline(): string {
+  const { displayIndex, displayTotal } = useOnboardingV2();
+  return `Step ${String(displayIndex).padStart(2, "0")} of ${displayTotal}`;
+}
 
 interface StepHeaderProps {
   overline?: React.ReactNode;
@@ -63,8 +76,11 @@ interface StepBodyProps {
 }
 
 export function StepBody({ children, className }: StepBodyProps) {
+  // Symmetric pt/pb (pb-6) per visual-qa P1 — pb-3 was lopsided vs
+  // pt-6 and made bottom-row elements (MethodologyNote, "Prefer not
+  // to enter" footer) feel cut off inside the rounded card.
   return (
-    <div className={cn("flex flex-col h-full px-6 pt-6 pb-3", className)}>
+    <div className={cn("flex flex-col h-full px-6 py-6", className)}>
       {children}
     </div>
   );

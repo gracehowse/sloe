@@ -34,7 +34,9 @@ interface RulerSliderProps {
   format?: (value: number) => string;
   /** Parse override for typed-input mode (when `format` is custom). */
   parseInput?: (text: string) => number;
-  /** Pixel width of the ruler track. Defaults to filling parent (320). */
+  /** Pixel width of the ruler track. When omitted, fills the parent
+   *  container (recommended — fixed widths leave the slider visibly
+   *  unmoored in fluid card layouts). */
   width?: number;
   /** Accent colour CSS string. Defaults to `var(--primary)`. */
   accent?: string;
@@ -54,7 +56,7 @@ function RulerSlider({
   unit,
   format,
   parseInput,
-  width = 320,
+  width,
   accent = "var(--primary)",
   className,
   ariaLabel = "Value",
@@ -245,7 +247,7 @@ function RulerSlider({
     <div
       data-slot="ruler-slider"
       className={cn("relative", className)}
-      style={{ width }}
+      style={width != null ? { width } : { width: "100%" }}
     >
       <div className="text-center mb-3">
         {editing ? (

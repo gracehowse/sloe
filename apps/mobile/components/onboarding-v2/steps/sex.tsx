@@ -6,7 +6,7 @@ import { OptionCard } from "@/components/OptionCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Sex } from "@/lib/tdee";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Mobile Sex step. Locks in the inclusive copy from
@@ -27,12 +27,13 @@ const OPTIONS: { id: Sex; title: string; subtitle?: string }[] = [
 
 export function MobileSexStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const [helpOpen, setHelpOpen] = React.useState(false);
   const colors = useThemeColors();
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 04 of 12"
+        overline={overline}
         title="Sex"
         subtitle="Used to estimate your metabolic rate. You can change this anytime."
       />

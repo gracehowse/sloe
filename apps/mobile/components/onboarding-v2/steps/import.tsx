@@ -11,12 +11,13 @@ import { Accent, MacroColors, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboardingV2 } from "../context";
 import type { ImportSource } from "@/lib/onboarding-v2";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 type Phase = "idle" | "parsing" | "done";
 
 export function MobileImportStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const [url, setUrl] = React.useState("");
   const [phase, setPhase] = React.useState<Phase>("idle");
   const colors = useThemeColors();
@@ -31,7 +32,7 @@ export function MobileImportStep() {
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 13 of 12"
+        overline={overline}
         title="Try importing a recipe"
         subtitle="Paste a link or pick a source — Suppr parses ingredients and matches each against USDA / Open Food Facts."
       />

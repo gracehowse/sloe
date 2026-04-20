@@ -4,14 +4,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 export function MobilePermissionsStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 12 of 12"
+        overline={overline}
         title="A couple of permissions"
         subtitle="Both are optional and you can change them later in Settings."
       />

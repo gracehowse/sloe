@@ -4,15 +4,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 export function MobileSignupStep() {
   const { state, set, go } = useOnboardingV2();
   const colors = useThemeColors();
+  const overline = useStepOverline();
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 02 of 12"
+        overline={overline}
         title="Create your account"
         subtitle="One account, same data on your phone and on the web."
       />

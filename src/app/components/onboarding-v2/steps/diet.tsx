@@ -4,7 +4,7 @@ import * as React from "react";
 import { Apple, Beef, Fish, Leaf, Salad, Wheat } from "lucide-react";
 import { OptionCard } from "@/app/components/ui/option-card";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 const DIETS: { id: string; title: string; icon: React.ReactNode }[] = [
   { id: "anything", title: "Anything goes", icon: <Salad className="size-4" /> },
@@ -19,6 +19,7 @@ const ALLERGIES = ["Gluten", "Dairy", "Eggs", "Nuts", "Shellfish", "Soy"];
 
 export function DietStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const toggleAllergy = (a: string) =>
     set((prev) => ({
       allergies: prev.allergies.includes(a)
@@ -46,7 +47,7 @@ export function DietStep() {
   return (
     <StepBody>
       <StepHeader
-        overline="Step 10 of 12"
+        overline={overline}
         title="Any dietary preferences?"
         subtitle="We'll filter recipes and macro suggestions. Optional — skip if none apply."
       />

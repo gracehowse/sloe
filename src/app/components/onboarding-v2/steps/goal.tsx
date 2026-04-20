@@ -5,7 +5,7 @@ import { Equal, Shuffle, TrendingDown, TrendingUp } from "lucide-react";
 import { OptionCard } from "@/app/components/ui/option-card";
 import type { Goal } from "@/lib/onboarding/v2/state";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 const GOALS: { id: Goal; title: string; subtitle: string; icon: React.ReactNode }[] = [
   {
@@ -39,10 +39,11 @@ const GOALS: { id: Goal; title: string; subtitle: string; icon: React.ReactNode 
 
 export function GoalStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <StepBody>
       <StepHeader
-        overline="Step 03 of 12"
+        overline={overline}
         title="What's your goal?"
         subtitle="We'll tailor your calorie and macro targets to match. You can change this anytime."
       />

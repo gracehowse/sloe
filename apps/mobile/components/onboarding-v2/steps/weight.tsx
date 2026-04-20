@@ -5,7 +5,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RulerSlider } from "@/components/RulerSlider";
 import { useOnboardingV2 } from "../context";
 import { MobileSegmented } from "../segmented";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Weight step mobile mirror. Includes the "Prefer not to enter" path
@@ -15,13 +15,14 @@ import { MobileStepBody, MobileStepHeader } from "../scaffold";
 export function MobileWeightStep() {
   const { state, set } = useOnboardingV2();
   const colors = useThemeColors();
+  const overline = useStepOverline();
   const metric = state.unitSystem === "metric";
 
   if (state.weightSkipped) {
     return (
       <MobileStepBody>
         <MobileStepHeader
-          overline="Step 07 of 12"
+          overline={overline}
           title="Skipped — that's fine"
           subtitle="We'll calibrate your targets from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
           compact
@@ -48,7 +49,7 @@ export function MobileWeightStep() {
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 07 of 12"
+        overline={overline}
         title="And your weight?"
         subtitle="We'll store this privately. You can log it whenever — no daily prompts."
         compact

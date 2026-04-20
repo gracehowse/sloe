@@ -44,6 +44,24 @@ export function isOnboardingV2Enabled(): boolean {
   return isFeatureEnabled("onboarding_v2");
 }
 
+/** Subscribe to flag-load events. The callback fires:
+ *   - immediately if flags are already loaded
+ *   - again whenever PostHog refreshes flags (e.g. after `identify`)
+ *  Returns an unsubscribe function suitable for `useEffect` cleanup.
+ *
+ *  Necessary because flag values aren't synchronously available on
+ *  mount — they arrive after a `/decide/` round-trip. The redirect
+ *  in `app/onboarding/page.tsx` would otherwise miss the first flag
+ *  load and silently strand users on the legacy flow. */
+export function subscribeToFlags(callback: () => void): () => void {
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return () => {};
+  try {
+    return posthog.onFeatureFlags(callback);
+  } catch {
+    return () => {};
+  }
+}
+
 function maybeMarkFirstLog(): void {
   if (typeof window === "undefined") return;
   try {

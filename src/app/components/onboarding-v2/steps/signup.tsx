@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/app/components/ui/button";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Signup — step 02. Apple sign-in CTA + email/name fallback.
@@ -15,10 +15,11 @@ import { StepBody, StepHeader } from "../scaffold";
 
 export function SignupStep() {
   const { state, set, go } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <StepBody>
       <StepHeader
-        overline="Step 02 of 12"
+        overline={overline}
         title="Create your account"
         subtitle="One account, same data on your phone and on the web."
       />

@@ -5,7 +5,7 @@ import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboardingV2 } from "../context";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 const DIETS: { id: string; title: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: "anything", title: "Anything goes", icon: "restaurant-outline" },
@@ -21,6 +21,7 @@ const ALLERGIES = ["Gluten", "Dairy", "Eggs", "Nuts", "Shellfish", "Soy"];
 export function MobileDietStep() {
   const { state, set } = useOnboardingV2();
   const colors = useThemeColors();
+  const overline = useStepOverline();
   const toggleAllergy = (a: string) =>
     set((prev) => ({
       allergies: prev.allergies.includes(a)
@@ -47,7 +48,7 @@ export function MobileDietStep() {
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 10 of 12"
+        overline={overline}
         title="Any dietary preferences?"
         subtitle="We'll filter recipes and macro suggestions. Optional — skip if none apply."
       />

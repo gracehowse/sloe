@@ -3,14 +3,15 @@
 import * as React from "react";
 import { NumberStepper } from "../number-stepper";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 export function AgeStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <StepBody>
       <StepHeader
-        overline="Step 05 of 12"
+        overline={overline}
         title="How old are you?"
         subtitle="Metabolic rate drops ~1% per decade after 20 — we'll factor that in."
       />

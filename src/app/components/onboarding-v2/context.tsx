@@ -123,9 +123,15 @@ export function OnboardingV2Provider({ children, initial }: ProviderProps) {
       targets,
       warning,
       currentStepId,
-      // Welcome counts as 0; the rest is a 1-based "step X of 12" display.
-      displayIndex: state.step,
-      displayTotal: TOTAL_STEPS - 1,
+      // 1-indexed for human display: Welcome is "Step 1 of 13"
+      // (though Welcome itself hides the overline + the top bar).
+      // Signup is "Step 02 of 13", import is "Step 13 of 13".
+      // displayTotal is the full count, not count-minus-one — the
+      // prototype labels were "Step XX of 13" and the prior
+      // `TOTAL_STEPS - 1` value made "Step 13 of 12" inevitable on
+      // the last step.
+      displayIndex: state.step + 1,
+      displayTotal: TOTAL_STEPS,
       canAdvance,
       stepLabels: STEP_LABELS,
     }),

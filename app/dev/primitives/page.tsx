@@ -211,7 +211,6 @@ export default function PrimitivesPreview() {
                   step={1}
                   format={formatImperialHeightInches}
                   parseInput={parseImperialHeightInches}
-                  width={320}
                   ariaLabel="Height"
                 />
               ) : (
@@ -222,7 +221,6 @@ export default function PrimitivesPreview() {
                   max={210}
                   step={1}
                   unit="cm"
-                  width={320}
                   ariaLabel="Height"
                 />
               )}
@@ -237,7 +235,6 @@ export default function PrimitivesPreview() {
                   max={330}
                   step={1}
                   unit="lb"
-                  width={320}
                   ariaLabel="Weight"
                 />
               ) : (
@@ -249,7 +246,6 @@ export default function PrimitivesPreview() {
                   step={0.5}
                   decimals={1}
                   unit="kg"
-                  width={320}
                   ariaLabel="Weight"
                 />
               )}

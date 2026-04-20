@@ -104,8 +104,10 @@ export function OnboardingV2Provider({ children, initial }: ProviderProps) {
       targets,
       warning,
       currentStepId,
-      displayIndex: state.step,
-      displayTotal: TOTAL_STEPS - 1,
+      // 1-indexed display — mirror of web context. Welcome is "Step 1
+      // of 13" but its overline + top bar are both hidden.
+      displayIndex: state.step + 1,
+      displayTotal: TOTAL_STEPS,
       canAdvance,
       stepLabels: STEP_LABELS,
     }),

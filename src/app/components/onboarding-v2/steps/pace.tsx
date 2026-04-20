@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Check, Info } from "lucide-react";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
 import {
@@ -11,7 +11,9 @@ import {
   type Goal,
 } from "@/lib/onboarding/v2/state";
 import { useOnboardingV2 } from "../context";
-import { MethodologyNote, StepBody, StepHeader } from "../scaffold";
+import { MethodologyNote, StepBody, StepHeader, useStepOverline } from "../scaffold";
+import { BrandedSlider } from "../branded-slider";
+import { useTweenedNumber } from "../use-tweened-number";
 
 /**
  * Pace step — step 09. The hairiest of the v2 steps because it ties
@@ -35,6 +37,7 @@ const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
 
 export function PaceStep() {
   const { state, set, targets, warning } = useOnboardingV2();
+  const overline = useStepOverline();
   // Reset the danger acknowledgement whenever the warning reason
   // changes — e.g. user drags out of danger and back in; they should
   // re-acknowledge per Stage F decision-doc update. The ref is
@@ -95,7 +98,7 @@ export function PaceStep() {
   return (
     <StepBody>
       <StepHeader
-        overline="Step 09 of 12"
+        overline={overline}
         title={
           goal === "gain"
             ? "How fast should we gain?"
@@ -154,19 +157,15 @@ export function PaceStep() {
             kg / week
           </span>
         </div>
-        <input
-          type="range"
+        <BrandedSlider
+          value={pace}
+          onChange={(v) => set({ paceKgPerWeek: v })}
           min={range.min}
           max={range.max}
           step={range.step}
-          value={pace}
-          onChange={(e) =>
-            set({ paceKgPerWeek: parseFloat(e.target.value) })
-          }
-          aria-label="Weekly rate"
-          aria-valuetext={`${pace.toFixed(2)} kg per week`}
-          className="w-full h-1.5 cursor-pointer"
-          style={{ accentColor: accent }}
+          accent={accent}
+          ariaLabel="Weekly rate"
+          formatBubble={(v) => `${v.toFixed(2)} kg / wk`}
         />
         <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground tabular-nums">
           <span>{range.min} kg / wk</span>
@@ -174,41 +173,15 @@ export function PaceStep() {
         </div>
       </div>
 
-      {/* Live projected target */}
+      {/* Live projected target — tweened so numbers don't snap on
+          each slider tick (ui-critic premium-tier upgrade #3). */}
       {projectedTarget != null && dailyMagnitude != null && (
-        <div
-          className="mt-3.5 grid grid-cols-2 gap-3 rounded-xl px-4 py-3.5 border"
-          style={{
-            backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`,
-            borderColor: `color-mix(in oklab, ${accent} 40%, transparent)`,
-          }}
-        >
-          <div>
-            <div className="section-label mb-1">Daily target</div>
-            <div
-              className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
-              style={{ letterSpacing: "-0.02em" }}
-            >
-              {projectedTarget.toLocaleString()}
-              <span className="text-xs text-muted-foreground font-medium ml-1">
-                kcal
-              </span>
-            </div>
-          </div>
-          <div>
-            <div className="section-label mb-1">vs. your TDEE</div>
-            <div
-              className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none"
-              style={{ letterSpacing: "-0.02em", color: accent }}
-            >
-              {sign}
-              {dailyMagnitude.toLocaleString()}
-              <span className="text-xs text-muted-foreground font-medium ml-1">
-                kcal / day
-              </span>
-            </div>
-          </div>
-        </div>
+        <ProjectionTile
+          accent={accent}
+          target={projectedTarget}
+          delta={dailyMagnitude}
+          sign={sign}
+        />
       )}
 
       {/* Soft-warn safety floor banner. For info / warn, Continue
@@ -233,6 +206,59 @@ export function PaceStep() {
         medical condition.
       </MethodologyNote>
     </StepBody>
+  );
+}
+
+function ProjectionTile({
+  accent,
+  target,
+  delta,
+  sign,
+}: {
+  accent: string;
+  target: number;
+  delta: number;
+  sign: string;
+}) {
+  // Tween at ~220 ms per visual-qa P0 fix — eliminates the integer-by-
+  // integer snap on slider drags. tabular-nums + Math.round below
+  // keeps the rolling display from jittering.
+  const tweenedTarget = useTweenedNumber(target);
+  const tweenedDelta = useTweenedNumber(delta);
+  return (
+    <div
+      className="mt-4 grid grid-cols-2 gap-3 rounded-xl px-4 py-3.5 border v2-fade-up"
+      style={{
+        backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`,
+        borderColor: `color-mix(in oklab, ${accent} 40%, transparent)`,
+      }}
+    >
+      <div>
+        <div className="section-label mb-1">Daily target</div>
+        <div
+          className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+          style={{ letterSpacing: "-0.02em" }}
+        >
+          {Math.round(tweenedTarget).toLocaleString()}
+          <span className="text-xs text-muted-foreground font-medium ml-1">
+            kcal
+          </span>
+        </div>
+      </div>
+      <div>
+        <div className="section-label mb-1">vs. your TDEE</div>
+        <div
+          className="text-[22px] font-extrabold tracking-tight tabular-nums leading-none"
+          style={{ letterSpacing: "-0.02em", color: accent }}
+        >
+          {sign}
+          {Math.round(tweenedDelta).toLocaleString()}
+          <span className="text-xs text-muted-foreground font-medium ml-1">
+            kcal / day
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -270,7 +296,7 @@ function PaceWarningBanner({
 
   return (
     <div
-      className="mt-3 px-3.5 py-3 rounded-xl border flex gap-3 items-start"
+      className="mt-4 px-3.5 py-3 rounded-xl border flex gap-3 items-start v2-fade-up"
       style={{
         backgroundColor: config.bg,
         borderColor: config.border,
@@ -299,23 +325,40 @@ function PaceWarningBanner({
           {warning.body}
         </div>
         {warning.level === "danger" && (
-          <label
-            className="mt-3 flex items-start gap-2 cursor-pointer select-none"
+          <button
+            type="button"
+            onClick={() => onAcknowledgeChange(!acknowledged)}
+            role="checkbox"
+            aria-checked={acknowledged}
+            aria-label="I understand and accept responsibility for proceeding below the safety floor"
             data-testid="pace-danger-acknowledge"
+            className="mt-3 flex items-start gap-2 cursor-pointer select-none w-full text-left bg-transparent border-0 p-0 group"
           >
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => onAcknowledgeChange(e.target.checked)}
-              aria-label="I understand and accept responsibility for proceeding below the safety floor"
-              className="mt-0.5 size-4 cursor-pointer accent-current"
-              style={{ accentColor: "var(--destructive)" }}
-            />
-            <span className="text-xs text-foreground leading-snug">
+            <span
+              aria-hidden
+              className="mt-0.5 inline-grid place-items-center size-[18px] rounded-[5px] border-[1.5px] transition-pm shrink-0 group-active:scale-95"
+              style={{
+                borderColor: acknowledged
+                  ? "var(--destructive)"
+                  : "var(--radio-border)",
+                backgroundColor: acknowledged
+                  ? "var(--destructive)"
+                  : "transparent",
+              }}
+            >
+              {acknowledged && (
+                <Check
+                  className="size-3 text-white"
+                  strokeWidth={3}
+                  style={{ animation: "v2-check-in 180ms cubic-bezier(0.22,1,0.36,1)" }}
+                />
+              )}
+            </span>
+            <span className="text-[13px] font-medium text-foreground leading-snug">
               I understand this is below the recommended safety floor
               and accept responsibility for proceeding.
             </span>
-          </label>
+          </button>
         )}
       </div>
     </div>

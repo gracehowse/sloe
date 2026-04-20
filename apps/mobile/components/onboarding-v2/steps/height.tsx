@@ -7,15 +7,16 @@ import {
 } from "@/components/RulerSlider";
 import { useOnboardingV2 } from "../context";
 import { MobileSegmented } from "../segmented";
-import { MobileStepBody, MobileStepHeader } from "../scaffold";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 export function MobileHeightStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const metric = state.unitSystem === "metric";
   return (
     <MobileStepBody>
       <MobileStepHeader
-        overline="Step 06 of 12"
+        overline={overline}
         title="How tall are you?"
         compact
       />

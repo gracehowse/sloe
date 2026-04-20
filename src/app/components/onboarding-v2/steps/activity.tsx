@@ -5,7 +5,7 @@ import { Activity, Armchair, Dumbbell, Flame, Footprints } from "lucide-react";
 import { OptionCard } from "@/app/components/ui/option-card";
 import type { ActivityLevel } from "@/lib/nutrition/tdee";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 const ACTIVITIES: {
   id: ActivityLevel;
@@ -47,10 +47,11 @@ const ACTIVITIES: {
 
 export function ActivityStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <StepBody>
       <StepHeader
-        overline="Step 08 of 12"
+        overline={overline}
         title="How active are you?"
         subtitle="Rough estimate — Suppr will refine this using Apple Health data over ~2 weeks."
       />

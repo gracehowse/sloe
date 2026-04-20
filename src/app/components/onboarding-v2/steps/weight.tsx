@@ -4,7 +4,7 @@ import * as React from "react";
 import { RulerSlider } from "@/app/components/suppr/ruler-slider";
 import { Segmented } from "../segmented";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Weight step — step 07. Includes a "Prefer not to enter" path
@@ -16,12 +16,13 @@ import { StepBody, StepHeader } from "../scaffold";
 
 export function WeightStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const metric = state.unitSystem === "metric";
   if (state.weightSkipped) {
     return (
       <StepBody>
         <StepHeader
-          overline="Step 07 of 12"
+          overline={overline}
           title="Skipped — that's fine"
           subtitle="We'll calibrate your targets from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
           compact
@@ -39,7 +40,7 @@ export function WeightStep() {
   return (
     <StepBody>
       <StepHeader
-        overline="Step 07 of 12"
+        overline={overline}
         title="And your weight?"
         subtitle="We'll store this privately. You can log it whenever — no daily prompts."
         compact
@@ -55,7 +56,7 @@ export function WeightStep() {
           ariaLabel="Weight units"
         />
       </div>
-      <div className="flex justify-center">
+      <div className="w-full max-w-[380px] mx-auto">
         {metric ? (
           <RulerSlider
             value={state.weightKg}
@@ -65,7 +66,6 @@ export function WeightStep() {
             step={0.5}
             decimals={1}
             unit="kg"
-            width={320}
             ariaLabel="Weight"
           />
         ) : (
@@ -76,7 +76,6 @@ export function WeightStep() {
             max={330}
             step={1}
             unit="lb"
-            width={320}
             ariaLabel="Weight"
           />
         )}

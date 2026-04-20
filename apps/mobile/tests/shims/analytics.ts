@@ -23,6 +23,11 @@ export const isFeatureEnabled = vi.fn((_flag: string) => false);
 /** Mirrors `apps/mobile/lib/analytics.ts#isOnboardingV2Enabled`. */
 export const isOnboardingV2Enabled = vi.fn(() => false);
 
+/** Mirrors `apps/mobile/lib/analytics.ts#subscribeToFlags`. Returns
+ *  an unsubscribe function. Defaults to a no-op so flag-gated
+ *  callsites take their off-branch unless mocked. */
+export const subscribeToFlags = vi.fn((_cb: () => void) => () => undefined);
+
 export default {
   track,
   identifyUser,
@@ -30,4 +35,5 @@ export default {
   bootstrapAnalytics,
   isFeatureEnabled,
   isOnboardingV2Enabled,
+  subscribeToFlags,
 };

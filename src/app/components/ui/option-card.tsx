@@ -51,6 +51,9 @@ function OptionCard({
       className={cn(
         "w-full text-left flex items-center gap-3.5 rounded-card border bg-card transition-pm",
         "hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+        // Press-state micro-bounce per ui-critic — makes selection
+        // feel like an action, not a CSS state-swap.
+        "active:scale-[0.985]",
         compact ? "p-3.5" : "p-4",
         selected
           ? "border-primary bg-primary/8"

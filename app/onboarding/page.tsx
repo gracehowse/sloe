@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Activity, Calculator, CheckCircle2, Sparkles, User } from "lucide-react";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
-import { isOnboardingV2Enabled, track } from "../../src/lib/analytics/track.ts";
+import { isOnboardingV2Enabled, subscribeToFlags, track } from "../../src/lib/analytics/track.ts";
 import {
   calculateTDEE,
   calculateBudget,
@@ -77,17 +77,43 @@ export default function OnboardingPage() {
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
 
   const router = useRouter();
-  // Stage E gate (decision doc 2026-04-19) — when the `onboarding_v2`
-  // PostHog flag is on for this user, route them to the v2 flow at
-  // /onboarding/v2 instead of rendering the legacy single-page form.
-  // The flag check is sync-on-mount; PostHog is initialised by the
-  // top-level Providers tree. False-default when the flag isn't loaded
-  // yet — the user lands on the legacy flow and we re-evaluate on
-  // subsequent visits. That's acceptable because v2 is opt-in.
+  // Stage E gate (decision doc 2026-04-19) — three paths to /onboarding/v2:
+  //
+  //   1. Query escape hatch `?v2=1` — instant redirect, doesn't depend
+  //      on PostHog at all. Useful for design preview, internal review,
+  //      and dev environments where cookie consent isn't accepted.
+  //   2. Synchronous flag check on mount — covers the case where the
+  //      user has visited before, the flag was already loaded for their
+  //      distinct ID, and PostHog has the value cached.
+  //   3. Async flag-load subscriber — handles the cold-load case where
+  //      `posthog.identify(userId)` fires after mount, and the
+  //      `/decide/` round-trip that follows finally surfaces the flag
+  //      value. Without this, first-time visits silently miss the
+  //      redirect because the sync check returns false before the
+  //      flag has loaded.
+  //
+  // The opt-out cookie-consent gate in AnalyticsProvider means PostHog
+  // capture is suppressed until the user accepts cookies — which would
+  // also block flag fetches. Path #1 (the query hatch) is the
+  // belt-and-braces unblock for that case.
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      if (search.get("v2") === "1") {
+        router.replace("/onboarding/v2");
+        return;
+      }
+    }
     if (isOnboardingV2Enabled()) {
       router.replace("/onboarding/v2");
+      return;
     }
+    const unsub = subscribeToFlags(() => {
+      if (isOnboardingV2Enabled()) {
+        router.replace("/onboarding/v2");
+      }
+    });
+    return unsub;
   }, [router]);
 
   useEffect(() => {

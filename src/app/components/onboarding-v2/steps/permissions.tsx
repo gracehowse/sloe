@@ -4,7 +4,7 @@ import * as React from "react";
 import { Bell, Check, HeartPulse } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Permissions — step 12. Apple Health + Notifications.
@@ -17,10 +17,11 @@ import { StepBody, StepHeader } from "../scaffold";
 
 export function PermissionsStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   return (
     <StepBody>
       <StepHeader
-        overline="Step 12 of 12"
+        overline={overline}
         title="A couple of permissions"
         subtitle="Both are optional and you can change them later in Settings."
       />

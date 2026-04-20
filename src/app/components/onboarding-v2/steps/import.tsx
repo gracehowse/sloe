@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, Globe, Instagram, Link2, Music } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader } from "../scaffold";
+import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 import type { ImportSource } from "@/lib/onboarding/v2/state";
 
 /**
@@ -20,6 +20,7 @@ type Phase = "idle" | "parsing" | "done";
 
 export function ImportStep() {
   const { state, set } = useOnboardingV2();
+  const overline = useStepOverline();
   const [url, setUrl] = React.useState("");
   const [phase, setPhase] = React.useState<Phase>("idle");
 
@@ -35,7 +36,7 @@ export function ImportStep() {
   return (
     <StepBody>
       <StepHeader
-        overline="Step 13 of 12"
+        overline={overline}
         title="Try importing a recipe"
         subtitle="Paste a link or pick a source — Suppr parses ingredients and matches each against USDA / Open Food Facts."
       />
