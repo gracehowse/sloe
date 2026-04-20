@@ -20,7 +20,7 @@
 // `@/*` alias — which points at the mobile workspace root — doesn't
 // shadow the shared module when mobile typechecks via the
 // `apps/mobile/lib/onboarding-v2.ts` re-export shim.
-import type { ActivityLevel, Sex } from "../../nutrition/tdee";
+import type { ActivityLevel, NutritionStrategy, Sex } from "../../nutrition/tdee";
 
 /** Goals the v2 flow supports. Maps to existing strategy / budget calc
  *  via `mapGoalToStrategy` and `mapGoalToBudgetGoal` in `targets.ts`. */
@@ -38,9 +38,10 @@ export const STEP_IDS = [
   "activity", // 08
   "pace", // 09 — auto-skipped when goal = maintain
   "diet", // 10
-  "reveal", // 11 — the aha moment
-  "permissions", // 12
-  "import", // 13
+  "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
+  "reveal", // 12 — the aha moment
+  "permissions", // 13
+  "import", // 14
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -57,6 +58,7 @@ export const STEP_LABELS: Record<StepId, string> = {
   activity: "Activity",
   pace: "Pace",
   diet: "Diet",
+  strategy: "Macro style",
   reveal: "Your targets",
   permissions: "Permissions",
   import: "Import",
@@ -99,6 +101,13 @@ export interface OnboardingState {
   // Preferences
   diet: string[];
   allergies: string[];
+  /**
+   * Macro split override. `null` means "use the goal-derived default"
+   * (`mapGoalToStrategy` in targets.ts). Set when the user picks a
+   * different style on the Strategy step (parity with legacy
+   * `nutrition_strategy` column on `profiles`).
+   */
+  nutritionStrategy: NutritionStrategy | null;
   unitSystem: UnitSystem;
   // Permissions + final demo
   healthGranted: PermissionGrant;
@@ -195,6 +204,7 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   activity: null,
   diet: [],
   allergies: [],
+  nutritionStrategy: null,
   unitSystem: "metric",
   healthGranted: null,
   notifGranted: null,
@@ -252,10 +262,14 @@ export function canAdvance(
     case "welcome":
       return true;
     case "signup":
-      return Boolean(
-        state.authMethod ||
-          (state.name.trim().length > 0 && state.email.includes("@")),
-      );
+      // The Signup step owns its own "Create account" CTA which fires
+      // the real Supabase signUp and then advances the flow itself
+      // (via context.go). The global footer Continue is suppressed on
+      // this step in the shell — see `web-flow.tsx`. canAdvance
+      // returns true defensively so any code path that doesn't honour
+      // the suppression (e.g. keyboard shortcut, deep-link) still
+      // permits forward motion rather than soft-locking the flow.
+      return true;
     case "goal":
       return state.goal !== null;
     case "pace":
@@ -290,6 +304,11 @@ export function canAdvance(
       return state.activity !== null;
     case "diet":
       return true; // optional step
+    case "strategy":
+      // Always advanceable — `null` means "use the goal-derived
+      // default" (mapGoalToStrategy), so the user always has a valid
+      // macro split even if they don't tap a card.
+      return true;
     case "reveal":
       return true;
     case "permissions":

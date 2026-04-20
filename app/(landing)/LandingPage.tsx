@@ -59,8 +59,12 @@ const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-const SIGNUP_HREF = "/login?mode=signup";
-const SIGNIN_HREF = "/login?mode=signin";
+// Sign Up = the v2 onboarding flow (real Supabase signUp inline at
+// step 02). Sign In = canonical /signin with no Sign Up tab visible.
+// See app/signin/page.tsx + app/signup/page.tsx (now a redirect) for
+// the full architecture.
+const SIGNUP_HREF = "/onboarding";
+const SIGNIN_HREF = "/signin";
 
 export function LandingPage() {
   return (

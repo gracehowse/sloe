@@ -38,24 +38,21 @@ const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
 export function PaceStep() {
   const { state, set, targets, warning } = useOnboardingV2();
   const overline = useStepOverline();
-  // Reset the danger acknowledgement whenever the warning reason
-  // changes — e.g. user drags out of danger and back in; they should
-  // re-acknowledge per Stage F decision-doc update. The ref is
-  // initialised to the current reason so the mount-tick is a no-op
-  // (otherwise we'd clobber any pre-set acknowledgement, including
-  // tests that pre-tick the box).
-  const initialDangerReason =
-    warning?.level === "danger" ? warning.reason : null;
-  const ackResetRef = React.useRef<string | null>(initialDangerReason);
-  React.useEffect(() => {
-    const current = warning?.level === "danger" ? warning.reason : null;
-    if (ackResetRef.current !== current) {
-      ackResetRef.current = current;
-      if (state.paceDangerAcknowledged) {
-        set({ paceDangerAcknowledged: false });
-      }
-    }
-  }, [warning, set, state.paceDangerAcknowledged]);
+  // No auto-reset of `paceDangerAcknowledged` here.
+  //
+  // Earlier this component reset the ack whenever the warning reason
+  // changed, on the theory that crossing in/out of danger should
+  // require a fresh tick (Grace 2026-04-20: that effect was clobbering
+  // the tick mid-drag — user ticked the box, the slider tween nudged
+  // the projected target a kcal across a band threshold, the ref
+  // mismatch fired, the ack reset to false, and Continue stayed
+  // disabled with no visible reason).
+  //
+  // Behaviour now: the tick is sticky. Once the user acknowledges, it
+  // stays acknowledged until they untick or leave the step. That still
+  // satisfies the legal-reviewer Stage F requirement (advance below
+  // the floor requires a deliberate, explicit tick) without the UX
+  // booby-trap.
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
   const presets = PACE_PRESETS[goal];

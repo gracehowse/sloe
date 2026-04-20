@@ -1,18 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { Bell, Check, HeartPulse } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useOnboardingV2 } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
- * Permissions — step 12. Apple Health + Notifications.
+ * Permissions — step 12 (web). Notifications only.
  *
- * The actual prompt invocation belongs to mobile (Stage D); this
- * step records the user's intent and the route component triggers
- * the OS prompt at the right moment. On web both cards still render
- * so the flow stays parity-aligned for sign-in handoff.
+ * Apple Health is mobile-only (HealthKit doesn't exist on web). The
+ * mobile mirror at apps/mobile/components/onboarding-v2/steps/
+ * permissions.tsx still renders both cards. Hiding the card here
+ * (rather than rendering it as a no-op) avoids dangling a permission
+ * the user can never grant on this surface.
+ *
+ * Notifications today only records intent — wiring up the browser
+ * Push API + service worker is a separate workstream (Grace
+ * 2026-04-20).
  */
 
 export function PermissionsStep() {
@@ -22,17 +27,8 @@ export function PermissionsStep() {
     <StepBody>
       <StepHeader
         overline={overline}
-        title="A couple of permissions"
-        subtitle="Both are optional and you can change them later in Settings."
-      />
-      <PermissionCard
-        icon={<HeartPulse className="size-5 text-macro-fat" />}
-        iconBg="bg-macro-fat/10"
-        title="Apple Health"
-        body="Read your active energy and steps to refine your adaptive TDEE. Suppr does not write to Health."
-        granted={state.healthGranted}
-        onAllow={() => set({ healthGranted: true })}
-        onSkip={() => set({ healthGranted: false })}
+        title="One quick permission"
+        subtitle="Optional — you can change it later in Settings."
       />
       <PermissionCard
         icon={<Bell className="size-5 text-warning" />}

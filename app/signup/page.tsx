@@ -1,11 +1,15 @@
-import type { Metadata } from "next";
-import { LoginClient } from "../login/ui.tsx";
+/**
+ * /signup → /onboarding (server-side 307).
+ *
+ * Sign-up is now part of the v2 onboarding flow (real Supabase signUp
+ * happens inline at the second step). Keeping a separate /signup form
+ * was the source of the duplicate-account-creation loop on
+ * suppr-club.com (legacy flow → /signup → real auth → /onboarding/v2 →
+ * cosmetic v2 signup step that asked again).
+ */
 
-export const metadata: Metadata = {
-  title: "Create account — Suppr",
-  description: "Sign up for Suppr — free to start. Recipes, meal plans, and macro tracking in one place.",
-};
+import { redirect } from "next/navigation";
 
 export default function SignupPage() {
-  return <LoginClient initialMode="signup" />;
+  redirect("/onboarding");
 }

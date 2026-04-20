@@ -1,14 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import posthog from "posthog-js";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
+import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
+import { track } from "../../src/lib/analytics/track.ts";
 
 export type LoginClientProps = {
-  /** Default tab; `/login?mode=signin` also sets this from the server. */
+  /** Default tab; `/signin` defaults to "signin" with `hideTabs` so
+   *  there's no Sign Up tab visible (Sign Up flow lives at /onboarding). */
   initialMode?: "signin" | "signup";
+  /** When true the Sign Up / Sign In tab strip is hidden and the user
+   *  cannot switch mode inline. Used by `/signin` (sign-in only) so the
+   *  account-creation entry point stays canonically at /onboarding. */
+  hideTabs?: boolean;
 };
 
-export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
+export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginClientProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
@@ -36,24 +44,6 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("error") === "oauth") {
-        const desc = params.get("error_description");
-        setMessage(
-          desc
-            ? `Sign-in with Apple failed: ${desc}`
-            : "Sign-in with Apple didn’t complete. Try again or use email.",
-        );
-        setStatus("error");
-        window.history.replaceState({}, "", "/login");
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
   const validateEmail = () => {
     const trimmed = email.trim();
     if (!trimmed) {
@@ -79,7 +69,7 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     }
     setStatus("working");
     setMessage(null);
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: trimmed,
       password,
       options: {
@@ -90,6 +80,10 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
       setStatus("error");
       setMessage(error.message);
       return;
+    }
+    if (signUpData.user) {
+      posthog.identify(signUpData.user.id, { email: trimmed });
+      track(AnalyticsEvents.user_signed_up, { method: "email" });
     }
     setStatus("sent");
     setMessage("Account created. Check your email to confirm, then sign in.");
@@ -105,7 +99,7 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     }
     setStatus("working");
     setMessage(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email: trimmed,
       password,
     });
@@ -113,6 +107,10 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
       setStatus("error");
       setMessage(error.message);
       return;
+    }
+    if (signInData.user) {
+      posthog.identify(signInData.user.id, { email: trimmed });
+      track(AnalyticsEvents.user_signed_in, { method: "email" });
     }
     setStatus("idle");
   };
@@ -152,29 +150,6 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
     }
     setStatus("sent");
     setMessage("Check your email for a password reset link.");
-  };
-
-  /** Web: OAuth redirect. Mobile app uses native `signInWithIdToken` instead (see `apps/mobile/app/login.tsx`). */
-  const signInWithApple = async () => {
-    if (mode === "signup" && !acceptedTerms) {
-      setStatus("error");
-      setMessage("Please agree to the Terms of Service and Privacy Policy to continue.");
-      return;
-    }
-    setStatus("working");
-    setMessage(null);
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "apple",
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
-    }
-    // On success the browser navigates to Apple, then back to /auth/callback.
   };
 
   return (
@@ -234,40 +209,47 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
               : "Sign in to continue."}
           </p>
 
-          <div className="flex gap-2 mb-5">
-            <button
-              type="button"
-              onClick={() => { setMode("signup"); setMessage(null); setStatus("idle"); }}
-              className="flex-1 px-4 py-2 rounded-xl border text-sm font-semibold transition-all"
-              style={mode === "signup" ? {
-                background: "var(--primary)",
-                color: "var(--primary-foreground)",
-                borderColor: "var(--primary)",
-              } : {
-                background: "var(--card)",
-                color: "var(--foreground)",
-                borderColor: "var(--border)",
-              }}
-            >
-              Sign up
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode("signin"); setMessage(null); setStatus("idle"); }}
-              className="flex-1 px-4 py-2 rounded-xl border text-sm font-semibold transition-all"
-              style={mode === "signin" ? {
-                background: "var(--primary)",
-                color: "var(--primary-foreground)",
-                borderColor: "var(--primary)",
-              } : {
-                background: "var(--card)",
-                color: "var(--foreground)",
-                borderColor: "var(--border)",
-              }}
-            >
-              Sign in
-            </button>
-          </div>
+          {/* The mode-switcher is hidden on /signin — sign-up entry
+              point is canonically at /onboarding (which runs the v2
+              flow with auth inline). Keeping a "Sign up" tab here
+              would split the sign-up surface and re-create the
+              duplicate-account-creation bug. */}
+          {!hideTabs && (
+            <div className="flex gap-2 mb-5">
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setMessage(null); setStatus("idle"); }}
+                className="flex-1 px-4 py-2 rounded-xl border text-sm font-semibold transition-all"
+                style={mode === "signup" ? {
+                  background: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  borderColor: "var(--primary)",
+                } : {
+                  background: "var(--card)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--border)",
+                }}
+              >
+                Sign up
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("signin"); setMessage(null); setStatus("idle"); }}
+                className="flex-1 px-4 py-2 rounded-xl border text-sm font-semibold transition-all"
+                style={mode === "signin" ? {
+                  background: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  borderColor: "var(--primary)",
+                } : {
+                  background: "var(--card)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--border)",
+                }}
+              >
+                Sign in
+              </button>
+            </div>
+          )}
 
           <label
             className="block text-sm font-medium mb-2"
@@ -380,34 +362,6 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
             </button>
           ) : null}
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center" aria-hidden>
-              <div className="w-full border-t" style={{ borderColor: "var(--border)" }} />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="px-3 text-[11px] font-semibold" style={{ background: "var(--card)", color: "var(--muted-foreground)" }}>
-                or
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void signInWithApple()}
-            disabled={status === "working" || (mode === "signup" && !acceptedTerms)}
-            className="w-full px-5 py-3.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={{
-              background: "#000",
-              color: "#fff",
-              border: "1px solid #000",
-            }}
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-            </svg>
-            Continue with Apple
-          </button>
-
           <div className="mt-5">
             <button
               type="button"
@@ -442,6 +396,26 @@ export function LoginClient({ initialMode = "signup" }: LoginClientProps) {
               }}
             >
               {message}
+            </p>
+          )}
+
+          {/* Cross-link to the canonical Sign Up entry point. Only
+              shown on /signin (hideTabs) so the legacy /login page —
+              which still has Sign Up / Sign In tabs — doesn't get a
+              redundant nudge. */}
+          {hideTabs && mode === "signin" && (
+            <p
+              className="mt-6 text-xs text-center"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              New to Suppr?{" "}
+              <a
+                href="/onboarding"
+                className="font-semibold underline"
+                style={{ color: "var(--primary)" }}
+              >
+                Create your account
+              </a>
             </p>
           )}
 

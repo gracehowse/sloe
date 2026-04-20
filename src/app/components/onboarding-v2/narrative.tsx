@@ -72,8 +72,13 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     head: "Anything off the table?",
     body: "We use this to filter recipes in Discover and to suggest swaps. Keep it empty if nothing applies — you can tweak any time.",
   },
+  strategy: {
+    eyebrow: "Step 11 · Macro style",
+    head: "Pick your\nmacro style.",
+    body: "We pre-pick the split that fits your goal — you can override if you eat differently. The Reveal step will recompute your numbers either way.",
+  },
   reveal: {
-    eyebrow: "Step 11 · Your targets",
+    eyebrow: "Step 12 · Your targets",
     head: "Here's what your\nday looks like.",
     body: "Calculated from everything you just told us. These numbers will adapt as Suppr learns from your logs.",
     extra: ({ targets }) =>
@@ -93,12 +98,12 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
       ) : null,
   },
   permissions: {
-    eyebrow: "Step 12 · Access",
-    head: "A couple of\npermissions.",
-    body: "Both optional, both revocable. Suppr only asks for what it needs to give you accurate numbers.",
+    eyebrow: "Step 13 · Access",
+    head: "Quick permission.",
+    body: "Optional and revocable. Suppr only asks for what it needs to surface useful nudges.",
   },
   import: {
-    eyebrow: "Step 13 · Try it",
+    eyebrow: "Step 14 · Try it",
     head: "Import your\nfirst recipe.",
     body: "Paste any link — Instagram reel, TikTok, a blog post — and Suppr parses ingredients, matches them against USDA, and calculates macros in seconds.",
   },

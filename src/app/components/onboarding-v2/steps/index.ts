@@ -15,6 +15,7 @@ import { WeightStep } from "./weight";
 import { ActivityStep } from "./activity";
 import { PaceStep } from "./pace";
 import { DietStep } from "./diet";
+import { StrategyStep } from "./strategy";
 import { RevealStep } from "./reveal";
 import { PermissionsStep } from "./permissions";
 import { ImportStep } from "./import";
@@ -37,6 +38,7 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
   activity: ActivityStep,
   pace: PaceStep,
   diet: DietStep,
+  strategy: StrategyStep,
   reveal: RevealStep,
   permissions: PermissionsStep,
   import: ImportStep,
@@ -53,6 +55,7 @@ export {
   ActivityStep,
   PaceStep,
   DietStep,
+  StrategyStep,
   RevealStep,
   PermissionsStep,
   ImportStep,

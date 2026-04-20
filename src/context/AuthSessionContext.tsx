@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import posthog from "posthog-js";
 import { supabase } from "../lib/supabase/browserClient.ts";
 
 export interface AuthSessionValue {
@@ -19,12 +20,26 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
-      setAuthedUserId(data.session?.user.id ?? null);
-      setAuthEmail(data.session?.user.email ?? null);
+      const userId = data.session?.user.id ?? null;
+      const email = data.session?.user.email ?? null;
+      setAuthedUserId(userId);
+      setAuthEmail(email);
+      // Stitch any pre-login anonymous events to this user on page load.
+      if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.identify(userId, email ? { email } : undefined);
+      }
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthedUserId(session?.user.id ?? null);
-      setAuthEmail(session?.user.email ?? null);
+      const userId = session?.user.id ?? null;
+      const email = session?.user.email ?? null;
+      setAuthedUserId(userId);
+      setAuthEmail(email);
+      if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.identify(userId, email ? { email } : undefined);
+      } else if (!userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        // User signed out — reset to prevent cross-user contamination.
+        posthog.reset();
+      }
     });
     return () => {
       cancelled = true;
@@ -43,4 +58,18 @@ export function useAuthSession(): AuthSessionValue {
     throw new Error("useAuthSession must be used within AuthSessionProvider");
   }
   return ctx;
+}
+
+/**
+ * Non-throwing variant for surfaces that may be rendered outside an
+ * AuthSessionProvider — primarily isolated unit tests of components
+ * that read auth defensively (e.g. v2 onboarding's Signup step
+ * smoke-render at tests/unit/onboardingV2Steps.test.tsx). Production
+ * always has the provider mounted at the root layout, so a null
+ * return here unambiguously means "rendered without provider, treat
+ * as anonymous".
+ */
+export function useAuthSessionOptional(): AuthSessionValue {
+  const ctx = useContext(AuthSessionContext);
+  return ctx ?? { authedUserId: null, authEmail: null };
 }

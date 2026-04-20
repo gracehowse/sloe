@@ -14,6 +14,7 @@ import { MobileWeightStep } from "./weight";
 import { MobileActivityStep } from "./activity";
 import { MobilePaceStep } from "./pace";
 import { MobileDietStep } from "./diet";
+import { MobileStrategyStep } from "./strategy";
 import { MobileRevealStep } from "./reveal";
 import { MobilePermissionsStep } from "./permissions";
 import { MobileImportStep } from "./import";
@@ -36,6 +37,7 @@ export const MOBILE_STEP_COMPONENTS: Record<
   activity: MobileActivityStep,
   pace: MobilePaceStep,
   diet: MobileDietStep,
+  strategy: MobileStrategyStep,
   reveal: MobileRevealStep,
   permissions: MobilePermissionsStep,
   import: MobileImportStep,
@@ -52,6 +54,7 @@ export {
   MobileActivityStep,
   MobilePaceStep,
   MobileDietStep,
+  MobileStrategyStep,
   MobileRevealStep,
   MobilePermissionsStep,
   MobileImportStep,

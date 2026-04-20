@@ -34,8 +34,8 @@ const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState =>
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 13 steps in the documented order", () => {
-    expect(TOTAL_STEPS).toBe(13);
+  it("ships exactly 14 steps in the documented order", () => {
+    expect(TOTAL_STEPS).toBe(14);
     expect(STEP_IDS).toEqual([
       "welcome",
       "signup",
@@ -47,6 +47,7 @@ describe("onboarding v2 — step ordering", () => {
       "activity",
       "pace",
       "diet",
+      "strategy",
       "reveal",
       "permissions",
       "import",
@@ -101,27 +102,23 @@ describe("onboarding v2 — canAdvance per step", () => {
   const cases: Array<[StepId, OnboardingState, boolean, string]> = [
     // welcome — no inputs required
     ["welcome", baseState(), true, "always advances"],
-    // signup — needs auth method OR (name AND email-with-@)
-    ["signup", baseState(), false, "no auth + no fields → blocked"],
-    ["signup", baseState({ authMethod: "apple" }), true, "apple auth method"],
+    // signup — always advanceable from the shared canAdvance contract.
+    // The Signup step owns its own "Create account" CTA which fires
+    // the real Supabase signUp and advances the flow itself; the
+    // global footer Continue is suppressed on this step in the shell.
+    // canAdvance returns true defensively so any code path that
+    // doesn't honour the suppression (keyboard shortcut, deep-link)
+    // still permits forward motion rather than soft-locking the flow.
+    ["signup", baseState(), true, "always advances (step owns its own auth gate)"],
+    ["signup", baseState({ authMethod: "email" }), true, "email auth method"],
     [
       "signup",
       baseState({ name: "Grace", email: "grace@example.com" }),
       true,
       "name + valid email",
     ],
-    [
-      "signup",
-      baseState({ name: "Grace", email: "no-at-sign" }),
-      false,
-      "name + email without @",
-    ],
-    [
-      "signup",
-      baseState({ name: "   ", email: "valid@example.com" }),
-      false,
-      "whitespace-only name",
-    ],
+    // strategy — informational (default = goal-derived)
+    ["strategy", baseState(), true, "always advances (default = goal-derived)"],
     // goal — must be picked
     ["goal", baseState(), false, "no goal"],
     ["goal", baseState({ goal: "lose" }), true, "lose goal"],

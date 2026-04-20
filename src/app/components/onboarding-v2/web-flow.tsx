@@ -32,8 +32,22 @@ export function WebFlow() {
   const { authedUserId } = useAuthSession();
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
+  const isSignup = currentStepId === "signup";
   const isTerminal = currentStepId === "import";
   const [completing, setCompleting] = React.useState(false);
+
+  // Auto-skip the signup step when the visitor is already authed (e.g.
+  // they came from /signin → /onboarding directly). The step renders
+  // an "already signed in — continue" affordance as a defensive
+  // fallback, but in practice this effect bumps past it before the
+  // user sees it. Single-render flicker is acceptable; the alternative
+  // (pushing auth state into the shared `state.ts` skip logic) would
+  // couple the mobile flow to web auth.
+  React.useEffect(() => {
+    if (isSignup && authedUserId) {
+      go(1);
+    }
+  }, [isSignup, authedUserId, go]);
 
   /**
    * OB2-1 — terminal-step completion handler. Mirrors the legacy
@@ -269,19 +283,25 @@ export function WebFlow() {
                 <ChevronLeft className="size-4" />
                 Back
               </button>
-              <Button
-                size="lg"
-                onClick={isTerminal ? handleComplete : handleContinue}
-                disabled={!canAdvance || completing}
-                className="h-12 px-6 font-bold"
-              >
-                {isTerminal
-                  ? completing
-                    ? "Saving…"
-                    : "Open my dashboard"
-                  : "Continue"}
-                <ArrowRight className="size-4" strokeWidth={2.2} />
-              </Button>
+              {/* Signup step suppresses the global Continue — it has
+                  its own "Create account" CTA which fires the real
+                  Supabase signUp and advances on success. Showing
+                  both would let the user bypass the auth handshake. */}
+              {!isSignup && (
+                <Button
+                  size="lg"
+                  onClick={isTerminal ? handleComplete : handleContinue}
+                  disabled={!canAdvance || completing}
+                  className="h-12 px-6 font-bold"
+                >
+                  {isTerminal
+                    ? completing
+                      ? "Saving…"
+                      : "Open my dashboard"
+                    : "Continue"}
+                  <ArrowRight className="size-4" strokeWidth={2.2} />
+                </Button>
+              )}
             </div>
           </div>
         </div>

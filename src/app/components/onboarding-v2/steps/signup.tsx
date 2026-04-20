@@ -1,21 +1,123 @@
 "use client";
 
 import * as React from "react";
+import posthog from "posthog-js";
 import { Button } from "@/app/components/ui/button";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
+import { supabase } from "@/lib/supabase/browserClient";
+import { useAuthSessionOptional } from "@/context/AuthSessionContext";
 import { useOnboardingV2 } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
- * Signup — step 02. Apple sign-in CTA + email/name fallback.
+ * Signup — step 02. Real Supabase email signUp inline.
  *
- * The actual auth handshake (Apple OAuth, Supabase signUp) belongs to
- * Stage E. This component just records the user's choice in state so
- * the flow can advance; the route component owns the side effect.
+ * Apple Sign-In on web is removed (Sign in with Apple JS isn't
+ * configured for suppr-club.com and a non-functional button is a
+ * trust-killer — Grace 2026-04-20). Future Google OAuth can be added
+ * here without changing the architecture.
+ *
+ * When the visitor is already authed (e.g. they came from /signin and
+ * navigated here manually), the WebFlow shell auto-bumps past this
+ * step — see the effect in `web-flow.tsx`.
+ *
+ * Password lives in component state ONLY; never written into
+ * `OnboardingState` (which persists to localStorage). Email + name go
+ * into onboarding state so the Reveal step can greet by name and the
+ * persistence layer can hydrate `display_name`.
  */
 
 export function SignupStep() {
   const { state, set, go } = useOnboardingV2();
+  // Optional read so smoke / unit tests can render this step in
+  // isolation without an AuthSessionProvider wrapper. Production
+  // always has the provider mounted at the root layout.
+  const { authedUserId, authEmail } = useAuthSessionOptional();
   const overline = useStepOverline();
+
+  // Component-local password — never persisted.
+  const [password, setPassword] = React.useState("");
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Already-authed branch (rare — usually the WebFlow shell auto-bumps
+  // past this step). Show a friendly continue card instead of the form
+  // so the visible state matches "you're already signed in".
+  if (authedUserId) {
+    return (
+      <StepBody>
+        <StepHeader
+          overline={overline}
+          title={`You're signed in${authEmail ? ` as ${authEmail}` : ""}`}
+          subtitle="One tap to keep going — we'll pick up where the rest of onboarding starts."
+        />
+        <Button
+          size="lg"
+          className="w-full h-12 font-bold"
+          onClick={() => go(1)}
+        >
+          Continue
+        </Button>
+      </StepBody>
+    );
+  }
+
+  const trimmedEmail = state.email.trim();
+  const trimmedName = state.name.trim();
+  const canSubmit =
+    !submitting &&
+    trimmedName.length > 0 &&
+    trimmedEmail.includes("@") &&
+    password.length >= 8 &&
+    acceptedTerms;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/onboarding`
+              : undefined,
+          data: { display_name: trimmedName },
+        },
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+      if (data.user) {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          try {
+            posthog.identify(data.user.id, { email: trimmedEmail });
+          } catch {
+            /* ignore — analytics never blocks the user */
+          }
+        }
+        track(AnalyticsEvents.user_signed_up, { method: "email", flow: "v2" });
+        set({ authMethod: "email" });
+        // Auth-state subscriber in AuthSessionContext will flip
+        // `authedUserId`; the WebFlow shell's effect then auto-advances.
+        // Belt-and-braces: if Supabase is in confirm-email mode and no
+        // session lands, we still nudge forward so the user doesn't get
+        // stuck. The terminal step's persistence layer also tolerates
+        // an anonymous completer (it bounces to /signin?).
+        go(1);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign-up failed. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <StepBody>
       <StepHeader
@@ -23,28 +125,6 @@ export function SignupStep() {
         title="Create your account"
         subtitle="One account, same data on your phone and on the web."
       />
-
-      <div className="flex flex-col gap-2.5 mb-4">
-        <Button
-          size="lg"
-          className="w-full h-12 bg-black text-white hover:bg-black/90 hover:text-white border border-black"
-          onClick={() => {
-            set({ authMethod: "apple" });
-            go(1);
-          }}
-        >
-          <AppleLogo />
-          Sign in with Apple
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-2.5 my-4">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-[11px] text-muted-foreground font-semibold tracking-wider uppercase">
-          Or
-        </span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
 
       <div className="flex flex-col gap-2.5">
         <LabelledField
@@ -61,12 +141,79 @@ export function SignupStep() {
           placeholder="you@example.com"
           type="email"
         />
+        <LabelledField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          placeholder="At least 8 characters"
+          type="password"
+        />
       </div>
 
-      <p className="text-[11px] text-muted-foreground mt-4 leading-relaxed">
-        By continuing you agree to Suppr&apos;s{" "}
-        <span className="text-foreground/80 underline">Terms</span> and{" "}
-        <span className="text-foreground/80 underline">Privacy Policy</span>.
+      <label className="mt-4 flex items-start gap-2 text-[12px] text-muted-foreground leading-snug cursor-pointer">
+        <input
+          type="checkbox"
+          checked={acceptedTerms}
+          onChange={(e) => setAcceptedTerms(e.target.checked)}
+          className="mt-[3px] h-3.5 w-3.5 shrink-0 cursor-pointer"
+          aria-label="Agree to Terms of Service and Privacy Policy"
+        />
+        <span>
+          I agree to Suppr&apos;s{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground/80 underline"
+          >
+            Terms
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground/80 underline"
+          >
+            Privacy Policy
+          </a>
+          .
+        </span>
+      </label>
+
+      <Button
+        size="lg"
+        className="w-full h-12 mt-4 font-bold"
+        onClick={() => void handleSubmit()}
+        disabled={!canSubmit}
+      >
+        {submitting ? "Creating account…" : "Create account"}
+      </Button>
+
+      {error && (
+        <p
+          className="mt-3 text-[12px] text-destructive leading-snug"
+          role="alert"
+        >
+          {error}{" "}
+          {/already registered|already exists|user with this email/i.test(
+            error,
+          ) && (
+            <a
+              href="/signin"
+              className="underline font-semibold"
+            >
+              Sign in instead
+            </a>
+          )}
+        </p>
+      )}
+
+      <p className="text-[11px] text-muted-foreground mt-4 leading-relaxed text-center">
+        Already have an account?{" "}
+        <a href="/signin" className="text-foreground/80 underline font-semibold">
+          Sign in
+        </a>
       </p>
     </StepBody>
   );
@@ -84,7 +231,7 @@ function LabelledField({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: "text" | "email";
+  type?: "text" | "email" | "password";
   autoFocus?: boolean;
 }) {
   return (
@@ -101,19 +248,5 @@ function LabelledField({
         className="w-full bg-transparent border-0 outline-none text-base font-medium text-foreground placeholder:text-muted-foreground/60"
       />
     </label>
-  );
-}
-
-function AppleLogo() {
-  return (
-    <svg
-      width={15}
-      height={17}
-      viewBox="0 0 814 1000"
-      fill="currentColor"
-      aria-hidden
-    >
-      <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z" />
-    </svg>
   );
 }

@@ -233,7 +233,10 @@ export function computeV2Targets(state: OnboardingState): V2Targets | null {
   const kcalAdj = paceToKcalAdjustment(goal, pace);
   const target = Math.round(tdee + kcalAdj);
 
-  const strategy = mapGoalToStrategy(goal);
+  // The user can override the goal-derived strategy on the Strategy
+  // step — Grace 2026-04-20, parity with the legacy onboarding's
+  // explicit picker. `null` falls back to the goal default.
+  const strategy = state.nutritionStrategy ?? mapGoalToStrategy(goal);
   const macros = calculateMacros(target, strategy, weightKg);
 
   const floor = safetyFloorFor(sex);
