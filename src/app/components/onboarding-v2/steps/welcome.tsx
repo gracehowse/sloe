@@ -3,196 +3,345 @@
 import * as React from "react";
 import { Check, Link2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { SupprMark } from "@/app/components/ui/suppr-mark";
+import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { useOnboardingV2 } from "../context";
 
 /**
- * Welcome — the cold-open landing card for the v2 flow. Renders inside
- * the right-column slot on web and full-bleed on mobile (Stage D).
+ * Web Welcome — full-bleed cold-open hero. Two-column split: brand
+ * wordmark + headline + CTAs on the left, floating product preview
+ * on the right. Mirrors the prototype's `WebWelcome` component
+ * (separate from the mobile cold open which uses a stacked layout
+ * to fit the iPhone safe area).
  *
- * The brand gradient lives ONLY on this step + the Reveal hero (and
- * marketing) per `docs/ux/brand-guidelines.md`. Every other step uses
- * flat surfaces.
+ * The brand gradient is allowed here (and on the Reveal hero); every
+ * other step uses flat surfaces per the brand guidelines.
  */
 
-interface WelcomeProps {
-  /** Mobile uses tighter padding to fit the iPhone safe area. */
-  compact?: boolean;
-}
-
-export function WelcomeStep({ compact = false }: WelcomeProps) {
+export function WelcomeStep() {
   const { go } = useOnboardingV2();
   return (
-    <div className="flex flex-col h-full justify-between">
+    <div className="relative h-full w-full overflow-hidden bg-background text-foreground">
+      {/* Gradient washes — the only place product UI shows the
+          brand gradient (alongside the Reveal hero). */}
       <div
-        className={
-          compact
-            ? "relative flex-1 flex flex-col justify-end px-6 pt-14 pb-8 overflow-hidden"
-            : "relative flex-1 flex flex-col justify-end px-8 pt-16 pb-8 overflow-hidden"
-        }
-      >
-        {/* Gradient washes — the only place product UI shows the
-            brand gradient. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at top, color-mix(in oklab, var(--primary) 28%, transparent) 0%, color-mix(in oklab, var(--macro-fat) 12%, transparent) 45%, transparent 80%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(circle at 80% 15%, color-mix(in oklab, var(--macro-fat) 22%, transparent), transparent 55%)",
-          }}
-        />
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 50%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 75% 75%, color-mix(in oklab, var(--macro-fat) 22%, transparent), transparent 55%)",
+        }}
+      />
 
-        <FloatingPreview compact={compact} />
-
-        <div className="relative">
-          <SupprMark size={44} />
+      <div className="relative grid h-full grid-cols-[1.1fr_1fr] items-center gap-12 px-16 py-9">
+        {/* Left column — wordmark, headline, body, CTAs, checklist. */}
+        <div className="z-10">
+          <div className="mb-10">
+            <SupprWordmark size={28} />
+          </div>
           <h1
-            className="font-extrabold tracking-tight text-foreground mt-6 mb-3 leading-[1.02]"
+            className="m-0 mb-5 text-[64px] font-extrabold leading-[1.0] text-foreground"
             style={{
-              fontSize: compact ? 36 : 42,
-              letterSpacing: "-0.035em",
+              letterSpacing: "-0.04em",
               textWrap: "balance",
             } as React.CSSProperties}
           >
-            Eat well,
+            Join the
             <br />
-            without
-            <br />
-            overthinking it.
+            Suppr Club.
           </h1>
           <p
-            className="text-muted-foreground leading-relaxed max-w-[360px]"
-            style={{ fontSize: compact ? 15 : 16 }}
+            className="m-0 mb-9 max-w-[520px] text-[17px] leading-[1.55] text-muted-foreground"
           >
-            Import recipes from the sites you already use. We&apos;ll break down
-            the macros and help you hit targets that fit your life.
+            Eat well. Cook what you want. Know what&apos;s in it. Import recipes
+            from the sites you already use — Suppr breaks down the macros and
+            calibrates targets to you.
           </p>
-        </div>
-      </div>
 
-      <div className={compact ? "px-6 pb-7 relative" : "px-8 pb-8 relative"}>
-        <Button
-          size="lg"
-          className="w-full h-14 text-base font-bold"
-          onClick={() => go(1)}
-        >
-          Get started
-        </Button>
-        <div className="text-center mt-3.5 text-sm text-muted-foreground">
-          Have an account?{" "}
-          <button
-            type="button"
-            className="text-primary font-semibold cursor-pointer bg-transparent border-0 p-0"
-          >
-            Sign in
-          </button>
+          <div className="mb-10 flex gap-3.5">
+            <Button
+              size="lg"
+              onClick={() => go(1)}
+              className="h-14 px-7 text-base font-bold"
+            >
+              Join the club — free
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="h-14 px-7 text-base font-semibold text-foreground hover:bg-muted/50"
+            >
+              I&apos;m already a member
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-8 text-xs">
+            <Checkline>Adaptive TDEE that learns from you</Checkline>
+            <Checkline>One-tap import from any recipe site</Checkline>
+            <Checkline>Calm design, private by default</Checkline>
+          </div>
+        </div>
+
+        {/* Right column — floating product preview. */}
+        <div className="relative flex h-full items-center justify-center">
+          <WebWelcomeVisual />
         </div>
       </div>
     </div>
   );
 }
 
-/** A small visual preview for the cold-open. Three floating cards
- *  hint at what the product does without slop or overpromise. */
-function FloatingPreview({ compact }: { compact: boolean }) {
+function Checkline({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="relative mb-9"
-      style={{ height: compact ? 140 : 160 }}
-    >
-      {/* Card 1 — "imported from" */}
+    <div className="flex items-center gap-2">
       <div
-        className="absolute top-0 left-[8%] right-[35%] rounded-[14px] border border-border bg-card px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
-        style={{ transform: "rotate(-2.4deg)", backdropFilter: "blur(16px)" }}
+        aria-hidden
+        className="grid size-[18px] shrink-0 place-items-center rounded-full"
+        style={{ background: "color-mix(in oklab, var(--success) 20%, transparent)" }}
       >
-        <div className="flex items-center gap-2 mb-1.5">
-          <Link2 className="size-3 text-primary" />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-            Imported
-          </span>
-        </div>
-        <div className="text-[13px] font-semibold text-foreground tracking-tight">
-          Sheet-pan chicken
-        </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
-          from instagram.com
-        </div>
+        <Check className="size-[11px] text-success" strokeWidth={3} />
       </div>
+      <span className="font-medium text-muted-foreground leading-snug">
+        {children}
+      </span>
+    </div>
+  );
+}
 
-      {/* Card 2 — macro ring snippet */}
+function WebWelcomeVisual() {
+  return (
+    <div className="relative" style={{ width: 440, height: 520 }}>
+      {/* Main "Today" card preview */}
       <div
-        className="absolute top-7 right-[4%] rounded-[14px] border border-border bg-card p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
+        className="absolute right-0 top-10 w-[380px] rounded-[22px] border bg-card p-6 backdrop-blur-xl"
         style={{
-          width: compact ? 170 : 190,
-          transform: "rotate(2deg)",
-          backdropFilter: "blur(16px)",
+          borderColor: "var(--border)",
+          boxShadow:
+            "0 40px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)",
         }}
       >
-        <div className="flex items-center gap-2.5">
-          <svg
-            width={48}
-            height={48}
-            viewBox="0 0 48 48"
-            style={{ transform: "rotate(-90deg)", flexShrink: 0 }}
-          >
-            <circle
-              cx={24}
-              cy={24}
-              r={20}
-              stroke="var(--border)"
-              strokeWidth={5}
-              fill="none"
-            />
-            <circle
-              cx={24}
-              cy={24}
-              r={20}
-              stroke="var(--success)"
-              strokeWidth={5}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={125.6}
-              strokeDashoffset={34}
-            />
-          </svg>
+        <div className="mb-4 flex items-baseline justify-between">
           <div>
-            <div className="section-label">Today</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              Wed, 14 May
+            </div>
             <div
-              className="text-xl font-extrabold tracking-tight tabular-nums text-foreground"
+              className="mt-0.5 text-[22px] font-bold text-foreground"
               style={{ letterSpacing: "-0.02em" }}
             >
-              1,420
+              Today
             </div>
-            <div className="text-[10px] text-muted-foreground">
-              of 1,800 kcal
+          </div>
+          <div className="flex items-center gap-1 text-[11px] font-bold text-success">
+            <Check className="size-[11px]" strokeWidth={3} />
+            On track
+          </div>
+        </div>
+
+        <div className="mb-4 flex items-center gap-4">
+          <div className="relative size-[110px] shrink-0">
+            <svg
+              width={110}
+              height={110}
+              viewBox="0 0 110 110"
+              style={{ transform: "rotate(-90deg)" }}
+            >
+              <circle
+                cx={55}
+                cy={55}
+                r={46}
+                stroke="var(--input-background)"
+                strokeWidth={9}
+                fill="none"
+              />
+              <circle
+                cx={55}
+                cy={55}
+                r={46}
+                stroke="var(--success)"
+                strokeWidth={9}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={289}
+                strokeDashoffset={62}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                left
+              </div>
+              <div
+                className="text-[26px] font-extrabold leading-none tabular-nums text-foreground"
+                style={{ letterSpacing: "-0.03em" }}
+              >
+                380
+              </div>
+              <div className="mt-px text-[9px] text-muted-foreground">
+                of 1,800
+              </div>
             </div>
+          </div>
+          <div className="flex-1">
+            <MiniMacro name="Protein" v="92" t="140g" pct={66} c="var(--primary)" />
+            <MiniMacro name="Carbs" v="168" t="180g" pct={93} c="var(--warning)" />
+            <MiniMacro name="Fat" v="48" t="60g" pct={80} c="var(--macro-fat)" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 rounded-xl bg-input-background p-3">
+          <div
+            className="grid size-8 place-items-center rounded-lg"
+            style={{
+              background: "color-mix(in oklab, var(--primary) 14%, transparent)",
+            }}
+          >
+            <Link2 className="size-3.5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold text-foreground">
+              Sheet-pan chicken bowl
+            </div>
+            <div className="mt-px text-[10px] text-muted-foreground">
+              imported from instagram.com
+            </div>
+          </div>
+          <div className="text-[13px] font-bold tabular-nums text-foreground">
+            620
           </div>
         </div>
       </div>
 
-      {/* Card 3 — confidence chip */}
+      {/* Floating import card */}
       <div
-        className="absolute bottom-0 left-[20%] rounded-full border px-3 py-1.5 flex items-center gap-1.5"
+        className="absolute left-0 top-0 w-[240px] rounded-2xl border bg-card p-3.5 backdrop-blur-xl"
         style={{
-          background: "color-mix(in oklab, var(--success) 14%, transparent)",
-          borderColor: "color-mix(in oklab, var(--success) 35%, transparent)",
-          transform: "rotate(-1deg)",
-          backdropFilter: "blur(16px)",
+          borderColor: "var(--border)",
+          transform: "rotate(-4deg)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
         }}
       >
-        <Check className="size-3 text-success" strokeWidth={2.5} />
-        <span className="text-[11px] font-bold text-success tracking-tight">
-          Matched to USDA · 94%
-        </span>
+        <div className="mb-2.5 flex items-center gap-2">
+          <InstagramGlyph />
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            Importing
+          </span>
+          <div className="flex-1" />
+          <div
+            aria-hidden
+            className="size-3.5 rounded-full border-[2px] border-border border-t-primary"
+            style={{ animation: "spin 1s linear infinite" }}
+          />
+        </div>
+        <div
+          className="text-[13px] font-semibold text-foreground"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          Korean beef bowl
+        </div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          12 ingredients matched
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+
+      {/* Floating weekly insight */}
+      <div
+        className="absolute bottom-10 left-5 w-[260px] rounded-2xl border p-4 backdrop-blur-xl"
+        style={{
+          background:
+            "linear-gradient(135deg, color-mix(in oklab, var(--primary) 25%, transparent), color-mix(in oklab, var(--macro-fat) 18%, transparent))",
+          borderColor: "color-mix(in oklab, var(--primary) 25%, transparent)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          transform: "rotate(3deg)",
+        }}
+      >
+        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
+          Weekly insight
+        </div>
+        <div
+          className="mb-2 text-sm font-bold text-foreground"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          Protein intake up 18%
+        </div>
+        <div className="flex h-7 items-end gap-[3px]">
+          {[30, 42, 38, 55, 62, 72, 80].map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t-[2px]"
+              style={{
+                height: `${h}%`,
+                background:
+                  "linear-gradient(180deg, var(--primary), color-mix(in oklab, var(--primary) 35%, transparent))",
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+function MiniMacro({
+  name,
+  v,
+  t,
+  pct,
+  c,
+}: {
+  name: string;
+  v: string;
+  t: string;
+  pct: number;
+  c: string;
+}) {
+  return (
+    <div className="mb-1.5">
+      <div className="mb-[3px] flex justify-between text-[10px] font-semibold text-muted-foreground">
+        <span className="uppercase tracking-[0.08em]">{name}</span>
+        <span className="tabular-nums text-foreground">
+          {v} <span className="text-muted-foreground">/ {t}</span>
+        </span>
+      </div>
+      <div className="h-[3px] overflow-hidden rounded-sm bg-input-background">
+        <div
+          className="h-full"
+          style={{ width: `${pct}%`, background: c }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Instagram-style camera glyph — small, brand-tinted. Avoids
+ *  shipping the Instagram logo (TM) directly. */
+function InstagramGlyph() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <rect
+        x={2}
+        y={2}
+        width={20}
+        height={20}
+        rx={5}
+        stroke="var(--macro-fat)"
+        strokeWidth={2}
+      />
+      <circle
+        cx={12}
+        cy={12}
+        r={4}
+        stroke="var(--macro-fat)"
+        strokeWidth={2}
+      />
+      <circle cx={17.5} cy={6.5} r={1} fill="var(--macro-fat)" />
+    </svg>
   );
 }
