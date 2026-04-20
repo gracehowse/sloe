@@ -52,8 +52,10 @@ visible to Grace + waste deploy slots. Two rules:
 
 1. **Run `npm run ci` locally before every push.** Mirrors the CI
    workflow — verify-production-env + web typecheck + web vitest +
-   mobile typecheck + mobile vitest. If it fails locally, do not
-   push.
+   `next build` + mobile typecheck + mobile vitest. If it fails
+   locally, do not push. (`next build` is in the chain because
+   Next 15's PageProps constraint is build-time only — `tsc --noEmit`
+   won't catch e.g. async `searchParams` violations on its own.)
 2. **Watch CI after every push.** `gh run watch` after `git push`,
    or `gh run list --limit 3` to confirm the latest is green. If
    the most recent run is red, fix it BEFORE moving to the next

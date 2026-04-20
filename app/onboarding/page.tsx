@@ -21,12 +21,15 @@
 import { redirect } from "next/navigation";
 import { LegacyOnboardingForm } from "./legacy-form";
 
+// Next.js 15 made `searchParams` a Promise — see
+// https://nextjs.org/docs/app/api-reference/file-conventions/page#searchparams-optional
 interface OnboardingPageProps {
-  searchParams?: { legacy?: string };
+  searchParams?: Promise<{ legacy?: string }>;
 }
 
-export default function OnboardingPage({ searchParams }: OnboardingPageProps) {
-  if (searchParams?.legacy !== "1") {
+export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
+  const params = (await searchParams) ?? {};
+  if (params.legacy !== "1") {
     redirect("/onboarding/v2");
   }
   return <LegacyOnboardingForm />;
