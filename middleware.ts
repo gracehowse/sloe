@@ -5,6 +5,7 @@ import { projectId, publicAnonKey } from "./utils/supabase/info.tsx";
 const PUBLIC_ROUTES = new Set([
   "/",
   "/login",
+  "/signin",
   "/signup",
   "/roadmap",
   "/auth/callback",
@@ -13,13 +14,16 @@ const PUBLIC_ROUTES = new Set([
   "/privacy",
   "/terms",
   "/reset-password",
-  // Preview onboarding v2 — temporarily reachable without auth so
-  // Grace can preview the redesigned flow on prod the same way it
-  // works on localhost. PostHog flag still gates the auto-redirect
-  // from /onboarding (only the matched email gets bounced into v2);
-  // direct URL visits work for anyone but the URL isn't published
-  // anywhere, has noindex, and the flow doesn't persist anything
-  // yet (OB2-1 in TODO.md). Lock back behind auth once OB2-1 lands.
+  // `/onboarding` + `/onboarding/v2` MUST be public — the v2 flow is
+  // now the canonical sign-up entry point (real Supabase signUp fires
+  // inline at step 02). Gating them behind auth creates a catch-22
+  // where a brand-new visitor clicking "Sign up" on the landing is
+  // 307'd to /login because they don't have a session yet (Grace
+  // 2026-04-20: "it keeps redirecting to login regardless of which
+  // button I click"). Same reason /signup stays public — it 307s
+  // server-side to /onboarding, and we need that 307 to reach the
+  // onboarding route without being intercepted.
+  "/onboarding",
   "/onboarding/v2",
 ]);
 
