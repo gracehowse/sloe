@@ -3,26 +3,80 @@
 import * as React from "react";
 import { Bell, Check } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
+import {
+  getWebNotificationPermission,
+  isWebNotificationSupported,
+  requestWebNotificationPermission,
+} from "@/lib/push/webNotifications";
 import { useOnboardingV2 } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
- * Permissions — step 12 (web). Notifications only.
+ * Permissions — step 13 (web). Notifications only.
  *
  * Apple Health is mobile-only (HealthKit doesn't exist on web). The
  * mobile mirror at apps/mobile/components/onboarding-v2/steps/
- * permissions.tsx still renders both cards. Hiding the card here
- * (rather than rendering it as a no-op) avoids dangling a permission
- * the user can never grant on this surface.
+ * permissions.tsx still renders both cards.
  *
- * Notifications today only records intent — wiring up the browser
- * Push API + service worker is a separate workstream (Grace
- * 2026-04-20).
+ * Notifications: Allow now actually prompts the browser (Grace
+ * 2026-04-20). A granted permission lets us surface in-tab nudges
+ * immediately via `new Notification(...)`; server-initiated Web Push
+ * (VAPID + service worker + cron fan-out) is a separate follow-up
+ * that will reuse this grant signal.
  */
 
 export function PermissionsStep() {
   const { state, set } = useOnboardingV2();
   const overline = useStepOverline();
+
+  // Reflect a pre-existing browser grant / denial on mount so users
+  // who already chose earlier see the correct state here.
+  React.useEffect(() => {
+    if (!isWebNotificationSupported()) return;
+    if (state.notifGranted !== null) return;
+    const current = getWebNotificationPermission();
+    if (current === "granted") set({ notifGranted: true });
+    else if (current === "denied") set({ notifGranted: false });
+  }, [state.notifGranted, set]);
+
+  const [blocked, setBlocked] = React.useState(false);
+  const [prompting, setPrompting] = React.useState(false);
+
+  const handleAllow = React.useCallback(async () => {
+    setPrompting(true);
+    try {
+      const result = await requestWebNotificationPermission();
+      track(AnalyticsEvents.onboarding_step_completed, {
+        step_id: "permissions",
+        detail: "notifications_permission_result",
+        result,
+        surface: "web",
+      });
+      if (result === "granted") {
+        set({ notifGranted: true });
+        setBlocked(false);
+      } else if (result === "denied") {
+        // Browser won't re-prompt once denied — surface a hint so
+        // the user knows the box won't flip without a settings trip.
+        set({ notifGranted: false });
+        setBlocked(true);
+      } else {
+        // "unsupported" or "default" (user dismissed the prompt
+        // without choosing) — treat as skipped so the flow advances.
+        set({ notifGranted: false });
+        setBlocked(false);
+      }
+    } finally {
+      setPrompting(false);
+    }
+  }, [set]);
+
+  const handleSkip = React.useCallback(() => {
+    set({ notifGranted: false });
+  }, [set]);
+
   return (
     <StepBody>
       <StepHeader
@@ -36,8 +90,10 @@ export function PermissionsStep() {
         title="Notifications"
         body="Gentle reminders only — an optional evening nudge if you're below your protein target. Off by default on weekends."
         granted={state.notifGranted}
-        onAllow={() => set({ notifGranted: true })}
-        onSkip={() => set({ notifGranted: false })}
+        blocked={blocked}
+        working={prompting}
+        onAllow={handleAllow}
+        onSkip={handleSkip}
       />
     </StepBody>
   );
@@ -49,6 +105,8 @@ function PermissionCard({
   title,
   body,
   granted,
+  blocked = false,
+  working = false,
   onAllow,
   onSkip,
 }: {
@@ -57,6 +115,13 @@ function PermissionCard({
   title: string;
   body: string;
   granted: boolean | null;
+  /** True when the permission was explicitly denied at the browser
+   *  level — the OS prompt won't show again until the user flips it
+   *  in site settings. Surfacing this prevents a dead "Undo" loop. */
+  blocked?: boolean;
+  /** True while the OS permission prompt is open. Disables the
+   *  buttons so rapid taps don't queue multiple prompts. */
+  working?: boolean;
   onAllow: () => void;
   onSkip: () => void;
 }) {
@@ -86,6 +151,12 @@ function PermissionCard({
           <Check className="size-3.5" strokeWidth={2.5} />
           Allowed
         </div>
+      ) : blocked ? (
+        <div className="text-xs text-muted-foreground leading-relaxed">
+          Blocked in your browser settings. To enable, click the lock
+          icon in your address bar and set Notifications to Allow —
+          then come back.
+        </div>
       ) : granted === false ? (
         <div className="flex items-center gap-3">
           <div className="text-xs text-muted-foreground">
@@ -94,17 +165,23 @@ function PermissionCard({
           <button
             type="button"
             onClick={onAllow}
-            className="bg-transparent border-0 text-primary text-xs font-bold cursor-pointer p-0"
+            disabled={working}
+            className="bg-transparent border-0 text-primary text-xs font-bold cursor-pointer p-0 disabled:opacity-60"
           >
             Undo
           </button>
         </div>
       ) : (
         <div className="flex gap-2.5">
-          <Button size="default" onClick={onAllow}>
-            Allow
+          <Button size="default" onClick={onAllow} disabled={working}>
+            {working ? "Opening…" : "Allow"}
           </Button>
-          <Button variant="secondary" size="default" onClick={onSkip}>
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={onSkip}
+            disabled={working}
+          >
             Not now
           </Button>
         </div>
