@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -19,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { presentCustomerCenter } from "@/lib/purchases";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { normalizeWeekSummaryMode, type WeekSummaryMode } from "../../../../src/lib/nutrition/weekSummaryWindow";
@@ -502,6 +504,35 @@ export default function SettingsScreen() {
             >
               <Text style={[styles.rowLabel, { color: Accent.success }]}>View plans</Text>
               <Ionicons name="chevron-forward" size={16} color={Accent.success} />
+            </Pressable>
+          )}
+          {userTier !== "free" && (
+            <Pressable
+              testID="settings-manage-subscription-row"
+              style={styles.row}
+              onPress={async () => {
+                const result = await presentCustomerCenter();
+                if (result.presented) return;
+                // Fallback: send the user to the platform's native
+                // subscription-management surface so "manage my plan"
+                // is never a dead end. `reason === "no_api_key"` hits
+                // this path in builds where RC isn't provisioned, and
+                // `"ui_unavailable"` hits it in Expo Go or on web.
+                const url = Platform.OS === "ios"
+                  ? "https://apps.apple.com/account/subscriptions"
+                  : "https://play.google.com/store/account/subscriptions";
+                await Linking.openURL(url).catch(() => {
+                  Alert.alert(
+                    "Couldn't open subscription settings",
+                    "Manage your Suppr subscription from the App Store / Play Store app.",
+                  );
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Manage subscription"
+            >
+              <Text style={styles.rowLabel}>Manage subscription</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </Pressable>
           )}
           <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingTop: Spacing.sm, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}>

@@ -7,14 +7,34 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * Resolve the RevenueCat SDK key.
+ *
+ * Priority (highest wins):
+ *   1. Platform-specific key (`EXPO_PUBLIC_REVENUECAT_APPLE_KEY` /
+ *      `…_GOOGLE_KEY`) — production split-key path. These are provisioned
+ *      per-platform in RC ("Apple App Store" / "Google Play Store" apps)
+ *      and remain the canonical route for prod builds.
+ *   2. Unified v2 key (`EXPO_PUBLIC_REVENUECAT_API_KEY`) — RC's single-key
+ *      format (prefix `test_…` for sandbox, `appl_…`/`goog_…`-agnostic
+ *      v2 tokens for prod). Useful in dev so one env var works on both
+ *      platforms without needing two separate RC app registrations.
+ *
+ * Prod should still prefer (1); (2) exists so a freshly-minted RC test
+ * key works in a dev build without editing two variables.
+ */
+const API_KEY_V2_UNIFIED =
+  Constants.expoConfig?.extra?.revenuecatApiKey ??
+  process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ??
+  "";
 const API_KEY_IOS =
   Constants.expoConfig?.extra?.revenuecatAppleKey ??
   process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY ??
-  "";
+  API_KEY_V2_UNIFIED;
 const API_KEY_ANDROID =
   Constants.expoConfig?.extra?.revenuecatGoogleKey ??
   process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY ??
-  "";
+  API_KEY_V2_UNIFIED;
 
 let configured = false;
 
@@ -109,6 +129,40 @@ export function resolvedTier(info: CustomerInfo): "free" | "base" | "pro" {
   if (info.entitlements.active["pro"]) return "pro";
   if (info.entitlements.active["base"]) return "base";
   return "free";
+}
+
+/**
+ * Present the RevenueCat-hosted Customer Center so users can manage
+ * their subscription (cancel, change plan, request refund on iOS, etc.).
+ *
+ * The RC Customer Center is a native surface — it isn't available in
+ * Expo Go, on web, or when `react-native-purchases-ui` fails to load
+ * for any reason. All of those fail-safe to `{ presented: false }`
+ * with a machine-readable `reason`, so callers can fall back to the
+ * App Store / Play Store subscription management URL if they want.
+ */
+export async function presentCustomerCenter(): Promise<
+  | { presented: true }
+  | { presented: false; reason: "no_api_key" | "ui_unavailable" | "error" }
+> {
+  if (!isPurchasesApiKeyPresent()) {
+    return { presented: false, reason: "no_api_key" };
+  }
+  try {
+    // Dynamic import so the main JS bundle isn't forced to resolve the
+    // UI module at launch — it pulls in a native view that isn't valid
+    // on web / in test environments.
+    const mod = await import("react-native-purchases-ui");
+    const RevenueCatUI = mod.default ?? mod;
+    if (!RevenueCatUI?.presentCustomerCenter) {
+      return { presented: false, reason: "ui_unavailable" };
+    }
+    await RevenueCatUI.presentCustomerCenter();
+    return { presented: true };
+  } catch (e) {
+    if (__DEV__) console.warn("[presentCustomerCenter]", e);
+    return { presented: false, reason: "error" };
+  }
 }
 
 const tierRank = (t: string) => (t === "pro" ? 2 : t === "base" ? 1 : 0);
