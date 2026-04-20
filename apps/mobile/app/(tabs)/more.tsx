@@ -13,10 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { isHealthSyncAvailable } from "@/lib/healthSync";
 import { nukeAllUserAppData, clearStructuredMealPlans } from "@/lib/nukeAccountData";
-import {
-  cancelWeeklyRecapPush,
-  scheduleWeeklyRecapPush,
-} from "@/lib/weeklyRecapPush";
+import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "../../../../src/lib/nutrition/weekStartDayClient";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
@@ -942,7 +939,7 @@ export default function ProfileScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Weekly recap</Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>
-              Get a one-tap reminder to open your weekly recap on {weekStartDay === "monday" ? "Sunday" : "Saturday"} at 18:00 local time. Off by choice — no reminder will be sent.
+              Get a one-tap summary of your week on {weekStartDay === "monday" ? "Sunday" : "Saturday"} evening. Off by choice — no reminder will be sent.
             </Text>
             <View
               style={{
@@ -990,25 +987,20 @@ export default function ProfileScreen() {
                       );
                       return;
                     }
-                    // Flip the local scheduler in lockstep so the iOS
-                    // queue matches the DB — off cancels, on reschedules
-                    // for next Sun/Sat 18:00 under the current
-                    // `week_start_day`.
-                    try {
-                      if (next) {
-                        await scheduleWeeklyRecapPush({
-                          enabled: true,
-                          weekStartDay,
-                        });
-                      } else {
+                    // Mobile-local scheduling was removed 2026-04-20
+                    // (see docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md).
+                    // Server cron at `app/api/push/weekly-recap/route.ts`
+                    // reads `profiles.weekly_recap_push_enabled` and
+                    // owns delivery. OFF still cancels any stale
+                    // pre-kill local schedule lingering in the OS
+                    // queue; ON is a DB-only toggle.
+                    if (!next) {
+                      try {
                         await cancelWeeklyRecapPush();
+                      } catch {
+                        // captureException inside the helper already
+                        // routes OS errors; never revert the DB toggle.
                       }
-                    } catch {
-                      // The helper itself swallows OS-level errors via
-                      // captureException; if our wrapper still throws we
-                      // don't want to revert the DB-backed toggle — the
-                      // Progress-visit effect will reconcile on next
-                      // launch.
                     }
                     track(AnalyticsEvents.weekly_recap_push_enabled_toggled, {
                       enabled: next,

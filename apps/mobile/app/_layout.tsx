@@ -25,7 +25,10 @@ import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
 import { setPendingSiriAction } from '@/lib/siriPending';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvents } from '../../../src/lib/analytics/events';
-import { handleWeeklyRecapNotificationResponse } from '@/lib/weeklyRecapPush';
+import {
+  cancelWeeklyRecapPush,
+  handleWeeklyRecapNotificationResponse,
+} from '@/lib/weeklyRecapPush';
 import {
   markWhatsNewSeen,
   resolveCurrentBuildNumber,
@@ -239,6 +242,15 @@ function ResumeClipboardToImport() {
  */
 function HandleWeeklyRecapPushOpen() {
   useEffect(() => {
+    // Mobile-local weekly-recap scheduling was killed 2026-04-20
+    // (docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md).
+    // Pre-kill installs may still have a `weekly-recap-v1` entry in
+    // the OS notification queue; evict it once on boot so stale
+    // generic-body pushes don't keep firing weekly. Idempotent + safe
+    // to run every launch — the native call no-ops when the
+    // identifier isn't scheduled.
+    void cancelWeeklyRecapPush();
+
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const decision = handleWeeklyRecapNotificationResponse(response);
       if (!decision.shouldTrack) return;

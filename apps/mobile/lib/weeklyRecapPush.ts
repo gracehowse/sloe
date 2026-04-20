@@ -1,45 +1,40 @@
 /**
- * Weekly recap push scheduler (Batch 4.11).
+ * Weekly recap push — mobile surface (reduced scope as of 2026-04-20).
  *
- * Schedules a local notification at the user's end-of-week (Sunday 18:00
- * for Monday-start users; Saturday 18:00 for Sunday-start users) so the
- * user is reliably nudged back to the app to open the recap card.
+ * Historically this module scheduled a local `WEEKLY` notification at
+ * the user's end-of-week 18:00 device-local time with a generic body.
+ * That local-scheduled path was killed 2026-04-20 per the product-lead
+ * decision at docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md —
+ * we ship one good weekly push (server-cron content-specific body) or
+ * nothing, never a generic placeholder. Installs without a synced
+ * Expo push token receive no weekly push; the upstream fix is
+ * `profiles.expo_push_token` registration (see TODO P0-1).
  *
- * Non-negotiables:
- *   - Respects `profiles.weekly_recap_push_enabled`. If opted-out, any
- *     previously-scheduled notification is cancelled.
- *   - Uses a stable identifier (`WEEKLY_RECAP_ID`) so we never stack
- *     duplicate pushes across app launches.
- *   - Recurs weekly via `DateTriggerInput` with `repeats: true`.
- *   - No network writes in this module — side-effects are limited to
- *     the OS notification store. Analytics is fired by the caller so we
- *     only log it once per successful (re-)schedule.
- *
- * Failure handling: all calls are guarded by try/catch so a permission
- * denial, missing native module, or OS scheduling quirk never crashes
- * the Progress screen. Errors are reported via `errorTracking.ts`.
+ * What remains in this module:
+ *   1. `cancelWeeklyRecapPush` — OS-level cancellation of any stale
+ *      `weekly-recap-v1` schedule persisted from pre-kill installs.
+ *      Called on app boot (`_layout.tsx`) for one-pass cleanup and on
+ *      Settings-toggle-off for responsiveness.
+ *   2. `handleWeeklyRecapNotificationResponse` — pure decision function
+ *      used by the tap listener in `_layout.tsx` to decide whether a
+ *      delivered notification is a weekly recap (server cron pushes
+ *      carry `data.kind === "weekly_recap"`) and what `weekKey` to
+ *      attribute the open to for analytics.
  */
 
-import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { captureException } from "./errorTracking";
-import { LAST_PUSH_TOKEN_CACHE_KEY } from "./expoPushToken";
-import { nextRecapFireDate, weekKeyFor } from "./weeklyRecap";
 
-/** Identifier reused on every reschedule so we only ever hold one entry. */
+/** Identifier used by the pre-kill scheduler. Kept for cleanup only. */
 const WEEKLY_RECAP_ID = "weekly-recap-v1";
 
-export type WeeklyRecapPushParams = {
-  enabled: boolean;
-  weekStartDay: "monday" | "sunday";
-  now?: Date;
-};
-
 /**
- * Cancel any previously-scheduled recap push. Safe to call when nothing
- * was ever scheduled — the native call no-ops.
+ * Cancel any previously-scheduled recap push. Safe to call when
+ * nothing was ever scheduled — the native call no-ops. This is the
+ * only OS-mutating call that remains; it exists so installs that had
+ * the pre-kill local schedule queued do not keep firing a stale
+ * generic notification after the kill ships.
  */
 export async function cancelWeeklyRecapPush(): Promise<void> {
   try {
@@ -50,127 +45,22 @@ export async function cancelWeeklyRecapPush(): Promise<void> {
 }
 
 /**
- * Compute the next Sunday-18:00 (or Saturday-18:00 for Monday-start
- * users) in the device's local timezone. Thin wrapper over the shared
- * `nextRecapFireDate` helper — exposed for backwards compatibility and
- * for local testing.
- */
-export function nextRecapDate(
-  weekStartDay: "monday" | "sunday",
-  now: Date = new Date(),
-): Date {
-  return nextRecapFireDate(weekStartDay, now);
-}
-
-/**
- * Re-schedule (or cancel) the weekly recap push based on the latest
- * user preference. Idempotent: calling this on every app launch is
- * fine — we always cancel the existing entry first.
- *
- * Returns the scheduled `Date` on success, or `null` when skipped
- * (opt-out, web, or native module unavailable). Callers use the
- * non-null return to fire the `weekly_recap_push_sent` analytics event.
- */
-export async function scheduleWeeklyRecapPush(
-  params: WeeklyRecapPushParams,
-): Promise<Date | null> {
-  if (Platform.OS === "web") return null;
-  const { enabled, weekStartDay, now = new Date() } = params;
-
-  // Always cancel the old entry first so a toggled-off user doesn't
-  // keep receiving pushes from a stale schedule.
-  await cancelWeeklyRecapPush();
-
-  if (!enabled) return null;
-
-  // Server delivery wins when present. If a synced Expo push token is
-  // cached locally (written by `registerExpoPushTokenForUser`), the
-  // server cron at `/api/push/weekly-recap` owns weekly-recap delivery
-  // — scheduling a local notification here would produce two pings per
-  // week on the same device. Skip the local path in that case. Users
-  // without a token (permission denied, simulator, pre-upgrade installs)
-  // continue to get the local fallback so we don't regress a working
-  // flow while server delivery rolls out.
-  try {
-    const cachedToken = await AsyncStorage.getItem(LAST_PUSH_TOKEN_CACHE_KEY);
-    if (typeof cachedToken === "string" && cachedToken.length > 0) {
-      return null;
-    }
-  } catch {
-    // AsyncStorage read failed — fall through and schedule the local
-    // push. Worst case: temporary double-delivery until the next
-    // successful storage read.
-  }
-
-  try {
-    // Require permission. If not granted we simply skip — the user can
-    // re-enable via OS settings later and the next app launch will
-    // re-schedule.
-    const perm = await Notifications.getPermissionsAsync();
-    if (!perm.granted && !perm.canAskAgain) return null;
-    if (!perm.granted) {
-      const req = await Notifications.requestPermissionsAsync();
-      if (!req.granted) return null;
-    }
-
-    const fireAt = nextRecapFireDate(weekStartDay, now);
-    // Prefer `WEEKLY` so the notification self-heals across timezone
-    // shifts and DST changes. weekday is 1=Sunday..7=Saturday per
-    // expo-notifications; for Monday-start users we fire on Sunday (1),
-    // for Sunday-start users on Saturday (7).
-    const weekday = weekStartDay === "monday" ? 1 : 7;
-    // Sunday push rewrite — T5 (2026-04-19): include the recap's
-    // `weekKey` in the data payload so the in-app tap listener
-    // (`apps/mobile/app/_layout.tsx`) can attribute the open event to
-    // the correct week. The recap describes the *previous completed
-    // week*, mirroring `buildWeeklyRecap`'s anchor (`now - 7d`).
-    const previousWeekAnchor = new Date(now);
-    previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
-    const weekKey = weekKeyFor(previousWeekAnchor, weekStartDay);
-    await Notifications.scheduleNotificationAsync({
-      identifier: WEEKLY_RECAP_ID,
-      content: {
-        title: "Your week in Suppr",
-        body: "Tap to see your weekly recap — avg calories, protein, streak, and weight trend.",
-        // Deep-link handled by the notification-tap listener in the app
-        // shell (opens `/progress`). `weekKey` powers the
-        // `weekly_recap_push_opened` analytics attribution.
-        data: { deepLink: "/progress", kind: "weekly_recap", weekKey },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday,
-        hour: 18,
-        minute: 0,
-      },
-    });
-    return fireAt;
-  } catch (err) {
-    captureException(err);
-    return null;
-  }
-}
-
-/**
  * Sunday push rewrite — T5 (2026-04-19) — pure handler that decides
  * whether a `Notifications.NotificationResponse` corresponds to the
  * weekly-recap push and, if so, what `weekKey` to attribute the open
  * event to.
  *
- * Extracted as a standalone pure function (instead of inlining inside
- * the listener registration in `apps/mobile/app/_layout.tsx`) so the
- * branching logic has unit coverage without having to mock the entire
- * `expo-notifications` native surface — see
- * `apps/mobile/tests/unit/weeklyRecapPushOpenHandler.test.ts`.
+ * Used by `apps/mobile/app/_layout.tsx` via the `HandleWeeklyRecapPushOpen`
+ * component. The notifications it classifies are now exclusively the
+ * server-cron pushes (mobile-local scheduling was removed 2026-04-20).
  *
  * Contract:
  *   - `shouldTrack` is `true` iff the response was delivered for a
  *     weekly-recap push (`data.kind === "weekly_recap"`).
- *   - `weekKey` is the recap's stable `YYYY-Www` key when it was
- *     supplied in the data payload, otherwise `null`. Older devices
- *     that received pushes scheduled before the `weekKey` field was
- *     added will fall through with `null`; analytics treats that as a
- *     legacy bucket rather than dropping the event.
+ *   - `weekKey` is the recap's stable key when it was supplied in the
+ *     data payload, otherwise `null`. Older devices that received
+ *     pushes without the field fall through with `null`; analytics
+ *     treats that as a legacy bucket rather than dropping the event.
  *
  * Tolerance:
  *   - Returns `{ shouldTrack: false, weekKey: null }` for any

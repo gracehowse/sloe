@@ -54,7 +54,6 @@ import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   serializePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
-import { scheduleWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
@@ -601,42 +600,15 @@ export default function ProgressScreen() {
       .eq("id", userId);
   }, [currentWeekKey, userId]);
 
-  // Schedule / cancel the Sunday-18:00 push whenever the opt-in flag or
-  // week_start_day changes. Idempotent — the helper cancels any prior
-  // scheduled notification before installing a fresh one.
-  const pushSchedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    const ledgerKey = `${recapPushEnabled ? "on" : "off"}|${weekStartDay}`;
-    if (pushSchedRef.current === ledgerKey) return;
-    pushSchedRef.current = ledgerKey;
-    (async () => {
-      const scheduled = await scheduleWeeklyRecapPush({
-        enabled: recapPushEnabled,
-        weekStartDay,
-      });
-      if (scheduled) {
-        // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. The old
-        // `weekly_recap_push_sent` conflated scheduling with delivery — new
-        // canonical `_scheduled` event fires here. A matching `_delivered`
-        // event will fire from a notification-received listener once one is
-        // added (see TODO below). Until then the scheduling-site dual-emit
-        // is the only "push sent" signal. See plan doc §4.
-        const pushPayload = { weekKey: currentWeekKey };
-        track(AnalyticsEvents.weekly_recap_push_sent, pushPayload);
-        track(AnalyticsEvents.weekly_recap_push_scheduled, pushPayload);
-        // Opened-event (`weekly_recap_push_opened`) is wired in
-        // `apps/mobile/app/_layout.tsx` via the `HandleWeeklyRecapPushOpen`
-        // component (Sunday push rewrite — T5, 2026-04-19).
-        // TODO(2026-05-18): wire `weekly_recap_push_delivered` from a
-        // `Notifications.addNotificationReceivedListener` in
-        // `apps/mobile/app/_layout.tsx` (match by
-        // `data.kind === "weekly_recap"`). Delivered measures OS-side
-        // arrival; opened measures user-side tap — both are needed for
-        // a real funnel.
-      }
-    })();
-  }, [userId, recapPushEnabled, weekStartDay, currentWeekKey]);
+  // Mobile-local weekly recap scheduling was removed 2026-04-20
+  // (see docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md).
+  // Server cron `app/api/push/weekly-recap/route.ts` owns delivery for
+  // installs with a synced Expo push token; installs without a token
+  // receive no weekly push (the upstream fix is token registration —
+  // TODO P0-1). The `weekly_recap_push_sent` / `_scheduled` analytics
+  // used to fire from this effect with a `currentWeekKey` payload that
+  // carried a week-boundary off-by-one bug; removing the schedule also
+  // removes the bug. Server-side emit remains the canonical signal.
 
   // Weight trend (last entries)
   const weightTrend = useMemo(() => {

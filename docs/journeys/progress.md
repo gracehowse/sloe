@@ -91,25 +91,23 @@ The recap surfaces a single growth-loop insight between `bestDay` and the mainte
 
 Floor is `USUAL_MEAL_REPEAT_FLOOR = 3` (exported from `src/lib/nutrition/weeklyRecap.ts`). Pinned by `tests/unit/usualMealInsightLoosenedGate.test.ts` and the existing `tests/unit/usualMealHint.test.ts`.
 
-## Weekly Recap Push (Batch 4.11, mobile-primary)
+## Weekly Recap Push (server-cron only, post-kill 2026-04-20)
 
 ### Schedule
-- Local `expo-notifications` `WEEKLY` trigger at 18:00 in the device's local timezone on the end-of-week day.
-  - Monday-start users → Sunday 18:00.
-  - Sunday-start users → Saturday 18:00.
-- Stable identifier `weekly-recap-v1` — rescheduled on every app launch, never stacked.
+- Server cron fires `app/api/push/weekly-recap/route.ts` at 18:00 UTC on the end-of-week day (see `vercel.json`): Sunday for Monday-start users, Saturday for Sunday-start users. Route fans out via Expo push → APNs to every enabled profile with a synced `profiles.expo_push_token`.
+- **Mobile-local `expo-notifications` scheduling was removed 2026-04-20** — see [docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md](../decisions/2026-04-20-weekly-recap-mobile-local-killed.md). Installs without a synced token receive no weekly push. The upstream fix is token-registration coverage (TODO P0-1), not a generic mobile-local fallback.
+- Cron timing is currently UTC wall-clock. This is fine for the UK user base (18:00 UTC = 19:00 BST) but tracks as a known warning for users in UTC+7..+10 zones — see TODO T10 (journey-architect follow-up).
+- `cancelWeeklyRecapPush()` runs once on mobile boot (`apps/mobile/app/_layout.tsx` → `HandleWeeklyRecapPushOpen`) so pre-kill installs evict any stale `weekly-recap-v1` schedule from their OS queue. Idempotent.
 
 ### Opt-out
 - Profile flag `weekly_recap_push_enabled` (default `true`). First-class Settings toggle on both platforms (H6 audit fix, 2026-04-18):
   - **Web** — `Settings.tsx` Notifications section, shadcn `<Switch>` row ("Weekly recap", sub: "Sunday 18:00 (respects your week start)." or "Saturday 18:00 …" depending on `week_start_day`). Writes the column via `savePref`; fires `weekly_recap_push_enabled_toggled { enabled }`.
-  - **Mobile** — `app/(tabs)/more.tsx` Connections section, `SettingsRow` that opens a bottom-sheet modal hosting a RN `Switch` (`accessibilityRole="switch"`). Off → `cancelWeeklyRecapPush()` clears the `weekly-recap-v1` identifier from the iOS notification queue immediately; On → `scheduleWeeklyRecapPush()` reinstalls the `WEEKLY` trigger. Fires the same `weekly_recap_push_enabled_toggled` event.
-- Defensive fallback: the Progress-visit effect in `app/(tabs)/progress.tsx` still reads the column and reconciles the OS queue on every app open, so a flip made on device A converges on device B without user action.
+  - **Mobile** — `app/(tabs)/more.tsx` Connections section, `SettingsRow` with an RN `Switch` (`accessibilityRole="switch"`). Toggle is DB-only now (server cron reads `profiles.weekly_recap_push_enabled` to decide fan-out); OFF also calls `cancelWeeklyRecapPush()` for immediate OS-queue cleanup. Fires `weekly_recap_push_enabled_toggled { enabled }`.
 - DB write error (RLS reject, offline, etc.) reverts the toggle and surfaces a toast (web) / Alert (mobile); no analytics fires on error.
 
 ### Content
 - Title: "Your week in Suppr"
-- Body — content-specific from 2026-04-27 (Sunday push rewrite — T3/T4, shipped 2026-04-19). Composed by `formatWeeklyRecapPushBody(recap, suggestion)` in `src/lib/nutrition/weeklyRecapPushBody.ts`. See "Push body formatter" below for variant rules.
-- Body (legacy, mobile-local fallback only — installs without a synced Expo token): "Tap to see your weekly recap — avg calories, protein, streak, and weight trend." Used by `apps/mobile/lib/weeklyRecapPush.ts` when the device has no cached push token; the server cron always uses the composed body for installs that have one.
+- Body — content-specific from 2026-04-27 (Sunday push rewrite — T3/T4, shipped 2026-04-19). Composed by `formatWeeklyRecapPushBody(recap, suggestion)` in `src/lib/nutrition/weeklyRecapPushBody.ts`. See "Push body formatter" below for variant rules. This is the sole body path since the mobile-local generic fallback was killed 2026-04-20.
 - Deep-link data: `{ deepLink: "/progress", kind: "weekly_recap", weekKey, bodyVariant }`. `weekKey` (T5, 2026-04-19) attributes opens to the recap window; `bodyVariant` (T4, 2026-04-19) lets `weekly_recap_push_opened` join against the body variant the user actually saw.
 
 ### Suggestion cascade (Sunday push rewrite — T-cascade, 2026-04-19, ready to wire)
@@ -160,11 +158,10 @@ The server cron route assembles the cascade input from per-user data fetched in 
     2. Try `{headline} · {n} days logged.` (collapse the recap to a bare days-line).
     3. Pathological: headline alone exceeds 178 chars (cannot happen given the cascade's 120-char ceiling). Return the headline as-is and let APNs hard-truncate.
 - Hard rules pinned by `tests/unit/weeklyRecapPushBody.test.ts`: no exclamation marks, no performance adjectives, body ≤178 chars (APNs lock-screen visible threshold).
-- **Status:** wired into `app/api/push/weekly-recap/route.ts` (server cron path). The mobile-local fallback (`apps/mobile/lib/weeklyRecapPush.ts`) still uses the legacy generic copy — only fires for installs without a synced Expo push token (rare). Promoting the mobile-local path to the formatter is tracked as a follow-up.
+- **Status:** wired into `app/api/push/weekly-recap/route.ts` (sole delivery path; mobile-local was killed 2026-04-20).
 
 ### Analytics
-- `weekly_recap_push_sent { weekKey }` — fires when the local notification is (re-)scheduled on mobile (legacy emit; the mobile site still uses `currentWeekKey` per the off-by-one ticket in TODO).
-  - **Server-side emit (Sunday push rewrite — T6, shipped 2026-04-19):** also fires from `app/api/push/weekly-recap/route.ts` per successful push send via `serverTrack` (`src/lib/analytics/serverTrack.ts` — direct POST to PostHog `/capture/`). Server payload: `{ weekKey, bodyVariant, suggestionRule }`. The server emit uses the recap-window `weekKey` (previous completed week) to match `weekly_recap_push_opened`, fixing the off-by-one for users on the cron path. The mobile-local emit's off-by-one is unaffected by this work — see TODO §"Push analytics off-by-one bug".
+- `weekly_recap_push_sent { weekKey, bodyVariant, suggestionRule }` — fires once per successful Expo send from `app/api/push/weekly-recap/route.ts` via `serverTrack` (direct POST to PostHog `/capture/`). `weekKey` is the previous completed week (matches `weekly_recap_push_opened`). This is the sole emit path since the mobile-local scheduler (with its `currentWeekKey` off-by-one bug) was removed 2026-04-20.
 - `weekly_recap_push_enabled_toggled { enabled }` — fires once per committed flip of the Settings toggle on web or mobile. Added 2026-04-18 (H6 audit fix) so product can measure opt-out rate directly instead of inferring it from `_push_sent` drop-off.
 - `weekly_recap_push_opened { weekKey: string | null }` — fires when the user taps the weekly-recap push and the OS routes the response into the app. Mobile-only — registered in `apps/mobile/app/_layout.tsx` via `Notifications.addNotificationResponseReceivedListener`, gated on `data.kind === "weekly_recap"`. `weekKey` is null when the push payload predates the field (older local schedule). Sunday push rewrite — T5 (2026-04-19).
 - `weekly_recap_shown { weekKey }` — fires once per week when the card renders.

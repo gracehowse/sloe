@@ -917,26 +917,25 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - EDGE: change `week_start_day` from Monday to Sunday mid-week → next Progress visit rebuilds the recap for the Sunday-start window and the push scheduler reschedules to Saturday 18:00 (ledger key changes).
 - A11Y: card has an `accessibilityRole="header"` on the headline; dismiss and share buttons have explicit `accessibilityLabel`s.
 
-### 10.12 Weekly Recap push (Batch 4.11)
-- PRE: `weekly_recap_push_enabled = true` on the profile; OS notification permission granted.
-- EXP: on next Progress visit, `scheduleWeeklyRecapPush` installs a `WEEKLY` trigger at 18:00 on Sunday (Monday-start) or Saturday (Sunday-start). The `weekly-recap-v1` identifier is reused, so no duplicates.
-- EXP: `weekly_recap_push_sent { weekKey }` fires once when the schedule is installed.
-- EXP: tap the notification → app opens to `/progress`.
-- NEG: toggle `weekly_recap_push_enabled = false` → next launch cancels the scheduled notification; no push arrives the following week.
-- NEG: OS notification permission denied → `scheduleWeeklyRecapPush` returns `null` gracefully; no analytics event fires.
-- EDGE: Expo Go / simulator without native push → helper no-ops cleanly; no crash on `scheduleNotificationAsync`.
-- EDGE: DST boundary — `WEEKLY` trigger continues to fire at the same local wall-clock time (18:00).
+### 10.12 Weekly Recap push (server-cron only, post-kill 2026-04-20)
+- PRE: `weekly_recap_push_enabled = true` on the profile; `profiles.expo_push_token` synced; OS notification permission granted.
+- EXP: server cron (vercel.json → `app/api/push/weekly-recap/route.ts`) at 18:00 UTC on Sunday (Monday-start) or Saturday (Sunday-start) posts via Expo → APNs. Body is per-user, composed by `formatWeeklyRecapPushBody` with cascade suggestion where available.
+- EXP: `weekly_recap_push_sent { weekKey, bodyVariant, suggestionRule }` fires server-side once per successful send. `weekKey` is the previous completed week (matches `weekly_recap_push_opened`).
+- EXP: tap the notification → app opens to `/progress`; `weekly_recap_push_opened { weekKey }` fires via the `HandleWeeklyRecapPushOpen` listener in `apps/mobile/app/_layout.tsx`.
+- EXP: on first boot after the 2026-04-20 kill ships, the mount effect in `HandleWeeklyRecapPushOpen` calls `cancelWeeklyRecapPush()` once so pre-kill installs evict any stale `weekly-recap-v1` schedule from the OS queue. Confirm via Xcode scheduled-notifications inspector that `weekly-recap-v1` is absent after first launch.
+- NEG: `profiles.expo_push_token` null → the device receives no weekly push (mobile-local fallback killed 2026-04-20). The upstream fix is token-sync coverage (TODO P0-1).
+- NEG: toggle `weekly_recap_push_enabled = false` → server cron skips the user on next fire. Settings toggle OFF also calls `cancelWeeklyRecapPush()` for immediate OS-queue cleanup.
+- EDGE: Users in UTC+7..+10 receive the push at potentially anti-social local hours (e.g. 02:00 AWST for 18:00 UTC). Known warning; fix tracked as TODO T10 (journey-architect — `tz_utc_offset_minutes` interim + IANA long-term).
 
-### 10.12a Weekly Recap Settings toggle (Batch 4.11 — H6 audit fix, 2026-04-18)
-- PRE: `weekly_recap_push_enabled = true` on the profile (default), OS notification permission granted, Monday-start user.
-- EXP: Open More → Connections → "Weekly recap" row. Sub line reads "Sunday 18:00 (respects your week start)". Tap opens a bottom-sheet modal with a Switch set to ON and the explainer "Get a one-tap reminder to open your weekly recap on Sunday at 18:00 local time.".
-- EXP: Tapping the Switch OFF calls `cancelWeeklyRecapPush()` immediately — inspect via `expo-notifications` API that the `weekly-recap-v1` identifier is no longer scheduled. `profiles.weekly_recap_push_enabled` is `false`. `weekly_recap_push_enabled_toggled { enabled: false }` fires once. Row sub updates to "Off · re-enable to get the Sun/Sat 18:00 nudge".
-- EXP: **No local notification arrives the next Sunday at 18:00.** Confirm with the Xcode scheduled-notifications inspector or a backdated test device.
-- EXP: Tapping the Switch ON calls `scheduleWeeklyRecapPush({ enabled: true, weekStartDay })` — a fresh `WEEKLY` trigger is installed for Sunday 18:00 (or Saturday 18:00 for Sunday-start users). `weekly_recap_push_enabled_toggled { enabled: true }` fires once.
+### 10.12a Weekly Recap Settings toggle (post-kill 2026-04-20)
+- PRE: `weekly_recap_push_enabled = true` on the profile (default), Monday-start user.
+- EXP: Open More → Connections → "Weekly recap" row. Tap opens a bottom-sheet modal with a Switch set to ON and the explainer "Get a one-tap summary of your week on Sunday evening.".
+- EXP: Tapping the Switch OFF writes `profiles.weekly_recap_push_enabled = false`, calls `cancelWeeklyRecapPush()` for immediate OS-queue cleanup (any stale pre-kill schedule), and fires `weekly_recap_push_enabled_toggled { enabled: false }` once. Sub line updates to "Off · no push will be scheduled".
+- EXP: **No server push arrives the next Sunday at 18:00 UTC.** Server cron reads `profiles.weekly_recap_push_enabled` before fan-out.
+- EXP: Tapping the Switch ON writes the DB flag back to `true`. No local scheduler is involved (killed 2026-04-20); the DB flag alone re-enables server-cron fan-out. `weekly_recap_push_enabled_toggled { enabled: true }` fires once.
 - NEG: Signed-out / `userId` null → toggle reverts to its previous value; Alert "Sign in required" surfaces; no DB write, no analytics.
 - NEG: DB update errors (e.g. RLS rejection, offline) → toggle reverts; Alert "Could not save. Please try again." surfaces; no analytics.
-- EDGE: Switch `week_start_day` from Monday to Sunday while the toggle is ON → next Progress visit (or next open of the modal) reconciles the schedule to Saturday 18:00 via the existing Progress-visit scheduler; no user action required.
-- EDGE: Toggle off on device A, then open device B with a cached `true` — device B's Progress-visit effect re-reads the column, sees `false`, and cancels any lingering scheduled notification before it fires.
+- EDGE: Switch `week_start_day` from Monday to Sunday while the toggle is ON → server cron picks up the new end-of-week day on the next scheduled fire; no mobile action required.
 - A11Y: Switch carries `accessibilityRole="switch"` + `accessibilityLabel="Weekly recap push notifications"` + `accessibilityState={{ checked }}`. Modal dismiss Pressable has `accessibilityRole="button"` and `accessibilityLabel="Dismiss"`.
 
 ---

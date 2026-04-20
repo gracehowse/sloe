@@ -113,9 +113,16 @@ vi.mock("@/lib/healthSync", () => ({
   isHealthSyncAvailable: () => false,
 }));
 
-// --- Weekly-recap push scheduling: no-op. ---
+// --- Weekly-recap push module: only `cancelWeeklyRecapPush` and the
+// tap-handler remain after mobile-local scheduling was killed
+// 2026-04-20. The progress screen no longer imports from this module,
+// but mock is retained in case ancillary imports surface.
 vi.mock("@/lib/weeklyRecapPush", () => ({
-  scheduleWeeklyRecapPush: vi.fn(async () => false),
+  cancelWeeklyRecapPush: vi.fn(async () => undefined),
+  handleWeeklyRecapNotificationResponse: vi.fn(() => ({
+    shouldTrack: false,
+    weekKey: null,
+  })),
 }));
 
 // --- Saved meals: resolves empty. ---
