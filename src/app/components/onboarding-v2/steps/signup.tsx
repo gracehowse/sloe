@@ -18,7 +18,7 @@ import { StepBody, StepHeader, useStepOverline } from "../scaffold";
  * trust-killer — Grace 2026-04-20). Future Google OAuth can be added
  * here without changing the architecture.
  *
- * When the visitor is already authed (e.g. they came from /signin and
+ * When the visitor is already authed (e.g. they came from /login and
  * navigated here manually), the WebFlow shell auto-bumps past this
  * step — see the effect in `web-flow.tsx`.
  *
@@ -108,7 +108,7 @@ export function SignupStep() {
         // Belt-and-braces: if Supabase is in confirm-email mode and no
         // session lands, we still nudge forward so the user doesn't get
         // stuck. The terminal step's persistence layer also tolerates
-        // an anonymous completer (it bounces to /signin?).
+        // an anonymous completer (it bounces to /login?).
         go(1);
       }
     } catch (e) {
@@ -200,7 +200,7 @@ export function SignupStep() {
             error,
           ) && (
             <a
-              href="/signin"
+              href="/login"
               className="underline font-semibold"
             >
               Sign in instead
@@ -211,7 +211,7 @@ export function SignupStep() {
 
       <p className="text-[11px] text-muted-foreground mt-4 leading-relaxed text-center">
         Already have an account?{" "}
-        <a href="/signin" className="text-foreground/80 underline font-semibold">
+        <a href="/login" className="text-foreground/80 underline font-semibold">
           Sign in
         </a>
       </p>

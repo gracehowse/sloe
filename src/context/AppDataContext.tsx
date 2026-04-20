@@ -1584,7 +1584,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (newCount === 3 && (!activePlan || activePlan.length === 0)) {
         setTimeout(() => {
           toast.success("You have 3 recipes — ready to generate a meal plan!", {
-            action: { label: "Open Planner", onClick: () => { window.location.href = "/?view=planner"; } },
+            action: { label: "Open Planner", onClick: () => { window.location.href = "/home?view=planner"; } },
             duration: 8000,
           });
         }, 1500);

@@ -1,24 +1,14 @@
-import type { Metadata } from "next";
-import { LoginClient } from "../login/ui.tsx";
-
 /**
- * /signin — canonical sign-in entry point.
+ * /signin → /login (server-side 307).
  *
- * The Sign Up flow lives at /onboarding (the v2 onboarding flow runs
- * the real Supabase signUp inline at its second step). Keeping a Sign
- * Up tab here would split the sign-up surface and re-create the
- * duplicate-account-creation bug Grace hit on suppr-club.com.
- *
- * `hideTabs` strips the Sign Up / Sign In tab strip and pins the form
- * to the signin handler. The "New to Suppr? Create your account" link
- * at the bottom of the form points back to /onboarding so users who
- * land on /signin by accident can still get to the right place.
+ * Short-lived alias. Grace 2026-04-20 set the canonical sign-in route
+ * back to /login after one session where we'd split it into /signin.
+ * Kept as a redirect (not deleted) so any bookmark / email link that
+ * leaked out during that window still works.
  */
-export const metadata: Metadata = {
-  title: "Sign in — Suppr",
-  description: "Sign in to your Suppr account.",
-};
 
-export default function SignInPage() {
-  return <LoginClient initialMode="signin" hideTabs />;
+import { redirect } from "next/navigation";
+
+export default function SigninPage() {
+  redirect("/login");
 }

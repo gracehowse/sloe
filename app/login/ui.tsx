@@ -38,7 +38,8 @@ export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginC
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        window.location.href = "/";
+        // Dashboard lives at /home; / is the marketing landing.
+        window.location.href = "/home";
       }
     });
     return () => subscription.unsubscribe();

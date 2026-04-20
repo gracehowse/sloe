@@ -110,19 +110,22 @@ export function WebFlow() {
           weight_skipped: state.weightSkipped,
           goal: state.goal,
         });
-        window.location.href = "/?view=discover";
+        window.location.href = "/home?view=discover";
       } else {
-        // Anonymous completer — bounce to signup. The local profile
-        // cache means their answers persist across the auth handoff;
-        // a future iteration can re-hydrate state from saved profile
-        // on first authenticated visit.
+        // Anonymous completer — bounce to the canonical sign-up entry
+        // point (/onboarding now runs the real auth inline; /signup
+        // 307s there). The local profile cache means their answers
+        // persist across the auth handoff. Rare branch: the v2 flow's
+        // Signup step normally requires real auth before advancing,
+        // so reaching the terminal step anonymously means the user
+        // URL-stuffed past it.
         track(AnalyticsEvents.onboarding_completed, {
           flow: "v2",
           weight_skipped: state.weightSkipped,
           goal: state.goal,
           unauthenticated: true,
         });
-        window.location.href = "/signup?next=/onboarding/v2";
+        window.location.href = "/onboarding";
       }
     } finally {
       setCompleting(false);

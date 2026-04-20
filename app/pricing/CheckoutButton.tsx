@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "../../utils/supabase/info.tsx";
+import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
+import { track } from "../../src/lib/analytics/track.ts";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 const supabase = createClient(supabaseUrl, publicAnonKey);
@@ -59,6 +61,7 @@ export function CheckoutButton({
         return;
       }
 
+      track(AnalyticsEvents.checkout_started, { tier, period });
       window.location.href = data.url;
     } catch {
       alert("Could not start checkout. Please try again.");

@@ -282,7 +282,7 @@ export function LegacyOnboardingForm() {
 
     setSaving(false);
     track(AnalyticsEvents.onboarding_completed);
-    window.location.href = "/?view=discover";
+    window.location.href = "/home?view=discover";
   };
 
   const [wizardStep, setWizardStep] = useState(0);

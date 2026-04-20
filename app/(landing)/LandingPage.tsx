@@ -60,11 +60,10 @@ const NAV_LINKS = [
 ];
 
 // Sign Up = the v2 onboarding flow (real Supabase signUp inline at
-// step 02). Sign In = canonical /signin with no Sign Up tab visible.
-// See app/signin/page.tsx + app/signup/page.tsx (now a redirect) for
-// the full architecture.
+// step 02 — see app/signup/page.tsx which now 307s to /onboarding).
+// Sign In = /login (unchanged).
 const SIGNUP_HREF = "/onboarding";
-const SIGNIN_HREF = "/signin";
+const SIGNIN_HREF = "/login";
 
 export function LandingPage() {
   return (

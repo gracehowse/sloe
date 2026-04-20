@@ -1,8 +1,24 @@
+/**
+ * / — marketing landing page, always.
+ *
+ * Grace 2026-04-20: "suppr-club.com = main landing page." This route
+ * unconditionally renders the marketing landing for ALL visitors,
+ * authed or not. The dashboard moved to /home. Sign-up CTAs point at
+ * /onboarding (real Supabase signUp inline at v2 step 02); sign-in
+ * CTAs point at /login.
+ *
+ * Previously this file did a server-side `supabase.auth.getUser()`
+ * and rendered HomePageClient for authed users. That created a loop
+ * for authed-but-onboarding-incomplete users: HomePageClient's gate
+ * client-side-redirected to /onboarding, which 307s to /onboarding/v2,
+ * which sometimes bounced back to / — every visit to suppr-club.com
+ * felt broken.
+ *
+ * Authed users who want the dashboard navigate to /home (or are sent
+ * there after sign-in / onboarding completion).
+ */
+
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import { projectId, publicAnonKey } from "../utils/supabase/info.tsx";
-import { HomePageClient } from "./HomePageClient.tsx";
 import { LandingPage } from "./(landing)/LandingPage.tsx";
 
 export const metadata: Metadata = {
@@ -11,29 +27,6 @@ export const metadata: Metadata = {
     "Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases.",
 };
 
-export default async function Page() {
-  const cookieStore = await cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || publicAnonKey;
-
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll() {
-        // no-op — middleware owns cookie writes; this server component only reads.
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return <LandingPage />;
-  }
-
-  return <HomePageClient />;
+export default function Page() {
+  return <LandingPage />;
 }
