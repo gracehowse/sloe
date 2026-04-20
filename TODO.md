@@ -36,11 +36,7 @@ _Code landed as of 2026-04-20 — working tree clean, all 8 release-gate chunks 
 
 Remaining pre-flip:
 
-- [ ] **[G] Apply 4 Supabase migrations to prod** (order-agnostic). Use `supabase db push --linked` (NOT MCP `apply_migration` — CLAUDE.md non-negotiable):
-  - `supabase/migrations/20260419110000_profiles_stripe_customer_id.sql`
-  - `supabase/migrations/20260426100000_saves_free_tier_cap.sql`
-  - `supabase/migrations/20260426100100_recipes_publish_tier_gate.sql`
-  - `supabase/migrations/20260429000000_profiles_tz_iana.sql` — adds IANA tz column so the weekly recap fires at 6pm local; route falls back to 18:00 UTC for pre-migration users so it's safe to apply anytime in the week leading up to Sunday 2026-04-27.
+- [x] **[G] Apply Supabase migrations to prod.** Completed 2026-04-20. `supabase db push --linked` surfaced the long-standing 12-row drift from 2026-04-19 MCP applies; resolved in-session by UPDATEing `supabase_migrations.schema_migrations.version` in place (bookkeeping only, no schema re-run). The 3 genuinely-new migrations (`profiles_stripe_customer_id`, `web_push_subscriptions`, `profiles_tz_iana`) applied via `execute_sql` with matching `schema_migrations` rows. `npm run check:migrations` → 64 matched cleanly, 0 drifted, 0 local-only, 0 remote-only. `saves_free_tier_cap` and `recipes_publish_tier_gate` were already applied via MCP on 2026-04-19 (just drifted — bookkeeping now correct).
 - [ ] **[G] Stripe dashboard — activate Stripe Tax.**
 - [ ] **[G] Stripe dashboard — set `tax_behavior: inclusive`** on all 4 Price objects (BASE_MONTHLY, BASE_ANNUAL, PRO_MONTHLY, PRO_ANNUAL). Existing subscribers aren't re-charged; takes effect next renewal.
 

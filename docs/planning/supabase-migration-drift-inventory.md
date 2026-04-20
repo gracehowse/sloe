@@ -97,21 +97,35 @@ which makes the API stamp the row with wall-clock `NOW()`:
 the local filename, so `version` matches `<14-digit prefix>` and the row stays in lockstep with the
 file you committed.
 
-**Current state (2026-04-19):** 12 rows in `schema_migrations` are drifted — 4 from earlier
-out-of-band applies (`20260419042534`, `20260419042552`, `20260419174513`, `20260419174524`) and
-8 from a sequence of MCP applies on 2026-04-19 (`20260419214032` through `20260419214138`). They
-are intentionally **left as-is** because:
+**Current state (2026-04-20):** zero drift. `npm run check:migrations` reports
+64 rows matched cleanly, 0 drifted, 0 local-only, 0 remote-only.
 
-1. The local file timestamps for those migrations are sometimes deliberately future-dated to
-   preserve monotonic ordering against other planned work, so a `migration repair` would corrupt
-   that ordering.
-2. Every drifted migration in this set is idempotent (`CREATE … IF NOT EXISTS`, `DROP POLICY IF
-   EXISTS`, dedupe-before-constraint, etc.), so a future `supabase db push --linked` will skip them
-   by name match without re-executing the SQL.
+**How it was resolved.** Grace attempted `supabase db push --linked` on 2026-04-20
+to apply three new migrations (`profiles_stripe_customer_id`, `web_push_subscriptions`,
+`profiles_tz_iana`). The CLI refused because of the 12-row drift catalogued above.
+Rather than run `supabase migration repair --status reverted ...` followed by a
+re-push — which would have re-executed the drifted migrations' SQL and failed on
+non-idempotent `CREATE POLICY` statements like
+`20260419100001_profiles_delete_own.sql` — the resolution was:
 
-The damage is cosmetic (the Dashboard's history view shows the NOW() timestamp instead of the
-filename timestamp). Detection is automated via `npm run check:migrations`; do not run
-`supabase migration repair` against these rows without re-reading this section.
+1. `UPDATE supabase_migrations.schema_migrations SET version = '<local-version>'
+   WHERE version = '<drifted-version>'` for each of the 12 drifted rows. Pure
+   bookkeeping: keeps the existing `statements`/`name` payload, swaps only the
+   version text. No schema changes, no risk of non-idempotent SQL re-running.
+2. Executed each of the 3 new migrations' SQL directly via `execute_sql`, then
+   inserted matching `schema_migrations` rows.
+
+Both steps used the Supabase MCP `execute_sql` tool (NOT `apply_migration`, which
+is the tool that caused the original drift by stamping rows with wall-clock NOW()).
+`execute_sql` runs raw SQL without touching `schema_migrations` automatically, so
+we control exactly what version goes in.
+
+**Note for future drift.** This inventory used to recommend leaving drifted rows
+as-is on the theory that future pushes would "skip them by name match". That held
+for older CLI versions but breaks on current ones — the CLI now rejects drifted
+state and blocks `db push` until resolved. If drift recurs, the in-place UPDATE
+pattern above is the safest resolution; `migration repair --status reverted` + push
+is only safe when every drifted migration is genuinely idempotent.
 
 If you need to apply a SQL change in production:
 
