@@ -412,16 +412,47 @@ export default function PlannerScreen() {
     });
   }, []);
 
-  // Get date range for header (assuming plan starts today)
-  const getDateRange = useCallback(() => {
-    const today = new Date();
-    const start = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    if (!plan || plan.length <= 1) return start;
-    const end = new Date(today);
-    end.setDate(end.getDate() + plan.length - 1);
-    const endStr = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return `${start} – ${endStr}`;
-  }, [plan]);
+  // Prototype port (2026-04-20): "Week of {Month Day}" overline.
+  // Superseded the older getDateRange helper which built a
+  // "Apr 20 – Apr 26" span; the new overline shows only the first
+  // day of the plan to match the prototype (`screens-mobile.jsx` 455).
+  // Shows the first day of the currently-displayed plan, honouring
+  // startOffset so "Next week" doesn't still say today's date.
+  const getWeekOfLabel = useCallback(() => {
+    const d = planCalendarDateForIndex(0, startOffset);
+    return `Week of ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+  }, [startOffset]);
+
+  // Prototype port — compute "Hits your targets N of 7 days" from the
+  // live plan + targets. A day "hits" when its total calories sit
+  // within ±10% of the daily calorie target. Worst-short day = the
+  // day with the largest negative gap (most calories under).
+  // Returns null if we don't have targets or plan data yet.
+  const summaryScore = useMemo((): {
+    hits: number;
+    total: number;
+    worstShort: { dayIndex: number; shortBy: number } | null;
+  } | null => {
+    if (!plan || plan.length === 0 || !planTargets || planTargets.calories <= 0) {
+      return null;
+    }
+    const target = planTargets.calories;
+    const tol = target * 0.1;
+    let hits = 0;
+    let worstShort: { dayIndex: number; shortBy: number } | null = null;
+    plan.forEach((dp, idx) => {
+      const total = dp.totals.calories;
+      const diff = total - target;
+      if (Math.abs(diff) <= tol) hits += 1;
+      if (diff < 0) {
+        const shortBy = -diff;
+        if (!worstShort || shortBy > worstShort.shortBy) {
+          worstShort = { dayIndex: idx, shortBy };
+        }
+      }
+    });
+    return { hits, total: plan.length, worstShort };
+  }, [plan, planTargets]);
 
   // Helper to truncate meal names in day cards
   const truncateMealName = (name: string, maxLen: number = 12) => {
@@ -443,34 +474,101 @@ export default function PlannerScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
         scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+        // Prototype port — uppercase micro-overline above the big title.
+        headerOverline: {
+          fontSize: 11,
+          fontWeight: "700",
+          color: colors.textTertiary,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          paddingTop: 18,
+        },
         headerTitle: {
-          fontSize: 22,
+          fontSize: 28,
           fontWeight: "700",
           color: colors.text,
-          letterSpacing: -0.4,
-          paddingTop: 18,
+          letterSpacing: -0.6,
+          marginTop: 2,
           paddingBottom: 4,
         },
         headerRow: {
           flexDirection: "row",
           justifyContent: "space-between",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: Spacing.md,
           marginBottom: Spacing.md,
         },
         headerLeft: { flex: 1 },
-        headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-        autoFillBtn: {
-          paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.sm,
-          borderRadius: Radius.md,
+        // Prototype port — round icon pill on the right of the header.
+        // Replaces the old "Regenerate / Generate Plan" text button; the
+        // Regenerate action moves into the summary card below.
+        headerIconBtn: {
+          width: 38,
+          height: 38,
+          borderRadius: 19,
           borderWidth: 1,
-          borderColor: Accent.primary,
-          flexDirection: "row",
-          gap: 4,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
           alignItems: "center",
+          justifyContent: "center",
         },
-        autoFillBtnText: { fontSize: 13, fontWeight: "600", color: Accent.primary },
+        // Prototype-ported summary card. Gradient fallback = flat tint
+        // (Accent.primary + "14") because expo-linear-gradient isn't
+        // installed; switching to a true gradient only requires wrapping
+        // the inner content in <LinearGradient> with the same two colours
+        // the prototype uses (primary 12% → fat 8%).
+        summaryCard: {
+          backgroundColor: Accent.primary + "14",
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: Accent.primary + "38",
+          padding: Spacing.xl,
+          marginBottom: Spacing.md,
+        },
+        summaryOverline: {
+          fontSize: 11,
+          fontWeight: "700",
+          color: Accent.primaryLight,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          marginBottom: 6,
+        },
+        summaryTitle: {
+          fontSize: 17,
+          fontWeight: "700",
+          color: colors.text,
+          letterSpacing: -0.2,
+          marginBottom: 4,
+        },
+        summarySubtitle: {
+          fontSize: 12,
+          color: colors.textSecondary,
+          lineHeight: 18,
+          marginBottom: 14,
+        },
+        summaryActions: { flexDirection: "row", gap: 8 },
+        summaryPrimaryBtn: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          backgroundColor: Accent.primary,
+          paddingHorizontal: 14,
+          paddingVertical: 9,
+          borderRadius: Radius.md,
+        },
+        summaryPrimaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+        summarySecondaryBtn: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: 14,
+          paddingVertical: 9,
+          borderRadius: Radius.md,
+        },
+        summarySecondaryText: { color: colors.text, fontSize: 13, fontWeight: "600" },
 
         dayCardsScroll: {
           marginHorizontal: -Spacing.xl,
@@ -865,15 +963,28 @@ export default function PlannerScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Header with title, date range, and AI Auto-fill button */}
+        {/* Prototype port (2026-04-20) — overline + big title on the
+            left, round "options" pill on the right. The old inline
+            Regenerate/Generate-Plan text button was moved: the
+            "Regenerate" primary action now lives in the summary card
+            below for plans that already exist; the "Generate Plan"
+            empty-state CTA is still served by the generate controls
+            card further down (unchanged). The round button currently
+            re-uses the templates sheet as its "plan options" surface;
+            if a standalone filter/options sheet ships later, swap the
+            onPress target. */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Meal Plan</Text>
-            {plan && <Text style={styles.headerSubtitle}>{getDateRange()}</Text>}
+            <Text style={styles.headerOverline}>{getWeekOfLabel()}</Text>
+            <Text style={styles.headerTitle}>Meal plan</Text>
           </View>
-          <Pressable style={styles.autoFillBtn} onPress={generatePlan} disabled={generating}>
-            <Ionicons name="refresh-outline" size={14} color={Accent.primary} />
-            <Text style={styles.autoFillBtnText}>{plan ? "Regenerate" : "Generate Plan"}</Text>
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => setTemplatesOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Plan options"
+          >
+            <Ionicons name="options-outline" size={18} color={colors.text} />
           </Pressable>
         </View>
 
@@ -1012,6 +1123,60 @@ export default function PlannerScreen() {
 
         {/* Household shared meals */}
         <HouseholdCard />
+
+        {/* Prototype port (2026-04-20) — weekly summary card.
+            Rendered only when we have both a plan and resolved targets.
+            - "Hits your targets N of 7 days" counts days whose total
+              calories sit within ±10% of the user's daily calorie
+              target (see `summaryScore`).
+            - Subtitle diagnoses the worst-short day when N < planLen;
+              shows a clean "all days land on target" line when N === planLen.
+            - Shopping list button routes to the same destination as the
+              Shopping list CTA card further down (`/shopping`).
+            - Regenerate reuses the existing `generatePlan` used by the
+              empty-state Generate Plan button. */}
+        {plan && plan.length > 0 && planTargets && summaryScore && (
+          <View style={styles.summaryCard} testID="plan-summary-card">
+            <Text style={styles.summaryOverline}>This week</Text>
+            <Text style={styles.summaryTitle}>
+              Hits your targets {summaryScore.hits} of {summaryScore.total} day{summaryScore.total === 1 ? "" : "s"}
+            </Text>
+            <Text style={styles.summarySubtitle}>
+              {summaryScore.hits === summaryScore.total
+                ? `All ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"} land on target.`
+                : summaryScore.worstShort
+                  ? `${WEEKDAY_LONG[planCalendarDateForIndex(summaryScore.worstShort.dayIndex, startOffset).getDay()]} is ~${Math.round(summaryScore.worstShort.shortBy)} kcal short. Add a snack or swap the dinner.`
+                  : "Some days run over target. Tap a meal to swap or adjust the portion."}
+            </Text>
+            <View style={styles.summaryActions}>
+              <Pressable
+                style={styles.summaryPrimaryBtn}
+                onPress={() => router.push("/shopping")}
+                accessibilityRole="button"
+                accessibilityLabel="Open shopping list"
+              >
+                <Ionicons name="cart-outline" size={14} color="#fff" />
+                <Text style={styles.summaryPrimaryText}>Shopping list</Text>
+              </Pressable>
+              <Pressable
+                style={styles.summarySecondaryBtn}
+                onPress={generatePlan}
+                disabled={generating}
+                accessibilityRole="button"
+                accessibilityLabel="Regenerate plan"
+              >
+                {generating ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <>
+                    <Ionicons name="refresh-outline" size={14} color={colors.text} />
+                    <Text style={styles.summarySecondaryText}>Regenerate</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Day summary strip — compact row that fits on screen */}
         {plan && plan.length > 1 && planTargets && (
@@ -1177,11 +1342,20 @@ export default function PlannerScreen() {
               : tone === "amber"
                 ? Accent.warning
                 : Accent.destructive;
+          // Prototype port (2026-04-20) — day total surfaces as
+          // "1,820 kcal" (thousands-separator, right-aligned) in the
+          // day header. Sum from non-placeholder meals so cleared
+          // slots don't drag the number to 0 when other meals are
+          // present; also omits leftover-companion rows implicitly
+          // because those still carry macros and belong in the total.
+          const dayTotalKcal = dp.meals
+            .filter((m) => !m.isPlaceholder && !!m.recipeTitle)
+            .reduce((sum, m) => sum + (m.calories || 0), 0);
           return (
           <View key={dp.day} style={styles.card}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>Day {dp.day}</Text>
-              <Text style={styles.dayTotals}>{Math.round(dp.totals.calories)} kcal</Text>
+              <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
             </View>
             {goalLine && goalLine.hasTargets && (
               <View
@@ -1454,12 +1628,22 @@ export default function PlannerScreen() {
                       Leftover of {meal.recipeTitle}
                     </Badge>
                   ) : null}
+                  {/* Prototype port (2026-04-20): placeholders still
+                      render a title + macro line so every meal row has
+                      the same visual weight. Empty slots read
+                      "Empty slot" · "— kcal · P —g · C —g · F —g"
+                      instead of going blank. The existing kcal/macros
+                      line (already present for real meals) stays
+                      unchanged — no duplication. */}
                   <Text style={styles.mealTitle}>
-                    {meal.recipeTitle}
-                    {meal.portionMultiplier && meal.portionMultiplier !== 1 ? ` (${meal.portionMultiplier}x)` : ""}
+                    {meal.isPlaceholder || !meal.recipeTitle
+                      ? "Empty slot"
+                      : `${meal.recipeTitle}${meal.portionMultiplier && meal.portionMultiplier !== 1 ? ` (${meal.portionMultiplier}x)` : ""}`}
                   </Text>
                   <Text style={styles.mealMacros}>
-                    {Math.round(meal.calories)} kcal · P {Math.round(meal.protein)}g · C {Math.round(meal.carbs)}g · F {Math.round(meal.fat)}g
+                    {meal.isPlaceholder || !meal.recipeTitle
+                      ? "— kcal · P —g · C —g · F —g"
+                      : `${Math.round(meal.calories)} kcal · P ${Math.round(meal.protein)}g · C ${Math.round(meal.carbs)}g · F ${Math.round(meal.fat)}g`}
                   </Text>
                 </View>
                 {/* Log to tracker */}

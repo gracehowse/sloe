@@ -124,7 +124,9 @@ export default function DiscoverScreen() {
     if (search.trim() && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
     // Pill filter
     if (filter === "For You") return true;
-    if (filter === "Popular") return (r.saves ?? 0) >= 50 || true;
+    // Popular — real filter (was `|| true`, which silently disabled
+    // the gate; ui-critic flagged 2026-04-20).
+    if (filter === "Popular") return (r.saves ?? 0) >= 50;
     if (filter === "Quick") {
       const cm = r.cookTimeMin;
       if (cm != null && cm > 0) return cm <= 20;

@@ -603,17 +603,20 @@ export default function RecipeDetailScreen() {
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
     // Header buttons restyled 2026-04-20 to match the prototype's
     // light circular icon buttons (was black 67%-opacity overlay).
-    // Subtle shadow keeps them legible against bright hero photos.
+    // 1pt subtle dark border + deeper shadow keep them legible
+    // against pale hero photos (ui-critic 2026-04-20).
     headerBtn: {
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: "rgba(255,255,255,0.92)",
+      backgroundColor: "rgba(255,255,255,0.94)",
+      borderWidth: 1,
+      borderColor: "rgba(0,0,0,0.08)",
       justifyContent: "center",
       alignItems: "center",
       shadowColor: "#000",
-      shadowOpacity: 0.18,
-      shadowRadius: 8,
+      shadowOpacity: 0.22,
+      shadowRadius: 10,
       shadowOffset: { width: 0, height: 2 },
     },
     headerBtnText: { color: colors.text, fontSize: 22, fontWeight: "600" },

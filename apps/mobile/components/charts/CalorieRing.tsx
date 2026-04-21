@@ -236,18 +236,22 @@ export default function CalorieRing({
         >
           {centerLabel}
         </Text>
-        {!expanded && (
-          <Text
-            style={{
-              fontSize: 10,
-              color: secondaryColor,
-              marginTop: 1,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {budgetLine}
-          </Text>
-        )}
+        {/* Budget line ("of X kcal") renders in BOTH states so the
+            ring's centre always carries the target anchor, matching
+            the prototype (screens-mobile.jsx:253-257) — ui-critic
+            flagged that `ringExpanded` defaults to true on Today,
+            so hiding this caption in expanded mode left the user
+            looking at a number without its denominator. */}
+        <Text
+          style={{
+            fontSize: 10,
+            color: secondaryColor,
+            marginTop: 1,
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {budgetLine}
+        </Text>
       </View>
     </Pressable>
   );

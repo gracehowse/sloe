@@ -123,7 +123,10 @@ export function TodayHero(props: TodayHeroProps) {
         />
       )}
 
-      {/* Picker affordance — circular grid icon top-right of the hero. */}
+      {/* Picker affordance — 28x28 subtle tinted square, matches
+          the prototype's subdued treatment (screens-mobile.jsx:91-97).
+          Earlier 34x34 bordered circle overlapped the ring's upper-
+          right arc on narrow devices (ui-critic, 2026-04-20). */}
       <Pressable
         onPress={() => setPickerOpen(true)}
         accessibilityRole="button"
@@ -131,19 +134,17 @@ export function TodayHero(props: TodayHeroProps) {
         hitSlop={12}
         style={{
           position: "absolute",
-          top: 6,
-          right: 6,
-          width: 34,
-          height: 34,
-          borderRadius: Radius.full,
+          top: 10,
+          right: 10,
+          width: 28,
+          height: 28,
+          borderRadius: Radius.sm,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: cardBackgroundColor,
-          borderWidth: 1,
-          borderColor: borderColor,
+          backgroundColor: `${textSecondaryColor}14`,
         }}
       >
-        <Ionicons name="grid-outline" size={16} color={textColor} />
+        <Ionicons name="grid-outline" size={13} color={textSecondaryColor} />
       </Pressable>
 
       <TodayHeroVariantPicker

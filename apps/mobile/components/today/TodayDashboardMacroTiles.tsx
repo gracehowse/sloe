@@ -93,8 +93,11 @@ export function TodayDashboardMacroTiles({
     water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
   };
 
+  // 2-col grid via flexbox gap + flex-basis (49%) instead of the
+  // earlier negative-margin hack, which relied on compensating parent
+  // padding that Today's scroll container doesn't guarantee.
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -Spacing.xs, marginBottom: Spacing.md }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md }}>
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
@@ -109,20 +112,24 @@ export function TodayDashboardMacroTiles({
             : `${overBy} ${def.unit} over`;
 
         return (
-          <View key={macro} style={{ width: "50%", paddingHorizontal: Spacing.xs, marginBottom: Spacing.sm }}>
-            <Pressable
-              onPress={() => onPressMacro(macro)}
-              accessibilityRole="button"
-              accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
-              style={{
-                backgroundColor: cardColor,
-                borderWidth: 1,
-                borderColor: cardBorderColor,
-                borderRadius: Radius.lg,
-                padding: Spacing.lg - 2,
-              }}
-            >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
+          <Pressable
+            key={macro}
+            onPress={() => onPressMacro(macro)}
+            accessibilityRole="button"
+            accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
+            style={{
+              // `flexBasis: 49%` + gap gives a stable 2-col layout
+              // that survives odd parent paddings.
+              flexBasis: "48.5%",
+              flexGrow: 1,
+              backgroundColor: cardColor,
+              borderWidth: 1,
+              borderColor: cardBorderColor,
+              borderRadius: Radius.lg,
+              padding: Spacing.lg - 2,
+            }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
                 <Text
                   style={{
                     fontSize: 11,
@@ -139,16 +146,20 @@ export function TodayDashboardMacroTiles({
               <View style={{ flexDirection: "row", alignItems: "baseline" }}>
                 <Text
                   style={{
-                    fontSize: 18,
+                    fontSize: 22,
                     fontWeight: "700",
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.4,
                     color: textColor,
                     fontVariant: ["tabular-nums"],
                   }}
+                  numberOfLines={1}
                 >
                   {value}
                 </Text>
-                <Text style={{ fontSize: 12, color: textSecondaryColor, marginLeft: 3 }}>
+                <Text
+                  style={{ flexShrink: 1, fontSize: 12, color: textSecondaryColor, marginLeft: 3 }}
+                  numberOfLines={1}
+                >
                   / {def.target} {def.unit}
                 </Text>
               </View>
@@ -180,8 +191,7 @@ export function TodayDashboardMacroTiles({
               >
                 {captionText}
               </Text>
-            </Pressable>
-          </View>
+          </Pressable>
         );
       })}
     </View>

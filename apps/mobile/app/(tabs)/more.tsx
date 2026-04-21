@@ -27,10 +27,15 @@ import {
   nutritionLogCsvFilename,
 } from "../../../../src/lib/export/nutritionLogToCsv";
 
-/* ── Icon Box ── */
-function IconBox({ color, size = 30, children }: { color: string; size?: number; children: React.ReactNode }) {
+/* ── Icon Box ──
+ * Mirrors the prototype's `.meal-row .icon-box` (36×36, radius 10,
+ * tinted bg). Used for every row on the More tab so spacing matches
+ * the Plan / Today / Progress tab rows which already ported the same
+ * prototype pattern.
+ */
+function IconBox({ color, size = 36, children }: { color: string; size?: number; children: React.ReactNode }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 3.8, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size, height: size, borderRadius: 10, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
       {children}
     </View>
   );
@@ -48,25 +53,64 @@ function openLegalPath(path: "/privacy" | "/terms") {
   });
 }
 
-/* ── Settings Row ── */
-function SettingsRow({ icon, iconColor, label, sub, onPress }: {
+/* ── Section heading ──
+ * Matches the prototype `.section-h h3` (14px, fw 700, fg). Kept as a
+ * component so spacing (22px top, 10px bottom) stays identical across
+ * every group on the screen. */
+function SectionHeading({ title }: { title: string }) {
+  const colors = useThemeColors();
+  return (
+    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+      {title}
+    </Text>
+  );
+}
+
+/* ── Settings Row ──
+ * Visual port of the prototype's `.meal-row` for the More tab: 36×36
+ * icon-box on the left, 13/11 two-line label, optional trailing badge
+ * + chevron. First-row is borderless; all subsequent rows get a
+ * top-border so the card renders a clean divider sequence regardless
+ * of how the callsite orders rows.
+ */
+function SettingsRow({ icon, iconColor, label, sub, badge, isFirst, onPress }: {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   label: string;
-  sub: string;
+  sub?: string;
+  badge?: string;
+  isFirst?: boolean;
   onPress?: () => void;
 }) {
   const colors = useThemeColors();
   return (
-    <Pressable onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 13, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+    <Pressable
+      onPress={onPress}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderTopWidth: isFirst ? 0 : 1,
+        borderTopColor: colors.cardBorder,
+      }}
+    >
       <IconBox color={iconColor}>
-        <Ionicons name={icon} size={14} color={iconColor} />
+        <Ionicons name={icon} size={18} color={iconColor} />
       </IconBox>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }}>{label}</Text>
-        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{sub}</Text>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text, lineHeight: 17 }}>{label}</Text>
+        {sub ? (
+          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>
+            {sub}
+          </Text>
+        ) : null}
       </View>
-      <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {badge ? <Text style={{ fontSize: 11, color: colors.textTertiary }}>{badge}</Text> : null}
+        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+      </View>
     </Pressable>
   );
 }
@@ -362,41 +406,122 @@ export default function ProfileScreen() {
     red: Accent.destructive,
   };
 
+  /* ── Display helpers ── */
+  const avatarInitial = (
+    session?.user?.user_metadata?.display_name?.[0] ??
+    session?.user?.email?.[0] ??
+    "S"
+  ).toString().toUpperCase();
+  const displayName =
+    session?.user?.user_metadata?.display_name ??
+    session?.user?.email?.split("@")[0] ??
+    "Your Profile";
+  const tierLabel =
+    profileData.userTier === "pro" ? "Pro" : profileData.userTier === "base" ? "Base" : "Free";
+  const tierBadgeColor =
+    profileData.userTier === "pro"
+      ? Accent.primary
+      : profileData.userTier === "base"
+        ? Accent.success
+        : colors.textSecondary;
+  const joinedLabel = (() => {
+    const createdAt = session?.user?.created_at;
+    if (!createdAt) return "Joined recently";
+    const d = new Date(createdAt);
+    const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (diffDays < 7) return "Joined this week";
+    if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
+    if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
+    return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+  })();
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
     >
-      {/* Avatar + Name */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
-        <View style={{ width: 48, height: 48, borderRadius: Radius.lg, backgroundColor: t.accent + "10", alignItems: "center", justifyContent: "center" }}>
-          {session?.user?.email ? (
-            <Text style={{ fontSize: 18, fontWeight: "700", color: t.accent }}>
-              {session.user.email[0].toUpperCase()}
-            </Text>
-          ) : (
-            <Ionicons name="person-outline" size={20} color={t.accent} />
-          )}
-        </View>
+      {/* Phone-top header (prototype port 2026-04-20):
+          ACCOUNT overline + big "More" title + circular avatar
+          button top-right. Matches the Discover/Today/Progress
+          phone-top treatment. */}
+      <View style={{ paddingBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
         <View>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
-            {session?.user?.user_metadata?.display_name ?? session?.user?.email?.split("@")[0] ?? "Your Profile"}
+          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
+            Account
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textTertiary }}>{profileData.userTier === "pro" ? "Pro" : profileData.userTier === "base" ? "Base" : "Free"} · {(() => {
-            const createdAt = session?.user?.created_at;
-            if (!createdAt) return "Joined recently";
-            const d = new Date(createdAt);
-            const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
-            if (diffDays < 7) return "Joined this week";
-            if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
-            if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
-            return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
-          })()}</Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
+            More
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push("/profile" as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Edit profile"
+          hitSlop={10}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 999,
+            backgroundColor: Accent.primary + "10",
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>{avatarInitial}</Text>
+        </Pressable>
+      </View>
+
+      {/* Profile card — prototype top-card: gradient avatar + name/tier
+          on the left, small tier badge chip on the right. */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+          backgroundColor: colors.card,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          padding: 14,
+          marginBottom: 4,
+        }}
+      >
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            backgroundColor: Accent.primary,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>{avatarInitial}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{displayName}</Text>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+            {tierLabel} tier · {joinedLabel}
+          </Text>
+        </View>
+        <View
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: tierBadgeColor + "1a",
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: "700", color: tierBadgeColor, letterSpacing: 0.2 }}>
+            {tierLabel}
+          </Text>
         </View>
       </View>
 
       {/* 3 Stat Pills — real data */}
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
         {([
           [String(profileData.savedCount), "Recipes", t.accent, null],
           [String(profileData.streak), "Streak", t.green, null],
@@ -413,7 +538,7 @@ export default function ProfileScreen() {
             + "Your score reflects how actively you use Suppr."
           )],
         ] as [string, string, string, (() => void) | null][]).map(([v, l, c, onPress]) => (
-          <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+          <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 14, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
               <Text style={{ fontSize: 10, color: colors.textTertiary }}>{l}</Text>
@@ -423,49 +548,65 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {/* Upgrade Banner (free users) / Subscription row (pro users) */}
+      {/* Membership — prototype treatment: upgrade row sits in its own
+          card with a gradient-style icon-box (`.meal-row` with `hl: true`).
+          Copy branches by tier so the pitch matches the feature map:
+            - Free → Base gives unlimited recipes + multi-day plans;
+              Pro adds AI photo/voice logging on top.
+            - Base → only AI logging is the Pro-only upsell. Adaptive
+              TDEE is ungated (landing-maintenance.md §Known monetisation
+              gaps) so we never claim it here. */}
       {profileData.userTier !== "pro" ? (
-        <Pressable
-          onPress={() => router.push("/paywall?from=settings" as any)}
-          style={{
-            flexDirection: "row", alignItems: "center", gap: 12,
-            backgroundColor: Accent.primary + "14", borderRadius: Radius.lg,
-            borderWidth: 1, borderColor: Accent.primary + "30",
-            paddingVertical: 14, paddingHorizontal: 16, marginBottom: 16,
-          }}
-        >
-          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Accent.primary + "22", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="diamond-outline" size={18} color={Accent.primary} />
+        <>
+          <SectionHeading title="Membership" />
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+            <Pressable
+              onPress={() => router.push("/paywall?from=settings" as any)}
+              accessibilityRole="button"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingVertical: 14,
+                paddingHorizontal: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: Accent.primary + "22",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="sparkles-outline" size={18} color={Accent.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+                  {profileData.userTier === "free" ? "Upgrade your plan" : "Upgrade to Pro"}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                  {profileData.userTier === "free"
+                    ? "Unlimited recipes, multi-day plans, and AI logging"
+                    : "Unlock AI photo and voice logging with Pro"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </Pressable>
           </View>
-          <View style={{ flex: 1 }}>
-            {/*
-              Copy branches by tier so the pitch matches the feature map:
-              - Free → Base gives unlimited recipes + multi-day plans;
-                Pro adds AI photo/voice logging on top.
-              - Base → already has plans; only AI logging is the Pro-only
-                upsell. Adaptive TDEE is ungated, so we never claim it
-                here (landing-maintenance.md §Known monetisation gaps).
-            */}
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
-              {profileData.userTier === "free" ? "Upgrade your plan" : "Upgrade to Pro"}
-            </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
-              {profileData.userTier === "free"
-                ? "Unlimited recipes, multi-day plans, and AI logging"
-                : "Unlock AI photo and voice logging with Pro"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-        </Pressable>
+        </>
       ) : null}
 
       {/* Goals & Targets */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Goals &amp; Targets</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <SectionHeading title="Goals & targets" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
+          isFirst
           icon="flame-outline"
           iconColor={t.accent}
-          label="Daily Targets"
+          label="Daily targets"
           sub={
             !profileTargetsSubReady
               ? "Loading…"
@@ -479,7 +620,7 @@ export default function ProfileScreen() {
           }
           onPress={() => router.push("/profile" as any)}
         />
-        <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard Widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
+        <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week starts on" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
         <SettingsRow
           icon="cafe-outline"
@@ -498,9 +639,9 @@ export default function ProfileScreen() {
       </View>
 
       {/* Connections */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Connections</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="heart-outline" iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
+      <SectionHeading title="Connections" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+        <SettingsRow isFirst icon="heart-outline" iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow
           icon="notifications-outline"
           iconColor={t.accent}
@@ -513,7 +654,7 @@ export default function ProfileScreen() {
           * Settings. The Progress-visit scheduler still runs as a
           * defensive fallback, but this row is the primary control. */}
         <SettingsRow
-          icon="calendar-outline"
+          icon="mail-unread-outline"
           iconColor={t.accent}
           label="Weekly recap"
           sub={
@@ -526,15 +667,16 @@ export default function ProfileScreen() {
       </View>
 
       {/* Recipes */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Recipes</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="add-circle-outline" iconColor={t.green} label="Create Recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
+      <SectionHeading title="Recipes" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+        <SettingsRow isFirst icon="add-circle-outline" iconColor={t.green} label="Create recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
       </View>
 
       {/* App */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>App</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <SectionHeading title="App" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
+          isFirst
           icon="color-palette-outline"
           iconColor={t.accent}
           label="Appearance"
@@ -600,7 +742,7 @@ export default function ProfileScreen() {
             }
           }}
         />
-        <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help & Information" sub="How it works, disclaimers, sources" onPress={() => {
+        <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help & information" sub="How it works, disclaimers, sources" onPress={() => {
           const base = getSupprWebBase();
           if (base) void Linking.openURL(`${base}/help`).catch(() => {});
           else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
@@ -608,46 +750,38 @@ export default function ProfileScreen() {
       </View>
 
       {/* Legal */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Legal</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
-        <SettingsRow icon="document-text-outline" iconColor={t.accent} label="Privacy Policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
-        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of Use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
+      <SectionHeading title="Legal" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+        <SettingsRow isFirst icon="document-text-outline" iconColor={t.accent} label="Privacy policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
+        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
       {/* Danger zone */}
-      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Danger Zone</Text>
-      <View style={{ backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", marginBottom: 14 }}>
+      <SectionHeading title="Danger zone" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
+          isFirst
           icon="refresh-outline"
           iconColor={t.amber}
           label="Reset or erase everything"
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
+        <SettingsRow
+          icon="trash-outline"
+          iconColor={t.red}
+          label="Erase all app data…"
+          sub="Journal, library, plans, shopping — opens reset options"
+          onPress={() => setResetModalOpen(true)}
+        />
       </View>
 
-      <Pressable
-        onPress={() => setResetModalOpen(true)}
-        style={{
-          paddingVertical: 14,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: t.red + "55",
-          backgroundColor: t.red + "0c",
-          alignItems: "center",
-          marginTop: 20,
-        }}
-      >
-        <Text style={{ color: t.red, fontWeight: "800", fontSize: 14 }}>Erase all app data…</Text>
-        <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 4, textAlign: "center", paddingHorizontal: 16 }}>
-          Opens reset options (journal, library, plans, shopping)
-        </Text>
-      </Pressable>
-
-      {/* Sign Out */}
+      {/* Sign Out — kept as a standalone destructive button beneath the
+          card stack so the action stays obvious and reachable after
+          long-scroll. */}
       <Pressable
         onPress={() => void supabase.auth.signOut()}
-        style={{ paddingVertical: 16, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 12 }}
+        style={{ paddingVertical: 16, borderRadius: 14, borderWidth: 1, borderColor: t.red + "40", alignItems: "center", marginTop: 22 }}
       >
         <Text style={{ color: t.red, fontWeight: "600", fontSize: 15 }}>Sign Out</Text>
       </Pressable>
