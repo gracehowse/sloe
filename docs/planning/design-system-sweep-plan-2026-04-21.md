@@ -8,8 +8,10 @@ Already-shipped carryover + activity-icons + landing-tokenisation + pricing-word
 
 - **D1 Welcome headline** — Grace chose Option 3 (keep divergent). Decision doc: `docs/decisions/2026-04-21-onboarding-welcome-copy-platform-divergence.md`. `sync-enforcer` carve-out logged.
 - **R1–R6 mobile icon parity** — Approved as-mapped and shipped. Decision doc: `docs/decisions/2026-04-21-design-system-sweep-icon-parity.md`. Typecheck green on mobile.
+- **D7 gradient avatar on More tab** — Option 1 shipped (2026-04-21). New `apps/mobile/components/GradientAvatar.tsx` paints the brand gradient (`#4c6ce0 → #e04888`) on both the 40×40 header avatar and 52×52 profile-card avatar via `react-native-svg` (no new deps). Web `src/app/components/Profile.tsx` `avatarGradient` switched from the softer `var(--primary) → color-mix(...)` blend to the exact canonical gradient so both platforms paint identically. Regression-pinned by `apps/mobile/tests/unit/gradientAvatar.test.tsx` + `tests/unit/profileAvatarGradient.test.ts`.
+- **D13 `/pricing` gradient hero** + **M2 pricing slate→tokens** — Shipped together (2026-04-21). New `app/pricing/PricingHero.tsx` renders the prototype paywall banner (brand gradient + "SUPPR" pill + "The full meal planning loop" title), replacing the retired flat "Everything you need to eat well" hero. All raw `slate-*` Tailwind classes on `app/pricing/page.tsx` swapped to design-system tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`); trust-signal icons now key off `--macro-calories` / `--primary` / `--macro-fat`. Web-only sweep — mobile paywall has no `/pricing` equivalent (its gradient hero shipped separately via M3 / commit `9505e89`). Regression-pinned by `tests/unit/pricingHero.test.tsx` (hero copy + gradient + no-slate guard).
 
-Remaining D-items (D2–D13 except D1) and M2–M4 still pending Grace's call.
+Remaining D-items (D2–D12) and M4 still pending Grace's call.
 
 ---
 

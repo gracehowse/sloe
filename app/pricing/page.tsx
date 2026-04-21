@@ -3,6 +3,7 @@ import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
+import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
@@ -91,12 +92,12 @@ const FAQ = [
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
-    <details className="group border-b border-slate-200 dark:border-slate-800 last:border-0">
-      <summary className="flex cursor-pointer items-center justify-between py-4 text-sm font-semibold text-slate-900 dark:text-white">
+    <details className="group border-b border-border last:border-0">
+      <summary className="flex cursor-pointer items-center justify-between py-4 text-sm font-semibold text-foreground">
         {q}
-        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
-      <p className="pb-4 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{a}</p>
+      <p className="pb-4 text-sm text-muted-foreground leading-relaxed">{a}</p>
     </details>
   );
 }
@@ -115,7 +116,7 @@ export default async function PricingPage({
   // originating surface. Normalised through the shared enum above.
   const paywallFrom = normalisePaywallFrom(resolvedSearchParams.from);
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-background">
       <PageViewTracker event={AnalyticsEvents.pricing_page_viewed} />
       {/* Canonical `paywall_viewed` contract (L6 G9 + 2026-04-19
           round-2): every emit carries `{ from, tier, surface, platform }`.
@@ -133,7 +134,7 @@ export default async function PricingPage({
         }}
       />
 
-      <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur-xl border-b border-border px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <a
             href="/"
@@ -144,7 +145,7 @@ export default async function PricingPage({
           </a>
           <a
             href="/login"
-            className="px-5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="px-5 py-2 rounded-xl border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors"
           >
             Sign in
           </a>
@@ -152,15 +153,11 @@ export default async function PricingPage({
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-16">
-        {/* Hero */}
-        <div className="text-center mb-14">
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            Everything you need to eat well
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-            From tracking macros to planning meals that hit your targets. Pick the plan that fits your goals.
-          </p>
-        </div>
+        {/* Gradient hero — D13 (2026-04-21 design-system sweep). Extracted
+            into `PricingHero` so the page body stays focused on tier +
+            trust-signal + FAQ composition. Mirrors the prototype paywall
+            banner in `flows.jsx:555-564`. */}
+        <PricingHero />
 
         {/* Tier cards — client component owns the monthly ↔ annual
             toggle state. Price, period, and billing-renewal disclosure
@@ -181,26 +178,26 @@ export default async function PricingPage({
 
         {/* Trust signals */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Shield className="w-4 h-4 text-[var(--macro-calories)]" />
             Cancel anytime
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <Cloud className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Cloud className="w-4 h-4 text-primary" />
             Cloud sync across devices
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <Download className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Download className="w-4 h-4 text-[var(--macro-fat)]" />
             Export your data anytime
           </div>
         </div>
 
         {/* FAQ */}
         <div className="mt-16 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-8">
+          <h2 className="text-2xl font-bold text-foreground text-center mb-8">
             Frequently asked questions
           </h2>
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6">
+          <div className="rounded-2xl border border-border bg-card px-6">
             {FAQ.map((item) => (
               <FaqItem key={item.q} q={item.q} a={item.a} />
             ))}
@@ -208,9 +205,9 @@ export default async function PricingPage({
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Have a promo code? Redeem it in{" "}
-            <a href="/home?view=settings" className="text-violet-600 dark:text-violet-400 underline">
+            <a href="/home?view=settings" className="text-primary underline">
               Settings
             </a>
             .
