@@ -135,7 +135,11 @@ export default async function PricingPage({
 
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <a href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+          <a
+            href="/"
+            className="text-lg font-bold bg-clip-text text-transparent"
+            style={{ backgroundImage: "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)" }}
+          >
             Suppr
           </a>
           <a
@@ -206,7 +210,7 @@ export default async function PricingPage({
         <div className="mt-12 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Have a promo code? Redeem it in{" "}
-            <a href="/?view=settings" className="text-violet-600 dark:text-violet-400 underline">
+            <a href="/home?view=settings" className="text-violet-600 dark:text-violet-400 underline">
               Settings
             </a>
             .

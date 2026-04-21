@@ -229,7 +229,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             style={{
               fontSize: 20,
               fontWeight: "800",
-              color: isDeficit ? Accent.success : Accent.destructive,
+              color: isDeficit ? Accent.success : Accent.warning,
               fontVariant: ["tabular-nums"],
             }}
           >
@@ -322,7 +322,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.destructive,
+                color: isWeekDeficit ? Accent.success : Accent.warning,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -337,7 +337,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.destructive,
+                color: isWeekDeficit ? Accent.success : Accent.warning,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -352,7 +352,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.destructive,
+                color: isWeekDeficit ? Accent.success : Accent.warning,
                 fontVariant: ["tabular-nums"],
               }}
             >

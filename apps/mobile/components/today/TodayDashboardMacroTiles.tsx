@@ -89,7 +89,7 @@ export function TodayDashboardMacroTiles({
     fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
     fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
-    sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: Accent.destructive, unit: "mg", Icon: Gauge, referenceOnly: true },
+    sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: MacroColors.sodium, unit: "mg", Icon: Gauge, referenceOnly: true },
     water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
   };
 

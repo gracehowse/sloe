@@ -155,7 +155,7 @@ export default function SettingsScreen() {
         sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
         center: { paddingVertical: 40, alignItems: "center" },
-        err: { color: "#f87171", fontSize: 14 },
+        err: { color: Accent.destructive, fontSize: 14 },
         card: {
           borderRadius: Radius.lg,
           borderWidth: 1,
@@ -605,8 +605,8 @@ export default function SettingsScreen() {
             style={[styles.row, styles.rowLast]}
             onPress={() => void supabase.auth.signOut()}
           >
-            <Text style={[styles.rowLabel, { color: "#ef4444" }]}>Sign Out</Text>
-            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+            <Text style={[styles.rowLabel, { color: Accent.destructive }]}>Sign Out</Text>
+            <Ionicons name="log-out-outline" size={18} color={Accent.destructive} />
           </Pressable>
         </View>
 

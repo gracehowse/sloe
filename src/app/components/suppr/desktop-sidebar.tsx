@@ -77,7 +77,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
 
   return (
     <aside
-      className="hidden md:flex md:flex-col md:w-60 md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border md:bg-background"
+      className="hidden md:flex md:flex-col md:w-[248px] md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border md:bg-background"
       aria-label="Primary"
     >
       {/* Brand */}
@@ -100,15 +100,12 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
           Plan / Progress / More bottom-tab grouping where More is the
           right-most tab on mobile. Renamed from "Profile" 2026-04-20
           for mobile-web parity. */}
+      {/* Only "More" is pinned — Settings lives inside More (mirrors
+          the mobile tab bar where Settings is reached via the More
+          tab). Grace 2026-04-20: no duplicate Settings row. */}
       <div className="border-t border-border py-3">
         <SidebarItem
           item={{ view: "profile", label: "More", icon: "profile" }}
-          currentView={currentView}
-          onNavigate={onNavigate}
-          sidebarProps={props}
-        />
-        <SidebarItem
-          item={{ view: "settings", label: "Settings", icon: "settings" }}
           currentView={currentView}
           onNavigate={onNavigate}
           sidebarProps={props}

@@ -164,7 +164,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} mg`,
       pct,
       caption: `ref ${tgt} mg`,
-      fillVar: "var(--destructive)",
+      fillVar: "var(--macro-sodium)",
     };
   }
   if (macroKey === "water") {

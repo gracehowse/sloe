@@ -207,7 +207,7 @@ export function TodayActivityBonusCard({
           </div>
         ) : null}
         <div className="border-l border-border">
-          <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(deficit).toLocaleString()}</p>
+          <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-warning"}`}>{Math.abs(deficit).toLocaleString()}</p>
           <p className="text-[10px] text-muted-foreground">{isDeficit ? "Under" : "Over"}</p>
         </div>
       </div>
@@ -249,15 +249,15 @@ export function TodayActivityBonusCard({
           <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Avg daily {isWeekDeficit ? "deficit" : "surplus"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
+            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Weekly {isWeekDeficit ? "deficit" : "surplus"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
+            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Projected weekly {isWeekDeficit ? "loss" : "gain"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-destructive"}`}>{weeklyMassLabel}</span>
+            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{weeklyMassLabel}</span>
           </div>
         </div>
       )}

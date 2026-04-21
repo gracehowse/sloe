@@ -19,7 +19,7 @@ import {
  * FoodSearch), a second "after" row shows the projected remaining
  * values if the user logged that portion.
  *
- * Over-budget → the number turns `--destructive` and we swap "left"
+ * Over-budget → the number turns `--warning` (amber, never destructive red) and we swap "left"
  * for "over" with a `+` prefix on the signed amount. No red shame
  * flash: the colour matches the ring's over-budget colour already
  * used in DailyRing, and the copy stays factual.
@@ -148,7 +148,7 @@ function RemainingMacrosBar({
             </div>
             <span
               className="tabular-nums text-lg font-bold leading-none"
-              style={{ color: over ? "var(--destructive)" : "var(--foreground)" }}
+              style={{ color: over ? "var(--warning)" : "var(--foreground)" }}
             >
               {display}
               {unit === "g" && <span className="text-[10px] font-semibold ml-0.5">g</span>}
@@ -178,7 +178,7 @@ function RemainingMacrosBar({
                     <span className="text-[9px] text-muted-foreground uppercase tracking-wider">after</span>
                     <span
                       className="tabular-nums text-xs font-semibold"
-                      style={{ color: pOver ? "var(--destructive)" : "var(--foreground)" }}
+                      style={{ color: pOver ? "var(--warning)" : "var(--foreground)" }}
                     >
                       {pDisplay}
                       {unit === "g" && <span className="text-[8px] ml-0.5">g</span>}

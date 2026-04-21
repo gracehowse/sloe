@@ -252,7 +252,7 @@ function MiniBrowserMock() {
                 cx="45"
                 cy="45"
                 r="38"
-                stroke="#22a860"
+                style={{ stroke: "var(--macro-calories)" }}
                 strokeWidth="7"
                 fill="none"
                 strokeLinecap="round"
@@ -332,12 +332,12 @@ function PhoneTodayMock() {
         <div className="lp-ps-hero-card">
           <div className="lp-ps-ring">
             <svg width="140" height="140" viewBox="0 0 140 140" aria-hidden>
-              <circle cx="70" cy="70" r="58" stroke="#1e1e2a" strokeWidth="10" fill="none" />
+              <circle cx="70" cy="70" r="58" style={{ stroke: "var(--ring-bg)" }} strokeWidth="10" fill="none" />
               <circle
                 cx="70"
                 cy="70"
                 r="58"
-                stroke="#4cd080"
+                style={{ stroke: "var(--macro-calories)" }}
                 strokeWidth="10"
                 fill="none"
                 strokeLinecap="round"
@@ -353,17 +353,23 @@ function PhoneTodayMock() {
           </div>
         </div>
         <div className="lp-ps-macros">
-          <PhoneMacro label="P" value="92" pct={66} color="#6c8cff" />
-          <PhoneMacro label="C" value="168" pct={93} color="#ffc04c" />
-          <PhoneMacro label="F" value="48" pct={80} color="#ff7eb3" />
-          <PhoneMacro label="Fib" value="22" pct={73} color="#4cd080" />
+          <PhoneMacro label="P" value="92" pct={66} color="var(--macro-protein)" />
+          <PhoneMacro label="C" value="168" pct={93} color="var(--macro-carbs)" />
+          <PhoneMacro label="F" value="48" pct={80} color="var(--macro-fat)" />
+          <PhoneMacro label="Fib" value="22" pct={73} color="var(--macro-fiber)" />
         </div>
         <div className="lp-ps-meal-h">
           <div className="lp-t">{MEAL_SLOT_HEADERS.lunch}</div>
           <div className="lp-s">620 kcal</div>
         </div>
         <div className="lp-ps-meal">
-          <div className="lp-ibx" style={{ background: "rgba(108,140,255,0.18)", color: "#6c8cff" }}>
+          <div
+            className="lp-ibx"
+            style={{
+              background: "color-mix(in oklab, var(--macro-protein) 18%, transparent)",
+              color: "var(--macro-protein)",
+            }}
+          >
             <Utensils width={14} height={14} aria-hidden />
           </div>
           <div className="lp-info">
@@ -488,8 +494,8 @@ function HowItWorks() {
 function Features() {
   const cards = [
     {
-      iconBg: "rgba(76,108,224,0.12)",
-      iconColor: "#4c6ce0",
+      iconBg: "color-mix(in oklab, var(--primary) 12%, transparent)",
+      iconColor: "var(--primary)",
       Icon: LinkIcon,
       title: "Recipe import",
       body:
@@ -501,8 +507,8 @@ function Features() {
       ],
     },
     {
-      iconBg: "rgba(34,168,96,0.12)",
-      iconColor: "#22a860",
+      iconBg: "color-mix(in oklab, var(--macro-calories) 12%, transparent)",
+      iconColor: "var(--macro-calories)",
       Icon: Flame,
       title: "Macro tracking",
       body:
@@ -513,8 +519,8 @@ function Features() {
       ],
     },
     {
-      iconBg: "rgba(232,160,32,0.12)",
-      iconColor: "#e8a020",
+      iconBg: "color-mix(in oklab, var(--macro-carbs) 12%, transparent)",
+      iconColor: "var(--macro-carbs)",
       Icon: CalendarDays,
       title: "Meal planner",
       body:
@@ -525,7 +531,7 @@ function Features() {
       ],
     },
     {
-      iconBg: "rgba(224,72,136,0.12)",
+      iconBg: "color-mix(in oklab, var(--macro-fat) 12%, transparent)",
       iconColor: "#e04888",
       Icon: ChefHat,
       title: "Cook mode",
@@ -992,7 +998,7 @@ function Pricing() {
         </div>
         <div className="lp-pricing-trust">
           <span>
-            <Shield width={14} height={14} aria-hidden style={{ color: "#22a860" }} />
+            <Shield width={14} height={14} aria-hidden style={{ color: "var(--macro-calories)" }} />
             Cancel anytime
           </span>
           <span>
@@ -1000,7 +1006,7 @@ function Pricing() {
             Cloud sync across devices
           </span>
           <span>
-            <Download width={14} height={14} aria-hidden style={{ color: "#e04888" }} />
+            <Download width={14} height={14} aria-hidden style={{ color: "var(--macro-fat)" }} />
             Export your data anytime
           </span>
           <span>
@@ -1009,7 +1015,7 @@ function Pricing() {
                 the commitment shows up *before* the CTA, not only in
                 the FAQ or the per-tier disclosure. Links into the
                 Terms page anchor added in B2. */}
-            <Shield width={14} height={14} aria-hidden style={{ color: "#4c6ce0" }} />
+            <Shield width={14} height={14} aria-hidden style={{ color: "var(--primary)" }} />
             <a
               href="/terms#refunds"
               style={{ color: "var(--lp-fg-secondary)", textDecoration: "underline", textUnderlineOffset: "2px" }}
@@ -1149,12 +1155,6 @@ function LandingFooter() {
             <Link href="/licences">Licences</Link>
           </div>
         </div>
-        <p className="lp-f-disclaimer">
-          Suppr is a personal tracking tool, not a medical device. Values are estimates; actual
-          nutrition varies by preparation method, brand, and portion size. TDEE estimates use the
-          Mifflin-St Jeor equation with an activity multiplier you set. Consult a clinician for
-          medical advice.
-        </p>
       </div>
     </footer>
   );

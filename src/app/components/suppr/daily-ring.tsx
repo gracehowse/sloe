@@ -57,10 +57,10 @@ function DailyRing({
   const ringColor =
     displayMode === "consumed"
       ? isOverBudget
-        ? "var(--destructive)"
+        ? "var(--warning)"
         : "var(--success)"
       : isOverBudget
-        ? "var(--destructive)"
+        ? "var(--warning)"
         : "var(--macro-calories)";
   const centerValue = displayMode === "consumed" ? Math.round(consumed) : remaining;
   const centerLabel =
@@ -69,8 +69,8 @@ function DailyRing({
       : isOverBudget
         ? RING_LABELS.over
         : RING_LABELS.remaining;
-  const centerValueColor = isOverBudget ? "var(--destructive)" : undefined;
-  const centerLabelColor = isOverBudget ? "var(--destructive)" : undefined;
+  const centerValueColor = isOverBudget ? "var(--warning)" : undefined;
+  const centerLabelColor = isOverBudget ? "var(--warning)" : undefined;
 
   const macroStroke = 5;
   const macroRadii = [radius - 13, radius - 24, radius - 35];

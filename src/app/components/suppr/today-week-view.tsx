@@ -122,7 +122,7 @@ export function TodayWeekView({
                   className="w-full max-w-[28px] rounded-md transition-colors mx-auto"
                   style={{
                     height: barH,
-                    backgroundColor: over ? "var(--destructive)" : day.totals.calories > 0 ? "var(--primary)" : "var(--muted)",
+                    backgroundColor: over ? "var(--warning)" : day.totals.calories > 0 ? "var(--primary)" : "var(--muted)",
                   }}
                 />
                 <span

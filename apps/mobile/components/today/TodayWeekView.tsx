@@ -132,7 +132,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
                     height: barHeight,
                     borderRadius: 4,
                     backgroundColor: over
-                      ? Accent.destructive + "CC"
+                      ? Accent.warning + "CC"
                       : day.totals.calories > 0
                         ? Accent.primary
                         : borderColor,
@@ -183,7 +183,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
               style={{
                 fontSize: 24,
                 fontWeight: "800",
-                color: weekEffectiveCalorieBudget > weekTotals.calories ? Accent.success : Accent.destructive,
+                color: weekEffectiveCalorieBudget > weekTotals.calories ? Accent.success : Accent.warning,
                 fontVariant: ["tabular-nums"],
               }}
             >

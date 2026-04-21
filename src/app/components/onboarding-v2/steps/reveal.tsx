@@ -249,7 +249,7 @@ function MacroTile({
       </div>
       <div
         className="mt-2.5 h-[3px] rounded-sm"
-        style={{ background: `${color}22` }}
+        style={{ background: `color-mix(in oklab, ${color} 14%, transparent)` }}
       >
         <div
           className="h-full rounded-sm"
