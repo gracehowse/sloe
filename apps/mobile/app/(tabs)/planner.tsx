@@ -1793,25 +1793,18 @@ export default function PlannerScreen() {
           );
         })}
 
-        {/* Shopping list CTA */}
-        {plan && (
-          <Pressable
-            style={styles.shoppingListCard}
-            onPress={() => router.push("/shopping")}
-          >
-            <View style={styles.shoppingListIcon}>
-              <Ionicons name="cart" size={24} color={Accent.warning} />
-            </View>
-            <View style={styles.shoppingListContent}>
-              <Text style={styles.shoppingListTitle}>Shopping List</Text>
-              <Text style={styles.shoppingListSubtitle}>{shoppingItemCount > 0 ? `${shoppingItemCount} item${shoppingItemCount !== 1 ? "s" : ""} from this week` : "Generate a list from your plan"}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </Pressable>
-        )}
+        {/* Shopping list CTA card removed 2026-04-20 per Grace's
+            review — "This week" summary card already carries the
+            primary "Shopping list" button; keeping this card below
+            was visual duplication. */}
 
-        {/* Actions */}
-        {plan && (
+        {/* Actions row removed 2026-04-20 per Grace's review — the
+            summary card above carries Shopping list + Regenerate.
+            "New plan" + "Templates" still reachable via the options
+            pill in the header. Leaving `plan && false` to keep the
+            JSX tree valid while preserving the branch structure for
+            future iteration; dead block is collapsed via `false`. */}
+        {false && plan && (
           <View style={styles.actionsRow}>
             <Pressable
               style={styles.generateBtn}

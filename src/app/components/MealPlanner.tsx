@@ -1291,41 +1291,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
             );
           })()}
 
-          {/* Shopping list link */}
-          <div
-            className="bg-card border border-border rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onNavigate?.("shopping")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onNavigate?.("shopping");
-              }
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                <Icons.shopping className="w-4 h-4 text-amber-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-[13px] font-semibold text-foreground">Shopping list</h3>
-                <p className="text-[12px] text-muted-foreground mt-0.5">
-                  {(() => {
-                    const n = generatedPlan
-                      .flatMap((d) => d.meals)
-                      .filter(
-                        (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-                      ).length;
-                    return n > 0
-                      ? `${n} planned meal${n === 1 ? "" : "s"} · open list or generate ingredients`
-                      : "Open your list or build it from this plan";
-                  })()}
-                </p>
-              </div>
-              <Icons.forward className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            </div>
-          </div>
+          {/* Shopping list CTA card removed 2026-04-20 per Grace's
+              review — "This week" summary card carries the primary
+              Shopping list button. */}
 
           {/* Rest of the plan details (kept from original) */}
           <div className="backdrop-blur-xl bg-muted/80 border border-border/50 rounded-2xl p-5 text-sm text-muted-foreground">
