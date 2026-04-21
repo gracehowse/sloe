@@ -75,26 +75,30 @@ export const Brand = {
 /**
  * Dark-first color system.
  *
- * Cross-platform alignment (2026-04-18):
+ * Cross-platform alignment (2026-04-18, updated 2026-04-20):
  *   - Foreground / border / input-bg hexes mirror `src/styles/theme.css`
  *     so a side-by-side comparison of mobile and web doesn't betray
  *     two different hue families (slate vs neutral-zinc).
- *   - **Background** stays divergent on purpose — mobile keeps pure
- *     white in light mode and `#0a0a0f` (OLED-friendly black) in dark
- *     mode, while web uses `#f4f5f7` / `#101014` (slightly off-white +
- *     slightly raised black) for desktop eye-comfort. Documented in
- *     `PARITY_AUDIT.md` "Token alignment".
- *   - Card colour follows the same logic — mobile cards sit on the
- *     OLED-black background, web cards on the raised dark background.
+ *   - **Background + card** now match web exactly per Grace's
+ *     2026-04-20 review: "the background is better on the prototype
+ *     (the slight grey tone, emphasising the white boxes)". Mobile
+ *     used to render pure-white bg + pure-white cards, which made
+ *     cards invisible against the backdrop. The Claude prototype's
+ *     `--bg: #f4f5f7` + `--card: #ffffff` gives the correct slight
+ *     separation; we now ship the same tokens on mobile.
+ *   - Dark mode: mobile keeps `#0a0a0f` (OLED-friendly) over web's
+ *     `#101014` (raised). The difference is sub-perceptible and the
+ *     OLED-black on mobile is still the right default; revisit if
+ *     Grace flags dark mode.
  */
 export const Colors = {
   light: {
     text: '#111118',                // ↔ web --foreground
     textSecondary: '#475569',
     textTertiary: '#94a3b8',
-    background: '#ffffff',          // intentional divergence (see header)
+    background: '#f4f5f7',          // ↔ web --bg (prototype tint)
     backgroundSecondary: '#f8fafc',
-    card: '#ffffff',
+    card: '#ffffff',                // ↔ web --card (pure white boxes)
     cardBorder: '#e4e4ec',          // ↔ web --border
     border: '#e4e4ec',              // ↔ web --border
     tint: Accent.primary,

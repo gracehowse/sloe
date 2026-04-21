@@ -44,11 +44,12 @@ Run agents in this order. Group within phases can run in parallel.
 5. `journey-architect`
 
 ### Phase 3 — Surface quality
-6. `visual-qa`
-7. `ui-critic`
-8. `brand-manager` — brand identity, tone, visual direction, naming consistency
-9. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
-10. `ui-product-designer` — for screens flagged by `ui-critic` or `visual-qa`, assess whether a credible design direction exists or is missing
+6. `design-system-enforcer` — prototype conformance across web / landing / onboarding / mobile web / mobile app against `docs/ux/claude-design-bundles/`; run first in this phase so downstream lenses operate on a drift map
+7. `visual-qa`
+8. `ui-critic`
+9. `brand-manager` — brand identity, tone, visual direction, naming consistency
+10. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
+11. `ui-product-designer` — for screens flagged by `design-system-enforcer`, `ui-critic`, or `visual-qa`, assess whether a credible design direction exists or is missing
 
 ### Phase 4 — Domain correctness
 11. `nutrition-engine`

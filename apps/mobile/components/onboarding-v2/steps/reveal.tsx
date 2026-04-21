@@ -244,7 +244,7 @@ export function MobileRevealStep() {
 
         <MobileMethodologyNote>
           Values are estimates based on the Mifflin-St Jeor equation. Suppr
-          will re-calibrate your TDEE from your logged intake and Apple Health
+          will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MobileMethodologyNote>
       </View>

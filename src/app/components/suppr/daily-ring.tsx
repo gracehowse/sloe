@@ -173,11 +173,15 @@ function DailyRing({
         >
           {centerLabel}
         </span>
-        {!expanded && (
-          <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-            of {Math.round(target)} kcal
-          </span>
-        )}
+        {/* Budget line renders in BOTH expanded + collapsed states
+            (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
+            ui-critic called out that the expanded view hid the
+            denominator and left the user looking at a number with no
+            anchor. We keep the same 10px tabular caption in both
+            modes so the centre of the ring always carries its target. */}
+        <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+          of {Math.round(target).toLocaleString()} kcal
+        </span>
       </div>
     </div>
   );

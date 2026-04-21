@@ -73,7 +73,7 @@ export function TodayStepsCard({
       </div>
       {activityBurnKcal == null ? (
         <p className="text-[11px] text-muted-foreground mt-1">
-          Apple Health active calories appear here after you sync from the iOS app.
+          Active calories appear here once a source is connected from the iOS app.
         </p>
       ) : null}
     </div>

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1720,initial-scale=1"/>
+<title>Suppr — Onboarding</title>
+<link rel="stylesheet" href="design/theme.css"/>
+<link rel="stylesheet" href="design/colors_and_type.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-canvas); color: var(--text);
+    font-family: "Inter", system-ui, sans-serif; overflow-x: hidden;
+    transition: background 200ms ease, color 200ms ease; }
+  * { box-sizing: border-box; }
+  body::-webkit-scrollbar { width: 10px; } body::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 5px; }
+
+  .canvas {
+    min-height: 100vh;
+    min-width: 1720px;
+    background:
+      radial-gradient(ellipse 900px 500px at 22% 12%, var(--amb-1), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 78% 88%, var(--amb-2), transparent 60%),
+      var(--bg-canvas);
+    padding: 52px 64px 80px;
+    transition: background 200ms ease;
+  }
+  .header { max-width: 1520px; margin: 0 auto 44px; }
+  .eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.14em; color: var(--primary); margin-bottom: 14px; }
+  .title { font-size: 42px; font-weight: 800; letter-spacing: -0.03em;
+    color: var(--text-strong); margin: 0 0 10px; line-height: 1.05; }
+  .subtitle { font-size: 15px; color: var(--text-sec); margin: 0; line-height: 1.55; max-width: 640px; }
+
+  .stage { max-width: 1520px; margin: 0 auto;
+    display: grid; grid-template-columns: auto 1fr; gap: 56px;
+    align-items: flex-start; }
+
+  .surface-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.16em; color: var(--text-muted);
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .surface-label::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: var(--primary); display: inline-block; }
+
+  .mobile-col { display: flex; flex-direction: column; align-items: center; }
+  .web-col { display: flex; flex-direction: column; }
+
+  .web-frame {
+    width: 100%; aspect-ratio: 16 / 10.2;
+    max-width: 1100px;
+    background: var(--bg-surface);
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+  }
+  .web-chrome {
+    height: 36px; background: var(--bg-card);
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center; padding: 0 14px; gap: 8px;
+    flex-shrink: 0;
+  }
+  .web-chrome .dot { width: 11px; height: 11px; border-radius: 6px; }
+  .web-chrome .pill {
+    margin-left: 14px; padding: 4px 12px; background: var(--bg-card-alt);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 11px; color: var(--text-sec);
+    font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .web-inner {
+    position: absolute; top: 36px; left: 0; right: 0; bottom: 0;
+  }
+
+  /* Tweaks panel */
+  .tweaks-fab {
+    position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text); font-family: inherit;
+    padding: 10px 14px; border-radius: 10px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    box-shadow: var(--shadow-md);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tweaks-panel {
+    position: fixed; bottom: 70px; right: 20px; z-index: 1000;
+    width: 320px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; color: var(--text);
+    box-shadow: var(--shadow-lg);
+    max-height: 70vh; overflow: auto;
+  }
+  .tweaks-panel h3 { margin: 0 0 14px; font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--primary);
+    display: flex; justify-content: space-between; align-items: center; }
+  .tweaks-panel h3 button { background: transparent; border: 0; color: var(--text-sec); cursor: pointer; font-size: 18px; font-family: inherit; padding: 0; }
+  .tweaks-panel .group { margin-bottom: 16px; }
+  .tweaks-panel .group-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px; }
+  .tweaks-panel .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .tweaks-panel .step-btn { aspect-ratio: 1; background: var(--bg-card-alt); border: 1px solid var(--border); color: var(--text-sec); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 6px; transition: all 120ms; }
+  .tweaks-panel .step-btn.active { background: var(--primary); color: var(--text-on-brand); border-color: var(--primary); }
+  .tweaks-panel .step-btn:hover:not(.active) { background: var(--bg-input); color: var(--text); }
+  .tweaks-panel .step-name { font-size: 11px; color: var(--text-sec); margin-top: 8px; text-align: center; letter-spacing: -0.01em; }
+  .tweaks-panel .reset-btn { background: var(--bg-input); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 8px; cursor: pointer; width: 100%; }
+  .tweaks-panel .theme-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .tweaks-panel .theme-btn { padding: 8px 6px; background: var(--bg-card-alt); border: 1px solid var(--border); color: var(--text-sec); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 6px; text-transform: capitalize; transition: all 120ms; }
+  .tweaks-panel .theme-btn.active { background: var(--primary); color: var(--text-on-brand); border-color: var(--primary); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="application/json" id="__tweaks_defaults">/*EDITMODE-BEGIN*/{
+  "startStep": 0,
+  "presetPerson": "grace",
+  "theme": "dark"
+}/*EDITMODE-END*/</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design/state.jsx"></script>
+<script type="text/babel" src="design/primitives.jsx"></script>
+<script type="text/babel" src="design/steps.jsx"></script>
+<script type="text/babel" src="design/mobile-flow.jsx"></script>
+<script type="text/babel" src="design/web-flow.jsx"></script>
+
+<script type="text/babel">
+const PRESETS = {
+  grace:  { name: 'Grace', email: 'grace@example.com', sex: 'female', age: 28, heightCm: 168, weightKg: 62, activity: 'moderate', goal: 'recomp', diet: ['mediterranean'], allergies: [] },
+  marcus: { name: 'Marcus', email: 'marcus@example.com', sex: 'male', age: 34, heightCm: 183, weightKg: 92, activity: 'active', goal: 'lose', diet: [], allergies: ['Shellfish'] },
+  anna:   { name: 'Anna', email: 'anna@example.com', sex: 'female', age: 45, heightCm: 162, weightKg: 58, activity: 'light', goal: 'maintain', diet: ['vegetarian'], allergies: ['Gluten'] },
+};
+
+const TWEAK_DEFAULTS = JSON.parse(
+  document.getElementById('__tweaks_defaults').textContent
+    .replace(/\/\*EDITMODE-(BEGIN|END)\*\//g, '')
+);
+
+function resolveTheme(mode) {
+  if (mode === 'auto') {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return mode;
+}
+
+function App() {
+  const [initial, setInitial] = React.useState(() => ({ step: 0, ...PRESETS.grace }));
+  const [tweaksOn, setTweaksOn] = React.useState(false);
+  const [presetKey, setPresetKey] = React.useState('grace');
+  const [themeMode, setThemeMode] = React.useState(TWEAK_DEFAULTS.theme || 'dark');
+
+  // Apply theme to <html data-theme> whenever mode changes (incl. auto)
+  React.useEffect(() => {
+    const apply = () => {
+      document.documentElement.setAttribute('data-theme', resolveTheme(themeMode));
+    };
+    apply();
+    if (themeMode === 'auto' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
+  }, [themeMode]);
+
+  const setTheme = (mode) => {
+    setThemeMode(mode);
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { theme: mode } }, '*');
+  };
+
+  // Expose a ref so Tweaks can drive the context
+  const apiRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const onMsg = e => {
+      if (e.data?.type === '__activate_edit_mode') setTweaksOn(true);
+      else if (e.data?.type === '__deactivate_edit_mode') setTweaksOn(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const applyPreset = k => {
+    setPresetKey(k);
+    if (apiRef.current) apiRef.current.applyPreset(PRESETS[k]);
+  };
+
+  return (
+    <OnboardingProvider initial={initial}>
+      <ApiBridge apiRef={apiRef}/>
+      <div className="canvas">
+        <div className="header">
+          <div className="eyebrow">Suppr · Onboarding</div>
+          <h1 className="title">Elite onboarding, mobile + web</h1>
+          <p className="subtitle">
+            Twelve steps, shared state, live Mifflin-St Jeor calculation. Flip through below —
+            mobile and web stay in sync. Toggle Tweaks to jump to any step or swap preset personas.
+          </p>
+        </div>
+        <div className="stage">
+          <div className="mobile-col">
+            <div className="surface-label">Mobile · iOS</div>
+            <MobileFlow/>
+          </div>
+          <div className="web-col">
+            <div className="surface-label">Web · Desktop</div>
+            <div className="web-frame">
+              <div className="web-chrome">
+                <span className="dot" style={{background: '#ff5f57'}}/>
+                <span className="dot" style={{background: '#febc2e'}}/>
+                <span className="dot" style={{background: '#28c840'}}/>
+                <WebUrlPill/>
+              </div>
+              <div className="web-inner"><WebFlow/></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {tweaksOn && (
+        <TweaksPanel
+          onClose={() => {
+            setTweaksOn(false);
+            window.parent.postMessage({ type: '__deactivate_edit_mode' }, '*');
+          }}
+          apiRef={apiRef}
+          presetKey={presetKey}
+          applyPreset={applyPreset}
+          themeMode={themeMode}
+          setTheme={setTheme}
+        />
+      )}
+      {!tweaksOn && (
+        <button className="tweaks-fab" onClick={() => setTweaksOn(true)}>
+          <span>⚙</span> Tweaks
+        </button>
+      )}
+    </OnboardingProvider>
+  );
+}
+
+function ApiBridge({ apiRef }) {
+  const { state, set, goTo, reset } = useOnboarding();
+  React.useEffect(() => {
+    apiRef.current = {
+      state, goTo, reset,
+      applyPreset: p => set({ ...p }),
+    };
+  });
+  return null;
+}
+
+function TweaksPanel({ onClose, apiRef, presetKey, applyPreset, themeMode, setTheme }) {
+  const { state, goTo, reset } = useOnboarding();
+  const labels = STEP_LABELS;
+  return (
+    <div className="tweaks-panel">
+      <h3>Tweaks <button onClick={onClose}>×</button></h3>
+
+      <div className="group">
+        <div className="group-label">Theme</div>
+        <div className="theme-row">
+          {['dark', 'light', 'auto'].map(m => (
+            <button
+              key={m}
+              className={`theme-btn ${m === themeMode ? 'active' : ''}`}
+              onClick={() => setTheme(m)}
+            >{m}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="group">
+        <div className="group-label">Jump to step</div>
+        <div className="steps">
+          {labels.map((l, i) => (
+            <button
+              key={i}
+              className={`step-btn ${i === state.step ? 'active' : ''}`}
+              onClick={() => goTo(i)}
+            >{String(i + 1).padStart(2, '0')}</button>
+          ))}
+        </div>
+        <div className="step-name">{labels[state.step]}</div>
+      </div>
+
+      <div className="group">
+        <div className="group-label">Preset persona</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {Object.keys(PRESETS).map(k => (
+            <button
+              key={k}
+              className="step-btn"
+              style={{
+                flex: 1, aspectRatio: 'auto', padding: '8px 6px',
+                textTransform: 'capitalize',
+                background: k === presetKey ? 'var(--primary)' : 'var(--bg-card-alt)',
+                color: k === presetKey ? 'var(--text-on-brand)' : 'var(--text-sec)',
+                borderColor: k === presetKey ? 'var(--primary)' : 'var(--border)',
+              }}
+              onClick={() => applyPreset(k)}
+            >{k}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+          Swaps body stats, goal, and diet so the macro reveal (step 10) shows different outputs.
+        </div>
+      </div>
+
+      <div className="group" style={{ marginBottom: 0 }}>
+        <button className="reset-btn" onClick={() => { reset(); applyPreset(presetKey); }}>
+          Restart flow
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

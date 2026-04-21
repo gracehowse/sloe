@@ -209,11 +209,18 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 aria-hidden
               />
             </div>
-            <div className="flex items-baseline">
-              <span className="text-[18px] font-bold tabular-nums text-foreground -tracking-[0.02em]">
+            {/* Prototype port (2026-04-20, mobile parity): value
+                bumped from 18pt → 22pt per mobile's ui-critic fix so
+                the number carries visual weight equal to the label
+                above it. Target label gets `truncate` / overflow-hidden
+                via `min-w-0` on the flex container so long imperial
+                targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
+                wrap to a second line. */}
+            <div className="flex items-baseline min-w-0">
+              <span className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] shrink-0">
                 {tile.valueText}
               </span>
-              <span className="text-xs text-muted-foreground ml-[3px]">
+              <span className="text-xs text-muted-foreground ml-[3px] truncate">
                 {tile.targetText}
               </span>
             </div>

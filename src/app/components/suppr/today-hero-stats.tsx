@@ -102,9 +102,14 @@ function DesktopHeroStats({
   return (
     <div className="hidden md:block relative mb-4 rounded-card border border-border bg-card p-6">
       {/* Top-right floating control: REMAINING / CONSUMED display mode.
-          Absolute so it doesn't affect grid alignment. */}
+          Absolute so it doesn't affect grid alignment.
+          Prototype port (2026-04-20): moved to top-2.5 right-2.5 with
+          a subtle `bg-muted/50` tint and no border — mirrors mobile's
+          ui-critic fix where the bordered circle was visually
+          overpowering the ring. The active chip keeps a light
+          foreground tint so the mode is still scannable. */}
       <div
-        className="absolute top-4 right-4 inline-flex rounded-md border border-border bg-muted/40 p-0.5"
+        className="absolute top-2.5 right-2.5 inline-flex rounded-md bg-muted/50 p-0.5"
         role="group"
         aria-label="Calorie ring display"
       >
@@ -116,7 +121,7 @@ function DesktopHeroStats({
             aria-pressed={displayMode === mode}
             className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
               displayMode === mode
-                ? "bg-card text-foreground shadow-sm"
+                ? "bg-card text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

@@ -963,13 +963,20 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             Cook
           </button>
         )}
+        {/* Prototype port (2026-04-20, mobile parity commit 26a63bf):
+            save (bookmark) sits left of share in the header — web was
+            already in that order so no reorder. Buttons now carry a
+            1pt border, small drop-shadow, and foreground icon colour
+            so they remain legible if the header is rendered against a
+            pale hero photo on mobile-web (<md). The saved state keeps
+            a primary tint so it's still scannable. */}
         <button
           type="button"
           onClick={() => toggleSaveRecipe(recipe.id, userTier)}
-          className={`p-2.5 rounded-xl transition-all ${
+          className={`p-2.5 rounded-xl border transition-all shadow-sm ${
             saved
-              ? "text-primary bg-primary/10 shadow-lg shadow-primary/20"
-              : "text-muted-foreground hover:bg-muted/60"
+              ? "text-primary bg-primary/10 border-primary/40 shadow-primary/20"
+              : "text-foreground border-border/70 bg-card hover:bg-muted/60"
           }`}
           aria-label={saved ? "Remove from library" : "Save to library"}
         >
@@ -978,7 +985,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         <button
           type="button"
           onClick={() => void shareRecipeDeepLink(recipe.id)}
-          className="p-2.5 text-muted-foreground hover:bg-muted/60 rounded-xl transition-all"
+          className="p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm"
           aria-label="Share recipe link"
         >
           <Icons.share className="w-5 h-5" />

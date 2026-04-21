@@ -53,14 +53,24 @@ export function TodayHeroRing({
       <p className="text-xs text-muted-foreground mt-3">
         {expanded ? "Click the ring to hide macros" : "Click the ring to show macros"}
       </p>
-      <div className="flex justify-center gap-1 mt-2" role="group" aria-label="Calorie ring display">
+      {/* Mode toggle — prototype port (2026-04-20, mobile parity):
+          subtle tint instead of a heavy primary fill so the control
+          matches the ring's understated look (see ui-critic note on
+          mobile's 28x28 picker in `TodayHero.tsx`). Active chip reads
+          as foreground-on-card; inactive chip inherits muted. */}
+      <div
+        className="flex justify-center gap-0.5 mt-2 rounded-lg bg-muted/50 p-0.5"
+        role="group"
+        aria-label="Calorie ring display"
+      >
         {(["remaining", "consumed"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
             onClick={() => onDisplayModeChange(mode)}
-            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              displayMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+            aria-pressed={displayMode === mode}
+            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              displayMode === mode ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {mode === "remaining" ? "Remaining" : "Consumed"}

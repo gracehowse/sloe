@@ -1292,7 +1292,7 @@ export default function ProgressScreen() {
                 </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Retry Apple Health sync"
+                  accessibilityLabel="Retry activity sync"
                   testID="progress-steps-sync-retry"
                   disabled={stepsSyncRetrying}
                   onPress={async () => {

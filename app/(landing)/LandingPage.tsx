@@ -690,7 +690,7 @@ function WebShot() {
               <div className="lp-ws-metas">
                 <WsMeta label="Logged" value="1,420" detail="3 meals" />
                 <WsMeta label="Target" value="1,800" detail="Mifflin-St Jeor" />
-                <WsMeta label="Burned" value="2,180" detail="Apple Health" />
+                <WsMeta label="Burned" value="2,180" detail="Activity" />
                 <WsMeta label="Net" value="−760" detail="deficit" />
               </div>
             </div>

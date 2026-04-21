@@ -35,7 +35,12 @@ test.describe("Authenticated app view matrix", () => {
 
     await test.step("Meal planner", async () => {
       await page.goto("/?view=planner");
-      await expect(page.getByRole("heading", { name: /Meal planner/i })).toBeVisible();
+      // Heading copy: the web MealPlanner h1 was renamed from
+      // "Meal planner" → "Meal plan" in the 2026-04-20 prototype-port
+      // parity work (matches mobile). Accept either token so this
+      // assertion is resilient if the copy lands back on
+      // "Meal planner" in a future batch.
+      await expect(page.getByRole("heading", { name: /Meal plan(?:ner)?/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 

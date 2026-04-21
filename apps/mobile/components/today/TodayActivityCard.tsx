@@ -80,7 +80,7 @@ export function TodayActivityCard({
         </View>
         {activityBurnKcal == null && (
           <Text style={{ fontSize: 11, color: textTertiaryColor }}>
-            Apple Health active calories appear here after you sync from More → Connected.
+            Active calories appear here once a source is connected (More → Connected).
           </Text>
         )}
       </View>

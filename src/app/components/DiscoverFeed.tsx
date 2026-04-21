@@ -592,15 +592,26 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 // hero gradient now uses a single neutral accent so
                 // no per-recipe colour comes from the dropped score.
                 const heroColor = "var(--primary)";
+                const kcal = Math.round(recipe.calories);
+                const protein = Math.round(recipe.protein);
                 return (
                   <div
                     key={recipe.id}
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
-                    className="rounded-xl bg-card border border-border overflow-hidden cursor-pointer"
+                    className="rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer"
                   >
-                    {/* Hero gradient or image */}
-                    <div className="flex items-center justify-center relative overflow-hidden" style={{ height: 80, background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}>
+                    {/* Hero — prototype port (2026-04-20, mobile parity
+                        commit 5958ae4): 16:10 image instead of a fixed
+                        80px strip, so the card's visual weight is
+                        dominated by the photo rather than the metadata
+                        below it. `aspectRatio` uses a Tailwind arbitrary
+                        value so we don't depend on the `aspect-[16/10]`
+                        plugin being enabled. */}
+                    <div
+                      className="flex items-center justify-center relative overflow-hidden"
+                      style={{ aspectRatio: "16 / 10", background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}
+                    >
                       {recipe.image ? (
                         <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -613,43 +624,35 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div className="p-2.5">
-                      <p className="text-xs font-semibold text-foreground leading-tight mb-0.5" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {/* Content — prototype layout (2026-04-20):
+                        title (bolder, 13px) → source (11px) → metadata
+                        strip with kcal / protein / time icons. The
+                        P/C/F micro-dot row and saves/made footer were
+                        dropped to match mobile's cleaner three-item
+                        strip; dropping them parallels the mobile
+                        commit 5958ae4 decision (see its commit body). */}
+                    <div className="p-3">
+                      <p className="text-[13px] font-bold text-foreground leading-[17px] -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {recipe.title}
                       </p>
-                      <p className="text-[10px] text-muted-foreground mb-1.5">
-                        {recipe.creatorName}{recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                        {recipe.creatorName || ""}
                       </p>
-
-                      {/* Macro dots */}
-                      <div className="flex gap-1.5 mb-1.5">
-                        {([
-                          ["P", recipe.protein, "var(--macro-protein)"],
-                          ["C", recipe.carbs, "var(--macro-carbs)"],
-                          ["F", recipe.fat, "var(--macro-fat)"],
-                        ] as const).map(([label, value, color]) => (
-                          <div key={label} className="flex items-center gap-0.5">
-                            <div className="w-1 h-1 rounded-sm" style={{ background: color }} />
-                            <span className="text-[10px] text-muted-foreground tabular-nums">{value}g</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Calories — fit badge removed (F-11). */}
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-foreground tabular-nums">
-                          {recipe.calories}
-                          <span className="text-[9px] font-normal text-muted-foreground"> kcal</span>
+                      <div className="flex flex-wrap gap-2.5 mt-2">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
+                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
+                          {kcal} kcal
                         </span>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="flex gap-2 text-[9px] text-muted-foreground">
-                        <span>{formatCompactNumber(recipe.savedCount)} saves</span>
-                        {(recipe as any).madeCount > 0 && (
-                          <span>{formatCompactNumber((recipe as any).madeCount)} made</span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
+                          <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
+                          {protein} g
+                        </span>
+                        {recipe.cookTime ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
+                            {recipe.cookTime}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>

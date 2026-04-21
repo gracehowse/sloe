@@ -1,0 +1,136 @@
+/* Theme tokens — dark (default) and light palettes exposed as CSS custom properties.
+   Toggle by setting data-theme="dark" | "light" on <html>. */
+
+:root,
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg-canvas:       #0a0a0f;
+  --bg-surface:      #101014;   /* web app frame */
+  --bg-card:         #16161e;   /* standard card */
+  --bg-card-alt:     #0d0d12;   /* nested / slightly darker */
+  --bg-input:        #1e1e2a;
+  --bg-input-active: #282830;
+  --bg-chip:         #16161e;
+  --bg-chip-hover:   #1e1e2a;
+
+  /* Borders */
+  --border:          #282830;
+  --border-soft:     #1e1e2a;
+  --border-subtle:   rgba(255,255,255,0.08);
+
+  /* Text */
+  --text:            #e4e4e8;   /* primary */
+  --text-strong:     #ffffff;
+  --text-sec:        #94a3b8;   /* secondary / body */
+  --text-muted:      #64748b;   /* tertiary / overlines */
+  --text-faint:      #4a5568;
+  --text-on-brand:   #0a0a0f;
+
+  /* Brand / primary */
+  --primary:         #6c8cff;
+  --primary-hover:   #8aa4ff;
+  --primary-tint-bg: rgba(108,140,255,0.08);
+  --primary-tint-bg-strong: rgba(108,140,255,0.14);
+  --primary-tint-border: rgba(108,140,255,0.25);
+  --primary-tint-text: #8aa4ff;
+  --primary-glow:    rgba(108,140,255,0.4);
+
+  /* Semantic */
+  --success:         #4cd080;
+  --success-bg:      rgba(76,208,128,0.12);
+  --success-border:  rgba(76,208,128,0.3);
+  --warning:         #ffc04c;
+  --warning-bg:      rgba(255,192,76,0.12);
+  --magenta:         #ff7eb3;
+
+  /* Macro */
+  --macro-protein:   #6c8cff;
+  --macro-carbs:     #ffc04c;
+  --macro-fat:       #ff7eb3;
+
+  /* Ambient gradients */
+  --amb-1:           rgba(76,108,224,0.08);
+  --amb-2:           rgba(224,72,136,0.05);
+
+  /* Misc */
+  --ring-track:      #1e1e2a;
+  --radio-border:    #3a3a48;
+
+  /* Shadows */
+  --shadow-card:     none;
+  --shadow-md:       0 12px 40px rgba(0,0,0,0.4);
+  --shadow-lg:       0 40px 80px rgba(0,0,0,0.5);
+
+  /* Device frame (iOS bezel etc) */
+  --device-bezel:    #1a1a20;
+  --keyboard-bg:     #2a2a35;
+
+  /* Scrollbar */
+  --scroll-thumb:    #282830;
+}
+
+[data-theme="light"] {
+  --bg-canvas:       #f4f5f7;
+  --bg-surface:      #ffffff;
+  --bg-card:         #ffffff;
+  --bg-card-alt:     #f8fafc;
+  --bg-input:        #f4f5f7;
+  --bg-input-active: #ededf2;
+  --bg-chip:         #ffffff;
+  --bg-chip-hover:   #f4f5f7;
+
+  --border:          #e4e4ec;
+  --border-soft:     #eef0f5;
+  --border-subtle:   rgba(0,0,0,0.06);
+
+  --text:            #111118;
+  --text-strong:     #000000;
+  --text-sec:        #475569;
+  --text-muted:      #6b7280;
+  --text-faint:      #94a3b8;
+  --text-on-brand:   #ffffff;
+
+  --primary:         #4c6ce0;
+  --primary-hover:   #3b5bd1;
+  --primary-tint-bg: rgba(76,108,224,0.06);
+  --primary-tint-bg-strong: rgba(76,108,224,0.1);
+  --primary-tint-border: rgba(76,108,224,0.22);
+  --primary-tint-text: #3b5bd1;
+  --primary-glow:    rgba(76,108,224,0.35);
+
+  --success:         #22a860;
+  --success-bg:      rgba(34,168,96,0.08);
+  --success-border:  rgba(34,168,96,0.25);
+  --warning:         #c77900;
+  --warning-bg:      rgba(232,160,32,0.12);
+  --magenta:         #e04888;
+
+  --macro-protein:   #4c6ce0;
+  --macro-carbs:     #e8a020;
+  --macro-fat:       #e04888;
+
+  --amb-1:           rgba(76,108,224,0.06);
+  --amb-2:           rgba(224,72,136,0.035);
+
+  --ring-track:      #e4e4ec;
+  --radio-border:    #cbd5e1;
+
+  --shadow-card:     0 1px 3px rgba(10,15,40,0.04);
+  --shadow-md:       0 8px 24px rgba(10,15,40,0.08);
+  --shadow-lg:       0 20px 60px rgba(10,15,40,0.12);
+
+  --device-bezel:    #d8dae1;
+  --keyboard-bg:     #cdd0d8;
+
+  --scroll-thumb:    #cbd5e1;
+}
+
+/* Hide native number input spinners inside ruler slider */
+.ruler-num-input::-webkit-outer-spin-button,
+.ruler-num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.ruler-num-input {
+  -moz-appearance: textfield;
+}

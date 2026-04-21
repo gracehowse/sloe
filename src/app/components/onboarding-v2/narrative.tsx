@@ -60,7 +60,7 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
   activity: {
     eyebrow: "Step 08 · Activity",
     head: "How much do you move?",
-    body: "Rough estimate is fine. Suppr will re-calibrate using your Apple Health active-energy data over the first two weeks.",
+    body: "Rough estimate is fine. Suppr will re-calibrate using your active-energy data over the first two weeks.",
   },
   pace: {
     eyebrow: "Step 09 · Pace",

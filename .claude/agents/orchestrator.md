@@ -44,6 +44,7 @@ Every meaningful piece of work must be considered through the lenses that apply:
 - customer intuition
 - visual quality
 - design tier (prototype → premium)
+- prototype conformance (alignment with the Claude Design bundles in `docs/ux/claude-design-bundles/`)
 - journey clarity
 - nutrition accuracy
 - data integrity
@@ -104,6 +105,15 @@ Pick the smallest strong set. Do not run every agent by default.
 - redesigning a screen or flow
 - upgrading product quality from average to premium
 - moving from critique into proposed design direction
+
+### Always use `design-system-enforcer` when
+- any surface is being audited for conformance with the Claude Design prototype bundles (`docs/ux/claude-design-bundles/`) — web app, landing, onboarding (web + mobile), mobile web, native mobile app
+- hardcoded colours, off-grid spacing, non-token radii, or non-canonical typography may have crept in
+- a feature may be on the wrong surface, duplicated across surfaces, or missing a prototype pattern the live product hasn't implemented
+- web and mobile versions of the same feature look or behave differently (pair with `sync-enforcer`)
+- before `release-gate` sign-off on any UI-touching change
+- a fresh Claude Design bundle has landed and surfaces need re-auditing against it
+- this lens is upstream of `ui-critic` (tier) and `visual-qa` (ugly): first ask "does it match the prototype?", then "is it premium enough?", then "is anything outright broken?"
 
 ### Always use `journey-architect` when
 - the user journey is too long, friction-heavy, or diverges between web and mobile

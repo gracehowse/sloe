@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
+import { SlidersHorizontal, ShoppingCart, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
@@ -42,6 +43,10 @@ import {
   formatDayTotalCell,
   type DayTotalTone,
 } from "../../lib/planning/dayTotalVsGoal.ts";
+import {
+  buildPlanWeekSummarySubtitle,
+  computePlanWeekSummaryScore,
+} from "../../lib/planning/planWeekSummary.ts";
 import {
   buildTemplateFromWeek,
   applyTemplateToWeek,
@@ -241,11 +246,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     handleGenerate();
   };
 
-  const handleSavePlan = () => {
-    toast.message("Plan saves automatically", {
-      description: "Your meal plan is persisted as you generate or swap meals.",
-    });
-  };
+  // `handleSavePlan` was removed 2026-04-20 with the header restyle —
+  // plans save automatically and the button was informational-only (a
+  // single toast reminding users of that). No functional loss.
 
   // Batch 3.10 — move a meal between slots / days. Source & destination
   // may be on the same day (re-orders within day) or different days.
@@ -615,52 +618,69 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
     [savedRecipesForLibrary],
   );
 
+  // Prototype port (2026-04-20, web parity with mobile commit 26a63bf):
+  // uppercase "WEEK OF {Month Day}" overline + big "Meal plan" title +
+  // round `sliders-horizontal` pill on the right (opens Templates
+  // dialog, mirroring the mobile "Plan options" affordance). Shows the
+  // first day of the active plan; when no plan is generated yet it
+  // falls back to today so the overline isn't blank on the empty state.
+  const weekOfLabel = useMemo(() => {
+    const plan = generatedPlan;
+    const first = new Date();
+    if (plan && plan.length > 0 && typeof plan[0].day === "number") {
+      first.setDate(first.getDate() + (plan[0].day - 1));
+    }
+    return `Week of ${first.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+  }, [generatedPlan]);
+
+  // Prototype port (2026-04-20) — web parity for the mobile "This week"
+  // summary card (`apps/mobile/app/(tabs)/planner.tsx` + `screens-mobile.jsx:464`).
+  // Uses the shared `computePlanWeekSummaryScore` helper so both
+  // platforms produce identical copy for the same plan/target input.
+  const planSummaryScore = useMemo(
+    () => computePlanWeekSummaryScore(generatedPlan ?? [], targetCalories),
+    [generatedPlan, targetCalories],
+  );
+  // Day-name for the worst-short diagnostic. Matches mobile's
+  // WEEKDAY_LONG indexing off the calendar date (plan[i].day − 1).
+  const planSummaryWorstDayLabel = useMemo((): string | null => {
+    if (!planSummaryScore?.worstShort || !generatedPlan) return null;
+    const dp = generatedPlan[planSummaryScore.worstShort.dayIndex];
+    if (!dp) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + (dp.day - 1));
+    return d.toLocaleDateString("en-US", { weekday: "long" });
+  }, [planSummaryScore, generatedPlan]);
+
   return (
     <div className="max-w-4xl mx-auto px-pm-5 py-pm-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-pm-4 flex-wrap">
+      {/* Header — prototype treatment (2026-04-20): overline + big
+          title on the left, round "sliders-horizontal" pill on the
+          right. Replaces the 4-button action row that used to live
+          here; Regenerate + Shopping list now live in the "This week"
+          summary card below, Templates lives behind the pill, and
+          Save Plan was removed because plans save automatically (the
+          prior button was informational-only and only produced a
+          toast). Named-plan slots, swap modal, templates dialog,
+          recipe picker, household sharing, and the shopping-list CTA
+          card further down are all untouched. */}
+      <div className="flex items-start justify-between mb-6 gap-pm-4">
         <div>
-          <div className="flex items-center gap-pm-3 mb-2">
-            <div className="p-2 bg-primary rounded-xl">
-              <Icons.sparkles className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-foreground">Meal planner</h1>
-          </div>
-          <p className="text-muted-foreground">Build macro-aware days from your saved recipes</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            {weekOfLabel}
+          </p>
+          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5">
+            Meal plan
+          </h1>
         </div>
-        {generatedPlan && (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleRegenerate}
-              className="px-5 py-2.5 bg-card border border-border rounded-xl hover:bg-muted transition-all shadow-sm"
-            >
-              Regenerate
-            </button>
-            <button
-              type="button"
-              onClick={() => void generateShoppingListFromPlan()}
-              className="px-5 py-2.5 bg-card border border-border rounded-xl hover:bg-muted transition-all shadow-sm"
-            >
-              Generate Shopping List
-            </button>
-            <button
-              type="button"
-              onClick={() => setTemplatesOpen(true)}
-              className="px-5 py-2.5 bg-card border border-border rounded-xl hover:bg-muted transition-all shadow-sm"
-              aria-label="Save or apply a plan template"
-            >
-              Templates
-            </button>
-            <button
-              type="button"
-              onClick={handleSavePlan}
-              className="px-5 py-2.5 bg-primary text-white rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105 font-semibold"
-            >
-              Save Plan
-            </button>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => setTemplatesOpen(true)}
+          className="shrink-0 w-10 h-10 rounded-full border border-border bg-card text-foreground hover:bg-muted/60 transition-colors grid place-items-center"
+          aria-label="Plan options"
+        >
+          <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.75} />
+        </button>
       </div>
 
       <PlanTemplatesDialog
@@ -956,23 +976,67 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
         </div>
       ) : generatedPlan ? (
         <div className="space-y-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-[22px] font-bold text-foreground">Meal plan</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {generatedPlan.length > 0
-                  ? (() => {
-                      const firstDay = new Date();
-                      firstDay.setDate(firstDay.getDate() + (generatedPlan[0].day - 1));
-                      const lastDay = new Date();
-                      lastDay.setDate(lastDay.getDate() + (generatedPlan[generatedPlan.length - 1].day - 1));
-                      const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                      return `${fmt(firstDay)} – ${fmt(lastDay)}`;
-                    })()
-                  : ""}
+          {/* Prototype port (2026-04-20) — "This week" summary card.
+              Web parity for `apps/mobile/app/(tabs)/planner.tsx`'s
+              summary card. Rendered only when there's a plan + a
+              positive calorie target (see `planSummaryScore`). Hit
+              band = ±10% of `targetCalories`. The duplicated "Meal
+              plan" h2 + date-range line that used to sit here was
+              removed — the `Week of …` overline + big title up in the
+              header now carries that information once. */}
+          {planSummaryScore ? (
+            <div
+              data-testid="plan-week-summary-card"
+              className="rounded-2xl p-4 border"
+              style={{
+                background:
+                  "linear-gradient(135deg, color-mix(in oklab, var(--primary) 12%, var(--card)) 0%, color-mix(in oklab, var(--macro-fat) 8%, var(--card)) 100%)",
+                borderColor: "color-mix(in oklab, var(--primary) 22%, var(--border))",
+              }}
+            >
+              <p
+                className="text-[11px] font-bold uppercase tracking-[0.1em] mb-1.5"
+                style={{ color: "var(--primary-light, var(--primary))" }}
+              >
+                This week
               </p>
+              <p className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-1">
+                Hits your targets {planSummaryScore.hits} of {planSummaryScore.total}{" "}
+                day{planSummaryScore.total === 1 ? "" : "s"}
+              </p>
+              <p className="text-xs text-muted-foreground leading-[1.55] mb-3.5">
+                {buildPlanWeekSummarySubtitle(planSummaryScore, planSummaryWorstDayLabel)}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Regenerate the shopping list from the current plan
+                    // (so the opened list reflects any in-session swaps)
+                    // then navigate the user over. The inner await is a
+                    // fire-and-forget; we still navigate even if the
+                    // list regenerate fails because the list page has
+                    // its own generate CTA as a fallback.
+                    void generateShoppingListFromPlan();
+                    onNavigate?.("shopping");
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" strokeWidth={2} />
+                  Shopping list
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegenerate}
+                  disabled={isGenerating}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border text-foreground text-[13px] font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} strokeWidth={2} />
+                  Regenerate
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/* Plan summary — average daily macros vs targets across the
               whole plan. TestFlight build 7 `AH8csBqtZsBJJr0uHgXyEcE`
@@ -1110,9 +1174,17 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                       </div>
                     </div>
 
-                    {/* Calorie label */}
+                    {/* Calorie label — prototype parity (2026-04-20):
+                        thousands separator on the day total + explicit
+                        "kcal" unit so glanceable totals read the same
+                        as the mobile day strip. Target denominator is
+                        kept tight for narrow cards. */}
                     <div className="text-[9px] text-muted-foreground text-center tabular-nums">
-                      {Math.round(dp.totals.calories)} / {targetCalories}
+                      <span className="font-semibold text-foreground">
+                        {Math.round(dp.totals.calories).toLocaleString()} kcal
+                      </span>
+                      <span className="mx-1">/</span>
+                      {targetCalories.toLocaleString()}
                     </div>
                   </div>
                 );
@@ -1130,10 +1202,40 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   <div className="space-y-4">
                     {todayPlan.meals.length > 0 ? (
                       todayPlan.meals.map((meal, index) => {
-                        if (isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) {
-                          return null;
+                        // Prototype port (2026-04-20): empty / placeholder
+                        // slots still render with the same visual weight
+                        // as real meal rows — "Empty slot" title + em-dash
+                        // macro line — instead of being filtered to
+                        // nothing. This matches mobile
+                        // (`apps/mobile/app/(tabs)/planner.tsx` ~L1640) and
+                        // gives the user a clear "tap to fill" target
+                        // where the slot sits.
+                        const isEmpty = isMealPlanPlaceholderLikeTitle(
+                          meal.recipeTitle,
+                          { isPlaceholder: meal.isPlaceholder },
+                        );
+                        if (isEmpty) {
+                          return (
+                            <div key={index} className="flex items-start gap-3 opacity-70">
+                              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                <Icons.recipe className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-[13px] font-semibold text-foreground">
+                                  Empty slot
+                                </h3>
+                                <p className="text-[12px] text-muted-foreground mt-0.5 tabular-nums">
+                                  — kcal &middot; P —g &middot; C —g &middot; F —g
+                                </p>
+                              </div>
+                            </div>
+                          );
                         }
                         const portion = effectivePortionMultiplier(meal.portionMultiplier);
+                        const scaledCal = Math.round(scaledMacro(meal.calories, portion));
+                        const scaledP = Math.round(scaledMacro(meal.protein, portion));
+                        const scaledC = Math.round(scaledMacro(meal.carbs, portion));
+                        const scaledF = Math.round(scaledMacro(meal.fat, portion));
                         return (
                           <div key={index} className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
@@ -1143,8 +1245,12 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                               <h3 className="text-[13px] font-semibold text-foreground">
                                 {meal.recipeTitle}
                               </h3>
-                              <p className="text-[12px] text-muted-foreground mt-0.5">
-                                {meal.name} · {Math.round(scaledMacro(meal.calories, portion))} kcal
+                              {/* Prototype port (2026-04-20): macro
+                                  line widened to match the empty-slot
+                                  line so both render the same
+                                  kcal · P · C · F pattern. */}
+                              <p className="text-[12px] text-muted-foreground mt-0.5 tabular-nums">
+                                {meal.name} &middot; {scaledCal.toLocaleString()} kcal &middot; P {scaledP}g &middot; C {scaledC}g &middot; F {scaledF}g
                               </p>
                             </div>
                           </div>

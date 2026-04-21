@@ -658,7 +658,7 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>Adjust goal for activity</Text>
                   <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
-                    Adds bonus calories when Apple Health shows you burned more than your estimated maintenance.
+                    Adds bonus calories when your activity source shows you burned more than your estimated maintenance.
                   </Text>
                 </View>
                 <Switch

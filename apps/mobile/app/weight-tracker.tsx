@@ -595,7 +595,7 @@ export default function ProgressScreen() {
                 "All" reads up to ~11 years (HealthKit cap). */}
             <Text style={styles.sectionTitle}>Historical import depth</Text>
             <Text style={styles.muted}>
-              Choose how many months of past weights and steps to pull from Apple Health. Doesn&apos;t change what&apos;s
+              Choose how many months of past weights and steps to pull from your connected health source. Doesn&apos;t change what&apos;s
               visible on the chart above — use the range pills at the top for that. Journey &quot;lost&quot; uses roughly
               the last 18 months of saved weights and trims statistical outliers so one bad reading does not
               dominate the bar.
@@ -640,7 +640,7 @@ export default function ProgressScreen() {
             </View>
             {healthRefreshing ? (
               <Text style={[styles.muted, { marginTop: Spacing.sm }]}>
-                Syncing from Apple Health…
+                Syncing from your connected health source…
               </Text>
             ) : null}
           </View>
@@ -924,7 +924,7 @@ export default function ProgressScreen() {
                 />
               )}
               <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm }}>
-                Steps sync automatically from Apple Health.
+                Steps sync automatically from your connected health source.
               </Text>
             </View>
 

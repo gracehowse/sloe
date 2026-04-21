@@ -276,34 +276,89 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     }
   };
 
+  // Prototype port (2026-04-20, web parity with mobile commit 26a63bf)
+  // — helpers for the phone-top header + profile card. Kept inline to
+  // mirror mobile's structure 1:1; `displayName`, `userTier`, and
+  // `joinedAt` are the same sources the old inline block used.
+  const avatarInitial = (displayName?.[0] ?? "P").toUpperCase();
+  const tierLabel = userTier === "pro" ? "Pro" : userTier === "base" ? "Base" : "Free";
+  // Subtle brand-gradient avatar that matches the mobile "52×52 primary
+  // accent" avatar on the More tab. Uses the theme `--primary` so the
+  // colour stays in sync with the active theme token (see
+  // `src/styles/theme.css`).
+  const avatarGradient =
+    "linear-gradient(135deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 45%, var(--macro-fat)) 100%)";
+  const joinedLabel = joinedAt
+    ? (() => {
+        const d = new Date(joinedAt);
+        const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+        if (diffDays < 7) return "Joined this week";
+        if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
+        if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
+        return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+      })()
+    : "Joined recently";
+
   return (
     <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
-      {/* Header: Avatar + Name + Tier Side by Side */}
-      <div className="flex items-center gap-3.5 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <span className="text-lg font-bold text-primary">{(displayName?.[0] ?? "P").toUpperCase()}</span>
-        </div>
+      {/* Phone-top header — prototype port (2026-04-20, web parity
+          with mobile More commit 26a63bf): ACCOUNT overline + large
+          "More" title + round avatar-initial button on the right.
+          Replaces the old inline "avatar + name row". The display-name
+          + tier + joined-at details that used to live in that header
+          now render inside the profile card immediately below, which
+          mirrors the mobile More tab layout one-to-one. Tab is still
+          the same route (`?view=profile`) — only the header presentation
+          changed; no router / nav changes. */}
+      <div className="flex items-start justify-between mb-3.5">
         <div>
-          <h1 className="text-lg font-bold text-foreground leading-tight">
-            {displayName?.trim() ? displayName : "Your profile"}
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            Account
+          </p>
+          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight">
+            More
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {userTier === "pro"
-              ? "Pro"
-              : userTier === "base"
-              ? "Base"
-              : "Free"} · {joinedAt ? (() => {
-              const d = new Date(joinedAt);
-              const now = new Date();
-              const diffMs = now.getTime() - d.getTime();
-              const diffDays = Math.floor(diffMs / 86400000);
-              if (diffDays < 7) return "Joined this week";
-              if (diffDays < 30) return `Joined ${Math.floor(diffDays / 7)}w ago`;
-              if (diffDays < 365) return `Joined ${Math.floor(diffDays / 30)}mo ago`;
-              return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
-            })() : "Joined recently"}
+        </div>
+        <button
+          type="button"
+          aria-label="Your profile"
+          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[14px] font-bold text-white"
+          style={{ background: avatarGradient }}
+        >
+          {avatarInitial}
+        </button>
+      </div>
+
+      {/* Profile card — 52×52 gradient avatar + display-name +
+          tier·joined subline + tier pill. Matches the mobile profile
+          card (`apps/mobile/app/(tabs)/more.tsx` ~L451) including the
+          subtle tier-coloured pill on the right. */}
+      <div className="flex items-center gap-3.5 mb-4 rounded-xl border border-border bg-card p-3.5">
+        <div
+          className="w-[52px] h-[52px] rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
+          style={{ background: avatarGradient }}
+        >
+          {avatarInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-foreground leading-tight truncate">
+            {displayName?.trim() ? displayName : "Your profile"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {tierLabel} tier &middot; {joinedLabel}
           </p>
         </div>
+        <span
+          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide ${
+            userTier === "pro"
+              ? "bg-primary/15 text-primary"
+              : userTier === "base"
+                ? "bg-success/15 text-success"
+                : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {tierLabel}
+        </span>
       </div>
 
       {/* Stat Pills — real data (recipes / streak / score). The Score
@@ -407,18 +462,21 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         </div>
       ) : null}
 
-      {/* Settings Section */}
+      {/* Settings Section — sentence-case heading (prototype parity,
+          2026-04-20 mobile commit 26a63bf). Previous uppercase overline
+          was replaced across every group on this page so it matches
+          the mobile "More" treatment. */}
       <div className="mb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Settings</p>
+        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Settings</h3>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {/* Daily Targets Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.calories className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Daily Targets</p>
-              <p className="text-xs text-muted-foreground truncate">{(() => { const t = normalizeMacroTargets(nutritionTargets); return `${t.calories.toLocaleString()} kcal • ${t.protein}P / ${t.carbs}C / ${t.fat}F`; })()}</p>
+              <p className="text-[13px] font-semibold text-foreground">Daily Targets</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{(() => { const t = normalizeMacroTargets(nutritionTargets); return `${t.calories.toLocaleString()} kcal • ${t.protein}P / ${t.carbs}C / ${t.fat}F`; })()}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -435,12 +493,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.layoutGrid className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Dashboard Widgets</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-[13px] font-semibold text-foreground">Dashboard Widgets</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {profileTrackedMacros.length > 0
                   ? profileTrackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")
                   : "Defaults"}
@@ -454,12 +512,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.plan className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Week starts on</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-[13px] font-semibold text-foreground">Week starts on</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {profileWeekStartDay === "monday" ? "Monday" : "Sunday"}
               </p>
             </div>
@@ -471,12 +529,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.energy className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Caffeine limit</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-[13px] font-semibold text-foreground">Caffeine limit</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {targetCaffeineMg} mg/day · FDA guideline is 400 mg
               </p>
             </div>
@@ -488,12 +546,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.water className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Alcohol limit</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-[13px] font-semibold text-foreground">Alcohol limit</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {targetAlcoholGWeekly > 0
                   ? `${targetAlcoholGWeekly} g/week`
                   : "Off · set a target to show the row"}
@@ -504,12 +562,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Preferences Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.dinner className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Preferences</p>
-              <p className="text-xs text-muted-foreground truncate">{dietaryRestrictions.length > 0 ? dietaryRestrictions.join(", ") : "No restrictions"}</p>
+              <p className="text-[13px] font-semibold text-foreground">Preferences</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{dietaryRestrictions.length > 0 ? dietaryRestrictions.join(", ") : "No restrictions"}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -518,105 +576,105 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <div
             className="flex items-center gap-4 px-4 py-3 border-b border-border opacity-60"
           >
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.link className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Apple Health</p>
-              <p className="text-xs text-muted-foreground">Syncs steps, weight, and activity on iOS. Not available on web.</p>
+              <p className="text-[13px] font-semibold text-foreground">Apple Health</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Syncs steps, weight, and activity on iOS. Not available on web.</p>
             </div>
           </div>
 
           {/* Notifications Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.time className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Notifications</p>
-              <p className="text-xs text-muted-foreground truncate">{notificationPref ? `Daily reminder at ${notificationPref}` : "Off"}</p>
+              <p className="text-[13px] font-semibold text-foreground">Notifications</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{notificationPref ? `Daily reminder at ${notificationPref}` : "Off"}</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
           {/* Export Data Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.import className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Export Data</p>
-              <p className="text-xs text-muted-foreground truncate">CSV download</p>
+              <p className="text-[13px] font-semibold text-foreground">Export Data</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">CSV download</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
           {/* Help Row — matches mobile */}
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="sm" className="w-7 h-7">
+            <IconBox tone="primary" size="md" className="rounded-[10px]">
               <Icons.info className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Help</p>
-              <p className="text-xs text-muted-foreground truncate">FAQs and support</p>
+              <p className="text-[13px] font-semibold text-foreground">Help</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">FAQs and support</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
         </div>
       </div>
 
-      {/* Creator Tools Section */}
+      {/* Creator Tools Section — sentence-case heading (prototype parity). */}
       <div className="mb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Creator Tools</p>
+        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Creator tools</h3>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {/* Published Recipes Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="sm" className="w-7 h-7">
+            <IconBox tone="success" size="md" className="rounded-[10px]">
               <Icons.edit className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Published Recipes</p>
-              <p className="text-xs text-muted-foreground truncate">{recipeCount} recipes saved</p>
+              <p className="text-[13px] font-semibold text-foreground">Published Recipes</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{recipeCount} recipes saved</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
           {/* Analytics Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="sm" className="w-7 h-7">
+            <IconBox tone="success" size="md" className="rounded-[10px]">
               <Icons.progress className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Analytics</p>
-              <p className="text-xs text-muted-foreground truncate">Views, saves, engagement</p>
+              <p className="text-[13px] font-semibold text-foreground">Analytics</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">Views, saves, engagement</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
           {/* Publish New Row */}
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="sm" className="w-7 h-7">
+            <IconBox tone="success" size="md" className="rounded-[10px]">
               <Icons.add className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Publish New</p>
-              <p className="text-xs text-muted-foreground truncate">Share with the community</p>
+              <p className="text-[13px] font-semibold text-foreground">Publish New</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">Share with the community</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
         </div>
       </div>
 
-      {/* Legal Section — matches mobile */}
+      {/* Legal Section — sentence-case heading (prototype parity). */}
       <div className="mb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Legal</p>
+        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Legal</h3>
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <span className="text-sm text-foreground">Terms of Service</span>
+            <span className="text-[13px] font-semibold text-foreground">Terms of Service</span>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
           </div>
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-            <span className="text-sm text-foreground">Privacy Policy</span>
+            <span className="text-[13px] font-semibold text-foreground">Privacy Policy</span>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
           </div>
         </div>
