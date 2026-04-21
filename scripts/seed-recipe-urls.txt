@@ -1,0 +1,34 @@
+# TEMPORARY test seeds for Discover feed (Grace, 2026-04-21).
+# NOT licensed for public redistribution. Purge before any external launch via:
+#   npx tsx scripts/delete-seeded-recipes.ts
+# (The delete script reads this file and removes any matching recipes by source_url.)
+
+# --- Downshiftology (Lisa Bryan) ---
+https://downshiftology.com/recipes/mediterranean-chickpea-salad/
+https://downshiftology.com/recipes/shakshuka/
+https://downshiftology.com/recipes/green-shakshuka/
+https://downshiftology.com/recipes/salmon-salad/
+https://downshiftology.com/recipes/smoked-salmon-avocado-arugula-salad/
+https://downshiftology.com/recipes/salmon-avocado-salad/
+https://downshiftology.com/recipes/green-goddess-hummus/
+
+# --- Minimalist Baker ---
+https://minimalistbaker.com/1-pot-golden-curry-lentil-soup/
+https://minimalistbaker.com/1-pot-lentil-dal/
+https://minimalistbaker.com/sweet-potato-chickpea-buddha-bowl/
+https://minimalistbaker.com/spicy-red-lentil-curry/
+https://minimalistbaker.com/quinoa-chickpea-buddha-bowl/
+
+# --- Pinch of Yum ---
+https://pinchofyum.com/smoky-red-lentil-soup-with-spinach
+https://pinchofyum.com/the-best-detox-crockpot-lentil-soup
+https://pinchofyum.com/one-pot-creamy-spinach-lentils
+https://pinchofyum.com/spicy-peanut-soba-noodle-salad
+https://pinchofyum.com/easy-red-lentil-dhal
+
+# --- Half Baked Harvest ---
+https://www.halfbakedharvest.com/sheet-pan-chicken-fajitas/
+
+# --- Cookie and Kate ---
+https://cookieandkate.com/mediterranean-quinoa-salad-recipe/
+https://cookieandkate.com/best-lentil-soup-recipe/
