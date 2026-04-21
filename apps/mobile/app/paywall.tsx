@@ -14,6 +14,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, type LucideIcon } from "lucide-react-native";
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -491,7 +492,7 @@ export default function PaywallScreen() {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.card,
+      backgroundColor: "rgba(255,255,255,0.2)",
       justifyContent: "center",
       alignItems: "center",
       zIndex: 10,
@@ -500,21 +501,24 @@ export default function PaywallScreen() {
     header: {
       paddingTop: insets.top + Spacing.xl,
       paddingHorizontal: Spacing.xl,
-      paddingBottom: Spacing.lg,
+      paddingBottom: Spacing.xl,
+      overflow: "hidden",
     },
     headerKicker: {
       fontSize: 11,
       fontWeight: "700",
-      color: Accent.primary,
+      color: "#ffffff",
       letterSpacing: 2,
       marginBottom: Spacing.sm,
+      opacity: 0.9,
     },
-    headerTitle: { fontSize: 24, fontWeight: "800", color: colors.text, lineHeight: 32 },
+    headerTitle: { fontSize: 24, fontWeight: "800", color: "#ffffff", lineHeight: 32 },
     headerSubtitle: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: "#ffffff",
       lineHeight: 20,
       marginTop: Spacing.xs,
+      opacity: 0.85,
     },
 
     scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl },
@@ -700,10 +704,26 @@ export default function PaywallScreen() {
         accessibilityHint="Returns you to where you were"
         hitSlop={12}
       >
-        <X size={20} color={colors.text} strokeWidth={1.75} />
+        <X size={20} color="#ffffff" strokeWidth={1.75} />
       </Pressable>
 
       <View style={styles.header}>
+        {/*
+         * Brand-gradient hero banner — mirrors prototype `flows.jsx:555`
+         * (`linear-gradient(135deg, #4c6ce0, #e04888)`). Brand gradient is
+         * sanctioned on paywall surfaces per the design-system doc.
+         */}
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <SvgLinearGradient id="paywall-hero-grad" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={1} />
+                <Stop offset="100%" stopColor={Accent.magenta} stopOpacity={1} />
+              </SvgLinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#paywall-hero-grad)" />
+          </Svg>
+        </View>
         <Text style={styles.headerKicker}>{headerKicker}</Text>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
         <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
