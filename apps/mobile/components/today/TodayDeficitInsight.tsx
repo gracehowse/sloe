@@ -56,6 +56,15 @@ export function TodayDeficitInsight({
 }: TodayDeficitInsightProps) {
   const keys = weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay);
   const keysWithMeals = keys.filter((k) => (byDay[k] ?? []).length > 0);
+  // F-25 (2026-04-21): hide the deficit banner on an empty day. Before,
+  // a user with nothing logged saw "~1667 kcal deficit so far today" —
+  // technically true but useless and contributing to the cluttered-3-
+  // cards feeling on Today (TestFlight AJ2q4OgYYXE7). If the *current*
+  // day has 0 meals, the banner adds no information — don't render.
+  const todayKey = selectedDate.toISOString().slice(0, 10);
+  const hasLoggedToday = (byDay[todayKey] ?? []).length > 0;
+  if (!hasLoggedToday) return null;
+
   const avgDeficit = keysWithMeals.length < 2
     ? null
     : Math.round(

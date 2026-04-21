@@ -686,8 +686,12 @@ export default function RecipeDetailScreen() {
     mealTypeText: { color: Accent.primary, fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
 
     calorieHero: { alignItems: "center", paddingVertical: Spacing.lg },
-    calorieNumber: { fontSize: 48, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
-    calorieLabel: { fontSize: 14, color: colors.textSecondary, marginTop: -4 },
+    // F-23 (2026-04-21): calories hero was consuming ~a third of the screen
+    // on the recipe detail (TestFlight AIf4Z6q1KL2j). Shrink the numeral and
+    // trim the surrounding card padding so the macro tiles below get their
+    // breathing room back.
+    calorieNumber: { fontSize: 34, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
+    calorieLabel: { fontSize: 12, color: colors.textSecondary, marginTop: -2 },
 
     card: {
       backgroundColor: colors.card,
@@ -980,7 +984,7 @@ export default function RecipeDetailScreen() {
             style={{
               alignItems: "center",
               marginBottom: Spacing.md,
-              paddingVertical: Spacing.lg,
+              paddingVertical: Spacing.md,
               paddingHorizontal: Spacing.lg,
               borderRadius: Radius.lg,
               borderWidth: 1,
@@ -988,10 +992,10 @@ export default function RecipeDetailScreen() {
               backgroundColor: MacroColors.calories + "14",
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: "800", color: MacroColors.calories, letterSpacing: 1 }}>
+            <Text style={{ fontSize: 10, fontWeight: "800", color: MacroColors.calories, letterSpacing: 1 }}>
               CALORIES PER PORTION
             </Text>
-            <Text style={[styles.calorieNumber, { marginTop: 8, color: colors.text }]}>{Math.round(macros.calories)}</Text>
+            <Text style={[styles.calorieNumber, { marginTop: 4, color: colors.text }]}>{Math.round(macros.calories)}</Text>
             <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>kilocalories</Text>
           </View>
 

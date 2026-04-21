@@ -1921,8 +1921,30 @@ function Sparkline({
   if (points.length < 2) {
     return <View style={{ width, height }} />;
   }
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  // F-24 (2026-04-21): on the "All" range a single bad weight reading
+  // (e.g. a 100 kg typo among 55 kg values) was blowing out the y-axis
+  // domain so the real series rendered as a flat line at the bottom
+  // (TestFlight AOCd89_asuNA). Use a trimmed 5th–95th percentile domain
+  // so normal values get visual space, then clamp outliers to the chart
+  // bounds so the spike is still visible at the edge. Threshold bumped
+  // to 8 points so short series (1w / 1m) keep their raw domain — the
+  // bug only manifests on long series with outliers.
+  const sorted = [...points].sort((a, b) => a - b);
+  let min: number;
+  let max: number;
+  if (points.length >= 8) {
+    const lo = Math.floor(sorted.length * 0.05);
+    const hi = Math.ceil(sorted.length * 0.95) - 1;
+    min = sorted[lo];
+    max = sorted[hi];
+    if (!(max > min)) {
+      min = sorted[0];
+      max = sorted[sorted.length - 1];
+    }
+  } else {
+    min = sorted[0];
+    max = sorted[sorted.length - 1];
+  }
   const rangeSpan = max - min === 0 ? 1 : max - min;
   const pad = 4;
   const innerW = width - pad * 2;
@@ -1932,7 +1954,10 @@ function Sparkline({
     const x = pad + i * step;
     // Lower values → higher y (invert). For weight we render raw kg
     // so the sparkline trends down when the user loses weight.
-    const y = pad + innerH - ((v - min) / rangeSpan) * innerH;
+    const rawY = pad + innerH - ((v - min) / rangeSpan) * innerH;
+    // Clamp outliers that fell outside the trimmed domain so they
+    // render at the chart edge rather than offscreen.
+    const y = Math.max(pad, Math.min(pad + innerH, rawY));
     return [x, y] as const;
   });
   const polylinePoints = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");

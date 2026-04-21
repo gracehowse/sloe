@@ -6,7 +6,29 @@ import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
 import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
 
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+// F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
+// a single shared Unsplash salad, so every placeholder recipe looked identical
+// in the Library and Plan views (TestFlight AKhHD-Uv1JWd, ABTpne3YnbHm,
+// AGr4EisM3BOC). Rotate across 6 visually distinct stock photos keyed by
+// recipe id so recipes without a real photo at least look like different
+// recipes. Real imported images (`image_url`) still take priority.
+const DEFAULT_IMAGE_POOL = [
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop", // green bowl
+  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&h=600&fit=crop", // pasta
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop", // salad
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&h=600&fit=crop", // buddha bowl
+  "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800&h=600&fit=crop", // sandwich
+  "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop", // breakfast
+];
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function pickDefaultImage(id: string | number | undefined | null): string {
+  const idx = id != null ? hashStr(String(id)) % DEFAULT_IMAGE_POOL.length : 0;
+  return DEFAULT_IMAGE_POOL[idx];
+}
 const DEFAULT_AVATAR = NEUTRAL_AVATAR_DATA_URI;
 
 /** Fetch published community recipes for the Discover feed. */
@@ -35,7 +57,7 @@ export function useDiscoverRecipes() {
         return {
           id: r.id,
           title: r.title ?? "Untitled",
-          image: r.image_url ?? DEFAULT_IMAGE,
+          image: r.image_url ?? pickDefaultImage(r.id),
           creatorName: r.source_name ?? "Community",
           creatorImage: DEFAULT_AVATAR,
           servings: r.servings ?? 1,
@@ -293,7 +315,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
         const card: RecipeCard = {
           id: r.id,
           title: r.title ?? "Untitled",
-          image: r.image_url ?? DEFAULT_IMAGE,
+          image: r.image_url ?? pickDefaultImage(r.id),
           creatorName,
           creatorImage,
           servings: r.servings ?? 1,

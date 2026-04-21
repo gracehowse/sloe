@@ -412,6 +412,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       fontSize: 15,
     },
     manualInputRow: { flexDirection: "row", gap: Spacing.sm },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      marginBottom: 6,
+      textTransform: "none",
+    },
     manualSubmitBtn: {
       backgroundColor: Accent.primary,
       borderRadius: Radius.md,
@@ -727,53 +734,72 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                       {/* F-20 — serving-size input appears only in the
                           per-serving branch. Required when per-serving is
                           active (submit stays disabled until > 0). */}
+                      {/* F-22 (2026-04-21): persistent labels above each
+                          field. Placeholders disappear on first keystroke so
+                          users lost context on which cell is calories/protein
+                          (TestFlight AJlhpO020UK-). */}
                       {corrBasis === "perServing" && (
-                        <TextInput
-                          style={styles.manualInput}
-                          placeholder="Serving size (g)"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={corrServingG}
-                          onChangeText={setCorrServingG}
-                          accessibilityLabel="Serving size in grams"
-                        />
+                        <View>
+                          <Text style={styles.fieldLabel}>Serving size (g)</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="e.g. 16"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrServingG}
+                            onChangeText={setCorrServingG}
+                            accessibilityLabel="Serving size in grams"
+                          />
+                        </View>
                       )}
 
                       <View style={styles.manualInputRow}>
-                        <TextInput
-                          style={[styles.manualInput, { flex: 1 }]}
-                          placeholder={corrBasis === "perServing" ? "Calories (per serving)" : "Calories (per 100 g)"}
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={corrCalories}
-                          onChangeText={setCorrCalories}
-                        />
-                        <TextInput
-                          style={[styles.manualInput, { flex: 1 }]}
-                          placeholder="Protein (g)"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={corrProtein}
-                          onChangeText={setCorrProtein}
-                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>{corrBasis === "perServing" ? "Calories (kcal / serving)" : "Calories (kcal / 100 g)"}</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="kcal"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrCalories}
+                            onChangeText={setCorrCalories}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Protein (g)</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="g"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrProtein}
+                            onChangeText={setCorrProtein}
+                          />
+                        </View>
                       </View>
                       <View style={styles.manualInputRow}>
-                        <TextInput
-                          style={[styles.manualInput, { flex: 1 }]}
-                          placeholder="Carbs (g)"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={corrCarbs}
-                          onChangeText={setCorrCarbs}
-                        />
-                        <TextInput
-                          style={[styles.manualInput, { flex: 1 }]}
-                          placeholder="Fat (g)"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={corrFat}
-                          onChangeText={setCorrFat}
-                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Carbs (g)</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="g"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrCarbs}
+                            onChangeText={setCorrCarbs}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Fat (g)</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="g"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrFat}
+                            onChangeText={setCorrFat}
+                          />
+                        </View>
                       </View>
 
                       {/* F-20 — live per-100g reference so the user can

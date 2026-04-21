@@ -19,11 +19,25 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
-## Snapshot (2026-04-19, build-13 committed)
+## Snapshot (2026-04-21, build-14 submitted)
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 63    | 52 | 10 | 0  | 0  | 0  | 1  |
+| 77    | 52 | 14 | 0  | 0  | 10 | 1  |
+
+Build 14 covers:
+- **G-7** Apple Health native @try + main-queue flip → closes both AHSTS2YR7k-l + ACwDKGBhb897 (🟡 pending tester verify).
+- **F-21** image-rotation fallback → closes AKhHD-Uv1JWd + ABTpne3YnbHm + AGr4EisM3BOC (🟡).
+- **F-22** correction-form field labels → closes AJlhpO020UK- (🟡).
+- **F-23** recipe detail calories-hero shrink → closes AIf4Z6q1KL2j (🟡).
+- **F-24** weight sparkline trimmed domain → closes AOCd89_asuNA (🟡).
+- **F-25** deficit banner hidden on empty day → closes AJ2q4OgYYXE7 (🟡).
+
+Open after build 14 (⏳):
+- **OpenAI 401 in prod** (AIoBkBBn3bgh, AIe-YzITIaTX) — infrastructure, not code. Key missing/invalid on the Vercel production env. Action: rotate `OPENAI_API_KEY` in Vercel → Settings → Environment Variables → redeploy.
+- **Weight 3M arrow direction + x-axis span** (AGOlc2wi1UZD) — "+0.9 kg" arrow UP reads wrong when goal is to lose; x-axis shows ~57 days not 90.
+- **Plan regenerate missing + household card drift** (AAtQgwFWaQTF) — prototype parity.
+- **HealthKit permission-denied alert copy** (AG-5oy-1vqo7) — expected fallback; G-7 fixes the underlying crash, but copy could be friendlier.
 
 All H-tracks committed:
 - **H-1** household `.single()` → regression tests pinned invariant; fix originally in build-11 `ef2a9f4`
@@ -62,6 +76,20 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
+| 2026-04-21 | `AGOlc2wi1UZD…` | screenshot | ⏳ | pending — 3M weight arrow + x-axis | "This is incorrect" (weight chart ↑ 0.9 kg despite loss goal; 3M span reads ~57 days) |
+| 2026-04-21 | `AOCd89_asuNA…` | screenshot | 🟡 | build-14 F-24 (trimmed sparkline domain) | Weight for all time too scrunched up |
+| 2026-04-21 | `AAtQgwFWaQTF…` | screenshot | ⏳ | pending — Plan regenerate + household drift | Regenerate section missing and household doesn't match prototype |
+| 2026-04-21 | `AKhHD-Uv1JWd…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Library — all recipes showing same photo |
+| 2026-04-21 | `AIoBkBBn3bgh…` | screenshot | ⏳ | infra — rotate `OPENAI_API_KEY` in Vercel prod | OpenAI API 401 on Instagram import |
+| 2026-04-21 | `AIf4Z6q1KL2j…` | screenshot | 🟡 | build-14 F-23 (calories hero shrink) | Calories section is too big (recipe detail) |
+| 2026-04-21 | `AJ2q4OgYYXE7…` | screenshot | 🟡 | build-14 F-25 (hide deficit on empty day) | Middle section cluttered with 3 prompts (Today) |
+| 2026-04-21 | `AG-5oy-1vqo7…` | screenshot | 🟡 | build-14 G-7 (native @try) | HealthKit permission alert in production |
+| 2026-04-19 | `AIe-YzITIaTX…` | screenshot | ⏳ | infra — rotate `OPENAI_API_KEY` in Vercel prod | Import error (OpenAI 401) |
+| 2026-04-19 | `ABTpne3YnbHm…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Placeholder photos instead of imported photos |
+| 2026-04-19 | `AGr4EisM3BOC…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Placeholder meals (Plan Day 1) |
+| 2026-04-19 | `AJlhpO020UK-…` | screenshot | 🟡 | build-14 F-22 (correction-form labels) + follow-up micros | Correction form fields unlabeled; can't correct full nutrition label |
+| 2026-04-21 | `ACwDKGBhb897…` | crash      | 🟡 | build-14 G-7 (native @try + main-queue) | Apple Health crash "Again" (build 13) |
+| 2026-04-19 | `AHSTS2YR7k-l…` | crash      | 🟡 | build-14 G-7 (native @try + main-queue) | "Same apple health crash" (build 12) |
 | 2026-04-18 | `AF0btCuj90Ab…` | screenshot | ✅ | see `AF0btCuj9…` in resolved.md | Can't save alcohol limit |
 | 2026-04-18 | `AISAWnLgU9cj…` | screenshot | ✅ | see `AISAWnLgU…` in resolved.md | Not intuitive (Progress tab) |
 | 2026-04-18 | `AAegi1DJEisc…` | screenshot | ✅ | see `AAegi1DJE…` in resolved.md | Nothing happens when I try to create a household |
