@@ -402,22 +402,35 @@ export const DiscoverFeed = memo(function DiscoverFeed({
 
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-background pb-12">
-      {/* Title area */}
-      <header className="sticky top-0 z-20 px-4 py-4 border-b border-border bg-card/90 backdrop-blur-md">
-        <h1 className="text-2xl font-bold text-foreground mb-1">Discover</h1>
-        <p className="text-sm text-muted-foreground">Recipes that fit your macros</p>
+      {/* Title area — prototype treatment: BROWSE overline + large
+          Discover title + round search-icon button on the right.
+          Mobile parity: apps/mobile/app/(tabs)/discover.tsx. */}
+      <header className="sticky top-0 z-20 px-4 py-4 border-b border-border bg-card/90 backdrop-blur-md flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Browse</p>
+          <h1 className="text-[28px] font-extrabold -tracking-[0.01em] text-foreground mt-0.5">Discover</h1>
+        </div>
+        <button
+          type="button"
+          aria-label="Focus search"
+          className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted"
+          onClick={() => {
+            const input = document.querySelector<HTMLInputElement>('input[type="search"]');
+            input?.focus();
+          }}
+        >
+          <Icons.search className="w-[18px] h-[18px]" />
+        </button>
       </header>
 
       <div className="px-0 sm:px-2">
-        {/* Search bar — rectangular to match mobile
-            (`apps/mobile/app/(tabs)/discover.tsx` 247: borderRadius: 10
-            ≈ `rounded-md`). Rounded pill was a visual divergence
-            without a UX reason. */}
-        <div className="mx-4 mt-4 flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5">
+        {/* Search bar — prototype treatment: bigger, 12px radius,
+            "Search 48,000+ recipes & foods" placeholder. */}
+        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3.5">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
-            placeholder="Search or paste a link..."
+            placeholder="Search 48,000+ recipes & foods"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"

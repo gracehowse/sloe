@@ -601,15 +601,22 @@ export default function RecipeDetailScreen() {
     backBtnText: { color: colors.text, fontWeight: "600" },
 
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
+    // Header buttons restyled 2026-04-20 to match the prototype's
+    // light circular icon buttons (was black 67%-opacity overlay).
+    // Subtle shadow keeps them legible against bright hero photos.
     headerBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: "#000000aa",
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: "rgba(255,255,255,0.92)",
       justifyContent: "center",
       alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
     },
-    headerBtnText: { color: "#ffffff", fontSize: 22, fontWeight: "600" },
+    headerBtnText: { color: colors.text, fontSize: 22, fontWeight: "600" },
 
     body: { padding: Spacing.xl, gap: Spacing.lg },
 
@@ -769,33 +776,33 @@ export default function RecipeDetailScreen() {
           {/* Header buttons row */}
           <View style={{ position: "absolute", top: insets.top + Spacing.sm, left: Spacing.md, right: Spacing.md, flexDirection: "row", justifyContent: "space-between" }}>
             <Pressable style={styles.headerBtn} onPress={goBack}>
-              <Ionicons name="chevron-back" size={22} color="#fff" />
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </Pressable>
             <View style={{ flexDirection: "row", gap: 8 }}>
-          <Pressable
-            style={styles.headerBtn}
-            onPress={() => {
-              const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
-              const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
-              const url = webRecipeDeepLink(String(recipeId), origin);
-              const title = decodeEntities(recipe.title);
-              void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
-                void Linking.openURL(url);
-              });
-            }}
-          >
-            <Ionicons name="share-social-outline" size={20} color="#fff" />
-          </Pressable>
-          <Pressable
-            style={styles.headerBtn}
-            onPress={() => toggleSave(recipeId)}
-          >
-            <Ionicons
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={20}
-              color={saved ? Accent.success : "#fff"}
-            />
-          </Pressable>
+              <Pressable
+                style={styles.headerBtn}
+                onPress={() => toggleSave(recipeId)}
+              >
+                <Ionicons
+                  name={saved ? "bookmark" : "bookmark-outline"}
+                  size={20}
+                  color={saved ? Accent.success : colors.text}
+                />
+              </Pressable>
+              <Pressable
+                style={styles.headerBtn}
+                onPress={() => {
+                  const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+                  const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
+                  const url = webRecipeDeepLink(String(recipeId), origin);
+                  const title = decodeEntities(recipe.title);
+                  void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
+                    void Linking.openURL(url);
+                  });
+                }}
+              >
+                <Ionicons name="share-outline" size={20} color={colors.text} />
+              </Pressable>
             </View>
           </View>
         </View>

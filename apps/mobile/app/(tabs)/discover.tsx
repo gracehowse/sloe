@@ -151,66 +151,69 @@ export default function DiscoverScreen() {
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
+      const kcal = Math.round(item.calories);
+      const protein = Math.round(item.protein);
       return (
         <Pressable
           onPress={() => router.push(`/recipe/${item.id}`)}
           style={{
             width: cardWidth,
-            borderRadius: Radius.lg,
+            borderRadius: 14,
             backgroundColor: colors.card,
             borderWidth: 1,
             borderColor: colors.cardBorder,
             overflow: "hidden",
-            marginBottom: 8,
+            marginBottom: 10,
           }}
         >
-          {/* Hero gradient area */}
-          <View style={{ height: 80, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "12" }}>
+          {/* Image area — 16:10 per prototype hero cards */}
+          <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "10" }}>
             <Ionicons name="restaurant-outline" size={28} color={heroColor} />
             <SourceBadge source={item.source} />
           </View>
 
-          {/* Card body */}
-          <View style={{ padding: 10 }}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, lineHeight: 16, marginBottom: 2 }} numberOfLines={2}>
-              {decodeEntities(item.title)}
-            </Text>
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 6 }}>
-              {item.creatorName}{item.cookTime ? ` · ${item.cookTime}` : ""}
-            </Text>
-
-            {/* Macro dots */}
-            <View style={{ flexDirection: "row", gap: 6, marginBottom: 6 }}>
-              {([
-                ["P", Math.round(item.protein), t.protein],
-                ["C", Math.round(item.carbs), t.carbs],
-                ["F", Math.round(item.fat), t.fat],
-              ] as const).map(([label, val, color]) => (
-                <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-                  <View style={{ width: 4, height: 4, borderRadius: 1, backgroundColor: color }} />
-                  <Text style={{ fontSize: 10, color: colors.textSecondary }}>{val}g</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Calories — fit badge removed (F-11). */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {Math.round(item.calories)}
-                <Text style={{ fontSize: 9, fontWeight: "400", color: colors.textTertiary }}> kcal</Text>
+          {/* Card body — prototype layout: title row (title + fit chip),
+              source line, metadata row (kcal / protein / time with
+              small lucide-style icons). */}
+          <View style={{ padding: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+              <Text
+                style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text, lineHeight: 17, letterSpacing: -0.1 }}
+                numberOfLines={2}
+              >
+                {decodeEntities(item.title)}
               </Text>
             </View>
-
-            {/* Saves + made */}
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 5 }}>
-              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.saves ?? 0).toLocaleString()} saves</Text>
-              <Text style={{ fontSize: 9, color: colors.textTertiary }}>{(item.made ?? 0).toLocaleString()} made</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 3 }} numberOfLines={1}>
+              {item.creatorName || item.source || ""}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Ionicons name="flame-outline" size={11} color={MacroColors.calories} />
+                <Text style={{ fontSize: 10, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {kcal} kcal
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Ionicons name="barbell-outline" size={11} color={MacroColors.protein} />
+                <Text style={{ fontSize: 10, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {protein} g
+                </Text>
+              </View>
+              {item.cookTime ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                  <Ionicons name="time-outline" size={11} color={colors.textTertiary} />
+                  <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                    {item.cookTime}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </Pressable>
       );
     },
-    [cardWidth, router, colors, t],
+    [cardWidth, router, colors],
   );
 
   return (
@@ -231,33 +234,58 @@ export default function DiscoverScreen() {
         }
         ListHeaderComponent={
           <View>
-            {/* Header */}
-            <View style={{ paddingTop: 18, paddingBottom: 12 }}>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 }}>Discover</Text>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>Recipes that fit your macros</Text>
+            {/* Header — prototype treatment: BROWSE overline + large
+                Discover title + round search-icon button top-right. */}
+            <View style={{ paddingTop: 18, paddingBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
+                  Browse
+                </Text>
+                <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
+                  Discover
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => searchInputRef.current?.focus()}
+                accessibilityRole="button"
+                accessibilityLabel="Focus search"
+                hitSlop={10}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="search-outline" size={18} color={colors.text} />
+              </Pressable>
             </View>
 
-            {/* Search bar */}
+            {/* Search bar — prototype treatment: bigger, 48kcat placeholder. */}
             <View style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 9,
-              borderRadius: 10,
+              gap: 10,
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderRadius: 12,
               backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.cardBorder,
-              marginBottom: 12,
+              marginBottom: 14,
             }}>
-              <Ionicons name="search-outline" size={15} color={colors.textTertiary} />
+              <Ionicons name="search-outline" size={16} color={colors.textTertiary} />
               <TextInput
                 ref={searchInputRef}
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search or paste a link..."
+                placeholder="Search 48,000+ recipes & foods"
                 placeholderTextColor={colors.textTertiary}
-                style={{ flex: 1, fontSize: 12, color: colors.text, padding: 0 }}
+                style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
               />
             </View>
 
