@@ -141,6 +141,13 @@ export type BarcodeProduct = {
    */
   caffeineMgPer100g?: number | null;
   alcoholGPer100g?: number | null;
+  /**
+   * F-30 (2026-04-21) — micros exposed in the correction form + stored in
+   * `user_foods`. All per 100 g; sodium in mg to match packaging convention.
+   */
+  sugarG?: number | null;
+  sodiumMg?: number | null;
+  saturatedFatG?: number | null;
   /** OFF-style presets (label + grams) for scaling per-100g macros. */
   servingOptions?: OffServingOption[];
   /** Filled by scanner when confirming (e.g. "4 dumplings"). */
@@ -914,26 +921,36 @@ export async function submitFoodCorrection(opts: {
   carbs: number;
   fat: number;
   fiberG?: number;
+  /** F-30 (2026-04-21) — optional micro corrections. */
+  sugarG?: number;
+  sodiumMg?: number;
+  saturatedFatG?: number;
   servingSizeG?: number;
   userId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { supabase } = await import("@/lib/supabase");
-    const { error } = await supabase.from("user_foods").upsert(
-      {
-        barcode: opts.barcode,
-        name: opts.name,
-        calories: opts.calories,
-        protein: opts.protein,
-        carbs: opts.carbs,
-        fat: opts.fat,
-        fiber_g: opts.fiberG ?? 0,
-        serving_size_g: opts.servingSizeG ?? 100,
-        submitted_by: opts.userId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "barcode,submitted_by" },
-    );
+    // F-30: include micro columns only when provided > 0 so older DB
+    // schemas (pre-20260430100000 migration) don't break if a device
+    // running a newer JS bundle hits a not-yet-migrated project. The
+    // `upsert` with spread-conditional keys keeps writes compatible
+    // either way.
+    const payload: Record<string, unknown> = {
+      barcode: opts.barcode,
+      name: opts.name,
+      calories: opts.calories,
+      protein: opts.protein,
+      carbs: opts.carbs,
+      fat: opts.fat,
+      fiber_g: opts.fiberG ?? 0,
+      serving_size_g: opts.servingSizeG ?? 100,
+      submitted_by: opts.userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (opts.sugarG != null && opts.sugarG > 0) payload.sugar_g = opts.sugarG;
+    if (opts.sodiumMg != null && opts.sodiumMg > 0) payload.sodium_mg = opts.sodiumMg;
+    if (opts.saturatedFatG != null && opts.saturatedFatG > 0) payload.saturated_fat_g = opts.saturatedFatG;
+    const { error } = await supabase.from("user_foods").upsert(payload, { onConflict: "barcode,submitted_by" });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e: any) {

@@ -67,9 +67,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
   const [corrCarbs, setCorrCarbs] = useState("");
   const [corrFat, setCorrFat] = useState("");
   // F-28 (2026-04-21): fiber correction — DB already has `fiber_g`, just
-  // wasn't exposed in the form. Sugar/sodium/satfat additions blocked by
-  // missing columns on `user_foods` (needs schema migration).
+  // wasn't exposed in the form.
+  // F-30 (2026-04-21): sugar / sodium / saturated fat — added via migration
+  // 20260430100000_user_foods_micros.sql. Empty/zero inputs are dropped from
+  // the upsert payload to stay compatible with pre-migration projects.
   const [corrFiber, setCorrFiber] = useState("");
+  const [corrSugar, setCorrSugar] = useState("");
+  const [corrSodium, setCorrSodium] = useState("");
+  const [corrSatFat, setCorrSatFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
   // F-20 (2026-04-19, TestFlight `AIOek8w6GKW5DdY1XK9avkE`) — many
   // products only list nutrition per serving (e.g. PBfit: per 16 g). The
@@ -196,6 +201,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     setCorrCarbs(String(product.carbs));
     setCorrFat(String(product.fat));
     setCorrFiber(product.fiberG != null ? String(product.fiberG) : "");
+    setCorrSugar(product.sugarG != null ? String(product.sugarG) : "");
+    setCorrSodium(product.sodiumMg != null ? String(product.sodiumMg) : "");
+    setCorrSatFat(product.saturatedFatG != null ? String(product.saturatedFatG) : "");
     // F-20 — default to per-100g because that matches the DB contract
     // and the existing product fields we just copied in.
     setCorrBasis("per100g");
@@ -228,13 +236,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     if (!corrName.trim() || corrPer100g == null) return;
     setCorrSaving(true);
     const per100 = corrPer100g;
-    // F-28 — fiber is entered per the user's chosen basis (same as macros)
-    // and scaled to per-100g using the serving-size when basis=perServing.
-    const fiberInput = Number(corrFiber) || 0;
-    const fiberPer100g =
-      corrBasis === "perServing" && Number(corrServingG) > 0
-        ? Math.round(((fiberInput / Number(corrServingG)) * 100) * 10) / 10
-        : Math.round(fiberInput * 10) / 10;
+    // F-28 + F-30 — micros are entered per the user's chosen basis (same as
+    // macros) and scaled to per-100g using the serving-size when basis=perServing.
+    const scaleMicro = (val: number, roundTo: 0 | 1): number => {
+      const factor = roundTo === 0 ? 1 : 10;
+      if (corrBasis === "perServing" && Number(corrServingG) > 0) {
+        return Math.round(((val / Number(corrServingG)) * 100) * factor) / factor;
+      }
+      return Math.round(val * factor) / factor;
+    };
+    const fiberPer100g = scaleMicro(Number(corrFiber) || 0, 1);
+    const sugarPer100g = scaleMicro(Number(corrSugar) || 0, 1);
+    const sodiumPer100g = scaleMicro(Number(corrSodium) || 0, 0); // mg, whole numbers
+    const satFatPer100g = scaleMicro(Number(corrSatFat) || 0, 1);
     const result = await submitFoodCorrection({
       barcode: scanned,
       name: corrName.trim(),
@@ -243,6 +257,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       carbs: per100.carbs,
       fat: per100.fat,
       fiberG: fiberPer100g > 0 ? fiberPer100g : undefined,
+      sugarG: sugarPer100g > 0 ? sugarPer100g : undefined,
+      sodiumMg: sodiumPer100g > 0 ? sodiumPer100g : undefined,
+      saturatedFatG: satFatPer100g > 0 ? satFatPer100g : undefined,
       userId,
     });
     setCorrSaving(false);
@@ -256,6 +273,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
         carbs: per100.carbs,
         fat: per100.fat,
         fiberG: fiberPer100g > 0 ? fiberPer100g : (product?.fiberG ?? 0),
+        sugarG: sugarPer100g > 0 ? sugarPer100g : (product?.sugarG ?? null),
+        sodiumMg: sodiumPer100g > 0 ? sodiumPer100g : (product?.sodiumMg ?? null),
+        saturatedFatG: satFatPer100g > 0 ? satFatPer100g : (product?.saturatedFatG ?? null),
         servingSizeG:
           corrBasis === "perServing" && Number(corrServingG) > 0
             ? Number(corrServingG)
@@ -826,7 +846,41 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                             onChangeText={setCorrFiber}
                           />
                         </View>
-                        <View style={{ flex: 1 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Sugar (g) — optional</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="g"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrSugar}
+                            onChangeText={setCorrSugar}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.manualInputRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Sodium (mg) — optional</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="mg"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrSodium}
+                            onChangeText={setCorrSodium}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Saturated fat (g) — optional</Text>
+                          <TextInput
+                            style={styles.manualInput}
+                            placeholder="g"
+                            placeholderTextColor={colors.textTertiary}
+                            keyboardType="numeric"
+                            value={corrSatFat}
+                            onChangeText={setCorrSatFat}
+                          />
+                        </View>
                       </View>
 
                       {/* F-20 — live per-100g reference so the user can

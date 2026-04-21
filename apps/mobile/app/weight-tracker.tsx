@@ -357,13 +357,28 @@ export default function ProgressScreen() {
       : Math.abs(Math.round(deltaKg * 10) / 10);
     const unit = isImperial ? "lb" : "kg";
     const arrow = Math.abs(deltaKg) < 0.05 ? "→" : deltaKg > 0 ? "↑" : "↓";
+    // F-31 (2026-04-21): TestFlight AGOlc2wi1UZD — user with a loss goal
+    // saw "↑ 0.9 kg" in neutral text and read it as fine. Arrow stays
+    // factual per brand guidelines, but we add a **semantic tone**
+    // (progress / regress / neutral) so the consumer can tint the
+    // number based on whether the movement is *toward* the user's goal.
+    // No coloured arrow — only the magnitude number picks up a tone.
+    let tone: "progress" | "regress" | "neutral" = "neutral";
+    if (goalWeightKg != null && Math.abs(deltaKg) >= 0.05) {
+      const goalDelta = goalWeightKg - firstKg; // + means user wants to gain, - means lose
+      if (Math.abs(goalDelta) >= 0.05) {
+        const movingToward = Math.sign(deltaKg) === Math.sign(goalDelta);
+        tone = movingToward ? "progress" : "regress";
+      }
+    }
     return {
       arrow,
       magnitude: displayDelta,
       unit,
       label,
+      tone,
     };
-  }, [weightKgByDay, range, isImperial]);
+  }, [weightKgByDay, range, isImperial, goalWeightKg]);
 
   const weightProjection = useMemo(() => {
     if (!goalWeightKg || latestKg == null || weightData.length < 2)
@@ -694,7 +709,12 @@ export default function ProgressScreen() {
                       style={{
                         fontSize: 16,
                         fontWeight: "700",
-                        color: colors.text,
+                        color:
+                          rangeDelta.tone === "progress"
+                            ? Accent.success
+                            : rangeDelta.tone === "regress"
+                              ? Accent.warning
+                              : colors.text,
                         fontVariant: ["tabular-nums"],
                       }}
                     >

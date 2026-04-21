@@ -23,7 +23,7 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 77    | 52 | 23 | 0  | 1  | 0  | 1  |
+| 77    | 52 | 24 | 0  | 0  | 0  | 1  |
 
 Build 14 covers:
 - **G-7** Apple Health native @try + main-queue flip → closes AHSTS2YR7k-l + ACwDKGBhb897 (🟡 pending tester verify).
@@ -36,13 +36,12 @@ Build 14 covers:
 Build 15 adds:
 - **F-26** softer HealthKit permission-denied alert copy → closes AG-5oy-1vqo7 (🟡).
 - **F-27** weight delta label — "since {firstKey}" when actual data < 70% of nominal range → closes AGOlc2wi1UZD span half (🟡).
-- **F-28** correction form fiber field — DB already supported, just exposed → closes AJlhpO020UK- micros half for fiber; sugar/sodium/satfat still blocked on schema migration (🟠).
-- **F-29** Plan Regenerate button in header, always visible when plan exists → closes AAtQgwFWaQTF regenerate half (🟡); household card drift remains for a design pass (🟠).
+- **F-28** correction form fiber field — DB already supported, just exposed (🟡).
+- **F-29** Plan Regenerate button in header, always visible when plan exists → closes AAtQgwFWaQTF regenerate half (🟡).
+- **F-30** correction form sugar / sodium / satfat — migration `20260430100000_user_foods_micros.sql` adds `sugar_g`, `sodium_mg`, `saturated_fat_g` columns; form + `submitFoodCorrection` + `BarcodeProduct` type all wired → closes AJlhpO020UK- micros half in full (🟡).
+- **F-31** weight delta tone — goal-aligned color (progress = green, regress = amber) on the range delta magnitude while keeping the arrow factual → closes AGOlc2wi1UZD arrow half (🟡).
+- **F-32** household card prototype language — overline typography (11/700/1.1) + coloured circular initials avatar + audit-aligned spacing → closes AAtQgwFWaQTF drift half (🟡).
 - **Infra** `OPENAI_API_KEY` rotated in Vercel prod by Grace 2026-04-21 → closes AIoBkBBn3bgh + AIe-YzITIaTX (🟡 pending re-test with a reel URL).
-
-Partial tracks (🟠 needs more work next sweep):
-- **Correction-form sugar / sodium / satfat** — `user_foods` table needs new columns + RLS update. Tracked for next migration batch.
-- **Household card prototype drift** (AAtQgwFWaQTF) — Regenerate shipped; the "doesn't match prototype" half needs a design-system-enforcer pass.
 
 All H-tracks committed:
 - **H-1** household `.single()` → regression tests pinned invariant; fix originally in build-11 `ef2a9f4`
@@ -81,9 +80,9 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
-| 2026-04-21 | `AGOlc2wi1UZD…` | screenshot | 🟠 | build-15 F-27 (since-date fallback label) | "This is incorrect" — x-axis span half fixed; arrow-direction still informational only |
+| 2026-04-21 | `AGOlc2wi1UZD…` | screenshot | 🟡 | build-15 F-27 (since-date label) + F-31 (goal-aligned tone) | "This is incorrect" — span + arrow-colour both addressed |
 | 2026-04-21 | `AOCd89_asuNA…` | screenshot | 🟡 | build-14 F-24 (trimmed sparkline domain) | Weight for all time too scrunched up |
-| 2026-04-21 | `AAtQgwFWaQTF…` | screenshot | 🟠 | build-15 F-29 (header Regenerate btn) | Regenerate shipped; household prototype drift pending design pass |
+| 2026-04-21 | `AAtQgwFWaQTF…` | screenshot | 🟡 | build-15 F-29 (Regenerate) + F-32 (household card drift) | Regenerate + prototype language both addressed |
 | 2026-04-21 | `AKhHD-Uv1JWd…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Library — all recipes showing same photo |
 | 2026-04-21 | `AIoBkBBn3bgh…` | screenshot | 🟡 | infra — `OPENAI_API_KEY` rotated in Vercel 2026-04-21 | OpenAI API 401 on Instagram import |
 | 2026-04-21 | `AIf4Z6q1KL2j…` | screenshot | 🟡 | build-14 F-23 (calories hero shrink) | Calories section is too big (recipe detail) |
@@ -92,7 +91,7 @@ Ship rules:
 | 2026-04-19 | `AIe-YzITIaTX…` | screenshot | 🟡 | infra — `OPENAI_API_KEY` rotated in Vercel 2026-04-21 | Import error (OpenAI 401) |
 | 2026-04-19 | `ABTpne3YnbHm…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Placeholder photos instead of imported photos |
 | 2026-04-19 | `AGr4EisM3BOC…` | screenshot | 🟡 | build-14 F-21 (image-rotation fallback) | Placeholder meals (Plan Day 1) |
-| 2026-04-19 | `AJlhpO020UK-…` | screenshot | 🟠 | build-14 F-22 (labels) + build-15 F-28 (fiber); sugar/sodium/satfat pending schema migration | Correction form fields unlabeled; can't correct full nutrition label |
+| 2026-04-19 | `AJlhpO020UK-…` | screenshot | 🟡 | build-14 F-22 (labels) + build-15 F-28/F-30 (fiber + sugar/sodium/satfat via migration 20260430100000) | Correction form fields unlabeled; can't correct full nutrition label |
 | 2026-04-21 | `ACwDKGBhb897…` | crash      | 🟡 | build-14 G-7 (native @try + main-queue) | Apple Health crash "Again" (build 13) |
 | 2026-04-19 | `AHSTS2YR7k-l…` | crash      | 🟡 | build-14 G-7 (native @try + main-queue) | "Same apple health crash" (build 12) |
 | 2026-04-18 | `AF0btCuj90Ab…` | screenshot | ✅ | see `AF0btCuj9…` in resolved.md | Can't save alcohol limit |

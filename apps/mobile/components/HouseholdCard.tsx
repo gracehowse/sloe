@@ -385,18 +385,52 @@ export function HouseholdCard() {
           caption under MEMBERS states what the numbers represent.
           Structural parity with web is pinned by
           `tests/unit/householdMemberNumberLabels.test.ts`. */}
-      <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+      {/* F-32 (2026-04-21): overline typography promoted to prototype spec
+          (11/700/uppercase/tracking 1.1). Prior 10/600/0.5 was the
+          pre-prototype system. See design-system-enforcer audit. */}
+      <Text style={{ fontSize: 11, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 1.1, marginBottom: 4 }}>
         Members
       </Text>
-      <Text style={{ fontSize: 11, color: t.dim, marginBottom: 8, lineHeight: 15 }}>
+      <Text style={{ fontSize: 11, color: t.dim, marginBottom: 12, lineHeight: 15 }}>
         Remaining today — your totals left to hit your targets.
       </Text>
       {data.members.map((m) => {
         const isSelf = m.userId === userId;
+        // F-32: coloured circular initials avatar (prototype-aligned).
+        // Deterministic hue from userId so the same member keeps the
+        // same colour across renders. Initials: first letter of first
+        // two whitespace-split chunks; fall back to first char alone.
+        const initials = (() => {
+          const parts = (m.displayName ?? "").trim().split(/\s+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
+          return "?";
+        })();
+        const avatarHue = (() => {
+          let h = 0;
+          const key = m.userId ?? m.displayName ?? "";
+          for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+          return Math.abs(h) % 360;
+        })();
         return (
           <View key={m.userId} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4 }}>
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: `hsl(${avatarHue}, 55%, 55%)`,
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 6,
+                marginRight: 8,
+              }}
+              accessibilityLabel={`${m.displayName} avatar`}
+            >
+              <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>{initials}</Text>
+            </View>
             <Text
-              style={{ fontSize: 12, fontWeight: "500", color: t.text, width: 100, marginTop: 8 }}
+              style={{ fontSize: 12, fontWeight: "500", color: t.text, width: 88, marginTop: 8 }}
               numberOfLines={1}
             >
               {m.displayName}{isSelf ? " (you)" : ""}
@@ -434,7 +468,7 @@ export function HouseholdCard() {
       {/* Today's shared meals */}
       {todayMeals.length > 0 && (
         <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-          <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 1.1, marginBottom: 6 }}>
             Today&apos;s shared meals
           </Text>
           {todayMeals.map((meal) => (
