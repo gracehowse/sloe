@@ -96,9 +96,11 @@ export default function HealthSyncScreen() {
         setConnected(true);
         Alert.alert("Connected", "Health data sync is now enabled.");
       } else {
+        // F-26 (2026-04-21): shorter, clearer recovery path. The old copy
+        // dumped the full decision tree on the user (TestFlight AG-5oy-1vqo7).
         Alert.alert(
-          "Permission or Health access",
-          "Apple didn’t grant access, or Health isn’t available on this device. Try again and tap Allow in the Health prompt. On Simulator, Health data is limited — use a real iPhone if it still fails.",
+          "Health access needed",
+          "Open Settings → Health → Data Access & Devices → Suppr and turn the switches on, then try Connect again.",
         );
       }
     } catch {

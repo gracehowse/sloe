@@ -1053,6 +1053,27 @@ export default function PlannerScreen() {
             <Text style={styles.headerOverline}>{getWeekOfLabel()}</Text>
             <Text style={styles.headerTitle}>Meal plan</Text>
           </View>
+          {/* F-29 (2026-04-21): Regenerate was previously only reachable
+              via the "This week" summary card, which hides when
+              summaryScore is null (e.g. empty-day view, no planTargets).
+              TestFlight AAtQgwFWaQTF — "regenerate section is missing".
+              Surface the action at the header level whenever a plan
+              exists so it's always one tap away. */}
+          {plan && plan.length > 0 ? (
+            <Pressable
+              style={[styles.headerIconBtn, { marginRight: 8 }]}
+              onPress={generatePlan}
+              disabled={generating}
+              accessibilityRole="button"
+              accessibilityLabel="Regenerate plan"
+            >
+              {generating ? (
+                <ActivityIndicator size="small" color={colors.text} />
+              ) : (
+                <RefreshCw size={16} color={colors.text} strokeWidth={1.75} />
+              )}
+            </Pressable>
+          ) : null}
           <Pressable
             style={styles.headerIconBtn}
             onPress={() => setTemplatesOpen(true)}

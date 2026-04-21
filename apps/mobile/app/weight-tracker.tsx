@@ -317,6 +317,29 @@ export default function ProgressScreen() {
     const lastKg = entries[entries.length - 1][1];
     const deltaKg = lastKg - firstKg;
     const sinceKey = entries[0][0];
+    // F-27 (2026-04-21): when the actual data span is meaningfully
+    // shorter than the selected range, use the "since <date>" form so
+    // the label doesn't lie. TestFlight AGOlc2wi1UZD — user saw
+    // "↑ 0.9 kg past 3 months" when actual data spanned ~57 days (16
+    // Feb → 14 Apr). Rule: if data span < 70% of the nominal window,
+    // fall back to "since <firstKey>".
+    const rangeDaysNominal: Record<TimeRange, number | null> = {
+      "1W": 7,
+      "1M": 30,
+      "3M": 90,
+      "6M": 180,
+      "9M": 270,
+      "12M": 365,
+      "All": null,
+    };
+    const actualSpanDays = Math.round(
+      (new Date(`${entries[entries.length - 1][0]}T12:00:00`).getTime() -
+        new Date(`${sinceKey}T12:00:00`).getTime()) /
+        86400000,
+    );
+    const nominal = rangeDaysNominal[range];
+    const useSinceFallback =
+      nominal != null && actualSpanDays > 0 && actualSpanDays < nominal * 0.7;
     const rangeLabel: Record<TimeRange, string> = {
       "1W": "past week",
       "1M": "past month",
@@ -326,6 +349,9 @@ export default function ProgressScreen() {
       "12M": "past year",
       "All": `since ${formatShortDate(sinceKey)}`,
     };
+    const label = useSinceFallback
+      ? `since ${formatShortDate(sinceKey)}`
+      : rangeLabel[range] ?? "";
     const displayDelta = isImperial
       ? Math.abs(kgToLb(deltaKg))
       : Math.abs(Math.round(deltaKg * 10) / 10);
@@ -335,7 +361,7 @@ export default function ProgressScreen() {
       arrow,
       magnitude: displayDelta,
       unit,
-      label: rangeLabel[range] ?? "",
+      label,
     };
   }, [weightKgByDay, range, isImperial]);
 
