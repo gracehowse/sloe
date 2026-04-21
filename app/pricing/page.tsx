@@ -5,6 +5,7 @@ import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
+import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
  *  `paywall_viewed.from` cannot drift from the PostHog dashboard slice.
@@ -204,15 +205,10 @@ export default async function PricingPage({
           </div>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            Have a promo code? Redeem it in{" "}
-            <a href="/home?view=settings" className="text-primary underline">
-              Settings
-            </a>
-            .
-          </p>
-        </div>
+        {/* Promo-code redemption (D9 W1/W2, 2026-04-21). Replaces the
+            old Settings-pointer footnote; the Settings-side block stays
+            live until task S2, which depends on this surface. */}
+        <PromoCodeBlock />
       </main>
     </div>
   );
