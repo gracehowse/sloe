@@ -1,40 +1,49 @@
 "use client";
 
 /**
- * UpgradePaywallDialog — Claude Design 2026-04-20 prototype port of the
- * whole-paywall modal (see
- * `docs/ux/claude-design-bundles/prototype/project/flows.jsx` →
- * `Paywall`). Replaces the old in-app "tap Upgrade → navigate to
- * /pricing" flow for desktop-web surfaces: the dialog now handles the
- * primary pitch + Stripe checkout start inline, and the /pricing route
- * stays as the shareable public surface.
+ * UpgradePaywallDialog — dynamic tier-aware upgrade modal.
  *
- * Structure:
- *  - Gradient hero header (primary → magenta) with a `SUPPR BASE` pill
- *    overline, the "The full meal planning loop" title, subtitle, and
- *    a top-right close X.
- *  - Five feature rows separated by borders. Each row has a 36×36
- *    primary-tinted icon-box + title + description.
- *  - A single "Base · Most popular" pricing card showing the real price
- *    sourced from `PRICING_TIERS` (`src/lib/landing/pricingTiers.ts`).
- *    The prototype hardcoded `$5/month`; we honour CLAUDE.md's
- *    region-aware pricing rule by reading the live tier (£3.99 in the
- *    UK, USD in the US via the pricing SSOT). `from` attribution
- *    rides through `paywall_viewed`.
- *  - Primary CTA "Continue with Base · {price}" that starts the real
- *    Stripe checkout (same call the `/pricing` page uses — shared
- *    lifted-out `startCheckout` helper).
- *  - Secondary "Continue for free" link that fires the `dismissed`
- *    event + closes the dialog.
+ * Originally a Free→Base-only port of the Claude Design 2026-04-20
+ * prototype. Extended 2026-04-21 per D12
+ * (`docs/decisions/2026-04-21-upgrade-dialog-dynamic-upsell.md`) to
+ * render one of two variants based on the caller-supplied `userTier`:
  *
- * Analytics shape (mirrors AiPaywallDialog):
- *  - `paywall_viewed { from, tier: "base", surface: "upgrade_dialog",
- *     platform: "web" }` — on mount (guarded against StrictMode double-
- *     fire).
- *  - `paywall_dismissed { from, reason }` — on every close path.
- *    `reason` is one of `"continue_free" | "close_button" | "backdrop"`.
- *  - `checkout_started { tier: "base", period, from }` — when the
- *    primary CTA is tapped (mirrors `CheckoutButton`).
+ *  - `userTier === "free"` → Variant A (Free → Base). Existing content,
+ *    refined copy per §1 of the decision.
+ *  - `userTier === "base"` → Variant B (Base → Pro). New feature set;
+ *    primary CTA starts a `tier: "pro"` checkout session. Renewal note
+ *    is the legal-safe neutral string — the "You keep Base if you
+ *    downgrade" line is FALSE per
+ *    `docs/decisions/2026-04-21-pro-downgrade-path.md` and must not
+ *    reappear.
+ *
+ * Pro users should never see this dialog — callers must guard at the
+ * open-site. If a Pro user somehow reaches this with `userTier === "pro"`
+ * the component renders nothing.
+ *
+ * Edge case (§3): a Free user who reaches a Pro-gated trigger surface
+ * (`voice_log` / `photo_log`) still sees Variant A, with an appended
+ * note explaining that Voice/Photo require Pro and Base unlocks the
+ * rest. The user must subscribe to Base before Pro is relevant.
+ *
+ * Frequency cap (§3): one dialog open per session (sessionStorage key
+ * `suppr-upsell-dialog-shown-v1`). Explicit intent taps — settings
+ * upgrade row, in-surface CTA — bypass the cap via the
+ * `bypassSessionCap` prop. The cap does not apply in SSR.
+ *
+ * Analytics (§5): three new events fire alongside the existing
+ * `paywall_viewed` / `paywall_dismissed` / `checkout_started` trio so
+ * the legacy funnels stay intact:
+ *   - `upsell_variant_shown`     (alongside `paywall_viewed`)
+ *   - `upsell_variant_converted` (alongside `checkout_started`)
+ *   - `upsell_variant_dismissed` (alongside `paywall_dismissed`)
+ * All new emits are StrictMode-guarded via the same `viewedForOpenRef`
+ * pattern used for `paywall_viewed`.
+ *
+ * Prices are read from `PRICING_TIERS` at render time — never
+ * hardcoded. Web-only scope; mobile paywall is handled by
+ * `apps/mobile/app/paywall.tsx` and is explicitly out of scope for
+ * D12.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -44,6 +53,10 @@ import {
   ChefHat,
   Link as LinkIcon,
   Infinity as InfinityIcon,
+  Camera,
+  Mic,
+  Zap,
+  Mail,
   Sparkles,
   X as XIcon,
   type LucideIcon,
@@ -63,7 +76,8 @@ type Feature = {
   description: string;
 };
 
-const FEATURES: Feature[] = [
+/** Variant A — Free → Base. Icons pinned per D12 §1. */
+const VARIANT_A_FEATURES: Feature[] = [
   {
     icon: CalendarDays,
     title: "Meal plans matched to your macros",
@@ -91,58 +105,194 @@ const FEATURES: Feature[] = [
   },
 ];
 
+/** Variant B — Base → Pro. Icons pinned per D12 §1. */
+const VARIANT_B_FEATURES: Feature[] = [
+  {
+    icon: Camera,
+    title: "AI photo meal recognition",
+    description: "Snap a plate and get verified macros. Up to 100 logs per day.",
+  },
+  {
+    icon: Mic,
+    title: "Voice food logging",
+    description: 'Say "bowl of oats and a banana" and it\'s logged. Up to 100 per day.',
+  },
+  {
+    icon: Zap,
+    title: "Everything in Base",
+    description: "Plans, shopping list, cook mode, unlimited recipes — all included.",
+  },
+  {
+    icon: Mail,
+    title: "Priority email support",
+    description: "Real humans, faster response.",
+  },
+];
+
+/** sessionStorage key for the once-per-session frequency cap (§3). */
+const SESSION_CAP_KEY = "suppr-upsell-dialog-shown-v1";
+
+type Variant = "free_to_base" | "base_to_pro";
+type UpsellUserTier = "free" | "base";
+
 export interface UpgradePaywallDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Canonical `from` surface attribution for analytics. */
   from: PaywallViewedFrom;
+  /**
+   * Current user's tier — wired from the app-level `AppDataContext`
+   * at the call site in `src/app/App.tsx`. The dialog never fetches
+   * tier itself (per D12 blocking item §6.3 — no loading spinner on
+   * an intent-driven modal). Pro users must be guarded at the
+   * open-site; if `userTier === "pro"` the component renders nothing.
+   */
+  userTier: "free" | "base" | "pro";
+  /**
+   * When true, bypass the once-per-session frequency cap. Use for
+   * explicit intent taps (settings upgrade row, in-surface CTAs)
+   * where the user clearly wants to re-engage. Defaults to `false`.
+   */
+  bypassSessionCap?: boolean;
 }
 
-export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywallDialogProps) {
+/**
+ * Consult the sessionStorage cap. Returns `true` if the dialog has
+ * already been shown this session (and should be suppressed unless
+ * `bypassSessionCap` is true). SSR-safe — returns `false` when
+ * `window` is unavailable.
+ */
+function hasShownThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(SESSION_CAP_KEY) === "1";
+  } catch {
+    // sessionStorage can throw in private browsing modes; fail open
+    // (show the dialog) rather than lock the user out.
+    return false;
+  }
+}
+
+function markShownThisSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(SESSION_CAP_KEY, "1");
+  } catch {
+    // Swallow — the cap is a nice-to-have, not a correctness gate.
+  }
+}
+
+export function UpgradePaywallDialog({
+  open,
+  onOpenChange,
+  from,
+  userTier,
+  bypassSessionCap = false,
+}: UpgradePaywallDialogProps) {
   const [busy, setBusy] = useState(false);
-  // Period is monthly on this surface — the prototype's pitch is a
-  // simple "Continue with Base · $5/mo" CTA. Annual toggle stays on
-  // `/pricing` where the comparison table lives.
+  // Period is monthly on this surface — annual toggle lives on
+  // `/pricing`. Declared `as const` so the analytics payload types line up.
   const period: "monthly" = "monthly";
 
+  // --- Variant selection --------------------------------------------
+  const variant: Variant | null =
+    userTier === "free"
+      ? "free_to_base"
+      : userTier === "base"
+        ? "base_to_pro"
+        : null;
+
+  // Free users who land on a Pro-only trigger surface still get
+  // Variant A — Base is the necessary prerequisite — with a short
+  // note explaining why. Base users on the same surface get Variant
+  // B normally.
+  const isProGatedTrigger = from === "voice_log" || from === "photo_log";
+  const showProGatedNote = variant === "free_to_base" && isProGatedTrigger;
+
+  // --- Pricing (from SSOT, never hardcoded) -------------------------
   const baseTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Base"), []);
-  const priceLabel = baseTier?.price ?? "£3.99";
-  const periodLabel = baseTier?.period ?? "/month";
-  // Short form used in the CTA button: "£3.99/mo" (strip the leading slash).
-  const periodShort = periodLabel.replace(/^\//, "");
-  const ctaLabel = `Continue with Base · ${priceLabel}/${periodShort}`;
+  const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
 
-  // StrictMode double-fire guard on `paywall_viewed` — same pattern as
-  // `ai-paywall-dialog.tsx`.
+  const basePriceLabel = baseTier?.price ?? "£3.99";
+  const basePeriodLabel = baseTier?.period ?? "/month";
+  const basePeriodShort = basePeriodLabel.replace(/^\//, "");
+
+  const proPriceLabel = proTier?.price ?? "£7.99";
+  const proPeriodLabel = proTier?.period ?? "/month";
+  const proPeriodShort = proPeriodLabel.replace(/^\//, "");
+
+  // --- StrictMode double-fire guard (shared across new + legacy emits) ---
   const viewedForOpenRef = useRef(false);
-  // Suppress the double-fire when the user taps the explicit "Continue
-  // for free" button (which triggers close).
-  const dismissReasonRef = useRef<"continue_free" | "close_button" | null>(null);
+  // Suppress double-fire when the secondary CTA triggers close.
+  const dismissReasonRef = useRef<
+    "secondary_cta" | "close_button" | "backdrop" | null
+  >(null);
 
+  // --- Session cap: mark shown on first open --------------------------
+  // We record the session-shown marker only once per mount-open, AFTER
+  // the viewed-guard has decided to actually render. Pro users (no
+  // variant) do not mark the cap.
   useEffect(() => {
     if (!open) {
       viewedForOpenRef.current = false;
       return;
     }
     if (viewedForOpenRef.current) return;
+    if (!variant) return; // Pro users — do not emit
     viewedForOpenRef.current = true;
+
+    // Legacy `paywall_viewed` — unchanged payload shape, preserves the
+    // pre-D12 funnel. `tier` reflects the TARGET tier of the upsell,
+    // matching prior usage (Base for Variant A, Pro for Variant B).
+    const targetTier: "base" | "pro" = variant === "free_to_base" ? "base" : "pro";
     track(AnalyticsEvents.paywall_viewed, {
       from: from,
-      tier: "base",
+      tier: targetTier,
       surface: "upgrade_dialog",
       platform: "web",
     });
-  }, [open, from]);
+
+    // New `upsell_variant_shown` — fires alongside, per D12 §5.
+    track(AnalyticsEvents.upsell_variant_shown, {
+      variant,
+      from,
+      surface: "upgrade_dialog",
+      platform: "web",
+      user_tier: userTier as UpsellUserTier,
+    });
+
+    // Mark the session cap so a subsequent automatic open this session
+    // can no-op. Manual intent taps pass `bypassSessionCap` at the
+    // render site.
+    markShownThisSession();
+  }, [open, from, variant, userTier]);
 
   const emitDismiss = useCallback(
-    (reason: "continue_free" | "close_button" | "backdrop") => {
-      track(AnalyticsEvents.paywall_dismissed, { from, reason });
+    (reason: "secondary_cta" | "close_button" | "backdrop") => {
+      if (!variant) return;
+      // Map new `secondary_cta` reason back onto the legacy
+      // `continue_free` string so pre-D12 dashboards keep working for
+      // Variant A. For Variant B the equivalent secondary ("Stay on
+      // Base") is a new dismissal path — we reuse `continue_free` on
+      // the legacy event as the closest existing slot, but the new
+      // event carries the accurate `secondary_cta` reason.
+      const legacyReason: "continue_free" | "close_button" | "backdrop" =
+        reason === "secondary_cta" ? "continue_free" : reason;
+      track(AnalyticsEvents.paywall_dismissed, { from, reason: legacyReason });
+      track(AnalyticsEvents.upsell_variant_dismissed, {
+        variant,
+        from,
+        reason,
+        surface: "upgrade_dialog",
+        platform: "web",
+        user_tier: userTier as UpsellUserTier,
+      });
     },
-    [from],
+    [from, variant, userTier],
   );
 
   const handleClose = useCallback(
-    (reason: "continue_free" | "close_button" | "backdrop") => {
+    (reason: "secondary_cta" | "close_button" | "backdrop") => {
       dismissReasonRef.current = reason === "backdrop" ? null : reason;
       emitDismiss(reason);
       onOpenChange(false);
@@ -155,7 +305,6 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Avoid double-fire when the explicit buttons already handled it.
         if (dismissReasonRef.current != null) {
           dismissReasonRef.current = null;
           return;
@@ -169,8 +318,9 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
   }, [open, emitDismiss, onOpenChange]);
 
   const handleStartCheckout = useCallback(async () => {
-    if (busy) return;
+    if (busy || !variant) return;
     setBusy(true);
+    const targetTier: "base" | "pro" = variant === "free_to_base" ? "base" : "pro";
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -187,7 +337,7 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier: "base", period }),
+        body: JSON.stringify({ tier: targetTier, period }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -199,16 +349,69 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
         alert(data.message ?? data.error ?? "Checkout is unavailable right now. Please try again.");
         return;
       }
-      track(AnalyticsEvents.checkout_started, { tier: "base", period, from });
+      // Legacy `checkout_started` — unchanged shape.
+      track(AnalyticsEvents.checkout_started, { tier: targetTier, period, from });
+      // New `upsell_variant_converted` — fires alongside per D12 §5.
+      track(AnalyticsEvents.upsell_variant_converted, {
+        variant,
+        from,
+        target_tier: targetTier,
+        period,
+        surface: "upgrade_dialog",
+        platform: "web",
+        user_tier: userTier as UpsellUserTier,
+      });
       window.location.href = data.url;
     } catch {
       alert("Could not start checkout. Please try again.");
     } finally {
       setBusy(false);
     }
-  }, [busy, from]);
+  }, [busy, from, variant, userTier, period]);
 
+  // Pro users, or anyone hitting the session cap without explicit
+  // bypass, render nothing. We do the cap check at render time (not in
+  // the open-effect) so the dialog never momentarily flashes before
+  // closing itself.
   if (!open) return null;
+  if (!variant) return null; // Pro — guard
+  if (!bypassSessionCap && hasShownThisSession() && !viewedForOpenRef.current) {
+    // Only suppress if this is a fresh open we haven't already marked.
+    return null;
+  }
+
+  // --- Copy per variant ---------------------------------------------
+  const isA = variant === "free_to_base";
+
+  const heroPill = isA ? "Suppr Base" : "Suppr Pro";
+  const heroHeadline = isA
+    ? "The full meal planning loop"
+    : "Log faster. Let the AI do the work.";
+  const heroSubtitle = isA
+    ? "Plans that hit your macros. Shopping list from your plan. Cook mode with timers."
+    : "Snap a photo or say what you ate. Pro handles the rest — no manual entry.";
+  const features = isA ? VARIANT_A_FEATURES : VARIANT_B_FEATURES;
+  const priceLabel = isA ? basePriceLabel : proPriceLabel;
+  const periodLabel = isA ? basePeriodLabel : proPeriodLabel;
+  const periodShort = isA ? basePeriodShort : proPeriodShort;
+  const cardLabel = isA ? "Base" : "Pro";
+  const cardDescriptor = isA
+    ? "The full meal planning loop"
+    : "Everything in Base, plus AI logging";
+  // §1: Variant A carries the "Most popular" badge; Variant B does not.
+  const showMostPopular = isA;
+
+  const renewalNote = isA
+    ? "Cancel anytime. Annual plan saves 37%."
+    : // Variant B is LOCKED to this neutral string — the
+      // "You keep Base if you downgrade" line is factually wrong
+      // per docs/decisions/2026-04-21-pro-downgrade-path.md.
+      "Cancel anytime. Annual plan saves 37%. Manage your plan at any time.";
+
+  const primaryCtaLabel = isA
+    ? `Continue with Base · ${priceLabel}/${periodShort}`
+    : `Upgrade to Pro · ${priceLabel}/${periodShort}`;
+  const secondaryCtaLabel = isA ? "Continue for free" : "Stay on Base";
 
   return (
     <div
@@ -239,24 +442,29 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
           </button>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold tracking-[0.05em] uppercase mb-3">
             <Sparkles size={11} />
-            Suppr Base
+            {heroPill}
           </span>
           <h2
             id="upgrade-paywall-title"
             className="text-[24px] md:text-[26px] font-bold -tracking-[0.02em] leading-tight mb-2"
           >
-            The full meal planning loop
+            {heroHeadline}
           </h2>
-          <p className="text-[13px] opacity-85 leading-relaxed">
-            Plans that hit your macros, one-tap shopping lists, cook mode with timers.
-          </p>
+          <p className="text-[13px] opacity-85 leading-relaxed">{heroSubtitle}</p>
+          {showProGatedNote ? (
+            // §3 edge case — Free user reaches voice_log / photo_log.
+            <p className="mt-2 text-[12px] opacity-95 leading-relaxed font-medium">
+              Voice and photo logging require Pro. Base unlocks everything
+              else.
+            </p>
+          ) : null}
         </div>
 
         {/* Scrollable feature + price body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {/* Features */}
           <ul>
-            {FEATURES.map((f) => (
+            {features.map((f) => (
               <li
                 key={f.title}
                 className="flex gap-3.5 py-3 border-b border-border last:border-b-0"
@@ -287,13 +495,17 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
           <div className="mt-5 rounded-2xl border-2 border-primary bg-card p-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[15px] font-bold text-foreground">Base</span>
-                <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wide">
-                  Most popular
+                <span className="text-[15px] font-bold text-foreground">
+                  {cardLabel}
                 </span>
+                {showMostPopular ? (
+                  <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wide">
+                    Most popular
+                  </span>
+                ) : null}
               </div>
               <p className="text-[12px] text-muted-foreground leading-snug">
-                The full meal planning loop
+                {cardDescriptor}
               </p>
             </div>
             <div className="text-right shrink-0">
@@ -305,22 +517,31 @@ export function UpgradePaywallDialog({ open, onOpenChange, from }: UpgradePaywal
           </div>
         </div>
 
-        {/* Footer CTAs */}
-        <div className="border-t border-border px-5 pt-4 pb-5 flex flex-col gap-1.5">
+        {/* Footer — renewal note pinned above CTAs so it is visible
+            without scrolling on the 320×600 reference viewport per §4
+            item 4. The scrollable body above absorbs overflow; the
+            footer stays fixed. */}
+        <div className="border-t border-border px-5 pt-3 pb-5 flex flex-col gap-1.5">
+          <p
+            data-testid="upsell-renewal-note"
+            className="text-[11px] text-muted-foreground text-center leading-snug mb-1"
+          >
+            {renewalNote}
+          </p>
           <button
             type="button"
             onClick={handleStartCheckout}
             disabled={busy}
             className="w-full py-3 rounded-xl bg-primary text-white text-[14px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
           >
-            {busy ? "Opening checkout..." : ctaLabel}
+            {busy ? "Opening checkout..." : primaryCtaLabel}
           </button>
           <button
             type="button"
-            onClick={() => handleClose("continue_free")}
+            onClick={() => handleClose("secondary_cta")}
             className="w-full py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Continue for free
+            {secondaryCtaLabel}
           </button>
         </div>
       </div>

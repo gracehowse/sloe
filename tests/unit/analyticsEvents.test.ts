@@ -100,6 +100,21 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.ai_photo_log_committed).toBe("ai_photo_log_committed");
   });
 
+  it("registers the D12 dynamic-upsell events with canonical snake_case values", () => {
+    // D12 (2026-04-21): three new events fire from the web
+    // `UpgradePaywallDialog` alongside the existing paywall_viewed /
+    // paywall_dismissed / checkout_started trio. Dashboards use these
+    // exact strings — a rename here would silently break the
+    // variant-sliced funnel.
+    expect(AnalyticsEvents.upsell_variant_shown).toBe("upsell_variant_shown");
+    expect(AnalyticsEvents.upsell_variant_converted).toBe(
+      "upsell_variant_converted",
+    );
+    expect(AnalyticsEvents.upsell_variant_dismissed).toBe(
+      "upsell_variant_dismissed",
+    );
+  });
+
   it("uses snake_case, lowercase values everywhere (naming-style gate)", () => {
     for (const [key, value] of Object.entries(AnalyticsEvents)) {
       expect(value).toBe(key);

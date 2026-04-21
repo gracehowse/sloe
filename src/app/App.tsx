@@ -496,10 +496,13 @@ export default function App() {
           that starts Stripe checkout inline. Rendered at the root so
           any surface can open it via `openUpgradeDialog(from)` (added
           below) without remounting the dialog tree. */}
-      {upgradePaywallFrom ? (
+      {/* Pro users are guarded out — the dialog pitches the NEXT tier
+          up; a Pro subscriber has no next tier. D12 §6.2. */}
+      {upgradePaywallFrom && userTier !== "pro" ? (
         <UpgradePaywallDialog
           open={upgradePaywallFrom !== null}
           from={upgradePaywallFrom}
+          userTier={userTier}
           onOpenChange={(next) => {
             if (!next) setUpgradePaywallFrom(null);
           }}

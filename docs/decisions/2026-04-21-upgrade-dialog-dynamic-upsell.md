@@ -2,6 +2,7 @@
 
 **Date:** 2026-04-21
 **Status:** Accepted — pending legal-reviewer sign-off on items listed in §4
+**Implementation:** shipped 2026-04-21 (web-only) — `src/app/components/suppr/upgrade-paywall-dialog.tsx`, `src/app/App.tsx` call-site wired with `userTier`, three new events registered in `src/lib/analytics/events.ts`, tests in `tests/unit/upgradePaywallDialog.test.tsx` + `tests/unit/analyticsEvents.test.ts`. Variant B still blocks on legal-reviewer sign-off of §4 items 2–4 before it rolls to 100%.
 **Specialist:** monetisation-architect
 **Related:**
 - `docs/decisions/2026-04-19-pricing-v1.md`

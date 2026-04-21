@@ -42,12 +42,28 @@ vi.mock("@supabase/supabase-js", () => ({
 
 import { UpgradePaywallDialog } from "../../src/app/components/suppr/upgrade-paywall-dialog";
 
-function Harness({ initialOpen = true }: { initialOpen?: boolean }) {
+function Harness({
+  initialOpen = true,
+  userTier = "free",
+  from = "meal_planner",
+  bypassSessionCap = true,
+}: {
+  initialOpen?: boolean;
+  userTier?: "free" | "base" | "pro";
+  from?: React.ComponentProps<typeof UpgradePaywallDialog>["from"];
+  bypassSessionCap?: boolean;
+}) {
   const [open, setOpen] = React.useState(initialOpen);
   return (
     <>
       <button onClick={() => setOpen(true)}>Open</button>
-      <UpgradePaywallDialog open={open} onOpenChange={setOpen} from="meal_planner" />
+      <UpgradePaywallDialog
+        open={open}
+        onOpenChange={setOpen}
+        from={from}
+        userTier={userTier}
+        bypassSessionCap={bypassSessionCap}
+      />
     </>
   );
 }
@@ -55,6 +71,11 @@ function Harness({ initialOpen = true }: { initialOpen?: boolean }) {
 describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
   beforeEach(() => {
     trackCalls.length = 0;
+    try {
+      window.sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
   });
 
   it("renders the hero pitch, five feature rows, and a 'Most popular' Base pricing card", () => {
@@ -66,7 +87,7 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
       screen.getByRole("heading", { name: /The full meal planning loop/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Plans that hit your macros, one-tap shopping lists/i),
+      screen.getByText(/Plans that hit your macros\. Shopping list from your plan/i),
     ).toBeInTheDocument();
 
     // The five Base-tier feature rows, verbatim from the prototype.
@@ -154,5 +175,123 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     await user.click(screen.getByRole("button", { name: /^Open$/i }));
 
     expect(trackCalls.filter((c) => c.event === "paywall_viewed")).toHaveLength(2);
+  });
+
+  // --------------------------------------------------------------------
+  // D12 (2026-04-21) — dynamic tier-aware upsell additions.
+  // --------------------------------------------------------------------
+
+  it("fires upsell_variant_shown alongside paywall_viewed for Variant A (free)", () => {
+    render(<Harness userTier="free" />);
+    const shown = trackCalls.filter((c) => c.event === "upsell_variant_shown");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].payload).toEqual({
+      variant: "free_to_base",
+      from: "meal_planner",
+      surface: "upgrade_dialog",
+      platform: "web",
+      user_tier: "free",
+    });
+    // Legacy event still fires alongside.
+    expect(trackCalls.filter((c) => c.event === "paywall_viewed")).toHaveLength(1);
+  });
+
+  it("renders Variant B (Base → Pro) copy, CTAs, and locked renewal note for base users", () => {
+    render(<Harness userTier="base" from="settings" />);
+    expect(
+      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("AI photo meal recognition")).toBeInTheDocument();
+    expect(screen.getByText("Voice food logging")).toBeInTheDocument();
+    expect(screen.getByText("Everything in Base")).toBeInTheDocument();
+    expect(screen.getByText("Priority email support")).toBeInTheDocument();
+    // Base/pro should be labelled correctly, not "Most popular".
+    expect(screen.queryByText("Most popular")).not.toBeInTheDocument();
+    // Primary CTA is the Pro upgrade, not Base.
+    expect(
+      screen.getByRole("button", { name: /Upgrade to Pro · /i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Stay on Base$/i })).toBeInTheDocument();
+    // Locked renewal note — the "You keep Base if you downgrade" line
+    // is FALSE per docs/decisions/2026-04-21-pro-downgrade-path.md and
+    // must not appear.
+    const renewal = screen.getByTestId("upsell-renewal-note");
+    expect(renewal).toHaveTextContent(
+      "Cancel anytime. Annual plan saves 37%. Manage your plan at any time.",
+    );
+    expect(renewal).not.toHaveTextContent(/keep base/i);
+  });
+
+  it("fires upsell_variant_shown with variant=base_to_pro for base users", () => {
+    render(<Harness userTier="base" from="voice_log" />);
+    const shown = trackCalls.filter((c) => c.event === "upsell_variant_shown");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].payload).toEqual({
+      variant: "base_to_pro",
+      from: "voice_log",
+      surface: "upgrade_dialog",
+      platform: "web",
+      user_tier: "base",
+    });
+  });
+
+  it("Variant B 'Stay on Base' fires upsell_variant_dismissed with reason=secondary_cta", async () => {
+    const user = userEvent.setup();
+    render(<Harness userTier="base" from="settings" />);
+    await user.click(screen.getByRole("button", { name: /^Stay on Base$/i }));
+
+    const dismissed = trackCalls.filter(
+      (c) => c.event === "upsell_variant_dismissed",
+    );
+    expect(dismissed).toHaveLength(1);
+    expect(dismissed[0].payload).toEqual({
+      variant: "base_to_pro",
+      from: "settings",
+      reason: "secondary_cta",
+      surface: "upgrade_dialog",
+      platform: "web",
+      user_tier: "base",
+    });
+    // Legacy paywall_dismissed still fires alongside (reason mapped to
+    // `continue_free` for dashboard continuity).
+    const legacy = trackCalls.filter((c) => c.event === "paywall_dismissed");
+    expect(legacy).toHaveLength(1);
+    expect(legacy[0].payload).toEqual({ from: "settings", reason: "continue_free" });
+  });
+
+  it("Pro users render nothing — the dialog has no next tier to pitch", () => {
+    render(<Harness userTier="pro" />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // And no analytics emits at all.
+    expect(trackCalls).toHaveLength(0);
+  });
+
+  it("Free user on a Pro-gated trigger surface sees Variant A with the pro-gated note", () => {
+    render(<Harness userTier="free" from="voice_log" />);
+    // Still Variant A — Base must be pitched before Pro.
+    expect(
+      screen.getByRole("heading", { name: /The full meal planning loop/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Voice and photo logging require Pro\. Base unlocks everything else\./i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("session cap suppresses a second auto-open but bypassSessionCap shows it", () => {
+    // First open marks the session.
+    const { unmount } = render(<Harness userTier="free" bypassSessionCap={false} />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    unmount();
+
+    // Second open without bypass — suppressed.
+    const second = render(<Harness userTier="free" bypassSessionCap={false} />);
+    expect(second.container.querySelector('[role="dialog"]')).toBeNull();
+    second.unmount();
+
+    // Third open WITH bypass — shown (explicit intent tap).
+    render(<Harness userTier="free" bypassSessionCap={true} />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

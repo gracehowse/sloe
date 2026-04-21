@@ -341,6 +341,35 @@ export const AnalyticsEvents = {
    * Payload: `{ method: "email" | "magic_link" | "apple" }`.
    * `posthog.identify()` is called at the same callsite. */
   user_signed_in: "user_signed_in",
+  /** Upgrade dialog (web `UpgradePaywallDialog`) rendered a tier-specific
+   *  variant. Fires alongside `paywall_viewed` — does not replace it.
+   *  Added 2026-04-21 per D12 dynamic-upsell decision
+   *  (`docs/decisions/2026-04-21-upgrade-dialog-dynamic-upsell.md` §5).
+   *  StrictMode-guarded via `viewedForOpenRef`.
+   *  Payload:
+   *    { variant: "free_to_base" | "base_to_pro",
+   *      from: PaywallViewedFrom,
+   *      surface: "upgrade_dialog",
+   *      platform: "web",
+   *      user_tier: "free" | "base" } */
+  upsell_variant_shown: "upsell_variant_shown",
+  /** User tapped the primary CTA on the dynamic upgrade dialog and
+   *  checkout navigation began. Fires alongside `checkout_started`.
+   *  Added 2026-04-21 per D12.
+   *  Payload:
+   *    { variant, from, target_tier: "base" | "pro",
+   *      period: "monthly" | "annual", surface: "upgrade_dialog",
+   *      platform: "web", user_tier: "free" | "base" } */
+  upsell_variant_converted: "upsell_variant_converted",
+  /** User dismissed the dynamic upgrade dialog via secondary CTA,
+   *  close button, or backdrop/escape. Fires alongside
+   *  `paywall_dismissed`. Added 2026-04-21 per D12.
+   *  Payload:
+   *    { variant, from,
+   *      reason: "secondary_cta" | "close_button" | "backdrop",
+   *      surface: "upgrade_dialog", platform: "web",
+   *      user_tier: "free" | "base" } */
+  upsell_variant_dismissed: "upsell_variant_dismissed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
