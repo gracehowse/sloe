@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
@@ -47,15 +47,19 @@ import {
   weekKeyFor,
   type UsualMealRecapInsight,
 } from "../../lib/nutrition/weeklyRecap.ts";
-import { listSavedMeals, type SavedMeal } from "../../lib/nutrition/savedMeals.ts";
+import { listSavedMeals, type SavedMeal, type SavedMealItem } from "../../lib/nutrition/savedMeals.ts";
 import { normaliseRecipeTitle } from "../../lib/nutrition/usualMealHint.ts";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   serializePendingUsualMealSave,
 } from "../../lib/nutrition/pendingUsualMealSave.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
-import { WeeklyRecapCard } from "./suppr/weekly-recap-card.tsx";
+import { Digest } from "./suppr/digest.tsx";
+import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
+import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
+import {
+  formatMaintenanceRecapLine,
+} from "../../lib/nutrition/resolveMaintenance.ts";
+import { selectMostFrequentSlotSeed } from "../../lib/nutrition/usualMealHint.ts";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
 // HouseholdBar — 2026-04-20 Claude Design prototype port. Rendered at
 // the top of Progress (mirrors `screens-mobile.jsx` L580) when the
@@ -661,14 +665,8 @@ function ProgressDashboardContent() {
     });
   }, [recapVisible, hostSavedMealsForRecap, nutritionByDay, weekStartDay]);
 
-  // Fire the `weekly_recap_shown` event once per visible week.
-  const recapShownRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!recapVisible) return;
-    if (recapShownRef.current === recap.weekKey) return;
-    recapShownRef.current = recap.weekKey;
-    track(AnalyticsEvents.weekly_recap_shown, { weekKey: recap.weekKey });
-  }, [recapVisible, recap.weekKey]);
+  // `weekly_recap_shown` fires inside <Digest/> on mount; the host no
+  // longer tracks it (single source of truth).
 
   const dismissRecap = useCallback(async () => {
     setRecapLastSeenWeekKey(currentWeekKey);
@@ -734,13 +732,13 @@ function ProgressDashboardContent() {
             <Icons.calendar className="h-4 w-4 text-muted-foreground" />
           </span>
         </div>
-        <div className="flex gap-1.5 mb-4 opacity-60">
+        <div className="flex gap-1.5 mb-4 p-1 rounded-[10px] bg-muted opacity-60">
           {(["7d", "30d", "90d", "all"] as const).map((k) => (
             <span
               key={k}
               className={[
-                "flex-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold text-center",
-                k === range ? "bg-card border-border text-foreground" : "border-border text-muted-foreground",
+                "flex-1 rounded-[7px] px-3 py-1.5 text-[12px] font-semibold text-center",
+                k === range ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
               ].join(" ")}
             >
               {k === "all" ? "All" : k}
@@ -808,17 +806,18 @@ function ProgressDashboardContent() {
           + web Plan). Renders nothing for solo users. */}
       <HouseholdBar />
 
-      {/* RANGE-PICKER PILLS — [7d, 30d, 90d, All] chips. Active chip
-          is filled in the primary colour, inactive chips are bordered.
-          Tapping updates the selected range and the header overline;
-          it already fed `rangeDays` (used by the weight + steps chart
-          windows below). Deeper card-level prototype alignment
-          (sparkline refactor, per-card bar palette) is deferred. */}
+      {/* RANGE-PICKER SEGMENTED CONTROL — [7d, 30d, 90d, All].
+          2026-04-21 D5 port of prototype `screens-mobile.jsx:581-591`.
+          Single muted container with an inset `bg-card` chip + subtle
+          shadow marking the active range (replaces the earlier
+          accent-filled outlined pills). Tapping updates the selected
+          range and the header overline; it feeds `rangeDays` used by
+          the weight + steps chart windows below. */}
       <div
         role="tablist"
         aria-label="Progress time range"
         data-testid="progress-range-picker"
-        className="flex gap-1.5 mb-4"
+        className="flex gap-1.5 mb-4 p-1 rounded-[10px] bg-muted"
       >
         {(["7d", "30d", "90d", "all"] as const).map((k) => {
           const active = range === k;
@@ -833,10 +832,10 @@ function ProgressDashboardContent() {
               data-testid={`progress-range-pill-${k}`}
               onClick={() => setRange(k)}
               className={[
-                "flex-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                "flex-1 rounded-[7px] px-3 py-1.5 text-[12px] font-semibold transition-colors",
                 active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-foreground border-border hover:bg-muted/40",
+                  ? "bg-card text-foreground shadow-sm"
+                  : "bg-transparent text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               {label}
@@ -914,42 +913,102 @@ function ProgressDashboardContent() {
         />
       </div>
 
-      {/* WEEKLY RECAP CARD (Batch 4.11) — surfaces at end of week and stays
-          visible for the first few days of the new week until dismissed. */}
-      {recapVisible ? (
-        <WeeklyRecapCard
-          recap={recap}
-          onDismiss={dismissRecap}
-          usualMealInsight={usualMealInsight}
-          maintenance={recapMaintenance}
-          // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to the
-          // `SaveMealDialog` on Today, pre-seeded with the user's most-
-          // frequent items from their history. `byDay` lets the card
-          // run the shared `selectMostFrequentSlotSeed` helper; when it
-          // returns a seed, `onOpenSaveCombo` stashes `{slot, items}` in
-          // sessionStorage and routes to Today — `NutritionTracker`
-          // hydrates on mount and opens the dialog. When the helper
-          // returns null (rare — user logged ≥5 days but items don't
-          // cluster), we fall back to the legacy route-to-Today path.
-          byDay={nutritionByDay}
-          onOpenSaveCombo={(slot, items) => {
-            const serialized = serializePendingUsualMealSave(slot, items);
-            if (serialized && typeof window !== "undefined") {
-              try {
-                window.sessionStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized);
-              } catch {
-                /* sessionStorage can throw in private modes — ignore. */
-              }
+      {/* WEEK DIGEST (D3) — replaces the legacy WeeklyRecapCard. Host
+          computes headline + flattens usual-meal insight into the
+          shared `DigestProps` shape so web + mobile cannot drift. See
+          `docs/design/digest-primitive.md`. */}
+      {recapVisible ? (() => {
+        const digestSeed = (() => {
+          if (usualMealInsight?.kind !== "prompt") return null;
+          const seed = selectMostFrequentSlotSeed(nutritionByDay, usualMealInsight.suggestedSlot);
+          if (!seed || seed.seedItems.length < 2) return null;
+          return seed;
+        })();
+        const digestSeedItems = digestSeed
+          ? digestSeed.seedItems.map((it) => {
+              const row: Omit<SavedMealItem, "id" | "position"> = {
+                recipeTitle: it.recipeTitle,
+                calories: it.calories,
+                protein: it.protein,
+                carbs: it.carbs,
+                fat: it.fat,
+                portionMultiplier: 1,
+              };
+              if (it.fiber != null) row.fiber = it.fiber;
+              if (it.source) row.source = it.source;
+              return row;
+            })
+          : undefined;
+        const usualMeal: import("./suppr/digest").DigestUsualMeal | null =
+          usualMealInsight?.kind === "celebration"
+            ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
+            : usualMealInsight?.kind === "prompt"
+              ? {
+                  kind: "prompt",
+                  suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
+                  ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
+                  ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
+                }
+              : null;
+        const closestToTarget = recap.bestDay
+          ? {
+              label: recap.bestDay.label,
+              protein: recap.bestDay.protein,
+              calories: recap.bestDay.calories,
             }
-            router.replace("/home?view=today");
-          }}
-          onStartUsualMealSave={() => {
-            // Fallback path — helper returned null, so just route to Today;
-            // the slot-header save row is still reachable manually.
-            router.replace("/home?view=today");
-          }}
-        />
-      ) : null}
+          : null;
+        const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
+        const mealsLogged = Object.values(nutritionByDay).reduce(
+          (total, day) => total + (Array.isArray(day) ? day.length : 0),
+          0,
+        );
+        const headline = resolveDigestHeadline({
+          weightDeltaKg: recap.weightDeltaKg,
+          closestToTargetLabel: closestToTarget?.label ?? null,
+          streakDays: recap.streakLength,
+          daysLogged: recap.daysLogged,
+        });
+        const digestState: "success" | "empty" | "partial" =
+          recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
+        return (
+          <Digest
+            weekKey={recap.weekKey}
+            weekLabel={recap.weekLabel}
+            daysLogged={recap.daysLogged}
+            mealsLogged={mealsLogged}
+            headline={headline}
+            stats={{
+              streakDays: recap.streakLength,
+              streakFreezesAvailable: recap.freezesAvailable,
+              avgCalories: recap.avgCalories,
+              avgProtein: recap.avgProtein,
+              proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
+              weightDeltaKg: recap.weightDeltaKg,
+              weightFirstKg: recap.weightFirstKg,
+              weightLastKg: recap.weightLastKg,
+            }}
+            narrative={{ closestToTarget, maintenanceLine, usualMeal }}
+            shareText={formatRecapForShare(recap)}
+            state={digestState}
+            onShare={() => { /* Digest handles share sheet + analytics */ }}
+            onDismiss={dismissRecap}
+            onOpenSaveCombo={(slot, items) => {
+              const serialized = serializePendingUsualMealSave(slot, items);
+              if (serialized && typeof window !== "undefined") {
+                try {
+                  window.sessionStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized);
+                } catch {
+                  /* sessionStorage can throw in private modes — ignore. */
+                }
+              }
+              router.replace("/home?view=today");
+            }}
+            onStartUsualMealSave={() => {
+              router.replace("/home?view=today");
+            }}
+          />
+        );
+      })() : null}
 
       {/* 2x2 STAT GRID */}
       <div className="grid grid-cols-2 gap-2 mb-6">

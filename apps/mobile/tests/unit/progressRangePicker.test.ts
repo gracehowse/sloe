@@ -48,9 +48,10 @@ describe("Progress prototype port — header + range picker", () => {
   });
 
   it("mobile header carries a calendar icon button", () => {
-    // Ionicons `calendar-outline` matches the prototype's
-    // `calendar-days` lucide glyph in the shared design system.
-    expect(mobileSrc).toContain('name="calendar-outline"');
+    // `CalendarDays` (lucide-react-native) — prototype parity with the
+    // web `Icons.calendar` alias. Replaced the earlier Ionicons
+    // `calendar-outline` during the icon-exactness sweep.
+    expect(mobileSrc).toMatch(/<CalendarDays\b/);
     expect(mobileSrc).toContain('testID="progress-calendar-button"');
   });
 
@@ -134,6 +135,28 @@ describe("Progress prototype port — header + range picker", () => {
     // Stat-tile placeholders mirror mobile's four testIDs.
     expect(webSrc).toContain("progress-skeleton-tile-");
     expect(webSrc).toMatch(/\[0, 1, 2, 3\]\.map/);
+  });
+
+  it("mobile range picker is a segmented control (muted container, inset chip)", () => {
+    // 2026-04-21 D5 port — prototype `screens-mobile.jsx:581-591`.
+    // Container wraps the pills in a muted bg + padding + 10px radius.
+    expect(mobileSrc).toMatch(/testID="progress-range-picker"[\s\S]*?backgroundColor: t\.border[\s\S]*?borderRadius: 10[\s\S]*?padding: 4/);
+    // Active chip uses `t.elevated` (card) not the accent; individual
+    // pill rows no longer set a `borderWidth`/`borderColor`.
+    expect(mobileSrc).toMatch(/active \? t\.elevated : "transparent"/);
+    expect(mobileSrc).not.toMatch(/borderColor: active \? t\.accent : t\.border/);
+    // Subtle shadow marks the active chip (prototype's `0 1px 2px rgba(0,0,0,0.1)`).
+    expect(mobileSrc).toMatch(/shadowOpacity: active \? 0\.1 : 0/);
+  });
+
+  it("web range picker is a segmented control (muted container, inset chip)", () => {
+    // 2026-04-21 D5 — mirrors mobile. `bg-muted` wraps the pills with
+    // `p-1` + `rounded-[10px]`, and the active chip swaps to
+    // `bg-card text-foreground shadow-sm` (no primary fill).
+    expect(webSrc).toMatch(/data-testid="progress-range-picker"[\s\S]*?bg-muted/);
+    expect(webSrc).toMatch(/p-1 rounded-\[10px\] bg-muted/);
+    expect(webSrc).toMatch(/"bg-card text-foreground shadow-sm"/);
+    expect(webSrc).not.toMatch(/bg-primary text-primary-foreground border-primary/);
   });
 
   it("web rangeDays still maps correctly for the new 4-pill layout", () => {

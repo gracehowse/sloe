@@ -1313,6 +1313,116 @@ async function syncHealthDataImpl(userId: string): Promise<{
 const HEALTH_BODY_SYNC_MIN_MS = 4 * 60 * 1000;
 let lastThrottledHealthBodySyncAt = 0;
 
+/* ─────────────────────────────────────────────────────────────────────
+ * health_snapshots write path (D4, 2026-04-21)
+ *
+ * Append a row to `health_snapshots` after each successful HealthKit
+ * fetch so the web Apple Health card has something to read. Design:
+ * `docs/design/apple-health-card.md` §7.
+ *
+ * Cadence: at most once per 15 minutes per process. `explicit: true`
+ * bypasses the throttle for user-triggered refresh.
+ * ───────────────────────────────────────────────────────────────────── */
+const HEALTH_SNAPSHOT_MIN_MS = 15 * 60 * 1000;
+/** Exported for tests only. */
+export const __healthSnapshotThrottleMs = HEALTH_SNAPSHOT_MIN_MS;
+let lastHealthSnapshotWriteAt = 0;
+
+/** Test-only hook: reset the snapshot throttle so specs can rerun
+ *  without needing to mock Date. Production code must not call this. */
+export function __resetHealthSnapshotThrottleForTests(): void {
+  lastHealthSnapshotWriteAt = 0;
+}
+
+/** Stable-ish device id for this install. Uses `expo-constants`
+ *  `sessionId` (per-process) as a best-effort tag — we don't have a
+ *  persisted install-id today, and the `device_id` column is nullable,
+ *  so this is a nice-to-have, not load-bearing. Returns `null` if the
+ *  native module is unavailable (e.g. under vitest). */
+async function resolveHealthSnapshotDeviceId(): Promise<string | null> {
+  try {
+    const c = Constants as { sessionId?: string | null; installationId?: string | null };
+    return c.installationId ?? c.sessionId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeHealthSnapshot(
+  userId: string,
+  opts?: { explicit?: boolean },
+): Promise<{ wrote: boolean; throttled: boolean }> {
+  if (!userId) return { wrote: false, throttled: false };
+  const now = Date.now();
+  if (!opts?.explicit && now - lastHealthSnapshotWriteAt < HEALTH_SNAPSHOT_MIN_MS) {
+    return { wrote: false, throttled: true };
+  }
+
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("steps_by_day, activity_burn_by_day, basal_burn_by_day, weight_kg_by_day, weight_kg")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profile) return { wrote: false, throttled: false };
+
+    const todayKey = dateKey(new Date());
+    const steps_by_day = (profile.steps_by_day ?? {}) as Record<string, number>;
+    const activity_by_day = (profile.activity_burn_by_day ?? {}) as Record<string, number>;
+    const basal_by_day = (profile.basal_burn_by_day ?? {}) as Record<string, number>;
+    const weight_by_day = (profile.weight_kg_by_day ?? {}) as Record<string, number>;
+
+    const steps = typeof steps_by_day[todayKey] === "number" ? steps_by_day[todayKey] : null;
+    const active_energy_kcal =
+      typeof activity_by_day[todayKey] === "number" ? activity_by_day[todayKey] : null;
+    const resting_burn_kcal =
+      typeof basal_by_day[todayKey] === "number" ? basal_by_day[todayKey] : null;
+    // Weight: today's entry if present, otherwise the profile's latest
+    // cached weight (most recent weigh-in across any day).
+    const weight_kg =
+      typeof weight_by_day[todayKey] === "number"
+        ? weight_by_day[todayKey]
+        : typeof (profile as { weight_kg?: number | null }).weight_kg === "number"
+          ? (profile as { weight_kg: number }).weight_kg
+          : null;
+
+    // Never fabricate: if HealthKit hasn't reported anything for today
+    // AND we have no weight on file, don't append a useless row.
+    if (
+      steps == null &&
+      active_energy_kcal == null &&
+      resting_burn_kcal == null &&
+      weight_kg == null
+    ) {
+      return { wrote: false, throttled: false };
+    }
+
+    const device_id = await resolveHealthSnapshotDeviceId();
+
+    const { error } = await supabase.from("health_snapshots").insert({
+      user_id: userId,
+      steps,
+      active_energy_kcal,
+      resting_burn_kcal,
+      weight_kg,
+      source: "healthkit",
+      device_id,
+    } as never);
+
+    if (error) {
+      captureException(error);
+      return { wrote: false, throttled: false };
+    }
+
+    lastHealthSnapshotWriteAt = Date.now();
+    return { wrote: true, throttled: false };
+  } catch (err) {
+    captureException(err);
+    return { wrote: false, throttled: false };
+  }
+}
+
 /**
  * Steps, weight, body fat, and active energy: read HealthKit and upsert `profiles` (throttled app-wide).
  * Use on Today / Progress focus so the UI does not rely on a manual trip to Health settings.
@@ -1326,6 +1436,13 @@ export async function syncHealthDataThrottled(
   if (!opts?.bypassThrottle && now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS) return;
   await syncHealthData(userId);
   lastThrottledHealthBodySyncAt = Date.now();
+
+  // D4 (2026-04-21) — after a successful profile upsert, append a
+  // `health_snapshots` row so the web Apple Health card has fresh
+  // data. Independent 15-min throttle (vs the 4-min body throttle)
+  // so we don't flood the table on every screen focus. Explicit
+  // refreshes bypass both throttles.
+  await writeHealthSnapshot(userId, { explicit: opts?.bypassThrottle === true });
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

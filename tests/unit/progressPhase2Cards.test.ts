@@ -62,7 +62,7 @@ describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
     expect(hasDataIdx).toBeGreaterThan(calIdx);
   });
 
-  it("web mounts both new cards between the range picker and WEEKLY RECAP CARD", () => {
+  it("web mounts both new cards between the range picker and WEEK DIGEST", () => {
     expect(WEB).toMatch(/function WeightRangeCardWeb\(/);
     expect(WEB).toMatch(/function CaloriesRangeCardWeb\(/);
     expect(WEB).toMatch(/<WeightRangeCardWeb\b/);
@@ -72,10 +72,10 @@ describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
     expect(WEB).toMatch(/data-testid="progress-calories-range-header"/);
     const weightIdx = WEB.indexOf("<WeightRangeCardWeb");
     const calIdx = WEB.indexOf("<CaloriesRangeCardWeb");
-    const recapIdx = WEB.indexOf("WEEKLY RECAP CARD");
+    const digestIdx = WEB.indexOf("WEEK DIGEST");
     expect(weightIdx).toBeGreaterThan(-1);
     expect(calIdx).toBeGreaterThan(weightIdx);
-    expect(recapIdx).toBeGreaterThan(calIdx);
+    expect(digestIdx).toBeGreaterThan(calIdx);
   });
 
   it("both platforms preserve existing cards below the new ones", () => {
@@ -83,7 +83,8 @@ describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
     for (const src of [MOBILE, WEB]) {
       expect(src).toMatch(/Maintenance/);
       expect(src).toMatch(/Macro Adherence/);
-      expect(src).toMatch(/WeeklyRecapCard/);
+      // D3 — Digest replaced WeeklyRecapCard 2026-04-21.
+      expect(src).toMatch(/\bDigest\b/);
     }
     // Mobile keeps journey + daily calories bar.
     expect(MOBILE).toMatch(/Daily Calories/);

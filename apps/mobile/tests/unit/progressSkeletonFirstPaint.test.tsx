@@ -136,10 +136,10 @@ vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
 }));
 
-// --- `WeeklyRecapCard` — the mobile card transitively pulls in shim
-// paths; stub to an empty View so it can't affect the initial paint. ---
-vi.mock("@/components/WeeklyRecapCard", () => ({
-  WeeklyRecapCard: () => null,
+// --- `Digest` — the mobile digest primitive pulls in shared shim paths;
+// stub to an empty View so it can't affect the initial paint. ---
+vi.mock("@/components/Digest", () => ({
+  Digest: () => null,
 }));
 
 // Defer the import until mocks are installed.

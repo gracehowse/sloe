@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TextInput, Pressable, View, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import Svg, { Polyline, Circle } from "react-native-svg";
 
+import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleHealthCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -71,15 +72,16 @@ import {
   type UsualMealRecapInsight,
 } from "@/lib/weeklyRecap";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listSavedMeals, type SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
-import { normaliseRecipeTitle } from "../../../../src/lib/nutrition/usualMealHint";
+import { listSavedMeals, type SavedMeal, type SavedMealItem } from "../../../../src/lib/nutrition/savedMeals";
+import { normaliseRecipeTitle, selectMostFrequentSlotSeed } from "../../../../src/lib/nutrition/usualMealHint";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   serializePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
-import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
+import { formatRecapForShare } from "@/lib/weeklyRecap";
+import { formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
+import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
 
 /* ── Helpers ── */
@@ -651,13 +653,7 @@ export default function ProgressScreen() {
     });
   }, [recapVisible, hostSavedMealsForRecap, byDay, weekStartDay]);
 
-  const recapShownRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!recapVisible) return;
-    if (recapShownRef.current === recap.weekKey) return;
-    recapShownRef.current = recap.weekKey;
-    track(AnalyticsEvents.weekly_recap_shown, { weekKey: recap.weekKey });
-  }, [recapVisible, recap.weekKey]);
+  // `weekly_recap_shown` fires inside <Digest/> on mount; host no longer tracks it.
 
   const dismissRecap = useCallback(async () => {
     setRecapLastSeenWeekKey(currentWeekKey);
@@ -867,14 +863,24 @@ export default function ProgressScreen() {
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
       <HouseholdBar />
 
-      {/* Range-picker pills — [7d, 30d, 90d, All] chips. Selection
-          drives the overline text in the header. Downstream card
-          windows are on a follow-up pass; the deeper card restructure
-          was deferred for this scope. */}
+      {/* Range-picker segmented control — [7d, 30d, 90d, All]. Port
+          of prototype `screens-mobile.jsx:581-591` (2026-04-21 D5):
+          single muted container with an inset active chip that uses
+          `t.elevated` (card) + a subtle shadow. Replaces the earlier
+          individual outlined pills so the selector reads as a modern
+          segmented control on both platforms. Selection drives the
+          overline text in the header. */}
       <View
         testID="progress-range-picker"
         accessibilityRole="tablist"
-        style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}
+        style={{
+          flexDirection: "row",
+          gap: 6,
+          marginBottom: 14,
+          backgroundColor: t.border,
+          borderRadius: 10,
+          padding: 4,
+        }}
       >
         {(["7d", "30d", "90d", "all"] as const).map((k) => {
           const active = rangeKey === k;
@@ -890,15 +896,20 @@ export default function ProgressScreen() {
               style={({ pressed }) => [{
                 flex: 1,
                 paddingVertical: 8,
+                paddingHorizontal: 4,
                 alignItems: "center",
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: active ? t.accent : t.border,
-                backgroundColor: active ? t.accent : "transparent",
+                borderRadius: 7,
+                backgroundColor: active ? t.elevated : "transparent",
+                // Prototype: `0 1px 2px rgba(0,0,0,0.1)` on the active chip only.
+                shadowColor: "#000",
+                shadowOpacity: active ? 0.1 : 0,
+                shadowRadius: active ? 2 : 0,
+                shadowOffset: { width: 0, height: 1 },
+                elevation: active ? 1 : 0,
                 opacity: pressed ? 0.8 : 1,
               }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : t.sub }}>{label}</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: active ? t.text : t.sub }}>{label}</Text>
             </Pressable>
           );
         })}
@@ -943,42 +954,98 @@ export default function ProgressScreen() {
         </View>
       ) : (
         <>
-          {/* Weekly Recap Card (Batch 4.11; Ship M1 usual-meal line;
-              post-ship #4 deep-link to SaveMealSheet pre-seeded). */}
-          {recapVisible ? (
-            <WeeklyRecapCard
-              recap={recap}
-              onDismiss={dismissRecap}
-              usualMealInsight={usualMealInsight}
-              maintenance={recapMaintenance}
-              // Post-ship #4 (2026-04-18) — deep-link the prompt CTA to
-              // the Today `SaveMealSheet` pre-seeded with the user's
-              // most-frequent items. `byDay` enables the card to run
-              // `selectMostFrequentSlotSeed`; `onOpenSaveCombo` stashes
-              // the payload in AsyncStorage and navigates to Today. The
-              // Today tab hydrates on focus and opens the sheet. When
-              // the helper returns null, `onStartUsualMealSave` falls
-              // back to the legacy route-to-Today behaviour.
-              byDay={byDay}
-              onOpenSaveCombo={(slot, items) => {
-                const serialized = serializePendingUsualMealSave(slot, items);
-                if (serialized) {
-                  // Fire-and-forget — a set that races with the navigate
-                  // still lands before focus effects fire on Today.
-                  AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(
-                    () => {
-                      /* ignore storage failures */
-                    },
-                  );
+          {/* WEEK DIGEST (D3) — replaces WeeklyRecapCard. Host flattens
+              the weekly-recap data + usual-meal insight into the shared
+              `DigestProps` shape so web + mobile cannot drift. See
+              `docs/design/digest-primitive.md`. */}
+          {recapVisible ? (() => {
+            const digestSeed = (() => {
+              if (usualMealInsight?.kind !== "prompt") return null;
+              const seed = selectMostFrequentSlotSeed(byDay as any, usualMealInsight.suggestedSlot);
+              if (!seed || seed.seedItems.length < 2) return null;
+              return seed;
+            })();
+            const digestSeedItems = digestSeed
+              ? digestSeed.seedItems.map((it) => {
+                  const row: Omit<SavedMealItem, "id" | "position"> = {
+                    recipeTitle: it.recipeTitle,
+                    calories: it.calories,
+                    protein: it.protein,
+                    carbs: it.carbs,
+                    fat: it.fat,
+                    portionMultiplier: 1,
+                  };
+                  if (it.fiber != null) row.fiber = it.fiber;
+                  if (it.source) row.source = it.source;
+                  return row;
+                })
+              : undefined;
+            const usualMeal: DigestUsualMeal | null =
+              usualMealInsight?.kind === "celebration"
+                ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
+                : usualMealInsight?.kind === "prompt"
+                  ? {
+                      kind: "prompt",
+                      suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
+                      ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
+                      ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
+                    }
+                  : null;
+            const closestToTarget = recap.bestDay
+              ? {
+                  label: recap.bestDay.label,
+                  protein: recap.bestDay.protein,
+                  calories: recap.bestDay.calories,
                 }
-                router.navigate({ pathname: "/(tabs)" as any });
-              }}
-              onStartUsualMealSave={() => {
-                // Fallback — helper returned null or props missing.
-                router.navigate({ pathname: "/(tabs)" as any });
-              }}
-            />
-          ) : null}
+              : null;
+            const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
+            const mealsLogged = Object.values(byDay).reduce(
+              (total: number, day: any) => total + (Array.isArray(day) ? day.length : 0),
+              0,
+            );
+            const headline = resolveDigestHeadline({
+              weightDeltaKg: recap.weightDeltaKg,
+              closestToTargetLabel: closestToTarget?.label ?? null,
+              streakDays: recap.streakLength,
+              daysLogged: recap.daysLogged,
+            });
+            const digestState: "success" | "empty" | "partial" =
+              recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
+            return (
+              <Digest
+                weekKey={recap.weekKey}
+                weekLabel={recap.weekLabel}
+                daysLogged={recap.daysLogged}
+                mealsLogged={mealsLogged}
+                headline={headline}
+                stats={{
+                  streakDays: recap.streakLength,
+                  streakFreezesAvailable: recap.freezesAvailable,
+                  avgCalories: recap.avgCalories,
+                  avgProtein: recap.avgProtein,
+                  proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
+                  weightDeltaKg: recap.weightDeltaKg,
+                  weightFirstKg: recap.weightFirstKg,
+                  weightLastKg: recap.weightLastKg,
+                }}
+                narrative={{ closestToTarget, maintenanceLine, usualMeal }}
+                shareText={formatRecapForShare(recap)}
+                state={digestState}
+                onShare={() => { /* Digest owns share sheet + analytics */ }}
+                onDismiss={dismissRecap}
+                onOpenSaveCombo={(slot, items) => {
+                  const serialized = serializePendingUsualMealSave(slot, items);
+                  if (serialized) {
+                    AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(() => {});
+                  }
+                  router.navigate({ pathname: "/(tabs)" as any });
+                }}
+                onStartUsualMealSave={() => {
+                  router.navigate({ pathname: "/(tabs)" as any });
+                }}
+              />
+            );
+          })() : null}
 
           {/* 2x2 Stat Grid
               Action 5 Item 3 (2026-04-19) — partial-week label uses
@@ -1271,6 +1338,19 @@ export default function ProgressScreen() {
               );
             })}
           </View>
+
+          {/* D4 (2026-04-21) — Apple Health card. Sits below the weekly
+              protein bar (Macro Adherence above) per the prototype.
+              Component is pure; host pulls today's values from the
+              profile maps we already hydrate on focus. */}
+          {userId ? (
+            <AppleHealthCardHost
+              userId={userId}
+              stepsToday={stepsByDay[todayKey] ?? null}
+              latestWeightKg={latestWeightKg}
+              useImperial={measurementSystem === "imperial"}
+            />
+          ) : null}
 
           {/* Maintenance card — F-3 (2026-04-19, TestFlight
               `ADFYpDgEEb0QH-j3BXshPTo`). Was "Your TDEE"; value + label
@@ -2089,5 +2169,83 @@ function CaloriesRangeCard({
         )}
       </View>
     </View>
+  );
+}
+
+/**
+ * AppleHealthCardHost — Progress-tab wrapper for the Apple Health card.
+ *
+ * Lives on the Progress screen because the four metrics live in
+ * `profiles.{steps_by_day, activity_burn_by_day, basal_burn_by_day,
+ * weight_kg}` and we don't want to plumb them through the mega-host's
+ * render. This host reads only what the card needs on focus and maps
+ * `syncHealthData` crash/denial state to the card's status prop.
+ */
+function AppleHealthCardHost({
+  userId,
+  stepsToday,
+  latestWeightKg,
+  useImperial,
+}: {
+  userId: string;
+  stepsToday: number | null;
+  latestWeightKg: number | null;
+  useImperial: boolean;
+}) {
+  const [status, setStatus] = useState<AppleHealthCardStatus>("loading");
+  const [active, setActive] = useState<number | null>(null);
+  const [resting, setResting] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    const todayKey = new Date().toISOString().slice(0, 10);
+    (async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("activity_burn_by_day, basal_burn_by_day")
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) {
+          setStatus("error");
+          return;
+        }
+        const act = (profile?.activity_burn_by_day ?? {}) as Record<string, number>;
+        const bas = (profile?.basal_burn_by_day ?? {}) as Record<string, number>;
+        const a = typeof act[todayKey] === "number" ? act[todayKey] : null;
+        const r = typeof bas[todayKey] === "number" ? bas[todayKey] : null;
+        setActive(a);
+        setResting(r);
+        // Denial heuristic: HealthKit is available but none of the
+        // four metrics came back. The design brief specifies a
+        // dedicated denied footer in that case.
+        if (!isHealthSyncAvailable() || (stepsToday == null && a == null && r == null && latestWeightKg == null)) {
+          setStatus(!isHealthSyncAvailable() ? "denied" : "ready");
+        } else {
+          setStatus("ready");
+        }
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, reloadKey, stepsToday, latestWeightKg]);
+
+  return (
+    <AppleHealthCard
+      status={status}
+      steps={stepsToday}
+      activeEnergyKcal={active}
+      restingBurnKcal={resting}
+      weightKg={latestWeightKg}
+      useImperial={useImperial}
+      onRetry={() => setReloadKey((k) => k + 1)}
+    />
   );
 }
