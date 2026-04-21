@@ -128,6 +128,37 @@ export function Digest(props: DigestProps) {
     onDismiss();
   }, [weekKey, onDismiss]);
 
+  const usual = narrative.usualMeal;
+  const promptSlot = usual?.kind === "prompt" ? usual.suggestedSlot : null;
+
+  const handlePromptTap = useCallback(() => {
+    if (!promptSlot || usual?.kind !== "prompt") return;
+    const seed = usual.seedItems ?? [];
+    if (seed.length >= 2 && onOpenSaveCombo) {
+      try {
+        track(AnalyticsEvents.weekly_recap_save_prompt_tapped, {
+          slot: promptSlot,
+          seedCount: seed.length,
+        });
+      } catch {
+        /* fire-and-forget */
+      }
+      onOpenSaveCombo(promptSlot, seed);
+      return;
+    }
+    if (onStartUsualMealSave) {
+      try {
+        track(AnalyticsEvents.weekly_recap_save_prompt_tapped, {
+          slot: promptSlot,
+          seedCount: seed.length,
+        });
+      } catch {
+        /* fire-and-forget */
+      }
+      onStartUsualMealSave(promptSlot);
+    }
+  }, [promptSlot, usual, onOpenSaveCombo, onStartUsualMealSave]);
+
   const hasWeight = stats.weightDeltaKg != null;
   const weightDeltaStr = hasWeight
     ? `${stats.weightDeltaKg! > 0 ? "+" : ""}${stats.weightDeltaKg} kg`
@@ -208,27 +239,6 @@ export function Digest(props: DigestProps) {
     stats.proteinAdherencePct != null && stats.proteinAdherencePct > 0
       ? `${stats.proteinAdherencePct}% of target${partialOverN}`
       : "no target set";
-
-  const usual = narrative.usualMeal;
-  const promptSlot = usual?.kind === "prompt" ? usual.suggestedSlot : null;
-
-  const handlePromptTap = useCallback(() => {
-    if (!promptSlot || usual?.kind !== "prompt") return;
-    const seed = usual.seedItems ?? [];
-    if (seed.length >= 2 && onOpenSaveCombo) {
-      try {
-        track(AnalyticsEvents.weekly_recap_save_prompt_tapped, {
-          slot: promptSlot,
-          seedCount: seed.length,
-        });
-      } catch {
-        /* fire-and-forget */
-      }
-      onOpenSaveCombo(promptSlot, seed);
-      return;
-    }
-    onStartUsualMealSave?.(promptSlot);
-  }, [promptSlot, usual, onOpenSaveCombo, onStartUsualMealSave]);
 
   return (
     <View
