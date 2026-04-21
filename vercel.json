@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/push/weekly-recap",
-      "schedule": "0 * * * *"
+      "schedule": "0 23 * * *"
     }
   ]
 }
