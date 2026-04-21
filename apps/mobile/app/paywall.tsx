@@ -9,11 +9,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, type LucideIcon } from "lucide-react-native";
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, Tag, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -33,6 +34,7 @@ import {
 } from "@/lib/purchases";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import { usePromoCode } from "@/hooks/usePromoCode";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
 import { PRICING_TIERS, type PricingTier } from "../../../src/lib/landing/pricingTiers";
@@ -197,6 +199,17 @@ export default function PaywallScreen() {
   // re-fire over a separate `paywall_tier_viewed` event to keep funnel
   // F2 on a single event and use `tier` as a funnel-step property.
   const [focusedTier, setFocusedTier] = useState<"pro" | "base">("pro");
+
+  // Promo-code expander (D9 M1, 2026-04-21). Collapsed by default;
+  // tap "Have a promo code?" to reveal TextInput + Apply. On success,
+  // Alert → onClose (user now has access, paywall is irrelevant).
+  const [promoExpanded, setPromoExpanded] = useState(false);
+  const {
+    code: promoCode,
+    setCode: setPromoCode,
+    submitting: promoSubmitting,
+    redeem: redeemPromo,
+  } = usePromoCode({ userId });
 
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const paywallFrom = useMemo(
@@ -641,6 +654,59 @@ export default function PaywallScreen() {
       lineHeight: 18,
     },
 
+    promoWrap: {
+      marginTop: Spacing.xl,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingTop: Spacing.lg,
+    },
+    promoTrigger: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.xs,
+      paddingVertical: Spacing.sm,
+    },
+    promoTriggerText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    promoExpandedBlock: {
+      marginTop: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    promoHint: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      lineHeight: 17,
+    },
+    promoInputRow: {
+      flexDirection: "row",
+      gap: Spacing.sm,
+    },
+    promoInput: {
+      flex: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
+      color: colors.text,
+      fontSize: 14,
+    },
+    promoApplyBtn: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      backgroundColor: Accent.primary,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    promoApplyBtnDisabled: { opacity: 0.4 },
+    promoApplyBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+
     secondaryRail: {
       flexDirection: "row",
       alignItems: "center",
@@ -878,6 +944,70 @@ export default function PaywallScreen() {
             })}
           </View>
         ) : null}
+
+        {/* Promo-code expander (D9 M1). Collapsed by default. */}
+        <View style={styles.promoWrap}>
+          <Pressable
+            style={styles.promoTrigger}
+            onPress={() => setPromoExpanded((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={promoExpanded ? "Hide promo code field" : "Have a promo code?"}
+            accessibilityState={{ expanded: promoExpanded }}
+            testID="paywall-promo-trigger"
+          >
+            <Tag size={14} color={colors.textSecondary} strokeWidth={1.75} />
+            <Text style={styles.promoTriggerText}>Have a promo code?</Text>
+            {promoExpanded ? (
+              <ChevronUp size={14} color={colors.textSecondary} strokeWidth={1.75} />
+            ) : (
+              <ChevronDown size={14} color={colors.textSecondary} strokeWidth={1.75} />
+            )}
+          </Pressable>
+          {promoExpanded ? (
+            <View style={styles.promoExpandedBlock} testID="paywall-promo-expanded">
+              <Text style={styles.promoHint}>
+                Enter your code exactly as provided (letters are not case-sensitive).
+              </Text>
+              <View style={styles.promoInputRow}>
+                <TextInput
+                  testID="paywall-promo-input"
+                  value={promoCode}
+                  onChangeText={setPromoCode}
+                  placeholder="e.g. SUPPR_TEST_PREMIUM"
+                  placeholderTextColor={colors.textTertiary}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  editable={!promoSubmitting}
+                  style={styles.promoInput}
+                />
+                <Pressable
+                  testID="paywall-promo-apply"
+                  onPress={() => {
+                    void (async () => {
+                      const result = await redeemPromo();
+                      if (result.ok) {
+                        // User now has access — paywall is no longer
+                        // the right surface. Close per D9 OD2.
+                        onClose();
+                      }
+                    })();
+                  }}
+                  disabled={promoSubmitting || !promoCode.trim()}
+                  style={[
+                    styles.promoApplyBtn,
+                    (promoSubmitting || !promoCode.trim()) && styles.promoApplyBtnDisabled,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Apply promo code"
+                >
+                  <Text style={styles.promoApplyBtnText}>
+                    {promoSubmitting ? "…" : "Apply"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.secondaryRail}>
           <Pressable

@@ -18,6 +18,7 @@ import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForw
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Flame, Beef, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
@@ -221,8 +222,16 @@ export default function DiscoverScreen() {
             overflow: "hidden",
           }}
         >
-          <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "10" }}>
-            <Utensils size={32} color={heroColor} />
+          <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            {/* D8 (2026-04-21): deterministic cuisine-aware
+                gradient+pattern+glyph fallback instead of a flat
+                tint. Shared spec in
+                `src/lib/recipe/recipeHeroFallback.ts`; web parity in
+                `src/app/components/suppr/RecipeHeroFallback.tsx`.
+                When real images land (not yet in `RecipeCard`) the
+                fallback should be conditionally skipped — tracked in
+                `docs/design/discover-hero-fallback.md` §6. */}
+            <RecipeHeroFallback id={item.id} title={item.title} />
             <SourceBadge source={item.source} />
           </View>
           <View style={{ padding: 14 }}>

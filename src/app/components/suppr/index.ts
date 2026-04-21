@@ -55,7 +55,7 @@ export {
   type CreateCustomFoodPayload,
 } from "./create-custom-food-dialog";
 export { PlanTemplatesDialog } from "./plan-templates-dialog";
-export { WeeklyRecapCard, type WeeklyRecapCardProps } from "./weekly-recap-card";
+export { Digest, type DigestProps, type DigestUsualMeal, type DigestSlot } from "./digest";
 export { VoiceLogDialog, type VoiceLogDialogProps } from "./voice-log-dialog";
 export { PhotoLogDialog, type PhotoLogDialogProps } from "./photo-log-dialog";
 export { AiPaywallDialog, type AiPaywallDialogProps, type AiPaywallFeature } from "./ai-paywall-dialog";
@@ -127,3 +127,10 @@ export {
   TodayAppleHealthCard,
   type TodayAppleHealthCardProps,
 } from "./today-apple-health-card";
+// D4 (2026-04-21) — Progress-page Apple Health card. Reads from
+// `health_snapshots` via the web adapter; separate from the Today-
+// right-rail `TodayAppleHealthCard` above which reads `profiles`.
+export {
+  AppleHealthCard,
+  type AppleHealthCardProps,
+} from "./apple-health-card";

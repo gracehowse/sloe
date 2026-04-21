@@ -22,6 +22,7 @@ import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { presentCustomerCenter } from "@/lib/purchases";
 import { supabase } from "@/lib/supabase";
+import { usePromoCode, normalizeUserTier as normalizeUserTierShared } from "@/hooks/usePromoCode";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { normalizeWeekSummaryMode, type WeekSummaryMode } from "../../../../src/lib/nutrition/weekSummaryWindow";
 import ActivityLevelPreview from "@/components/ActivityLevelPreview";
@@ -61,51 +62,10 @@ const THEME_OPTIONS: { label: string; value: ThemePreference }[] = [
   { label: "Dark", value: "dark" },
 ];
 
-/** PostgREST sometimes returns jsonb as object, string, or a single-element array. */
-function normalizeRedeemPromoRpcData(data: unknown): {
-  ok: boolean;
-  tier?: string;
-  error?: string;
-} | null {
-  let cur: unknown = data;
-  if (Array.isArray(cur) && cur.length === 1) cur = cur[0];
-  for (let i = 0; i < 3; i++) {
-    if (typeof cur !== "string") break;
-    try {
-      cur = JSON.parse(cur) as unknown;
-    } catch {
-      return null;
-    }
-  }
-  if (cur == null || typeof cur !== "object") return null;
-  const o = cur as Record<string, unknown>;
-  const okRaw = o.ok;
-  const ok = okRaw === true || okRaw === "true";
-  const tier = typeof o.tier === "string" ? o.tier : undefined;
-  const error = typeof o.error === "string" ? o.error : undefined;
-  return { ok, tier, error };
-}
-
-function messageForPromoError(error: string | undefined): string {
-  switch (error) {
-    case "invalid_or_expired":
-      return "That code is not valid, has expired, or has reached its use limit.";
-    case "not_authenticated":
-      return "Sign in again, then try the code.";
-    case "invalid_code":
-      return "Enter a promo code.";
-    default:
-      return "That code could not be applied. Check for typos and try again.";
-  }
-}
-
-function normalizeUserTier(raw: string | null | undefined): "free" | "base" | "pro" {
-  const t = String(raw ?? "free")
-    .toLowerCase()
-    .trim();
-  if (t === "pro" || t === "base" || t === "free") return t;
-  return "free";
-}
+// Promo-code redemption logic (normalizeRedeemPromoRpcData,
+// messageForPromoError, normalizeUserTier) now lives in
+// `@/hooks/usePromoCode`. See D9 M1 (2026-04-21 backlog).
+const normalizeUserTier = normalizeUserTierShared;
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -122,8 +82,12 @@ export default function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("free");
   const [activityAdjust, setActivityAdjust] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoSubmitting, setPromoSubmitting] = useState(false);
+  const {
+    code: promoCode,
+    setCode: setPromoCode,
+    submitting: promoSubmitting,
+    redeem: redeemPromo,
+  } = usePromoCode({ userId });
   // Activity-level self-edit (build 10 fix E-2, 2026-04-19 —
   // TestFlight `AIIm60n` / `AHCSYMATS`). Opens a modal with
   // `ActivityLevelPreview` + live TDEE preview, writes
@@ -392,44 +356,9 @@ export default function SettingsScreen() {
   }, [authEmail]);
 
   const handleRedeemPromo = useCallback(async () => {
-    if (!userId || !promoCode.trim()) return;
-    setPromoSubmitting(true);
-    try {
-      const { data, error: rpcErr } = await supabase.rpc("redeem_promo_code", {
-        p_code: promoCode.trim().toUpperCase(),
-      });
-      if (rpcErr) {
-        Alert.alert("Could not redeem", rpcErr.message || "Check your connection and try again.");
-        return;
-      }
-      const payload = normalizeRedeemPromoRpcData(data);
-      if (payload?.ok) {
-        const { data: prof, error: refetchErr } = await supabase
-          .from("profiles")
-          .select("user_tier")
-          .eq("id", userId)
-          .maybeSingle();
-        if (refetchErr) {
-          Alert.alert("Redeemed", "Your code was applied. Restart the app if your plan badge does not update.");
-        } else {
-          const verified = normalizeUserTier((prof as { user_tier?: string } | null)?.user_tier);
-          setUserTier(verified);
-          const label = verified === "pro" ? "Pro" : verified === "base" ? "Base" : "Free";
-          Alert.alert("Success", `Your plan is now ${label}.`);
-        }
-        setPromoCode("");
-      } else {
-        Alert.alert(
-          "Could not apply code",
-          messageForPromoError(payload?.error),
-        );
-      }
-    } catch {
-      Alert.alert("Error", "Could not redeem code.");
-    } finally {
-      setPromoSubmitting(false);
-    }
-  }, [userId, promoCode]);
+    const result = await redeemPromo();
+    if (result.ok) setUserTier(result.tier);
+  }, [redeemPromo]);
 
   const persist = useCallback(
     async (next: NotificationPrefs) => {

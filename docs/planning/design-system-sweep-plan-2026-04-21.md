@@ -112,7 +112,10 @@ For each: what is, what changes, rec, your call.
 
 ---
 
-### D5. Progress range-pill style — segmented control?
+### D5. Progress range-pill style — segmented control? — SHIPPED 2026-04-21
+
+**Outcome:** Option 1 — swapped to the prototype's segmented control on both platforms. Mobile (`apps/mobile/app/(tabs)/progress.tsx`) + web (`src/app/components/ProgressDashboard.tsx`): single muted container (`t.border` / `bg-muted`) with inset active chip on `t.elevated` / `bg-card` + subtle shadow (`0 1px 2px rgba(0,0,0,0.1)` / `shadow-sm`). Individual outlined pills + accent fill removed. Pill radius 7px, container radius 10px, padding 4px — matches prototype `screens-mobile.jsx:581-591`. Plan + Discover audited; neither carried the same pattern, so nothing else to swap. Tests extended in `apps/mobile/tests/unit/progressRangePicker.test.ts`.
+
 
 **Current:**
 - **Live:** `apps/mobile/app/(tabs)/progress.tsx:849-880` renders the range selector as individual outlined pills (Day / Week / Month / etc.) with accent-filled active state.

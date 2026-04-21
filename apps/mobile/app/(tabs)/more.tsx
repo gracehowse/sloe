@@ -31,6 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { GradientAvatar } from "@/components/GradientAvatar";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { useAuth } from "@/context/auth";
@@ -546,18 +547,18 @@ export default function ProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel="Edit profile"
           hitSlop={10}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 999,
-            backgroundColor: Accent.primary + "10",
-            borderWidth: 1,
-            borderColor: colors.cardBorder,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
         >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>{avatarInitial}</Text>
+          {/* Brand-gradient avatar (D7, 2026-04-21). Gradient is
+              explicitly sanctioned on avatars per
+              `docs/ux/brand-guidelines.md`; matches web
+              `Profile.tsx` avatarGradient. */}
+          <GradientAvatar
+            size={40}
+            initial={avatarInitial}
+            fontSize={14}
+            borderColor={colors.cardBorder}
+            gradientIdSuffix="more-header"
+          />
         </Pressable>
       </View>
 
@@ -576,18 +577,15 @@ export default function ProfileScreen() {
           marginBottom: 4,
         }}
       >
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: Accent.primary,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>{avatarInitial}</Text>
-        </View>
+        {/* Brand-gradient avatar (D7, 2026-04-21). See GradientAvatar
+            for rationale; same treatment as the 40×40 top-right button
+            so the two avatars on this screen read as one paint system. */}
+        <GradientAvatar
+          size={52}
+          initial={avatarInitial}
+          fontSize={18}
+          gradientIdSuffix="more-card"
+        />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{displayName}</Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>

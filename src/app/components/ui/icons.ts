@@ -90,6 +90,8 @@ import {
 
   // Fitness
   Dumbbell,
+  Footprints,
+  HeartPulse,
 
   // Progress & data
   Trophy,
@@ -209,6 +211,8 @@ export const Icons = {
 
   // Fitness
   dumbbell: Dumbbell,
+  footprints: Footprints,
+  heartPulse: HeartPulse,
 
   // Progress & data
   trophy: Trophy,

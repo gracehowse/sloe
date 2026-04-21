@@ -58,12 +58,11 @@ describe("2026-04-20 fit-percent badge is present on Discover hero cards", () =>
     expect(MOBILE_DISCOVER_SRC).toMatch(/\{fitPct\}%/);
   });
 
-  it("mobile More-ideas rows use the MaterialCommunityIcons chef-hat glyph (prototype literal)", () => {
-    // The previous Ionicons `restaurant-outline` fallback has been
-    // removed from the row in favour of the literal chef-hat.
-    expect(MOBILE_DISCOVER_SRC).toMatch(
-      /MaterialCommunityIcons\s+name=["']chef-hat["']/,
-    );
+  it("mobile More-ideas rows use the lucide ChefHat glyph (prototype literal)", () => {
+    // Post design-system sweep 2026-04-21 (R4): mobile Discover migrated
+    // from MaterialCommunityIcons `chef-hat` to lucide `ChefHat` to match
+    // the web side and the Claude Design prototype icon set.
+    expect(MOBILE_DISCOVER_SRC).toMatch(/<ChefHat\s/);
   });
 
   it("web More-ideas rows keep using the lucide ChefHat (via Icons.chef)", () => {

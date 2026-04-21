@@ -10,6 +10,7 @@ import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
 const HEARTS_KEY = "suppr-feed-hearts-v1";
@@ -569,7 +570,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"
           >
             {recipes.map((recipe) => {
-              const heroColor = "var(--primary)";
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
               const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
@@ -583,12 +583,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 >
                   <div
                     className="relative overflow-hidden"
-                    style={{
-                      aspectRatio: "16 / 10",
-                      background: recipe.image
-                        ? undefined
-                        : `linear-gradient(135deg, ${heroColor}10, ${heroColor}25)`,
-                    }}
+                    style={{ aspectRatio: "16 / 10" }}
                   >
                     {recipe.image ? (
                       <img
@@ -597,12 +592,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full grid place-items-center">
-                        <Icons.dinner
-                          className="w-10 h-10"
-                          style={{ color: `${heroColor}70` }}
-                        />
-                      </div>
+                      // D8 (2026-04-21): cuisine-aware gradient +
+                      // pattern + glyph fallback. Shared spec in
+                      // `src/lib/recipe/recipeHeroFallback.ts`;
+                      // mobile parity at
+                      // `apps/mobile/components/RecipeHeroFallback.tsx`.
+                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={40} />
                     )}
                     {recipe.sourcePlatform && (
                       <div className="absolute top-2 left-2">
@@ -669,7 +664,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             </h3>
             <div className="grid gap-3 px-4">
               {recipes.slice(0, 2).map((recipe) => {
-                const heroColor = "var(--primary)";
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
                 // 2026-04-20 prototype port — primary-tinted fit-percent
@@ -700,12 +694,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         (parent `overflow-hidden` clips to card radius). */}
                     <div
                       className="flex items-center justify-center relative overflow-hidden"
-                      style={{ aspectRatio: "16 / 10", background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}
+                      style={{ aspectRatio: "16 / 10" }}
                     >
                       {recipe.image ? (
                         <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <Icons.dinner className="w-8 h-8" style={{ color: `${heroColor}60` }} />
+                        // D8 (2026-04-21): see desktop grid above
+                        // — same shared fallback component.
+                        <RecipeHeroFallback id={recipe.id} title={recipe.title} />
                       )}
                       {recipe.sourcePlatform && (
                         <div className="absolute top-2 left-2">

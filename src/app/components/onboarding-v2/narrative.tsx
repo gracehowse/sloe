@@ -40,7 +40,7 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
   sex: {
     eyebrow: "Step 04 · Metabolism",
     head: "A quick detail\nabout you.",
-    body: "Male vs female shifts basal metabolic rate by about 166 kcal/day. This only affects your calorie target.",
+    body: "Male vs female shifts basal metabolic rate by ~166 kcal/day. Only affects calories.",
   },
   age: {
     eyebrow: "Step 05 · Metabolism",
@@ -65,7 +65,7 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
   pace: {
     eyebrow: "Step 09 · Pace",
     head: "How fast\nshould we go?",
-    body: "Now that we know your body, we can translate your chosen rate into a real daily target. We'll flag anything that drops below the generally-accepted safety floor — you can change pace any time from Settings.",
+    body: "Now that we know your body, we can translate pace into a daily target. We'll flag anything below the safety floor — change pace anytime in Settings.",
   },
   diet: {
     eyebrow: "Step 10 · Preferences",
@@ -83,7 +83,7 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     body: "Calculated from everything you just told us. These numbers will adapt as Suppr learns from your logs.",
     extra: ({ targets }) =>
       targets ? (
-        <div className="grid grid-cols-2 gap-x-7 gap-y-3.5 max-w-[420px]">
+        <div className="grid grid-cols-2 gap-3 max-w-[420px]">
           <NarrativeStat
             label="Your BMR"
             value={targets.bmr}
@@ -103,7 +103,7 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     body: "Optional and revocable. Suppr only asks for what it needs to surface useful nudges.",
   },
   import: {
-    eyebrow: "Step 14 · Try it",
+    eyebrow: "Try it",
     head: "Import your\nfirst recipe.",
     body: "Paste any link — Instagram reel, TikTok, a blog post — and Suppr parses ingredients, matches them against USDA, and calculates macros in seconds.",
   },
@@ -119,16 +119,16 @@ function NarrativeStat({
   unit: string;
 }) {
   return (
-    <div>
+    <div className="rounded-xl border border-border/60 bg-card/60 p-[14px]">
       <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-1">
         {label}
       </div>
       <div
-        className="text-2xl font-bold text-foreground tabular-nums tracking-tight leading-none"
+        className="text-[18px] font-bold text-foreground tabular-nums leading-none"
         style={{ letterSpacing: "-0.02em" }}
       >
-        {value.toLocaleString()}{" "}
-        <span className="text-[13px] text-muted-foreground font-medium">
+        {value.toLocaleString()}
+        <span className="ml-1 text-[11px] text-muted-foreground font-medium">
           {unit}
         </span>
       </div>

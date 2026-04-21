@@ -11,6 +11,7 @@ import {
   PaceStep,
   DietStep,
   RevealStep,
+  StrategyStep,
 } from "../../src/app/components/onboarding-v2/steps";
 import {
   STEP_IDS,
@@ -182,6 +183,67 @@ describe("DietStep — Anything-goes exclusivity", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /vegetarian/i }));
     expect(screen.getByTestId("diet-display").textContent).toBe("vegetarian");
+  });
+});
+
+describe("StrategyStep — prototype visual pass (D2)", () => {
+  it("renders the tightened subtitle (no em-dash) and methodology note", () => {
+    withProvider(<StrategyStep />, { goal: "lose" });
+    expect(
+      screen.getByText("Pre-picked from your goal. Tap to override."),
+    ).toBeInTheDocument();
+    // MethodologyNote copy earns its keep on Strategy.
+    expect(
+      screen.getByText(
+        /Macro ratios are a starting point\. Suppr recalibrates protein and carbs as you log and weigh in\./i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders 4 option subtitles with comma rhythm (no em-dash)", () => {
+    withProvider(<StrategyStep />, { goal: "lose" });
+    expect(
+      screen.getByText("Even split, flexible across cuisines."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("~2.2 g/kg, muscle-building leaning."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Filling meals, easier in a deficit."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Carbs minimised, fat-led.")).toBeInTheDocument();
+  });
+
+  it("shows 'Recommended' pill on the goal-derived option with the prototype-spec style", () => {
+    withProvider(<StrategyStep />, { goal: "lose" });
+    const pill = screen.getByText("Recommended");
+    // Prototype spec: bg-primary/15, 10px bold uppercase, 0.1em tracking.
+    expect(pill.className).toContain("bg-primary/15");
+    expect(pill.className).toContain("text-[10px]");
+    expect(pill.className).toContain("font-bold");
+    expect(pill.className).toContain("uppercase");
+    expect(pill.className).toContain("tracking-[0.1em]");
+  });
+
+  it("overrides the recommendation when a different option is clicked", () => {
+    function Probe() {
+      const { state } = useOnboardingV2();
+      return (
+        <div data-testid="strategy-display">
+          {state.nutritionStrategy ?? "none"}
+        </div>
+      );
+    }
+    withProvider(
+      <>
+        <StrategyStep />
+        <Probe />
+      </>,
+      { goal: "lose" },
+    );
+    expect(screen.getByTestId("strategy-display").textContent).toBe("none");
+    fireEvent.click(screen.getByRole("button", { name: /low carb/i }));
+    expect(screen.getByTestId("strategy-display").textContent).toBe("low_carb");
   });
 });
 

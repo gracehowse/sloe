@@ -6,7 +6,7 @@ import { OptionCard } from "@/app/components/ui/option-card";
 import { mapGoalToStrategy } from "@/lib/onboarding/v2/targets";
 import type { NutritionStrategy } from "@/lib/nutrition/tdee";
 import { useOnboardingV2 } from "../context";
-import { StepBody, StepHeader, useStepOverline } from "../scaffold";
+import { MethodologyNote, StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 /**
  * Strategy — step 11. Lets the user override the goal-derived macro
@@ -30,25 +30,25 @@ const STRATEGIES: StrategyOption[] = [
   {
     id: "balanced",
     title: "Balanced",
-    subtitle: "Even split — flexible across cuisines",
+    subtitle: "Even split, flexible across cuisines.",
     icon: <Scale className="size-5" />,
   },
   {
     id: "high_protein",
     title: "High protein",
-    subtitle: "~2.2 g/kg — muscle-building leaning",
+    subtitle: "~2.2 g/kg, muscle-building leaning.",
     icon: <Drumstick className="size-5" />,
   },
   {
     id: "high_satisfaction",
     title: "High satisfaction",
-    subtitle: "Filling meals — easier in a deficit",
+    subtitle: "Filling meals, easier in a deficit.",
     icon: <Salad className="size-5" />,
   },
   {
     id: "low_carb",
     title: "Low carb",
-    subtitle: "Carbs minimised, fat-led",
+    subtitle: "Carbs minimised, fat-led.",
     icon: <Wheat className="size-5" />,
   },
 ];
@@ -69,7 +69,7 @@ export function StrategyStep() {
       <StepHeader
         overline={overline}
         title="Pick your macro style"
-        subtitle="We've highlighted the one that fits your goal — tap a different card to override."
+        subtitle="Pre-picked from your goal. Tap to override."
       />
       <div className="flex flex-col gap-2.5">
         {STRATEGIES.map((s) => (
@@ -82,7 +82,7 @@ export function StrategyStep() {
               <span className="flex items-center gap-2">
                 {s.title}
                 {s.id === recommended && (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-primary px-1.5 py-0.5 rounded bg-primary/15">
                     Recommended
                   </span>
                 )}
@@ -92,6 +92,10 @@ export function StrategyStep() {
           />
         ))}
       </div>
+      <MethodologyNote>
+        Macro ratios are a starting point. Suppr recalibrates protein and carbs
+        as you log and weigh in.
+      </MethodologyNote>
     </StepBody>
   );
 }

@@ -341,12 +341,16 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   // `joinedAt` are the same sources the old inline block used.
   const avatarInitial = (displayName?.[0] ?? "P").toUpperCase();
   const tierLabel = userTier === "pro" ? "Pro" : userTier === "base" ? "Base" : "Free";
-  // Subtle brand-gradient avatar that matches the mobile "52×52 primary
-  // accent" avatar on the More tab. Uses the theme `--primary` so the
-  // colour stays in sync with the active theme token (see
-  // `src/styles/theme.css`).
+  // Brand-gradient avatar (D7, 2026-04-21). Matches the mobile More tab
+  // `GradientAvatar` exactly, using the sanctioned brand gradient from
+  // `docs/ux/brand-guidelines.md`:
+  //   linear-gradient(135deg, #4c6ce0, #e04888)
+  // Previously this used a softer `var(--primary) → color-mix(...)`
+  // blend; the prototype (`screens-mobile.jsx:740`) and design-system
+  // enforcer both specify the full magenta endpoint for the avatar
+  // chip, so we land the exact gradient on both platforms.
   const avatarGradient =
-    "linear-gradient(135deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 45%, var(--macro-fat)) 100%)";
+    "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
   const joinedLabel = joinedAt
     ? (() => {
         const d = new Date(joinedAt);

@@ -1103,11 +1103,13 @@ USDA dev/debug screen.
 ### 16.4 Activity-adjusted calories toggle persists `prefer_activity_adjusted_calories`.
 
 ### 16.5 Promo code
+- Settings + paywall both render the promo surface; shared logic lives in `apps/mobile/hooks/usePromoCode.ts` (D9 M1, 2026-04-21). Settings UI is on a short countdown to removal (D9 S1) once the paywall surface has soaked.
+- On paywall: collapsed "Have a promo code?" trigger expands to input + Apply. Success closes the paywall via `onClose` (user now has access).
 - NEG empty → "Enter a promo code."
 - NEG invalid/expired → "That code is not valid, has expired, or has reached its use limit."
 - NEG not authed → "Sign in again, then try the code."
-- EXP success → tier upgraded; Alert.
-- EDGE: case-sensitivity / trimming verified via `normalizeRedeemPromoRpcData`.
+- EXP success → tier upgraded; Alert; on paywall the sheet dismisses.
+- EDGE: case-sensitivity / trimming verified via `normalizeRedeemPromoRpcData` (exported from the hook module).
 
 ### 16.6 Loading / error banner.
 
