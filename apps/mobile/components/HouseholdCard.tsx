@@ -162,20 +162,30 @@ export function HouseholdCard() {
   }, [data, shareLunchSaving, load]);
 
   const createHousehold = async () => {
-    if (!userId) return;
+    if (!userId) {
+      Alert.alert("Sign in required", "Please sign in again to create a household.");
+      return;
+    }
     try {
-      const { error } = await createHouseholdRemote(
+      const { data, error } = await createHouseholdRemote(
         supabase as any,
         userId,
         inputValue.trim() || undefined,
       );
       if (error) {
-        Alert.alert("Error", mapCreateError(error));
+        Alert.alert("Couldn't create household", mapCreateError(error));
         return;
       }
       setMode("idle");
       setInputValue("");
-      void load();
+      await load();
+      const code = data?.invite_code;
+      Alert.alert(
+        "Household created",
+        code
+          ? `Share invite code ${code} with anyone you want to add (up to 8 members).`
+          : "You can now invite others using the invite code below.",
+      );
     } catch (e) {
       Alert.alert("Error", (e as Error).message || "Failed to create household");
     }

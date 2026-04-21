@@ -30,7 +30,13 @@ export function normaliseInstructions(raw: string | null | undefined): string {
   if (typeof raw !== "string") return "";
   return raw
     .replace(/\\n/g, "\n")
-    .replace(/\s\/n\s?/g, "\n")
+    // Historical seeds stored newlines as a literal "/n". Treat it as a
+    // separator only when whitespace-adjacent or at a string boundary,
+    // so real URL paths like "apples/navel" are preserved.
+    .replace(/\s+\/n\s?/g, "\n")
+    .replace(/\/n\s+/g, "\n")
+    .replace(/^\/n/, "")
+    .replace(/\/n$/, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

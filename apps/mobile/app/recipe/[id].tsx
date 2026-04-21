@@ -745,6 +745,7 @@ export default function RecipeDetailScreen() {
     },
     sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
+    sourceNameLink: { color: Accent.primary, textDecorationLine: "underline" },
     sourceLinkBtn: {
       marginTop: Spacing.xs,
       alignSelf: "flex-start",
@@ -1356,15 +1357,18 @@ export default function RecipeDetailScreen() {
             <View style={styles.sourceCard}>
               <Text style={styles.sourceLabel}>SOURCE</Text>
               {recipe.source_url ? (
-                <>
-                  <Text style={styles.sourceName}>{recipe.source_name ?? "Source unknown"}</Text>
-                  <Pressable
-                    style={styles.sourceLinkBtn}
-                    onPress={() => Linking.openURL(recipe.source_url!)}
-                  >
+                <Pressable
+                  onPress={() => Linking.openURL(recipe.source_url!)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Open original recipe source${recipe.source_name ? ` by ${recipe.source_name}` : ""}`}
+                >
+                  <Text style={[styles.sourceName, styles.sourceNameLink]}>
+                    {recipe.source_name ?? "Source unknown"}
+                  </Text>
+                  <View style={styles.sourceLinkBtn}>
                     <Text style={styles.sourceLinkText}>View original recipe ↗</Text>
-                  </Pressable>
-                </>
+                  </View>
+                </Pressable>
               ) : (
                 <Text style={styles.sourceName}>{`Source · ${recipe.source_name}`}</Text>
               )}

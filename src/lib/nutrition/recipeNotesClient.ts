@@ -62,6 +62,19 @@ export type UpsertNotesInput = {
 
 const MAX_NOTES_LEN = 10_000;
 
+/**
+ * `user_recipe_notes.recipe_id` is a uuid. Non-uuid recipe ids (e.g.
+ * in-memory imports not yet persisted, or legacy numeric ids that slipped
+ * past a join) would trip a 22P02 "invalid input syntax for type uuid"
+ * error on Postgres — surfaced to testers as "Could not load notes".
+ * Gate reads/writes on a quick uuid shape check so those cases become
+ * "no notes yet" rather than an error alert.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v);
+}
+
 function safeInt(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : Number(n);
   if (!Number.isFinite(v)) return fallback;
@@ -104,6 +117,9 @@ export async function getUserRecipeNotes(
 ): Promise<UserRecipeNotes | null> {
   if (!userId) throw new Error("getUserRecipeNotes: userId is required");
   if (!recipeId) throw new Error("getUserRecipeNotes: recipeId is required");
+  // Non-uuid recipe ids cannot have notes — return null rather than
+  // letting Postgres reject the query shape (F-38, 2026-04-21).
+  if (!isUuid(recipeId)) return null;
   const { data, error } = await supabase
     .from("user_recipe_notes")
     .select("*")
@@ -135,6 +151,11 @@ export async function upsertUserRecipeNotes(
 ): Promise<UserRecipeNotes> {
   if (!userId) throw new Error("upsertUserRecipeNotes: userId is required");
   if (!recipeId) throw new Error("upsertUserRecipeNotes: recipeId is required");
+  if (!isUuid(recipeId)) {
+    throw new Error(
+      "Save this recipe to your library first — notes only persist for saved recipes.",
+    );
+  }
 
   const { data: existing, error: readErr } = await supabase
     .from("user_recipe_notes")

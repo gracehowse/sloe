@@ -985,6 +985,14 @@ export async function requestHealthPermissions(): Promise<boolean> {
       const available = await isAvailablePromise(hk);
       if (!available) return false;
 
+      // F-37 (2026-04-21): split init into two passes to narrow the iOS
+      // 26.5 native-crash surface on `Connect Apple Health`. Requesting
+      // ~40 permission types in one call (body + workouts + the full
+      // dietary micro panel) appears to push HKHealthStore into an ObjC
+      // throw that JS try/catch cannot catch. Body + energy + workouts
+      // land first (the things every user has data for); dietary import
+      // + write is a follow-up that can fail independently without
+      // bricking the connect flow.
       await initHealthKitPromise(hk, {
         permissions: {
           read: [
@@ -994,8 +1002,6 @@ export async function requestHealthPermissions(): Promise<boolean> {
             "ActiveEnergyBurned",
             "BasalEnergyBurned",
             "Workout",
-            "FoodCorrelation",
-            ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
           ],
           write: [
             "EnergyConsumed",
@@ -1006,6 +1012,19 @@ export async function requestHealthPermissions(): Promise<boolean> {
           ],
         },
       });
+
+      // Dietary import (read-only) — best-effort. If this second init
+      // throws, the primary body sync still works.
+      try {
+        await initHealthKitPromise(hk, {
+          permissions: {
+            read: ["FoodCorrelation", ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS],
+          },
+        });
+      } catch (dietaryErr) {
+        captureException(dietaryErr);
+        // Swallow — body/energy/workouts are live; dietary just won't sync.
+      }
       return true;
     } catch (inner) {
       captureException(inner);

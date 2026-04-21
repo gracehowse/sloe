@@ -97,7 +97,7 @@ function makeSupabase(
 describe("getUserRecipeNotes", () => {
   it("rejects missing userId / recipeId", async () => {
     const sb = makeSupabase({});
-    await expect(getUserRecipeNotes(sb as any, "", "r1")).rejects.toThrow(/userId is required/);
+    await expect(getUserRecipeNotes(sb as any, "", "11111111-1111-1111-1111-111111111111")).rejects.toThrow(/userId is required/);
     await expect(getUserRecipeNotes(sb as any, "u1", "")).rejects.toThrow(/recipeId is required/);
   });
 
@@ -105,7 +105,7 @@ describe("getUserRecipeNotes", () => {
     const sb = makeSupabase({
       user_recipe_notes: () => ({ data: null, error: null }),
     });
-    const notes = await getUserRecipeNotes(sb as any, "u1", "r1");
+    const notes = await getUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111");
     expect(notes).toBeNull();
   });
 
@@ -117,16 +117,16 @@ describe("getUserRecipeNotes", () => {
         return { data: null, error: null };
       },
     });
-    await getUserRecipeNotes(sb as any, "u1", "r1");
+    await getUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111");
     expect(filters?.["eq:user_id"]).toBe("u1");
-    expect(filters?.["eq:recipe_id"]).toBe("r1");
+    expect(filters?.["eq:recipe_id"]).toBe("11111111-1111-1111-1111-111111111111");
   });
 
   it("maps the DB row into the UserRecipeNotes shape", async () => {
     const row = {
       id: "n1",
       user_id: "u1",
-      recipe_id: "r1",
+      recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "Less salt next time.",
       personal_rating: 4,
       cook_count: 3,
@@ -137,11 +137,11 @@ describe("getUserRecipeNotes", () => {
     const sb = makeSupabase({
       user_recipe_notes: () => ({ data: row, error: null }),
     });
-    const notes = await getUserRecipeNotes(sb as any, "u1", "r1");
+    const notes = await getUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111");
     expect(notes).toMatchObject({
       id: "n1",
       userId: "u1",
-      recipeId: "r1",
+      recipeId: "11111111-1111-1111-1111-111111111111",
       notes: "Less salt next time.",
       personalRating: 4,
       cookCount: 3,
@@ -153,7 +153,7 @@ describe("getUserRecipeNotes", () => {
     const sb = makeSupabase({
       user_recipe_notes: () => ({ data: null, error: new Error("permission denied") }),
     });
-    await expect(getUserRecipeNotes(sb as any, "u1", "r1")).rejects.toThrow(/permission denied/);
+    await expect(getUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111")).rejects.toThrow(/permission denied/);
   });
 });
 
@@ -164,7 +164,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
     const insertedRow = {
       id: "n-new",
       user_id: "u1",
-      recipe_id: "r1",
+      recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "Try less salt",
       personal_rating: 4,
       cook_count: 0,
@@ -183,7 +183,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
         return { data: null, error: null };
       },
     });
-    const out = await upsertUserRecipeNotes(sb as any, "u1", "r1", {
+    const out = await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", {
       notes: "Try less salt",
       personalRating: 4,
     });
@@ -192,7 +192,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
     expect(out.notes).toBe("Try less salt");
     expect(insertPayload).toMatchObject({
       user_id: "u1",
-      recipe_id: "r1",
+      recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "Try less salt",
       personal_rating: 4,
     });
@@ -202,7 +202,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
     const insertedRow = {
       id: "n-new2",
       user_id: "u1",
-      recipe_id: "r1",
+      recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "",
       personal_rating: null,
       cook_count: 0,
@@ -221,7 +221,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
         return { data: null, error: null };
       },
     });
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", {});
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", {});
     expect(insertPayload.notes).toBe("");
     expect(insertPayload.personal_rating).toBeNull();
   });
@@ -234,7 +234,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
         if (op === "insert:single") {
           insertPayload = ctx.payload;
           return { data: {
-            id: "n-new3", user_id: "u1", recipe_id: "r1", notes: "",
+            id: "n-new3", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111", notes: "",
             personal_rating: null, cook_count: 0, last_cooked_at: null,
             created_at: "x", updated_at: "x",
           }, error: null };
@@ -242,11 +242,11 @@ describe("upsertUserRecipeNotes (create path)", () => {
         return { data: null, error: null };
       },
     });
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { personalRating: 7 });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { personalRating: 7 });
     expect(insertPayload.personal_rating).toBeNull();
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { personalRating: 0 });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { personalRating: 0 });
     expect(insertPayload.personal_rating).toBeNull();
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { personalRating: -3 });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { personalRating: -3 });
     expect(insertPayload.personal_rating).toBeNull();
   });
 });
@@ -256,7 +256,7 @@ describe("upsertUserRecipeNotes (create path)", () => {
 describe("upsertUserRecipeNotes (update path)", () => {
   it("updates the existing row and preserves cook_count untouched", async () => {
     const existing = {
-      id: "n1", user_id: "u1", recipe_id: "r1",
+      id: "n1", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "Old notes", personal_rating: 3,
       cook_count: 5, last_cooked_at: "2026-04-10T10:00:00Z",
       created_at: "2026-04-01T00:00:00Z",
@@ -275,7 +275,7 @@ describe("upsertUserRecipeNotes (update path)", () => {
         return { data: null, error: null };
       },
     });
-    const out = await upsertUserRecipeNotes(sb as any, "u1", "r1", {
+    const out = await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", {
       notes: "Less salt",
       personalRating: 5,
     });
@@ -291,7 +291,7 @@ describe("upsertUserRecipeNotes (update path)", () => {
 
   it("only sends notes when notes is passed (rating untouched)", async () => {
     const existing = {
-      id: "n1", user_id: "u1", recipe_id: "r1",
+      id: "n1", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "Old notes", personal_rating: 3, cook_count: 0,
       last_cooked_at: null, created_at: "x", updated_at: "x",
     };
@@ -306,14 +306,14 @@ describe("upsertUserRecipeNotes (update path)", () => {
         return { data: null, error: null };
       },
     });
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { notes: "New" });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { notes: "New" });
     expect(updatePayload).toHaveProperty("notes", "New");
     expect(updatePayload).not.toHaveProperty("personal_rating");
   });
 
   it("sends personal_rating=null when the user clears their rating", async () => {
     const existing = {
-      id: "n1", user_id: "u1", recipe_id: "r1",
+      id: "n1", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "", personal_rating: 4, cook_count: 0,
       last_cooked_at: null, created_at: "x", updated_at: "x",
     };
@@ -328,13 +328,13 @@ describe("upsertUserRecipeNotes (update path)", () => {
         return { data: null, error: null };
       },
     });
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { personalRating: null });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { personalRating: null });
     expect(updatePayload.personal_rating).toBeNull();
   });
 
   it("clamps notes length to 10_000 chars so the DB CHECK never fires", async () => {
     const existing = {
-      id: "n1", user_id: "u1", recipe_id: "r1",
+      id: "n1", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "", personal_rating: null, cook_count: 0,
       last_cooked_at: null, created_at: "x", updated_at: "x",
     };
@@ -350,7 +350,7 @@ describe("upsertUserRecipeNotes (update path)", () => {
       },
     });
     const huge = "a".repeat(12_000);
-    await upsertUserRecipeNotes(sb as any, "u1", "r1", { notes: huge });
+    await upsertUserRecipeNotes(sb as any, "u1", "11111111-1111-1111-1111-111111111111", { notes: huge });
     expect(typeof updatePayload.notes).toBe("string");
     expect(updatePayload.notes.length).toBe(10_000);
   });
@@ -361,13 +361,13 @@ describe("upsertUserRecipeNotes (update path)", () => {
 describe("incrementCookCount", () => {
   it("rejects missing userId / recipeId", async () => {
     const sb = makeSupabase({});
-    await expect(incrementCookCount(sb as any, "", "r1")).rejects.toThrow(/userId is required/);
+    await expect(incrementCookCount(sb as any, "", "11111111-1111-1111-1111-111111111111")).rejects.toThrow(/userId is required/);
     await expect(incrementCookCount(sb as any, "u1", "")).rejects.toThrow(/recipeId is required/);
   });
 
   it("increments cook_count +1 and sets last_cooked_at on an existing row", async () => {
     const existing = {
-      id: "n1", user_id: "u1", recipe_id: "r1",
+      id: "n1", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "", personal_rating: null, cook_count: 3,
       last_cooked_at: "2026-04-10T00:00:00Z",
       created_at: "x", updated_at: "x",
@@ -385,7 +385,7 @@ describe("incrementCookCount", () => {
         return { data: null, error: null };
       },
     });
-    const out = await incrementCookCount(sb as any, "u1", "r1");
+    const out = await incrementCookCount(sb as any, "u1", "11111111-1111-1111-1111-111111111111");
     expect(out.cookCount).toBe(4);
     expect(updatePayload.cook_count).toBe(4);
     expect(typeof updatePayload.last_cooked_at).toBe("string");
@@ -395,7 +395,7 @@ describe("incrementCookCount", () => {
 
   it("creates a new row with cook_count=1 when no row exists", async () => {
     const insertedRow = {
-      id: "n-new", user_id: "u1", recipe_id: "r1",
+      id: "n-new", user_id: "u1", recipe_id: "11111111-1111-1111-1111-111111111111",
       notes: "", personal_rating: null,
       cook_count: 1, last_cooked_at: "2026-04-17T08:00:00Z",
       created_at: "x", updated_at: "x",
@@ -411,12 +411,12 @@ describe("incrementCookCount", () => {
         return { data: null, error: null };
       },
     });
-    const out = await incrementCookCount(sb as any, "u1", "r1");
+    const out = await incrementCookCount(sb as any, "u1", "11111111-1111-1111-1111-111111111111");
     expect(out.cookCount).toBe(1);
     expect(insertPayload.cook_count).toBe(1);
     expect(typeof insertPayload.last_cooked_at).toBe("string");
     expect(insertPayload.user_id).toBe("u1");
-    expect(insertPayload.recipe_id).toBe("r1");
+    expect(insertPayload.recipe_id).toBe("11111111-1111-1111-1111-111111111111");
   });
 
   it("surfaces a read error and does not write", async () => {
@@ -431,7 +431,7 @@ describe("incrementCookCount", () => {
         return { data: null, error: null };
       },
     });
-    await expect(incrementCookCount(sb as any, "u1", "r1")).rejects.toThrow(/read denied/);
+    await expect(incrementCookCount(sb as any, "u1", "11111111-1111-1111-1111-111111111111")).rejects.toThrow(/read denied/);
     expect(writeCalled).toBe(false);
   });
 });

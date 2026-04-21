@@ -3400,7 +3400,11 @@ export default function TrackerScreen() {
               slot: activeMealSlot,
             });
           } catch { /* noop */ }
-          setSearchOpen(false);
+          // F-38 (2026-04-21): keep modal open so the user can add
+          // multiple items to the same meal without tapping back through
+          // the FAB. Tester reported "can't add anything else to
+          // breakfast after yogurt" — the old auto-close meant each item
+          // needed a separate round-trip. The X button still dismisses.
         }}
         onClose={() => setSearchOpen(false)}
       />
