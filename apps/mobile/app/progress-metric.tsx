@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -215,7 +215,7 @@ export default function ProgressMetricDetailScreen() {
         }}
       >
         <Pressable onPress={goBack} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color={t.text} />
+          <ArrowLeft size={22} color={t.text} strokeWidth={1.75} />
         </Pressable>
         <Text
           style={{
@@ -300,7 +300,7 @@ export default function ProgressMetricDetailScreen() {
                     : "No meals"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={t.dim} />
+              <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
             </Pressable>
           ))}
         </>
@@ -356,7 +356,7 @@ export default function ProgressMetricDetailScreen() {
                   <Text style={{ fontSize: 15, fontWeight: "800", color: t.protein, fontVariant: ["tabular-nums"] }}>{Math.round(d.protein)}g</Text>
                   <Text style={{ fontSize: 11, color: hit ? t.green : t.dim }}>{hit ? "On target" : `${pct}% of goal`}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={t.dim} style={{ marginLeft: 8 }} />
+                <ChevronRight size={18} color={t.dim} strokeWidth={1.75} style={{ marginLeft: 8 }} />
               </Pressable>
             );
           })}
@@ -399,8 +399,8 @@ export default function ProgressMetricDetailScreen() {
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="checkmark-circle" size={22} color={t.green} />
-                    <Ionicons name="chevron-forward" size={18} color={t.dim} />
+                    <CheckCircle2 size={22} color={t.green} strokeWidth={1.75} />
+                    <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
                   </View>
                 </Pressable>
               ))}

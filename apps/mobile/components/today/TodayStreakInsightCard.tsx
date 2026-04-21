@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Flame, Snowflake } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import Badge from "@/components/Badge";
 
@@ -53,7 +53,7 @@ export function TodayStreakInsightCard({
           justifyContent: "center",
         }}
       >
-        <Ionicons name="flame" size={18} color={Accent.success} />
+        <Flame size={18} color={Accent.success} strokeWidth={1.75} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>
@@ -68,7 +68,7 @@ export function TodayStreakInsightCard({
             accessibilityLabel={`${freezesAvailableToday} streak freeze${
               freezesAvailableToday === 1 ? "" : "s"
             } available`}
-            icon={<Ionicons name="snow-outline" size={10} color={Accent.cyan} />}
+            icon={<Snowflake size={10} color={Accent.cyan} strokeWidth={1.75} />}
             style={{ marginTop: 4 }}
           >
             {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
@@ -92,7 +92,7 @@ export function TodayStreakInsightCard({
               backgroundColor: Accent.cyan + "1A",
             }}
           >
-            <Ionicons name="snow-outline" size={13} color={Accent.cyan} />
+            <Snowflake size={13} color={Accent.cyan} strokeWidth={1.75} />
             <Text style={{ flex: 1, fontSize: 11, fontWeight: "600", color: textColor }}>
               You earned a freeze — {freezesAvailableToday} available
             </Text>

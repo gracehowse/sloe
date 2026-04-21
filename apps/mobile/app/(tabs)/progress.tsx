@@ -3,7 +3,24 @@ import { ActivityIndicator, ScrollView, Text, TextInput, Pressable, View, Alert 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Flag,
+  Flame,
+  Footprints,
+  LineChart,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  Zap,
+  type LucideIcon,
+} from "lucide-react-native";
 import Svg, { Polyline, Circle } from "react-native-svg";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -745,7 +762,7 @@ export default function ProgressScreen() {
               opacity: 0.6,
             }}
           >
-            <Ionicons name="calendar-outline" size={16} color={t.sub} />
+            <CalendarDays size={16} color={t.sub} strokeWidth={1.75} />
           </View>
         </View>
         {/* Range-picker pills — disabled-look during load so the
@@ -841,7 +858,7 @@ export default function ProgressScreen() {
             opacity: pressed ? 0.7 : 1,
           }]}
         >
-          <Ionicons name="calendar-outline" size={16} color={t.text} />
+          <CalendarDays size={16} color={t.text} strokeWidth={1.75} />
         </Pressable>
       </View>
 
@@ -917,7 +934,7 @@ export default function ProgressScreen() {
       {!hasData ? (
         <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
           <IconBox color={t.accent} size={40}>
-            <Ionicons name="bar-chart-outline" size={20} color={t.accent} />
+            <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
           </IconBox>
           <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
           <Text style={{ fontSize: 13, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
@@ -975,14 +992,14 @@ export default function ProgressScreen() {
                 String(weekStats.avgCalories.toLocaleString()),
                 `vs ${targets.calories.toLocaleString()} target`,
                 weekStats.avgCalories > targets.calories ? t.amber : t.green,
-                "flame-outline",
+                Flame,
               ],
               [
                 "Protein Hit",
                 `${weekStats.proteinOnTarget}/${weekStats.daysWithFood || 0}`,
                 `day${weekStats.daysWithFood !== 1 ? "s" : ""} on target`,
                 weekStats.daysWithFood > 0 && weekStats.proteinOnTarget >= weekStats.daysWithFood * 0.7 ? t.green : t.amber,
-                "checkmark-circle-outline",
+                CheckCircle2,
               ],
               [
                 "Streak",
@@ -991,7 +1008,7 @@ export default function ProgressScreen() {
                   ? `logging streak · ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`
                   : "logging streak",
                 streakDays >= 3 ? t.green : t.accent,
-                "trophy-outline",
+                Trophy,
               ],
               [
                 "Trend",
@@ -1014,14 +1031,15 @@ export default function ProgressScreen() {
                       : "maintaining (90d)"
                   : "no weight data",
                 weightTrend?.direction === "down" ? t.green : weightTrend?.direction === "up" ? t.amber : t.accent,
-                weightTrend?.direction === "down" ? "trending-down-outline" : weightTrend?.direction === "up" ? "trending-up-outline" : "analytics-outline",
+                weightTrend?.direction === "down" ? TrendingDown : weightTrend?.direction === "up" ? TrendingUp : LineChart,
               ],
-            ] as const).map(([title, val, sub, color, iconName], i) => {
+            ] as const).map(([title, val, sub, color, IconCmp], i) => {
+              const Icon = IconCmp as LucideIcon;
               const tileBody = (
                 <>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
                     <IconBox color={color as string} size={24}>
-                      <Ionicons name={iconName as any} size={12} color={color as string} />
+                      <Icon size={12} color={color as string} strokeWidth={1.75} />
                     </IconBox>
                     <Text style={{ fontSize: 11, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
                   </View>
@@ -1075,7 +1093,7 @@ export default function ProgressScreen() {
                   {tileBody}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: t.accent }}>{footerLabel}</Text>
-                    <Ionicons name="chevron-forward" size={12} color={t.accent} />
+                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
                   </View>
                 </Pressable>
               );
@@ -1282,7 +1300,7 @@ export default function ProgressScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <IconBox color={t.accent} size={28}>
-                    <Ionicons name="flash-outline" size={14} color={t.accent} />
+                    <Zap size={14} color={t.accent} strokeWidth={1.75} />
                   </IconBox>
                   <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Maintenance</Text>
                 </View>
@@ -1421,11 +1439,11 @@ export default function ProgressScreen() {
                       <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
                         {maintenanceExplainerOpen ? "Hide" : "How this works"}
                       </Text>
-                      <Ionicons
-                        name={maintenanceExplainerOpen ? "chevron-up" : "chevron-down"}
-                        size={14}
-                        color={t.accent}
-                      />
+                      {maintenanceExplainerOpen ? (
+                        <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
+                      ) : (
+                        <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
+                      )}
                     </Pressable>
                     {maintenanceExplainerOpen && (
                       <View style={{ marginTop: 10, gap: 6 }}>
@@ -1493,7 +1511,7 @@ export default function ProgressScreen() {
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <IconBox color={t.green} size={28}>
-                <Ionicons name="footsteps-outline" size={14} color={t.green} />
+                <Footprints size={14} color={t.green} strokeWidth={1.75} />
               </IconBox>
               <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Steps Today</Text>
             </View>
@@ -1582,11 +1600,11 @@ export default function ProgressScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <IconBox color={t.accent} size={28}>
-                    <Ionicons name="scale-outline" size={14} color={t.accent} />
+                    <Scale size={14} color={t.accent} strokeWidth={1.75} />
                   </IconBox>
                   <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={t.dim} />
+                <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
               </View>
               {/* Action 13 Item #7 (2026-04-19) — weight readouts go
                   through the shared `formatWeightForUnit` helper so
@@ -1694,7 +1712,7 @@ export default function ProgressScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <IconBox color={t.green} size={28}>
-                        <Ionicons name="flag-outline" size={14} color={t.green} />
+                        <Flag size={14} color={t.green} strokeWidth={1.75} />
                       </IconBox>
                       <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Journey</Text>
                     </View>
@@ -1716,7 +1734,7 @@ export default function ProgressScreen() {
                           More than 1 year at current rate
                         </Text>
                       ) : null}
-                      <Ionicons name="chevron-forward" size={18} color={t.dim} />
+                      <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
                     </View>
                   </View>
 
@@ -1768,7 +1786,7 @@ export default function ProgressScreen() {
                   )}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
-                    <Ionicons name="chevron-forward" size={12} color={t.accent} />
+                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
                   </View>
                 </Pressable>
               );
@@ -1956,11 +1974,11 @@ function WeightRangeCard({
       </Text>
       {weekDeltaDisplay ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-          <Ionicons
-            name={weekDelta! < 0 ? "trending-down-outline" : "trending-up-outline"}
-            size={12}
-            color={theme.sub}
-          />
+          {weekDelta! < 0 ? (
+            <TrendingDown size={12} color={theme.sub} strokeWidth={1.75} />
+          ) : (
+            <TrendingUp size={12} color={theme.sub} strokeWidth={1.75} />
+          )}
           <Text style={{ fontSize: 12, color: theme.sub, fontVariant: ["tabular-nums"] }}>
             {weekDeltaDisplay} this week
           </Text>

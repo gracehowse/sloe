@@ -17,7 +17,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Search, Utensils, Flame, Beef, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
@@ -222,7 +222,7 @@ export default function DiscoverScreen() {
           }}
         >
           <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "10" }}>
-            <Ionicons name="restaurant-outline" size={32} color={heroColor} />
+            <Utensils size={32} color={heroColor} />
             <SourceBadge source={item.source} />
           </View>
           <View style={{ padding: 14 }}>
@@ -255,20 +255,20 @@ export default function DiscoverScreen() {
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="flame-outline" size={11} color={MacroColors.calories} />
+                <Flame size={11} color={MacroColors.calories} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                   {kcal} kcal
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="barbell-outline" size={11} color={MacroColors.protein} />
+                <Beef size={11} color={MacroColors.protein} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                   {protein} g
                 </Text>
               </View>
               {item.cookTime ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Ionicons name="time-outline" size={11} color={colors.textTertiary} />
+                  <Clock size={11} color={colors.textTertiary} />
                   <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.cookTime}</Text>
                 </View>
               ) : null}
@@ -308,7 +308,7 @@ export default function DiscoverScreen() {
               literally and mirrors the web lucide `ChefHat` icon on
               `src/app/components/DiscoverFeed.tsx`. */}
           <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-            <MaterialCommunityIcons name="chef-hat" size={20} color={colors.textSecondary} />
+            <ChefHat size={20} color={colors.textSecondary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
@@ -369,7 +369,7 @@ export default function DiscoverScreen() {
               justifyContent: "center",
             }}
           >
-            <Ionicons name="search-outline" size={18} color={colors.text} />
+            <Search size={18} color={colors.text} />
           </Pressable>
         </View>
 
@@ -386,7 +386,7 @@ export default function DiscoverScreen() {
           borderColor: colors.cardBorder,
           marginBottom: 14,
         }}>
-          <Ionicons name="search-outline" size={16} color={colors.textTertiary} />
+          <Search size={16} color={colors.textTertiary} />
           <TextInput
             ref={searchInputRef}
             value={search}
@@ -498,7 +498,11 @@ export default function DiscoverScreen() {
           </View>
         ) : filtered.length === 0 ? (
           <View style={{ paddingTop: 60, paddingBottom: 20, alignItems: "center", gap: 8 }}>
-            <Ionicons name={search.trim() ? "search-outline" : "restaurant-outline"} size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+            {search.trim() ? (
+              <Search size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+            ) : (
+              <Utensils size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+            )}
             <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
               {search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}
             </Text>
@@ -552,13 +556,13 @@ export default function DiscoverScreen() {
           }}
         >
           <IconBox color={t.accent} size={36}>
-            <Ionicons name="download-outline" size={18} color={t.accent} />
+            <LinkIcon size={18} color={t.accent} />
           </IconBox>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+          <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
 
         {/* My Library CTA */}
@@ -576,13 +580,13 @@ export default function DiscoverScreen() {
           }}
         >
           <IconBox color={Accent.success} size={36}>
-            <Ionicons name="bookmark" size={18} color={Accent.success} />
+            <Bookmark size={18} color={Accent.success} />
           </IconBox>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+          <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
       </ScrollView>
     </View>

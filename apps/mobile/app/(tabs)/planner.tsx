@@ -19,7 +19,20 @@ import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppi
 import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Check,
+  CheckCircle2,
+  Circle,
+  Coffee,
+  Cookie,
+  Plus,
+  RefreshCw,
+  Settings2,
+  ShoppingCart,
+  Sun,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
@@ -72,22 +85,19 @@ function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: 
 const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
-// Prototype port (2026-04-20) — slot icon key → Ionicons name. Mirrored
+// Prototype port (2026-04-20) — slot icon key → lucide icon. Mirrored
 // on web with lucide-react icons (see `MealPlanner.tsx` `SLOT_ICON_WEB`).
 // Keys come from the shared `resolvePlanSlotIconKey` so legacy / voice
 // slot values can never drift a row into a blank square.
 // Keep in sync with `TodayMealsSection.tsx` `SLOT_ICON` — Plan and Today
 // must show the same icon per slot (Grace 2026-04-20).
-type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
-type MciName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-const SLOT_ICON_MOBILE: Record<
-  PlanSlotIconKey,
-  { family: "ionicons"; name: IoniconName } | { family: "mci"; name: MciName }
-> = {
-  breakfast: { family: "ionicons", name: "cafe-outline" },
-  lunch: { family: "ionicons", name: "sunny-outline" },
-  dinner: { family: "ionicons", name: "restaurant-outline" },
-  snacks: { family: "mci", name: "cookie-outline" },
+// Design-system sweep (2026-04-21, R5) — migrated Ionicons/MCI → lucide.
+// Dinner uses `UtensilsCrossed` (not Moon) for semantic clarity.
+const SLOT_ICON_MOBILE: Record<PlanSlotIconKey, LucideIcon> = {
+  breakfast: Coffee,
+  lunch: Sun,
+  dinner: UtensilsCrossed,
+  snacks: Cookie,
 };
 
 // Colour parity with `TodayMealsSection.tsx` `SLOT_COLOR`.
@@ -1049,7 +1059,7 @@ export default function PlannerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Plan options"
           >
-            <Ionicons name="options-outline" size={18} color={colors.text} />
+            <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
           </Pressable>
         </View>
 
@@ -1133,7 +1143,7 @@ export default function PlannerScreen() {
                 accessibilityLabel={`Plan: ${s.name}${active ? ", active" : ""}. Long-press to rename or delete.`}
               >
                 {active ? (
-                  <Ionicons name="checkmark" size={11} color={Accent.primary} />
+                  <Check size={11} color={Accent.primary} strokeWidth={1.75} />
                 ) : null}
                 <Text
                   style={{
@@ -1181,7 +1191,7 @@ export default function PlannerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Create a new plan slot"
           >
-            <Ionicons name="add" size={12} color={colors.textSecondary} />
+            <Plus size={12} color={colors.textSecondary} strokeWidth={1.75} />
             <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textSecondary }}>New</Text>
           </Pressable>
         </ScrollView>
@@ -1217,7 +1227,7 @@ export default function PlannerScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Open shopping list"
               >
-                <Ionicons name="cart-outline" size={14} color="#fff" />
+                <ShoppingCart size={14} color="#fff" strokeWidth={1.75} />
                 <Text style={styles.summaryPrimaryText}>Shopping list</Text>
               </Pressable>
               <Pressable
@@ -1231,7 +1241,7 @@ export default function PlannerScreen() {
                   <ActivityIndicator size="small" color={colors.text} />
                 ) : (
                   <>
-                    <Ionicons name="refresh-outline" size={14} color={colors.text} />
+                    <RefreshCw size={14} color={colors.text} strokeWidth={1.75} />
                     <Text style={styles.summarySecondaryText}>Regenerate</Text>
                   </>
                 )}
@@ -1349,12 +1359,21 @@ export default function PlannerScreen() {
                     style={[styles.dayBtn, active && styles.dayBtnActive]}
                     onPress={() => toggleSlot(slot)}
                   >
-                    <Ionicons
-                      name={active ? "checkmark-circle" : "ellipse-outline"}
-                      size={14}
-                      color={active ? "#fff" : colors.textSecondary}
-                      style={{ marginRight: 4 }}
-                    />
+                    {active ? (
+                      <CheckCircle2
+                        size={14}
+                        color="#fff"
+                        strokeWidth={1.75}
+                        style={{ marginRight: 4 }}
+                      />
+                    ) : (
+                      <Circle
+                        size={14}
+                        color={colors.textSecondary}
+                        strokeWidth={1.75}
+                        style={{ marginRight: 4 }}
+                      />
+                    )}
                     <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>
                       {slot}
                     </Text>
@@ -1710,21 +1729,17 @@ export default function PlannerScreen() {
                 {/* Prototype port (2026-04-20) — 36×36 slot icon-box on
                     the left. Key resolves via shared `resolvePlanSlotIconKey`
                     so legacy / voice-parsed slot text still lands on a
-                    sensible icon. Mobile maps the key to Ionicons;
-                    web maps to lucide-react (see `SLOT_ICON_MOBILE` +
+                    sensible icon. Both platforms now map the key to
+                    lucide icons (see `SLOT_ICON_MOBILE` +
                     `SLOT_ICON_WEB` — the single source of truth is the
                     shared key). */}
                 {(() => {
                   const slotKey = resolvePlanSlotIconKey(meal.name);
-                  const ic = SLOT_ICON_MOBILE[slotKey];
+                  const Icon = SLOT_ICON_MOBILE[slotKey];
                   const tint = SLOT_COLOR_MOBILE[slotKey];
                   return (
                     <View style={[styles.mealIconBox, { backgroundColor: tint + "22" }]}>
-                      {ic.family === "ionicons" ? (
-                        <Ionicons name={ic.name} size={16} color={tint} />
-                      ) : (
-                        <MaterialCommunityIcons name={ic.name} size={16} color={tint} />
-                      )}
+                      <Icon size={16} color={tint} strokeWidth={1.75} />
                     </View>
                   );
                 })()}
@@ -1774,7 +1789,7 @@ export default function PlannerScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Swap ${meal.name}`}
                 >
-                  <Ionicons name="refresh-outline" size={13} color={colors.textSecondary} />
+                  <RefreshCw size={13} color={colors.textSecondary} strokeWidth={1.75} />
                 </Pressable>
                 {/* Log to tracker — Suppr-specific action kept next to
                     the swap button (the prototype omits Log). */}

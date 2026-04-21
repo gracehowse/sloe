@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronRight, LogOut, Mail } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -503,7 +503,7 @@ export default function SettingsScreen() {
               onPress={() => router.push("/paywall?from=settings" as any)}
             >
               <Text style={[styles.rowLabel, { color: Accent.success }]}>View plans</Text>
-              <Ionicons name="chevron-forward" size={16} color={Accent.success} />
+              <ChevronRight size={16} color={Accent.success} strokeWidth={1.75} />
             </Pressable>
           )}
           {userTier !== "free" && (
@@ -532,7 +532,7 @@ export default function SettingsScreen() {
               accessibilityLabel="Manage subscription"
             >
               <Text style={styles.rowLabel}>Manage subscription</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
             </Pressable>
           )}
           <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingTop: Spacing.sm, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}>
@@ -599,14 +599,14 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Pressable style={styles.row} onPress={() => void handleChangePassword()}>
             <Text style={styles.rowLabel}>Change Password</Text>
-            <Ionicons name="mail-outline" size={18} color={colors.textTertiary} />
+            <Mail size={18} color={colors.textTertiary} strokeWidth={1.75} />
           </Pressable>
           <Pressable
             style={[styles.row, styles.rowLast]}
             onPress={() => void supabase.auth.signOut()}
           >
             <Text style={[styles.rowLabel, { color: Accent.destructive }]}>Sign Out</Text>
-            <Ionicons name="log-out-outline" size={18} color={Accent.destructive} />
+            <LogOut size={18} color={Accent.destructive} strokeWidth={1.75} />
           </Pressable>
         </View>
 
@@ -640,7 +640,7 @@ export default function SettingsScreen() {
                 >
                   {activityLevel ? ACTIVITY_SHORT_LABELS[activityLevel] : "Not set"}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>
 
@@ -752,7 +752,7 @@ export default function SettingsScreen() {
                 onPress={() => router.push("/(tabs)/notifications" as any)}
               >
                 <Text style={styles.rowLabel}>Open notifications</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                <ChevronRight size={18} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>
             {saving ? <Text style={styles.saving}>Saving…</Text> : null}
@@ -771,7 +771,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="What's new in Suppr"
               >
                 <Text style={styles.rowLabel}>What&apos;s new in Suppr</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>
 

@@ -4,6 +4,13 @@ Output of the 5 parallel three-bucket audits run 2026-04-21 (Progress, Plan/Disc
 
 Already-shipped carryover + activity-icons + landing-tokenisation + pricing-wordmark + disclaimer-removal landed in commit `8c79f84`.
 
+## Resolved so far (2026-04-21)
+
+- **D1 Welcome headline** — Grace chose Option 3 (keep divergent). Decision doc: `docs/decisions/2026-04-21-onboarding-welcome-copy-platform-divergence.md`. `sync-enforcer` carve-out logged.
+- **R1–R6 mobile icon parity** — Approved as-mapped and shipped. Decision doc: `docs/decisions/2026-04-21-design-system-sweep-icon-parity.md`. Typecheck green on mobile.
+
+Remaining D-items (D2–D13 except D1) and M2–M4 still pending Grace's call.
+
 ---
 
 ## Part 1 — Design decisions you need to make (13 items)

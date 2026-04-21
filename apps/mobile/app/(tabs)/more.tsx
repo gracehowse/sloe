@@ -3,7 +3,33 @@ import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, S
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Sparkles,
+  Users,
+  Flame,
+  LayoutGrid,
+  Calendar,
+  Coffee,
+  Wine,
+  HeartPulse,
+  Bell,
+  Mail,
+  Palette,
+  Download,
+  Code,
+  HelpCircle,
+  FileText,
+  BookOpen,
+  RefreshCw,
+  Trash2,
+  ChevronRight,
+  Info,
+  PlusCircle,
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
@@ -86,8 +112,8 @@ function SectionHeading({ title }: { title: string }) {
  * top-border so the card renders a clean divider sequence regardless
  * of how the callsite orders rows.
  */
-function SettingsRow({ icon, iconColor, label, sub, badge, isFirst, onPress }: {
-  icon: keyof typeof Ionicons.glyphMap;
+function SettingsRow({ icon: Icon, iconColor, label, sub, badge, isFirst, onPress }: {
+  icon: LucideIcon;
   iconColor: string;
   label: string;
   sub?: string;
@@ -110,7 +136,7 @@ function SettingsRow({ icon, iconColor, label, sub, badge, isFirst, onPress }: {
       }}
     >
       <IconBox color={iconColor}>
-        <Ionicons name={icon} size={18} color={iconColor} />
+        <Icon size={18} color={iconColor} strokeWidth={1.75} />
       </IconBox>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text, lineHeight: 17 }}>{label}</Text>
@@ -122,7 +148,7 @@ function SettingsRow({ icon, iconColor, label, sub, badge, isFirst, onPress }: {
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         {badge ? <Text style={{ fontSize: 11, color: colors.textTertiary }}>{badge}</Text> : null}
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
       </View>
     </Pressable>
   );
@@ -604,7 +630,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
               <Text style={{ fontSize: 10, color: colors.textTertiary }}>{l}</Text>
-              {onPress ? <Ionicons name="information-circle-outline" size={12} color={colors.textTertiary} /> : null}
+              {onPress ? <Info size={12} color={colors.textTertiary} strokeWidth={1.75} /> : null}
             </View>
           </Pressable>
         ))}
@@ -643,7 +669,7 @@ export default function ProfileScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="sparkles-outline" size={18} color={Accent.primary} />
+                <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
@@ -655,7 +681,7 @@ export default function ProfileScreen() {
                     : "Unlock AI photo and voice logging with Pro"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+              <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
             </Pressable>
           </View>
         </>
@@ -671,7 +697,7 @@ export default function ProfileScreen() {
           <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
             <SettingsRow
               isFirst
-              icon="people-outline"
+              icon={Users}
               iconColor={t.accent}
               label="Household"
               sub={householdSummary.subtitle}
@@ -686,7 +712,7 @@ export default function ProfileScreen() {
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
           isFirst
-          icon="flame-outline"
+          icon={Flame}
           iconColor={t.accent}
           label="Daily targets"
           sub={
@@ -702,17 +728,17 @@ export default function ProfileScreen() {
           }
           onPress={() => router.push("/targets" as any)}
         />
-        <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
-        <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week starts on" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
+        <SettingsRow icon={LayoutGrid} iconColor={t.accent} label="Dashboard widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
+        <SettingsRow icon={Calendar} iconColor={t.accent} label="Week starts on" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />
         <SettingsRow
-          icon="cafe-outline"
+          icon={Coffee}
           iconColor={t.accent}
           label="Caffeine limit"
           sub={`${targetCaffeineMg} mg/day · FDA guideline is 400 mg`}
           onPress={() => setCaffeineTargetPickerOpen(true)}
         />
         <SettingsRow
-          icon="wine-outline"
+          icon={Wine}
           iconColor={t.accent}
           label="Alcohol limit"
           sub={targetAlcoholGWeekly > 0 ? `${targetAlcoholGWeekly} g/week` : "Off · set a target to show the row"}
@@ -723,9 +749,9 @@ export default function ProfileScreen() {
       {/* Connections */}
       <SectionHeading title="Connections" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
-        <SettingsRow isFirst icon="heart-outline" iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
+        <SettingsRow isFirst icon={HeartPulse} iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow
-          icon="notifications-outline"
+          icon={Bell}
           iconColor={t.accent}
           label="Notifications"
           sub={profileData.notificationPref ? `Daily reminder at ${profileData.notificationPref}` : "Off"}
@@ -736,7 +762,7 @@ export default function ProfileScreen() {
           * Settings. The Progress-visit scheduler still runs as a
           * defensive fallback, but this row is the primary control. */}
         <SettingsRow
-          icon="mail-unread-outline"
+          icon={Mail}
           iconColor={t.accent}
           label="Weekly recap"
           sub={
@@ -751,7 +777,7 @@ export default function ProfileScreen() {
       {/* Recipes */}
       <SectionHeading title="Recipes" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
-        <SettingsRow isFirst icon="add-circle-outline" iconColor={t.green} label="Create recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
+        <SettingsRow isFirst icon={PlusCircle} iconColor={t.green} label="Create recipe" sub="Build and share a recipe" onPress={() => router.push("/create-recipe" as any)} />
       </View>
 
       {/* App */}
@@ -759,7 +785,7 @@ export default function ProfileScreen() {
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
           isFirst
-          icon="color-palette-outline"
+          icon={Palette}
           iconColor={t.accent}
           label="Appearance"
           sub="Theme and display"
@@ -772,7 +798,7 @@ export default function ProfileScreen() {
             the tester's ask was about visibility of the option, not
             its placement. */}
         <SettingsRow
-          icon="download-outline"
+          icon={Download}
           iconColor={t.accent}
           label="Export nutrition log (CSV)"
           sub="Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets."
@@ -805,7 +831,7 @@ export default function ProfileScreen() {
           }}
         />
         <SettingsRow
-          icon="code-slash-outline"
+          icon={Code}
           iconColor={colors.textTertiary}
           label="Export all data (JSON)"
           sub="Full backup for developers or migration."
@@ -824,7 +850,7 @@ export default function ProfileScreen() {
             }
           }}
         />
-        <SettingsRow icon="help-circle-outline" iconColor={t.accent} label="Help & information" sub="How it works, disclaimers, sources" onPress={() => {
+        <SettingsRow icon={HelpCircle} iconColor={t.accent} label="Help & information" sub="How it works, disclaimers, sources" onPress={() => {
           const base = getSupprWebBase();
           if (base) void Linking.openURL(`${base}/help`).catch(() => {});
           else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
@@ -834,8 +860,8 @@ export default function ProfileScreen() {
       {/* Legal */}
       <SectionHeading title="Legal" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
-        <SettingsRow isFirst icon="document-text-outline" iconColor={t.accent} label="Privacy policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
-        <SettingsRow icon="reader-outline" iconColor={t.accent} label="Terms of use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
+        <SettingsRow isFirst icon={FileText} iconColor={t.accent} label="Privacy policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
+        <SettingsRow icon={BookOpen} iconColor={t.accent} label="Terms of use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
       {/* Danger zone */}
@@ -843,14 +869,14 @@ export default function ProfileScreen() {
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow
           isFirst
-          icon="refresh-outline"
+          icon={RefreshCw}
           iconColor={t.amber}
           label="Reset or erase everything"
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
         <SettingsRow
-          icon="trash-outline"
+          icon={Trash2}
           iconColor={t.red}
           label="Erase all app data…"
           sub="Journal, library, plans, shopping — opens reset options"
@@ -895,7 +921,7 @@ export default function ProfileScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
               <View style={{ width: 48, height: 48, borderRadius: Radius.lg, backgroundColor: t.amber + "18", alignItems: "center", justifyContent: "center", marginBottom: Spacing.md }}>
-                <Ionicons name="refresh" size={24} color={t.amber} />
+                <RefreshCw size={24} color={t.amber} strokeWidth={1.75} />
               </View>
               <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, textAlign: "center" }}>Reset or start over</Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 6, maxWidth: 300, lineHeight: 18 }}>
@@ -1039,7 +1065,11 @@ export default function ProfileScreen() {
                 >
                   <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: color, marginRight: 12 }} />
                   <Text style={{ flex: 1, fontSize: 15, fontWeight: "500", color: colors.text }}>{label}</Text>
-                  <Ionicons name={isActive ? "checkbox" : "square-outline"} size={22} color={isActive ? Accent.primary : colors.textTertiary} />
+                  {isActive ? (
+                    <CheckSquare size={22} color={Accent.primary} strokeWidth={1.75} />
+                  ) : (
+                    <Square size={22} color={colors.textTertiary} strokeWidth={1.75} />
+                  )}
                 </Pressable>
               );
             })}
@@ -1276,7 +1306,7 @@ export default function ProfileScreen() {
                 style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}
               >
                 <Text style={{ flex: 1, fontSize: 15, fontWeight: "500", color: colors.text }}>{day === "monday" ? "Monday" : "Sunday"}</Text>
-                {weekStartDay === day && <Ionicons name="checkmark-circle" size={22} color={Accent.primary} />}
+                {weekStartDay === day && <CheckCircle2 size={22} color={Accent.primary} strokeWidth={1.75} />}
               </Pressable>
             ))}
           </View>

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, type LucideIcon } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -84,27 +84,32 @@ const FALLBACK_PRICES = {
 /** Render timing of the Day-7-trial-ends timeline — only shown when
  *  the user is looking at the Pro annual package, which is the only
  *  SKU that carries the 7-day trial (pricing v1). */
-const TIMELINE = [
+const TIMELINE: Array<{
+  icon: LucideIcon;
+  color: string;
+  title: string;
+  desc: string;
+}> = [
   {
-    icon: "checkmark-circle" as const,
+    icon: CheckCircle2,
     color: Accent.success,
     title: "Your targets are set",
     desc: "Calorie budget and macro targets based on your goals.",
   },
   {
-    icon: "restaurant" as const,
+    icon: ChefHat,
     color: Accent.primary,
     title: "Today: Start importing recipes",
     desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition.",
   },
   {
-    icon: "analytics" as const,
+    icon: BarChart3,
     color: Accent.info,
     title: "This week: Save and plan",
     desc: "Save recipes, verify nutrition, and start a meal plan.",
   },
   {
-    icon: "flag" as const,
+    icon: Flag,
     color: Accent.warning,
     title: "Day 7: Trial ends",
     desc: "Your trial ends. Continue with Pro or switch to the free plan.",
@@ -695,7 +700,7 @@ export default function PaywallScreen() {
         accessibilityHint="Returns you to where you were"
         hitSlop={12}
       >
-        <Ionicons name="close" size={20} color={colors.text} />
+        <X size={20} color={colors.text} strokeWidth={1.75} />
       </Pressable>
 
       <View style={styles.header}>
@@ -761,7 +766,7 @@ export default function PaywallScreen() {
           </>
         ) : subscriptionsUnavailable ? (
           <View style={styles.unavailableCard}>
-            <Ionicons name="cloud-offline-outline" size={28} color={colors.textTertiary} />
+            <CloudOff size={28} color={colors.textTertiary} strokeWidth={1.75} />
             <Text style={styles.unavailableTitle}>Subscriptions unavailable</Text>
             <Text style={styles.unavailableBody}>
               {isPurchasesApiKeyPresent()
@@ -834,11 +839,13 @@ export default function PaywallScreen() {
         {trialApplies && currentProPkg ? (
           <View style={styles.timelineWrap}>
             <Text style={styles.timelineHeader}>What the 7-day trial looks like</Text>
-            {TIMELINE.map((item, i) => (
+            {TIMELINE.map((item, i) => {
+              const TimelineIcon = item.icon;
+              return (
               <View key={item.title} style={styles.timelineItem}>
                 <View style={styles.timelineIconWrap}>
                   <View style={[styles.timelineDot, { backgroundColor: item.color + "20" }]}>
-                    <Ionicons name={item.icon} size={16} color={item.color} />
+                    <TimelineIcon size={16} color={item.color} strokeWidth={1.75} />
                   </View>
                   {i < TIMELINE.length - 1 && <View style={styles.timelineLine} />}
                 </View>
@@ -847,7 +854,8 @@ export default function PaywallScreen() {
                   <Text style={styles.timelineDesc}>{item.desc}</Text>
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
         ) : null}
 
@@ -952,10 +960,10 @@ function TierCard({
       <Text style={styles.featHead}>{featHead}</Text>
       {features.map((f) => (
         <View key={f} style={styles.featureRow}>
-          <Ionicons
-            name="checkmark"
+          <Check
             size={16}
             color={isHero ? Accent.primary : colors.textSecondary}
+            strokeWidth={1.75}
           />
           <Text style={styles.featureText}>{f}</Text>
         </View>
