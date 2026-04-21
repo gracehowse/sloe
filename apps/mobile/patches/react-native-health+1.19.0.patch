@@ -14,7 +14,7 @@ index fba0f76..fc5f398 100644
 +- (void)dietary_getDietaryQuantitySamplesForPermission:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback;
  @end
 diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
-index 9d532ee..e43436a 100644
+index 9d532ee..e646bf7 100644
 --- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
 +++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Dietary.m
 @@ -10,9 +10,14 @@
@@ -385,10 +385,56 @@ index 307056d..d51cd4c 100644
           theUnit = [HKUnit gramUnitWithMetricPrefix:HKMetricPrefixKilo];
      }
 diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
-index e8ddce1..5736b5a 100644
+index e8ddce1..da3ffdd 100644
 --- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
 +++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
-@@ -345,6 +345,38 @@ + (BOOL)requiresMainQueueSetup
+@@ -60,17 +60,42 @@ - (id) init
+ 
+ + (BOOL)requiresMainQueueSetup
+ {
+-    return NO;
++    // G-7 (2026-04-21): iOS 26.5 + RN 0.76 bridgeless / ObjCTurboModule interop
++    // raises an uncaught ObjC exception inside `performVoidMethodInvocation`
++    // when `initHealthKit` is dispatched off the main thread. HealthKit
++    // authorization presents UIKit, which must run on the main queue. Returning
++    // YES pins module setup (and all RCT_EXPORT_METHOD invocations via the
++    // TurboModule wrapper) to the main queue so the throw disappears.
++    return YES;
+ }
+ 
+ RCT_EXPORT_METHOD(isAvailable:(RCTResponseSenderBlock)callback)
+ {
+-    [self isHealthKitAvailable:callback];
++    // G-7 (2026-04-21): convert any native NSException into a callback error
++    // instead of letting it propagate out through ObjCTurboModule interop,
++    // which otherwise tears the whole app down with no symbolicated frames.
++    @try {
++        [self isHealthKitAvailable:callback];
++    } @catch (NSException *ex) {
++        NSLog(@"[HealthKit] isAvailable native exception: %@ — %@", ex.name, ex.reason);
++        callback(@[RCTMakeError([NSString stringWithFormat:@"isAvailable native exception: %@", ex.reason ?: ex.name], nil, nil)]);
++    }
+ }
+ 
+ RCT_EXPORT_METHOD(initHealthKit:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
+ {
+-    [self initializeHealthKit:input callback:callback];
++    // G-7 (2026-04-21): same rationale as `isAvailable:` above. In particular
++    // `requestAuthorizationToShareTypes:readTypes:completion:` can raise on
++    // iOS 26.5 if a requested type is invalid under the current HealthKit
++    // entitlement or if the auth sheet can't be presented — converting to a
++    // callback error keeps the tap recoverable (JS shows an Alert) instead
++    // of crashing the app.
++    @try {
++        [self initializeHealthKit:input callback:callback];
++    } @catch (NSException *ex) {
++        NSLog(@"[HealthKit] initHealthKit native exception: %@ — %@", ex.name, ex.reason);
++        callback(@[RCTMakeError([NSString stringWithFormat:@"initHealthKit native exception: %@", ex.reason ?: ex.name], nil, nil)]);
++    }
+ }
+ 
+ RCT_EXPORT_METHOD(initStepCountObserver:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
+@@ -345,6 +370,38 @@ + (BOOL)requiresMainQueueSetup
     [self dietary_getTotalFatSamples:input callback:callback];
  }
  

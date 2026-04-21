@@ -105,3 +105,30 @@ describe("G-1 structural pin — react-native-health patch guards HKCorrelation 
     expect(patch).toContain("healthSyncCorrelation.ts");
   });
 });
+
+describe("G-7 structural pin — initHealthKit / isAvailable native @try wrap", () => {
+  const patch = readFileSync(PATCH_PATH, "utf-8");
+
+  it("pins requiresMainQueueSetup = YES (main queue for auth sheet)", () => {
+    // iOS 26.5 + RN 0.76 bridgeless raises an uncaught ObjC exception
+    // inside `performVoidMethodInvocation` when `initHealthKit` runs off
+    // the main queue (HealthKit auth presents UIKit, which must be main).
+    expect(patch).toMatch(/requiresMainQueueSetup/);
+    expect(patch).toMatch(/^-\s+return NO;$/m);
+    expect(patch).toMatch(/^\+\s+return YES;$/m);
+  });
+
+  it("wraps initHealthKit dispatch in @try/@catch", () => {
+    // Turns any native throw from `requestAuthorizationToShareTypes:...`
+    // into a callback error the JS layer can show as a recoverable Alert.
+    expect(patch).toMatch(/initHealthKit native exception/);
+  });
+
+  it("wraps isAvailable dispatch in @try/@catch", () => {
+    expect(patch).toMatch(/isAvailable native exception/);
+  });
+
+  it("references G-7 in the inline comment so future readers find the incident", () => {
+    expect(patch).toContain("G-7");
+  });
+});

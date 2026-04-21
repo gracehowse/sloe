@@ -221,6 +221,27 @@ Short log of tester-reported issues that were fixed in production (or schema), w
 - No change to the Maintenance card's big-number area, adaptive badge, or confidence bars. Expandable sits under the existing caption.
 - No change to files owned by G-1 (native patch), G-2 (shopping list), or G-3 (weight graph).
 
+## 2026-04-21 — G-7: Apple Health native @try around initHealthKit + requiresMainQueueSetup=YES (build-13 recurrence)
+
+- **Trigger:** Grace (solo tester) on iPhone 17 Pro, iOS 26.5, build 12 install (TestFlight auto-installed the latest distributed build). Tapping **Connect Apple Health** on `apps/mobile/app/health-sync.tsx` hard-crashes the app. Xcode Organizer Crashes tab shows the crashed thread (Thread 10) with only unsymbolicated `libc++abi` + `libobjc.A.dylib` top frames and then `facebook::react::ObjCTurboModule::performVoidMethodInvocation(...)` — i.e. an uncaught Objective-C / C++ exception propagating out of the bridgeless ObjCTurboModule interop on a void-returning native method. No Suppr or `RCTAppleHealthKit` frames in the stack — the symbols for the throwing frame are stripped by the TurboModule unwind path, so we cannot pinpoint the exact raising line from the crash alone.
+- **Why G-1 wasn't enough:** G-1 (build 12) guarded `[corr objects]` / `[corr metadata]` enumeration inside `dietary_getFoodCorrelationSamples` — but that code only runs during a `Sync Now` after permission is granted. The build-13 recurrence fires on the **initial Connect tap**, before any sample query. The entry points invoked on that tap are `isAvailable:` (cheap, sync) and `initHealthKit:` (presents the HealthKit authorization sheet via `requestAuthorizationToShareTypes:readTypes:completion:`). G-1's `@try` doesn't wrap either of those.
+- **Probable cause — two overlapping native bugs on iOS 26.5 + RN 0.76 bridgeless:**
+  1. `react-native-health@1.19.0` declares `+ (BOOL)requiresMainQueueSetup { return NO; }`. Under bridgeless / ObjCTurboModule interop, that lets `initHealthKit` dispatch off the main queue. `requestAuthorizationToShareTypes:...` presents UIKit (the Health permission sheet), and UIKit raises `NSInternalInconsistencyException` for any UI call off the main thread on iOS 26.5. The exception propagates back through `performVoidMethodInvocation`, which in bridgeless has no `@try` around the `-[NSInvocation invoke]` call, so the process dies.
+  2. Even if the main-queue flip fixes that specific raise, any other NSException thrown on `HKHealthStore` / auth-sheet presentation (e.g. a requested type not permitted under the current HealthKit entitlement, or a malformed permission array) takes the same exit path. JS `try/catch` in `handleConnect` cannot catch it.
+- **Fix — native-only, JS surface untouched:**
+  - `apps/mobile/patches/react-native-health+1.19.0.patch` now additionally patches `RCTAppleHealthKit.m`:
+    1. `+ (BOOL)requiresMainQueueSetup` flips from `NO` → `YES`, pinning module setup and (under TurboModule interop) exported method invocations to the main queue. This is the load-bearing change for the UIKit-off-main-thread raise.
+    2. `RCT_EXPORT_METHOD(isAvailable:)` body wrapped in `@try { ... } @catch (NSException *ex) { callback(RCTMakeError(...)); }`. Belt-and-braces — `isHealthKitAvailable:` is unlikely to raise but the cost is one stack frame.
+    3. `RCT_EXPORT_METHOD(initHealthKit:...)` body wrapped in `@try { ... } @catch (NSException *ex) { callback(RCTMakeError(...)); }`. This is the primary guard — any native throw from the authorization path now returns to JS as a callback error, and `handleConnect` already surfaces it as the "Couldn't connect" Alert (F-1's recoverable-alert wrap, `apps/mobile/app/health-sync.tsx:105`).
+  - No JS change. `healthSync.ts` / `health-sync.tsx` / `healthSyncCorrelation.ts` stay verbatim.
+  - No package bump — still `react-native-health@1.19.0`.
+- **Tests:**
+  - `apps/mobile/tests/unit/healthSyncNativePatchPin.test.ts` — added the **G-7 structural pin** block (4 new tests) alongside the existing G-1 block. Pins: (a) `requiresMainQueueSetup` flipped `NO`→`YES`, (b) `initHealthKit native exception` log line present, (c) `isAvailable native exception` log line present, (d) G-7 comment anchor present. Native ObjC isn't unit-testable from vitest, so this structural pin is the backstop against a future `npm install` / `react-native-health` bump silently dropping the guard.
+- **Parity:** iOS-only. Apple Health has no web equivalent; web code untouched.
+- **Ship notes:**
+  - Requires a fresh EAS iOS build (`eas build -p ios --profile production`) + TestFlight upload. Because `eas.json` uses `appVersionSource: remote` with `autoIncrement: true`, EAS will allocate build 14 automatically. Grace: run the build, submit to TestFlight, re-test Connect on iPhone 17 Pro.
+  - If Connect still crashes on build 14, next candidates per [resolved.md:250](./resolved.md#L250) and the new crash data: (i) request a narrower permission set (drop `FoodCorrelation` read, drop all non-macro dietary keys) to eliminate entitlement-mismatch raises; (ii) check `Settings → Privacy & Security → Health → Suppr` on device — if Suppr isn't listed at all post-crash, the HealthKit entitlement isn't actually embedded in the installed IPA despite app.json declaring it, and we need to inspect the signed IPA's embedded `.entitlements` directly.
+
 ## 2026-04-19 — G-1: Apple Health native ObjC try/catch for correlation enumeration
 
 - **ASC feedback ids:**
