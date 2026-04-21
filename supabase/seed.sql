@@ -1,5 +1,17 @@
--- Local/dev seed: schema compatibility tweaks + promo code only (no demo recipes).
--- Run this after `schema.sql` in Supabase Dashboard → SQL Editor.
+-- ⚠️  LOCAL / DEV ONLY — do NOT run against a production Supabase project.
+--
+-- This file is invoked automatically by `supabase db reset` (local) via
+-- `[db.seed]` in `supabase/config.toml`. It is NOT run by `supabase db push
+-- --linked`, so production deploys already skip it by design.
+--
+-- Scope: schema-compatibility shims + dev/test promo codes only. Discover-feed
+-- recipes are NOT seeded here — they live in `scripts/seed-discover-recipes.ts`
+-- (TestFlight-only, purge via `scripts/delete-seeded-recipes.ts`).
+--
+-- Guard: if we detect an already-seeded DB (promo codes present), re-running
+-- is a no-op. If someone ever does paste this into Dashboard SQL Editor on
+-- prod, the existence of the promo rows from a prior real purchase flow
+-- should make them stop and think before proceeding.
 
 -- Compatibility: if you already had tables, ensure required columns exist.
 do $$

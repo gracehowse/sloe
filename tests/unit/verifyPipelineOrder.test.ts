@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { confidenceForMatch, scaledMacrosPlausible } from "@/lib/nutrition/verifyIngredients";
+import { confidenceForMatch, scaledMacrosPlausible, per100gPlausible } from "@/lib/nutrition/verifyIngredients";
 
 describe("verifyIngredients pipeline source order", () => {
   it("confidence scoring ranks exact matches highly", () => {
@@ -25,6 +25,27 @@ describe("verifyIngredients pipeline source order", () => {
   it("scaledMacrosPlausible rejects impossible macros", () => {
     // 100 cal claimed but macros imply 900 cal
     expect(scaledMacrosPlausible({ calories: 100, protein: 50, carbs: 50, fat: 50, fiberG: 0, sugarG: 0, sodiumMg: 0 })).toBe(false);
+  });
+
+  // ── L10 — per100g plausibility bounds ────────────────────────
+  it("per100gPlausible accepts normal foods", () => {
+    expect(per100gPlausible({ calories: 165 })).toBe(true);
+    expect(per100gPlausible({ calories: 0 })).toBe(true);
+    expect(per100gPlausible({ calories: 884 })).toBe(true); // olive oil
+  });
+
+  it("per100gPlausible rejects >900 kcal/100g (above pure fat)", () => {
+    expect(per100gPlausible({ calories: 1200 })).toBe(false);
+    expect(per100gPlausible({ calories: 950 })).toBe(false);
+  });
+
+  it("per100gPlausible rejects negative kcal", () => {
+    expect(per100gPlausible({ calories: -10 })).toBe(false);
+  });
+
+  it("per100gPlausible rejects non-finite kcal", () => {
+    expect(per100gPlausible({ calories: Number.NaN })).toBe(false);
+    expect(per100gPlausible({ calories: Number.POSITIVE_INFINITY })).toBe(false);
   });
 
   it("pipeline comment order is Suppr -> USDA -> Edamam -> OFF -> FatSecret -> estimation", async () => {

@@ -80,6 +80,18 @@ export function scaledMacrosPlausible(macros: VerifiedMacros): boolean {
   return ratio >= ATWATER_MIN_RATIO && ratio <= ATWATER_MAX_RATIO;
 }
 
+/**
+ * Absolute per-100g plausibility check. Anything above pure fat (~900 kcal/100g)
+ * or below zero is a data/parsing bug — reject outright.
+ */
+export function per100gPlausible(per100g: { calories: number }): boolean {
+  const kcal = per100g.calories;
+  if (!Number.isFinite(kcal)) return false;
+  if (kcal < 0) return false;
+  if (kcal > 900) return false;
+  return true;
+}
+
 const QUERY_COOKED_METHOD =
   /\b(grilled|roasted|fried|baked|boiled|steamed|smoked|braised|barbecued|bbq|saut[ée]ed|saute|pan[- ]fried|deep[- ]fried|broiled)\b/i;
 const QUERY_COOKED_GENERIC = /\bcooked\b/i;
@@ -447,6 +459,9 @@ export async function verifyIngredients(opts: {
         for (const uf of userFoodHits) {
           const conf = confidenceForMatch(query, [uf.brand, uf.name].filter(Boolean).join(" "));
           if (conf < MIN_MATCH_CONFIDENCE) continue;
+          // M15 — guard against divide-by-zero when a user_foods row has no
+          // serving size recorded. Reconstructing per-100g is meaningless here.
+          if (!uf.servingSizeG || uf.servingSizeG === 0) continue;
           const per100g = {
             calories: uf.calories / (uf.servingSizeG / 100),
             protein: uf.protein / (uf.servingSizeG / 100),
@@ -456,6 +471,7 @@ export async function verifyIngredients(opts: {
             sugarG: uf.sugarG / (uf.servingSizeG / 100),
             sodiumMg: uf.sodiumMg / (uf.servingSizeG / 100),
           };
+          if (!per100gPlausible(per100g)) continue;
           const supprMacros = scaleMacros(per100g, grams / 100);
           if (!scaledMacrosPlausible(supprMacros)) continue;
           // Verified entries get higher confidence boost
@@ -559,6 +575,7 @@ export async function verifyIngredients(opts: {
               const food = await fdcFoodGet(usdaCfg, hit.fdcId);
               if (!food?.foodNutrients?.length) continue;
               const per100g = fdcFoodMacrosPer100g(food);
+              if (!per100gPlausible(per100g)) continue;
 
               // Use food-specific portion weights when available.
               // E.g. "2 slices ham" — if this USDA food has a "slice" portion = 60g, use that
@@ -607,6 +624,7 @@ export async function verifyIngredients(opts: {
           if (conf < MIN_MATCH_CONFIDENCE) continue;
           if (preparationStateMismatch(edamamPrepQuery, label)) continue;
           const per100g = edamamFoodMacrosPer100g(hit.food);
+          if (!per100gPlausible(per100g)) continue;
           const edamamMacros = scaleMacros(per100g, grams / 100);
           if (!scaledMacrosPlausible(edamamMacros)) continue;
           return {
@@ -645,6 +663,7 @@ export async function verifyIngredients(opts: {
               sugarG: hit.sugarG,
               sodiumMg: hit.sodiumMg,
             };
+            if (!per100gPlausible(per100g)) continue;
             const offMacros = scaleMacros(per100g, grams / 100);
             if (!scaledMacrosPlausible(offMacros)) continue;
             return {
@@ -721,11 +740,30 @@ export async function verifyIngredients(opts: {
       amount: resolved.amount || "1",
       unit: resolved.unit || "",
     });
+    // If the estimator couldn't even resolve a weight or parse an amount,
+    // surface the line as Unverified with no macros rather than a zero-filled
+    // "Estimated" row — honest failure beats false precision.
+    if (estimated.amountUnparseable || estimated.noReliableMatch) {
+      return {
+        input: raw, resolved,
+        fatSecretFoodId: null,
+        matchedName: null,
+        confidence: 0,
+        source: "Unverified",
+        macros: null,
+      };
+    }
+    const estConfidence =
+      typeof estimated.confidence === "number"
+        ? estimated.confidence
+        : estimated.isDefaultFallback
+          ? 0.15
+          : 0.35;
     return {
       input: raw, resolved,
       fatSecretFoodId: null,
       matchedName: resolved.name,
-      confidence: estimated.isDefaultFallback ? 0.15 : 0.35,
+      confidence: estConfidence,
       source: "Estimated",
       macros: {
         calories: estimated.calories,
@@ -733,8 +771,12 @@ export async function verifyIngredients(opts: {
         carbs: estimated.carbs,
         fat: estimated.fat,
         fiberG: estimated.fiberG,
-        sugarG: estimated.sugarG,
-        sodiumMg: estimated.sodiumMg,
+        // Unknown micros are returned as null from the estimator (M14). For
+        // the VerifiedMacros contract (numbers), fall back to 0 while callers
+        // migrate; UI can already use the `estimated.densityDefaulted` etc.
+        // flags from the local path if needed.
+        sugarG: estimated.sugarG ?? 0,
+        sodiumMg: estimated.sodiumMg ?? 0,
       },
     };
   }

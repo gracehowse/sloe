@@ -351,6 +351,10 @@ export default function TrackerScreen() {
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number}>>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
+  // Target fast length in hours, parsed from `profiles.fasting_window`
+  // (stored as "16:8" style). Defaults to 16 until the profile loads.
+  // Used by the widget snapshot so the iOS widget shows the correct ring.
+  const [fastTargetHours, setFastTargetHours] = useState<number>(16);
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
   // Batch 5.13 — Pro-gated Voice + AI photo logging state.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
@@ -962,7 +966,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -970,7 +974,7 @@ export default function TrackerScreen() {
       resp = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -1034,6 +1038,18 @@ export default function TrackerScreen() {
     if (Array.isArray(data.fasting_sessions)) {
       const active = (data.fasting_sessions as Array<{start: string; end: string | null}>).find((s) => s.end === null);
       setActiveFastStart(active?.start ?? null);
+    }
+    // Parse `profiles.fasting_window` (stored as "16:8" style; fast hours
+    // before the colon). Mirrors `parseFastingWindow` in `app/fasting.tsx`
+    // so the widget snapshot reflects the user's configured window rather
+    // than the 16h default. Invalid / unset values fall through to 16h.
+    const fwRaw = (d as { fasting_window?: unknown }).fasting_window;
+    if (typeof fwRaw === "string" && fwRaw.includes(":")) {
+      const parts = fwRaw.split(":");
+      const fast = parseInt(parts[0] ?? "", 10);
+      if (Number.isFinite(fast) && fast >= 1 && fast <= 48) {
+        setFastTargetHours(fast);
+      }
     }
     if (Array.isArray(data.tracked_macros) && data.tracked_macros.length > 0) {
       setTrackedMacros(data.tracked_macros as string[]);
@@ -1477,8 +1493,10 @@ export default function TrackerScreen() {
           fatTargetG: targets.fat,
           fatConsumedG: totals.fat,
           fastStartsAt: activeFastStart,
-          // TODO — thread profiles.fasting_window once Today reads it.
-          // Snapshot falls back to 16h in the meantime.
+          // Threaded from `profiles.fasting_window` (parsed in
+          // `loadProfileTargets`). `buildWidgetSnapshot` clamps to 1..48h
+          // and defaults to 16 if anything is off — safe to pass directly.
+          fastTargetHours,
         });
         const result = await writeWidgetSnapshot(snapshot);
         if (result.ok) {
@@ -1510,6 +1528,7 @@ export default function TrackerScreen() {
     targets.carbs,
     targets.fat,
     activeFastStart,
+    fastTargetHours,
   ]);
 
   const loggedDays = useMemo(() => {
@@ -2109,13 +2128,32 @@ export default function TrackerScreen() {
       return out;
     };
 
-    const { data: rows, error } = await supabase
-      .from("nutrition_entries")
-      .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
-      .eq("user_id", userId)
-      .order("date_key", { ascending: true })
-      .order("created_at", { ascending: true })
-      .limit(20_000);
+    // M9 (2026-04-21) — `nutrition_entries` and the top-of-day
+    // `meal_plan_days` lookup are independent (different tables,
+    // different filters). Kick both off in parallel; the dependent
+    // `meal_plan_meals` fetch below still waits on `dayRow` because
+    // it uses the returned id. Sequential execution used to cost us
+    // the round-trip difference on every tab focus.
+    const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    const [
+      { data: rows, error },
+      { data: dayRow },
+    ] = await Promise.all([
+      supabase
+        .from("nutrition_entries")
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
+        .eq("user_id", userId)
+        .order("date_key", { ascending: true })
+        .order("created_at", { ascending: true })
+        .limit(20_000),
+      supabase
+        .from("meal_plan_days")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("day", todayDow)
+        .eq("slot_id", "default")
+        .maybeSingle(),
+    ]);
 
     let loaded: ByDay = {};
 
@@ -2159,16 +2197,10 @@ export default function TrackerScreen() {
     }
     setHydrated(true);
 
-    // Today's planned meals: relational `meal_plan_days` + `meal_plan_meals`, else legacy JSON plan
-    const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
-    const { data: dayRow } = await supabase
-      .from("meal_plan_days")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("day", todayDow)
-      .eq("slot_id", "default")
-      .maybeSingle();
-
+    // Today's planned meals: the `meal_plan_days` row was fetched in
+    // parallel above (M9). We now use `dayRow` to drive the dependent
+    // `meal_plan_meals` fetch, or fall back to legacy JSON when the
+    // relational day row is missing.
     if (dayRow?.id) {
       const { data: mealRows } = await supabase
         .from("meal_plan_meals")

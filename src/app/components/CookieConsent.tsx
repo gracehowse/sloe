@@ -48,7 +48,8 @@ export function CookieConsent() {
     <div className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6 pointer-events-none">
       <div className="max-w-lg mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-5 pointer-events-auto">
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">
-          We use cookies for essential functionality and optional analytics to improve Suppr. See our{" "}
+          Suppr uses essential cookies to keep you signed in. With your consent we also load optional analytics
+          (PostHog) and error reporting (Sentry) to improve reliability. These stay off until you accept. See our{" "}
           <Link href="/privacy" className="text-primary dark:text-primary underline">
             privacy policy
           </Link>{" "}

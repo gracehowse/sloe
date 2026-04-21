@@ -92,6 +92,21 @@ async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
   const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
+
+  // Production fence (H19, 2026-04-21). These seeds hotlink publisher CDN
+  // imagery and embed recipe text that is NOT licensed for redistribution —
+  // running them against prod is an IP/licensing incident waiting to happen.
+  // Set SEED_ALLOW_PROD=1 only if you truly mean it (and have purged plan in
+  // hand via scripts/delete-seeded-recipes.ts).
+  const isLocalSupabase = /localhost|127\.0\.0\.1/.test(supabaseUrl);
+  if (!isLocalSupabase && process.env.SEED_ALLOW_PROD !== "1") {
+    console.error(
+      `Refusing to seed against non-local Supabase URL (${supabaseUrl}). ` +
+        `Set SEED_ALLOW_PROD=1 to override (TestFlight-only; purge before external launch).`,
+    );
+    process.exit(1);
+  }
+
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
   const urls = readSeedUrls();

@@ -152,6 +152,12 @@ export function TodayAtAGlance({
             : "Log activity below to increase your calorie goal for today"}
         </p>
       )}
+      <p
+        data-testid="today-nutrition-estimate-footer"
+        className="mt-3 text-[11px] text-muted-foreground leading-snug"
+      >
+        Nutrition data are estimates. Not medical or dietetic advice.
+      </p>
     </section>
   );
 }

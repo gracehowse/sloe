@@ -3,7 +3,14 @@
  * Accuracy here affects all nutrition calculations.
  */
 import { describe, it, expect } from "vitest";
-import { measureToGrams } from "@/lib/nutrition/measureToGrams";
+import {
+  measureToGrams,
+  measureToGramsDetailed,
+  ML_PER_CUP_US,
+  ML_PER_CUP_UK,
+  ML_PER_CUP_METRIC,
+  EGG_SIZE_G,
+} from "@/lib/nutrition/measureToGrams";
 
 describe("measureToGrams", () => {
   // ── Standard weight units ──────────────────────────────────────
@@ -101,8 +108,20 @@ describe("measureToGrams", () => {
     expect(measureToGrams({ name: "chickpeas", amount: 1, unit: "tin" })).toBe(240);
   });
 
-  it("tin of generic = 220g", () => {
-    expect(measureToGrams({ name: "coconut milk", amount: 1, unit: "tin" })).toBe(220);
+  it("tin of coconut milk = 400g (named variant)", () => {
+    expect(measureToGrams({ name: "coconut milk", amount: 1, unit: "tin" })).toBe(400);
+  });
+
+  it("tin of tuna = 145g (drained)", () => {
+    expect(measureToGrams({ name: "tuna", amount: 1, unit: "tin" })).toBe(145);
+  });
+
+  it("tin of anchovies = 50g", () => {
+    expect(measureToGrams({ name: "anchovies", amount: 1, unit: "tin" })).toBe(50);
+  });
+
+  it("tin of generic unknown item = 220g fallback", () => {
+    expect(measureToGrams({ name: "mystery paste", amount: 1, unit: "tin" })).toBe(220);
   });
 
   // ── Slices with food-specific weights ──────────────────────────
@@ -207,5 +226,64 @@ describe("measureToGrams", () => {
 
   it("l (liter) = 1000g", () => {
     expect(measureToGrams({ name: "water", amount: 1, unit: "l" })).toBe(1000);
+  });
+
+  // ── H13 — cup region constants ─────────────────────────────────
+
+  it("exports US/UK/metric cup constants", () => {
+    expect(ML_PER_CUP_US).toBeCloseTo(236.588, 3);
+    expect(ML_PER_CUP_UK).toBe(284);
+    expect(ML_PER_CUP_METRIC).toBe(250);
+  });
+
+  it("cup defaults to US convention when no region given", () => {
+    const g = measureToGrams({ name: "water", amount: 1, unit: "cup", gPerMl: 1 });
+    expect(g).toBeCloseTo(ML_PER_CUP_US, 1);
+  });
+
+  it("cup respects UK region", () => {
+    const g = measureToGrams({ name: "water", amount: 1, unit: "cup", gPerMl: 1, cupRegion: "uk" });
+    expect(g).toBe(ML_PER_CUP_UK);
+  });
+
+  it("cup respects metric region", () => {
+    const g = measureToGrams({ name: "water", amount: 1, unit: "cup", gPerMl: 1, cupRegion: "metric" });
+    expect(g).toBe(ML_PER_CUP_METRIC);
+  });
+
+  // ── H14 — density defaulted flag ───────────────────────────────
+
+  it("flags densityDefaulted when cup conversion uses the 0.9 fallback", () => {
+    const r = measureToGramsDetailed({ name: "mystery", amount: 1, unit: "cup" });
+    expect(r.densityDefaulted).toBe(true);
+  });
+
+  it("does NOT flag densityDefaulted when caller provides gPerMl", () => {
+    const r = measureToGramsDetailed({ name: "flour", amount: 1, unit: "cup", gPerMl: 0.53 });
+    expect(r.densityDefaulted).toBeUndefined();
+  });
+
+  it("does NOT flag densityDefaulted for non-cup units", () => {
+    const r = measureToGramsDetailed({ name: "beef", amount: 100, unit: "g" });
+    expect(r.densityDefaulted).toBeUndefined();
+  });
+
+  // ── M5 — egg size modifiers ────────────────────────────────────
+
+  it("2 medium eggs = 2 × 44g (not 2 × 110g)", () => {
+    expect(measureToGrams({ name: "eggs", amount: 2, unit: "medium" })).toBe(88);
+  });
+
+  it("1 small egg = 38g", () => {
+    expect(measureToGrams({ name: "egg", amount: 1, unit: "small" })).toBe(EGG_SIZE_G.small);
+  });
+
+  it("1 large egg = 50g", () => {
+    expect(measureToGrams({ name: "egg", amount: 1, unit: "large" })).toBe(EGG_SIZE_G.large);
+  });
+
+  it("size modifier does NOT apply when the item is not an egg", () => {
+    // A medium onion must still be 110g.
+    expect(measureToGrams({ name: "onion", amount: 1, unit: "medium" })).toBe(110);
   });
 });

@@ -22,6 +22,7 @@
     "build:icons": "node scripts/build-icons.mjs",
     "delete:seeded-recipes": "node --import tsx scripts/delete-seeded-recipes.ts",
     "check:migrations": "node --import tsx scripts/check-migration-drift.ts",
+    "db:types": "supabase gen types typescript --project-id fnfgxsignmuepshbebrl > src/lib/supabase/database.types.ts && cp src/lib/supabase/database.types.ts apps/mobile/lib/database.types.ts",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
     "mobile:lint": "npm run lint --prefix apps/mobile",
     "mobile:typecheck": "npm run typecheck --prefix apps/mobile",

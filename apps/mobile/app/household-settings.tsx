@@ -24,6 +24,7 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Switch,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,9 +36,14 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   getMyHousehold,
+  setHouseholdMemberShareTargets,
   setHouseholdShareLunch,
   type HouseholdData,
 } from "../../../src/lib/household/householdClient";
+import {
+  SHARE_TARGETS_TOGGLE_HELPER,
+  SHARE_TARGETS_TOGGLE_LABEL,
+} from "../../../src/lib/household/scopeCopy";
 import {
   HOUSEHOLD_DAY_IDS,
   HOUSEHOLD_SLOT_IDS,
@@ -126,6 +132,7 @@ export default function HouseholdSettingsScreen() {
   });
   const [saving, setSaving] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+  const [shareTargetsSaving, setShareTargetsSaving] = useState(false);
   const [editingCell, setEditingCell] = useState<
     | { day: HouseholdDayId; slot: HouseholdSlotId }
     | null
@@ -176,6 +183,64 @@ export default function HouseholdSettingsScreen() {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const memberIds = useMemo(() => members.map((m) => m.userId), [members]);
+  const me = useMemo(
+    () => members.find((m) => m.userId === userId) ?? null,
+    [members, userId],
+  );
+  const myShareTargets = Boolean(me?.shareTargets);
+
+  const onToggleShareTargets = useCallback(
+    async (next: boolean) => {
+      if (!userId || shareTargetsSaving) return;
+      setShareTargetsSaving(true);
+      // Optimistic local flip so the switch feels instant; revert on
+      // failure. The shared client writes through RLS (policy
+      // "Members can update own share_targets" — scoped to user_id =
+      // auth.uid()), so a tampered request against another user's row
+      // silently matches zero rows and surfaces update_failed.
+      const previous = data;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members.map((m) =>
+                m.userId === userId
+                  ? {
+                      ...m,
+                      shareTargets: next,
+                      // When opting out we can't reconstruct remaining
+                      // from state alone — a reload after save will
+                      // paint the self row correctly; keep remaining
+                      // in place for the caller's own row which is
+                      // always revealed to themselves.
+                    }
+                  : m,
+              ),
+            }
+          : prev,
+      );
+      try {
+        const { error: updErr } = await setHouseholdMemberShareTargets(
+          supabase as any,
+          userId,
+          next,
+        );
+        if (updErr) {
+          setData(previous);
+          Alert.alert(
+            "Couldn't update",
+            "Target sharing could not be saved. Please try again.",
+          );
+        }
+      } catch (e) {
+        setData(previous);
+        Alert.alert("Couldn't update", (e as Error).message || "Please try again.");
+      } finally {
+        setShareTargetsSaving(false);
+      }
+    },
+    [userId, data, shareTargetsSaving],
+  );
 
   const setPreset = useCallback(
     (p: (typeof HOUSEHOLD_SHARING_PRESETS)[number]["id"]) => {
@@ -422,6 +487,57 @@ export default function HouseholdSettingsScreen() {
                     </View>
                   );
                 })}
+              </View>
+            </View>
+
+            {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
+            <View style={{ marginBottom: 18 }} testID="household-settings-privacy">
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.4,
+                  color: colors.textTertiary,
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                Privacy
+              </Text>
+              <View
+                style={{
+                  borderRadius: Radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  backgroundColor: colors.card,
+                  padding: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+                    {SHARE_TARGETS_TOGGLE_LABEL}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                      marginTop: 4,
+                      lineHeight: 15,
+                    }}
+                  >
+                    {SHARE_TARGETS_TOGGLE_HELPER}
+                  </Text>
+                </View>
+                <Switch
+                  value={myShareTargets}
+                  onValueChange={(v) => void onToggleShareTargets(v)}
+                  disabled={shareTargetsSaving || !me}
+                  accessibilityLabel={SHARE_TARGETS_TOGGLE_LABEL}
+                  testID="household-settings-share-targets"
+                />
               </View>
             </View>
 

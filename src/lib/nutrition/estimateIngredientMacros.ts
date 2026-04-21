@@ -7,7 +7,7 @@
  * only owns the STAPLES macro table and the stapleForName lookup.
  */
 
-import { measureToGrams } from "./measureToGrams";
+import { measureToGramsDetailed } from "./measureToGrams";
 
 export type MacroBreakdown = {
   calories: number;
@@ -15,23 +15,38 @@ export type MacroBreakdown = {
   carbs: number;
   fat: number;
   fiberG: number;
-  sugarG: number;
-  sodiumMg: number;
+  /** Null when the staple does not define sugar (unknown, not zero). */
+  sugarG: number | null;
+  /** Null when the staple does not define sodium (unknown, not zero). */
+  sodiumMg: number | null;
   /** True when the ingredient could not be matched to any known staple and
    *  fell back to the generic default (150 kcal/100g). UI should surface this
    *  so users know the estimate may be unreliable. */
   isDefaultFallback?: boolean;
+  /** True when the ingredient text implied a cooked preparation (grilled,
+   *  roasted, fried, etc.) but the matched staple is a raw/generic entry.
+   *  Macros are NOT adjusted — caller should warn the user. */
+  preparationApproximation?: boolean;
+  /** True when the cup conversion fell back to the default 0.9 g/ml density. */
+  densityDefaulted?: boolean;
+  /** True when the amount string could not be parsed (e.g. "some",
+   *  "a few"). Macros are returned as zero with confidence 0. */
+  amountUnparseable?: boolean;
+  /** True when measured weight came out as 0g or negative — no reliable
+   *  match. Macros are returned as zero with confidence 0. */
+  noReliableMatch?: boolean;
+  /** Recommended confidence for this line. 0..1. When present, callers
+   *  should prefer this over their own heuristic. */
+  confidence?: number;
 };
 
 type StapleMacros = Omit<MacroBreakdown, "sugarG" | "sodiumMg"> & {
-  /** Defaults to 0 if omitted. */
   sugarG?: number;
-  /** Defaults to 0 if omitted. */
   sodiumMg?: number;
 };
 
 type Staple = {
-  /** Per 100 g edible portion. sugarG/sodiumMg default to 0 if omitted. */
+  /** Per 100 g edible portion. sugarG/sodiumMg may be omitted → unknown. */
   per100g: StapleMacros;
   /** Optional density g per 1 ml (oils ~0.92, water 1) */
   gPerMl?: number;
@@ -183,25 +198,75 @@ const STAPLES: Record<string, Staple> = {
 /* COUNT_WEIGHT_G and unit conversion constants live in measureToGrams.ts
  * (single source of truth). This file only handles STAPLES macros + scaling. */
 
-function stapleForName(name: string): { staple: Staple; isDefault: boolean } {
+/** Preparation keywords that imply cooked state. */
+const PREPARATION_KEYWORDS = /\b(grilled|cooked|baked|fried|boiled|roasted|steamed|braised|smoked|sauteed|saut[ée]ed|broiled|poached|seared)\b/i;
+
+/** Staple keys whose entries represent raw/generic state (not cooked). */
+const RAW_STAPLE_KEYS = new Set([
+  "chicken", "chicken breast", "chicken thigh", "chicken drumstick", "chicken wing",
+  "beef", "beef mince", "mince", "pork", "lamb", "turkey",
+  "salmon", "cod", "tuna", "haddock", "mackerel", "sardine", "squid",
+  "prawn", "shrimp",
+  "egg", "tofu",
+]);
+
+function stapleForName(name: string): { staple: Staple; isDefault: boolean; matchedKey: string } {
   const n = name.toLowerCase().trim();
-  if (!n) return { staple: STAPLES.default, isDefault: true };
-  const keys = Object.keys(STAPLES).filter((k) => k !== "default").sort((a, b) => b.length - a.length);
+  if (!n) return { staple: STAPLES.default, isDefault: true, matchedKey: "default" };
+  const keys = Object.keys(STAPLES).filter((k) => k !== "default");
+
+  // Collect every key that matches with a word boundary. Optional trailing "s"
+  // on each key's final word handles plurals: "lentil" → matches "lentils",
+  // "tomato" → matches "tomatoes", "chickpea" → "chickpeas".
+  type Match = { key: string; length: number; endIndex: number; wordCount: number };
+  const matches: Match[] = [];
   for (const k of keys) {
-    if (n.includes(k)) return { staple: STAPLES[k]!, isDefault: false };
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Allow trailing "s" OR "es" on the final word only.
+    const re = new RegExp(`\\b${escaped}(?:es|s)?\\b`, "i");
+    const m = n.match(re);
+    if (m && m.index !== undefined) {
+      matches.push({
+        key: k,
+        length: k.length,
+        endIndex: m.index + m[0].length,
+        wordCount: k.split(/\s+/).length,
+      });
+    }
   }
-  return { staple: STAPLES.default, isDefault: true };
+  if (matches.length === 0) return { staple: STAPLES.default, isDefault: true, matchedKey: "default" };
+
+  // Ranking:
+  //  1. multi-word keys beat single-word (specificity — "olive oil" > "oil").
+  //  2. among equal word-count, the right-most match wins — English compound
+  //     ingredients carry the head noun at the end: "chicken stock" → stock.
+  //  3. tie-break by longer key.
+  matches.sort((a, b) => {
+    if (b.wordCount !== a.wordCount) return b.wordCount - a.wordCount;
+    if (b.endIndex !== a.endIndex) return b.endIndex - a.endIndex;
+    return b.length - a.length;
+  });
+  const best = matches[0];
+  return { staple: STAPLES[best.key]!, isDefault: false, matchedKey: best.key };
 }
 
-function parseAmountNumeric(amount: string): number {
+/**
+ * Parse a human-written amount string into a number.
+ *
+ * Returns `{ amount: 1, unparseable: true }` when the caller gave us a
+ * non-empty string we couldn't parse (e.g. "some", "a few"). Empty strings
+ * resolve cleanly to 1 (no flag) to preserve the common "1 unit" default.
+ */
+function parseAmountNumeric(amount: string): { amount: number; unparseable: boolean } {
   const t = amount.trim();
-  if (!t) return 1;
+  if (!t) return { amount: 1, unparseable: false };
   if (t.includes("-")) {
     const [a, b] = t.split("-").map((x) => Number.parseFloat(x.trim()));
-    if (Number.isFinite(a) && Number.isFinite(b)) return (a + b) / 2;
+    if (Number.isFinite(a) && Number.isFinite(b)) return { amount: (a + b) / 2, unparseable: false };
   }
   const v = Number.parseFloat(t);
-  return Number.isFinite(v) && v > 0 ? v : 1;
+  if (Number.isFinite(v) && v > 0) return { amount: v, unparseable: false };
+  return { amount: 1, unparseable: true };
 }
 
 function scale(m: StapleMacros, factor: number): MacroBreakdown {
@@ -211,8 +276,22 @@ function scale(m: StapleMacros, factor: number): MacroBreakdown {
     carbs: (m.carbs * factor) / 100,
     fat: (m.fat * factor) / 100,
     fiberG: (m.fiberG * factor) / 100,
-    sugarG: ((m.sugarG ?? 0) * factor) / 100,
-    sodiumMg: ((m.sodiumMg ?? 0) * factor) / 100,
+    sugarG: m.sugarG === undefined ? null : (m.sugarG * factor) / 100,
+    sodiumMg: m.sodiumMg === undefined ? null : (m.sodiumMg * factor) / 100,
+  };
+}
+
+function emptyResult(flags: Partial<MacroBreakdown>): MacroBreakdown {
+  return {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiberG: 0,
+    sugarG: null,
+    sodiumMg: null,
+    confidence: 0,
+    ...flags,
   };
 }
 
@@ -226,43 +305,74 @@ export function estimateLineMacros(input: {
   unit: string;
 }): MacroBreakdown {
   const name = input.name.trim() || "ingredient";
-  const { staple, isDefault } = stapleForName(name);
-  const amt = parseAmountNumeric(input.amount);
+  const { staple, isDefault, matchedKey } = stapleForName(name);
+  const { amount: amt, unparseable } = parseAmountNumeric(input.amount);
+
+  // H16 — refuse to silently treat "some chicken" as "1 chicken".
+  if (unparseable) {
+    return emptyResult({ amountUnparseable: true, isDefaultFallback: isDefault || undefined });
+  }
+
   const u = input.unit.trim().toLowerCase();
 
-  let grams = measureToGrams({
+  const measure = measureToGramsDetailed({
     name,
     amount: amt,
     unit: u,
     gPerMl: staple.gPerMl,
   });
+  const grams = measure.grams;
 
-  if (grams <= 0) grams = 30;
+  // H15 — grams must be positive; don't paper over a 0g conversion.
+  if (!Number.isFinite(grams) || grams <= 0) {
+    return emptyResult({ noReliableMatch: true, isDefaultFallback: isDefault || undefined });
+  }
+
+  // C4 — flag raw/cooked mismatch. Do NOT correct the macros; just lower
+  // confidence and annotate so the caller (and UI) can warn.
+  const nameHasCookedKeyword = PREPARATION_KEYWORDS.test(name);
+  const stapleIsRaw = RAW_STAPLE_KEYS.has(matchedKey);
+  const preparationApproximation = nameHasCookedKeyword && stapleIsRaw;
 
   const scaled = scale(staple.per100g, grams);
+  const baseConfidence = isDefault ? 0.15 : 0.35;
+  const confidence = Math.max(
+    0,
+    baseConfidence - (preparationApproximation ? 0.1 : 0),
+  );
+
   return {
     calories: Math.max(0, Math.round(scaled.calories)),
     protein: Math.max(0, Math.round(scaled.protein * 10) / 10),
     carbs: Math.max(0, Math.round(scaled.carbs * 10) / 10),
     fat: Math.max(0, Math.round(scaled.fat * 10) / 10),
     fiberG: Math.max(0, Math.round(scaled.fiberG * 10) / 10),
-    sugarG: Math.max(0, Math.round(scaled.sugarG * 10) / 10),
-    sodiumMg: Math.max(0, Math.round(scaled.sodiumMg)),
+    sugarG: scaled.sugarG === null ? null : Math.max(0, Math.round(scaled.sugarG * 10) / 10),
+    sodiumMg: scaled.sodiumMg === null ? null : Math.max(0, Math.round(scaled.sodiumMg)),
+    confidence,
     ...(isDefault ? { isDefaultFallback: true } : {}),
+    ...(preparationApproximation ? { preparationApproximation: true } : {}),
+    ...(measure.densityDefaulted ? { densityDefaulted: true } : {}),
   };
 }
 
 export function sumMacros(rows: MacroBreakdown[]): MacroBreakdown {
-  return rows.reduce(
+  return rows.reduce<MacroBreakdown>(
     (acc, r) => ({
       calories: acc.calories + r.calories,
       protein: acc.protein + r.protein,
       carbs: acc.carbs + r.carbs,
       fat: acc.fat + r.fat,
       fiberG: acc.fiberG + r.fiberG,
-      sugarG: acc.sugarG + r.sugarG,
-      sodiumMg: acc.sodiumMg + r.sodiumMg,
+      sugarG:
+        acc.sugarG === null && r.sugarG === null
+          ? null
+          : (acc.sugarG ?? 0) + (r.sugarG ?? 0),
+      sodiumMg:
+        acc.sodiumMg === null && r.sodiumMg === null
+          ? null
+          : (acc.sodiumMg ?? 0) + (r.sodiumMg ?? 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: null, sodiumMg: null },
   );
 }

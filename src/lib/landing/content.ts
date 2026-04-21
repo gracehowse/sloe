@@ -153,6 +153,7 @@ export const ROADMAP: RoadmapBucket[] = [
       { text: "Barcode scanning for packaged foods", status: "shipped" },
       { text: "Voice food logging (Pro)", status: "shipped" },
       { text: "AI photo meal recognition (Pro)", status: "shipped" },
+      { text: "Household sharing — plan meals across 2+ people", status: "shipped" },
     ],
   },
   {
@@ -175,7 +176,6 @@ export const ROADMAP: RoadmapBucket[] = [
       { text: "Apple Watch cook-mode companion", status: "planned" },
       { text: "Grocery delivery integrations (Instacart, Amazon Fresh)", status: "planned" },
       { text: "Recipe Q&A with your own saved library", status: "planned" },
-      { text: "Household sharing — plan meals across 2+ people", status: "planned" },
       { text: "Garmin, Fitbit, Whoop integrations", status: "planned" },
     ],
   },

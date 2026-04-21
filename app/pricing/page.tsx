@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
+import { detectRegion } from "../../src/lib/region/detectRegion.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
@@ -116,6 +118,15 @@ export default async function PricingPage({
   // F2 (AI-Pro paywall conversion) can attribute the view to its
   // originating surface. Normalised through the shared enum above.
   const paywallFrom = normalisePaywallFrom(resolvedSearchParams.from);
+
+  // H7 (2026-04-21) — region-aware pricing surface. `detectRegion`
+  // reads CF-IPCountry / Accept-Language from the request headers and
+  // returns the currency + locale + VAT note. UK / EU visitors get the
+  // inclusive-VAT disclosure required by the 2026-04-19 consumer VAT
+  // memo; EU visitors additionally see a "EU pricing coming soon"
+  // banner because the Stripe SKUs are GBP-only in v1.
+  const reqHeaders = await headers();
+  const region = detectRegion(reqHeaders);
   return (
     <div className="min-h-screen bg-background">
       <PageViewTracker event={AnalyticsEvents.pricing_page_viewed} />
@@ -175,6 +186,13 @@ export default async function PricingPage({
           tiers={TIERS_FOR_GRID}
           stripeTaxEnabled={process.env.STRIPE_TAX_ENABLED === "true"}
           paywallFrom={paywallFrom}
+          regionVatNote={region.vatNote}
+          regionCurrency={region.currency}
+          regionNote={
+            region.currency === "EUR"
+              ? "EU pricing coming soon — current prices in GBP"
+              : ""
+          }
         />
 
         {/* Trust signals */}

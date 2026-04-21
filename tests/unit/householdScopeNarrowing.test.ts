@@ -25,6 +25,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getMyHousehold,
+  setHouseholdMemberShareTargets,
   setHouseholdShareLunch,
 } from "@/lib/household/householdClient";
 
@@ -189,19 +190,20 @@ describe("F-16 member-macro strip", () => {
     expect(self.remaining?.calories).toBe(1700);
   });
 
-  it("other members' rows are stripped of targets, consumed, and remaining", async () => {
+  it("other members' rows are stripped of targets, consumed, and remaining when they haven't opted in", async () => {
     const sb = makeScopedSupabase(false);
     const res = await getMyHousehold(sb as any, "u1");
     const other = res.data!.members.find((m) => m.userId === "u2")!;
     expect(other.displayName).toBe("Bea"); // keeps identity
     expect(other.role).toBe("member"); // keeps role
-    // Every macro-flavoured field must be absent — not zero, not
-    // null — so the UI's `if (m.remaining)` guard hides the whole
-    // block rather than rendering a row of zeros that reads as a
-    // maxed-out budget.
-    expect(other.targets).toBeUndefined();
+    // H4 (2026-04-21): targets + remaining are explicitly `null` (not
+    // undefined) when the other member has share_targets = false /
+    // null. `consumed` is still absent entirely. The UI's
+    // `if (m.remaining)` guard still hides the macro block.
+    expect(other.targets).toBeNull();
+    expect(other.remaining).toBeNull();
     expect(other.consumed).toBeUndefined();
-    expect(other.remaining).toBeUndefined();
+    expect(other.shareTargets).toBe(false);
     // Defensive: no legacy field shapes either.
     expect((other as any).calorie_target).toBeUndefined();
     expect((other as any).calories_remaining).toBeUndefined();
@@ -210,12 +212,56 @@ describe("F-16 member-macro strip", () => {
   it("stripping holds equally for a non-owner caller (u2 looking at u1)", async () => {
     const sb = makeScopedSupabase(false);
     const res = await getMyHousehold(sb as any, "u2");
-    // u2's own row keeps data; u1 (other) is stripped.
+    // u2's own row keeps data; u1 (other) is stripped (share_targets unset).
     const self = res.data!.members.find((m) => m.userId === "u2")!;
     const other = res.data!.members.find((m) => m.userId === "u1")!;
     expect(self.remaining).toBeDefined();
-    expect(other.remaining).toBeUndefined();
-    expect(other.targets).toBeUndefined();
+    expect(other.remaining).toBeNull();
+    expect(other.targets).toBeNull();
+  });
+
+  it("other member's targets are revealed when they have share_targets=true (H4 opt-in)", async () => {
+    // Hand-rolled fixture with u2 opted in.
+    const sb = makeSupabase({
+      household_members: (op) => {
+        if (op === "select:maybeSingle") {
+          return { data: { household_id: "h1", role: "owner", joined_at: "2026-01-01" }, error: null };
+        }
+        if (op === "select") {
+          return {
+            data: [
+              { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_targets: false },
+              { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_targets: true },
+            ],
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+      households: (op) =>
+        op === "select:single"
+          ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "inv", created_at: "2026-01-01", share_lunch: false }, error: null }
+          : { data: null, error: null },
+      household_meals: () => ({ data: [], error: null }),
+      profiles: () => ({
+        data: [
+          { id: "u1", target_calories: 2200, target_protein: 150, target_carbs: 250, target_fat: 70, display_name: "Ada" },
+          { id: "u2", target_calories: 1800, target_protein: 120, target_carbs: 200, target_fat: 60, display_name: "Bea" },
+        ],
+        error: null,
+      }),
+      nutrition_entries: () => ({
+        data: [
+          { user_id: "u2", calories: 400, protein: 20, carbs: 50, fat: 15 },
+        ],
+        error: null,
+      }),
+    });
+    const res = await getMyHousehold(sb as any, "u1");
+    const other = res.data!.members.find((m) => m.userId === "u2")!;
+    expect(other.shareTargets).toBe(true);
+    expect(other.targets?.calories).toBe(1800);
+    expect(other.remaining?.calories).toBe(1400);
   });
 });
 
@@ -257,6 +303,49 @@ describe("setHouseholdShareLunch", () => {
     });
     const res = await setHouseholdShareLunch(sb as any, "", true);
     expect(res.error).toBe("missing_household_id");
+    expect((sb as any).calls).toHaveLength(0);
+  });
+});
+
+describe("setHouseholdMemberShareTargets (H4, 2026-04-21)", () => {
+  it("writes only `share_targets` to the caller's own household_members row", async () => {
+    let capturedPayload: any = null;
+    let capturedFilters: Record<string, unknown> = {};
+    const sb = makeSupabase({
+      household_members: (op, ctx) => {
+        if (op === "update") {
+          capturedPayload = ctx.payload;
+          capturedFilters = ctx.filters;
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const res = await setHouseholdMemberShareTargets(sb as any, "u1", true);
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual({ shareTargets: true });
+    expect(capturedPayload).toEqual({ share_targets: true });
+    // RLS scoping belt + braces — filter is user_id = caller.
+    expect(capturedFilters["eq:user_id"]).toBe("u1");
+  });
+
+  it("surfaces RLS / update failures as a string error (not a throw)", async () => {
+    const sb = makeSupabase({
+      household_members: (op) => (op === "update"
+        ? { data: null, error: { message: "permission denied" } }
+        : { data: null, error: null }),
+    });
+    const res = await setHouseholdMemberShareTargets(sb as any, "u1", true);
+    expect(res.data).toBeNull();
+    expect(res.error).toBe("permission denied");
+  });
+
+  it("rejects missing userId before hitting the network", async () => {
+    const sb = makeSupabase({
+      household_members: () => ({ data: null, error: new Error("should not be called") }),
+    });
+    const res = await setHouseholdMemberShareTargets(sb as any, "", true);
+    expect(res.error).toBe("not_authenticated");
     expect((sb as any).calls).toHaveLength(0);
   });
 });

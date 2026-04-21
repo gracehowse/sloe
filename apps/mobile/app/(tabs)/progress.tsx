@@ -1882,6 +1882,20 @@ export default function ProgressScreen() {
           )}
         </>
       )}
+      <Text
+        testID="progress-nutrition-estimate-footer"
+        style={{
+          fontSize: 11,
+          color: colors.textTertiary,
+          textAlign: "center",
+          lineHeight: 16,
+          marginTop: 16,
+          marginBottom: 8,
+          paddingHorizontal: 16,
+        }}
+      >
+        Nutrition data are estimates. Not medical or dietetic advice.
+      </Text>
     </ScrollView>
   );
 }

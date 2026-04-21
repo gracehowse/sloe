@@ -1,10 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SupprLogoMark } from "../components/SupprLogoMark.tsx";
+import { ROADMAP, type RoadmapStatus } from "../../src/lib/landing/content";
 
 export const metadata: Metadata = {
   title: "Roadmap — Suppr",
-  description: "What we’re building next on Suppr — mobile, creators, discovery, and macro-first meal planning.",
+  description:
+    "What we’re building next on Suppr — mobile, creators, discovery, and macro-first meal planning.",
+};
+
+/**
+ * /roadmap reads from the `ROADMAP` SSOT in `src/lib/landing/content.ts`
+ * so a single edit in that file updates both the landing roadmap section
+ * AND this standalone page (fix H19 / sync-enforcer round 2026-04-21).
+ * Never hand-write prose bullets here — add to `ROADMAP` instead so the
+ * parity tests catch drift.
+ */
+
+const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string }> = {
+  shipped: {
+    label: "Shipped",
+    className:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  },
+  building: {
+    label: "Building",
+    className:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  },
+  planned: {
+    label: "Planned",
+    className: "bg-muted text-muted-foreground",
+  },
 };
 
 export default function RoadmapPage() {
@@ -16,7 +43,10 @@ export default function RoadmapPage() {
             <SupprLogoMark className="h-8 w-8" />
             Suppr
           </Link>
-          <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+          <Link
+            href="/pricing"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
             Pricing
           </Link>
         </div>
@@ -24,38 +54,45 @@ export default function RoadmapPage() {
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <h1 className="text-3xl font-semibold tracking-tight">Roadmap</h1>
         <p className="mt-4 text-muted-foreground leading-relaxed">
-          Suppr is evolving quickly — here’s the direction of travel. We’ll keep this page updated as major milestones
-          ship.
+          Suppr is evolving quickly — here’s the direction of travel. Everything
+          below is read from the same source of truth that powers our landing
+          page, so what you see is what’s actually in (or coming to) the app.
         </p>
-        <ul className="mt-10 space-y-6 text-sm leading-relaxed sm:text-base">
-          <li className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <strong className="font-semibold text-foreground">Mobile & sync</strong>
-            <p className="mt-2 text-muted-foreground">
-              Faster imports, tighter Health and share flows, and polish on the experiences you use away from the desk.
-            </p>
-          </li>
-          <li className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <strong className="font-semibold text-foreground">Creators & discovery</strong>
-            <p className="mt-2 text-muted-foreground">
-              Better surfaces for food creators, clearer attribution, and a discovery feed that feels worth opening daily
-              — with macros already attached.
-            </p>
-          </li>
-          <li className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <strong className="font-semibold text-foreground">Planning intelligence</strong>
-            <p className="mt-2 text-muted-foreground">
-              Smarter week views, optional AI for logging and suggestions, and less friction from “saved” to “cooked”.
-            </p>
-          </li>
-          <li className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <strong className="font-semibold text-foreground">Friends & shared plans (later)</strong>
-            <p className="mt-2 text-muted-foreground">
-              Connect with people you eat with, share meals or whole plans (or just dinners), scale recipes for the
-              household, and help everyone fill their own breakfast, lunch, and snacks around what you agreed to cook—
-              each person keeps their own targets. Detailed spec lives in the product roadmap doc.
-            </p>
-          </li>
-        </ul>
+        <div className="mt-10 space-y-10">
+          {ROADMAP.map((bucket) => (
+            <section key={bucket.title}>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-xl font-semibold tracking-tight">
+                  {bucket.title}
+                </h2>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {bucket.when}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {bucket.summary}
+              </p>
+              <ul className="mt-4 space-y-3 text-sm leading-relaxed sm:text-base">
+                {bucket.items.map((item) => {
+                  const status = STATUS_COPY[item.status];
+                  return (
+                    <li
+                      key={item.text}
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
+                    >
+                      <span className="text-foreground">{item.text}</span>
+                      <span
+                        className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
         <div className="mt-12 flex flex-wrap gap-4">
           <Link
             href="/signup"

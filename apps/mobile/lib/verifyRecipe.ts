@@ -24,6 +24,17 @@ import {
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
 
+// TODO: mobile verifyRecipe.ts should import from src/lib/recipe-import/ — see M4 note
+// The web tree is resolvable from mobile (see the existing
+// `../../../src/lib/...` imports above), so this is a consolidation,
+// not a reachability, problem. Shared-lib candidates:
+//   - `parseIngredientForSearch` (this file) vs `parseIngredientLine`
+//     in `src/lib/recipe-ingredients/` — different intents today
+//     (search-term extraction vs structured parse); revisit when the
+//     mobile verify flow moves to structured parsing.
+//   - `scaleMacros` — already delegates to `scaleFromPer100gGrams` in
+//     `src/lib/openFoodFacts/scaleFromPer100g`; safe to call directly.
+
 type Extra = { supprApiUrl?: string };
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as Extra | undefined;

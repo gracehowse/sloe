@@ -35,9 +35,14 @@ import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
 import {
   getMyHousehold,
+  setHouseholdMemberShareTargets,
   setHouseholdShareLunch,
   type HouseholdData,
 } from "../../lib/household/householdClient";
+import {
+  SHARE_TARGETS_TOGGLE_HELPER,
+  SHARE_TARGETS_TOGGLE_LABEL,
+} from "../../lib/household/scopeCopy";
 import {
   HOUSEHOLD_DAY_IDS,
   HOUSEHOLD_SLOT_IDS,
@@ -129,6 +134,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
   >(null);
   const [saving, setSaving] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+  const [shareTargetsSaving, setShareTargetsSaving] = useState(false);
 
   // Load household + hydrate sharing state.
   useEffect(() => {
@@ -176,6 +182,49 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const memberIds = useMemo(() => members.map((m) => m.userId), [members]);
+  const me = useMemo(
+    () => members.find((m) => m.userId === authedUserId) ?? null,
+    [members, authedUserId],
+  );
+  const myShareTargets = Boolean(me?.shareTargets);
+
+  const onToggleShareTargets = useCallback(
+    async (next: boolean) => {
+      if (!authedUserId || shareTargetsSaving) return;
+      setShareTargetsSaving(true);
+      // Optimistic local flip — mirrors mobile parity. Reverts on failure.
+      const previous = data;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members.map((m) =>
+                m.userId === authedUserId ? { ...m, shareTargets: next } : m,
+              ),
+            }
+          : prev,
+      );
+      try {
+        const { error: updErr } = await setHouseholdMemberShareTargets(
+          supabase as any,
+          authedUserId,
+          next,
+        );
+        if (updErr) {
+          setData(previous);
+          setError("Target sharing could not be saved. Please try again.");
+        } else {
+          setError(null);
+        }
+      } catch (e) {
+        setData(previous);
+        setError((e as Error).message || "Target sharing could not be saved.");
+      } finally {
+        setShareTargetsSaving(false);
+      }
+    },
+    [authedUserId, data, shareTargetsSaving],
+  );
 
   const setPreset = useCallback(
     (p: (typeof HOUSEHOLD_SHARING_PRESETS)[number]["id"]) => {
@@ -354,6 +403,35 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
+      <section className="mb-5" data-testid="household-settings-privacy">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5">
+          Privacy
+        </p>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-foreground">
+              {SHARE_TARGETS_TOGGLE_LABEL}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+              {SHARE_TARGETS_TOGGLE_HELPER}
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={myShareTargets}
+              onChange={(e) => void onToggleShareTargets(e.target.checked)}
+              disabled={shareTargetsSaving || !me}
+              aria-label={SHARE_TARGETS_TOGGLE_LABEL}
+              data-testid="household-settings-share-targets"
+            />
+            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-disabled:opacity-50 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
         </div>
       </section>
 

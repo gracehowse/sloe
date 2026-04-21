@@ -75,6 +75,18 @@ export type UpdateCustomFoodPatch = Partial<{
 const PG_UNIQUE_VIOLATION = "23505";
 const DEDUPE_SUFFIX_LIMIT = 9; // appends " (2)" up to " (9)"
 
+/**
+ * Column list for list + search queries. Explicit (not `select("*")`)
+ * so adding a heavy / unused column to `user_custom_foods` (e.g. a
+ * denormalised photo JSON) doesn't silently balloon the list-panel
+ * payload. Must stay in sync with `rowToCustomFood` — every column
+ * read there needs to appear here. Detail / single-row fetches keep
+ * `select("*")` because they're one-row roundtrips where the cost of
+ * a future column is negligible. M7 (2026-04-21).
+ */
+const CUSTOM_FOOD_LIST_COLUMNS =
+  "id, user_id, name, brand, base_grams, calories, protein, carbs, fat, fiber, servings, servings_per_container, sugar_g, saturated_fat_g, sodium_mg, barcode, created_at, updated_at";
+
 function safeNumber(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : Number(n);
   return Number.isFinite(v) ? v : fallback;
@@ -205,7 +217,7 @@ export async function listCustomFoods(
   if (!userId) return [];
   const { data, error } = await supabase
     .from("user_custom_foods")
-    .select("*")
+    .select(CUSTOM_FOOD_LIST_COLUMNS)
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
   if (error || !Array.isArray(data)) return [];
@@ -374,7 +386,7 @@ export async function searchCustomFoods(
   const pattern = `%${safe}%`;
   const { data, error } = await supabase
     .from("user_custom_foods")
-    .select("*")
+    .select(CUSTOM_FOOD_LIST_COLUMNS)
     .eq("user_id", userId)
     .or(`name.ilike.${pattern},brand.ilike.${pattern}`)
     .order("updated_at", { ascending: false })

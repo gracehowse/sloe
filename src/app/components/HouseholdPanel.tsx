@@ -30,6 +30,7 @@ import {
   SCOPE_NARROWING_NOTICE_KEY,
   SHARE_LUNCH_TOGGLE_HELPER,
   SHARE_LUNCH_TOGGLE_LABEL,
+  TARGETS_PRIVATE_LABEL,
 } from "../../lib/household/scopeCopy";
 
 function mapCreateError(code: string): string {
@@ -387,9 +388,38 @@ export function HouseholdPanel() {
                       <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-fat)" }}>{m.remaining.fat}g</p>
                     </div>
                   </div>
+                ) : !isSelf && m.remaining ? (
+                  // H4 opt-in path: other member has toggled
+                  // share_targets on — render their remaining-today
+                  // macros with the same layout as self.
+                  <div className="flex-1 grid grid-cols-4 gap-1">
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground leading-tight">Cal left</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--warning)" }}>{m.remaining.calories}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground leading-tight">Protein left</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-protein)" }}>{m.remaining.protein}g</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground leading-tight">Carbs left</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-carbs)" }}>{m.remaining.carbs}g</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground leading-tight">Fat left</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--macro-fat)" }}>{m.remaining.fat}g</p>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="flex-1 text-right text-[11px] text-muted-foreground">
-                    {m.role === "owner" ? "Owner" : "Member"}
+                  // H4 default path: targets are null (member hasn't
+                  // opted in, or API stripped). Never render "0" or
+                  // fall back to numbers — show the privacy label.
+                  <span
+                    className="flex-1 text-right text-[11px] text-muted-foreground inline-flex items-center justify-end gap-1"
+                    aria-label={TARGETS_PRIVATE_LABEL}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    {TARGETS_PRIVATE_LABEL}
                   </span>
                 )}
               </div>

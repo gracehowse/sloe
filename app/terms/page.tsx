@@ -27,9 +27,8 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">The service</h2>
           <p>
-            Suppr is provided &ldquo;as is&rdquo; for personal nutrition and recipe planning. Nutrition estimates,
-            barcode data, and third-party recipe imports may be incomplete or inaccurate. Always verify critical dietary
-            or medical decisions with a professional. Optional AI-assisted features (for example photo or voice meal
+            Suppr is a recipe, meal-planning, and nutrition-tracking service. It lets you save recipes, build meal plans,
+            log what you eat, and see estimated nutrition totals. Optional AI-assisted features (for example photo or voice meal
             logging) rely on third-party models; see the{" "}
             <Link
               href="/privacy"
@@ -37,12 +36,39 @@ export default function TermsPage() {
             >
               Privacy policy
             </Link>{" "}
-            for how that processing works.
+            for how that processing works. Suppr is provided &ldquo;as is&rdquo; for personal use.
+          </p>
+          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4">
+            <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-100 pt-0 mt-0">Not medical or dietetic advice</h2>
+            <p className="text-amber-900 dark:text-amber-100">
+              Suppr is a consumer tracking tool. It is <strong>not</strong> a medical device, nor is it a substitute for advice from a
+              qualified doctor, registered dietitian, or other healthcare professional. Do not use Suppr to diagnose, treat, cure, or
+              prevent any disease or condition. Always consult a qualified professional before making decisions that could affect your
+              health &mdash; particularly if you are pregnant, managing a medical condition (including diabetes, eating disorders, kidney
+              disease, or allergies), taking medication, or making changes for a child.
+            </p>
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition estimates</h2>
+          <p>
+            Every nutrition value shown in Suppr &mdash; calories, macros, micronutrients, portion weights &mdash; is an{" "}
+            <strong>estimate</strong> generated from public and licensed food databases (USDA FoodData Central, Open Food Facts,
+            Edamam, FatSecret), barcode lookups, recipe parsing, and AI-assisted photo or voice recognition. Estimates can be wrong
+            for many reasons, including database gaps, brand variation, cooking losses, portion-size ambiguity, and AI misidentification.
+            Accuracy is <strong>not guaranteed</strong>. You are responsible for reviewing and correcting any value before relying on
+            it for health, training, or clinical purposes.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Eligibility</h2>
           <p>
             You must be at least 13 years old to use Suppr (or 16 in jurisdictions where GDPR applies without
             parental consent). By creating an account, you confirm you meet this age requirement.
+          </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Account registration and security</h2>
+          <p>
+            To use most of Suppr you need an account. You agree to provide accurate information, to keep your sign-in
+            credentials confidential, and to tell us promptly at{" "}
+            <a href={`mailto:legal@suppr.app`} className="text-violet-600 dark:text-violet-400 underline">legal@suppr.app</a>{" "}
+            if you believe your account has been compromised. You are responsible for activity that happens under your account. We
+            may suspend accounts showing signs of unauthorised use, fraud, or abuse.
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your content &mdash; licence you grant us</h2>
           <p>
@@ -124,12 +150,46 @@ export default function TermsPage() {
             You can stop using Suppr and delete your account at any time from Settings. We can suspend or terminate
             accounts that breach these terms, abuse the service, or trigger repeated copyright notices.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Intellectual property</h2>
+          <p>
+            The Suppr service, including the software, database structure, user interface, brand name, logo, and supporting content
+            we create, is owned by Suppr and protected by copyright, trademark, and other laws. Third-party food-database content
+            surfaced through Suppr (for example USDA FoodData Central, Open Food Facts, Edamam, FatSecret) remains the property of
+            the respective rights-holders and is shown under their published licences &mdash; see{" "}
+            <Link href="/licences" className="text-violet-600 dark:text-violet-400 underline">licences</Link>{" "}
+            for details. You may not copy, distribute, or create derivative works from the Suppr codebase or branded assets except as
+            expressly permitted.
+          </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>
-            To the maximum extent permitted by law, Suppr and its contributors are not liable for indirect, incidental,
-            special, or consequential damages arising from use of the app. Nothing in these terms excludes liability
-            that cannot be excluded by law (for example liability for death or personal injury caused by negligence,
-            or for fraud).
+            <strong>[PLACEHOLDER &mdash; pending formal legal review.]</strong> To the maximum extent permitted by law, Suppr and its
+            contributors are not liable for indirect, incidental, special, or consequential damages arising from use of the app,
+            including (without limitation) losses attributable to reliance on nutrition estimates. Our total aggregate liability to
+            you for any claim arising out of or relating to the service is limited to the greater of (a) the amount you paid Suppr
+            in the twelve months before the event giving rise to the claim or (b) GBP 100. Nothing in these terms excludes liability
+            that cannot be excluded by law (for example liability for death or personal injury caused by negligence, for fraud, or
+            for a consumer&rsquo;s statutory rights that cannot be waived).
+          </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Governing law and jurisdiction</h2>
+          <p>
+            <strong>[PLACEHOLDER &mdash; pending the incorporation decision tracked in{" "}
+            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/decisions/2026-04-20-incorporation-jurisdiction-pending.md</code>.]</strong>{" "}
+            Governing law and exclusive jurisdiction will be set once the operating entity is incorporated. Until then, consumers
+            in the UK and the EU retain the benefit of mandatory local consumer-protection law and may bring proceedings in the
+            courts of their place of residence.
+          </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">EU consumer withdrawal rights</h2>
+          <p>
+            If you are a consumer resident in the European Union or the United Kingdom, you have a statutory right to cancel a
+            purchase of digital content or digital services within <strong>14 days</strong> of the contract being concluded,
+            without giving a reason. Because Suppr is a digital service whose performance starts immediately on purchase,{" "}
+            <strong>you are asked to expressly consent to performance beginning before the 14-day period ends and to acknowledge
+            that, by doing so, you lose the right to withdraw once performance has begun in full</strong>. If you purchased a
+            subscription and wish to exercise a withdrawal right before performance has begun, email{" "}
+            <a href={`mailto:legal@suppr.app`} className="text-violet-600 dark:text-violet-400 underline">legal@suppr.app</a>{" "}
+            within 14 days of purchase. This right is separate from, and additional to, the voluntary 7-day refund policy above,
+            and it does not apply to in-app purchases made through the Apple App Store or Google Play (which are governed by the
+            respective store&rsquo;s policy).
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Changes to these terms</h2>
           <p>
@@ -139,7 +199,9 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
-            Questions about these terms:{" "}
+            Legal notices, DMCA / IP complaints, and questions about these terms:{" "}
+            <a href={`mailto:legal@suppr.app`} className="text-violet-600 dark:text-violet-400 underline">legal@suppr.app</a>.
+            General support:{" "}
             <a href={`mailto:${supportEmail}`} className="text-violet-600 dark:text-violet-400 underline">{supportEmail}</a>.
           </p>
         </div>

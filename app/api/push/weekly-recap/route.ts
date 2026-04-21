@@ -53,6 +53,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 
 import { sendExpoPush, type ExpoPushMessage } from "@/lib/push/expoPush";
 import { sendWebPushFanout } from "@/lib/push/webPushSend";
@@ -82,6 +83,17 @@ const MAX_ROWS_PER_INVOCATION = 5000;
 
 /** Dedupe window — skip rows pushed more recently than this. */
 const DEDUPE_WINDOW_MS = 6 * 24 * 60 * 60 * 1000;
+
+/**
+ * Constant-time string comparison for the cron shared secret. Using `===`
+ * leaks secret length + prefix via timing — `timingSafeEqual` requires
+ * equal-length buffers so we short-circuit the length check first without
+ * branching on byte content.
+ */
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 /** Default daily target fallbacks when a profile has no per-macro target.
  *  Mirrors the resolver-side defaults — kept here as a local constant so
@@ -169,8 +181,8 @@ export async function POST(req: Request) {
       { status: 503 },
     );
   }
-  const provided = req.headers.get("x-cron-secret");
-  if (provided !== expected) {
+  const provided = req.headers.get("x-cron-secret") ?? "";
+  if (!safeCompare(provided, expected)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

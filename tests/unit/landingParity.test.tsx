@@ -202,6 +202,18 @@ describe("landing page — roadmap parity", () => {
     }
   });
 
+  it("Household sharing is tagged shipped and lives in the 'Now' bucket (H17)", () => {
+    const now = ROADMAP.find((b) => b.title === "Now");
+    expect(now, "Now bucket exists").toBeTruthy();
+    const household = now!.items.find((i) => /household sharing/i.test(i.text));
+    expect(household, "Household sharing lives in Now").toBeTruthy();
+    expect(household!.status).toBe("shipped");
+    // And not also in Later.
+    const later = ROADMAP.find((b) => b.title === "Later");
+    const laterHousehold = later?.items.find((i) => /household sharing/i.test(i.text));
+    expect(laterHousehold).toBeUndefined();
+  });
+
   it("no item is listed as both 'building' and 'shipped'", () => {
     const building = new Set(
       ROADMAP.flatMap((b) => b.items).filter((i) => i.status === "building").map((i) => i.text),

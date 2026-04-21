@@ -357,11 +357,12 @@ describe("getMyHousehold", () => {
     expect(bea.displayName).toBe("Bea");
     // F-16 (2026-04-25): other members' macro targets + remaining-today
     // are stripped server-side per legal-approved scope narrowing
-    // (`AJ1AeYJ--fF`). This assertion replaces the pre-F-16 check that
-    // Bea's `remaining.calories` equalled 800 (1800 - 1000) — that
-    // exposure is no longer permitted.
-    expect(bea.remaining).toBeUndefined();
-    expect(bea.targets).toBeUndefined();
+    // (`AJ1AeYJ--fF`). H4 (2026-04-21) extends this with a per-member
+    // opt-in via `share_targets` — absent/false flips the block to
+    // `null` (not undefined) so the UI's nullish-guard hides it.
+    expect(bea.remaining).toBeNull();
+    expect(bea.targets).toBeNull();
+    expect(bea.shareTargets).toBe(false);
     // Meals passed through verbatim (Dinner survives the F-16 filter).
     expect(res.data?.meals).toHaveLength(1);
     expect(res.data?.meals[0]?.recipe_title).toBe("Chili");

@@ -78,6 +78,16 @@ export type SavedMealInput = {
  */
 export const SAVED_MEAL_NAME_MAX_LENGTH = 80;
 
+/** Explicit column lists for list queries (M7, 2026-04-21). Must stay
+ *  in sync with `rowToMeal` / `rowToItem` below — any column the
+ *  mapper reads needs to appear here. Detail fetches keep `select("*")`
+ *  elsewhere; these lists are specifically the list-of-meals surface
+ *  that runs on every Quick Add panel open. */
+const SAVED_MEAL_LIST_COLUMNS =
+  "id, name, default_meal_slot, created_at, last_logged_at, log_count";
+const SAVED_MEAL_ITEM_LIST_COLUMNS =
+  "id, saved_meal_id, position, recipe_title, calories, protein, carbs, fat, fiber, water_ml, portion_multiplier, source, source_id";
+
 /**
  * Normalise a saved-meal name for persistence: trim surrounding
  * whitespace and clip to `SAVED_MEAL_NAME_MAX_LENGTH`. Returns `null`
@@ -200,7 +210,7 @@ export async function listSavedMeals(
   if (!userId) return [];
   const { data: parentRows, error: parentErr } = await supabase
     .from("user_saved_meals")
-    .select("*")
+    .select(SAVED_MEAL_LIST_COLUMNS)
     .eq("user_id", userId)
     .order("last_logged_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -209,7 +219,7 @@ export async function listSavedMeals(
   const parentIds = parentRows.map((r: any) => String(r.id));
   const { data: itemRows, error: itemsErr } = await supabase
     .from("user_saved_meal_items")
-    .select("*")
+    .select(SAVED_MEAL_ITEM_LIST_COLUMNS)
     .in("saved_meal_id", parentIds)
     .order("position", { ascending: true });
 

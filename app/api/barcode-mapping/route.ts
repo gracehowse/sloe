@@ -53,6 +53,12 @@ export async function POST(req: Request) {
 
   const sb = serverSupabase();
 
+  // Service-role: intentionally cross-tenant — foods / food_sources /
+  // barcode_mappings are shared community catalog tables. Writes are tagged
+  // with created_by: userId for attribution, and the authenticated gate +
+  // per-user rate limit above prevent anonymous / runaway writes. A future
+  // reviewer bit (is_verified) keeps unverified submissions out of the trusted
+  // read path.
   let foodId: string | null = null;
   if (typeof b.foodId === "string" && b.foodId) {
     const { data: existing } = await sb

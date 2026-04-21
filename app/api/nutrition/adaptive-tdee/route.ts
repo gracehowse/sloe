@@ -30,6 +30,7 @@ export async function GET(req: Request) {
   const supabase = createSupabaseServiceRoleClient();
   if (!supabase) return NextResponse.json({ ok: false, error: "server_misconfigured" }, { status: 503 });
 
+  // Service-role: user-scoped by userId to prevent cross-tenant access.
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("sex, weight_kg, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, weight_kg_by_day")
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
     activity_level: activityLevel,
   });
 
-  // Count logging days and weigh-ins for data requirements display
+  // Service-role: user-scoped by userId to prevent cross-tenant access.
   const { count: loggingDays } = await supabase
     .from("nutrition_entries")
     .select("date_key", { count: "exact", head: true })
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
   await refreshAdaptiveTdeeForUser(supabase, userId, { bypassThrottle: true });
 
   // Return updated values
+  // Service-role: user-scoped by userId to prevent cross-tenant access.
   const { data: profile } = await supabase
     .from("profiles")
     .select("adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age, activity_level")

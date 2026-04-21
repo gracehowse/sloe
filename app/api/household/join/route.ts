@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserIdFromRequest, createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
 import { misconfiguredServiceRoleResponse } from "@/lib/server/serverEnv";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { assertOrigin } from "@/lib/api/assertOrigin";
 
 /**
  * POST /api/household/join
@@ -10,6 +11,9 @@ import { rateLimit } from "@/lib/server/rateLimit";
  * Body: { inviteCode: string, displayName?: string }
  */
 export async function POST(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
   // Privacy audit M1 (2026-04-18): invite codes are 12-hex (~48 bits), so
   // brute-force is impractical, but stuffing wasn't blocked. Cap to 5
   // attempts per minute per IP to make automated guessing pointless and
@@ -59,10 +63,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // Find household by invite code
+  // Service-role: intentionally cross-tenant — invite codes are the access
+  // token; looking up a household by its code is the whole point of joining.
+  // Rate-limited above (5/min/IP) to blunt code-stuffing attacks.
   const { data: household } = await supabase
     .from("households")
-    .select("id, name")
+    .select("id, name, invite_code_expires_at")
     .eq("invite_code", inviteCode)
     .maybeSingle();
 
@@ -71,6 +77,26 @@ export async function POST(req: Request) {
       { ok: false, error: "invalid_code", message: "No household found with that invite code." },
       { status: 404 },
     );
+  }
+
+  // M1 fix (2026-04-21): reject expired invite codes. NULL = no expiry
+  // (legacy rows from before the invite-expiry migration) — the owner
+  // can rotate via POST /api/household with { rotateInvite: true } to
+  // stamp a fresh 7-day expiry.
+  const expiresAt = (household as { invite_code_expires_at?: string | null })
+    .invite_code_expires_at;
+  if (expiresAt) {
+    const expiresMs = Date.parse(expiresAt);
+    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "invite_expired",
+          message: "This invite code has expired. Ask the household owner for a new one.",
+        },
+        { status: 410 },
+      );
+    }
   }
 
   // Check household size (max 8 members)

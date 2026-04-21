@@ -1,5 +1,6 @@
 "use client";
 
+// SCHEDULED FOR DELETION 2026-04-27 — legacy onboarding, superseded by onboarding-v2
 /**
  * Legacy onboarding form — preserved for emergency rollback only.
  *

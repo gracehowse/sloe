@@ -70,9 +70,18 @@ export type MemberSummary = {
   userId: string;
   role: string;
   displayName: string;
-  targets?: { calories: number; protein: number; carbs: number; fat: number };
+  /**
+   * Per-member opt-in for target sharing (H4, 2026-04-21). True means
+   * the member has toggled "Share my nutrition targets with household"
+   * on; false/undefined means their targets/remaining are private and
+   * callers must render {@link TARGETS_PRIVATE_LABEL} (or similar) in
+   * place of numbers. The caller's own row always carries this flag
+   * plus targets/consumed/remaining regardless.
+   */
+  shareTargets?: boolean;
+  targets?: { calories: number; protein: number; carbs: number; fat: number } | null;
   consumed?: { calories: number; protein: number; carbs: number; fat: number };
-  remaining?: { calories: number; protein: number; carbs: number; fat: number };
+  remaining?: { calories: number; protein: number; carbs: number; fat: number } | null;
 };
 
 export type HouseholdMeal = {
@@ -244,7 +253,7 @@ export async function getMyHousehold(
       .single(),
     supabase
       .from("household_members")
-      .select("id, user_id, role, display_name, joined_at")
+      .select("id, user_id, role, display_name, joined_at, share_targets")
       .eq("household_id", householdId)
       .order("joined_at", { ascending: true }),
     // Fetch all upcoming meals for the household; the meal_label filter
@@ -284,6 +293,7 @@ export async function getMyHousehold(
     role: string;
     display_name: string | null;
     joined_at: string;
+    share_targets?: boolean | null;
   }>;
   const rawMeals = (mealsResp.data ?? []) as HouseholdMeal[];
 
@@ -340,17 +350,23 @@ export async function getMyHousehold(
     // name to other household members after they update their profile.
     const displayName = profile?.display_name || m.display_name || "Member";
     const isSelf = m.user_id === userId;
+    const sharesTargets = Boolean(m.share_targets);
 
-    // F-16 scope narrowing (legal-approved, TestFlight `AJ1AeYJ--fF`,
-    // 2026-04-19): other members' rows MUST NOT include calorie /
-    // macro targets, consumed totals, or remaining-today numbers. Only
-    // the caller's own row keeps them. This stripping is load-bearing
-    // per legal — do not add a code path that re-shares these values.
-    if (!isSelf) {
+    // H4 consent gate (2026-04-21): a member's targets/remaining leave
+    // their row only when the member has explicitly opted in via the
+    // `share_targets` toggle. Default off. The caller's own row is
+    // always revealed to themselves. This supersedes the F-16 blanket
+    // strip: other members can now opt in per-member, but targets stay
+    // private by default. The mirror guard on the REST route
+    // (`app/api/household/route.ts`) enforces the same rule server-side.
+    if (!isSelf && !sharesTargets) {
       return {
         userId: m.user_id,
         role: m.role,
         displayName,
+        shareTargets: false,
+        targets: null,
+        remaining: null,
       };
     }
 
@@ -371,6 +387,7 @@ export async function getMyHousehold(
       userId: m.user_id,
       role: m.role,
       displayName,
+      shareTargets: isSelf ? sharesTargets : true,
       targets,
       consumed: {
         calories: Math.round(consumed.calories),
@@ -546,6 +563,27 @@ export async function setHouseholdShareLunch(
     .eq("id", householdId);
   if (error) return { data: null, error: (error as any)?.message || "update_failed" };
   return { data: { shareLunch }, error: null };
+}
+
+/**
+ * Toggle the caller's own `household_members.share_targets` flag (H4,
+ * 2026-04-21). RLS policy `Members can update own share_targets`
+ * enforces `user_id = auth.uid()` so a member cannot flip another
+ * member's row even if they pass a foreign userId — the update
+ * silently matches zero rows in that case and returns `update_failed`.
+ */
+export async function setHouseholdMemberShareTargets(
+  supabase: SupabaseLike,
+  userId: string,
+  shareTargets: boolean,
+): Promise<ClientResult<{ shareTargets: boolean }>> {
+  if (!userId) return { data: null, error: "not_authenticated" };
+  const { error } = await supabase
+    .from("household_members")
+    .update({ share_targets: shareTargets })
+    .eq("user_id", userId);
+  if (error) return { data: null, error: (error as any)?.message || "update_failed" };
+  return { data: { shareTargets }, error: null };
 }
 
 export const __test__ = {

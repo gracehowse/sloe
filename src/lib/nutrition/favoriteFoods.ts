@@ -49,6 +49,11 @@ type SupabaseLike = {
 /** Postgres unique-violation error code. */
 const PG_UNIQUE_VIOLATION = "23505";
 
+/** Explicit column list for the list query (M7, 2026-04-21). Must stay
+ *  in sync with `rowToFavorite`. */
+const FAVORITE_LIST_COLUMNS =
+  "id, recipe_title, calories, protein, carbs, fat, fiber, source, created_at";
+
 function safeNumber(n: unknown): number {
   const v = typeof n === "number" ? n : Number(n);
   return Number.isFinite(v) && v >= 0 ? v : 0;
@@ -116,7 +121,7 @@ export async function listFavorites(
   if (!userId) return [];
   const { data, error } = await supabase
     .from("user_favorite_foods")
-    .select("*")
+    .select(FAVORITE_LIST_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error || !Array.isArray(data)) return [];

@@ -100,6 +100,7 @@ export function useNutritionJournalState(opts: {
       if (!dbNutritionEnabled) return;
 
       // Try new relational table first
+      // If sodium/sugar targets are added, this jsonb read must be replaced with a column query for index performance
       const { data, error } = await supabase
         .from("nutrition_entries")
         .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros")

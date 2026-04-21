@@ -50,6 +50,11 @@ export async function GET(req: Request) {
   if (!supabase) return NextResponse.json({ ok: false, error: "server_misconfigured" }, { status: 503 });
   const searchTerm = `%${query.replace(/[%_]/g, "\\$&")}%`;
 
+  // Service-role: intentionally cross-tenant — user_foods is a shared community
+  // barcode/food catalog. Read surface is filtered to verified rows (or pending
+  // with >=2 upvotes), so no single submitter's private data is exposed beyond
+  // the community contract. Authenticated gate above prevents scraping by
+  // anonymous callers.
   const { data, error } = await supabase
     .from("user_foods")
     .select("id, barcode, name, brand, category, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, serving_size_g, verification_status, upvotes, downvotes, source, image_url")

@@ -21,6 +21,28 @@ export default function PrivacyPage() {
             <strong>Last updated:</strong> April 2026. Suppr helps you log recipes, nutrition, and discover meals.
             This policy describes what we process, who we share it with, and your choices.
           </p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data controller</h2>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Controller:</strong> [PLACEHOLDER &mdash; pending incorporation; Suppr is currently operated by Grace Howse as a
+              sole operator pending the entity decision tracked in{" "}
+              <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/decisions/2026-04-20-incorporation-jurisdiction-pending.md</code>].
+            </li>
+            <li>
+              <strong>Privacy contact:</strong>{" "}
+              <a href={mailtoHref} className="text-violet-600 dark:text-violet-400 underline">
+                {privacyEmail}
+              </a>
+            </li>
+            <li>
+              <strong>UK Representative (UK GDPR Art. 27):</strong> [PLACEHOLDER &mdash; to be appointed before UK public launch. Required
+              for non-UK controllers offering goods or services to individuals in the UK.]
+            </li>
+            <li>
+              <strong>EU Representative (EU GDPR Art. 27):</strong> [PLACEHOLDER &mdash; to be appointed before EU public launch. Required
+              for non-EU controllers offering goods or services to individuals in the EU.]
+            </li>
+          </ul>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What we collect</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
@@ -148,7 +170,7 @@ export default function PrivacyPage() {
             <li>
               <strong>Delete your account:</strong> You can permanently delete your account and all associated data
               from Settings on web or mobile. Deletion is processed immediately for app data; billing records may be
-              retained for up to 7 years as required by law.
+              retained as required by applicable tax and accounting law (typically up to 7 years in the UK).
             </li>
             <li>
               <strong>Withdraw consent:</strong> You can sign out at any time and disable optional analytics or

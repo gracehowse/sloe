@@ -1682,6 +1682,12 @@ function ProgressDashboardContent() {
           <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
+      <p
+        data-testid="progress-nutrition-estimate-footer"
+        className="mt-6 text-[11px] text-muted-foreground text-center leading-snug"
+      >
+        Nutrition data are estimates. Not medical or dietetic advice.
+      </p>
     </div>
   );
 }

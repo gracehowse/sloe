@@ -159,6 +159,32 @@ function isProFlavouredContext(from: PaywallViewedFrom): boolean {
  *  frequency) and fall back to identifier substring matching so the
  *  paywall works even if the offering is provisioned with custom
  *  identifiers like `suppr_pro_annual_v1`. */
+/**
+ * L1 (2026-04-21): substantiate the "Save 37%" badge with a visible
+ * reference price. Returns e.g. "£2.50/mo · save 37% vs £3.99/mo" from
+ * an annual priceString ("£29.99") + monthly priceString ("£3.99").
+ * Returns `null` if either string can't be parsed — the card falls
+ * back to showing just the badge (acceptable; the landing page and
+ * app-store already carry the annual/monthly breakdown).
+ */
+function computeAnnualReferenceLine(
+  annualPriceString: string,
+  monthlyRefPriceString: string,
+): string | null {
+  const m = /^([^\d\-.,]+)\s*([\d.,]+)/;
+  const a = annualPriceString.match(m);
+  const r = monthlyRefPriceString.match(m);
+  if (!a || !r) return null;
+  const sym = a[1].trim();
+  const annual = Number(a[2].replace(/,/g, ""));
+  const monthly = Number(r[2].replace(/,/g, ""));
+  if (!Number.isFinite(annual) || !Number.isFinite(monthly) || monthly <= 0) return null;
+  const effective = annual / 12;
+  const savingsPct = Math.round((1 - annual / (monthly * 12)) * 100);
+  const fmt = (n: number) => `${sym}${n.toFixed(2)}`;
+  return `${fmt(effective)}/mo · save ${savingsPct}% vs ${fmt(monthly)}/mo`;
+}
+
 function classifyPackage(pkg: PurchasesPackage): {
   tier: "base" | "pro" | null;
   period: BillingPeriod | null;
@@ -485,13 +511,35 @@ export default function PaywallScreen() {
 
   // ─── Disclosure copy ────────────────────────────────────────────
 
+  // UK CMA auto-renewal disclosure requires: (1) the price, (2) the renewal
+  // frequency, (3) that it renews automatically until cancelled, (4) a clear
+  // cancellation path, and — when a free trial is offered — (5) the trial
+  // end date and (6) the date of first charge. These dates are derived
+  // client-side from the moment the user is viewing the paywall; Apple will
+  // anchor the actual charge on purchase, but a concrete date is what the
+  // CMA / ASA expect rather than "in 7 days".
+  const trialEndDateLabel = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }, []);
+  const firstChargeDateLabel = trialEndDateLabel; // charge = trial end
+  const monthlyProPriceString = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
   const disclosureText = (() => {
     const proPriceString = currentProPkg?.product.priceString ?? fallbackProPrice;
     const periodNoun = billing === "annual" ? "year" : "month";
+    const altLine =
+      billing === "annual"
+        ? ` (or ${monthlyProPriceString} per month on the monthly plan)`
+        : "";
+    const cancelPath =
+      Platform.OS === "ios"
+        ? "Cancel anytime in Settings > Apple ID > Subscriptions."
+        : "Cancel anytime in Google Play > Payments & subscriptions.";
     if (trialApplies && currentProPkg) {
-      return `7 days free, then ${proPriceString} per ${periodNoun}, automatically renewing until cancelled in App Store settings. Price includes any applicable VAT. 7-day refund policy: support@suppr-club.com`;
+      return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Your 7-day free trial ends on ${trialEndDateLabel}; first charge on ${firstChargeDateLabel}. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
     }
-    return `${proPriceString} per ${periodNoun}, automatically renewing until cancelled in App Store settings. Price includes any applicable VAT. 7-day refund policy: support@suppr-club.com`;
+    return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────
@@ -620,12 +668,16 @@ export default function PaywallScreen() {
     freeBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 15 },
 
     disclosure: {
-      fontSize: 12,
-      color: colors.textTertiary,
-      textAlign: "center",
-      lineHeight: 18,
-      paddingHorizontal: Spacing.sm,
-      marginTop: Spacing.sm,
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 19,
+      padding: Spacing.md,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.sm,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
     },
 
     timelineWrap: { marginTop: Spacing.xl },
@@ -726,6 +778,15 @@ export default function PaywallScreen() {
       color: colors.textTertiary,
       textAlign: "center",
       marginTop: Spacing.sm,
+    },
+    nutritionEstimateNote: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      textAlign: "center",
+      lineHeight: 17,
+      marginTop: Spacing.xs,
+      marginBottom: Spacing.md,
+      paddingHorizontal: Spacing.md,
     },
 
     skeletonCard: {
@@ -870,6 +931,14 @@ export default function PaywallScreen() {
                 priceString={currentProPkg?.product.priceString ?? fallbackProPrice}
                 periodSuffix={periodSuffix}
                 showSavings={billing === "annual"}
+                referenceLine={
+                  billing === "annual"
+                    ? computeAnnualReferenceLine(
+                        proAnnual?.product.priceString ?? FALLBACK_PRICES.proAnnual,
+                        proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly,
+                      )
+                    : null
+                }
                 featHead={PRO_FEATURE_HEAD}
                 features={PRO_FEATURES}
                 badgeLabel="MOST POPULAR"
@@ -896,6 +965,14 @@ export default function PaywallScreen() {
                 priceString={currentBasePkg?.product.priceString ?? fallbackBasePrice}
                 periodSuffix={periodSuffix}
                 showSavings={billing === "annual"}
+                referenceLine={
+                  billing === "annual"
+                    ? computeAnnualReferenceLine(
+                        baseAnnual?.product.priceString ?? FALLBACK_PRICES.baseAnnual,
+                        baseMonthly?.product.priceString ?? FALLBACK_PRICES.baseMonthly,
+                      )
+                    : null
+                }
                 featHead={BASE_FEATURE_HEAD}
                 features={BASE_FEATURES}
                 ctaLabel={`Subscribe — ${currentBasePkg?.product.priceString ?? fallbackBasePrice}${periodSuffix}`}
@@ -910,6 +987,30 @@ export default function PaywallScreen() {
           </>
         )}
 
+        {offeringsReady && !subscriptionsUnavailable ? (
+          <Text
+            testID="paywall-nutrition-estimate-note"
+            style={styles.nutritionEstimateNote}
+          >
+            Nutrition values are estimates — always review before saving.
+          </Text>
+        ) : null}
+
+        {/* Auto-renew disclosure (UK CMA). Rendered BEFORE the "Continue
+         *  for free" bail-out and BEFORE the trial timeline so the user
+         *  sees the composite price + renewal + trial/charge date + cancel
+         *  path before committing. Prominent border + body-size text, not
+         *  a tiny grey line. */}
+        {offeringsReady && !subscriptionsUnavailable ? (
+          <Text
+            testID="paywall-autorenew-disclosure"
+            style={styles.disclosure}
+            accessibilityLabel={disclosureText}
+          >
+            {disclosureText}
+          </Text>
+        ) : null}
+
         <Pressable
           style={styles.freeBtn}
           onPress={onContinueFree}
@@ -917,10 +1018,6 @@ export default function PaywallScreen() {
         >
           <Text style={styles.freeBtnText}>Continue for free</Text>
         </Pressable>
-
-        {offeringsReady && !subscriptionsUnavailable ? (
-          <Text style={styles.disclosure}>{disclosureText}</Text>
-        ) : null}
 
         {trialApplies && currentProPkg ? (
           <View style={styles.timelineWrap}>
@@ -1045,6 +1142,10 @@ type TierCardProps = {
   priceString: string;
   periodSuffix: string;
   showSavings: boolean;
+  /** L1 (2026-04-21): reference-price line shown beneath the annual
+   *  price so "Save 37%" is substantiated. Example:
+   *  "£2.50/mo · save 37% vs £3.99/mo". `null` suppresses the line. */
+  referenceLine?: string | null;
   featHead: string;
   features: readonly string[];
   badgeLabel?: string;
@@ -1066,6 +1167,7 @@ function TierCard({
   priceString,
   periodSuffix,
   showSavings,
+  referenceLine,
   featHead,
   features,
   badgeLabel,
@@ -1102,6 +1204,15 @@ function TierCard({
           </View>
         ) : null}
       </View>
+
+      {showSavings && referenceLine ? (
+        <Text
+          testID={`paywall-annual-reference-${tier}`}
+          style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
+        >
+          {referenceLine}
+        </Text>
+      ) : null}
 
       <Text style={styles.cardTag}>{tag}</Text>
 

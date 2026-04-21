@@ -29,6 +29,7 @@ import {
   SCOPE_NARROWING_NOTICE_KEY,
   SHARE_LUNCH_TOGGLE_HELPER,
   SHARE_LUNCH_TOGGLE_LABEL,
+  TARGETS_PRIVATE_LABEL,
 } from "../../../src/lib/household/scopeCopy";
 
 // Map RPC / shared-client error codes to friendly Alert messages. Kept in
@@ -436,7 +437,12 @@ export function HouseholdCard() {
               {m.displayName}{isSelf ? " (you)" : ""}
             </Text>
             <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
-              {isSelf && m.remaining ? (
+              {m.remaining ? (
+                // H4 (2026-04-21): render macros for the caller's own
+                // row AND for any other member who has opted in via
+                // share_targets. When `remaining` is null/absent the
+                // privacy branch below takes over — never fall through
+                // to "0" or NaN.
                 ([
                   ["Cal left", m.remaining.calories, m.remaining.calories > 0 ? t.green : t.amber, false],
                   ["Protein left", m.remaining.protein, t.protein, true],
@@ -456,9 +462,18 @@ export function HouseholdCard() {
                   </View>
                 ))
               ) : (
-                <Text style={{ fontSize: 10, color: t.dim, marginTop: 8 }}>
-                  {m.role === "owner" ? "Owner" : "Member"}
-                </Text>
+                // H4 privacy branch: member hasn't opted in to target
+                // sharing (or the API stripped targets). Render the
+                // lock + label instead of numbers — no "0", no NaN.
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}
+                  accessibilityLabel={TARGETS_PRIVATE_LABEL}
+                >
+                  <Ionicons name="lock-closed-outline" size={10} color={t.dim} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>
+                    {TARGETS_PRIVATE_LABEL}
+                  </Text>
+                </View>
               )}
             </View>
           </View>

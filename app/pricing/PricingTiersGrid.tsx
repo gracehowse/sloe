@@ -17,6 +17,39 @@ type Tier = PricingTier & {
 };
 
 /**
+ * Parse a currency-prefixed price string (e.g. "£29.99", "$7.99") into
+ * `{ symbol, amount }`. Returns `null` if the shape doesn't match, so
+ * callers can bail out quietly rather than rendering a broken ref-price.
+ */
+function parseCurrencyString(s: string): { symbol: string; amount: number } | null {
+  const m = s.match(/^([^\d\-.,]+)\s*([\d.,]+)/);
+  if (!m) return null;
+  const symbol = m[1].trim();
+  const amount = Number(m[2].replace(/,/g, ""));
+  if (!Number.isFinite(amount)) return null;
+  return { symbol, amount };
+}
+
+/**
+ * Build the reference-price line for annual plans, per L1 (2026-04-21):
+ * "Save 37%" needs a visible reference so the saving claim is
+ * substantiated. Returns e.g. "£2.50/mo · save 37% vs £3.99/mo" or
+ * `null` if the tier doesn't have the inputs to compute it.
+ */
+function computeAnnualReferenceLine(tier: PricingTier): string | null {
+  if (!tier.annualPrice) return null;
+  const annual = parseCurrencyString(tier.annualPrice);
+  const monthlyRef = parseCurrencyString(tier.price);
+  if (!annual || !monthlyRef) return null;
+  const effectiveMonthly = annual.amount / 12;
+  const savingsPct = Math.round(
+    (1 - annual.amount / (monthlyRef.amount * 12)) * 100,
+  );
+  const fmt = (n: number) => `${annual.symbol}${n.toFixed(2)}`;
+  return `${fmt(effectiveMonthly)}/mo · save ${savingsPct}% vs ${fmt(monthlyRef.amount)}/mo`;
+}
+
+/**
  * Client-side tier grid owning the monthly ↔ annual toggle state.
  *
  * Price, period, and the billing-renewal disclosure all read from the
@@ -48,6 +81,9 @@ export function PricingTiersGrid({
    */
   stripeTaxEnabled = false,
   paywallFrom,
+  regionVatNote = "",
+  regionCurrency = "GBP",
+  regionNote = "",
 }: {
   tiers: Tier[];
   stripeTaxEnabled?: boolean;
@@ -57,6 +93,21 @@ export function PricingTiersGrid({
    *  `paywall_viewed.from`). Defaults to `"deep_link"` when the
    *  server could not resolve a specific surface. */
   paywallFrom: PaywallViewedFrom;
+  /** H7 (2026-04-21) — inline VAT disclosure for UK / EU visitors
+   *  ("Prices include VAT"). Empty string suppresses the line for
+   *  default / US-ish surfaces. Kept alongside the Stripe-flag-driven
+   *  tax clause in `BillingDisclosure` so the UK/EU surface gets the
+   *  inclusive-VAT note even when `STRIPE_TAX_ENABLED=false`. */
+  regionVatNote?: string;
+  /** H7 — detected display currency. GBP today everywhere; EUR tag is
+   *  propagated for future EUR-SKU work but does NOT change the
+   *  rendered amounts (see `regionNote` for the explainer shown to EU
+   *  visitors in v1). */
+  regionCurrency?: "GBP" | "EUR" | "USD";
+  /** H7 — one-line region-specific banner above the tier grid (e.g.
+   *  "EU pricing coming soon — current prices in GBP"). Empty string
+   *  hides the banner. */
+  regionNote?: string;
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
@@ -77,6 +128,14 @@ export function PricingTiersGrid({
 
   return (
     <>
+      {regionNote ? (
+        <div
+          data-testid="pricing-region-note"
+          className="mb-6 mx-auto max-w-xl text-center text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2"
+        >
+          {regionNote}
+        </div>
+      ) : null}
       <BillingToggle billing={billing} onChange={onPeriodCommit} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -123,6 +182,18 @@ export function PricingTiersGrid({
                   </span>
                 ) : null}
               </div>
+              {showAnnual ? (() => {
+                const refLine = computeAnnualReferenceLine(tier);
+                if (!refLine) return null;
+                return (
+                  <p
+                    data-testid={`pricing-annual-reference-${tier.name.toLowerCase()}`}
+                    className={`-mt-1 mb-2 text-xs ${tier.name === "Pro" ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}
+                  >
+                    {refLine}
+                  </p>
+                );
+              })() : null}
 
               <p className={`text-sm mb-6 ${tier.name === "Pro" ? "text-slate-300" : "text-slate-600 dark:text-slate-400"}`}>
                 {tier.tag.replace(/\.$/, "")}
@@ -179,6 +250,7 @@ export function PricingTiersGrid({
                   isAnnual={showAnnual}
                   isProDark={tier.name === "Pro"}
                   stripeTaxEnabled={stripeTaxEnabled}
+                  regionVatNote={regionVatNote}
                 />
               ) : null}
             </div>
@@ -243,20 +315,28 @@ function BillingDisclosure({
   isAnnual,
   isProDark,
   stripeTaxEnabled,
+  regionVatNote,
 }: {
   price: string;
   period: string;
   isAnnual: boolean;
   isProDark: boolean;
   stripeTaxEnabled: boolean;
+  /** H7 (2026-04-21) — region-aware VAT disclosure. When the visitor
+   *  is detected as UK/EU we always render an inclusive-VAT note
+   *  regardless of the Stripe flag, because the non-established-supplier
+   *  rules in the 2026-04-19 consumer VAT memo require it. For
+   *  default / unknown regions we fall back to the flag-gated clause. */
+  regionVatNote: string;
 }) {
   const periodNoun = isAnnual ? "year" : "month";
-  // Tax-clause copy is flag-gated to stay truthful relative to the
-  // Stripe Checkout route's behaviour. See the prop doc on
-  // `PricingTiersGrid` for the full rationale.
-  const taxClause = stripeTaxEnabled
-    ? "Price includes any applicable VAT."
-    : "Price excludes any applicable taxes.";
+  // Tax-clause copy: UK/EU visitors always see the inclusive-VAT note
+  // (regionVatNote wins). Outside UK/EU, the Stripe flag decides.
+  const taxClause = regionVatNote
+    ? `${regionVatNote}.`
+    : stripeTaxEnabled
+      ? "Price includes any applicable VAT."
+      : "Price excludes any applicable taxes.";
   return (
     <p
       className={`mt-2 text-xs leading-snug text-center ${
