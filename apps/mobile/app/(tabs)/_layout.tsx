@@ -101,8 +101,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="person.fill" color={color} />,
+          title: 'More',
+          tabBarIcon: ({ color }) => <IconSymbol size={22} name="ellipsis.circle" color={color} />,
         }}
       />
       {/* Hidden tabs — accessed via navigation, not tab bar */}

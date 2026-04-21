@@ -90,12 +90,13 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         <SidebarGroup label="Recipes" items={RECIPE_ITEMS} currentView={currentView} onNavigate={onNavigate} sidebarProps={props} />
       </nav>
 
-      {/* Profile + settings pinned to the bottom — matches the Today /
-          Plan / Progress / Profile bottom-tab grouping where Profile is
-          the right-most tab on mobile. */}
+      {/* "More" pinned to the bottom — matches the Today / Discover /
+          Plan / Progress / More bottom-tab grouping where More is the
+          right-most tab on mobile. Renamed from "Profile" 2026-04-20
+          for mobile-web parity. */}
       <div className="border-t border-border py-3">
         <SidebarItem
-          item={{ view: "profile", label: "Profile", icon: "profile" }}
+          item={{ view: "profile", label: "More", icon: "profile" }}
           currentView={currentView}
           onNavigate={onNavigate}
           sidebarProps={props}

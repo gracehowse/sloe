@@ -135,7 +135,6 @@ import { TodayHero } from "@/components/today/TodayHero";
 import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
-import { TodayStreakInsightCard } from "@/components/today/TodayStreakInsightCard";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
@@ -2836,7 +2835,7 @@ export default function TrackerScreen() {
                 2x2 macro tile grid below and read as visual noise on
                 Today. See feedback_no_duplicate_today_hero_content.md. */}
 
-            {/* Dynamic Macro Cards */}
+            {/* Dynamic Macro Cards — 2x2 grid, prototype treatment */}
             <TodayDashboardMacroTiles
               trackedMacros={trackedMacros}
               totals={totals}
@@ -2849,7 +2848,9 @@ export default function TrackerScreen() {
               cardBorderColor={colors.cardBorder}
               borderColor={colors.border}
               textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
+              mutedColor={colors.border}
             />
 
             {/* All nutrients detail link */}
@@ -2879,17 +2880,11 @@ export default function TrackerScreen() {
           </>
         )}
 
-        {/* Streak insight card — prototype style (after meals) */}
-        {viewMode === "day" && (
-          <TodayStreakInsightCard
-            streakDays={streakDays}
-            freezesAvailableToday={freezesAvailableToday}
-            hasUnseenFreezeEarned={hasUnseenFreezeEarned}
-            onDismissFreezeEarned={dismissFreezeEarned}
-            textColor={colors.text}
-            textSecondaryColor={colors.textSecondary}
-          />
-        )}
+        {/* TodayStreakInsightCard removed 2026-04-20 — Grace's call
+            per Today alignment pass. Streak logic still runs (powers
+            the freeze ledger + weekly recap analytics) but is no
+            longer surfaced on Today. Re-add if streak signal becomes
+            a retention lever later. */}
 
         {/* Deficit insight */}
         {viewMode === "day" && isToday && remaining > 0 && (

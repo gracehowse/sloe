@@ -1,13 +1,30 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Accent, MacroColors } from "@/constants/theme";
+import {
+  Beef,
+  Candy,
+  Droplet,
+  Droplets,
+  Gauge,
+  Leaf,
+  Wheat,
+  type LucideIcon,
+} from "lucide-react-native";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
- * TodayDashboardMacroTiles — renders the `trackedMacros` tiles.
+ * TodayDashboardMacroTiles — macro tiles grid for Today.
  *
- * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
- * 2026-04-18). Matches the web ordering and keys.
+ * Originally a 4-across strip of cramped tiles; rewritten 2026-04-20
+ * to match the 2026-04-19 Claude Design prototype's 2-column bigger
+ * tile treatment (see
+ * `docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
+ *  → `MacroTile`). Each tile now has: uppercase name + emoji icon →
+ * big value + unit → progress bar → "X g remaining" or "X g over"
+ * caption. Emoji per macro matches the prototype's lucide icon
+ * choice (beef / wheat / droplets / leaf + equivalents for
+ * sugar/sodium/water).
  */
 export interface TodayDashboardMacroTilesProps {
   trackedMacros: string[];
@@ -21,8 +38,23 @@ export interface TodayDashboardMacroTilesProps {
   cardBorderColor: string;
   borderColor: string;
   textColor: string;
+  textSecondaryColor: string;
   textTertiaryColor: string;
+  mutedColor: string;
 }
+
+type MacroDef = {
+  label: string;
+  current: number;
+  target: number;
+  color: string;
+  unit: string;
+  Icon: LucideIcon;
+  /** When true, display a reference (not a target) — "ref Xg" rather
+   *  than "X g remaining"/"X g over". Used for sugar/sodium where we
+   *  don't claim a personal target. */
+  referenceOnly?: boolean;
+};
 
 export function TodayDashboardMacroTiles({
   trackedMacros,
@@ -34,70 +66,122 @@ export function TodayDashboardMacroTiles({
   onPressMacro,
   cardColor,
   cardBorderColor,
-  borderColor,
+  borderColor: _borderColor,
   textColor,
+  textSecondaryColor,
   textTertiaryColor,
+  mutedColor,
 }: TodayDashboardMacroTilesProps) {
   const microSum = mealsToday.reduce(
     (a, m) => ({
-      sugarG: a.sugarG + ((m.micros as any)?.sugarG ?? 0),
-      sodiumMg: a.sodiumMg + ((m.micros as any)?.sodiumMg ?? 0),
+      sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
+      sodiumMg: a.sodiumMg + ((m.micros as { sodiumMg?: number } | null | undefined)?.sodiumMg ?? 0),
     }),
     { sugarG: 0, sodiumMg: 0 },
   );
-  const macroMap: Record<string, { label: string; cur: number; tgt: number; color: string; unit: string }> = {
-    protein: { label: "Protein", cur: totals.protein, tgt: targets.protein, color: MacroColors.protein, unit: "g" },
-    carbs: { label: "Carbs", cur: totals.carbs, tgt: targets.carbs, color: MacroColors.carbs, unit: "g" },
-    fat: { label: "Fat", cur: totals.fat, tgt: targets.fat, color: MacroColors.fat, unit: "g" },
-    fiber: { label: "Fiber", cur: totals.fiber, tgt: targets.fiber, color: Accent.success, unit: "g" },
-    sugar: { label: "Sugar", cur: Math.round(microSum.sugarG * 10) / 10, tgt: 50, color: Accent.warning, unit: "g" },
-    sodium: { label: "Sodium", cur: Math.round(microSum.sodiumMg), tgt: 2300, color: Accent.destructive, unit: "mg" },
-    water: { label: "Water", cur: totalWaterMl, tgt: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml" },
+
+  // Icons mirror the 2026-04-19 prototype's lucide choices exactly:
+  // protein=Beef, carbs=Wheat, fat=Droplets, fiber=Leaf. Extensible
+  // macros (sugar/sodium/water) pick sensible lucide neighbours.
+  const macroMap: Record<string, MacroDef> = {
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: MacroColors.protein, unit: "g", Icon: Beef },
+    carbs: { label: "Carbs", current: totals.carbs, target: targets.carbs, color: MacroColors.carbs, unit: "g", Icon: Wheat },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
+    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
+    sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
+    sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: Accent.destructive, unit: "mg", Icon: Gauge, referenceOnly: true },
+    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
   };
+
   return (
-    <View style={{ flexDirection: "row", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -Spacing.xs, marginBottom: Spacing.md }}>
       {trackedMacros.map((macro) => {
-        const m = macroMap[macro];
-        if (!m) return null;
-        const displayAmount = macro === "fiber" ? Math.round(m.cur * 10) / 10 : Math.round(m.cur);
+        const def = macroMap[macro];
+        if (!def) return null;
+        const value = macro === "fiber" || macro === "sugar" ? Math.round(def.current * 10) / 10 : Math.round(def.current);
+        const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
+        const remain = def.target - def.current;
+        const overBy = Math.round(Math.abs(remain));
+        const captionText = def.referenceOnly
+          ? `ref ${def.target} ${def.unit}`
+          : remain >= 0
+            ? `${overBy} ${def.unit} remaining`
+            : `${overBy} ${def.unit} over`;
+
         return (
-          <Pressable
-            key={macro}
-            onPress={() => onPressMacro(macro)}
-            style={{
-              flex: 1,
-              minWidth: 70,
-              padding: 10,
-              borderRadius: 12,
-              backgroundColor: cardColor,
-              borderWidth: 1,
-              borderColor: cardBorderColor,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
-              <Text style={{ fontSize: 10, fontWeight: "600", color: textTertiaryColor, letterSpacing: 0.5 }}>
-                {m.label}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: textColor, fontVariant: ["tabular-nums"] }}>
-              {displayAmount}
-              {m.unit}
-            </Text>
-            <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: borderColor }}>
+          <View key={macro} style={{ width: "50%", paddingHorizontal: Spacing.xs, marginBottom: Spacing.sm }}>
+            <Pressable
+              onPress={() => onPressMacro(macro)}
+              accessibilityRole="button"
+              accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
+              style={{
+                backgroundColor: cardColor,
+                borderWidth: 1,
+                borderColor: cardBorderColor,
+                borderRadius: Radius.lg,
+                padding: Spacing.lg - 2,
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color: textTertiaryColor,
+                    letterSpacing: 1.1,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {def.label}
+                </Text>
+                <def.Icon size={13} color={def.color} strokeWidth={1.75} />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "700",
+                    letterSpacing: -0.3,
+                    color: textColor,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {value}
+                </Text>
+                <Text style={{ fontSize: 12, color: textSecondaryColor, marginLeft: 3 }}>
+                  / {def.target} {def.unit}
+                </Text>
+              </View>
               <View
                 style={{
-                  width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
-                  height: "100%",
-                  borderRadius: 2,
-                  backgroundColor: m.color,
+                  height: 5,
+                  borderRadius: 999,
+                  backgroundColor: mutedColor,
+                  marginTop: Spacing.sm + 2,
+                  overflow: "hidden",
                 }}
-              />
-            </View>
-            <Text style={{ fontSize: 10, color: textTertiaryColor, marginTop: 3, fontVariant: ["tabular-nums"] }}>
-              {m.cur < m.tgt ? `${Math.round(m.tgt - m.cur)}${m.unit} left` : `of ${m.tgt}${m.unit}`}
-            </Text>
-          </Pressable>
+              >
+                <View
+                  style={{
+                    width: `${pct}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    backgroundColor: def.color,
+                  }}
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: textSecondaryColor,
+                  marginTop: Spacing.xs + 2,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {captionText}
+              </Text>
+            </Pressable>
+          </View>
         );
       })}
     </View>

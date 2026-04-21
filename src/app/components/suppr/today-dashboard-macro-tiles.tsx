@@ -1,15 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { Icons } from "../ui/icons";
-import { MacroCard } from "./macro-card";
+import {
+  Beef,
+  Candy,
+  Droplet,
+  Droplets,
+  Gauge,
+  Leaf,
+  Wheat,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
- * TodayDashboardMacroTiles — macro tiles grid driven by `trackedMacros`.
+ * TodayDashboardMacroTiles — macro tiles grid for Today.
  *
- * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). Matches
- * the mobile `trackedMacros` ordering and keys (protein, carbs, fat,
- * fiber, sugar, sodium, water).
+ * Rewritten 2026-04-20 to match the 2026-04-19 Claude Design
+ * prototype's 2-column bigger tile treatment
+ * (`docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
+ *  → `MacroTile`). Each tile: uppercase name + emoji icon → big
+ * value + unit → progress bar → "X g remaining" or "X g over"
+ * caption. Mirrors `apps/mobile/components/today/TodayDashboardMacroTiles.tsx`.
  */
 
 export const TODAY_REF_SUGAR_G = 50;
@@ -33,132 +44,205 @@ export interface TodayDashboardMacroTilesProps {
   onAddWaterMl: (ml: number) => void;
 }
 
-export function TodayDashboardMacroTiles({
-  trackedMacros,
-  proteinCurrent,
-  proteinTarget,
-  carbsCurrent,
-  carbsTarget,
-  fatCurrent,
-  fatTarget,
-  fiberCurrent,
-  fiberTarget,
-  sugarG,
-  sodiumMg,
-  waterCurrentMl,
-  waterTargetMl,
-  formatWaterLine,
-  onAddWaterMl,
-}: TodayDashboardMacroTilesProps) {
+type TileMeta = {
+  label: string;
+  Icon: LucideIcon;
+  valueText: string;
+  targetText: string;
+  pct: number;
+  caption: string;
+  /** CSS color var (e.g. "var(--macro-protein)") for the progress fill. */
+  fillVar: string;
+};
+
+function buildMacroTile(
+  macroKey: string,
+  props: TodayDashboardMacroTilesProps,
+): TileMeta | null {
+  const {
+    proteinCurrent,
+    proteinTarget,
+    carbsCurrent,
+    carbsTarget,
+    fatCurrent,
+    fatTarget,
+    fiberCurrent,
+    fiberTarget,
+    sugarG,
+    sodiumMg,
+    waterCurrentMl,
+    waterTargetMl,
+    formatWaterLine,
+  } = props;
+
+  const plainRemainingCaption = (cur: number, tgt: number, unit: string): string => {
+    const remain = tgt - cur;
+    const magnitude = Math.round(Math.abs(remain));
+    return remain >= 0
+      ? `${magnitude} ${unit} remaining`
+      : `${magnitude} ${unit} over`;
+  };
+
+  if (macroKey === "protein") {
+    const cur = proteinCurrent;
+    const tgt = proteinTarget;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Protein",
+      Icon: Beef,
+      valueText: `${Math.round(cur)}`,
+      targetText: `/ ${tgt} g`,
+      pct,
+      caption: plainRemainingCaption(cur, tgt, "g"),
+      fillVar: "var(--macro-protein)",
+    };
+  }
+  if (macroKey === "carbs") {
+    const cur = carbsCurrent;
+    const tgt = carbsTarget;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Carbs",
+      Icon: Wheat,
+      valueText: `${Math.round(cur)}`,
+      targetText: `/ ${tgt} g`,
+      pct,
+      caption: plainRemainingCaption(cur, tgt, "g"),
+      fillVar: "var(--macro-carbs)",
+    };
+  }
+  if (macroKey === "fat") {
+    const cur = fatCurrent;
+    const tgt = fatTarget;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Fat",
+      Icon: Droplets,
+      valueText: `${Math.round(cur)}`,
+      targetText: `/ ${tgt} g`,
+      pct,
+      caption: plainRemainingCaption(cur, tgt, "g"),
+      fillVar: "var(--macro-fat)",
+    };
+  }
+  if (macroKey === "fiber") {
+    const cur = fiberCurrent;
+    const tgt = fiberTarget;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Fiber",
+      Icon: Leaf,
+      valueText: `${Math.round(cur * 10) / 10}`,
+      targetText: `/ ${tgt} g`,
+      pct,
+      caption: plainRemainingCaption(cur, tgt, "g"),
+      fillVar: "var(--success)",
+    };
+  }
+  if (macroKey === "sugar") {
+    const cur = sugarG;
+    const tgt = TODAY_REF_SUGAR_G;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Sugar",
+      Icon: Candy,
+      valueText: `${Math.round(cur * 10) / 10}`,
+      targetText: `/ ${tgt} g`,
+      pct,
+      caption: `ref ${tgt} g`,
+      fillVar: "var(--warning)",
+    };
+  }
+  if (macroKey === "sodium") {
+    const cur = sodiumMg;
+    const tgt = TODAY_REF_SODIUM_MG;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Sodium",
+      Icon: Gauge,
+      valueText: `${Math.round(cur)}`,
+      targetText: `/ ${tgt} mg`,
+      pct,
+      caption: `ref ${tgt} mg`,
+      fillVar: "var(--destructive)",
+    };
+  }
+  if (macroKey === "water") {
+    const cur = waterCurrentMl;
+    const tgt = waterTargetMl;
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return {
+      label: "Water",
+      Icon: Droplet,
+      valueText: formatWaterLine(cur),
+      targetText: `/ ${formatWaterLine(tgt)}`,
+      pct,
+      caption: plainRemainingCaption(cur, tgt, "ml"),
+      fillVar: "var(--macro-water, var(--primary))",
+    };
+  }
+  return null;
+}
+
+export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
+  const { trackedMacros, onAddWaterMl } = props;
+
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="grid grid-cols-2 gap-2 mb-4">
       {trackedMacros.map((macroKey) => {
-        if (macroKey === "protein") {
-          return (
-            <MacroCard
-              key="protein"
-              className="min-w-[92px] flex-1"
-              macro="protein"
-              value={proteinCurrent}
-              target={proteinTarget}
-            />
-          );
-        }
-        if (macroKey === "carbs") {
-          return (
-            <MacroCard key="carbs" className="min-w-[92px] flex-1" macro="carbs" value={carbsCurrent} target={carbsTarget} />
-          );
-        }
-        if (macroKey === "fat") {
-          return (
-            <MacroCard key="fat" className="min-w-[92px] flex-1" macro="fat" value={fatCurrent} target={fatTarget} />
-          );
-        }
-        if (macroKey === "fiber") {
-          const cur = fiberCurrent;
-          const tgt = fiberTarget;
-          const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-          return (
-            <div key="fiber" className="flex-1 min-w-[92px] flex flex-col rounded-card bg-card p-2.5 border border-border">
-              <div className="flex items-center gap-1 mb-1">
-                <div className="h-2 w-2 rounded-sm bg-[var(--success)]" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fiber</span>
-              </div>
-              <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur * 10) / 10}g</div>
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-[var(--success)]" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">of {tgt}g</span>
+        const tile = buildMacroTile(macroKey, props);
+        if (!tile) return null;
+        const { Icon } = tile;
+        return (
+          <div
+            key={macroKey}
+            className="rounded-[14px] bg-card border border-border p-3.5 flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {tile.label}
+              </span>
+              <Icon
+                size={13}
+                strokeWidth={1.75}
+                style={{ color: tile.fillVar }}
+                aria-hidden
+              />
             </div>
-          );
-        }
-        if (macroKey === "sugar") {
-          const cur = sugarG;
-          const tgt = TODAY_REF_SUGAR_G;
-          const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-          return (
-            <div key="sugar" className="flex-1 min-w-[92px] flex flex-col rounded-card bg-card p-2.5 border border-border">
-              <div className="flex items-center gap-1 mb-1">
-                <div className="h-2 w-2 rounded-sm bg-[var(--warning)]" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sugar</span>
-              </div>
-              <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur * 10) / 10}g</div>
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-[var(--warning)]" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">ref {tgt}g</span>
+            <div className="flex items-baseline">
+              <span className="text-[18px] font-bold tabular-nums text-foreground -tracking-[0.02em]">
+                {tile.valueText}
+              </span>
+              <span className="text-xs text-muted-foreground ml-[3px]">
+                {tile.targetText}
+              </span>
             </div>
-          );
-        }
-        if (macroKey === "sodium") {
-          const cur = sodiumMg;
-          const tgt = TODAY_REF_SODIUM_MG;
-          const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-          return (
-            <div key="sodium" className="flex-1 min-w-[92px] flex flex-col rounded-card bg-card p-2.5 border border-border">
-              <div className="flex items-center gap-1 mb-1">
-                <div className="h-2 w-2 rounded-sm bg-[var(--destructive)]" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sodium</span>
-              </div>
-              <div className="text-base font-bold tabular-nums text-foreground">{Math.round(cur)}mg</div>
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-[var(--destructive)]" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">ref {tgt}mg</span>
+            <div className="mt-2.5 h-[5px] rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-[width] duration-700"
+                style={{ width: `${tile.pct}%`, background: tile.fillVar }}
+              />
             </div>
-          );
-        }
-        if (macroKey === "water") {
-          const cur = waterCurrentMl;
-          const tgt = waterTargetMl;
-          const pct = tgt > 0 ? Math.min((cur / tgt) * 100, 100) : 0;
-          return (
-            <div key="water" className="flex-1 min-w-[92px] flex flex-col rounded-card bg-card p-2.5 border border-border">
-              <div className="flex items-center gap-1 mb-1">
-                <Icons.water className="h-3 w-3 shrink-0 text-macro-water" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Water</span>
-              </div>
-              <div className="text-sm font-bold tabular-nums text-foreground leading-tight">{formatWaterLine(cur)}</div>
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-macro-water" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-0.5">of {formatWaterLine(tgt)}</span>
+            <span className="text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+              {tile.caption}
+            </span>
+            {macroKey === "water" ? (
               <div className="flex gap-1 mt-2">
                 {([250, 500] as const).map((ml) => (
                   <button
                     key={ml}
                     type="button"
                     onClick={() => onAddWaterMl(ml)}
-                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
+                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-[color-mix(in_oklab,var(--macro-water,var(--primary))_12%,transparent)] text-[var(--macro-water,var(--primary))] border border-[color-mix(in_oklab,var(--macro-water,var(--primary))_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--macro-water,var(--primary))_20%,transparent)] transition-colors"
+                    aria-label={`Add ${ml}ml water`}
                   >
                     +{ml}
                   </button>
                 ))}
               </div>
-            </div>
-          );
-        }
-        return null;
+            ) : null}
+          </div>
+        );
       })}
     </div>
   );

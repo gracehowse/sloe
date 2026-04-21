@@ -42,7 +42,6 @@ import {
 } from "../../lib/nutrition/microNutrientDisplay.ts";
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { type CalorieRingDisplayMode } from "./suppr/daily-ring";
-import { RemainingMacrosBar } from "./suppr/remaining-macros-bar";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
@@ -54,7 +53,6 @@ import { TodayHeroRing } from "./suppr/today-hero-ring";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
-import { TodayStreakInsightCard } from "./suppr/today-streak-insight-card";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
 import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
@@ -1567,24 +1565,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDisplayModeChange={setRingDisplayMode}
       />
 
-      {/* Remaining macros — kcal / P / C / F (and fiber when tracked) left today. */}
-      <RemainingMacrosBar
-        className="mb-4"
-        targets={{
-          calories: effectiveCalorieTarget,
-          protein: targets.protein,
-          carbs: targets.carbs,
-          fat: targets.fat,
-          fiber: targets.fiber,
-        }}
-        consumed={{
-          calories: totals.calories,
-          protein: totals.protein,
-          carbs: totals.carbs,
-          fat: totals.fat,
-          fiber: totals.fiber,
-        }}
-      />
+      {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
+          TodayDashboardMacroTiles grid below. Mobile parity: removed
+          same day in apps/mobile/app/(tabs)/index.tsx. See
+          feedback_no_duplicate_today_hero_content.md. */}
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings), same keys as mobile */}
       <TodayDashboardMacroTiles
@@ -1633,16 +1617,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onOpenBarcode={() => setBarcodeOpen(true)}
       />
 
-      {/* Streak insight — moved here (was after meals) to match
-          mobile order (`apps/mobile/app/(tabs)/index.tsx` 2787). The
-          card is short and sits well between the quick-log strip and
-          the deficit insight that follows. */}
-      <TodayStreakInsightCard
-        streakDays={streakDays}
-        freezesAvailableToday={freezesAvailableToday}
-        hasUnseenFreezeEarned={hasUnseenFreezeEarned}
-        onDismissFreezeEarned={dismissFreezeEarned}
-      />
+      {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
+          Today alignment pass). Mobile removed same commit. Streak
+          logic still runs but is no longer surfaced on Today. */}
 
       {/* Deficit insight removed (2026-04-18, Pass 7): the standalone
           web `CalorieDeficitInsight` panel duplicated data already

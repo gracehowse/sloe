@@ -11,7 +11,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { DesktopSidebar } from "../../src/app/components/suppr/desktop-sidebar";
 
 describe("DesktopSidebar", () => {
-  it("renders every Track and Recipes nav item plus Profile + Settings", () => {
+  it("renders every Track and Recipes nav item plus More + Settings", () => {
     render(
       <DesktopSidebar currentView="today" onNavigate={() => {}} shoppingUncheckedCount={0} />,
     );
@@ -23,8 +23,8 @@ describe("DesktopSidebar", () => {
     expect(screen.getByRole("button", { name: /Library/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Discover/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Shopping/ })).toBeDefined();
-    // Bottom pinned
-    expect(screen.getByRole("button", { name: /Profile/ })).toBeDefined();
+    // Bottom pinned — renamed Profile → More on 2026-04-20 for mobile-web parity.
+    expect(screen.getByRole("button", { name: /More/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Settings/ })).toBeDefined();
   });
 
