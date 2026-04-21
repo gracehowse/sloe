@@ -243,13 +243,19 @@ export default function LibraryScreen() {
       position: "relative",
     },
     cardImage: { width: "100%", height: "100%" },
+    // F-33 (2026-04-21): TestFlight AH96GSgB4pjq ("why are the grey half").
+    // The old 64px dark overlay existed to lift any title/macros rendered on
+    // the image — but we render title + macros in `cardBody` below the image,
+    // so the overlay was decorative at best and actively muddied socially-
+    // imported photos that already have baked-in text at worst. Kept as a
+    // transparent passthrough so the position:absolute siblings (bookmark,
+    // trash) still have their layout context.
     cardGradient: {
       position: "absolute",
       left: 0,
       right: 0,
       bottom: 0,
-      height: 64,
-      backgroundColor: "rgba(0,0,0,0.18)",
+      height: 0,
     },
     bookmarkDot: {
       position: "absolute",
@@ -428,6 +434,7 @@ export default function LibraryScreen() {
             >
               <Text
                 style={[styles.filterPillText, active && styles.filterPillTextActive]}
+                maxFontSizeMultiplier={1.2}
               >
                 {f.label}
               </Text>

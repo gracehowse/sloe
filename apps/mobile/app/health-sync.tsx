@@ -96,11 +96,18 @@ export default function HealthSyncScreen() {
         setConnected(true);
         Alert.alert("Connected", "Health data sync is now enabled.");
       } else {
-        // F-26 (2026-04-21): shorter, clearer recovery path. The old copy
-        // dumped the full decision tree on the user (TestFlight AG-5oy-1vqo7).
+        // F-26 (2026-04-21): shorter, clearer recovery path (AG-5oy-1vqo7).
+        // F-35 (2026-04-21): add the "not listed" fallback. TestFlight
+        // AAUjI8ZWEQKi — tester followed the F-26 instruction, went to
+        // Settings → Health → Data Access & Devices, but Suppr wasn't
+        // listed. That happens when the iOS auth sheet didn't actually
+        // present (permission denied path, not permission granted path);
+        // Apple only adds an app to that list once auth has been
+        // requested *and* the sheet rendered. Recovery: force-quit and
+        // relaunch so the next Connect tap triggers the sheet fresh.
         Alert.alert(
           "Health access needed",
-          "Open Settings → Health → Data Access & Devices → Suppr and turn the switches on, then try Connect again.",
+          "Open Settings → Health → Data Access & Devices → Suppr and turn the switches on, then try Connect again.\n\nIf Suppr isn’t listed there yet, force-quit Suppr (swipe up and close it), reopen, and tap Connect again — the Apple Health prompt should appear.",
         );
       }
     } catch {

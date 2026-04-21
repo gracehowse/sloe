@@ -19,11 +19,18 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
-## Snapshot (2026-04-21, build-15 queued)
+## Snapshot (2026-04-21, build-17 queued)
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 77    | 52 | 24 | 0  | 0  | 0  | 1  |
+| 82    | 52 | 29 | 0  | 0  | 0  | 1  |
+
+Build 17 adds (for the 5 new items that came in after build-15 install):
+- **F-33** Library card grey-band overlay removed (AH96GSgB4pjq).
+- **F-34** Recipe import — LLM prompt rule + defensive `stripSectionPrefix` helper kill "For the creamy cucumber salad:" duplicate prefix on every ingredient row (ANmFiVpOfYEN).
+- **F-35** HealthKit alert gains a "if Suppr isn't listed" fallback paragraph that tells the user to force-quit + relaunch so the auth sheet re-presents (AAUjI8ZWEQKi).
+- **F-36** Library filter pills get `maxFontSizeMultiplier={1.2}` so iOS Dynamic Type stops stretching them to absurd widths (AAOBOOX-2zyX).
+- **Build 15 → 16 install lag** (AKL4IQ_aQ2bX) — not a code fix. Grace shot this on build 15 (F-29 Regenerate is visible, F-32 avatars aren't). Build 16 auto-installs and closes it.
 
 Build 14 covers:
 - **G-7** Apple Health native @try + main-queue flip → closes AHSTS2YR7k-l + ACwDKGBhb897 (🟡 pending tester verify).
@@ -80,6 +87,11 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
+| 2026-04-21 | `AKL4IQ_aQ2bX…` | screenshot | 🟡 | no code fix — build-16 install lag (F-32 avatars land there) | "Still not fixed" — Plan tab household card |
+| 2026-04-21 | `AAOBOOX-2zyX…` | screenshot | 🟡 | build-17 F-36 (clamp Dynamic Type on pills) | "Pills are whether scrunched or huge" (Library filter row) |
+| 2026-04-21 | `AH96GSgB4pjq…` | screenshot | 🟡 | build-17 F-33 (kill grey-band overlay) | "Images on this page look weird why are the grey half" |
+| 2026-04-21 | `AAUjI8ZWEQKi…` | screenshot | 🟡 | build-17 F-35 (alert gains "not listed" fallback) | Suppr not listed under Settings → Health |
+| 2026-04-21 | `ANmFiVpOfYEN…` | screenshot | 🟡 | build-17 F-34 (prompt + stripSectionPrefix) | "Duplicate unnecessary wording" (Verify ingredient prefixes) |
 | 2026-04-21 | `AGOlc2wi1UZD…` | screenshot | 🟡 | build-15 F-27 (since-date label) + F-31 (goal-aligned tone) | "This is incorrect" — span + arrow-colour both addressed |
 | 2026-04-21 | `AOCd89_asuNA…` | screenshot | 🟡 | build-14 F-24 (trimmed sparkline domain) | Weight for all time too scrunched up |
 | 2026-04-21 | `AAtQgwFWaQTF…` | screenshot | 🟡 | build-15 F-29 (Regenerate) + F-32 (household card drift) | Regenerate + prototype language both addressed |

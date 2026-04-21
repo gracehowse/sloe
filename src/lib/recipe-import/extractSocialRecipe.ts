@@ -393,6 +393,22 @@ export function sanitiseImportedTitle(raw: unknown): string | null {
   return s || null;
 }
 
+/**
+ * F-34 (2026-04-21, TestFlight ANmFiVpOfYEN) — strip recipe section-heading
+ * prefixes that the LLM sometimes bakes into individual ingredient strings
+ * (e.g. "For the creamy cucumber salad: 1 tbsp miso" → "1 tbsp miso").
+ *
+ * Matches "For [phrase]:" anchored at the start of the string. Kept
+ * conservative: must start with "For", must end with a colon, must have
+ * at least one word between. Any trailing content after the colon is kept.
+ * Runs after LLM extraction so repeated or mid-string "For [X]:" (which
+ * would be part of a real ingredient name, unlikely but possible) are not
+ * stripped.
+ */
+export function stripSectionPrefix(s: string): string {
+  return s.replace(/^\s*For\s+[^:]{1,80}:\s*/i, "").trim();
+}
+
 function extractMetaContent(html: string, property: string): string | null {
   // Match both property="..." and name="..." patterns
   const patterns = [
@@ -552,6 +568,7 @@ Return a single JSON object (no markdown fences):
 
 Rules:
 - ingredients: one string per ingredient line with amounts (e.g. "200g chicken breast")
+- **Do NOT include section headings** like "For the salad:", "For the sauce:", "For the dressing:", or any "For [X]:" prefix in ingredient strings. Treat the whole list as flat — the heading itself is not an ingredient, and repeating it in every line under it creates noisy duplicates (TestFlight ANmFiVpOfYEN, 2026-04-21).
 - steps: ordered cooking instructions; extract from the caption
 - If the caption doesn't contain a recipe, return empty arrays and null title
 - If ingredients or steps are implied but not explicit, use best effort
@@ -632,7 +649,7 @@ Rules:
     return {
       title: sanitiseImportedTitle(parsed.title),
       ingredients: Array.isArray(parsed.ingredients)
-        ? parsed.ingredients.map((s) => String(s).trim()).filter(Boolean)
+        ? parsed.ingredients.map((s) => stripSectionPrefix(String(s).trim())).filter(Boolean)
         : [],
       steps: Array.isArray(parsed.steps)
         ? parsed.steps.map((s) => String(s).trim()).filter(Boolean)
