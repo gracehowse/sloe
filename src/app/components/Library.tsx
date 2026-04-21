@@ -114,14 +114,35 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5">
-      {/* Header */}
+    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5 md:max-w-6xl">
+      {/* Header
+          2026-04-20 desktop prototype port
+          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+          `WebLibrary`): at `md+` the legacy "Library" title + saved
+          pill row collapses into the prototype-matching "Library" +
+          "{n} recipes · sorted by {sortLabel}" header. Below `md` the
+          mobile-web pill row is preserved so narrow-width parity with
+          the mobile tab stays intact. */}
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 md:hidden">
           <h1 className="text-foreground">Library</h1>
           <div className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border bg-muted text-foreground border-border">
             {savedCount} recipe{savedCount === 1 ? "" : "s"}
           </div>
+        </div>
+        <div className="hidden md:block mb-6">
+          <h1
+            className="text-[24px] font-bold text-foreground -tracking-[0.02em]"
+            data-testid="library-desktop-title"
+          >
+            Library
+          </h1>
+          <p
+            className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
+            data-testid="library-desktop-subtitle"
+          >
+            {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? "" : "s"} · sorted by {sortLabel.toLowerCase()}
+          </p>
         </div>
 
         {/* Search and Filter */}

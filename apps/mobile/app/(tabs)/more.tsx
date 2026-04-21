@@ -26,6 +26,19 @@ import {
   nutritionLogToCsv,
   nutritionLogCsvFilename,
 } from "../../../../src/lib/export/nutritionLogToCsv";
+// Household summary row — 2026-04-20 Claude Design prototype port
+// (mirrors `screens-mobile.jsx` L723 + web Profile). Row hides when
+// the user isn't in a household.
+import { getMyHousehold } from "../../../../src/lib/household/householdClient";
+import {
+  presetFromShareLunch,
+  sharingPresetShortLabel,
+} from "../../../../src/lib/household/sharingGrid";
+import {
+  parseSharingStateJson,
+  sharingStorageKey,
+} from "../../../../src/lib/household/sharingGridStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /* ── Icon Box ──
  * Mirrors the prototype's `.meal-row .icon-box` (36×36, radius 10,
@@ -148,6 +161,15 @@ export default function ProfileScreen() {
     dietaryRestrictions: [],
     notificationPref: null,
   });
+
+  /** Household summary — 2026-04-20 prototype port. `null` means "not
+   * in a household" and hides the row. Loaded once on mount; refetch
+   * tied to the existing focus effect below so leave/join flows in
+   * the Plan tab update the subtitle immediately on return. */
+  const [householdSummary, setHouseholdSummary] = useState<
+    | { memberCount: number; subtitle: string }
+    | null
+  >(null);
 
   /** After first successful load, keep showing cached targets while refetching (avoids 2000 kcal flash). */
   const profileTargetsShownOnceRef = useRef(false);
@@ -272,6 +294,46 @@ export default function ProfileScreen() {
       loadProfileData();
     }, [loadProfileData]),
   );
+
+  // Load household summary (runs on mount + when userId changes).
+  // Errors hide the row — never block the rest of the More tab.
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setHouseholdSummary(null);
+      return () => {};
+    }
+    void (async () => {
+      try {
+        const { data: hh } = await getMyHousehold(supabase as any, userId);
+        if (cancelled) return;
+        if (!hh?.household) {
+          setHouseholdSummary(null);
+          return;
+        }
+        let preset = presetFromShareLunch(Boolean(hh.household.shareLunch));
+        try {
+          const raw = await AsyncStorage.getItem(sharingStorageKey(hh.household.id));
+          const parsed = parseSharingStateJson(raw);
+          if (parsed) preset = parsed.preset;
+        } catch {
+          // fall back to derived preset
+        }
+        const count = hh.members.length;
+        if (!cancelled) {
+          setHouseholdSummary({
+            memberCount: count,
+            subtitle: `${count} ${count === 1 ? "person" : "people"} · ${sharingPresetShortLabel(preset)}`,
+          });
+        }
+      } catch {
+        if (!cancelled) setHouseholdSummary(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -599,6 +661,26 @@ export default function ProfileScreen() {
         </>
       ) : null}
 
+      {/* Everything else — 2026-04-20 prototype port. Single row
+          (Household) rendered only when the user is in a household.
+          Matches `screens-mobile.jsx` L723 ordering — household row
+          lives above Targets / Health / Settings. */}
+      {householdSummary ? (
+        <>
+          <SectionHeading title="Everything else" />
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+            <SettingsRow
+              isFirst
+              icon="people-outline"
+              iconColor={t.accent}
+              label="Household"
+              sub={householdSummary.subtitle}
+              onPress={() => router.push("/household-settings" as any)}
+            />
+          </View>
+        </>
+      ) : null}
+
       {/* Goals & Targets */}
       <SectionHeading title="Goals & targets" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
@@ -618,7 +700,7 @@ export default function ProfileScreen() {
                   return `${k} · ${macro}`;
                 })()
           }
-          onPress={() => router.push("/profile" as any)}
+          onPress={() => router.push("/targets" as any)}
         />
         <SettingsRow icon="apps-outline" iconColor={t.accent} label="Dashboard widgets" sub={trackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")} onPress={() => setWidgetPickerOpen(true)} />
         <SettingsRow icon="calendar-outline" iconColor={t.accent} label="Week starts on" sub={weekStartDay === "monday" ? "Monday" : "Sunday"} onPress={() => setWeekStartPickerOpen(true)} />

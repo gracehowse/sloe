@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Flame, Compass, CalendarDays, TrendingUp, CircleUser } from 'lucide-react-native';
+
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Accent } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -74,35 +75,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Today',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Flame size={22} color={color} strokeWidth={2} />,
         }}
       />
       <Tabs.Screen
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="safari.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Compass size={22} color={color} strokeWidth={2} />,
         }}
       />
       <Tabs.Screen
         name="planner"
         options={{
           title: 'Plan',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="chart.bar.fill" color={color} />,
+          tabBarIcon: ({ color }) => <TrendingUp size={22} color={color} strokeWidth={2} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => <IconSymbol size={22} name="ellipsis.circle" color={color} />,
+          tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
         }}
       />
       {/* Hidden tabs — accessed via navigation, not tab bar */}

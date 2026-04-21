@@ -672,7 +672,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
   }, [planSummaryScore, generatedPlan]);
 
   return (
-    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5">
+    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5 md:max-w-6xl">
       {/* Header — prototype treatment (2026-04-20): overline + big
           title on the left, round "sliders-horizontal" pill on the
           right. Replaces the 4-button action row that used to live
@@ -682,15 +682,31 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           prior button was informational-only and only produced a
           toast). Named-plan slots, swap modal, templates dialog,
           recipe picker, household sharing, and the shopping-list CTA
-          card further down are all untouched. */}
+          card further down are all untouched.
+
+          2026-04-20 desktop prototype port
+          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+          `WebPlan`): at `md+` the WEEK OF overline collapses into a
+          plain "{weekOfLabel} · hits targets {hits} of {total} days"
+          subtitle and the title shrinks to 24px. The round templates
+          pill stays right-aligned. */}
       <div className="flex items-start justify-between mb-6 gap-pm-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground md:hidden">
             {weekOfLabel}
           </p>
-          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5">
+          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 md:text-[24px] md:mt-0">
             Meal plan
           </h1>
+          <p
+            data-testid="planner-desktop-subtitle"
+            className="hidden md:block text-[13px] text-muted-foreground mt-0.5"
+          >
+            {weekOfLabel}
+            {planSummaryScore
+              ? ` · hits targets ${planSummaryScore.hits} of ${planSummaryScore.total} day${planSummaryScore.total === 1 ? "" : "s"}`
+              : ""}
+          </p>
         </div>
         <button
           type="button"
@@ -995,6 +1011,161 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
         </div>
       ) : generatedPlan ? (
         <div className="space-y-6">
+          {/* 2026-04-20 desktop prototype port
+              (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+              `WebPlan`): 7-column kanban grid. Each column is a day
+              card with BREAKFAST / LUNCH / DINNER stacked meal cards;
+              each meal card shows an overline slot label, a circular
+              swap icon top-right, the recipe title, and a `{kcal} ·
+              {P} P` metadata line. The "Today" pill renders inline
+              with the day name for the current day.
+
+              Only renders at `md+` — below that breakpoint the mobile
+              "This week" summary card + horizontal-scroll day strip
+              + Today detail card carry the same information in a
+              narrower frame. Mobile/web divergence is intentional
+              per the prototype. Tap handlers reuse `swapMeal` + the
+              shared `onOpenRecipe` callback so behaviour agrees
+              across widths.
+
+              Note: we only wire the desktop kanban here — the mobile
+              summary card below is wrapped with `md:hidden` so the
+              `Shopping list` / `Regenerate week` CTAs on the kanban
+              side don't duplicate the ones inside the summary card. */}
+          <div
+            data-testid="planner-desktop-kanban"
+            className="hidden md:grid md:grid-cols-7 gap-3"
+          >
+            {generatedPlan.slice(0, 7).map((dp, di) => {
+              const dayDate = planCalendarDateForIndex(di);
+              const dayLabel = shortWeekdayLabel(dayDate);
+              const isTodayCol = isSameCalendarDay(dayDate, new Date());
+              const bySlot = new Map<string, { mealIndex: number; meal: DayPlan["meals"][number] } | null>();
+              bySlot.set("breakfast", null);
+              bySlot.set("lunch", null);
+              bySlot.set("dinner", null);
+              dp.meals.forEach((m, i) => {
+                const key = String(m.name ?? "").toLowerCase();
+                if (bySlot.has(key) && bySlot.get(key) == null) {
+                  bySlot.set(key, { mealIndex: i, meal: m });
+                }
+              });
+              return (
+                <div
+                  key={`desktop-day-${dp.day}`}
+                  className={[
+                    "rounded-2xl border p-3.5 flex flex-col gap-2.5",
+                    isTodayCol
+                      ? "bg-primary/5 border-primary/30"
+                      : "bg-card border-border",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-[13px] font-bold text-foreground">{dayLabel}</p>
+                    {isTodayCol ? (
+                      <span
+                        data-testid={`planner-desktop-today-pill-${dp.day}`}
+                        className="inline-flex items-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-[0.08em] px-2 py-0.5"
+                      >
+                        Today
+                      </span>
+                    ) : null}
+                  </div>
+                  {(["breakfast", "lunch", "dinner"] as const).map((slot) => {
+                    const entry = bySlot.get(slot);
+                    if (!entry) {
+                      return (
+                        <div
+                          key={slot}
+                          className="rounded-xl bg-muted/60 p-2.5 min-h-[88px] flex flex-col gap-1 opacity-70"
+                        >
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{slot}</p>
+                          <p className="text-[12px] text-muted-foreground mt-auto">Empty slot</p>
+                        </div>
+                      );
+                    }
+                    const { mealIndex, meal } = entry;
+                    const isPlaceholder = isMealPlanPlaceholderLikeTitle(
+                      meal.recipeTitle,
+                      { isPlaceholder: meal.isPlaceholder },
+                    );
+                    const portion = effectivePortionMultiplier(meal.portionMultiplier);
+                    const kcal = Math.round(scaledMacro(meal.calories, portion));
+                    const prot = Math.round(scaledMacro(meal.protein, portion));
+                    const recipeId = (meal as { recipeId?: string }).recipeId;
+                    return (
+                      <div
+                        key={slot}
+                        className="relative rounded-xl bg-muted/60 p-2.5 min-h-[88px] flex flex-col gap-1"
+                      >
+                        <button
+                          type="button"
+                          disabled={isPlaceholder || !recipeId}
+                          onClick={() => {
+                            if (isPlaceholder || !recipeId) return;
+                            onOpenRecipe?.(recipeId);
+                          }}
+                          className="text-left flex-1 disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+                        >
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-1 pr-6">
+                            {slot}
+                          </p>
+                          <p
+                            className="text-[12px] font-semibold text-foreground leading-tight -tracking-[0.01em] pr-6"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {isPlaceholder ? "Empty slot" : meal.recipeTitle}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
+                            {isPlaceholder ? "— kcal · — P" : `${kcal} kcal · ${prot} P`}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => swapMeal(dp.day, mealIndex)}
+                          aria-label={`Swap ${slot}`}
+                          className="absolute top-2 right-2 w-[22px] h-[22px] rounded-md bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted grid place-items-center"
+                        >
+                          <RefreshCw className="w-[11px] h-[11px]" strokeWidth={2} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+          <div
+            data-testid="planner-desktop-cta-row"
+            className="hidden md:flex gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                void generateShoppingListFromPlan();
+                onNavigate?.("shopping");
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+            >
+              <ShoppingCart className="w-4 h-4" strokeWidth={2} />
+              Shopping list
+            </button>
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-card border border-border text-foreground text-sm font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${isGenerating ? "animate-spin" : ""}`} strokeWidth={2} />
+              Regenerate week
+            </button>
+          </div>
+
           {/* Prototype port (2026-04-20) — "This week" summary card.
               Web parity for `apps/mobile/app/(tabs)/planner.tsx`'s
               summary card. Rendered only when there's a plan + a
@@ -1002,11 +1173,15 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
               band = ±10% of `targetCalories`. The duplicated "Meal
               plan" h2 + date-range line that used to sit here was
               removed — the `Week of …` overline + big title up in the
-              header now carries that information once. */}
+              header now carries that information once. At `md+` the
+              desktop kanban + CTA row above already carries the same
+              information, so the card is hidden to avoid duplicate
+              Shopping list / Regenerate buttons (mobile/web divergence
+              per the 2026-04-20 prototype). */}
           {planSummaryScore ? (
             <div
               data-testid="plan-week-summary-card"
-              className="rounded-2xl p-4 border"
+              className="rounded-2xl p-4 border md:hidden"
               style={{
                 background:
                   "linear-gradient(135deg, color-mix(in oklab, var(--primary) 12%, var(--card)) 0%, color-mix(in oklab, var(--macro-fat) 8%, var(--card)) 100%)",

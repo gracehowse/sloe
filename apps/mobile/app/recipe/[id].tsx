@@ -34,6 +34,7 @@ import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
+import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -600,6 +601,56 @@ export default function RecipeDetailScreen() {
     backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
     backBtnText: { color: colors.text, fontWeight: "600" },
 
+    // 2026-04-20 prototype port — sticky top bar (light bg, dark
+    // text, full-width). Replaces the floating overlay buttons
+    // that previously sat over the hero image.
+    topBar: {
+      backgroundColor: colors.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      zIndex: 10,
+    },
+    topBarRow: {
+      height: 56,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: Spacing.sm,
+      gap: Spacing.xs,
+    },
+    topBarIconBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    topBarTitle: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    topBarActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+
+    // Tag pill row under the hero.
+    tagRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      paddingHorizontal: Spacing.xl,
+      paddingTop: Spacing.md,
+    },
+    tagPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: colors.border,
+    },
+    tagPillText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    tagPillPrimary: { backgroundColor: Accent.primary + "22" },
+    tagPillTextPrimary: { color: Accent.primary },
+
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
     // Header buttons restyled 2026-04-20 to match the prototype's
     // light circular icon buttons (was black 67%-opacity overlay).
@@ -770,43 +821,85 @@ export default function RecipeDetailScreen() {
     );
   }
 
+  /*
+   * 2026-04-20 prototype port — top bar refactor.
+   * Previously the back / save / share pills floated absolutely over
+   * the hero image. The prototype puts them in a proper sticky top
+   * bar above the hero with a centred bold title. Rendering outside
+   * the ScrollView so the bar stays put on scroll.
+   */
+  const handleShare = () => {
+    const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
+    const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
+    const url = webRecipeDeepLink(String(recipeId), origin);
+    const title = decodeEntities(recipe.title);
+    void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
+      void Linking.openURL(url);
+    });
+  };
+
+  // Tag-row source: `meal_type` is the closest existing per-recipe
+  // array of category strings (prod data has no `tags` column). We
+  // render what's actually on the recipe — no invented tags.
+  const pillTags: string[] = Array.isArray(recipe.meal_type) ? recipe.meal_type.filter(Boolean) : [];
+  // Fit percent: pass targets=null (mobile only loads macro-gram targets,
+  // not calorie target) so web + mobile deterministically agree on the
+  // helper's neutral fallback. Never invent nutrition values.
+  const fitPercent = computeRecipeFitPercent(
+    { calories: macros.calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat },
+    null,
+  ).percent;
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero image — full bleed, buttons handle their own safe area */}
-        <View>
-          <Image source={{ uri: heroImageUrl }} style={styles.hero} />
-          {/* Header buttons row */}
-          <View style={{ position: "absolute", top: insets.top + Spacing.sm, left: Spacing.md, right: Spacing.md, flexDirection: "row", justifyContent: "space-between" }}>
-            <Pressable style={styles.headerBtn} onPress={goBack}>
-              <Ionicons name="chevron-back" size={22} color={colors.text} />
+      {/* Sticky top bar — replaces the floating-over-hero pattern. */}
+      <View style={[styles.topBar, { paddingTop: insets.top }]}>
+        <View style={styles.topBarRow}>
+          <Pressable onPress={goBack} style={styles.topBarIconBtn} accessibilityRole="button" accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </Pressable>
+          <Text style={styles.topBarTitle} numberOfLines={1} ellipsizeMode="tail">
+            {decodeEntities(recipe.title)}
+          </Text>
+          <View style={styles.topBarActions}>
+            <Pressable
+              onPress={() => toggleSave(recipeId)}
+              style={styles.topBarIconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={saved ? "Remove from library" : "Save to library"}
+            >
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={22}
+                color={saved ? Accent.success : colors.text}
+              />
             </Pressable>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable
-                style={styles.headerBtn}
-                onPress={() => toggleSave(recipeId)}
-              >
-                <Ionicons
-                  name={saved ? "bookmark" : "bookmark-outline"}
-                  size={20}
-                  color={saved ? Accent.success : colors.text}
-                />
-              </Pressable>
-              <Pressable
-                style={styles.headerBtn}
-                onPress={() => {
-                  const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
-                  const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
-                  const url = webRecipeDeepLink(String(recipeId), origin);
-                  const title = decodeEntities(recipe.title);
-                  void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
-                    void Linking.openURL(url);
-                  });
-                }}
-              >
-                <Ionicons name="share-outline" size={20} color={colors.text} />
-              </Pressable>
+            <Pressable
+              onPress={handleShare}
+              style={styles.topBarIconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Share recipe"
+            >
+              <Ionicons name="share-outline" size={22} color={colors.text} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Hero image — now sits below the top bar (no overlap). */}
+        <Image source={{ uri: heroImageUrl }} style={styles.hero} />
+
+        {/* Tag pills directly under hero. Neutral pills + trailing
+            primary-tinted fit-percent pill (parity with Discover). */}
+        <View style={styles.tagRow}>
+          {pillTags.map((t) => (
+            <View key={t} style={styles.tagPill}>
+              <Text style={styles.tagPillText}>{t}</Text>
             </View>
+          ))}
+          <View style={[styles.tagPill, styles.tagPillPrimary]}>
+            <Text style={[styles.tagPillText, styles.tagPillTextPrimary]}>{fitPercent}%</Text>
           </View>
         </View>
 

@@ -36,7 +36,9 @@ export type SidebarView =
   | "settings"
   | "notifications"
   | "create"
-  | "import";
+  | "import"
+  | "household-settings"
+  | "targets";
 
 export interface DesktopSidebarProps {
   currentView: SidebarView;
@@ -44,6 +46,10 @@ export interface DesktopSidebarProps {
   /** Unchecked count on the shopping list, shown as a badge. Zero
    *  hides the badge. */
   shoppingUncheckedCount?: number;
+  /** Saved-recipe count on the Library row, shown as a badge.
+   *  Zero hides the badge (a fresh user shouldn't see "0"). Added
+   *  2026-04-20 for the Claude Design Today-prototype port. */
+  libraryRecipeCount?: number;
 }
 
 type Item = {
@@ -61,7 +67,7 @@ const TRACK_ITEMS: Item[] = [
 ];
 
 const RECIPE_ITEMS: Item[] = [
-  { view: "library", label: "Library", icon: "recipe" },
+  { view: "library", label: "Library", icon: "recipe", badge: (p) => p.libraryRecipeCount ?? 0 },
   { view: "discover", label: "Discover", icon: "discover" },
   { view: "shopping", label: "Shopping", icon: "shopping", badge: (p) => p.shoppingUncheckedCount ?? 0 },
 ];

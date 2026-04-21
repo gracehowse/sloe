@@ -36,6 +36,10 @@ const ShoppingList = dynamic(
   () => import("./components/ShoppingList.tsx").then((m) => ({ default: m.ShoppingList })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading shopping list..." /> },
 );
+const Targets = dynamic(
+  () => import("./components/Targets.tsx").then((m) => ({ default: m.Targets })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading targets..." /> },
+);
 const HouseholdPanel = dynamic(
   () => import("./components/HouseholdPanel.tsx").then((m) => ({ default: m.HouseholdPanel })),
   { ssr: false },
@@ -47,6 +51,13 @@ const Settings = dynamic(
 const RecipeUpload = dynamic(
   () => import("./components/RecipeUpload.tsx").then((m) => ({ default: m.RecipeUpload })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading recipe editor..." /> },
+);
+const UpgradePaywallDialog = dynamic(
+  () =>
+    import("./components/suppr/upgrade-paywall-dialog.tsx").then((m) => ({
+      default: m.UpgradePaywallDialog,
+    })),
+  { ssr: false },
 );
 import { useAppData } from "../context/AppDataContext.tsx";
 import { FirstRunChecklist } from "./components/FirstRunChecklist.tsx";
@@ -63,7 +74,8 @@ type View =
   | "settings"
   | "notifications"
   | "create"
-  | "import";
+  | "import"
+  | "targets";
 
 export default function App() {
   const {
@@ -81,6 +93,11 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>("today");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
+  // Upgrade-paywall dialog (2026-04-20 Claude Design port). When
+  // `upgradePaywallFrom` is non-null the `<UpgradePaywallDialog>`
+  // renders with that attribution. Opened via `openUpgradeDialog()`,
+  // closed via the dialog's internal dismiss paths.
+  const [upgradePaywallFrom, setUpgradePaywallFrom] = useState<PaywallViewedFrom | null>(null);
 
   const normalizedViewParam = useMemo(() => {
     if (!viewParam) return null;
@@ -100,6 +117,7 @@ export default function App() {
       "notifications",
       "create",
       "import",
+      "targets",
     ];
     return (allowed as string[]).includes(v) ? (v as View) : null;
   }, [viewParam]);
@@ -374,6 +392,15 @@ export default function App() {
             />
           </FeatureErrorBoundary>
         );
+      case "targets":
+        return (
+          <FeatureErrorBoundary feature="Targets">
+            <Targets
+              onBack={() => navigateToView("today")}
+              onEdit={() => navigateToView("profile")}
+            />
+          </FeatureErrorBoundary>
+        );
       default:
         return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
     }
@@ -464,6 +491,21 @@ export default function App() {
 
       {/* First-run guided checklist */}
       <FirstRunChecklist onNavigate={(view) => navigateToView(view as View)} />
+
+      {/* Claude Design 2026-04-20 upgrade paywall dialog. Lifts the
+          in-app "Upgrade" flow from a /pricing redirect into a modal
+          that starts Stripe checkout inline. Rendered at the root so
+          any surface can open it via `openUpgradeDialog(from)` (added
+          below) without remounting the dialog tree. */}
+      {upgradePaywallFrom ? (
+        <UpgradePaywallDialog
+          open={upgradePaywallFrom !== null}
+          from={upgradePaywallFrom}
+          onOpenChange={(next) => {
+            if (!next) setUpgradePaywallFrom(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

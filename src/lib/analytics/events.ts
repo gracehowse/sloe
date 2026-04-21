@@ -46,6 +46,14 @@ export const AnalyticsEvents = {
   onboarding_completed: "onboarding_completed",
   onboarding_step_completed: "onboarding_step_completed",
   paywall_viewed: "paywall_viewed",
+  /** Fires when the user dismisses an in-app paywall surface
+   *  (currently: `UpgradePaywallDialog` on web). Payload:
+   *    { from: PaywallViewedFrom,
+   *      reason: "continue_free" | "close_button" | "backdrop" }
+   *  Added 2026-04-20 for the Claude Design whole-paywall modal port.
+   *  Complements `paywall_viewed` so the F2 funnel has a clean
+   *  dismiss counterpart per `from`-surface. */
+  paywall_dismissed: "paywall_dismissed",
   /** Fires when the user commits a change to the billing-period
    *  toggle on the paywall (mobile `/paywall`) or the pricing page
    *  (web `/pricing`). Dedup: toggle no-ops are suppressed at the

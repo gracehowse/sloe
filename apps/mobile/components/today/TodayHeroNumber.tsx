@@ -71,18 +71,18 @@ export function TodayHeroNumber({
       </Text>
       <Text
         style={{
-          fontSize: 96,
+          fontSize: 80,
           fontWeight: "800",
-          letterSpacing: -3.8,
-          lineHeight: 86,
+          letterSpacing: -2.8,
+          lineHeight: 92,
           color: textColor,
           fontVariant: ["tabular-nums"],
-          marginTop: Spacing.sm,
+          marginTop: Spacing.md,
         }}
       >
         {shown.toLocaleString()}
       </Text>
-      <Text style={{ fontSize: 13, color: textSecondaryColor, marginTop: 6 }}>
+      <Text style={{ fontSize: 13, color: textSecondaryColor, marginTop: Spacing.md }}>
         of {goal.toLocaleString()} kcal · {pct}% eaten
       </Text>
     </Pressable>

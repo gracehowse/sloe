@@ -178,27 +178,63 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
     setCustomName("");
   };
 
+  // Prototype port (2026-04-20) — breadcrumb row + subtitle ("N items ·
+  // from this week's plan") mirror the Claude Design web bundle
+  // (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+  // WebShopping + flows.jsx ShoppingPage). The breadcrumb's final crumb
+  // is today's short label (e.g. "Wed, 14 May") so the topbar + main
+  // pane carry the same date ribbon when the sibling sidebar-and-
+  // breadcrumb scaffold lands. Total-item count is derived — not the
+  // static "12 items" from the prototype — so it tracks the live list.
+  const todayCrumbLabel = useMemo(() => {
+    const d = new Date();
+    return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+  }, []);
+  const totalItemCount = useMemo(() => {
+    let n = 0;
+    for (const cat of categories) {
+      n += groupShoppingItemsByIngredientName(shoppingItems.filter((i) => i.category === cat)).length;
+    }
+    return n;
+  }, [shoppingItems, categories]);
+  const subtitleText = totalItemCount > 0
+    ? `${totalItemCount} item${totalItemCount === 1 ? "" : "s"} · from this week's plan`
+    : "From your meal plan";
+
   return (
-    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5 print:max-w-none print:px-4 print:py-4">
+    <div className="max-w-5xl mx-auto px-pm-5 py-pm-5 print:max-w-none print:px-4 print:py-4">
+      {/* Breadcrumb — prototype port (2026-04-20). Matches the topbar
+          crumb pattern so the content-pane header flows from the
+          sidebar scaffold landing in a sibling PR. Hidden on print +
+          below md, where the bottom-tab layout already anchors
+          location. */}
+      <nav
+        aria-label="Breadcrumb"
+        className="hidden md:flex items-center gap-1.5 text-[13px] text-muted-foreground mb-3 print:hidden"
+      >
+        <span>Recipes</span>
+        <span aria-hidden>·</span>
+        <span className="font-semibold text-foreground">Shopping list</span>
+        <span aria-hidden>·</span>
+        <span className="tabular-nums">{todayCrumbLabel}</span>
+      </nav>
+
       {/* Header */}
-      <div className="mb-4 print:mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-primary rounded-xl print:hidden">
-                <Icons.shopping className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-foreground">
-                Shopping List
-              </h1>
-            </div>
-            <p className="text-muted-foreground print:text-muted-foreground">From your meal plan</p>
+      <div className="mb-5 print:mb-4">
+        <div className="flex items-end justify-between flex-wrap gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[24px] md:text-[26px] font-bold text-foreground -tracking-[0.02em]">
+              Shopping list
+            </h1>
+            <p className="text-[13px] text-muted-foreground mt-1 print:text-muted-foreground">
+              {subtitleText}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden">
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
+              className="px-3.5 py-2 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground text-[13px] font-medium shadow-sm"
             >
               <Icons.printer className="w-4 h-4" />
               Print
@@ -206,7 +242,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
             <button
               type="button"
               onClick={handleExportCsv}
-              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
+              className="px-3.5 py-2 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground text-[13px] font-medium shadow-sm"
             >
               <Icons.import className="w-4 h-4" />
               CSV
@@ -214,7 +250,7 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
             <button
               type="button"
               onClick={handleExportText}
-              className="px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground font-medium shadow-sm"
+              className="px-3.5 py-2 bg-card border border-border rounded-xl hover:bg-muted/60 transition-all flex items-center gap-2 text-foreground text-[13px] font-medium shadow-sm"
             >
               <Icons.recipe className="w-4 h-4" />
               Text
@@ -248,26 +284,28 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
         </div>
       ) : null}
 
-      {/* Progress */}
-      <div className="bg-card border border-border rounded-xl p-4 mb-4 print:hidden">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-foreground">Shopping Progress</h3>
-          <span className="text-lg font-bold text-primary">
-            {displayProgress.checkedGroups} / {displayProgress.groupCount} items
-          </span>
+      {/* Progress (kept — valuable signal + mobile parity). */}
+      {shoppingItems.length > 0 ? (
+        <div className="bg-card border border-border rounded-xl p-4 mb-5 print:hidden">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Shopping progress</h3>
+            <span className="text-base font-bold text-primary tabular-nums">
+              {displayProgress.checkedGroups} / {displayProgress.groupCount} items
+            </span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div
+              className="h-full bg-primary transition-pm duration-[180ms]"
+              style={{
+                width: `${displayProgress.groupCount ? (displayProgress.checkedGroups / displayProgress.groupCount) * 100 : 0}%`,
+              }}
+            ></div>
+          </div>
         </div>
-        <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-          <div
-            className="h-full bg-primary transition-pm duration-[180ms]"
-            style={{
-              width: `${displayProgress.groupCount ? (displayProgress.checkedGroups / displayProgress.groupCount) * 100 : 0}%`,
-            }}
-          ></div>
-        </div>
-      </div>
+      ) : null}
 
       {/* Add Item */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg print:hidden">
+      <div className="bg-card border border-border rounded-2xl p-4 mb-6 shadow-sm print:hidden">
         <div className="flex gap-3">
           <input
             type="text"
@@ -275,14 +313,14 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddCustom()}
-            className="flex-1 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="flex-1 px-4 py-2.5 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
           />
           <button
             type="button"
             onClick={handleAddCustom}
-            className="px-6 py-3 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
+            className="px-5 py-2.5 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 flex items-center gap-2 text-sm font-semibold"
           >
-            <Icons.add className="w-5 h-5" />
+            <Icons.add className="w-4 h-4" />
             Add
           </button>
         </div>
@@ -315,132 +353,145 @@ export const ShoppingList = memo(function ShoppingList({ userTier: _userTier, on
         />
       )}
 
-      {/* Items by Category */}
-      {categories.map((category) => {
-        const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === category));
-        return (
-          <div key={category} className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
-            <div className="sticky top-0 z-10 -mx-2 mb-4 border-b border-border/90 bg-card/90 backdrop-blur-md px-2 py-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">{category}</h3>
-            </div>
-            <div className="space-y-3">
-              {groups.map((group) => {
-                const allChecked = isShoppingGroupFullyChecked(group);
-                const someChecked = group.items.some((i) => i.checked);
-                const dimmed = allChecked;
-                const lineThrough = allChecked;
-                // G-2 (TestFlight `ALU8hrB1…`, 2026-04-19): when a
-                // single row's `name` already encodes the amount +
-                // unit prefix (importer leak, e.g. "60 g protein
-                // powder"), `dedupeShoppingLabel` strips it so the
-                // rendered line is "60 g protein powder" not "60 g
-                // 60 g protein powder". The multi-item merge path
-                // joins distinct quantities ("200 g + 2 breast")
-                // and displayName is picked as the shortest name,
-                // so the same leak can't chain there.
-                const dedupedSingle =
-                  group.items.length === 1
-                    ? dedupeShoppingLabel({
-                        amount: group.items[0]!.amount,
-                        unit: group.items[0]!.unit,
-                        name: group.displayName,
-                      })
-                    : null;
-                const qtyLine =
-                  dedupedSingle
-                    ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
-                    : formatMixedShoppingAmounts(group.items);
-                const displayName = dedupedSingle ? dedupedSingle.name : group.displayName;
-                const fromMerged = mergeShoppingFromFields(group.items);
-                const multiFrom = fromMerged.includes(",");
-                const thumb = resolveRecipeThumb(fromMerged);
-                return (
-                  <div
-                    key={group.key}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-pm ${
-                      dimmed
-                        ? "bg-muted border-border opacity-60"
-                        : "bg-card border-border hover:border-primary/30"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleGroupChecked(group)}
-                      className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center print:hidden ${
-                        allChecked
-                          ? "bg-primary border-primary"
-                          : someChecked
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {allChecked ? (
-                        <Icons.check className="w-4 h-4 text-white" />
-                      ) : someChecked ? (
-                        <Icons.remove className="w-4 h-4 text-primary" />
-                      ) : null}
-                    </button>
-                    <span className="hidden print:inline w-6 text-center text-sm text-muted-foreground">
-                      {allChecked ? "☑" : "☐"}
-                    </span>
-                    {thumb ? (
-                      <img
-                        src={thumb}
-                        alt=""
-                        className="hidden h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-border/80 sm:block"
-                      />
-                    ) : null}
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-medium ${lineThrough ? "line-through text-muted-foreground" : "text-foreground"}`}
+      {/* Items by Category — prototype-port treatment (2026-04-20).
+          3-column grid on lg+, 2-col on md, 1-col on mobile (matches
+          `screens-web.jsx` WebShopping layout). Each category is a
+          card with:
+            - uppercase muted overline ("PRODUCE" / "PROTEIN" / etc.)
+            - a single vertical list of ingredient rows separated by
+              top-border dividers
+            - circular checkbox on the left: empty ring when unchecked,
+              filled primary when checked (stroke-3 inner check)
+          Partial-check state (some items in a merged group checked
+          but not all) is preserved from the prior list — the circle
+          ring goes primary-coloured and the inner mark becomes a
+          minus glyph. Print styling inherits the list. */}
+      {shoppingItems.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 print:block">
+          {categories.map((category) => {
+            const groups = groupShoppingItemsByIngredientName(shoppingItems.filter((item) => item.category === category));
+            return (
+              <div
+                key={category}
+                className="bg-card border border-border rounded-2xl p-4 shadow-sm print:shadow-none print:border-0 print:break-inside-avoid print:mb-6"
+              >
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                  {category}
+                </p>
+                <ul className="flex flex-col">
+                  {groups.map((group) => {
+                    const allChecked = isShoppingGroupFullyChecked(group);
+                    const someChecked = group.items.some((i) => i.checked);
+                    // G-2 (TestFlight `ALU8hrB1…`, 2026-04-19): same
+                    // dedupe logic as the legacy render — single-item
+                    // groups run through `dedupeShoppingLabel` so an
+                    // importer leak like "60 g protein powder" doesn't
+                    // print as "60 g 60 g protein powder".
+                    const dedupedSingle =
+                      group.items.length === 1
+                        ? dedupeShoppingLabel({
+                            amount: group.items[0]!.amount,
+                            unit: group.items[0]!.unit,
+                            name: group.displayName,
+                          })
+                        : null;
+                    const qtyLine = dedupedSingle
+                      ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
+                      : formatMixedShoppingAmounts(group.items);
+                    const displayName = dedupedSingle ? dedupedSingle.name : group.displayName;
+                    const fromMerged = mergeShoppingFromFields(group.items);
+                    const multiFrom = fromMerged.includes(",");
+                    const thumb = resolveRecipeThumb(fromMerged);
+                    const qtyParen = qtyLine ? ` (${qtyLine})` : "";
+                    return (
+                      <li
+                        key={group.key}
+                        className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0"
                       >
-                        {qtyLine} {displayName}
-                      </p>
-                      {group.items.length > 1 ? (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Multiple quantities/units combined for shopping — amounts are not added when units differ.
-                        </p>
-                      ) : null}
-                      <p className="text-sm text-muted-foreground truncate">
-                        {multiFrom ? (
-                          <>
-                            <span className="font-medium text-foreground">Combined from plan: </span>
-                            {fromMerged}
-                          </>
-                        ) : (
-                          <>From: {fromMerged}</>
-                        )}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeGroup(group)}
-                      className="flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors print:hidden"
-                      aria-label={`Remove ${group.displayName}`}
-                    >
-                      <Icons.delete className="w-5 h-5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+                        <button
+                          type="button"
+                          onClick={() => toggleGroupChecked(group)}
+                          aria-pressed={allChecked}
+                          aria-label={`${allChecked ? "Uncheck" : "Check"} ${displayName}`}
+                          className={`flex-shrink-0 w-[22px] h-[22px] rounded-full border-[1.5px] transition-colors flex items-center justify-center print:hidden ${
+                            allChecked
+                              ? "bg-primary border-primary"
+                              : someChecked
+                                ? "border-primary bg-primary/10"
+                                : "border-border hover:border-primary/60"
+                          }`}
+                        >
+                          {allChecked ? (
+                            <Icons.check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                          ) : someChecked ? (
+                            <Icons.remove className="w-3 h-3 text-primary" strokeWidth={3} />
+                          ) : null}
+                        </button>
+                        <span className="hidden print:inline w-5 text-center text-sm text-muted-foreground">
+                          {allChecked ? "☑" : "☐"}
+                        </span>
+                        {thumb ? (
+                          <img
+                            src={thumb}
+                            alt=""
+                            className="hidden lg:block h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-border/80"
+                          />
+                        ) : null}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-[13px] leading-snug ${
+                              allChecked ? "line-through text-muted-foreground" : "text-foreground"
+                            }`}
+                          >
+                            {displayName}
+                            {qtyParen ? (
+                              <span className="text-muted-foreground tabular-nums">{qtyParen}</span>
+                            ) : null}
+                          </p>
+                          {group.items.length > 1 ? (
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              Multiple units combined — totals not added when units differ.
+                            </p>
+                          ) : null}
+                          {multiFrom ? (
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              {fromMerged}
+                            </p>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeGroup(group)}
+                          className="flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors print:hidden p-1 -m-1 rounded"
+                          aria-label={`Remove ${group.displayName}`}
+                        >
+                          <Icons.delete className="w-4 h-4" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* Actions */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-lg print:hidden">
-        <div className="flex items-center justify-between">
-          <p className="text-muted-foreground">Generate from your current meal plan</p>
-          <button
-            type="button"
-            onClick={() => void generateShoppingListFromPlan()}
-            className="px-6 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all font-medium"
-          >
-            Regenerate from Plan
-          </button>
+      {shoppingItems.length > 0 ? (
+        <div className="mt-6 bg-card border border-border rounded-2xl p-4 shadow-sm print:hidden">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground">Generate from your current meal plan</p>
+            <button
+              type="button"
+              onClick={() => void generateShoppingListFromPlan()}
+              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all text-sm font-medium"
+            >
+              Regenerate from plan
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 });

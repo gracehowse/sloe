@@ -19,6 +19,20 @@ import {
   type NutritionStrategy,
 } from "../../lib/nutrition/tdee.ts";
 import { DIETARY_PREFERENCE_ENTRIES, normaliseDietaryFromProfile } from "../../constants/dietaryPreferences.ts";
+// Household summary for the "Everything else" row — 2026-04-20 Claude
+// Design prototype port. Uses the shared client so the count and
+// sharing-preset subtitle stay in lockstep with what the bar and the
+// settings page read. The row hides itself when the user isn't in a
+// household (prototype behaviour; see `screens-mobile.jsx` L723).
+import { getMyHousehold } from "../../lib/household/householdClient.ts";
+import {
+  presetFromShareLunch,
+  sharingPresetShortLabel,
+} from "../../lib/household/sharingGrid.ts";
+import {
+  parseSharingStateJson,
+  sharingStorageKey,
+} from "../../lib/household/sharingGridStorage.ts";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -54,6 +68,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     "carbs",
     "fat",
   ]);
+  /** Household summary for the "Everything else → Household" row. `null`
+   * means "not in a household" → row hidden. */
+  const [householdSummary, setHouseholdSummary] = useState<
+    | { memberCount: number; subtitle: string }
+    | null
+  >(null);
 
   const loggingStats = useMemo(() => {
     const daysWithLogs = Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k]?.length ?? 0) > 0);
@@ -159,6 +179,45 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   useEffect(() => {
     setActivityAdjustPref(preferActivityAdjustedCalories);
   }, [preferActivityAdjustedCalories]);
+
+  // Load household summary for the Household row. Failing this load
+  // just hides the row — never block the rest of the page.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data: authData } = await supabase.auth.getSession();
+      const uid = authData.session?.user.id ?? null;
+      if (!uid || cancelled) return;
+      try {
+        const { data: hh } = await getMyHousehold(supabase as any, uid);
+        if (cancelled) return;
+        if (!hh?.household) {
+          setHouseholdSummary(null);
+          return;
+        }
+        let preset = presetFromShareLunch(Boolean(hh.household.shareLunch));
+        try {
+          if (typeof window !== "undefined") {
+            const raw = window.localStorage.getItem(sharingStorageKey(hh.household.id));
+            const parsed = parseSharingStateJson(raw);
+            if (parsed) preset = parsed.preset;
+          }
+        } catch {
+          // Ignore — fall back to the derived preset.
+        }
+        const count = hh.members.length;
+        setHouseholdSummary({
+          memberCount: count,
+          subtitle: `${count} ${count === 1 ? "person" : "people"} · ${sharingPresetShortLabel(preset)}`,
+        });
+      } catch {
+        if (!cancelled) setHouseholdSummary(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (height != null) {
@@ -458,6 +517,37 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             >
               Got it
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Everything else — prototype "More → Household" row. Renders
+          only when the user is in a household (mirrors mobile
+          `(tabs)/more.tsx` and `screens-mobile.jsx` L723). The row
+          hands off to `?view=household-settings` which mounts the
+          prototype HouseholdSettingsPage. */}
+      {householdSummary ? (
+        <div className="mb-4">
+          <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">
+            Everything else
+          </h3>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <a
+              href="/?view=household-settings"
+              data-testid="profile-household-row"
+              className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+            >
+              <IconBox tone="primary" size="md" className="rounded-[10px]">
+                <Icons.users className="w-4 h-4" />
+              </IconBox>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-foreground">Household</p>
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                  {householdSummary.subtitle}
+                </p>
+              </div>
+              <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
+            </a>
           </div>
         </div>
       ) : null}

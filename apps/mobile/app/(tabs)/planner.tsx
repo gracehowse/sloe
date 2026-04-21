@@ -19,7 +19,7 @@ import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppi
 import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
@@ -76,12 +76,26 @@ const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "F
 // on web with lucide-react icons (see `MealPlanner.tsx` `SLOT_ICON_WEB`).
 // Keys come from the shared `resolvePlanSlotIconKey` so legacy / voice
 // slot values can never drift a row into a blank square.
+// Keep in sync with `TodayMealsSection.tsx` `SLOT_ICON` — Plan and Today
+// must show the same icon per slot (Grace 2026-04-20).
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
-const SLOT_ICON_MOBILE: Record<PlanSlotIconKey, IoniconName> = {
-  breakfast: "sunny-outline",
-  lunch: "restaurant-outline",
-  dinner: "moon-outline",
-  snacks: "ice-cream-outline",
+type MciName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+const SLOT_ICON_MOBILE: Record<
+  PlanSlotIconKey,
+  { family: "ionicons"; name: IoniconName } | { family: "mci"; name: MciName }
+> = {
+  breakfast: { family: "ionicons", name: "cafe-outline" },
+  lunch: { family: "ionicons", name: "sunny-outline" },
+  dinner: { family: "ionicons", name: "restaurant-outline" },
+  snacks: { family: "mci", name: "cookie-outline" },
+};
+
+// Colour parity with `TodayMealsSection.tsx` `SLOT_COLOR`.
+const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
+  breakfast: Accent.warning,
+  lunch: Accent.success,
+  dinner: Accent.primary,
+  snacks: MacroColors.fat,
 };
 
 function stripMidnight(d: Date): Date {
@@ -1506,7 +1520,11 @@ export default function PlannerScreen() {
                 No meals for this day. Generate again after saving recipes that match each slot, or pick a shorter day range.
               </Text>
             ) : null}
-            {dp.meals.map((meal, i) => (
+            {[...dp.meals].sort((a, b) => {
+              // Slot order parity with Today: Breakfast → Lunch → Dinner → Snacks.
+              const order: Record<PlanSlotIconKey, number> = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 };
+              return order[resolvePlanSlotIconKey(a.name)] - order[resolvePlanSlotIconKey(b.name)];
+            }).map((meal, i) => (
               <Pressable
                 key={i}
                 style={styles.mealRow}
@@ -1696,13 +1714,20 @@ export default function PlannerScreen() {
                     web maps to lucide-react (see `SLOT_ICON_MOBILE` +
                     `SLOT_ICON_WEB` — the single source of truth is the
                     shared key). */}
-                <View style={styles.mealIconBox}>
-                  <Ionicons
-                    name={SLOT_ICON_MOBILE[resolvePlanSlotIconKey(meal.name)]}
-                    size={16}
-                    color={colors.textSecondary}
-                  />
-                </View>
+                {(() => {
+                  const slotKey = resolvePlanSlotIconKey(meal.name);
+                  const ic = SLOT_ICON_MOBILE[slotKey];
+                  const tint = SLOT_COLOR_MOBILE[slotKey];
+                  return (
+                    <View style={[styles.mealIconBox, { backgroundColor: tint + "22" }]}>
+                      {ic.family === "ionicons" ? (
+                        <Ionicons name={ic.name} size={16} color={tint} />
+                      ) : (
+                        <MaterialCommunityIcons name={ic.name} size={16} color={tint} />
+                      )}
+                    </View>
+                  );
+                })()}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.mealSlot}>{meal.name}</Text>
                   {(meal as LeftoverAwareMeal).leftoverOf ? (

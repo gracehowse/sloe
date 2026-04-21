@@ -27,6 +27,11 @@ import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.t
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "../../lib/nutrition/progressWeekReport.ts";
+import {
+  buildCaloriesRangeStats,
+  buildWeightRangeStats,
+  type RangeKey,
+} from "../../lib/nutrition/progressRangeStats.ts";
 import { computeWeightTrendCopy } from "../../lib/nutrition/weightTrendTile.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
@@ -52,6 +57,11 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { WeeklyRecapCard } from "./suppr/weekly-recap-card.tsx";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
+// HouseholdBar — 2026-04-20 Claude Design prototype port. Rendered at
+// the top of Progress (mirrors `screens-mobile.jsx` L580) when the
+// user is in a household. Hidden for solo users so the range-picker
+// pills stay flush against the header.
+import { HouseholdBar } from "./HouseholdBar.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -421,6 +431,19 @@ function ProgressDashboardContent() {
   };
 
   const targets = normalizeMacroTargets(nutritionTargets);
+
+  // 2026-04-20 Phase 2 prototype — WEIGHT + Calories range cards read
+  // from these shared helpers so mobile + web can't drift. Range feed
+  // comes from the `range` state set by the range-picker pills.
+  const weightRange = useMemo(
+    () => buildWeightRangeStats(weightKgByDay, range as RangeKey, new Date()),
+    [weightKgByDay, range],
+  );
+  const caloriesRange = useMemo(
+    () => buildCaloriesRangeStats(nutritionByDay, nutritionTargets.calories, range as RangeKey, new Date()),
+    [nutritionByDay, nutritionTargets.calories, range],
+  );
+
   // F-2 — shape snapshots into `DayTargetOverride` for `buildWeekStats`.
   const weekTargetsByDay = useMemo(() => {
     const out: Record<string, { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null> = {};
@@ -780,6 +803,11 @@ function ProgressDashboardContent() {
         </button>
       </div>
 
+      {/* HouseholdBar — 2026-04-20 prototype port. Appears immediately
+          under the header on Progress (mirrors mobile Plan/Progress
+          + web Plan). Renders nothing for solo users. */}
+      <HouseholdBar />
+
       {/* RANGE-PICKER PILLS — [7d, 30d, 90d, All] chips. Active chip
           is filled in the primary colour, inactive chips are bordered.
           Tapping updates the selected range and the header overline;
@@ -815,6 +843,75 @@ function ProgressDashboardContent() {
             </button>
           );
         })}
+      </div>
+
+      {/* ── 2026-04-20 Prototype Phase 2 cards ──
+          Sit directly under the range picker so the two hero cards are
+          the first thing a user sees. Every legacy card (recap, freeze,
+          maintenance, journey, daily-calories, macro adherence) stays
+          intact below. Shared helper output → web + mobile numbers are
+          identical. Household bar sits elsewhere (another agent owns
+          it).
+
+          2026-04-20 desktop prototype port
+          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+          `WebProgress`): at `md+` the Phase 2 cards lay out as a 2×2
+          grid (Weight / Calories / Protein / Trend summary). Below
+          `md` they stack vertically — mobile-web parity with the
+          existing mobile tab layout. The Protein avg/day + Trend
+          summary cards only exist on desktop today; the narrow view
+          still has Protein Hit / Streak tiles in the legacy 2×2
+          (kept intact for parity) so we don't need mobile duplicates. */}
+      <div
+        data-testid="progress-phase2-grid"
+        className="md:grid md:grid-cols-2 md:gap-3"
+      >
+        <WeightRangeCardWeb
+          series={weightRange.series}
+          latestKg={weightRange.latestKg}
+          weekDeltaKg={weightRange.weekDeltaKg}
+          deltaKg={weightRange.deltaKg}
+          rangeKey={range as RangeKey}
+          goalWeightKg={goalWeightKg}
+          measurementSystem={profileMeasurementSystem}
+        />
+        <CaloriesRangeCardWeb
+          avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
+          deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
+          adherencePct={caloriesRange.adherencePct}
+          daysLogged={caloriesRange.daysLogged}
+          targetCalories={nutritionTargets.calories}
+        />
+        {/* Desktop-only: Protein avg/day + Trend summary. These mirror
+            the right-hand column of the prototype's 2×2 grid. Values
+            are pulled from the already-computed `weekStatsBundle`
+            (shared helper output) so mobile/web numbers can't drift. */}
+        <ProteinRangeCardWeb
+          avgProteinPerDay={Math.round(weekStatsBundle.avgProtein ?? 0)}
+          targetProteinG={targets.protein}
+          series={weekStatsBundle.days.map((d) => Math.round(d.protein))}
+        />
+        <TrendSummaryCardWeb
+          daysHitCalorieTarget={(() => {
+            // "Hit calorie target" = within ±10% of day's target
+            // calories (whichever target the week bundle resolved —
+            // snapshot or fallback). Matches the band used by the
+            // daily calories chart.
+            let n = 0;
+            for (const d of weekStatsBundle.days) {
+              if (d.targetCalories <= 0) continue;
+              const pct = Math.abs(d.calories - d.targetCalories) / d.targetCalories;
+              if (pct <= 0.1 && d.calories > 0) n += 1;
+            }
+            return n;
+          })()}
+          totalDaysInWindow={weekStatsBundle.days.length}
+          daysHitProteinTarget={weekStatsBundle.proteinOnTarget}
+          weighInsThisWeek={weekStatsBundle.days.filter((d) => (weightKgByDay[d.key] ?? 0) > 0).length}
+          goalWeightKg={goalWeightKg}
+          goalDateLabel={goalDateLabel}
+          measurementSystem={profileMeasurementSystem}
+        />
       </div>
 
       {/* WEEKLY RECAP CARD (Batch 4.11) — surfaces at end of week and stays
@@ -1525,6 +1622,375 @@ function ProgressDashboardContent() {
           />
           <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── 2026-04-20 Prototype Phase 2 cards ──────────────────────────── */
+
+/**
+ * Tiny inline SVG sparkline for the Weight card. We intentionally do
+ * not reach for recharts here — this line doesn't need axes, tooltips,
+ * or a resize observer. Pure component, deterministic output.
+ */
+function WeightSparkline({
+  points,
+  color,
+  width,
+  height,
+}: {
+  points: number[];
+  color: string;
+  width: number;
+  height: number;
+}) {
+  if (points.length < 2) {
+    return <svg width={width} height={height} aria-hidden />;
+  }
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const rangeSpan = max - min === 0 ? 1 : max - min;
+  const pad = 4;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+  const step = innerW / (points.length - 1);
+  const xy = points.map((v, i) => {
+    const x = pad + i * step;
+    const y = pad + innerH - ((v - min) / rangeSpan) * innerH;
+    return [x, y] as const;
+  });
+  const polyline = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const last = xy[xy.length - 1];
+  return (
+    <svg width={width} height={height} role="img" aria-label="Weight trend sparkline">
+      <polyline
+        points={polyline}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx={last[0]} cy={last[1]} r={3} fill={color} />
+    </svg>
+  );
+}
+
+function WeightRangeCardWeb({
+  series,
+  latestKg,
+  weekDeltaKg,
+  deltaKg,
+  rangeKey,
+  goalWeightKg,
+  measurementSystem,
+}: {
+  series: { dateKey: string; kg: number }[];
+  latestKg: number | null;
+  weekDeltaKg: number | null;
+  deltaKg: number | null;
+  rangeKey: RangeKey;
+  goalWeightKg: number | null;
+  measurementSystem: "metric" | "imperial";
+}) {
+  const formatWeight = (kg: number, signed = false) => {
+    const sign = signed ? (kg < 0 ? "−" : kg > 0 ? "+" : "") : "";
+    const abs = Math.abs(kg);
+    if (measurementSystem === "imperial") {
+      const lb = kgToLb(abs);
+      return `${sign}${Math.round(lb * 10) / 10} lb`;
+    }
+    return `${sign}${Math.round(abs * 10) / 10} kg`;
+  };
+  if (latestKg == null) {
+    return (
+      <div
+        data-testid="progress-weight-range-card-empty"
+        className="rounded-xl bg-card border border-border p-4 mb-4"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Log a weight on the tracker to see your trend here.
+        </p>
+      </div>
+    );
+  }
+  const weekDelta = weekDeltaKg ?? deltaKg;
+  let onTrack = false;
+  if (goalWeightKg != null && weekDelta != null) {
+    onTrack =
+      (goalWeightKg < latestKg && weekDelta < -0.05) ||
+      (goalWeightKg > latestKg && weekDelta > 0.05);
+  }
+  const windowLabel =
+    rangeKey === "7d" ? "last 7 days" : rangeKey === "30d" ? "last 30 days" : rangeKey === "90d" ? "last 90 days" : "all time";
+  const weekDeltaDisplay =
+    weekDelta != null && Math.abs(weekDelta) >= 0.05 ? formatWeight(weekDelta, true) : null;
+  return (
+    <div
+      data-testid="progress-weight-range-card"
+      className="rounded-xl bg-card border border-border p-4 mb-4"
+    >
+      <div className="flex items-start justify-between mb-1">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
+        {onTrack ? (
+          <span
+            data-testid="progress-weight-on-track-pill"
+            className="inline-flex items-center rounded-full bg-success/15 text-success text-[11px] font-semibold px-2 py-0.5"
+          >
+            On track
+          </span>
+        ) : null}
+      </div>
+      <p
+        data-testid="progress-weight-range-value"
+        className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
+      >
+        {formatWeight(latestKg)}
+      </p>
+      {weekDeltaDisplay ? (
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+          {weekDelta! < 0 ? (
+            <Icons.trendDown className="w-3 h-3" aria-hidden />
+          ) : (
+            <Icons.trendUp className="w-3 h-3" aria-hidden />
+          )}
+          <span className="tabular-nums">{weekDeltaDisplay} this week</span>
+        </p>
+      ) : null}
+      <div className="mt-2.5">
+        <WeightSparkline
+          points={series.map((p) => p.kg)}
+          color="var(--primary)"
+          width={280}
+          height={48}
+        />
+      </div>
+      <div className="flex justify-between mt-1">
+        {series.length >= 2 ? (
+          <>
+            <span className="text-[10px] text-muted-foreground">{series[0].dateKey.slice(5)}</span>
+            <span className="text-[10px] text-muted-foreground">{series[series.length - 1].dateKey.slice(5)}</span>
+          </>
+        ) : (
+          <span className="text-[10px] text-muted-foreground">Need at least 2 weigh-ins</span>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+        Trend across the {windowLabel}. Projection appears in the Journey card below once you have enough data.
+      </p>
+    </div>
+  );
+}
+
+function CaloriesRangeCardWeb({
+  avgCaloriesPerDay,
+  deltaVsTargetKcal,
+  adherencePct,
+  daysLogged,
+  targetCalories,
+}: {
+  avgCaloriesPerDay: number | null;
+  deltaVsTargetKcal: number | null;
+  adherencePct: number | null;
+  daysLogged: number;
+  targetCalories: number;
+}) {
+  return (
+    <div data-testid="progress-calories-range-wrapper" className="mb-4">
+      {/* 17pt bold header OUTSIDE the card per prototype. */}
+      <h2
+        data-testid="progress-calories-range-header"
+        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
+      >
+        Calories
+      </h2>
+      <div
+        data-testid="progress-calories-range-card"
+        className="rounded-xl bg-card border border-border p-4"
+      >
+        {avgCaloriesPerDay == null ? (
+          <p className="text-sm text-muted-foreground">
+            Log meals on Today to see your average calories for this range.
+          </p>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <p
+                data-testid="progress-calories-range-avg"
+                className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
+              >
+                {avgCaloriesPerDay.toLocaleString()}
+                <span className="text-sm font-medium text-muted-foreground"> avg/day</span>
+              </p>
+              {deltaVsTargetKcal != null ? (
+                <span
+                  data-testid="progress-calories-range-delta-pill"
+                  className={[
+                    "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
+                    deltaVsTargetKcal <= 0
+                      ? "bg-success/15 text-success"
+                      : "bg-warning/15 text-warning",
+                  ].join(" ")}
+                >
+                  {deltaVsTargetKcal > 0 ? "+" : "−"}
+                  {Math.abs(deltaVsTargetKcal).toLocaleString()} vs target
+                </span>
+              ) : null}
+            </div>
+            <p
+              data-testid="progress-calories-range-subtitle"
+              className="text-xs text-muted-foreground mt-1.5 tabular-nums"
+            >
+              Target {targetCalories.toLocaleString()}
+              {adherencePct != null ? ` · ${adherencePct}% avg` : ""}
+              {daysLogged > 0 ? ` · ${daysLogged} logged day${daysLogged === 1 ? "" : "s"}` : ""}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 2026-04-20 desktop prototype port
+ * (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+ * `WebProgress` → Protein card): avg protein per day value + target
+ * subtitle + 7-bar protein chart (reads directly from the week
+ * bundle so mobile + web can't drift). Lighter-weight than the
+ * Calories card — no delta pill — because protein adherence shows
+ * up in the legacy macro adherence bar below and we don't want two
+ * competing "% of target" readings on the same page.
+ */
+function ProteinRangeCardWeb({
+  avgProteinPerDay,
+  targetProteinG,
+  series,
+}: {
+  avgProteinPerDay: number;
+  targetProteinG: number;
+  series: number[];
+}) {
+  const max = Math.max(1, targetProteinG, ...series);
+  return (
+    <div data-testid="progress-protein-range-wrapper" className="mb-4">
+      <h2
+        data-testid="progress-protein-range-header"
+        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
+      >
+        Protein
+      </h2>
+      <div
+        data-testid="progress-protein-range-card"
+        className="rounded-xl bg-card border border-border p-4"
+      >
+        <p
+          data-testid="progress-protein-range-avg"
+          className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
+        >
+          {avgProteinPerDay}
+          <span className="text-sm font-medium text-muted-foreground"> g avg/day</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5 tabular-nums">
+          Target {targetProteinG} g
+        </p>
+        {series.length > 0 ? (
+          <div className="mt-3 flex items-end gap-1" style={{ height: 70 }}>
+            {series.map((p, i) => {
+              const h = Math.max(2, Math.round((p / max) * 64));
+              return (
+                <div
+                  key={`protein-bar-${i}`}
+                  data-testid={`progress-protein-bar-${i}`}
+                  className="flex-1 rounded-[3px]"
+                  style={{
+                    height: h,
+                    background: "var(--macro-protein)",
+                    opacity: i === series.length - 1 ? 1 : 0.7,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 2026-04-20 desktop prototype port — Trend summary card. Key/value
+ * list reusing numbers the rest of the page already computed (week
+ * bundle hit-counts + weigh-ins + goal date) so this card can't
+ * disagree with the others above.
+ */
+function TrendSummaryCardWeb({
+  daysHitCalorieTarget,
+  totalDaysInWindow,
+  daysHitProteinTarget,
+  weighInsThisWeek,
+  goalWeightKg,
+  goalDateLabel,
+  measurementSystem,
+}: {
+  daysHitCalorieTarget: number;
+  totalDaysInWindow: number;
+  daysHitProteinTarget: number;
+  weighInsThisWeek: number;
+  goalWeightKg: number | null;
+  goalDateLabel: string | null;
+  measurementSystem: "metric" | "imperial";
+}) {
+  const goalDisplay =
+    goalWeightKg == null
+      ? null
+      : measurementSystem === "imperial"
+        ? `${Math.round(kgToLb(goalWeightKg) * 10) / 10} lb`
+        : `${Math.round(goalWeightKg * 10) / 10} kg`;
+  return (
+    <div data-testid="progress-trend-summary-wrapper" className="mb-4">
+      <h2
+        data-testid="progress-trend-summary-header"
+        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
+      >
+        Trend summary
+      </h2>
+      <div
+        data-testid="progress-trend-summary-card"
+        className="rounded-xl bg-card border border-border p-4"
+      >
+        <dl className="flex flex-col gap-2.5 text-[13px]">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground">Days hit calorie target</dt>
+            <dd className="font-bold text-foreground tabular-nums">
+              {daysHitCalorieTarget} of {totalDaysInWindow}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground">Days hit protein target</dt>
+            <dd className="font-bold text-foreground tabular-nums">
+              {daysHitProteinTarget} of {totalDaysInWindow}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground">Weigh-ins</dt>
+            <dd className="font-bold text-foreground tabular-nums">
+              {weighInsThisWeek} of {totalDaysInWindow}
+            </dd>
+          </div>
+          {goalDisplay != null ? (
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">
+                Projected {goalDisplay} by
+              </dt>
+              <dd className="font-bold text-foreground tabular-nums">
+                {goalDateLabel ?? "—"}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
       </div>
     </div>
   );

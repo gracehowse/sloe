@@ -116,3 +116,14 @@ export {
   type TodayBarcodeConfirmPayload,
 } from "./today-barcode-dialog";
 export { TodayDateHeader, type TodayDateHeaderProps } from "./today-date-header";
+// Desktop right-rail cards (2026-04-20 Claude Design Today-prototype port).
+// Rendered only at `lg:` widths by `TodayDesktopFrame` — mobile-web Today
+// keeps its single-column flow and does not consume these.
+export {
+  TodayWeeklyInsightCard,
+  type TodayWeeklyInsightCardProps,
+} from "./today-weekly-insight-card";
+export {
+  TodayAppleHealthCard,
+  type TodayAppleHealthCardProps,
+} from "./today-apple-health-card";

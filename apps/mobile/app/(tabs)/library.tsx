@@ -11,6 +11,7 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -18,24 +19,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
+import {
+  LIBRARY_FILTER_PILLS,
+  matchesNutritionPill,
+  type LibraryFilterPillId,
+} from "../../../../src/lib/recipes/libraryFilters";
 
 type SortKey = "recent" | "calories" | "protein";
-type KindFilter = "all" | "saved" | "created" | "imported";
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
   calories: "Calories",
   protein: "Protein",
 };
-
-const KIND_FILTERS: ReadonlyArray<{ key: KindFilter; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "saved", label: "Saved" },
-  { key: "created", label: "Created" },
-  { key: "imported", label: "Imported" },
-];
 
 /** Derive entry-kind for a mobile library row.
  *
@@ -51,11 +50,19 @@ const KIND_FILTERS: ReadonlyArray<{ key: KindFilter; label: string }> = [
 function entryKindForCard(
   card: RecipeCard,
   userId: string | null,
-): Exclude<KindFilter, "all"> {
+): "saved" | "created" | "imported" {
   if (userId && card.authorId && card.authorId === userId) {
     return card.sourceUrl ? "imported" : "created";
   }
   return "saved";
+}
+
+/** Human-readable total time for the card metadata row. */
+function formatTotalTime(card: RecipeCard): string | null {
+  const prep = typeof card.prepTimeMin === "number" ? card.prepTimeMin : 0;
+  const cook = typeof card.cookTimeMin === "number" ? card.cookTimeMin : 0;
+  const total = prep + cook;
+  return total > 0 ? `${total} min` : null;
 }
 
 export default function LibraryScreen() {
@@ -64,6 +71,13 @@ export default function LibraryScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  // Library is a tab root — `useSafeBack` falls back to Today when the
+  // stack is cold (e.g. hitting Library first from a deep link). The
+  // back chevron in the prototype is presentational parity with the
+  // push-Library surface used when we navigate there from a recipe
+  // detail; when there's no history we send the user home rather than
+  // stranding them.
+  const goBack = useSafeBack("/(tabs)");
 
   const { recipes: savedRecipes, loading, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
@@ -77,10 +91,12 @@ export default function LibraryScreen() {
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
-  // Web parity (Pass 6, 2026-04-18): kindFilter pills below the
-  // search row. Web Library has had this since launch; mobile was
-  // sort-only.
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  // Web parity (Pass 6, 2026-04-18) + prototype port (2026-04-20):
+  // single filter pill row covering entry-kind (All / Saved / Created
+  // / Imported) and nutrition / time / diet (High-Protein / Quick /
+  // Vegetarian). See `src/lib/recipes/libraryFilters.ts` for the
+  // canonical ordering + predicate shape.
+  const [pill, setPill] = useState<LibraryFilterPillId>("all");
 
   const cycleSort = useCallback(() => {
     setSortKey((prev) => {
@@ -89,14 +105,21 @@ export default function LibraryScreen() {
     });
   }, []);
 
+  const savedCount = useMemo(
+    () => savedRecipes.filter((r) => r.isSaved).length,
+    [savedRecipes],
+  );
+
   const filtered = useMemo(() => {
     let list = savedRecipes;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r) => r.title.toLowerCase().includes(q));
     }
-    if (kindFilter !== "all") {
-      list = list.filter((r) => entryKindForCard(r, userId) === kindFilter);
+    if (pill === "saved" || pill === "created" || pill === "imported") {
+      list = list.filter((r) => entryKindForCard(r, userId) === pill);
+    } else if (pill !== "all") {
+      list = list.filter((r) => matchesNutritionPill(pill, r));
     }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
@@ -104,7 +127,7 @@ export default function LibraryScreen() {
       list = [...list].sort((a, b) => b.protein - a.protein);
     }
     return list;
-  }, [savedRecipes, search, sortKey, kindFilter, userId]);
+  }, [savedRecipes, search, sortKey, pill, userId]);
 
   const confirmRemove = useCallback(
     (item: RecipeCard) => {
@@ -129,27 +152,28 @@ export default function LibraryScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.xs,
+    topBar: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.xs,
     },
-    headerLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+    backHit: { padding: 6, marginLeft: -6 },
+    titleBlock: { flex: 1 },
     headerTitle: {
-      fontSize: 22,
+      fontSize: 24,
       fontWeight: "700",
       color: colors.text,
+      letterSpacing: -0.4,
     },
-    countBadge: {
-      backgroundColor: Accent.primary + "15",
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: 2,
-      borderRadius: Radius.sm,
+    headerSub: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+      fontVariant: ["tabular-nums"],
     },
-    countText: { color: Accent.primary, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
     sortBtn: {
       flexDirection: "row",
       alignItems: "center",
@@ -163,16 +187,14 @@ export default function LibraryScreen() {
     },
     sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
-    filterRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6,
+    filterScroll: {
       paddingHorizontal: Spacing.xl,
-      paddingBottom: Spacing.sm,
+      paddingBottom: Spacing.md,
+      gap: 8,
     },
     filterPill: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: colors.border,
@@ -204,44 +226,70 @@ export default function LibraryScreen() {
     list: {
       paddingHorizontal: Spacing.xl,
       paddingBottom: 100,
-      gap: Spacing.sm,
+      gap: Spacing.md,
     },
     card: {
       backgroundColor: colors.card,
-      borderRadius: Radius.md,
+      borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      flexDirection: "row",
-      alignItems: "center",
       overflow: "hidden",
     },
-    cardImage: {
-      width: 96,
-      height: 96,
+    // Prototype: "big recipe cards (120-ish tall image gradient)".
+    cardImageWrap: {
+      width: "100%",
+      height: 128,
       backgroundColor: colors.border,
+      position: "relative",
+    },
+    cardImage: { width: "100%", height: "100%" },
+    cardGradient: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 64,
+      backgroundColor: "rgba(0,0,0,0.18)",
+    },
+    bookmarkDot: {
+      position: "absolute",
+      top: Spacing.sm,
+      right: Spacing.sm,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: "rgba(255,255,255,0.92)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     cardBody: {
-      flex: 1,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
       gap: 4,
     },
-    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
-    macroRow: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap" },
-    macroChip: {
-      borderWidth: 1,
-      borderRadius: Radius.sm,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+    cardTitle: { fontSize: 15, fontWeight: "700", color: colors.text, letterSpacing: -0.1 },
+    cardSource: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+      marginTop: 8,
+      flexWrap: "wrap",
     },
-    macroChipText: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
+    metaChunk: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontVariant: ["tabular-nums"],
+    },
     removeBtn: {
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.md,
-    },
-    logBtn: {
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.md,
+      position: "absolute",
+      top: Spacing.sm,
+      left: Spacing.sm,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      alignItems: "center",
       justifyContent: "center",
     },
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -274,58 +322,72 @@ export default function LibraryScreen() {
   }), [colors]);
 
   const renderRecipe = useCallback(
-    ({ item }: { item: RecipeCard }) => (
-      <View style={styles.card}>
+    ({ item }: { item: RecipeCard }) => {
+      const totalTime = formatTotalTime(item);
+      return (
         <Pressable
-          style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+          style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
           accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories`}
         >
-          <Image source={{ uri: item.image }} style={styles.cardImage} />
+          <View style={styles.cardImageWrap}>
+            <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+            <View style={styles.cardGradient} pointerEvents="none" />
+            {item.isSaved ? (
+              <View style={styles.bookmarkDot} accessibilityLabel="Saved">
+                <Ionicons name="bookmark" size={14} color={Accent.primary} />
+              </View>
+            ) : null}
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                confirmRemove(item);
+              }}
+              style={styles.removeBtn}
+              hitSlop={10}
+              accessibilityLabel={`Remove ${item.title} from library`}
+            >
+              <Ionicons name="trash-outline" size={14} color="#fff" />
+            </Pressable>
+          </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
-              <Text style={{ color: MacroColors.calories, fontWeight: "600" }}>{Math.round(item.calories)}</Text>
-              <Text> kcal  </Text>
-              <Text style={{ color: MacroColors.protein, fontWeight: "600" }}>P {Math.round(item.protein)}g</Text>
-              <Text>  </Text>
-              <Text style={{ color: MacroColors.carbs, fontWeight: "600" }}>C {Math.round(item.carbs)}g</Text>
-              <Text>  </Text>
-              <Text style={{ color: MacroColors.fat, fontWeight: "600" }}>F {Math.round(item.fat)}g</Text>
-            </Text>
+            {item.creatorName ? (
+              <Text style={styles.cardSource} numberOfLines={1}>{item.creatorName}</Text>
+            ) : null}
+            <View style={styles.metaRow}>
+              <Text style={[styles.metaChunk, { color: MacroColors.calories, fontWeight: "700" }]}>
+                {Math.round(item.calories)} kcal
+              </Text>
+              <Text style={[styles.metaChunk, { color: MacroColors.protein, fontWeight: "700" }]}>
+                {Math.round(item.protein)} P
+              </Text>
+              {totalTime ? <Text style={styles.metaChunk}>{totalTime}</Text> : null}
+            </View>
           </View>
         </Pressable>
-        <Pressable
-          onPress={() => router.push(`/recipe/${item.id}`)}
-          style={styles.logBtn}
-          hitSlop={8}
-          accessibilityLabel={`Log ${item.title} to journal`}
-        >
-          <Ionicons name="nutrition-outline" size={18} color={Accent.primary} />
-        </Pressable>
-        <Pressable
-          onPress={() => confirmRemove(item)}
-          hitSlop={12}
-          style={styles.removeBtn}
-          accessibilityLabel={`Remove ${item.title} from library`}
-        >
-          <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
-        </Pressable>
-      </View>
-    ),
-    [router, confirmRemove, styles, colors],
+      );
+    },
+    [router, confirmRemove, styles],
   );
 
   const isLoading = loading;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
+      {/* Prototype: back chevron + "Library" title → "{n} recipes ·
+          {m} saved" subtitle. The sort cycle button moves to the
+          trailing slot so the control surface stays discoverable
+          without crowding the title. */}
+      <View style={styles.topBar}>
+        <Pressable onPress={goBack} hitSlop={12} style={styles.backHit} accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </Pressable>
+        <View style={styles.titleBlock}>
           <Text style={styles.headerTitle}>Library</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{savedRecipes.length}</Text>
-          </View>
+          <Text style={styles.headerSub}>
+            {savedRecipes.length} {savedRecipes.length === 1 ? "recipe" : "recipes"} · {savedCount} saved
+          </Text>
         </View>
         <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
           <Ionicons name="swap-vertical" size={14} color={colors.textSecondary} />
@@ -344,16 +406,21 @@ export default function LibraryScreen() {
         />
       </View>
 
-      {/* Kind filter pills — web parity (Pass 6, 2026-04-18). Filter
-          by entry kind (Saved / Created / Imported), derived locally
-          from authorId + sourceUrl. */}
-      <View style={styles.filterRow}>
-        {KIND_FILTERS.map((f) => {
-          const active = kindFilter === f.key;
+      {/* Filter pill row — horizontal scroll per prototype. Combines
+          entry-kind (All / Saved / Created / Imported) + nutrition /
+          time / diet (High-Protein / Quick / Vegetarian). Single row so
+          there's no ambiguity about which filter is active. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterScroll}
+      >
+        {LIBRARY_FILTER_PILLS.map((f) => {
+          const active = pill === f.id;
           return (
             <Pressable
-              key={f.key}
-              onPress={() => setKindFilter(f.key)}
+              key={f.id}
+              onPress={() => setPill(f.id)}
               style={[styles.filterPill, active && styles.filterPillActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -367,7 +434,7 @@ export default function LibraryScreen() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       {isLoading && savedRecipes.length === 0 ? (
         <View style={styles.loadingContainer}>

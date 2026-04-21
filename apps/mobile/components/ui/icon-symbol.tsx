@@ -20,6 +20,16 @@ const MAPPING = {
   'barcode.viewfinder': 'qr-code-scanner',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // Prototype-matched bottom-tab icons (2026-04-20) — flame / compass /
+  // calendar-days / trending-up / circle-user from the Claude Design
+  // bundle (`app.jsx` lines 134–138).
+  'flame.fill': 'local-fire-department',
+  'safari.fill': 'explore',
+  'calendar': 'calendar-today',
+  'chart.line.uptrend.xyaxis': 'trending-up',
+  'person.crop.circle': 'account-circle',
+  'chart.bar.fill': 'bar-chart',
+  'ellipsis.circle': 'more-horiz',
 } as IconMapping;
 
 /**

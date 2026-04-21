@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
+import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
 const HEARTS_KEY = "suppr-feed-hearts-v1";
@@ -84,11 +85,16 @@ function formatFeedTime(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-// Build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19):
-// the per-card macro-fit score was removed — testers reported it felt
-// irrelevant. `computeFitLevel` / `FitBadge` have been stripped from
-// the recipe card below. No ranking consumed this value (cards remain
-// sorted by feed scope / quick filter), so no sort fallback is needed.
+// Fit-percent badge history:
+//   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
+//     the "Great / Good / Warn" pill because the underlying `fit`
+//     field was never populated (always rendered "Good").
+//   - 2026-04-20 Grace design prototype port: reinstated as a
+//     primary-tinted `{N}%` pill in the top-right of the hero card
+//     body. The value comes from `computeRecipeFitPercent` so web +
+//     mobile can't drift. Decision rationale: "Grace sent the
+//     prototype with fit % and said 'add this' — overrides F-11".
+//     Pinned by `tests/unit/recipeCardFitBadge.test.ts`.
 
 type StoryCreator = { key: string; name: string; image: string; recipeId: string };
 
@@ -100,7 +106,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   onConsumedDeepLinkRecipe,
   onViewTracker,
 }: DiscoverFeedProps) {
-  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes } = useAppData();
+  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes, nutritionTargets } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -401,19 +407,35 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   }
 
   return (
-    <div className="max-w-lg mx-auto min-h-screen bg-background pb-12">
+    <div className="max-w-lg mx-auto min-h-screen bg-background pb-12 md:max-w-6xl md:px-pm-5">
       {/* Title area — prototype treatment: BROWSE overline + large
           Discover title + round search-icon button on the right.
-          Mobile parity: apps/mobile/app/(tabs)/discover.tsx. */}
-      <header className="sticky top-0 z-20 px-4 py-4 border-b border-border bg-card/90 backdrop-blur-md flex items-start justify-between gap-3">
+          Mobile parity: apps/mobile/app/(tabs)/discover.tsx.
+
+          2026-04-20 desktop prototype port
+          (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+          `WebLibrary(title="Discover")`). At `md+` the title shrinks
+          to 24px and a "{n} recipes · sorted by recent" subtitle
+          replaces the BROWSE overline. The search search-icon round
+          button is dropped on desktop — the main search bar below is
+          the canonical way in, and the breadcrumb agent ships an
+          additional top-bar search. Sticky/blur/border are dropped
+          so the content canvas reads continuously with the sidebar. */}
+      <header className="sticky top-0 z-20 px-4 py-4 border-b border-border bg-card/90 backdrop-blur-md flex items-start justify-between gap-3 md:static md:px-0 md:py-4 md:border-0 md:bg-transparent md:backdrop-blur-0">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Browse</p>
-          <h1 className="text-[28px] font-extrabold -tracking-[0.01em] text-foreground mt-0.5">Discover</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground md:hidden">Browse</p>
+          <h1 className="text-[28px] font-extrabold -tracking-[0.01em] text-foreground mt-0.5 md:text-[24px] md:font-bold md:-tracking-[0.02em] md:mt-0">Discover</h1>
+          <p
+            data-testid="discover-desktop-subtitle"
+            className="hidden md:block text-[13px] text-muted-foreground mt-0.5"
+          >
+            {recipes.length} recipe{recipes.length === 1 ? "" : "s"} · sorted by recent
+          </p>
         </div>
         <button
           type="button"
           aria-label="Focus search"
-          className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted"
+          className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted md:hidden"
           onClick={() => {
             const input = document.querySelector<HTMLInputElement>('input[type="search"]');
             input?.focus();
@@ -423,10 +445,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         </button>
       </header>
 
-      <div className="px-0 sm:px-2">
+      <div className="px-0 sm:px-2 md:px-0">
         {/* Search bar — prototype treatment: bigger, 12px radius,
-            "Search 48,000+ recipes & foods" placeholder. */}
-        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3.5">
+            "Search 48,000+ recipes & foods" placeholder. At `md+` the
+            side gutter collapses so the bar sits flush with the
+            title; the bar itself is unchanged. */}
+        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3.5 md:mx-0">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
@@ -443,7 +467,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         </div>
 
         {/* Filter pills — horizontal scrollable */}
-        <div className="mt-4 pl-4 pr-2">
+        <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">
           <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {["For You", "Popular", "Quick", "High Protein", "Low Carb"].map((label) => (
               <button
@@ -521,15 +545,124 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             takes their place. The "From your sources" CTAs still render
             — that's how users bring content in.
 
-            F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) still stands —
-            no fit-percent badge. The prototype drew one but tester
-            feedback killed it; `tests/unit/recipeCardNoScore.test.ts`
-            pins its absence. Mobile parity:
+            F-11 reversed 2026-04-20 per Grace's prototype: fit-percent
+            badge is back as a primary-tinted `{N}%` pill top-right of
+            the hero card body. Value comes from the shared
+            `computeRecipeFitPercent` helper. Pinned by
+            `tests/unit/recipeCardFitBadge.test.ts`. Mobile parity:
             `apps/mobile/app/(tabs)/discover.tsx` Discover sections. */}
 
-        {/* Section 1 + 2: recipe sections — only when there's content */}
+        {/* 2026-04-20 desktop prototype port
+            (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+            `WebLibrary(title="Discover")`): at `md+` the prototype is
+            a flat 3-column card grid, NOT the three-section structure
+            the mobile prototype calls for. We render the flat grid
+            only at `md+` and hide it below; the three-section
+            structure below is wrapped in `md:hidden` so it stays the
+            mobile-web experience. Both paths read from the same
+            `recipes` list so search / filter behaviour stays
+            consistent across widths. Empty state falls through to
+            the single shared "Nothing to show" block below. */}
         {recipes.length > 0 ? (
-          <>
+          <div
+            data-testid="discover-desktop-grid"
+            className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"
+          >
+            {recipes.map((recipe) => {
+              const heroColor = "var(--primary)";
+              const kcal = Math.round(recipe.calories);
+              const protein = Math.round(recipe.protein);
+              const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+              return (
+                <button
+                  key={`desktop-${recipe.id}`}
+                  type="button"
+                  id={`discover-desktop-post-${recipe.id}`}
+                  onClick={() => setSelectedRecipe(recipe)}
+                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                >
+                  <div
+                    className="relative overflow-hidden"
+                    style={{
+                      aspectRatio: "16 / 10",
+                      background: recipe.image
+                        ? undefined
+                        : `linear-gradient(135deg, ${heroColor}10, ${heroColor}25)`,
+                    }}
+                  >
+                    {recipe.image ? (
+                      <img
+                        src={recipe.image}
+                        alt=""
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full grid place-items-center">
+                        <Icons.dinner
+                          className="w-10 h-10"
+                          style={{ color: `${heroColor}70` }}
+                        />
+                      </div>
+                    )}
+                    {recipe.sourcePlatform && (
+                      <div className="absolute top-2 left-2">
+                        <SourceBadge
+                          source={recipe.sourcePlatform}
+                          className="text-[9px] px-1.5 py-0.5"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3.5">
+                    <p
+                      className="text-[14px] font-bold text-foreground leading-snug -tracking-[0.01em]"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {recipe.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                      {recipe.creatorName || ""}
+                    </p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.calories
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-calories)" }}
+                        />
+                        {kcal} kcal
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.protein
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-protein)" }}
+                        />
+                        {protein} P
+                      </span>
+                      {cookTime ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
+                          {cookTime}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Section 1 + 2: recipe sections — only when there's content
+            MOBILE-WEB ONLY (below `md`). Desktop uses the flat grid
+            above; this three-section structure matches the mobile app
+            layout so narrow web feels like the native app. */}
+        {recipes.length > 0 ? (
+          <div className="md:hidden">
             {/* ── Matches your day (hero cards) ── */}
             <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
               Matches your day
@@ -539,6 +672,22 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 const heroColor = "var(--primary)";
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
+                // 2026-04-20 prototype port — primary-tinted fit-percent
+                // pill top-right of the card body. `nutritionTargets`
+                // feeds the shared helper; when targets aren't loaded
+                // yet the helper returns a synthesised neutral value so
+                // every card still shows a value.
+                const fitPct = computeRecipeFitPercent(
+                  { calories: recipe.calories, protein: recipe.protein, carbs: recipe.carbs, fat: recipe.fat },
+                  nutritionTargets
+                    ? {
+                        calories: nutritionTargets.calories,
+                        protein: nutritionTargets.protein,
+                        carbs: nutritionTargets.carbs,
+                        fat: nutritionTargets.fat,
+                      }
+                    : null,
+                ).percent;
                 return (
                   <button
                     key={recipe.id}
@@ -564,8 +713,15 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         </div>
                       )}
                     </div>
-                    <div className="p-3.5">
-                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    <div className="p-3.5 relative">
+                      {/* Fit-percent pill (2026-04-20 prototype port). */}
+                      <span
+                        data-testid={`discover-hero-fit-${recipe.id}`}
+                        className="absolute top-3 right-3 inline-flex items-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold px-2 py-0.5 tabular-nums"
+                      >
+                        {fitPct}%
+                      </span>
+                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em] pr-12" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {recipe.title}
                       </p>
                       <p className="text-[12px] text-muted-foreground mt-1 truncate">
@@ -638,9 +794,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 </div>
               </>
             ) : null}
-          </>
+          </div>
         ) : (
-          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center md:mx-0">
             <p className="text-foreground font-medium mb-2">Nothing to show</p>
             <p className="text-sm text-muted-foreground mb-4">
               {discoverRecipes.length === 0
@@ -669,8 +825,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         )}
 
         {/* ── From your sources — Import + My Library CTAs, bottom
-            of the scroll per prototype. Always rendered so users can
+            of the scroll per mobile prototype. MOBILE-WEB ONLY: on
+            desktop the sidebar has permanent entries for Library +
+            Import, so the CTAs are duplicative (`md:hidden` wrapper
+            below). Always rendered on narrow widths so users can
             still bring content in when the feed is empty. */}
+        <div className="md:hidden">
         <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
           From your sources
         </h3>
@@ -722,6 +882,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             <p className="text-[11px] text-muted-foreground mt-0.5">Saved and imported recipes</p>
           </div>
           <Icons.forward className="w-4 h-4 text-muted-foreground" />
+        </div>
         </div>
       </div>
     </div>

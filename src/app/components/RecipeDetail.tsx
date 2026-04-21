@@ -36,6 +36,7 @@ import {
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
+import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -905,7 +906,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         <button onClick={onBack} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all">
           <Icons.back className="w-5 h-5" />
         </button>
-        <h2 className="flex-1 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">{recipe.title}</h2>
+        {/* 2026-04-20 prototype port — centred bold title in the
+            sticky top bar (was a gradient left-aligned headline).
+            Truncated with ellipsis if overflowing. */}
+        <h2 className="flex-1 text-center font-semibold text-foreground truncate">{recipe.title}</h2>
         {isMyRecipe ? (
           <button
             type="button"
@@ -1013,6 +1017,43 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <img src={recipe.image} alt={recipe.title} className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
         </div>
+
+        {/* 2026-04-20 prototype port — tag pill row directly under
+            the hero. Neutral pills for each recipe tag, trailing
+            primary-tinted fit-percent pill (parity with Discover).
+            `mealSlots` is the RecipeCard-side source of the
+            category strings that the prototype shows as "tags"
+            (prod has no separate `tags` column yet). */}
+        {(() => {
+          const pillTags: readonly string[] = Array.isArray(recipe.mealSlots) ? recipe.mealSlots : [];
+          const fit = computeRecipeFitPercent(
+            {
+              calories: recipe.calories ?? 0,
+              protein: recipe.protein ?? 0,
+              carbs: recipe.carbs ?? 0,
+              fat: recipe.fat ?? 0,
+            },
+            null,
+          ).percent;
+          return (
+            <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
+              {pillTags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                >
+                  {t.toLowerCase()}
+                </span>
+              ))}
+              <span
+                className="inline-flex items-center rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary"
+                aria-label={`Fit ${fit} percent`}
+              >
+                {fit}%
+              </span>
+            </div>
+          );
+        })()}
 
         {!isCatalogRecipe && dbDescription && (
           <p className="text-muted-foreground leading-relaxed">{dbDescription}</p>

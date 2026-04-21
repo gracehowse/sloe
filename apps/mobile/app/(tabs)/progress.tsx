@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Polyline, Circle } from "react-native-svg";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -33,6 +34,11 @@ import {
 import { computeWeightTrendCopy } from "../../../../src/lib/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "@/lib/progressWeekReport";
+import {
+  buildCaloriesRangeStats,
+  buildWeightRangeStats,
+  type RangeKey,
+} from "../../../../src/lib/nutrition/progressRangeStats";
 import { getDailyTargets, type DailyTarget } from "../../../../src/lib/nutrition/dailyTargetRead";
 import {
   availableFreezes,
@@ -57,6 +63,7 @@ import {
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
+import { HouseholdBar } from "@/components/HouseholdBar";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -665,6 +672,18 @@ export default function ProgressScreen() {
   // Steps today
   const stepsToday = stepsByDay[todayKey] ?? 0;
 
+  // 2026-04-20 prototype Phase 2 — WEIGHT + Calories cards read from
+  // these shared helpers so web + mobile can't drift. Range window is
+  // driven by the `rangeKey` state set by the range picker above.
+  const weightRange = useMemo(
+    () => buildWeightRangeStats(weightKgByDay, rangeKey as RangeKey, new Date()),
+    [weightKgByDay, rangeKey],
+  );
+  const caloriesRange = useMemo(
+    () => buildCaloriesRangeStats(byDay as any, targets.calories, rangeKey as RangeKey, new Date()),
+    [byDay, targets.calories, rangeKey],
+  );
+
   const t = {
     text: colors.text,
     sub: colors.textSecondary,
@@ -818,6 +837,11 @@ export default function ProgressScreen() {
         </Pressable>
       </View>
 
+      {/* HouseholdBar — 2026-04-20 prototype port. Appears between
+          the header and the range-picker pills for household users;
+          hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
+      <HouseholdBar />
+
       {/* Range-picker pills — [7d, 30d, 90d, All] chips. Selection
           drives the overline text in the header. Downstream card
           windows are on a follow-up pass; the deeper card restructure
@@ -854,6 +878,33 @@ export default function ProgressScreen() {
           );
         })}
       </View>
+
+      {/* ── 2026-04-20 Prototype Phase 2 cards ──
+          Inserted below the range picker and above every legacy card
+          (freeze panel, maintenance, journey, daily calories bar,
+          weekly recap, macro adherence) so the two new hero cards are
+          the first thing a user sees after picking a range. Each card
+          reads from the shared `progressRangeStats` helpers so web +
+          mobile numbers can't drift. Household bar sits elsewhere
+          (owned by another agent). */}
+      <WeightRangeCard
+        series={weightRange.series}
+        latestKg={weightRange.latestKg}
+        weekDeltaKg={weightRange.weekDeltaKg}
+        deltaKg={weightRange.deltaKg}
+        rangeKey={rangeKey}
+        goalWeightKg={goalWeightKg}
+        measurementSystem={measurementSystem}
+        theme={t}
+      />
+      <CaloriesRangeCard
+        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
+        deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
+        adherencePct={caloriesRange.adherencePct}
+        daysLogged={caloriesRange.daysLogged}
+        targetCalories={targets.calories}
+        theme={t}
+      />
 
       {!hasData ? (
         <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
@@ -1726,5 +1777,291 @@ export default function ProgressScreen() {
         </>
       )}
     </ScrollView>
+  );
+}
+
+/* ── 2026-04-20 Prototype Phase 2 cards ────────────────────────────── */
+
+type CardTheme = {
+  text: string;
+  sub: string;
+  dim: string;
+  bg: string;
+  elevated: string;
+  border: string;
+  accent: string;
+  green: string;
+  amber: string;
+};
+
+/**
+ * Tiny inline sparkline driven by react-native-svg. Pure — no state,
+ * no animation (adds weight we don't need for a Progress card). When
+ * the series has <2 points we render an empty axis placeholder rather
+ * than a 1-point polyline; consuming card decides whether to still
+ * render the outer card shell.
+ */
+function Sparkline({
+  points,
+  color,
+  width,
+  height,
+}: {
+  points: number[];
+  color: string;
+  width: number;
+  height: number;
+}) {
+  if (points.length < 2) {
+    return <View style={{ width, height }} />;
+  }
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const rangeSpan = max - min === 0 ? 1 : max - min;
+  const pad = 4;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+  const step = innerW / (points.length - 1);
+  const xy = points.map((v, i) => {
+    const x = pad + i * step;
+    // Lower values → higher y (invert). For weight we render raw kg
+    // so the sparkline trends down when the user loses weight.
+    const y = pad + innerH - ((v - min) / rangeSpan) * innerH;
+    return [x, y] as const;
+  });
+  const polylinePoints = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const last = xy[xy.length - 1];
+  return (
+    <Svg width={width} height={height}>
+      <Polyline
+        points={polylinePoints}
+        stroke={color}
+        strokeWidth={2}
+        fill="none"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <Circle cx={last[0]} cy={last[1]} r={3} fill={color} />
+    </Svg>
+  );
+}
+
+function pillStyle(bg: string) {
+  return {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: bg,
+  } as const;
+}
+
+function WeightRangeCard({
+  series,
+  latestKg,
+  weekDeltaKg,
+  deltaKg,
+  rangeKey,
+  goalWeightKg,
+  measurementSystem,
+  theme,
+}: {
+  series: { dateKey: string; kg: number }[];
+  latestKg: number | null;
+  weekDeltaKg: number | null;
+  deltaKg: number | null;
+  rangeKey: "7d" | "30d" | "90d" | "all";
+  goalWeightKg: number | null;
+  measurementSystem: MeasurementSystem;
+  theme: CardTheme;
+}) {
+  // Do not render the card at all until we know the user has logged a
+  // weight — otherwise we'd surface "— kg" which invents no value but
+  // looks broken.
+  if (latestKg == null) {
+    return (
+      <View
+        testID="progress-weight-range-card-empty"
+        style={{
+          backgroundColor: theme.elevated,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: theme.border,
+          padding: 16,
+          marginBottom: 14,
+        }}
+      >
+        <Text style={{ fontSize: 11, fontWeight: "600", color: theme.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>Weight</Text>
+        <Text style={{ fontSize: 13, color: theme.sub, marginTop: 8, lineHeight: 18 }}>
+          Log a weight on the tracker to see your trend here.
+        </Text>
+      </View>
+    );
+  }
+  const weekDelta = weekDeltaKg ?? deltaKg;
+  // "On track" pill: losing weight toward a lower goal, or gaining
+  // toward a higher goal. When we have no goal we keep the tone
+  // neutral rather than guessing a direction.
+  let onTrackPill: { label: string; tone: "green" | "neutral" } = { label: "", tone: "neutral" };
+  if (goalWeightKg != null && weekDelta != null) {
+    const towardGoal =
+      (goalWeightKg < latestKg && weekDelta < -0.05) ||
+      (goalWeightKg > latestKg && weekDelta > 0.05);
+    onTrackPill = towardGoal
+      ? { label: "On track", tone: "green" }
+      : { label: "", tone: "neutral" };
+  }
+  const latestDisplay = formatWeightForUnit({ kg: latestKg, system: measurementSystem });
+  const weekDeltaDisplay =
+    weekDelta != null && Math.abs(weekDelta) >= 0.05
+      ? formatWeightForUnit({ kg: weekDelta, system: measurementSystem, signed: true })
+      : null;
+  const windowLabel =
+    rangeKey === "7d" ? "last 7 days" : rangeKey === "30d" ? "last 30 days" : rangeKey === "90d" ? "last 90 days" : "all time";
+
+  return (
+    <View
+      testID="progress-weight-range-card"
+      style={{
+        backgroundColor: theme.elevated,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: theme.border,
+        padding: 16,
+        marginBottom: 14,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
+          Weight
+        </Text>
+        {onTrackPill.label ? (
+          <View testID="progress-weight-on-track-pill" style={pillStyle(theme.green + "22")}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.green }}>{onTrackPill.label}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text
+        testID="progress-weight-range-value"
+        style={{ fontSize: 24, fontWeight: "700", color: theme.text, fontVariant: ["tabular-nums"], letterSpacing: -0.3 }}
+      >
+        {latestDisplay}
+      </Text>
+      {weekDeltaDisplay ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+          <Ionicons
+            name={weekDelta! < 0 ? "trending-down-outline" : "trending-up-outline"}
+            size={12}
+            color={theme.sub}
+          />
+          <Text style={{ fontSize: 12, color: theme.sub, fontVariant: ["tabular-nums"] }}>
+            {weekDeltaDisplay} this week
+          </Text>
+        </View>
+      ) : null}
+      <View style={{ marginTop: 10 }}>
+        <Sparkline
+          points={series.map((p) => p.kg)}
+          color={theme.accent}
+          width={280}
+          height={48}
+        />
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+        {series.length >= 2 ? (
+          <>
+            <Text style={{ fontSize: 10, color: theme.dim }}>{series[0].dateKey.slice(5)}</Text>
+            <Text style={{ fontSize: 10, color: theme.dim }}>{series[series.length - 1].dateKey.slice(5)}</Text>
+          </>
+        ) : (
+          <Text style={{ fontSize: 10, color: theme.dim }}>Need at least 2 weigh-ins</Text>
+        )}
+      </View>
+      <Text style={{ fontSize: 11, color: theme.dim, marginTop: 8, lineHeight: 16 }}>
+        Trend across the {windowLabel}. Projection appears in the Journey card below once you have enough data.
+      </Text>
+    </View>
+  );
+}
+
+function CaloriesRangeCard({
+  avgCaloriesPerDay,
+  deltaVsTargetKcal,
+  adherencePct,
+  daysLogged,
+  targetCalories,
+  theme,
+}: {
+  avgCaloriesPerDay: number | null;
+  deltaVsTargetKcal: number | null;
+  adherencePct: number | null;
+  daysLogged: number;
+  targetCalories: number;
+  theme: CardTheme;
+}) {
+  return (
+    <View testID="progress-calories-range-wrapper" style={{ marginBottom: 14 }}>
+      {/* 17pt bold header sits OUTSIDE the card per the prototype. */}
+      <Text
+        testID="progress-calories-range-header"
+        style={{ fontSize: 17, fontWeight: "700", color: theme.text, letterSpacing: -0.2, marginBottom: 8 }}
+      >
+        Calories
+      </Text>
+      <View
+        testID="progress-calories-range-card"
+        style={{
+          backgroundColor: theme.elevated,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: theme.border,
+          padding: 16,
+        }}
+      >
+        {avgCaloriesPerDay == null ? (
+          <Text style={{ fontSize: 13, color: theme.sub, lineHeight: 18 }}>
+            Log meals on Today to see your average calories for this range.
+          </Text>
+        ) : (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  testID="progress-calories-range-avg"
+                  style={{ fontSize: 24, fontWeight: "700", color: theme.text, fontVariant: ["tabular-nums"], letterSpacing: -0.3 }}
+                >
+                  {avgCaloriesPerDay.toLocaleString()}<Text style={{ fontSize: 13, fontWeight: "500", color: theme.sub }}> avg/day</Text>
+                </Text>
+              </View>
+              {deltaVsTargetKcal != null ? (
+                <View
+                  testID="progress-calories-range-delta-pill"
+                  style={pillStyle(deltaVsTargetKcal <= 0 ? theme.green + "22" : theme.amber + "22")}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: deltaVsTargetKcal <= 0 ? theme.green : theme.amber,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {deltaVsTargetKcal > 0 ? "+" : "−"}
+                    {Math.abs(deltaVsTargetKcal).toLocaleString()} vs target
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text
+              testID="progress-calories-range-subtitle"
+              style={{ fontSize: 12, color: theme.sub, marginTop: 6, fontVariant: ["tabular-nums"] }}
+            >
+              Target {targetCalories.toLocaleString()}
+              {adherencePct != null ? ` · ${adherencePct}% avg` : ""}
+              {daysLogged > 0 ? ` · ${daysLogged} logged day${daysLogged === 1 ? "" : "s"}` : ""}
+            </Text>
+          </>
+        )}
+      </View>
+    </View>
   );
 }

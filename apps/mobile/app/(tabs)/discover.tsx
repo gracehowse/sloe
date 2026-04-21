@@ -17,10 +17,13 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
+import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase";
+import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 
 const FILTERS = ["For You", "Popular", "Quick", "High Protein", "Low Carb"];
 
@@ -33,11 +36,15 @@ function IconBox({ color, size = 28, children }: { color: string; size?: number;
   );
 }
 
-// Build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19):
-// the per-card `FitBadge` + `fitColor` helper were removed — testers
-// reported the score felt irrelevant. Mobile also never populated
-// `item.fit` on any RecipeCard (the badge always showed "Good"), so
-// there's nothing for a ranking fallback to replace. See resolved.md.
+// Fit-percent badge history:
+//   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
+//     the per-card `FitBadge` because `item.fit` was never populated
+//     (always showed "Good"). Tester feedback: "score seems irrelevant".
+//   - 2026-04-20 Grace design prototype port: re-added as a
+//     primary-tinted `{N}%` pill top-right of the hero card body.
+//     Value comes from the shared `computeRecipeFitPercent` helper so
+//     web + mobile can't drift. Pinned by
+//     `tests/unit/recipeCardFitBadge.test.ts`.
 
 /* ── Source Badge ── */
 function SourceBadge({ source }: { source?: string }) {
@@ -53,11 +60,53 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
+
+  // 2026-04-20 prototype port — per-card fit-percent pill needs the
+  // user's daily macro targets. We pull once per mount; failure or
+  // signed-out state leaves `targets` null and the shared helper falls
+  // back to its neutral anchor so every card still renders a pill.
+  const [targets, setTargets] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setTargets(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("target_calories, target_protein, target_carbs, target_fat")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const tc = Number((data as any).target_calories);
+      const tp = Number((data as any).target_protein);
+      const tcb = Number((data as any).target_carbs);
+      const tf = Number((data as any).target_fat);
+      if ([tc, tp, tcb, tf].every((n) => Number.isFinite(n) && n > 0)) {
+        setTargets({ calories: tc, protein: tp, carbs: tcb, fat: tf });
+      } else {
+        setTargets(null);
+      }
+    })().catch(() => {
+      if (!cancelled) setTargets(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   // Eating-out row — Edamam restaurant + branded results, surfaced when
   // the user has typed a search query. TestFlight `AOI9xgY88Dx-uphiXI8IzEk`
@@ -149,11 +198,17 @@ export default function DiscoverScreen() {
 
   // ── Hero card — "Matches your day" section. Full-width, 16:10 image
   // on top (rounded only at card corners via parent overflow:hidden),
-  // title / source / kcal·protein·time metadata row underneath. */
+  // title / source / kcal·protein·time metadata row underneath, with a
+  // primary-tinted fit-percent pill top-right of the card body
+  // (2026-04-20 Grace design prototype port). */
   const renderHeroCard = useCallback(
     (item: RecipeCard) => {
       const kcal = Math.round(item.calories);
       const protein = Math.round(item.protein);
+      const fitPct = computeRecipeFitPercent(
+        { calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat },
+        targets,
+      ).percent;
       return (
         <Pressable
           key={item.id}
@@ -171,8 +226,26 @@ export default function DiscoverScreen() {
             <SourceBadge source={item.source} />
           </View>
           <View style={{ padding: 14 }}>
+            {/* Fit-percent pill — primary-tinted, top-right of the
+                card body. Matches prototype treatment. */}
+            <View
+              testID={`discover-hero-fit-${item.id}`}
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 999,
+                backgroundColor: t.accent + "26",
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
+                {fitPct}%
+              </Text>
+            </View>
             <Text
-              style={{ fontSize: 15, fontWeight: "700", color: colors.text, lineHeight: 19, letterSpacing: -0.1 }}
+              style={{ fontSize: 15, fontWeight: "700", color: colors.text, lineHeight: 19, letterSpacing: -0.1, paddingRight: 48 }}
               numberOfLines={2}
             >
               {decodeEntities(item.title)}
@@ -204,7 +277,7 @@ export default function DiscoverScreen() {
         </Pressable>
       );
     },
-    [router, colors, heroColor, t.accent],
+    [router, colors, heroColor, t.accent, targets],
   );
 
   // ── Compact list row — "More ideas" section. 40×40 icon-box on the
@@ -229,8 +302,13 @@ export default function DiscoverScreen() {
             borderTopColor: colors.cardBorder,
           }}
         >
+          {/* 2026-04-20 prototype port — chef-hat icon-box (40×40).
+              Ionicons doesn't ship `restaurant` as a chef-hat glyph;
+              MaterialCommunityIcons `chef-hat` matches the prototype
+              literally and mirrors the web lucide `ChefHat` icon on
+              `src/app/components/DiscoverFeed.tsx`. */}
           <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="restaurant-outline" size={18} color={colors.textSecondary} />
+            <MaterialCommunityIcons name="chef-hat" size={20} color={colors.textSecondary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
@@ -406,9 +484,11 @@ export default function DiscoverScreen() {
             the existing "No recipes yet" empty state. Section 3 still
             renders — that's how users bring content in.
 
-            F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) still stands —
-            no fit-percent badge (`tests/unit/recipeCardNoScore.test.ts`
-            pins its absence). Web parity:
+            F-11 reversed 2026-04-20: fit-percent badge is back per
+            Grace's prototype screenshot — primary-tinted `{N}%` pill
+            top-right of the hero card body, value from the shared
+            `computeRecipeFitPercent` helper. Pinned by
+            `tests/unit/recipeCardFitBadge.test.ts`. Web parity:
             `src/app/components/DiscoverFeed.tsx`. */}
 
         {loading && filtered.length === 0 ? (

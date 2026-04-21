@@ -72,4 +72,29 @@ describe("DesktopSidebar", () => {
     const shopping = screen.getByRole("button", { name: /Shopping/ });
     expect(shopping.textContent).toContain("99+");
   });
+
+  it("renders a Library saved-recipe count when > 0 and hides it at 0", () => {
+    // Added 2026-04-20 for the Claude Design Today-prototype port —
+    // the Library row now carries a live saved-recipe count badge
+    // (mirrors the Shopping-list unchecked-count badge pattern).
+    const { rerender } = render(
+      <DesktopSidebar currentView="today" onNavigate={() => {}} libraryRecipeCount={42} />,
+    );
+    const library = screen.getByRole("button", { name: /Library/ });
+    expect(library.textContent).toContain("42");
+
+    rerender(
+      <DesktopSidebar currentView="today" onNavigate={() => {}} libraryRecipeCount={0} />,
+    );
+    const libraryZero = screen.getByRole("button", { name: /Library/ });
+    expect(/[0-9]/.test(libraryZero.textContent ?? "")).toBe(false);
+  });
+
+  it("caps the Library badge at 99+", () => {
+    render(
+      <DesktopSidebar currentView="today" onNavigate={() => {}} libraryRecipeCount={500} />,
+    );
+    const library = screen.getByRole("button", { name: /Library/ });
+    expect(library.textContent).toContain("99+");
+  });
 });
