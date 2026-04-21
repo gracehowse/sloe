@@ -23,9 +23,9 @@ describe("DesktopSidebar", () => {
     expect(screen.getByRole("button", { name: /Library/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Discover/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Shopping/ })).toBeDefined();
-    // Bottom pinned — renamed Profile → More on 2026-04-20 for mobile-web parity.
+    // Bottom pinned — only More (Settings lives inside More, mirrors mobile).
     expect(screen.getByRole("button", { name: /More/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Settings/ })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Settings$/ })).toBeNull();
   });
 
   it("marks the active view with aria-current='page'", () => {

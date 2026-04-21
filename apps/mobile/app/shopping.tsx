@@ -293,11 +293,15 @@ export default function ShoppingListScreen() {
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
+    // Circular checkbox — matches Claude Design prototype + web
+    // ShoppingList parity (2026-04-20). Square 6-radius box was a
+    // divergence from the web port's 22px circle; keeping mobile
+    // aligned so category rows read identically across platforms.
     checkbox: {
-      width: 24,
-      height: 24,
-      borderRadius: 6,
-      borderWidth: 2,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
       borderColor: colors.tabIconDefault,
       justifyContent: "center",
       alignItems: "center",

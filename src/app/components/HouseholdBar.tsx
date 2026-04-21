@@ -100,7 +100,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
     if (typeof window !== "undefined") {
       // Route into the App shell's ?view= system. HouseholdSettingsPage
       // mounts on `household-settings`; App.tsx wires the view.
-      window.location.href = "/?view=household-settings";
+      window.location.href = "/home?view=household-settings";
     }
   }, [onManage]);
 

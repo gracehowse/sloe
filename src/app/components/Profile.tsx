@@ -533,7 +533,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           </h3>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <a
-              href="/?view=household-settings"
+              href="/home?view=household-settings"
               data-testid="profile-household-row"
               className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
             >
@@ -580,7 +580,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Dashboard Widgets — which macros render as tiles on Today */}
           <a
-            href="/?view=settings"
+            href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <IconBox tone="primary" size="md" className="rounded-[10px]">
@@ -599,7 +599,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Week starts on */}
           <a
-            href="/?view=settings"
+            href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <IconBox tone="primary" size="md" className="rounded-[10px]">
@@ -616,7 +616,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Caffeine limit */}
           <a
-            href="/?view=settings"
+            href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <IconBox tone="primary" size="md" className="rounded-[10px]">
@@ -633,7 +633,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Alcohol limit */}
           <a
-            href="/?view=settings"
+            href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <IconBox tone="primary" size="md" className="rounded-[10px]">

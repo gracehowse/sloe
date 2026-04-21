@@ -684,7 +684,7 @@ function ProgressDashboardContent() {
       const p = new URLSearchParams(searchParams.toString());
       p.set("view", "progress");
       p.set("metric", m);
-      router.replace(`/?${p.toString()}`, { scroll: false });
+      router.replace(`/home?${p.toString()}`, { scroll: false });
     },
     [router, searchParams],
   );
@@ -692,7 +692,7 @@ function ProgressDashboardContent() {
   const closeMetric = useCallback(() => {
     const p = new URLSearchParams(searchParams.toString());
     p.delete("metric");
-    router.replace(`/?${p.toString()}`, { scroll: false });
+    router.replace(`/home?${p.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
   if (!authedUserId) {
@@ -796,7 +796,7 @@ function ProgressDashboardContent() {
           type="button"
           data-testid="progress-calendar-button"
           aria-label="Open calendar"
-          onClick={() => router.replace("/?view=weight-tracker")}
+          onClick={() => router.replace("/home?view=weight-tracker")}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"
         >
           <Icons.calendar className="h-4 w-4" aria-hidden />
@@ -941,12 +941,12 @@ function ProgressDashboardContent() {
                 /* sessionStorage can throw in private modes — ignore. */
               }
             }
-            router.replace("/?view=today");
+            router.replace("/home?view=today");
           }}
           onStartUsualMealSave={() => {
             // Fallback path — helper returned null, so just route to Today;
             // the slot-header save row is still reachable manually.
-            router.replace("/?view=today");
+            router.replace("/home?view=today");
           }}
         />
       ) : null}

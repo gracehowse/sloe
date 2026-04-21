@@ -442,6 +442,14 @@ export default function ProgressScreen() {
 
   useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
 
+  // Belt-and-braces: if `userId` arrives AFTER the screen is already
+  // focused (auth resolved after tab landed), `useFocusEffect` won't
+  // re-fire on its own and the skeleton would stick. Retrigger whenever
+  // `userId` flips from null → defined. Grace 2026-04-21 TestFlight.
+  useEffect(() => {
+    if (userId) void loadData();
+  }, [userId, loadData]);
+
   // H-4 — after the initial data-fetch unblocks, defer mounting the
   // heavy chart + journey blocks by one frame so the first post-load
   // paint shows header + stat grid + recap card only. RAF hands back

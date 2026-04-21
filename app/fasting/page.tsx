@@ -10,7 +10,7 @@ export default function FastingPage() {
       <div className="max-w-lg mx-auto px-pm-5 py-pm-5">
         <div className="flex items-center gap-2 mb-5">
           <Link
-            href="/?view=today"
+            href="/home?view=today"
             className="w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted"
             aria-label="Back to Today"
           >

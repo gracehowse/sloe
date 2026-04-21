@@ -915,7 +915,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             type="button"
             onClick={() => {
               const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
-              router.replace(`/?${q}`, { scroll: false });
+              router.replace(`/home?${q}`, { scroll: false });
             }}
             className="px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold"
           >

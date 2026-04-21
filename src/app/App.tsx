@@ -135,7 +135,7 @@ export default function App() {
     if (searchParams.get("recipe")?.trim()) return;
     const p = new URLSearchParams(searchParams.toString());
     p.set("view", "today");
-    router.replace(`/?${p.toString()}`, { scroll: false });
+    router.replace(`/home?${p.toString()}`, { scroll: false });
   }, [searchParams, router]);
 
   const recipeDeepLinkId = searchParams.get("recipe")?.trim() ?? "";
@@ -146,7 +146,7 @@ export default function App() {
     if (v !== "discover") {
       const p = new URLSearchParams(searchParams.toString());
       p.set("view", "discover");
-      router.replace(`/?${p.toString()}`, { scroll: false });
+      router.replace(`/home?${p.toString()}`, { scroll: false });
     }
   }, [recipeDeepLinkId, searchParams, router]);
 
@@ -160,7 +160,7 @@ export default function App() {
       }
       // Keep deep-linked recipe query if present.
       const q = params.toString();
-      router.replace(q ? `/?${q}` : "/", { scroll: false });
+      router.replace(q ? `/home?${q}` : "/", { scroll: false });
     },
     [router, searchParams],
   );
@@ -172,7 +172,7 @@ export default function App() {
     params.delete("portions");
     if (!params.get("view")) params.set("view", "today");
     const q = params.toString();
-    router.replace(q ? `/?${q}` : "/?view=today", { scroll: false });
+    router.replace(q ? `/home?${q}` : "/home?view=today", { scroll: false });
   }, [router, searchParams]);
 
   const openRecipeById = useCallback(
@@ -182,7 +182,7 @@ export default function App() {
       params.set("recipe", recipeId);
       if (opts?.cook) params.set("cook", "1");
       const q = params.toString();
-      router.replace(q ? `/?${q}` : "/", { scroll: false });
+      router.replace(q ? `/home?${q}` : "/", { scroll: false });
       setCurrentView("discover");
     },
     [router, searchParams],
@@ -258,7 +258,7 @@ export default function App() {
       params.delete("checkout");
       if (!params.get("view")) params.set("view", "today");
       const q = params.toString();
-      router.replace(q ? `/?${q}` : "/?view=today", { scroll: false });
+      router.replace(q ? `/home?${q}` : "/home?view=today", { scroll: false });
     });
   }, [searchParams, router, refreshProfileBasics]);
 
@@ -311,7 +311,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <FeatureErrorBoundary feature="Household"><HouseholdPanel /></FeatureErrorBoundary>
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
@@ -327,7 +326,7 @@ export default function App() {
                   params.set("recipe", id);
                   params.set("cook", "1");
                   if (portion && portion !== 1) params.set("portions", String(portion));
-                  router.replace(`/?${params.toString()}`, { scroll: false });
+                  router.replace(`/home?${params.toString()}`, { scroll: false });
                   setCurrentView("discover");
                 }}
               /></FeatureErrorBoundary>

@@ -675,7 +675,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, author:profiles(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)

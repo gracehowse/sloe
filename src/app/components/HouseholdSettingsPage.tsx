@@ -265,7 +265,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
             you&apos;re part of one.
           </p>
           <a
-            href="/?view=plan"
+            href="/home?view=plan"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
           >
             Open Plan
@@ -308,7 +308,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
             Members
           </p>
           <a
-            href="/?view=plan"
+            href="/home?view=plan"
             className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
             data-testid="household-settings-add"
           >
@@ -607,7 +607,7 @@ function Header({ onBack }: { onBack?: () => void }) {
     }
     if (typeof window !== "undefined") {
       // Default: back to Plan where the panel lives.
-      window.location.href = "/?view=plan";
+      window.location.href = "/home?view=plan";
     }
   }, [onBack]);
   return (

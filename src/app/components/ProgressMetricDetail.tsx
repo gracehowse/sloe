@@ -102,7 +102,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
     const p = new URLSearchParams(searchParams.toString());
     p.set("view", "today");
     p.delete("metric");
-    router.replace(p.toString() ? `/?${p.toString()}` : "/?view=today", { scroll: false });
+    router.replace(p.toString() ? `/home?${p.toString()}` : "/home?view=today", { scroll: false });
   };
 
   return (
