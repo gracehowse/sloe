@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
-import { SlidersHorizontal, ShoppingCart, RefreshCw } from "lucide-react";
+import { SlidersHorizontal, ShoppingCart, RefreshCw, Sun, Utensils, Moon, Cookie, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DailyRing } from "./suppr/daily-ring";
 import { MacroCard } from "./suppr/macro-card";
@@ -48,6 +48,13 @@ import {
   computePlanWeekSummaryScore,
 } from "../../lib/planning/planWeekSummary.ts";
 import {
+  isSameCalendarDay,
+  planCalendarDateForIndex,
+  resolvePlanSlotIconKey,
+  shortWeekdayLabel,
+  type PlanSlotIconKey,
+} from "../../lib/planning/planDayLabel.ts";
+import {
   buildTemplateFromWeek,
   applyTemplateToWeek,
   type PlanTemplate,
@@ -75,6 +82,18 @@ interface MealPlannerProps {
   /** Opens recipe detail in cook mode directly. Optionally pass portion multiplier. */
   onCookRecipe?: (recipeId: string, portionMultiplier?: number) => void;
 }
+
+// Prototype port (2026-04-20) — slot icon key → lucide-react component.
+// Mirrored on mobile with `@expo/vector-icons` Ionicons (see
+// `SLOT_ICON_MOBILE` in `apps/mobile/app/(tabs)/planner.tsx`). Keys
+// come from the shared `resolvePlanSlotIconKey` so legacy / voice
+// slot values collapse to `snacks` rather than crashing the row.
+const SLOT_ICON_WEB: Record<PlanSlotIconKey, LucideIcon> = {
+  breakfast: Sun,
+  lunch: Utensils,
+  dinner: Moon,
+  snacks: Cookie,
+};
 
 function formatVsTarget(
   actual: number,
@@ -1386,7 +1405,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
               detailed card below. */}
           {generatedPlan.length > 1 ? (
             <div className="grid gap-1.5 mb-4" style={{ gridTemplateColumns: `repeat(${generatedPlan.length}, minmax(0, 1fr))` }}>
-              {generatedPlan.map((dp) => {
+              {generatedPlan.map((dp, dayIdx) => {
                 const dayKcal = Math.round(dp.totals.calories);
                 const pct = targetCalories > 0
                   ? Math.min((dayKcal / targetCalories) * 100, 100)
@@ -1395,6 +1414,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                   targetCalories > 0 && dayKcal > targetCalories * 1.05
                     ? "var(--warning)"
                     : "var(--success)";
+                // Prototype port (2026-04-20) — strip entry reads
+                // "Mon" / "Tue" rather than "Day N". Date sits at
+                // `dp.day - 1` days ahead of today because the
+                // generator numbers days starting at 1 = today (no
+                // startOffset is exposed to web yet — when it is,
+                // swap the 0 below for the real offset).
+                const stripDate = planCalendarDateForIndex(dayIdx, 0);
+                const stripLabel = shortWeekdayLabel(stripDate);
                 return (
                   <a
                     key={`strip-${dp.day}`}
@@ -1405,9 +1432,9 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                       el?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
                     className="flex flex-col items-center gap-1 rounded-md border border-border bg-card px-2 py-2 hover:bg-muted/50 transition-colors text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={`Jump to day ${dp.day}: ${dayKcal} kcal`}
+                    aria-label={`Jump to ${stripLabel}: ${dayKcal} kcal`}
                   >
-                    <span className="text-[11px] font-bold text-foreground">Day {dp.day}</span>
+                    <span className="text-[11px] font-bold text-foreground">{stripLabel}</span>
                     <span className="block w-full h-[3px] rounded-full bg-border overflow-hidden">
                       <span
                         className="block h-full rounded-full"
@@ -1424,7 +1451,7 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
           ) : null}
 
           {/* Detailed day breakdowns (original structure) */}
-          {generatedPlan.map((dp) => {
+          {generatedPlan.map((dp, dayIdx) => {
             const summary = daySummaries.find((s) => s.day === dp.day);
             const toneClass = (tone: "ok" | "low" | "high") =>
               tone === "ok"
@@ -1452,6 +1479,14 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                 : tone === "amber"
                   ? "text-warning"
                   : "text-destructive";
+            // Prototype port (2026-04-20) — day section header shows
+            // "Mon" / "Tue" / "Wed" (3-letter weekday) in place of
+            // "Day 1". When the row maps to today, show an uppercase
+            // "TODAY" pill next to the weekday (mirrored on mobile —
+            // same shared helpers, same `dayIdx` ordering).
+            const dayCardDate = planCalendarDateForIndex(dayIdx, 0);
+            const dayWeekdayLabel = shortWeekdayLabel(dayCardDate);
+            const isTodayCard = isSameCalendarDay(dayCardDate);
             return (
             <div key={dp.day} id={`plan-day-${dp.day}`}>
               <div className="backdrop-blur-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-8 mb-6 shadow-2xl">
@@ -1460,7 +1495,17 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                     <Icons.plan className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-foreground">Day {dp.day}</h3>
+                    <h3 className="text-foreground flex items-center gap-2">
+                      {dayWeekdayLabel}
+                      {isTodayCard ? (
+                        <span
+                          aria-label="Today"
+                          className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary"
+                        >
+                          TODAY
+                        </span>
+                      ) : null}
+                    </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       vs targets · ±{calorieBandPct}% calories · ±{carbFatBandPct}% carbs/fat
                     </p>
@@ -1587,21 +1632,41 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                         </Badge>
                       ) : null}
                       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
-                        <div>
-                          <span className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-semibold mb-2">
-                            {meal.name}
-                          </span>
-                          <h3 className="text-foreground group-hover:text-primary transition-colors">
-                            {meal.recipeTitle}
-                          </h3>
-                          {bestForLabel ? (
-                            <p className="text-xs text-primary mt-1 font-medium">
-                              Best for: {bestForLabel}
+                        {/* Prototype port (2026-04-20) — 36×36 slot
+                            icon-box + stacked label/title. Icon key
+                            resolves via the shared `resolvePlanSlotIconKey`
+                            so legacy / voice slot text collapses to the
+                            `snacks` icon rather than a blank square.
+                            Mirrored on mobile with Ionicons (see
+                            `SLOT_ICON_MOBILE`). */}
+                        <div className="flex items-start gap-3 min-w-0">
+                          {(() => {
+                            const SlotIcon = SLOT_ICON_WEB[resolvePlanSlotIconKey(meal.name)];
+                            return (
+                              <span
+                                aria-hidden
+                                className="shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground grid place-items-center"
+                              >
+                                <SlotIcon className="w-4 h-4" strokeWidth={1.75} />
+                              </span>
+                            );
+                          })()}
+                          <div className="min-w-0">
+                            <span className="block text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1">
+                              {meal.name}
+                            </span>
+                            <h3 className="text-foreground group-hover:text-primary transition-colors text-[15px] font-semibold leading-[1.4]">
+                              {meal.recipeTitle}
+                            </h3>
+                            {bestForLabel ? (
+                              <p className="text-xs text-primary mt-1 font-medium">
+                                Best for: {bestForLabel}
+                              </p>
+                            ) : null}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Portions scale day totals, tracker entries, and shopping amounts.
                             </p>
-                          ) : null}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Portions scale day totals, tracker entries, and shopping amounts.
-                          </p>
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/80 px-1 py-1">
@@ -1625,12 +1690,17 @@ export const MealPlanner = memo(function MealPlanner({ userTier, onUpgrade, onNa
                               +
                             </button>
                           </div>
+                          {/* Prototype port (2026-04-20) — Swap
+                              surfaces as a 30×30 icon button (matches
+                              mobile's `mealSwapBtn`). Opens the same
+                              `swapMeal` flow the old text button did. */}
                           <button
                             type="button"
                             onClick={() => swapMeal(dp.day, index)}
-                            className="px-4 py-2 bg-muted hover:bg-primary/10 text-foreground hover:text-primary rounded-xl transition-all font-medium border border-border hover:border-primary/30"
+                            aria-label={`Swap ${meal.name}`}
+                            className="w-[30px] h-[30px] grid place-items-center bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-lg transition-all border border-border hover:border-primary/30"
                           >
-                            Swap
+                            <RefreshCw className="w-3.5 h-3.5" strokeWidth={2} />
                           </button>
                           {/* Batch 3.10 — keyboard-accessible move fallback
                               for drag-drop. Audit M7 (2026-04-18): opens a

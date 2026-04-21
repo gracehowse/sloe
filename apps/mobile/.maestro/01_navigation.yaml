@@ -30,7 +30,7 @@ name: "Tab navigation — all 5 tabs load and respond"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: ".*(?:Weekly report|progress will appear).*"
+- assertVisible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|progress will appear).*"
 
 # Profile tab — verify content loads
 - tapOn: ".*Profile, tab.*"

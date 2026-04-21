@@ -7,9 +7,13 @@ describe('Progress screen', () => {
     await element(by.text('Progress')).tap();
   });
 
-  it('shows Progress header and Weekly report', async () => {
+  it('shows Progress header with range overline', async () => {
+    // 2026-04-20 prototype port: the subtitle was "Weekly report";
+    // it is now the range-picker overline (uppercase, default
+    // "LAST 30 DAYS") so the header reflects the currently-selected
+    // time window.
     await expect(element(by.text('Progress'))).toBeVisible();
-    await expect(element(by.text('Weekly report'))).toBeVisible();
+    await expect(element(by.text('LAST 30 DAYS'))).toBeVisible();
   });
 
   it('shows stats or empty state', async () => {

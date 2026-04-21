@@ -22,8 +22,12 @@ describe('Tab navigation', () => {
   });
 
   it('Progress tab loads', async () => {
+    // 2026-04-20 prototype port: Progress header overline replaces
+    // the old "Weekly report" subtitle. "LAST 30 DAYS" is the
+    // default-range overline rendered in both the skeleton and
+    // the loaded state, so it's a stable "the screen mounted" signal.
     await element(by.text('Progress')).tap();
-    await expect(element(by.text('Weekly report'))).toBeVisible();
+    await expect(element(by.text('LAST 30 DAYS'))).toBeVisible();
   });
 
   it('Profile tab loads', async () => {

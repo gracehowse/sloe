@@ -504,6 +504,177 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           </div>
         )}
 
+        {/* ── Prototype port (2026-04-20, screens-mobile.jsx
+            `DiscoverScreen` lines 345–438): three stacked sections
+            instead of a single 2-column grid.
+
+              1. "Matches your day" — 2 hero cards (16:10 image, full
+                 width, stacked vertically). Takes `recipes.slice(0, 2)`.
+              2. "More ideas" — one card containing compact meal-row
+                 style list rows for `recipes.slice(2)`.
+              3. "From your sources" — Import + My Library CTAs,
+                 reordered to the BOTTOM per prototype (they are
+                 utility, not discovery content).
+
+            When the filtered recipe list is empty we DO NOT render
+            sections 1 + 2; the existing "Nothing to show" empty state
+            takes their place. The "From your sources" CTAs still render
+            — that's how users bring content in.
+
+            F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) still stands —
+            no fit-percent badge. The prototype drew one but tester
+            feedback killed it; `tests/unit/recipeCardNoScore.test.ts`
+            pins its absence. Mobile parity:
+            `apps/mobile/app/(tabs)/discover.tsx` Discover sections. */}
+
+        {/* Section 1 + 2: recipe sections — only when there's content */}
+        {recipes.length > 0 ? (
+          <>
+            {/* ── Matches your day (hero cards) ── */}
+            <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+              Matches your day
+            </h3>
+            <div className="grid gap-3 px-4">
+              {recipes.slice(0, 2).map((recipe) => {
+                const heroColor = "var(--primary)";
+                const kcal = Math.round(recipe.calories);
+                const protein = Math.round(recipe.protein);
+                return (
+                  <button
+                    key={recipe.id}
+                    type="button"
+                    id={`discover-post-${recipe.id}`}
+                    onClick={() => setSelectedRecipe(recipe)}
+                    className="text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full"
+                  >
+                    {/* 16:10 hero, full card width, rounded top only
+                        (parent `overflow-hidden` clips to card radius). */}
+                    <div
+                      className="flex items-center justify-center relative overflow-hidden"
+                      style={{ aspectRatio: "16 / 10", background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}
+                    >
+                      {recipe.image ? (
+                        <img src={recipe.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Icons.dinner className="w-8 h-8" style={{ color: `${heroColor}60` }} />
+                      )}
+                      {recipe.sourcePlatform && (
+                        <div className="absolute top-2 left-2">
+                          <SourceBadge source={recipe.sourcePlatform} className="text-[9px] px-1.5 py-0.5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3.5">
+                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {recipe.title}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground mt-1 truncate">
+                        {recipe.creatorName || ""}
+                      </p>
+                      <div className="flex flex-wrap gap-3 mt-2.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
+                          {kcal} kcal
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                          <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
+                          {protein} g
+                        </span>
+                        {recipe.cookTime ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
+                            {recipe.cookTime}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ── More ideas (compact list) — only when there's a 3rd+ */}
+            {recipes.length > 2 ? (
+              <>
+                <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+                  More ideas
+                </h3>
+                <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden">
+                  {recipes.slice(2).map((recipe, idx) => {
+                    const kcal = Math.round(recipe.calories);
+                    const protein = Math.round(recipe.protein);
+                    const carbs = Math.round(recipe.carbs);
+                    return (
+                      <button
+                        key={recipe.id}
+                        type="button"
+                        id={`discover-post-${recipe.id}`}
+                        onClick={() => setSelectedRecipe(recipe)}
+                        className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
+                      >
+                        <span className="w-10 h-10 rounded-lg bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0 overflow-hidden">
+                          {recipe.image ? (
+                            <img src={recipe.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Icons.chef className="w-[18px] h-[18px]" />
+                          )}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[13px] font-semibold text-foreground truncate">
+                            {recipe.title}
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground truncate">
+                            {recipe.creatorName || ""}
+                            {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
+                          </span>
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
+                          <span className="font-semibold text-foreground">{kcal}</span>
+                          {` · ${protein}P · ${carbs}C`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+            <p className="text-foreground font-medium mb-2">Nothing to show</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {discoverRecipes.length === 0
+                ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you're setting up the app, publish a recipe with an author so community posts can appear here."
+                : feedScope === "following"
+                  ? followedAuthorIds.size + followedCreatorIds.size === 0
+                    ? "Open a recipe and follow the author to build your Following feed."
+                    : "No posts from people you follow match your search, filters, or collection."
+                  : "Nothing matches right now. Clear search or filters, or pick another collection."}
+            </p>
+            {discoverRecipes.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilters({ verified: false, maxCalories: "", minProtein: "" });
+                  setActiveCollectionId(null);
+                  setFeedScope("forYou");
+                }}
+                className="text-sm font-semibold text-primary"
+              >
+                Reset
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {/* ── From your sources — Import + My Library CTAs, bottom
+            of the scroll per prototype. Always rendered so users can
+            still bring content in when the feed is empty. */}
+        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+          From your sources
+        </h3>
+
         {/* Import CTA card */}
         <div
           role="button"
@@ -515,7 +686,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-4 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+          className="mx-4 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
           style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
         >
           <IconBox size="lg" tone="primary">
@@ -529,10 +700,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         </div>
 
         {/* My Library CTA — parity with mobile
-            (`apps/mobile/app/(tabs)/discover.tsx` 369). Mobile shows
-            this immediately after the Import CTA so users discover the
-            saved-recipes shortcut without leaving Discover. Same `view`
-            URL trick the Import card uses. */}
+            (`apps/mobile/app/(tabs)/discover.tsx`). Same `view` URL
+            trick the Import card uses. */}
         <div
           role="button"
           tabIndex={0}
@@ -553,113 +722,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             <p className="text-[11px] text-muted-foreground mt-0.5">Saved and imported recipes</p>
           </div>
           <Icons.forward className="w-4 h-4 text-muted-foreground" />
-        </div>
-
-        {/* Feed — 2-column grid */}
-        <div className="mt-8">
-          {recipes.length === 0 ? (
-            <div className="mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
-              <p className="text-foreground font-medium mb-2">Nothing to show</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                {discoverRecipes.length === 0
-                  ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you're setting up the app, publish a recipe with an author so community posts can appear here."
-                  : feedScope === "following"
-                    ? followedAuthorIds.size + followedCreatorIds.size === 0
-                      ? "Open a recipe and follow the author to build your Following feed."
-                      : "No posts from people you follow match your search, filters, or collection."
-                    : "Nothing matches right now. Clear search or filters, or pick another collection."}
-              </p>
-              {discoverRecipes.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setFilters({ verified: false, maxCalories: "", minProtein: "" });
-                    setActiveCollectionId(null);
-                    setFeedScope("forYou");
-                  }}
-                  className="text-sm font-semibold text-primary"
-                >
-                  Reset
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 px-4">
-              {recipes.map((recipe) => {
-                // F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19): the
-                // fit badge previously rendered here was removed; the
-                // hero gradient now uses a single neutral accent so
-                // no per-recipe colour comes from the dropped score.
-                const heroColor = "var(--primary)";
-                const kcal = Math.round(recipe.calories);
-                const protein = Math.round(recipe.protein);
-                return (
-                  <div
-                    key={recipe.id}
-                    id={`discover-post-${recipe.id}`}
-                    onClick={() => setSelectedRecipe(recipe)}
-                    className="rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer"
-                  >
-                    {/* Hero — prototype port (2026-04-20, mobile parity
-                        commit 5958ae4): 16:10 image instead of a fixed
-                        80px strip, so the card's visual weight is
-                        dominated by the photo rather than the metadata
-                        below it. `aspectRatio` uses a Tailwind arbitrary
-                        value so we don't depend on the `aspect-[16/10]`
-                        plugin being enabled. */}
-                    <div
-                      className="flex items-center justify-center relative overflow-hidden"
-                      style={{ aspectRatio: "16 / 10", background: recipe.image ? undefined : `linear-gradient(135deg, ${heroColor}08, ${heroColor}18)` }}
-                    >
-                      {recipe.image ? (
-                        <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Icons.dinner className="w-7 h-7" style={{ color: `${heroColor}60` }} />
-                      )}
-                      {recipe.sourcePlatform && (
-                        <div className="absolute top-2 left-2">
-                          <SourceBadge source={recipe.sourcePlatform} className="text-[9px] px-1.5 py-0.5" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content — prototype layout (2026-04-20):
-                        title (bolder, 13px) → source (11px) → metadata
-                        strip with kcal / protein / time icons. The
-                        P/C/F micro-dot row and saves/made footer were
-                        dropped to match mobile's cleaner three-item
-                        strip; dropping them parallels the mobile
-                        commit 5958ae4 decision (see its commit body). */}
-                    <div className="p-3">
-                      <p className="text-[13px] font-bold text-foreground leading-[17px] -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {recipe.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                        {recipe.creatorName || ""}
-                      </p>
-                      <div className="flex flex-wrap gap-2.5 mt-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
-                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
-                          {kcal} kcal
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
-                          <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
-                          {protein} g
-                        </span>
-                        {recipe.cookTime ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
-                            {recipe.cookTime}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
     </div>

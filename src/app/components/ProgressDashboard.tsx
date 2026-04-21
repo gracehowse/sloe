@@ -143,7 +143,15 @@ function ProgressDashboardContent() {
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
-  const [range, setRange] = useState<"1W" | "1M" | "3M" | "6M" | "All">("3M");
+  // 2026-04-20 Claude Design prototype port — range picker pills.
+  // Prior shape was `1W / 1M / 3M / 6M / All`, default `3M`, with no
+  // UI to switch. Mirrors the mobile ProgressScreen prototype
+  // (`[7d, 30d, 90d, All]` chips) so the two surfaces speak the same
+  // ranges. Default `30d` matches mobile. Downstream `rangeDays`
+  // arithmetic is preserved (still drives the weight + steps chart
+  // windows); All remains ~infinite (26+ years).
+  const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const rangeLabel = range === "7d" ? "LAST 7 DAYS" : range === "30d" ? "LAST 30 DAYS" : range === "90d" ? "LAST 90 DAYS" : "ALL TIME";
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
   // Batch 4.11 — streak freeze + weekly recap state
@@ -163,6 +171,17 @@ function ProgressDashboardContent() {
       return;
     }
     setLoading(true);
+    // Skeleton-gate fix (2026-04-20, Claude Design prototype port):
+    // the prior shape had no try/catch around the supabase fetch. A
+    // thrown network error mid-call would exit this function before
+    // `setLoading(false)` ran, leaving the "Loading progress…" text
+    // pinned indefinitely. Wrap the whole path in try/finally so the
+    // loading flag ALWAYS flips once, even on the sad path, and the
+    // post-load tree falls through to the existing empty / populated
+    // states. The explicit `setLoading(false)` that gates the H-4
+    // first-paint order (before the `daily_targets` background fetch)
+    // is preserved in the happy path; `finally` acts as a backstop.
+    try {
     const { data, error } = await supabase
       .from("profiles")
       .select(
@@ -278,6 +297,14 @@ function ProgressDashboardContent() {
           /* fallback already in place (empty map → current targets). */
         });
     }
+    } catch (err) {
+      // Skeleton-gate fix (2026-04-20): surface failures so we still
+      // flip `loading` → false. User sees the "hasData = false" empty
+      // state rather than a pinned "Loading progress…" line.
+      console.error("[progress] load threw", err);
+    } finally {
+      setLoading(false);
+    }
   }, [authedUserId]);
 
   useEffect(() => {
@@ -305,7 +332,7 @@ function ProgressDashboardContent() {
 
   const todaySteps = stepsByDay[todayKey()] ?? 0;
 
-  const rangeDays = range === "1W" ? 7 : range === "1M" ? 30 : range === "3M" ? 90 : range === "6M" ? 180 : 9999;
+  const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
 
   const weightChartData = useMemo(() => {
     const cutoff = new Date();
@@ -654,8 +681,63 @@ function ProgressDashboardContent() {
   }
 
   if (loading) {
+    // 2026-04-20 prototype port: the pinned "Loading progress…" line
+    // looked broken when supabase was slow. Now we paint the real
+    // header chrome (overline + title + calendar button) + a
+    // disabled-look range picker + a 2x2 skeleton grid so the user
+    // sees the screen is alive and laying out. When `loading` flips
+    // the existing post-load tree mounts without a layout jump.
     return (
-      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">Loading progress…</div>
+      <div
+        className="max-w-2xl mx-auto px-pm-5 py-pm-5"
+        data-testid="progress-loading-skeleton"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p
+              data-testid="progress-overline"
+              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+            >
+              {rangeLabel}
+            </p>
+            <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
+              Progress
+            </h1>
+          </div>
+          <span
+            aria-hidden
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
+          >
+            <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+          </span>
+        </div>
+        <div className="flex gap-1.5 mb-4 opacity-60">
+          {(["7d", "30d", "90d", "all"] as const).map((k) => (
+            <span
+              key={k}
+              className={[
+                "flex-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold text-center",
+                k === range ? "bg-card border-border text-foreground" : "border-border text-muted-foreground",
+              ].join(" ")}
+            >
+              {k === "all" ? "All" : k}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              data-testid={`progress-skeleton-tile-${i}`}
+              className="rounded-xl bg-card border border-border p-3 min-h-[86px]"
+            >
+              <div className="h-3 w-16 rounded bg-border mb-2" />
+              <div className="h-5 w-20 rounded bg-border mb-1.5" />
+              <div className="h-3 w-24 rounded bg-border" />
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -669,10 +751,70 @@ function ProgressDashboardContent() {
 
   return (
     <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
-      {/* HEADER */}
-      <div className="mb-4">
-        <h1 className="text-[22px] font-bold text-foreground mb-1">Progress</h1>
-        <p className="text-sm text-muted-foreground">Weekly report</p>
+      {/* HEADER — 2026-04-20 Claude Design prototype port.
+          Uppercase overline reflects the currently-selected range
+          (drives from `rangeLabel`); large "Progress" title; round
+          calendar-icon button top-right. Calendar button currently
+          surfaces `?view=weight-tracker` — a follow-up pass can swap
+          in a dedicated date-range picker modal. */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p
+            data-testid="progress-overline"
+            className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+          >
+            {rangeLabel}
+          </p>
+          <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
+            Progress
+          </h1>
+        </div>
+        <button
+          type="button"
+          data-testid="progress-calendar-button"
+          aria-label="Open calendar"
+          onClick={() => router.replace("/?view=weight-tracker")}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"
+        >
+          <Icons.calendar className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      {/* RANGE-PICKER PILLS — [7d, 30d, 90d, All] chips. Active chip
+          is filled in the primary colour, inactive chips are bordered.
+          Tapping updates the selected range and the header overline;
+          it already fed `rangeDays` (used by the weight + steps chart
+          windows below). Deeper card-level prototype alignment
+          (sparkline refactor, per-card bar palette) is deferred. */}
+      <div
+        role="tablist"
+        aria-label="Progress time range"
+        data-testid="progress-range-picker"
+        className="flex gap-1.5 mb-4"
+      >
+        {(["7d", "30d", "90d", "all"] as const).map((k) => {
+          const active = range === k;
+          const label = k === "all" ? "All" : k;
+          return (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={`Range ${label}`}
+              data-testid={`progress-range-pill-${k}`}
+              onClick={() => setRange(k)}
+              className={[
+                "flex-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:bg-muted/40",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* WEEKLY RECAP CARD (Batch 4.11) — surfaces at end of week and stays
@@ -1388,11 +1530,43 @@ function ProgressDashboardContent() {
   );
 }
 
+/**
+ * 2026-04-20 prototype port — Suspense fallback mirrors the header
+ * chrome used in the inner `loading` branch so React's lazy-load
+ * boundary doesn't flash a text-only "Loading…" line before the
+ * client-side supabase fetch-driven skeleton mounts. Overline is
+ * the default range (`LAST 30 DAYS`), matching the initial `range`
+ * state inside `ProgressDashboardContent`.
+ */
+function ProgressSuspenseFallback() {
+  return (
+    <div
+      className="max-w-2xl mx-auto px-pm-5 py-pm-5"
+      data-testid="progress-suspense-fallback"
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            LAST 30 DAYS
+          </p>
+          <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
+            Progress
+          </h1>
+        </div>
+        <span
+          aria-hidden
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
+        >
+          <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ProgressDashboard() {
   return (
-    <Suspense
-      fallback={<div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">Loading progress…</div>}
-    >
+    <Suspense fallback={<ProgressSuspenseFallback />}>
       <ProgressDashboardContent />
     </Suspense>
   );

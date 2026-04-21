@@ -10,17 +10,18 @@ name: "Progress screen — stats, charts, weight journey, time range"
 - assertVisible: ".*Progress.*"
 
 # Wait for data to fully load (stat tiles or empty state — not just the header).
-# Uses content from below the header: "Weekly report" subtitle is a plain Text
-# node and matches reliably; "AVG CALORIES" gets nested inside icon-card a11y
-# wrappers and is intermittently missed by Maestro.
+# 2026-04-20 prototype port: the stable "has data" signal below the
+# header is the range-picker overline (e.g. "LAST 30 DAYS"). The
+# previous "Weekly report" subtitle was replaced by the overline when
+# the prototype's header + range-picker treatment landed.
 - extendedWaitUntil:
-    visible: ".*(?:Weekly report|Your progress will appear here|Log meals on the Today tab).*"
+    visible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|Your progress will appear here|Log meals on the Today tab).*"
     timeout: 30000
 
 # If data exists, verify full stat grid and charts
 - runFlow:
     when:
-      visible: ".*Weekly report.*"
+      visible: ".*LAST 30 DAYS.*"
     commands:
       - assertVisible: ".*Daily Calories.*"
       - assertVisible: ".*Macro Adherence.*"
@@ -31,17 +32,13 @@ name: "Progress screen — stats, charts, weight journey, time range"
           direction: DOWN
       - assertVisible: ".*Weight.*"
 
-      # Verify time range selector if present
-      - runFlow:
-          when:
-            visible: ".*7D.*"
-          commands:
-            - assertVisible: ".*7D.*"
-            - assertVisible: ".*30D.*"
+      # Verify the range-picker pills render
+      - assertVisible: ".*7d.*"
+      - assertVisible: ".*30d.*"
 
       # Scroll back to top
       - scrollUntilVisible:
-          element: ".*Weekly report.*"
+          element: ".*LAST 30 DAYS.*"
           direction: UP
 
 # If empty state, verify guidance text

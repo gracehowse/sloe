@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -48,6 +49,12 @@ import {
   listPlanTemplates,
 } from "../../../../src/lib/nutrition/planTemplatesClient";
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
+import {
+  isSameCalendarDay,
+  resolvePlanSlotIconKey,
+  shortWeekdayLabel,
+  type PlanSlotIconKey,
+} from "../../../../src/lib/planning/planDayLabel";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
@@ -64,6 +71,18 @@ function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: 
 
 const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+
+// Prototype port (2026-04-20) — slot icon key → Ionicons name. Mirrored
+// on web with lucide-react icons (see `MealPlanner.tsx` `SLOT_ICON_WEB`).
+// Keys come from the shared `resolvePlanSlotIconKey` so legacy / voice
+// slot values can never drift a row into a blank square.
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+const SLOT_ICON_MOBILE: Record<PlanSlotIconKey, IoniconName> = {
+  breakfast: "sunny-outline",
+  lunch: "restaurant-outline",
+  dinner: "moon-outline",
+  snacks: "ice-cream-outline",
+};
 
 function stripMidnight(d: Date): Date {
   const x = new Date(d);
@@ -657,6 +676,15 @@ export default function PlannerScreen() {
           alignItems: "center",
         },
         dayTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+        // Prototype port (2026-04-20) — small uppercase "TODAY" pill
+        // next to the weekday label. Primary-color text, no pill
+        // background — matches prototype `screens-mobile.jsx:482`.
+        dayTodayPill: {
+          fontSize: 10,
+          fontWeight: "700",
+          color: Accent.primary,
+          letterSpacing: 1.4,
+        },
         dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
         mealRow: {
@@ -667,9 +695,32 @@ export default function PlannerScreen() {
           borderTopColor: colors.border,
           gap: Spacing.sm,
         },
+        // Prototype port (2026-04-20) — 36×36 muted square on the
+        // left of every meal row carrying a slot-appropriate icon.
+        mealIconBox: {
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.border + "66",
+          alignItems: "center",
+          justifyContent: "center",
+        },
         mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
         mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
         mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
+        // Prototype port (2026-04-20) — 30×30 square swap button. Sits
+        // immediately before the existing "Log today" button (both
+        // right-aligned). Tapping opens the same swap flow the row's
+        // long-press alert offers; visible entry point.
+        mealSwapBtn: {
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          backgroundColor: colors.border + "66",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 3,
+        },
         mealLogBtn: { paddingVertical: 12, paddingHorizontal: 10, minWidth: 64, alignItems: "flex-end" },
         mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
         mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
@@ -1121,9 +1172,6 @@ export default function PlannerScreen() {
           </Pressable>
         </ScrollView>
 
-        {/* Household shared meals */}
-        <HouseholdCard />
-
         {/* Prototype port (2026-04-20) — weekly summary card.
             Rendered only when we have both a plan and resolved targets.
             - "Hits your targets N of 7 days" counts days whose total
@@ -1177,6 +1225,12 @@ export default function PlannerScreen() {
             </View>
           </View>
         )}
+
+        {/* Household shared meals. Positioned BELOW the "This week"
+            summary card (2026-04-20 prototype port) so the weekly
+            at-a-glance copy is the first thing a user sees after the
+            pills row; the household surface is secondary. */}
+        <HouseholdCard />
 
         {/* Day summary strip — compact row that fits on screen */}
         {plan && plan.length > 1 && planTargets && (
@@ -1351,10 +1405,29 @@ export default function PlannerScreen() {
           const dayTotalKcal = dp.meals
             .filter((m) => !m.isPlaceholder && !!m.recipeTitle)
             .reduce((sum, m) => sum + (m.calories || 0), 0);
+          // Prototype port (2026-04-20) — day section header reads
+          // "Mon" / "Tue" / "Wed" (3-letter weekday) instead of
+          // "Day 1". When the day card maps to today, show an
+          // uppercase "TODAY" pill next to the weekday. Uses the
+          // shared `planDayLabel` helpers so web + mobile pick the
+          // same weekday off the same (idx, startOffset) inputs.
+          const dayCal = planCalendarDateForIndex(dayIdx, startOffset);
+          const weekdayLabel = shortWeekdayLabel(dayCal);
+          const isTodayRow = isSameCalendarDay(dayCal);
           return (
           <View key={dp.day} style={styles.card}>
             <View style={styles.dayHeader}>
-              <Text style={styles.dayTitle}>Day {dp.day}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.dayTitle}>{weekdayLabel}</Text>
+                {isTodayRow && (
+                  <Text
+                    accessibilityLabel="Today"
+                    style={styles.dayTodayPill}
+                  >
+                    TODAY
+                  </Text>
+                )}
+              </View>
               <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
             </View>
             {goalLine && goalLine.hasTargets && (
@@ -1616,6 +1689,20 @@ export default function PlannerScreen() {
                   );
                 }}
               >
+                {/* Prototype port (2026-04-20) — 36×36 slot icon-box on
+                    the left. Key resolves via shared `resolvePlanSlotIconKey`
+                    so legacy / voice-parsed slot text still lands on a
+                    sensible icon. Mobile maps the key to Ionicons;
+                    web maps to lucide-react (see `SLOT_ICON_MOBILE` +
+                    `SLOT_ICON_WEB` — the single source of truth is the
+                    shared key). */}
+                <View style={styles.mealIconBox}>
+                  <Ionicons
+                    name={SLOT_ICON_MOBILE[resolvePlanSlotIconKey(meal.name)]}
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.mealSlot}>{meal.name}</Text>
                   {(meal as LeftoverAwareMeal).leftoverOf ? (
@@ -1646,7 +1733,26 @@ export default function PlannerScreen() {
                       : `${Math.round(meal.calories)} kcal · P ${Math.round(meal.protein)}g · C ${Math.round(meal.carbs)}g · F ${Math.round(meal.fat)}g`}
                   </Text>
                 </View>
-                {/* Log to tracker */}
+                {/* Swap shortcut — prototype-port (2026-04-20). 30×30
+                    square button that opens the same swap alert the
+                    row's `onPress` already offers; surfaces the swap
+                    action visibly instead of hiding it behind a
+                    tap-anywhere menu. Placeholder / empty slots also
+                    trigger the swap picker (it's how you fill them). */}
+                <Pressable
+                  hitSlop={6}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    swapMeal(dayIdx, i, meal.name);
+                  }}
+                  style={styles.mealSwapBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Swap ${meal.name}`}
+                >
+                  <Ionicons name="refresh-outline" size={13} color={colors.textSecondary} />
+                </Pressable>
+                {/* Log to tracker — Suppr-specific action kept next to
+                    the swap button (the prototype omits Log). */}
                 <Pressable
                   hitSlop={8}
                   onPress={async (e) => {
@@ -1681,7 +1787,6 @@ export default function PlannerScreen() {
                 >
                   <Text style={styles.mealLogBtnText}>Log today</Text>
                 </Pressable>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </Pressable>
             ))}
           </View>

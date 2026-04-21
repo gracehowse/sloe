@@ -221,6 +221,7 @@ Pass 5 closed the highest-impact items from the Pass 4 backlog. Remaining items 
 
 - ✅ **fix** Search bar shape changed from `rounded-full` to `rounded-md` to match mobile's `borderRadius: 10`. Cosmetic but visible.
 - ✅ **fix** Import CTA: dropped the primary→success gradient in favour of the flat `Accent.primary + alpha` card mobile uses. Same visual family across platforms.
+- ✅ **fix** (2026-04-20) Three-section layout: "Matches your day" (2 hero cards, `slice(0, 2)`) → "More ideas" (compact list, `slice(2)`) → "From your sources" (Import + My Library CTAs at the BOTTOM). Replaces the single 2-column grid on both platforms. Empty state skips sections 1+2 but always keeps section 3. See [docs/decisions/2026-04-20-discover-three-section-layout.md](docs/decisions/2026-04-20-discover-three-section-layout.md). No fit-percent badge (F-11 overrides the prototype here).
 
 #### Library (Pass 5)
 

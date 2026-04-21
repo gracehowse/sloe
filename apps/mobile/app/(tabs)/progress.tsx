@@ -184,6 +184,19 @@ export default function ProgressScreen() {
   const [stepsSyncStatus, setStepsSyncStatus] = useState<"pending" | "success" | "failed">("pending");
   const [stepsSyncRetrying, setStepsSyncRetrying] = useState(false);
 
+  // 2026-04-20 Claude Design prototype port — range picker pills.
+  // Mirrors the `[7d, 30d, 90d, All]` chips in the prototype's
+  // `ProgressScreen`. Default `30d` matches the prototype's most
+  // common anchor state for a user who's been logging for a few weeks;
+  // sparse-logger users still see something useful (single-day bars
+  // are still plotted). Selected range drives both the overline text
+  // in the header (`LAST 30 DAYS`) and — in a follow-up pass — the
+  // downstream chart windows. Below-the-fold cards currently still
+  // use their own scoped windows (weekly recap = week, maintenance =
+  // configurable); the deeper card restructure is deferred.
+  const [rangeKey, setRangeKey] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const rangeLabel = rangeKey === "7d" ? "LAST 7 DAYS" : rangeKey === "30d" ? "LAST 30 DAYS" : rangeKey === "90d" ? "LAST 90 DAYS" : "ALL TIME";
+
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
 
   const latestWeightKg = useMemo(
@@ -194,6 +207,20 @@ export default function ProgressScreen() {
   const loadData = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
+
+    // Skeleton-gate fix (2026-04-20, Claude Design prototype port):
+    // the prior shape of this function had no try/catch. If any of the
+    // `await`s threw — a supabase network blip, an auth-expiry-mid-call,
+    // a `maybeSingle` RLS refusal — we would exit the function before
+    // reaching `setLoading(false)`, leaving the screen stuck on the
+    // 2x2 skeleton tiles + inline spinner indefinitely. Grace's
+    // testflight screenshot (2026-04-20) showed exactly that symptom.
+    // The fix wraps the whole fetch+hydrate path in try/finally so the
+    // loading flag ALWAYS flips once, even on the sad path. Error
+    // branches intentionally leave the existing state defaults in
+    // place so the post-load render falls through to either the
+    // hasData tree or the "Your progress will appear here" empty state.
+    try {
 
     // Performance fix (P2-1, 2026-04-18): the previous version awaited
     // `syncHealthDataThrottled` for the entire render so the loading
@@ -394,6 +421,15 @@ export default function ProgressScreen() {
         .catch(() => {
           /* fallback already in place (map stays empty → current targets). */
         });
+    }
+    } catch (err) {
+      // Skeleton-gate fix (2026-04-20): surface failures so we still
+      // flip `loading` → false and the user gets the empty state +
+      // a pull-to-refresh path rather than an indefinite skeleton.
+      // eslint-disable-next-line no-console
+      console.warn("Progress loadData failed", err);
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
 
@@ -654,9 +690,61 @@ export default function ProgressScreen() {
         testID="progress-skeleton"
       >
         {/* Header chrome — same position as post-load render so the
-            layout doesn't jump when data arrives. */}
-        <Text style={{ fontSize: 22, fontWeight: "700", color: t.text, letterSpacing: -0.4 }}>Progress</Text>
-        <Text style={{ fontSize: 12, color: t.dim, marginTop: 1, marginBottom: 14 }}>Weekly report</Text>
+            layout doesn't jump when data arrives. 2026-04-20 prototype
+            port: uppercase overline + large "Progress" title + round
+            calendar-icon button top-right. Pill calendar button is a
+            no-op during load — it becomes interactive once data lands. */}
+        <View
+          testID="progress-header"
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
+        >
+          <View>
+            <Text testID="progress-overline" style={{ fontSize: 11, color: t.dim, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.8 }}>{rangeLabel}</Text>
+            <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, letterSpacing: -0.6, marginTop: 2 }}>Progress</Text>
+          </View>
+          <View
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Open calendar"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: t.elevated,
+              borderWidth: 1,
+              borderColor: t.border,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: 0.6,
+            }}
+          >
+            <Ionicons name="calendar-outline" size={16} color={t.sub} />
+          </View>
+        </View>
+        {/* Range-picker pills — disabled-look during load so the
+            skeleton doesn't look interactive. */}
+        <View
+          testID="progress-range-picker-skeleton"
+          style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}
+        >
+          {(["7d", "30d", "90d", "all"] as const).map((k) => (
+            <View
+              key={k}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: t.border,
+                backgroundColor: k === rangeKey ? t.elevated : "transparent",
+                opacity: 0.6,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: t.sub }}>{k === "all" ? "All" : k}</Text>
+            </View>
+          ))}
+        </View>
 
         {/* 2x2 tile skeletons — match real tile footprint (47% width,
             padding 14, radius). No numbers are shown; placeholders are
@@ -694,9 +782,78 @@ export default function ProgressScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }} keyboardShouldPersistTaps="handled">
-      {/* Header */}
-      <Text style={{ fontSize: 22, fontWeight: "700", color: t.text, letterSpacing: -0.4 }}>Progress</Text>
-      <Text style={{ fontSize: 12, color: t.dim, marginTop: 1, marginBottom: 14 }}>Weekly report</Text>
+      {/* Header — 2026-04-20 Claude Design prototype port.
+          Uppercase overline reflects the currently-selected range,
+          large "Progress" title (28pt / -0.6 tracking), round
+          calendar-icon button top-right. The pill button currently
+          routes to the weight-tracker screen (nearest existing surface
+          that owns a date picker) as a temporary destination; a
+          dedicated date-range picker modal is a follow-up. */}
+      <View
+        testID="progress-header"
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
+      >
+        <View>
+          <Text testID="progress-overline" style={{ fontSize: 11, color: t.dim, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.8 }}>{rangeLabel}</Text>
+          <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, letterSpacing: -0.6, marginTop: 2 }}>Progress</Text>
+        </View>
+        <Pressable
+          testID="progress-calendar-button"
+          accessibilityRole="button"
+          accessibilityLabel="Open calendar"
+          onPress={() => router.push("/weight-tracker" as const)}
+          style={({ pressed }) => [{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: t.elevated,
+            borderWidth: 1,
+            borderColor: t.border,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.7 : 1,
+          }]}
+        >
+          <Ionicons name="calendar-outline" size={16} color={t.text} />
+        </Pressable>
+      </View>
+
+      {/* Range-picker pills — [7d, 30d, 90d, All] chips. Selection
+          drives the overline text in the header. Downstream card
+          windows are on a follow-up pass; the deeper card restructure
+          was deferred for this scope. */}
+      <View
+        testID="progress-range-picker"
+        accessibilityRole="tablist"
+        style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}
+      >
+        {(["7d", "30d", "90d", "all"] as const).map((k) => {
+          const active = rangeKey === k;
+          const label = k === "all" ? "All" : k;
+          return (
+            <Pressable
+              key={k}
+              testID={`progress-range-pill-${k}`}
+              accessibilityRole="tab"
+              accessibilityLabel={`Range ${label}`}
+              accessibilityState={{ selected: active }}
+              onPress={() => setRangeKey(k)}
+              style={({ pressed }) => [{
+                flex: 1,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: active ? t.accent : t.border,
+                backgroundColor: active ? t.accent : "transparent",
+                opacity: pressed ? 0.8 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : t.sub }}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {!hasData ? (
         <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>

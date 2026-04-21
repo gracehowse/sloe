@@ -66,7 +66,11 @@ describe('Progress metric detail', () => {
       // Stats exist — skip empty check
     } catch {
       try {
-        await expect(element(by.text('Weekly report'))).toBeVisible();
+        // 2026-04-20 prototype port: "Weekly report" subtitle was
+        // replaced by the range-picker overline ("LAST 30 DAYS" by
+        // default). Keep the Progress-title fallback in case the
+        // overline text changed for a different selected range.
+        await expect(element(by.text('LAST 30 DAYS'))).toBeVisible();
       } catch {
         await expect(element(by.text('Progress'))).toBeVisible();
       }

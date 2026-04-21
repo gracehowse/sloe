@@ -5,13 +5,11 @@ import {
   Alert,
   View,
   Text,
-  FlatList,
   Pressable,
   TextInput,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -55,8 +53,6 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
-  const screenWidth = Dimensions.get("window").width;
-  const cardWidth = (screenWidth - 40 - 8) / 2; // 20px padding each side, 8px gap from columnWrapperStyle
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
   const [search, setSearch] = useState("");
@@ -151,63 +147,56 @@ export default function DiscoverScreen() {
   // fit score and read as decorative noise.
   const heroColor = t.accent;
 
-  const renderRecipe = useCallback(
-    ({ item }: { item: RecipeCard }) => {
+  // ── Hero card — "Matches your day" section. Full-width, 16:10 image
+  // on top (rounded only at card corners via parent overflow:hidden),
+  // title / source / kcal·protein·time metadata row underneath. */
+  const renderHeroCard = useCallback(
+    (item: RecipeCard) => {
       const kcal = Math.round(item.calories);
       const protein = Math.round(item.protein);
       return (
         <Pressable
+          key={item.id}
           onPress={() => router.push(`/recipe/${item.id}`)}
           style={{
-            width: cardWidth,
             borderRadius: 14,
             backgroundColor: colors.card,
             borderWidth: 1,
             borderColor: colors.cardBorder,
             overflow: "hidden",
-            marginBottom: 10,
           }}
         >
-          {/* Image area — 16:10 per prototype hero cards */}
           <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", backgroundColor: heroColor + "10" }}>
-            <Ionicons name="restaurant-outline" size={28} color={heroColor} />
+            <Ionicons name="restaurant-outline" size={32} color={heroColor} />
             <SourceBadge source={item.source} />
           </View>
-
-          {/* Card body — prototype layout: title row (title + fit chip),
-              source line, metadata row (kcal / protein / time with
-              small lucide-style icons). */}
-          <View style={{ padding: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
-              <Text
-                style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text, lineHeight: 17, letterSpacing: -0.1 }}
-                numberOfLines={2}
-              >
-                {decodeEntities(item.title)}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 3 }} numberOfLines={1}>
+          <View style={{ padding: 14 }}>
+            <Text
+              style={{ fontSize: 15, fontWeight: "700", color: colors.text, lineHeight: 19, letterSpacing: -0.1 }}
+              numberOfLines={2}
+            >
+              {decodeEntities(item.title)}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
               {item.creatorName || item.source || ""}
             </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Ionicons name="flame-outline" size={11} color={MacroColors.calories} />
-                <Text style={{ fontSize: 10, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                   {kcal} kcal
                 </Text>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Ionicons name="barbell-outline" size={11} color={MacroColors.protein} />
-                <Text style={{ fontSize: 10, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                   {protein} g
                 </Text>
               </View>
               {item.cookTime ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Ionicons name="time-outline" size={11} color={colors.textTertiary} />
-                  <Text style={{ fontSize: 10, color: colors.textSecondary }}>
-                    {item.cookTime}
-                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.cookTime}</Text>
                 </View>
               ) : null}
             </View>
@@ -215,17 +204,56 @@ export default function DiscoverScreen() {
         </Pressable>
       );
     },
-    [cardWidth, router, colors],
+    [router, colors, heroColor, t.accent],
+  );
+
+  // ── Compact list row — "More ideas" section. 40×40 icon-box on the
+  // left, title + source·time in the middle, trailing kcal / P / C.
+  // Each row after the first gets a top-border so the parent card
+  // renders a divider sequence. */
+  const renderMoreIdeaRow = useCallback(
+    (item: RecipeCard, idx: number) => {
+      const kcal = Math.round(item.calories);
+      const protein = Math.round(item.protein);
+      const carbs = Math.round(item.carbs);
+      return (
+        <Pressable
+          key={item.id}
+          onPress={() => router.push(`/recipe/${item.id}`)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 12,
+            borderTopWidth: idx > 0 ? 1 : 0,
+            borderTopColor: colors.cardBorder,
+          }}
+        >
+          <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="restaurant-outline" size={18} color={colors.textSecondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
+              {decodeEntities(item.title)}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
+              {item.creatorName || item.source || ""}
+              {item.cookTime ? ` · ${item.cookTime}` : ""}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+            <Text style={{ fontWeight: "600", color: colors.text }}>{kcal}</Text>
+            {` · ${protein}P · ${carbs}C`}
+          </Text>
+        </Pressable>
+      );
+    },
+    [router, colors],
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        renderItem={renderRecipe}
-        columnWrapperStyle={{ gap: 8 }}
+      <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
         refreshControl={
           <RefreshControl
@@ -234,207 +262,249 @@ export default function DiscoverScreen() {
             tintColor={Accent.primary}
           />
         }
-        ListHeaderComponent={
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header — prototype treatment: BROWSE overline + large
+            Discover title + round search-icon button top-right. */}
+        <View style={{ paddingTop: 18, paddingBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           <View>
-            {/* Header — prototype treatment: BROWSE overline + large
-                Discover title + round search-icon button top-right. */}
-            <View style={{ paddingTop: 18, paddingBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <View>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
-                  Browse
-                </Text>
-                <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
-                  Discover
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => searchInputRef.current?.focus()}
-                accessibilityRole="button"
-                accessibilityLabel="Focus search"
-                hitSlop={10}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 999,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="search-outline" size={18} color={colors.text} />
-              </Pressable>
-            </View>
-
-            {/* Search bar — prototype treatment: bigger, 48kcat placeholder. */}
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              paddingHorizontal: 14,
-              paddingVertical: 14,
-              borderRadius: 12,
+            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
+              Browse
+            </Text>
+            <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
+              Discover
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => searchInputRef.current?.focus()}
+            accessibilityRole="button"
+            accessibilityLabel="Focus search"
+            hitSlop={10}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 999,
               backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.cardBorder,
-              marginBottom: 14,
-            }}>
-              <Ionicons name="search-outline" size={16} color={colors.textTertiary} />
-              <TextInput
-                ref={searchInputRef}
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search 48,000+ recipes & foods"
-                placeholderTextColor={colors.textTertiary}
-                style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
-              />
-            </View>
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="search-outline" size={18} color={colors.text} />
+          </Pressable>
+        </View>
 
-            {/* Filter pills */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
-              {FILTERS.map((f) => (
+        {/* Search bar — prototype treatment: bigger, 48kcat placeholder. */}
+        <View style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          paddingHorizontal: 14,
+          paddingVertical: 14,
+          borderRadius: 12,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          marginBottom: 14,
+        }}>
+          <Ionicons name="search-outline" size={16} color={colors.textTertiary} />
+          <TextInput
+            ref={searchInputRef}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search 48,000+ recipes & foods"
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
+          />
+        </View>
+
+        {/* Filter pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+          {FILTERS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setFilter(f)}
+              style={{
+                paddingHorizontal: 13,
+                paddingVertical: 6,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: filter === f ? t.accent : colors.cardBorder,
+                backgroundColor: filter === f ? t.accent + "10" : "transparent",
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}>{f}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {/* Eating out — Edamam restaurant + branded meals. Only renders
+            when the user has typed at least 3 characters; collapsed
+            when no hits so we don't waste vertical space. TestFlight
+            `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
+        {(eatingOutLoading || eatingOut.length > 0) && (
+          <View style={{ marginBottom: 14 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.4, textTransform: "uppercase" }}>
+                Eating out
+              </Text>
+              {eatingOutLoading ? (
+                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Searching…</Text>
+              ) : (
+                <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                  {eatingOut.length} restaurant {eatingOut.length === 1 ? "match" : "matches"}
+                </Text>
+              )}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {eatingOut.map((m) => (
                 <Pressable
-                  key={f}
-                  onPress={() => setFilter(f)}
+                  key={m.foodId}
+                  onPress={() => router.push({ pathname: "/(tabs)" as any, params: { search: m.label } })}
                   style={{
-                    paddingHorizontal: 13,
-                    paddingVertical: 6,
-                    borderRadius: 20,
+                    width: 160,
+                    padding: 10,
+                    borderRadius: Radius.md,
+                    backgroundColor: colors.card,
                     borderWidth: 1,
-                    borderColor: filter === f ? t.accent : colors.cardBorder,
-                    backgroundColor: filter === f ? t.accent + "10" : "transparent",
+                    borderColor: colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}>{f}</Text>
+                  {m.brand ? (
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent, marginBottom: 2 }} numberOfLines={1}>
+                      {m.brand.toUpperCase()}
+                    </Text>
+                  ) : null}
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginBottom: 6 }} numberOfLines={2}>
+                    {m.label}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                    {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
+                  </Text>
+                  <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
                 </Pressable>
               ))}
             </ScrollView>
-
-            {/* Eating out — Edamam restaurant + branded meals. Only renders
-                when the user has typed at least 3 characters; collapsed
-                when no hits so we don't waste vertical space. TestFlight
-                `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). */}
-            {(eatingOutLoading || eatingOut.length > 0) && (
-              <View style={{ marginBottom: 14 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.4, textTransform: "uppercase" }}>
-                    Eating out
-                  </Text>
-                  {eatingOutLoading ? (
-                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>Searching…</Text>
-                  ) : (
-                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>
-                      {eatingOut.length} restaurant {eatingOut.length === 1 ? "match" : "matches"}
-                    </Text>
-                  )}
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 8 }}
-                >
-                  {eatingOut.map((m) => (
-                    <Pressable
-                      key={m.foodId}
-                      onPress={() => router.push({ pathname: "/(tabs)" as any, params: { search: m.label } })}
-                      style={{
-                        width: 160,
-                        padding: 10,
-                        borderRadius: Radius.md,
-                        backgroundColor: colors.card,
-                        borderWidth: 1,
-                        borderColor: colors.cardBorder,
-                      }}
-                    >
-                      {m.brand ? (
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent, marginBottom: 2 }} numberOfLines={1}>
-                          {m.brand.toUpperCase()}
-                        </Text>
-                      ) : null}
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginBottom: 6 }} numberOfLines={2}>
-                        {m.label}
-                      </Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                        {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
-                      </Text>
-                      <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Import CTA */}
-            <Pressable
-              onPress={() => router.push("/import-shared" as Href)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                padding: 14,
-                borderRadius: Radius.lg,
-                backgroundColor: t.accent + "08",
-                borderWidth: 1,
-                borderColor: t.accent + "22",
-                marginBottom: 14,
-              }}
-            >
-              <IconBox color={t.accent} size={36}>
-                <Ionicons name="download-outline" size={18} color={t.accent} />
-              </IconBox>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-            </Pressable>
-
-            {/* My Library CTA */}
-            <Pressable
-              onPress={() => router.push("/(tabs)/library" as Href)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                padding: 14,
-                borderRadius: Radius.lg,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.cardBorder,
-                marginBottom: 14,
-              }}
-            >
-              <IconBox color={Accent.success} size={36}>
-                <Ionicons name="bookmark" size={18} color={Accent.success} />
-              </IconBox>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-            </Pressable>
           </View>
-        }
-        ListEmptyComponent={
-          loading ? (
-            <View style={{ paddingTop: 60, alignItems: "center", gap: 8 }}>
-              <ActivityIndicator size="large" color={Accent.primary} />
-              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Loading recipes...</Text>
+        )}
+
+        {/* ── Prototype port (2026-04-20, screens-mobile.jsx
+            `DiscoverScreen` lines 345–438): three stacked sections.
+
+              1. "Matches your day" — 2 hero cards from `filtered.slice(0, 2)`.
+              2. "More ideas" — single card containing compact meal-row list
+                 for `filtered.slice(2)`.
+              3. "From your sources" — Import + My Library CTAs at the
+                 BOTTOM (prototype treats them as utility, not discovery).
+
+            When `filtered` is empty we skip sections 1 + 2 and render
+            the existing "No recipes yet" empty state. Section 3 still
+            renders — that's how users bring content in.
+
+            F-11 (`AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) still stands —
+            no fit-percent badge (`tests/unit/recipeCardNoScore.test.ts`
+            pins its absence). Web parity:
+            `src/app/components/DiscoverFeed.tsx`. */}
+
+        {loading && filtered.length === 0 ? (
+          <View style={{ paddingTop: 60, alignItems: "center", gap: 8 }}>
+            <ActivityIndicator size="large" color={Accent.primary} />
+            <Text style={{ fontSize: 14, color: colors.textSecondary }}>Loading recipes...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={{ paddingTop: 60, paddingBottom: 20, alignItems: "center", gap: 8 }}>
+            <Ionicons name={search.trim() ? "search-outline" : "restaurant-outline"} size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
+              {search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
+              {search.trim() ? "Try a different search term." : "Pull down to refresh, or check your connection."}
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Section 1 — Matches your day */}
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
+              Matches your day
+            </Text>
+            <View style={{ gap: 12 }}>
+              {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
             </View>
-          ) : (
-            <View style={{ paddingTop: 80, alignItems: "center", gap: 8 }}>
-              <Ionicons name={search.trim() ? "search-outline" : "restaurant-outline"} size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
-                {search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}
-              </Text>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
-                {search.trim() ? "Try a different search term." : "Pull down to refresh, or check your connection."}
-              </Text>
-            </View>
-          )
-        }
-      />
+
+            {/* Section 2 — More ideas (only when a 3rd+ exists) */}
+            {filtered.length > 2 ? (
+              <>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+                  More ideas
+                </Text>
+                <View style={{ borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+                  {filtered.slice(2).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                </View>
+              </>
+            ) : null}
+          </>
+        )}
+
+        {/* Section 3 — From your sources. Always rendered so users
+            can still bring content in when the feed is empty. */}
+        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+          From your sources
+        </Text>
+
+        {/* Import CTA */}
+        <Pressable
+          onPress={() => router.push("/import-shared" as Href)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 14,
+            borderRadius: Radius.lg,
+            backgroundColor: t.accent + "08",
+            borderWidth: 1,
+            borderColor: t.accent + "22",
+            marginBottom: 10,
+          }}
+        >
+          <IconBox color={t.accent} size={36}>
+            <Ionicons name="download-outline" size={18} color={t.accent} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        </Pressable>
+
+        {/* My Library CTA */}
+        <Pressable
+          onPress={() => router.push("/(tabs)/library" as Href)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 14,
+            borderRadius: Radius.lg,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+          }}
+        >
+          <IconBox color={Accent.success} size={36}>
+            <Ionicons name="bookmark" size={18} color={Accent.success} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }

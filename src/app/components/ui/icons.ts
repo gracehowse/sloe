@@ -215,6 +215,9 @@ export const Icons = {
   streak: Streak,
   streakFreeze: Snowflake,
   calendarCheck: CalendarCheck,
+  // 2026-04-20 — Progress-tab prototype port. Plain calendar glyph
+  // (matches the `calendar-outline` Ionicon used on mobile).
+  calendar: CalendarDays,
   pieChart: PieChart,
   lineChart: LineChart,
   activity: Activity,
