@@ -281,21 +281,37 @@ export async function POST(req: Request) {
               fiberG: nutrition?.perServing.fiberG ?? websiteRecipe.siteNutrition?.fiberG ?? 0,
               sugarG: nutrition?.perServing.sugarG ?? 0,
               sodiumMg: nutrition?.perServing.sodiumMg ?? 0,
-              ingredientMacros: nutrition?.verified.map((v) => ({
-                name: v.input.name,
-                amount: v.resolved.amount,
-                unit: v.resolved.unit,
-                calories: v.macros?.calories ?? 0,
-                protein: v.macros?.protein ?? 0,
-                carbs: v.macros?.carbs ?? 0,
-                fat: v.macros?.fat ?? 0,
-                fiberG: v.macros?.fiberG ?? 0,
-                sugarG: v.macros?.sugarG ?? 0,
-                sodiumMg: v.macros?.sodiumMg ?? 0,
-                source: v.source,
-                confidence: v.confidence,
-                matchedName: v.matchedName ?? null,
-              })) ?? [],
+              ingredientMacros: nutrition
+                ? nutrition.verified.map((v) => ({
+                    name: v.input.name,
+                    amount: v.resolved.amount,
+                    unit: v.resolved.unit,
+                    calories: v.macros?.calories ?? 0,
+                    protein: v.macros?.protein ?? 0,
+                    carbs: v.macros?.carbs ?? 0,
+                    fat: v.macros?.fat ?? 0,
+                    fiberG: v.macros?.fiberG ?? 0,
+                    sugarG: v.macros?.sugarG ?? 0,
+                    sodiumMg: v.macros?.sodiumMg ?? 0,
+                    source: v.source,
+                    confidence: v.confidence,
+                    matchedName: v.matchedName ?? null,
+                  }))
+                : parsedIngs.map((p) => ({
+                    name: p.name,
+                    amount: p.amount,
+                    unit: p.unit,
+                    calories: 0,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0,
+                    fiberG: 0,
+                    sugarG: 0,
+                    sodiumMg: 0,
+                    source: "Unverified" as const,
+                    confidence: null,
+                    matchedName: null,
+                  })),
               primarySource: nutrition?.primarySource ?? "Unverified",
               importedFromWebsite: true,
             },
@@ -355,21 +371,37 @@ export async function POST(req: Request) {
           fiberG: nutrition?.perServing.fiberG ?? 0,
           sugarG: nutrition?.perServing.sugarG ?? 0,
           sodiumMg: nutrition?.perServing.sodiumMg ?? 0,
-          ingredientMacros: nutrition?.verified.map((v) => ({
-            name: v.input.name,
-            amount: v.resolved.amount,
-            unit: v.resolved.unit,
-            calories: v.macros?.calories ?? 0,
-            protein: v.macros?.protein ?? 0,
-            carbs: v.macros?.carbs ?? 0,
-            fat: v.macros?.fat ?? 0,
-            fiberG: v.macros?.fiberG ?? 0,
-            sugarG: v.macros?.sugarG ?? 0,
-            sodiumMg: v.macros?.sodiumMg ?? 0,
-            source: v.source,
-            confidence: v.confidence,
-            matchedName: v.matchedName ?? null,
-          })) ?? [],
+          ingredientMacros: nutrition
+            ? nutrition.verified.map((v) => ({
+                name: v.input.name,
+                amount: v.resolved.amount,
+                unit: v.resolved.unit,
+                calories: v.macros?.calories ?? 0,
+                protein: v.macros?.protein ?? 0,
+                carbs: v.macros?.carbs ?? 0,
+                fat: v.macros?.fat ?? 0,
+                fiberG: v.macros?.fiberG ?? 0,
+                sugarG: v.macros?.sugarG ?? 0,
+                sodiumMg: v.macros?.sodiumMg ?? 0,
+                source: v.source,
+                confidence: v.confidence,
+                matchedName: v.matchedName ?? null,
+              }))
+            : parsed.map((p) => ({
+                name: p.name,
+                amount: p.amount,
+                unit: p.unit,
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                fiberG: 0,
+                sugarG: 0,
+                sodiumMg: 0,
+                source: "Unverified" as const,
+                confidence: null,
+                matchedName: null,
+              })),
           primarySource: nutrition?.primarySource ?? "Unverified",
         },
       });
@@ -449,8 +481,26 @@ export async function POST(req: Request) {
       }
 
       if (ingList.length > 0) {
+        const parsedIngs = parseRawIngredients(ingList);
+        // Always store parsed quantities so ingredient rows have amount/unit even
+        // when FatSecret verification fails (F-66, 2026-04-22: all-zero ingredients
+        // when verifyIngredients throws on difficult ingredient lists).
+        (parsed as any).ingredientMacros = parsedIngs.map((p) => ({
+          name: p.name,
+          amount: p.amount,
+          unit: p.unit,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiberG: 0,
+          sugarG: 0,
+          sodiumMg: 0,
+          source: "Unverified",
+          confidence: null,
+          matchedName: null,
+        }));
         try {
-          const parsedIngs = parseRawIngredients(ingList);
           const nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
           // Only overwrite recipe-level macros if the site didn't provide them
           // (site nutrition is typically from a dietitian and more trustworthy)

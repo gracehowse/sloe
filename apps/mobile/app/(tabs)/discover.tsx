@@ -207,6 +207,8 @@ export default function DiscoverScreen() {
     (item: RecipeCard) => {
       const kcal = Math.round(item.calories);
       const protein = Math.round(item.protein);
+      const carbs = Math.round(item.carbs);
+      const fat = Math.round(item.fat);
       // F-45: fitPct no longer rendered, but keep the computation
       // shape intact for future ranking.
       void computeRecipeFitPercent;
@@ -271,7 +273,7 @@ export default function DiscoverScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Beef size={11} color={MacroColors.protein} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein} g
+                  {protein}g P · {carbs}g C · {fat}g F
                 </Text>
               </View>
               {item.cookTime ? (

@@ -19,11 +19,11 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
-## Snapshot (2026-04-22, builds 25–28 live; 2026-04-22T15:35Z ASC pull)
+## Snapshot (2026-04-22, build 29 live; 2026-04-22T21:00Z ASC pull)
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 123   | 55 | 60 | 0  | 4  | 2  | 2  |
+| 132   | 55 | 66 | 0  | 5  | 4  | 2  |
 
 **Action-round plan:** per-cluster next steps in [../planning/testflight-2026-04-22-action-plan.md](../planning/testflight-2026-04-22-action-plan.md).
 
@@ -43,6 +43,24 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - **C6-chart** Weight chart redesign — brief delivered, saved at [../planning/2026-04-22-weight-chart-redesign-brief.md](../planning/2026-04-22-weight-chart-redesign-brief.md). Executor can pick up with the specified file list (WeightChart/WeightRangeToggle/WeightSparseState + shared weightTrend.ts).
 - **C9c** Health Sync redesign — brief delivered, saved at [../planning/2026-04-22-health-sync-redesign-brief.md](../planning/2026-04-22-health-sync-redesign-brief.md). Three new components + one decision doc + web parity pass.
 - **F-64** Recipe image upscale — parser prefers og:image; 12 of 20 prod rows backfilled; 4 new regression tests pinned.
+
+**2026-04-22 build-29 action shipped (5 F-tracks):**
+- **F-65** Health connected state now persisted in AsyncStorage — tapper no longer needs to re-grant on every app launch. Closes `AI3j3W0pb4KXOeHpfSb_4bg`.
+- **F-66** Import API: always return parsed ingredient amounts/units even when `verifyIngredients` throws — fixes all-zero kcal on difficult recipes. Closes `AFFLASGiZtipiNIVNStLAxM`.
+- **F-67** Recipe Verify screen: tap any ingredient → expanded row now shows a Remove button (confirm dialog → deletes from DB + removes from local state). Closes `AMp-9LdEySJR-4b3FoO5zI0`.
+- **F-68** Recipe detail: cook/prep times ≥60 min now format as `Xh` or `Xh Ym` (mobile + web). Closes `AEnCdLrqNCk8S5IbqYD-ma8`.
+- **F-69** Discover hero cards now show `{P}g P · {C}g C · {F}g F` instead of protein-only. Web parity applied in same commit. Closes `AE2MdvYfJVQL298eoF_fps4`.
+
+**Build-29 new submissions (9) — triage:**
+- `AI3j3W0pb4KXOeHpfSb_4bg` — 🟡 C1 repeat (HealthKit); F-65 shipped (persist connected state).
+- `AFFLASGiZtipiNIVNStLAxM` — 🟡 0 kcal ingredients; F-66 shipped.
+- `AMp-9LdEySJR-4b3FoO5zI0` — 🟡 Can't delete ingredients; F-67 shipped.
+- `AEnCdLrqNCk8S5IbqYD-ma8` — 🟡 360m not formatted; F-68 shipped.
+- `AE2MdvYfJVQL298eoF_fps4` — 🟡 Discover cards protein-only; F-69 shipped.
+- `AD3qa1g9ZI7Co3tvazH-yUQ` — 🟠 C11 repeat (Edamam env vars ops).
+- `AHjCqNMXhdrnnUIikNRWdW0` — ⏳ Plan generates meals wildly over target (plan quality, not display bug).
+- `AEVC-WdrU9sw9ql6rDR62e8` — ⏳ F-70 weight chart crosshair/zoom (covered by weight chart redesign brief).
+- `AK91aaRcQ6ILWgQIvCatZXI` — 🟡 C5 repeat (household invite in wrong place; Netflix-model brief covers it).
 
 All tracker rows now have IDs mapped to an F-number, a routing verdict, or a design brief with a concrete executor path.
 

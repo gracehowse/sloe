@@ -666,6 +666,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               {recipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
+                const carbs = Math.round(recipe.carbs);
+                const fat = Math.round(recipe.fat);
                 // 2026-04-20 prototype port — primary-tinted fit-percent
                 // pill top-right of the card body. `nutritionTargets`
                 // feeds the shared helper; when targets aren't loaded
@@ -718,7 +720,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
                           <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
-                          {protein} g
+                          {protein}g P · {carbs}g C · {fat}g F
                         </span>
                         {recipe.cookTime ? (
                           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">

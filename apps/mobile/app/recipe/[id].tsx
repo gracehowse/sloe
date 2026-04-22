@@ -39,6 +39,13 @@ import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
 
+function formatMinutes(min: number): string {
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
 /** Matches Today dashboard widgets except water (not derived from recipe nutrition). */
 const RECIPE_TRACKABLE_MACRO_KEYS = new Set<string>(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
@@ -955,14 +962,14 @@ export default function RecipeDetailScreen() {
             <View style={styles.infoItem}>
               <Ionicons name="time-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
               <Text style={styles.infoValue}>
-                {recipe.prep_time_min != null && recipe.prep_time_min > 0 ? `${recipe.prep_time_min}m` : "—"}
+                {recipe.prep_time_min != null && recipe.prep_time_min > 0 ? formatMinutes(recipe.prep_time_min) : "—"}
               </Text>
               <Text style={styles.infoLabel}>Prep</Text>
             </View>
             <View style={styles.infoItem}>
               <Ionicons name="timer-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
               <Text style={styles.infoValue}>
-                {recipe.cook_time_min != null && recipe.cook_time_min > 0 ? `${recipe.cook_time_min}m` : "—"}
+                {recipe.cook_time_min != null && recipe.cook_time_min > 0 ? formatMinutes(recipe.cook_time_min) : "—"}
               </Text>
               <Text style={styles.infoLabel}>Cook</Text>
             </View>

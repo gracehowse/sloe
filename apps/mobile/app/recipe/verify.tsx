@@ -323,6 +323,38 @@ export default function VerifyScreen() {
     [ingredients, recipeId],
   );
 
+  const onDeleteIngredient = useCallback(
+    (index: number) => {
+      const ing = ingredients[index];
+      if (!ing) return;
+      Alert.alert(
+        "Remove ingredient",
+        `Remove "${decodeEntities(ing.name)}" from this recipe?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              const { error } = await supabase
+                .from("recipe_ingredients")
+                .delete()
+                .eq("id", ing.id);
+              if (error) {
+                Alert.alert("Couldn't remove ingredient", error.message);
+                return;
+              }
+              setIngredients((prev) => prev.filter((_, i) => i !== index));
+              setExpandedIndex(null);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            },
+          },
+        ],
+      );
+    },
+    [ingredients],
+  );
+
   const onOverrideReset = useCallback(
     async (index: number) => {
       const ing = ingredients[index];
@@ -708,6 +740,15 @@ export default function VerifyScreen() {
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit override" : "Override nutrition"}
                       </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionBtn, { borderColor: "#ff444440" }]}
+                      onPress={() => onDeleteIngredient(i)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${displayName} from recipe`}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#ff4444" />
+                      <Text style={[styles.actionBtnText, { color: "#ff4444" }]}>Remove</Text>
                     </Pressable>
                   </View>
                 </View>
