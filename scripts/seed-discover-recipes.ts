@@ -149,7 +149,11 @@ async function main() {
     // "IF new.author_id IS NOT NULL" so null skips the broken branch. The delete
     // script matches these rows by source_url (seed-recipe-urls.txt), not author_id.
     const recipeRow = {
-      author_id: null as string | null,
+      // F-50 (2026-04-22): must populate author_id — Discover query
+      // (`apps/mobile/lib/recipes.ts`, `src/context/AppDataContext.tsx`)
+      // filters `.not("author_id", "is", null)` to exclude tombstoned
+      // rows, so NULL here hides seeded recipes from Discover entirely.
+      author_id: SEED_AUTHOR_ID as string | null,
       title: parsed.title,
       description,
       instructions: parsed.instructions.join("\n\n"),
