@@ -30,8 +30,16 @@ const REQUIRED_COLUMN_LABELS = [
   "Fat left",
 ];
 
-// One explanatory line that sits under MEMBERS on both surfaces.
-const CAPTION_COPY = "Remaining today — your totals left to hit your targets.";
+// One explanatory line that sits under MEMBERS on each surface.
+// F-48 (2026-04-22) diverged the copy per-platform on purpose: the
+// mobile card only renders the self row's numbers (other members
+// show identity only), so the caption states the privacy boundary
+// explicitly. Web still shows a grid of everyone's remaining totals
+// and keeps the original "your totals left to hit your targets"
+// framing.
+const WEB_CAPTION_COPY = "Remaining today — your totals left to hit your targets.";
+const MOBILE_CAPTION_COPY =
+  "Your remaining calories and macros for today. Members' targets are private.";
 
 describe("household member-number labels (G-5)", () => {
   for (const label of REQUIRED_COLUMN_LABELS) {
@@ -44,11 +52,11 @@ describe("household member-number labels (G-5)", () => {
   }
 
   it("web renders the explanatory caption under MEMBERS", () => {
-    expect(WEB_SRC).toContain(CAPTION_COPY);
+    expect(WEB_SRC).toContain(WEB_CAPTION_COPY);
   });
 
   it("mobile renders the explanatory caption under MEMBERS", () => {
-    expect(MOBILE_SRC).toContain(CAPTION_COPY);
+    expect(MOBILE_SRC).toContain(MOBILE_CAPTION_COPY);
   });
 
   it("old single-letter header labels are gone on web", () => {
