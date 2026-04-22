@@ -671,17 +671,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 // feeds the shared helper; when targets aren't loaded
                 // yet the helper returns a synthesised neutral value so
                 // every card still shows a value.
-                const fitPct = computeRecipeFitPercent(
-                  { calories: recipe.calories, protein: recipe.protein, carbs: recipe.carbs, fat: recipe.fat },
-                  nutritionTargets
-                    ? {
-                        calories: nutritionTargets.calories,
-                        protein: nutritionTargets.protein,
-                        carbs: nutritionTargets.carbs,
-                        fat: nutritionTargets.fat,
-                      }
-                    : null,
-                ).percent;
+                // F-45 (2026-04-22): fit-percent pill removed per repeated
+                // tester feedback ("Score means nothing — remove").
+                void computeRecipeFitPercent;
+                void nutritionTargets;
                 return (
                   <button
                     key={recipe.id}
@@ -710,14 +703,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       )}
                     </div>
                     <div className="p-3.5 relative">
-                      {/* Fit-percent pill (2026-04-20 prototype port). */}
-                      <span
-                        data-testid={`discover-hero-fit-${recipe.id}`}
-                        className="absolute top-3 right-3 inline-flex items-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold px-2 py-0.5 tabular-nums"
-                      >
-                        {fitPct}%
-                      </span>
-                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em] pr-12" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {/* F-45: fit-percent pill removed — see
+                          mobile discover.tsx for the matching change. */}
+                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {recipe.title}
                       </p>
                       <p className="text-[12px] text-muted-foreground mt-1 truncate">

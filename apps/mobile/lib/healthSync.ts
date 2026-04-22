@@ -940,7 +940,12 @@ export const HEALTH_BODY_LOOKBACK_PRESETS = [
   { label: "All", days: 4000 },
 ] as const;
 
-const DEFAULT_HEALTH_BODY_LOOKBACK_DAYS = 366;
+// F-44 / F-46 (2026-04-22): bumped from 366 → 730 so weight-chart range
+// buttons (3M / 6M / 9M / 1Y / 2Y) have real historical weight points to
+// filter against on first connect. Tester reported the range filter
+// "didn't change anything" on builds 20/21; root cause was no deep
+// history to switch between, not a bug in the filter itself.
+const DEFAULT_HEALTH_BODY_LOOKBACK_DAYS = 730;
 
 export async function getHealthBodyLookbackDays(): Promise<number> {
   try {
@@ -1786,7 +1791,9 @@ export async function syncNutritionFromHealthThrottled(userId: string): Promise<
     }
     const now = Date.now();
     if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
-    await syncNutritionFromHealth(userId, 120);
+    // F-44: extended lookback — matches user expectation from MFP/LoseIt
+    // that past months of meals backfill on first connect.
+    await syncNutritionFromHealth(userId, 730);
     // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
     // is not imported (see backlog note in `exportDayToHealth`).
     try {

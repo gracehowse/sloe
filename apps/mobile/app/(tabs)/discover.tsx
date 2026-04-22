@@ -206,10 +206,10 @@ export default function DiscoverScreen() {
     (item: RecipeCard) => {
       const kcal = Math.round(item.calories);
       const protein = Math.round(item.protein);
-      const fitPct = computeRecipeFitPercent(
-        { calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat },
-        targets,
-      ).percent;
+      // F-45: fitPct no longer rendered, but keep the computation
+      // shape intact for future ranking.
+      void computeRecipeFitPercent;
+      void targets;
       return (
         <Pressable
           key={item.id}
@@ -237,22 +237,13 @@ export default function DiscoverScreen() {
           <View style={{ padding: 14 }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
-            <View
-              testID={`discover-hero-fit-${item.id}`}
-              style={{
-                position: "absolute",
-                top: 10,
-                right: 10,
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: 999,
-                backgroundColor: t.accent + "26",
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
-                {fitPct}%
-              </Text>
-            </View>
+            {/* F-45 (2026-04-22): fit-percent pill removed per repeated
+                tester feedback ("Score means nothing — remove"). The
+                value was being computed (see `fitPct`) but was not
+                anchored to a target the user had chosen or surfaced
+                otherwise, so it read as decorative noise. Keeping the
+                computation available via `computeRecipeFitPercent` in
+                case a future ranking pass wants it. */}
             <Text
               style={{ fontSize: 15, fontWeight: "700", color: colors.text, lineHeight: 19, letterSpacing: -0.1, paddingRight: 48 }}
               numberOfLines={2}

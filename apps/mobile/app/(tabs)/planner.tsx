@@ -184,22 +184,40 @@ export default function PlannerScreen() {
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
-  // Load user tier from profile
+  // Load user tier from profile. F-43 (2026-04-22, TestFlight "Pro
+  // user shown as Free on Plan" x2): reconcile profile with
+  // RevenueCat entitlements + promo redemptions before reading, so a
+  // stale `profiles.user_tier` doesn't downgrade a user who is
+  // entitled via RC or promo but whose profile wasn't synced since
+  // the last paywall / promo redeem.
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("profiles")
-      .select("user_tier")
-      .eq("id", userId)
-      .single()
-      .then(({ data }) => {
-        const tier = data?.user_tier as string | null;
-        if (tier === "free" || tier === "base" || tier === "pro") {
-          setUserTier(tier);
-        } else {
-          setUserTier("free");
-        }
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getCustomerInfo, syncTierToSupabase } = await import("@/lib/purchases");
+        const info = await getCustomerInfo();
+        await syncTierToSupabase(info, supabase as any, userId);
+      } catch {
+        // RC unavailable in Expo Go or network hiccup — fall through to profile read.
+      }
+      if (cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const tier = (data?.user_tier as string | null) ?? null;
+      if (tier === "free" || tier === "base" || tier === "pro") {
+        setUserTier(tier);
+      } else {
+        setUserTier("free");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const isFree = userTier === "free";

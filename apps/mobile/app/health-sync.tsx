@@ -138,7 +138,12 @@ export default function HealthSyncScreen() {
 
       if (importEnabled) {
         try {
-          const n = await syncNutritionFromHealth(userId, 120);
+          // F-44 (2026-04-22): widen the default lookback so first-
+          // connect users get an MFP/LoseIt-style historical import
+          // (2 years) instead of only the last 4 months. Subsequent
+          // syncs still read the same full window — Postgres dedupe
+          // via `health_sample_id` keeps re-imports idempotent.
+          const n = await syncNutritionFromHealth(userId, 730);
           const mealLine =
             n.imported.length > 0
               ? `Imported ${n.imported.length} meal${n.imported.length === 1 ? "" : "s"} from Health.`
