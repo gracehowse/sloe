@@ -54,7 +54,7 @@ export function TodayHeroNumber({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        paddingVertical: 28,
+        paddingVertical: 20,
         paddingHorizontal: Spacing.xl,
       }}
     >
@@ -69,15 +69,19 @@ export function TodayHeroNumber({
       >
         {shownLabel}
       </Text>
+      {/* F-47 (2026-04-22): repeated tester feedback across builds
+          18/20/21 — "Calorie section is too big" / "still massive".
+          Shrunk 80→56 / 92→64 / -2.8→-1.8 and tightened vertical
+          rhythm so the hero takes less than half the viewport. */}
       <Text
         style={{
-          fontSize: 80,
+          fontSize: 56,
           fontWeight: "800",
-          letterSpacing: -2.8,
-          lineHeight: 92,
+          letterSpacing: -1.8,
+          lineHeight: 64,
           color: textColor,
           fontVariant: ["tabular-nums"],
-          marginTop: Spacing.md,
+          marginTop: Spacing.sm,
         }}
       >
         {shown.toLocaleString()}

@@ -62,7 +62,7 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onToggleDisplayMode,
-  textTertiaryColor,
+  textTertiaryColor: _textTertiaryColor,
 }: TodayHeroRingProps) {
   return (
     <View
@@ -92,9 +92,9 @@ export function TodayHeroRing({
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
       />
-      <Text style={{ fontSize: 10, color: textTertiaryColor, textAlign: "center" }}>
-        Tap for macros · hold to switch to {displayMode === "remaining" ? "logged" : "remaining"}
-      </Text>
+      {/* F-47 (2026-04-22): gesture caption removed — tester flagged
+          "middle section cluttered with 3 prompts". Tap affordance is
+          discoverable via the ring itself. */}
     </View>
   );
 }

@@ -54,7 +54,7 @@ export function TodayHeroBar({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        padding: Spacing.lg,
+        padding: Spacing.md,
       }}
     >
       <Text
@@ -70,12 +70,13 @@ export function TodayHeroBar({
         {shownLabel}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.sm }}>
+        {/* F-47 (2026-04-22): 56→44 to match shrunk Number variant. */}
         <Text
           style={{
-            fontSize: 56,
+            fontSize: 44,
             fontWeight: "800",
-            letterSpacing: -1.6,
-            lineHeight: 56,
+            letterSpacing: -1.2,
+            lineHeight: 48,
             color: MacroColors.calories,
             fontVariant: ["tabular-nums"],
           }}
@@ -104,14 +105,9 @@ export function TodayHeroBar({
           }}
         />
       </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: Spacing.xs }}>
-        <Text style={{ fontSize: 11, color: textTertiaryColor, fontVariant: ["tabular-nums"] }}>
-          {consumed.toLocaleString()} logged
-        </Text>
-        <Text style={{ fontSize: 11, color: textTertiaryColor, fontVariant: ["tabular-nums"] }}>
-          {goal.toLocaleString()} target
-        </Text>
-      </View>
+      {/* F-47 (2026-04-22): removed logged/target endpoint row —
+          duplicates "of X kcal" above, and tester flagged "macro
+          spacing off" under the bar. */}
     </Pressable>
   );
 }

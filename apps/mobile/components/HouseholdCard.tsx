@@ -402,8 +402,12 @@ export function HouseholdCard() {
       <Text style={{ fontSize: 11, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 1.1, marginBottom: 4 }}>
         Members
       </Text>
-      <Text style={{ fontSize: 11, color: t.dim, marginBottom: 12, lineHeight: 15 }}>
-        Remaining today — your totals left to hit your targets.
+      {/* F-48 (2026-04-22): tester flagged "what are the numbers it's
+          showing?" across builds 18/20/21. Reframe so the self row shows
+          your remaining-today totals against your targets, and other
+          members only show identity — not numeric noise. */}
+      <Text style={{ fontSize: 12, color: t.dim, marginBottom: 12, lineHeight: 16 }}>
+        Your remaining calories and macros for today. Members' targets are private.
       </Text>
       {data.members.map((m) => {
         const isSelf = m.userId === userId;
