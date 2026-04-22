@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert, Linking, S
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import Constants from "expo-constants";
 import {
   Sparkles,
   Users,
@@ -860,6 +861,17 @@ export default function ProfileScreen() {
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
         <SettingsRow isFirst icon={FileText} iconColor={t.accent} label="Privacy policy" sub="How we use your data" onPress={() => openLegalPath("/privacy")} />
         <SettingsRow icon={BookOpen} iconColor={t.accent} label="Terms of use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
+      </View>
+
+      {/* F-49 (2026-04-22): visible build-stamp so we can diagnose what's
+          actually installed. `BUILD_MARKER` is a fresh unique string every
+          build so we can grep it in feedback screenshots to confirm which
+          binary is running on a tester's device. */}
+      <SectionHeading title="Build" />
+      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", paddingHorizontal: 16, paddingVertical: 14 }}>
+        <Text style={{ fontSize: 13, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+          {`v${(Constants.expoConfig?.version ?? "?")} · build ${(Constants.expoConfig?.ios?.buildNumber ?? "?")} · MARKER F49-2026-04-22`}
+        </Text>
       </View>
 
       {/* Danger zone */}
