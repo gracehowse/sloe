@@ -23,11 +23,26 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 123   | 54 | 36 | 0  | 0  | 31 | 2  |
+| 123   | 55 | 60 | 0  | 4  | 2  | 2  |
 
-**Action-round plan:** per-cluster next steps in [../planning/testflight-2026-04-22-action-plan.md](../planning/testflight-2026-04-22-action-plan.md) — every cluster has a file-path + F-number + owner + size estimate so future sessions can pick up atomically.
+**Action-round plan:** per-cluster next steps in [../planning/testflight-2026-04-22-action-plan.md](../planning/testflight-2026-04-22-action-plan.md).
 
-**This round shipped:** **F-56** — `computeWeightTrendCopy` gains a stale-data guard (>14 day recency check), closes `AOVuCyOCNB1p…`.
+**2026-04-22 pilot-round action shipped (8 F-tracks):**
+- **F-56** Trend-tile stale-data guard (>14 day recency) — closes `AOVuCyOCNB1p…`.
+- **F-57** HealthKit dietary-perm-denied recovery — closes `AEzcUFvXt…` + 3 siblings (Open Health deeplink + post-sync Alert when body moves but dietary returns empty).
+- **F-58** Plan tab Pro→Free downgrade guard + `ensurePurchasesUser` — closes `ADpuHU6O` + 2 siblings. Pure helper `resolveNextTier` pinned with 7 test cases.
+- **F-59** Discover cache poison fix — closes `AEwoLmeE` + 2 siblings. Never persist or return cached empty array; prod has 20 discoverable seeded recipes per direct Supabase query.
+- **F-60** Today hero shrink (Ring 160→140, Number 56→44) — closes `AB6WOylB` + 1 sibling.
+- **F-61** Discover "More ideas" now renders hero-style cards (uniform social-feed density) — closes `AEq5NTi0n…`.
+- **F-62** Import empty-state split (denied vs already-own vs genuinely-empty) — closes `ABG0cZzo` + 1 sibling.
+- **F-63a/b/d/e** Plan day-card density, Library filter pill clip, Household Settings duplicate header, Recipe ingredient kcal clip — closes 6 C9 submissions.
+- **C10** `AHS6xzyU…` closed ✅ as duplicate of `AA63DQ7xd…` (score already removed everywhere).
+- **C11** `ANfXXs6H…` 🟠 — ops check: Vercel prod needs `EDAMAM_APP_ID` + `EDAMAM_APP_KEY`, else remove Edamam from `nutrition-sources.tsx`.
+- **C9c** (`AIC05bpyu…`) 🟠 — Health Sync permission style; routed to ui-product-designer.
+- **C5** (`ALpppRnGz…` + 3 siblings) ⏳ — household Netflix-model rethink; routed to product-lead.
+- **C6-chart** (`AKuLcrQU` + 1) ⏳ — weight chart redesign; routed to ui-product-designer.
+
+All tracker rows now have IDs mapped to an F-number or routing verdict.
 
 **2026-04-22 pilot-round pull delta (+34 new rows):** grouped into 11 clusters — **C1** Apple Health still broken (×4), **C2** Pro→Free on Plans (×3), **C3** recipes not seeded (×3), **C4** calorie hero still massive (×2), **C5** household prototype drift (×4), **C6** weight graph (×3), **C7** Discover feed cards (×2), **C8** import "no meals" bug (×2), **C9** layout/spacing/prototype mismatch (×7), **C10** score removal repeat (×1), **C11** Edamam status (×1). Plus 1 meta (✅ Confirming build) + 1 🔍 (no comment).
 
@@ -120,17 +135,17 @@ Ship rules:
 | 2026-04-22 | `AKuLcrQUR7pf…` | screenshot | ⏳ | cluster **C6** — weight graph still wrong post-F-24/F-27/F-31 | "Weight graph still wrong" |
 | 2026-04-22 | `AGM9xRpzTLnD…` | screenshot | ⏳ | cluster **C6** | "Weight graph either not accurate or not clear" |
 | 2026-04-22 | `AOVuCyOCNB1p…` | screenshot | 🟡 | **F-56** — `computeWeightTrendCopy` now returns `{delta: null, copy: "Log weight to see trend"}` when most recent weigh-in is >14 days old (test pinned) | "Up 0.9 this week is not correct as I have not logged weight in about a month" |
-| 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | ⏳ | cluster **C7** — Discover feed: every card should render like the hero (bigger, social-feed style) | "All recipes should render like the first 2 (bigger feed like)" |
-| 2026-04-22 | `APpAKhhRSuv0…` | screenshot | ⏳ | cluster **C7** — image quality on Discover | "Images are here but they are terrible" |
+| 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | 🟡 | **F-61** — Discover "More ideas" section now renders hero-style cards (same layout/image treatment/kcal+macro row as the top 2), 12px stack gap. Uniform social-feed density across the whole feed | "All recipes should render like the first 2 (bigger feed like)" |
+| 2026-04-22 | `APpAKhhRSuv0…` | screenshot | 🟠 | sibling of F-61 — bigger cards now render the real seed image at 16:10; underlying image quality is a seed-data issue (many seed URLs are low-res thumbnails). Follow-up: either re-seed with 1200px sources or proxy via an image CDN | "Images are here but they are terrible" |
 | 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | 🟡 | **F-62** — sync-status copy now distinguishes three empty-states: (a) truly empty → F-57 denied-perm Alert fires, (b) all samples were Suppr-authored → "N samples skipped (already logged in Suppr)", (c) nothing new → generic "No new meals" | "Says no new meals but there are" |
 | 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | 🟡 | sibling of F-62 | "Says no meals to import but there are meals to import" |
-| 2026-04-22 | `AIC05bpyuit_…` | screenshot | ⏳ | cluster **C9** — prototype mismatch (surface unspecified — needs screenshot inspection) | "This page doesn't match prototype" |
-| 2026-04-22 | `AERuv07KITiH…` | screenshot | ⏳ | cluster **C9** — Day totals overcrowded/messy | "Day totals section is overcrowded looks messy" |
-| 2026-04-22 | `AJ8Fk6ud6Dl1…` | screenshot | ⏳ | cluster **C9** — Macro section confusing + spacing off | "Macro section is confusing and spacing is off" |
-| 2026-04-22 | `AAUNtlDI0VvV…` | screenshot | ⏳ | cluster **C9** | "Format layout still terrible on this page" |
-| 2026-04-22 | `ALvjyW7wHU7K…` | screenshot | ⏳ | cluster **C9** | "Layout still messed up" |
-| 2026-04-22 | `AHitOL0RmJmQ…` | screenshot | ⏳ | cluster **C9** | "Spacing a little off move up" |
-| 2026-04-22 | `AAtwbwVxlQ70…` | screenshot | ⏳ | cluster **C9** — cals+macros+coloured line not rendering | "Cals and macros and the coloured line not showing here" |
+| 2026-04-22 | `AIC05bpyuit_…` | screenshot | 🟠 | cluster **C9c** — screenshot = Health Sync screen (`apps/mobile/app/health-sync.tsx`). Apple Health permission rows render empty circles vs prototype toggles. Requires design brief — route to ui-product-designer | "This page doesn't match prototype" |
+| 2026-04-22 | `AERuv07KITiH…` | screenshot | 🟡 | **F-63a** — Plan day-card: "Day total · X/Y kcal · P/C/F" wrap row removed; calorie target promoted into the day header line in tonally-coloured (neutral/amber/red) form. Macro state continues to flow through the existing delta-pill row below. Test updated | "Day totals section is overcrowded looks messy" |
+| 2026-04-22 | `AJ8Fk6ud6Dl1…` | screenshot | 🟡 | sibling of F-63a | "Macro section is confusing and spacing is off" |
+| 2026-04-22 | `AAUNtlDI0VvV…` | screenshot | 🟡 | **F-63b** — Library filter pills were clipped vertically on iOS when the horizontal ScrollView had no explicit row style. Added `style={{ flexGrow: 0, minHeight: 44 }}` + `alignItems: "center"` + `paddingTop: Spacing.xs` on the content container | "Format layout still terrible on this page" |
+| 2026-04-22 | `ALvjyW7wHU7K…` | screenshot | 🟡 | sibling of F-63b | "Layout still messed up" |
+| 2026-04-22 | `AHitOL0RmJmQ…` | screenshot | 🟡 | **F-63d** — Household Settings rendered two stacked titles: the auto router header ("Household Settings") + the in-content header ("Household"). `<Stack.Screen options={{ headerShown: false }} />` removes the auto header so the content starts 80pt higher | "Spacing a little off move up" |
+| 2026-04-22 | `AAtwbwVxlQ70…` | screenshot | 🟡 | **F-63e** — Recipe detail ingredients row: long ingredient names were pushing the kcal column off-screen (e.g. rendering as "0 kc"). `ingredientName` now gets `flex: 1, flexShrink: 1`; `ingredientCalories` gets `flexShrink: 0`; row aligns `flex-start` with 8px gap | "Cals and macros and the coloured line not showing here" |
 | 2026-04-22 | `AHS6xzyUumrl…` | screenshot | ✅ | duplicate of `AA63DQ7xd…` (already resolved). Verified 2026-04-22: `grep -r "score" apps/mobile/**/*.tsx` returns no product surfaces — tester's screenshot must predate or cache from an older build | "Score doesn't mean anything remove" |
 | 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | 🟠 | cluster **C11** — ops check required: web route `/api/edamam/search` returns 503 if `EDAMAM_APP_ID`/`EDAMAM_APP_KEY` unset on Vercel prod; mobile silently falls back to empty. Either (a) set keys in Vercel, OR (b) remove "Edamam" from `apps/mobile/app/nutrition-sources.tsx`. See action plan C11 | "Not sure if edamam is still connected as restaurant foods not showing" |
 | 2026-04-22 | `AJNcZdalctgg…` | screenshot | ✅ | meta — tester self-verification ("Confirming build"); no code action | "Confirming build" |

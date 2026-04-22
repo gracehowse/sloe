@@ -55,8 +55,19 @@ describe("mobile planner — day total vs goal wiring", () => {
     expect(PLANNER_SRC).toMatch(/Accent\.destructive/);
   });
 
-  it("labels the line 'Day total' (copy parity with web)", () => {
-    expect(PLANNER_SRC).toMatch(/>\s*Day total\s*</);
+  it("promotes the calorie goal into the day header (F-63a — was 'Day total · X/Y kcal' wrap row)", () => {
+    // F-63a (2026-04-22, AERuv07KI + AJ8Fk6ud): the "Day total" label
+    // + wrap row was removed — the goal-aware kcal is now a single
+    // tonally-coloured string in the day header instead of a separate
+    // `Day total · N / Y kcal · P/C/F · …` line. Ensure the new
+    // render path is in place and the shared helper still drives the
+    // cell/tone data via `goalLine.cells[0]` (calories cell).
+    expect(PLANNER_SRC).toMatch(/goalLine\.cells\[0\]/);
+    expect(PLANNER_SRC).toMatch(
+      /\$\{Math\.round\(goalLine\.totals\.calories\)[\s\S]*?planTargets!\.calories/,
+    );
+    // The old literal "Day total" label must not regress.
+    expect(PLANNER_SRC).not.toMatch(/>\s*Day total\s*</);
   });
 });
 

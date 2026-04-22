@@ -189,8 +189,24 @@ export default function LibraryScreen() {
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     filterScroll: {
       paddingHorizontal: Spacing.xl,
+      // F-63b (2026-04-22): tester AAUNt / ALvjyW flagged the Library
+      // filter pills as "scrunched" / "format layout still terrible"
+      // — on iOS the horizontal ScrollView was rendering at just
+      // enough height to clip the top and bottom of the pill text.
+      // Explicit top padding + alignItems centres the pills against
+      // a known row height (see filterScrollStyle below).
+      paddingTop: Spacing.xs,
       paddingBottom: Spacing.md,
+      alignItems: "center",
       gap: 8,
+    },
+    filterScrollStyle: {
+      // Explicit row height so the horizontal ScrollView doesn't
+      // collapse around a partial render frame. 44pt = iOS min tap
+      // target; F-36 Dynamic Type clamp (maxFontSizeMultiplier=1.2)
+      // keeps the text itself under the row.
+      flexGrow: 0,
+      minHeight: 44,
     },
     filterPill: {
       paddingHorizontal: 14,
@@ -419,6 +435,7 @@ export default function LibraryScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScrollStyle}
         contentContainerStyle={styles.filterScroll}
       >
         {LIBRARY_FILTER_PILLS.map((f) => {

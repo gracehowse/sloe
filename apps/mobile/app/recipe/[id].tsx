@@ -790,9 +790,15 @@ export default function RecipeDetailScreen() {
     ingredientRowNew: { flexDirection: "row", alignItems: "flex-start", paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: Spacing.sm },
     confidenceDot: { width: 6, height: 6, borderRadius: 3, marginTop: 6, flexShrink: 0 },
     ingredientNameAndCal: { flex: 1 },
-    ingredientNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    ingredientName: { fontSize: 14, color: colors.text, fontWeight: "500" },
-    ingredientCalories: { fontSize: 12, color: colors.textSecondary, fontWeight: "600" },
+    // F-63e (2026-04-22): tester AAtwbwVx flagged the kcal column as
+    // clipped to "0 kc" on long ingredient lines (e.g. "1 medium-to-
+    // large yellow squash (or another zucchini), diced"). The name
+    // Text had no flex cap, so it grew past the row and pushed the
+    // kcal off-screen. Cap name with `flex: 1, flexShrink: 1` and
+    // give it a gap from the kcal; let the name wrap to 2 lines.
+    ingredientNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
+    ingredientName: { fontSize: 14, color: colors.text, fontWeight: "500", flex: 1, flexShrink: 1 },
+    ingredientCalories: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", flexShrink: 0 },
     ingredientQty: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
     macroBar: { height: 3, borderRadius: 2, flexDirection: "row", marginTop: 6, overflow: "hidden" },
 

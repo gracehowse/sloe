@@ -1517,33 +1517,31 @@ export default function PlannerScreen() {
                   </Text>
                 )}
               </View>
-              <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
-            </View>
-            {goalLine && goalLine.hasTargets && (
-              <View
-                accessibilityRole="text"
-                accessibilityLabel={`Day total ${Math.round(goalLine.totals.calories)} of ${planTargets!.calories} kcal, protein ${Math.round(goalLine.totals.protein)} of ${planTargets!.protein} grams, carbs ${Math.round(goalLine.totals.carbs)} of ${planTargets!.carbs} grams, fat ${Math.round(goalLine.totals.fat)} of ${planTargets!.fat} grams`}
-                style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 2, marginBottom: 6 }}
-                testID={`day-total-vs-goal-${dp.day}`}
-              >
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginRight: 4 }}>
-                  Day total
+              {/* F-63a (2026-04-22): promote goal-aware kcal into the
+                  header (`4,083 / 1,667 kcal`) and drop the separate
+                  "Day total · P/C/F" wrap row below. Tester
+                  AERuv07KI + AJ8Fk6ud flagged the Plan day card as
+                  overcrowded and the macro section confusing —
+                  reason: two rows (`Day total · P/C/F`) + delta pills
+                  (`P 154g +42 …`) + the protein-gap hint carried
+                  overlapping info. Macro state now flows through the
+                  delta-pill row only, which already colour-codes
+                  direction vs target. */}
+              {goalLine && goalLine.hasTargets && goalLine.cells[0] ? (
+                <Text
+                  style={[
+                    styles.dayTotals,
+                    { color: toneColor(goalLine.cells[0].tone), fontVariant: ["tabular-nums"] },
+                  ]}
+                  accessibilityLabel={`${Math.round(goalLine.totals.calories)} of ${planTargets!.calories} kcal for the day`}
+                  testID={`day-total-vs-goal-${dp.day}`}
+                >
+                  {`${Math.round(goalLine.totals.calories).toLocaleString("en-US")} / ${planTargets!.calories.toLocaleString("en-US")} kcal`}
                 </Text>
-                {goalLine.cells.map((cell) => (
-                  <Text
-                    key={cell.key}
-                    style={{
-                      fontSize: 12,
-                      fontVariant: ["tabular-nums"],
-                      color: toneColor(cell.tone),
-                    }}
-                  >
-                    {" · "}
-                    {formatDayTotalCell(cell)}
-                  </Text>
-                ))}
-              </View>
-            )}
+              ) : (
+                <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
+              )}
+            </View>
             {planTargets && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
                 {([

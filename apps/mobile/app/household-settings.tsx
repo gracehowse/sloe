@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -331,6 +331,13 @@ export default function HouseholdSettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* F-63d (2026-04-22): hide the auto-generated router header
+          so the in-content "Household" header isn't duplicated by an
+          "Household Settings" nav bar above it. Tester AHitOL0R
+          flagged the spacing as "a little off — move up"; the root
+          cause was two stacked titles eating ~80pt of vertical space
+          before any content rendered. */}
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 12,

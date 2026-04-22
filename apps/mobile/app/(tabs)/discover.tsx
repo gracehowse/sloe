@@ -537,14 +537,23 @@ export default function DiscoverScreen() {
               {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
             </View>
 
-            {/* Section 2 — More ideas (only when a 3rd+ exists) */}
+            {/* Section 2 — More ideas.
+                F-61 (2026-04-22): tester `AEq5NTi0n…` + `APpAKhhR…`
+                flagged that "More ideas" compact list rows felt
+                second-class next to the big hero cards and asked for
+                a uniform social-feed render. Promote this section to
+                hero-card style — same layout, same image treatment,
+                just stacked below Matches-your-day with a 12px gap.
+                `renderMoreIdeaRow` is retained in case a future
+                density toggle re-enables the compact variant, but
+                nothing calls it right now. */}
             {filtered.length > 2 ? (
               <>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
                   More ideas
                 </Text>
-                <View style={{ borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
-                  {filtered.slice(2).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                <View style={{ gap: 12 }}>
+                  {filtered.slice(2).map((r) => renderHeroCard(r))}
                 </View>
               </>
             ) : null}
