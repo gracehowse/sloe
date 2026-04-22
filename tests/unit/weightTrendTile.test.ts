@@ -45,6 +45,24 @@ describe("computeWeightTrendCopy", () => {
     expect(r.copy).toBe("Log weight to see trend");
   });
 
+  it("F-56: suppresses delta when most recent weigh-in is older than 14 days", () => {
+    // TestFlight build-28 feedback AOVuCyOCNB1p — tester saw
+    // "Up 0.9 this week" when they had not logged a weight in ~1 month.
+    // The two historical entries produced a real delta but mislabelled
+    // it "this week". Stale-data guard returns the null-delta copy.
+    const r = computeWeightTrendCopy({
+      weightKgByDay: makeMap([
+        ["2026-03-01", 79.0],
+        ["2026-03-15", 79.9],
+      ]),
+      weightKg: 79.9,
+      goalKg: 75,
+      now: NOW, // 2026-04-19
+    });
+    expect(r.delta).toBeNull();
+    expect(r.copy).toBe("Log weight to see trend");
+  });
+
   it("(a) cut user losing weight is on track", () => {
     const r = computeWeightTrendCopy({
       weightKgByDay: makeMap([

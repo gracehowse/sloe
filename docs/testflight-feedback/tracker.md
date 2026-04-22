@@ -19,11 +19,17 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
-## Snapshot (2026-04-22, builds 25–27 live)
+## Snapshot (2026-04-22, builds 25–28 live; 2026-04-22T15:35Z ASC pull)
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 89    | 53 | 35 | 0  | 0  | 0  | 1  |
+| 123   | 54 | 36 | 0  | 0  | 31 | 2  |
+
+**Action-round plan:** per-cluster next steps in [../planning/testflight-2026-04-22-action-plan.md](../planning/testflight-2026-04-22-action-plan.md) — every cluster has a file-path + F-number + owner + size estimate so future sessions can pick up atomically.
+
+**This round shipped:** **F-56** — `computeWeightTrendCopy` gains a stale-data guard (>14 day recency check), closes `AOVuCyOCNB1p…`.
+
+**2026-04-22 pilot-round pull delta (+34 new rows):** grouped into 11 clusters — **C1** Apple Health still broken (×4), **C2** Pro→Free on Plans (×3), **C3** recipes not seeded (×3), **C4** calorie hero still massive (×2), **C5** household prototype drift (×4), **C6** weight graph (×3), **C7** Discover feed cards (×2), **C8** import "no meals" bug (×2), **C9** layout/spacing/prototype mismatch (×7), **C10** score removal repeat (×1), **C11** Edamam status (×1). Plus 1 meta (✅ Confirming build) + 1 🔍 (no comment).
 
 **2026-04-22 delta (builds 23 → 27):**
 - **F-37..F-42** (build 23): HealthKit init split, household create success Alert, multi-item meal modal stays open, recipe `/n` regex widened, recipe source name clickable, notes `recipe_id` uuid guard.
@@ -95,6 +101,40 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
+| 2026-04-22 | `AEzcUFvXt-ux…` | screenshot | ⏳ | cluster **C1** — Apple Health post-F50 still broken ("urgent, used to work perfectly") | "Apple health still doesn't work this is urgent it used to work perfectly" |
+| 2026-04-22 | `AEWQ5gs3vyvs…` | screenshot | ⏳ | cluster **C1** | "Apple health still not fixed" |
+| 2026-04-22 | `AAcIj2Vc1D60…` | screenshot | ⏳ | cluster **C1** — HealthKit historical-meals backfill regression | "Apple health successfully synced but it has not pulled in historical meals like it used to (from lose it mfp etc)" |
+| 2026-04-22 | `AGZq4O-Z9qZX…` | screenshot | ⏳ | cluster **C1** (assumed — "still happening") | "Still happening" |
+| 2026-04-22 | `ADpuHU6O7jEY…` | screenshot | ⏳ | cluster **C2** — Pro entitlement drift on Plans surface | "Also thinks I'm free but I'm on pro" |
+| 2026-04-22 | `AIryDu7i28Rl…` | screenshot | ⏳ | cluster **C2** | "On pro but plans thinks I'm on free" |
+| 2026-04-22 | `AIm3KPwBYlA1…` | screenshot | ⏳ | cluster **C2** | "Im on pro but plan still thinks im on free" |
+| 2026-04-22 | `AEwoLmeE5w47…` | screenshot | ⏳ | cluster **C3** — recipe seeding still failing post-F50 backfill | "Recipes still not seeded" |
+| 2026-04-22 | `AKcZwsipNdSx…` | screenshot | ⏳ | cluster **C3** | "Recipes still aren't seeded" |
+| 2026-04-22 | `AJr60qsyVUcM…` | screenshot | ⏳ | cluster **C3** | "Recipes still not seeded" |
+| 2026-04-22 | `AB6WOylB6-Qz…` | screenshot | ⏳ | cluster **C4** — calorie hero still massive despite F-47/F-51 | "Calorie section still massive" |
+| 2026-04-22 | `ADt-4U9u_9NE…` | screenshot | ⏳ | cluster **C4** | "Cals still too big hasn't been fixed" |
+| 2026-04-22 | `ALpppRnGzIx9…` | screenshot | ⏳ | cluster **C5** — household still doesn't match prototype post-F-32 | "Still doesn't look like the prototype for households" |
+| 2026-04-22 | `ALQQyjCHjzbt…` | screenshot | ⏳ | cluster **C5** | "Household sections still doesn't make much sense and doesn't match the prototype for this page" |
+| 2026-04-22 | `AKQGhg8wc6FZ…` | screenshot | ⏳ | cluster **C5** | "I don't really know what the household section is telling me right now" |
+| 2026-04-22 | `AGpLe8GO99nQ…` | screenshot | ⏳ | cluster **C5** | "Household still not updated" |
+| 2026-04-22 | `AKuLcrQUR7pf…` | screenshot | ⏳ | cluster **C6** — weight graph still wrong post-F-24/F-27/F-31 | "Weight graph still wrong" |
+| 2026-04-22 | `AGM9xRpzTLnD…` | screenshot | ⏳ | cluster **C6** | "Weight graph either not accurate or not clear" |
+| 2026-04-22 | `AOVuCyOCNB1p…` | screenshot | 🟡 | **F-56** — `computeWeightTrendCopy` now returns `{delta: null, copy: "Log weight to see trend"}` when most recent weigh-in is >14 days old (test pinned) | "Up 0.9 this week is not correct as I have not logged weight in about a month" |
+| 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | ⏳ | cluster **C7** — Discover feed: every card should render like the hero (bigger, social-feed style) | "All recipes should render like the first 2 (bigger feed like)" |
+| 2026-04-22 | `APpAKhhRSuv0…` | screenshot | ⏳ | cluster **C7** — image quality on Discover | "Images are here but they are terrible" |
+| 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | ⏳ | cluster **C8** — "no meals to import" shown when pending-import meals exist | "Says no new meals but there are" |
+| 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | ⏳ | cluster **C8** | "Says no meals to import but there are meals to import" |
+| 2026-04-22 | `AIC05bpyuit_…` | screenshot | ⏳ | cluster **C9** — prototype mismatch (surface unspecified — needs screenshot inspection) | "This page doesn't match prototype" |
+| 2026-04-22 | `AERuv07KITiH…` | screenshot | ⏳ | cluster **C9** — Day totals overcrowded/messy | "Day totals section is overcrowded looks messy" |
+| 2026-04-22 | `AJ8Fk6ud6Dl1…` | screenshot | ⏳ | cluster **C9** — Macro section confusing + spacing off | "Macro section is confusing and spacing is off" |
+| 2026-04-22 | `AAUNtlDI0VvV…` | screenshot | ⏳ | cluster **C9** | "Format layout still terrible on this page" |
+| 2026-04-22 | `ALvjyW7wHU7K…` | screenshot | ⏳ | cluster **C9** | "Layout still messed up" |
+| 2026-04-22 | `AHitOL0RmJmQ…` | screenshot | ⏳ | cluster **C9** | "Spacing a little off move up" |
+| 2026-04-22 | `AAtwbwVxlQ70…` | screenshot | ⏳ | cluster **C9** — cals+macros+coloured line not rendering | "Cals and macros and the coloured line not showing here" |
+| 2026-04-22 | `AHS6xzyUumrl…` | screenshot | ⏳ | cluster **C10** — repeat of AA63DQ7xd ("score seems irrelevant"); tester sees it again | "Score doesn't mean anything remove" |
+| 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | ⏳ | cluster **C11** — Edamam restaurant-foods integration status | "Not sure if edamam is still connected as restaurant foods not showing" |
+| 2026-04-22 | `AJNcZdalctgg…` | screenshot | ✅ | meta — tester self-verification ("Confirming build"); no code action | "Confirming build" |
+| 2026-04-22 | `AEaTIZJodtNQ…` | screenshot | 🔍 | no comment — no actionable context | (no comment) |
 | 2026-04-22 | `AKAyzCHqEBAE…` | screenshot | 🟡 | build-28 **F-52** — Discover hero + More-ideas row now render `image_url` when present (RN `Image` with gradient fallback) | "Recipes have finally come in but they don't have images on this page" |
 | 2026-04-22 | `AJgeWQvRSt1v…` | screenshot | 🟡 | build-28 **F-55** — More-ideas rows gained 56×56 thumbnail; chef-hat box only on image-less rows (social-feed parity) | "Should all be like the two at the top with a pic etc. the more you might like is wrong" |
 | 2026-04-22 | `ABMrc96mPkNp…` | screenshot | 🟡 | sibling of F-52 — Discover hero now uses the real image, not the gradient fallback | "Terrible image quality" |

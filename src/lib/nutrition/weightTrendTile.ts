@@ -100,12 +100,28 @@ export function computeWeightTrendCopy(opts: {
   }
 
   const recentKg = sortedDescending[0][1];
+  const recentKey = sortedDescending[0][0];
   const nowD = now ?? new Date();
   const sevenDaysAgo = new Date(nowD);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const cutoffKey = `${sevenDaysAgo.getFullYear()}-${String(
     sevenDaysAgo.getMonth() + 1,
   ).padStart(2, "0")}-${String(sevenDaysAgo.getDate()).padStart(2, "0")}`;
+
+  // F-56 (2026-04-22): if the most recent weigh-in itself is older than
+  // 14 days, the delta is stale regardless of how many historical entries
+  // exist. Suppressing the delta avoids the TestFlight complaint
+  // "Up 0.9 this week is not correct as I have not logged weight in
+  // about a month" — previously we were showing a month-old diff under
+  // a "this week" label.
+  const fourteenDaysAgo = new Date(nowD);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  const staleCutoffKey = `${fourteenDaysAgo.getFullYear()}-${String(
+    fourteenDaysAgo.getMonth() + 1,
+  ).padStart(2, "0")}-${String(fourteenDaysAgo.getDate()).padStart(2, "0")}`;
+  if (recentKey < staleCutoffKey) {
+    return { delta: null, copy: "Log weight to see trend" };
+  }
 
   // Comparison weigh-in: most recent entry whose date key is ≤ cutoff
   // (i.e. ≥7 days ago). When no entry sits that far back, fall back to
