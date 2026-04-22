@@ -144,10 +144,25 @@ export default function HealthSyncScreen() {
           // syncs still read the same full window — Postgres dedupe
           // via `health_sample_id` keeps re-imports idempotent.
           const n = await syncNutritionFromHealth(userId, 730);
-          const mealLine =
-            n.imported.length > 0
-              ? `Imported ${n.imported.length} meal${n.imported.length === 1 ? "" : "s"} from Health.`
-              : "No new meals to import from Health.";
+          // F-62 (2026-04-22): TestFlight build-28 ABG0cZzo + AELbM8VJ
+          // ("says no meals to import but there are meals to import").
+          // The previous single copy line flattened three distinct
+          // states into one confusing "no new meals" message:
+          //   (a) HealthKit returned nothing readable → denied perms
+          //       or genuinely empty (handled by the F-57 Alert below);
+          //   (b) HealthKit returned rows but all were Suppr-authored
+          //       — already our own data, nothing to import back;
+          //   (c) HealthKit returned rows but they were already
+          //       covered by a prior import (dedupe).
+          // Distinguish so the tester knows what the sync actually did.
+          let mealLine: string;
+          if (n.imported.length > 0) {
+            mealLine = `Imported ${n.imported.length} meal${n.imported.length === 1 ? "" : "s"} from Health.`;
+          } else if (n.skippedOwn > 0) {
+            mealLine = `No new external meals to import — ${n.skippedOwn} sample${n.skippedOwn === 1 ? "" : "s"} skipped (already logged in Suppr).`;
+          } else {
+            mealLine = "No new meals to import from Health.";
+          }
           bodyMsg = `${bodyMsg} ${mealLine}`;
 
           // F-57 (2026-04-22): TestFlight build-28 AEzcUFvXt / AEWQ5gs3 /

@@ -42,11 +42,21 @@ async function getWithExpiry<T>(key: string): Promise<T | null> {
 // ── Public API ──────────────────────────────────────────────────────
 
 export async function cacheDiscoverRecipes(recipes: unknown[]): Promise<void> {
+  // F-59 (2026-04-22): never persist an empty array — a pre-F-50
+  // build may have written `[]` when Discover was genuinely broken,
+  // and cold-paints of that empty cache now flash "No recipes yet"
+  // before the network fetch completes.
+  if (!Array.isArray(recipes) || recipes.length === 0) return;
   await setWithExpiry(KEYS.discoverRecipes, recipes);
 }
 
 export async function getCachedDiscoverRecipes(): Promise<unknown[] | null> {
-  return getWithExpiry(KEYS.discoverRecipes);
+  // F-59 (2026-04-22): treat a cached empty array as no cache. Belt-
+  // and-suspenders against poison-cache carried over from older
+  // broken builds where `cacheDiscoverRecipes([])` had fired.
+  const value = await getWithExpiry(KEYS.discoverRecipes);
+  if (Array.isArray(value) && value.length === 0) return null;
+  return value as unknown[] | null;
 }
 
 export async function cacheSavedRecipes(recipes: unknown[]): Promise<void> {

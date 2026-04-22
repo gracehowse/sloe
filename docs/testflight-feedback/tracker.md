@@ -108,9 +108,9 @@ Ship rules:
 | 2026-04-22 | `ADpuHU6O7jEY…` | screenshot | ⏳ | cluster **C2** — Pro entitlement drift on Plans surface | "Also thinks I'm free but I'm on pro" |
 | 2026-04-22 | `AIryDu7i28Rl…` | screenshot | ⏳ | cluster **C2** | "On pro but plans thinks I'm on free" |
 | 2026-04-22 | `AIm3KPwBYlA1…` | screenshot | ⏳ | cluster **C2** | "Im on pro but plan still thinks im on free" |
-| 2026-04-22 | `AEwoLmeE5w47…` | screenshot | ⏳ | cluster **C3** — recipe seeding still failing post-F50 backfill | "Recipes still not seeded" |
-| 2026-04-22 | `AKcZwsipNdSx…` | screenshot | ⏳ | cluster **C3** | "Recipes still aren't seeded" |
-| 2026-04-22 | `AJr60qsyVUcM…` | screenshot | ⏳ | cluster **C3** | "Recipes still not seeded" |
+| 2026-04-22 | `AEwoLmeE5w47…` | screenshot | 🟡 | **F-59** — prod Supabase confirmed: 20 published+authored seeded recipes exist + RLS allows read. Root cause is a poisoned empty-array AsyncStorage cache from an earlier broken build — new build flash-paints "No recipes yet" before network resolves. Fix: never cache `[]`, and treat cached empty arrays as "no cache" on read | "Recipes still not seeded" |
+| 2026-04-22 | `AKcZwsipNdSx…` | screenshot | 🟡 | sibling of F-59 | "Recipes still aren't seeded" |
+| 2026-04-22 | `AJr60qsyVUcM…` | screenshot | 🟡 | sibling of F-59 | "Recipes still not seeded" |
 | 2026-04-22 | `AB6WOylB6-Qz…` | screenshot | 🟡 | **F-60** — Ring size 160→140 (+ card paddingY xl→md); Number fontSize 56→44 / lineHeight 64→52 / paddingY 20→16 for parity with Bar. All three hero variants now share one kcal number size | "Calorie section still massive" |
 | 2026-04-22 | `ADt-4U9u_9NE…` | screenshot | 🟡 | sibling of F-60 | "Cals still too big hasn't been fixed" |
 | 2026-04-22 | `ALpppRnGzIx9…` | screenshot | ⏳ | cluster **C5** — household still doesn't match prototype post-F-32 | "Still doesn't look like the prototype for households" |
@@ -122,8 +122,8 @@ Ship rules:
 | 2026-04-22 | `AOVuCyOCNB1p…` | screenshot | 🟡 | **F-56** — `computeWeightTrendCopy` now returns `{delta: null, copy: "Log weight to see trend"}` when most recent weigh-in is >14 days old (test pinned) | "Up 0.9 this week is not correct as I have not logged weight in about a month" |
 | 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | ⏳ | cluster **C7** — Discover feed: every card should render like the hero (bigger, social-feed style) | "All recipes should render like the first 2 (bigger feed like)" |
 | 2026-04-22 | `APpAKhhRSuv0…` | screenshot | ⏳ | cluster **C7** — image quality on Discover | "Images are here but they are terrible" |
-| 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | ⏳ | cluster **C8** — "no meals to import" shown when pending-import meals exist | "Says no new meals but there are" |
-| 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | ⏳ | cluster **C8** | "Says no meals to import but there are meals to import" |
+| 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | 🟡 | **F-62** — sync-status copy now distinguishes three empty-states: (a) truly empty → F-57 denied-perm Alert fires, (b) all samples were Suppr-authored → "N samples skipped (already logged in Suppr)", (c) nothing new → generic "No new meals" | "Says no new meals but there are" |
+| 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | 🟡 | sibling of F-62 | "Says no meals to import but there are meals to import" |
 | 2026-04-22 | `AIC05bpyuit_…` | screenshot | ⏳ | cluster **C9** — prototype mismatch (surface unspecified — needs screenshot inspection) | "This page doesn't match prototype" |
 | 2026-04-22 | `AERuv07KITiH…` | screenshot | ⏳ | cluster **C9** — Day totals overcrowded/messy | "Day totals section is overcrowded looks messy" |
 | 2026-04-22 | `AJ8Fk6ud6Dl1…` | screenshot | ⏳ | cluster **C9** — Macro section confusing + spacing off | "Macro section is confusing and spacing is off" |

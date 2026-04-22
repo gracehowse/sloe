@@ -48,6 +48,17 @@ export function useDiscoverRecipes() {
       .order("created_at", { ascending: false })
       .limit(200);
 
+    // F-59 (2026-04-22): TestFlight build-28 AEwoLmeE / AKcZwsip /
+    // AJr60qsyV ("recipes still not seeded") despite prod having 20
+    // discoverable seeded rows. Root cause hypothesis: an older
+    // broken build cached `[]` into AsyncStorage; cold-load paints
+    // that empty cache before the network refresh completes, and
+    // the "No recipes yet" empty-state flash can be what the tester
+    // is screenshotting. Defence: refuse to ever cache an empty
+    // result — if the network returned nothing, don't poison the
+    // cache for the next session. Offline fallback remains intact
+    // for the case where network genuinely fails and cache is non-
+    // empty.
     if (!error && data) {
       const mapped: RecipeCard[] = data.map((r: any) => {
         const prepM = r.prep_time_min != null ? Number(r.prep_time_min) : NaN;
@@ -80,7 +91,9 @@ export function useDiscoverRecipes() {
         };
       });
       setRecipes(mapped);
-      void cacheDiscoverRecipes(mapped); // Cache for offline
+      if (mapped.length > 0) {
+        void cacheDiscoverRecipes(mapped); // Cache for offline
+      }
     } else if (error) {
       // Network failure — try offline cache
       console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
