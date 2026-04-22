@@ -39,7 +39,7 @@ const REQUIRED_COLUMN_LABELS = [
 // framing.
 const WEB_CAPTION_COPY = "Remaining today — your totals left to hit your targets.";
 const MOBILE_CAPTION_COPY =
-  "Your remaining calories and macros for today. Members' targets are private.";
+  "Your remaining calories and macros for today. Members&apos; targets are private.";
 
 describe("household member-number labels (G-5)", () => {
   for (const label of REQUIRED_COLUMN_LABELS) {

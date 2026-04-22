@@ -407,7 +407,7 @@ export function HouseholdCard() {
           your remaining-today totals against your targets, and other
           members only show identity — not numeric noise. */}
       <Text style={{ fontSize: 12, color: t.dim, marginBottom: 12, lineHeight: 16 }}>
-        Your remaining calories and macros for today. Members' targets are private.
+        Your remaining calories and macros for today. Members&apos; targets are private.
       </Text>
       {data.members.map((m) => {
         const isSelf = m.userId === userId;
