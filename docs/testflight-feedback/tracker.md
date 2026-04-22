@@ -101,10 +101,10 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
-| 2026-04-22 | `AEzcUFvXt-ux…` | screenshot | ⏳ | cluster **C1** — Apple Health post-F50 still broken ("urgent, used to work perfectly") | "Apple health still doesn't work this is urgent it used to work perfectly" |
-| 2026-04-22 | `AEWQ5gs3vyvs…` | screenshot | ⏳ | cluster **C1** | "Apple health still not fixed" |
-| 2026-04-22 | `AAcIj2Vc1D60…` | screenshot | ⏳ | cluster **C1** — HealthKit historical-meals backfill regression | "Apple health successfully synced but it has not pulled in historical meals like it used to (from lose it mfp etc)" |
-| 2026-04-22 | `AGZq4O-Z9qZX…` | screenshot | ⏳ | cluster **C1** (assumed — "still happening") | "Still happening" |
+| 2026-04-22 | `AEzcUFvXt-ux…` | screenshot | 🟡 | **F-57** — health-sync gains (a) always-visible "Open Health app · Manage permissions" deeplink that opens `x-apple-health://`, (b) post-sync Alert when body data moved but dietary returned empty AND no Suppr-owned samples (proxy for silent dietary-read-denied). Root cause: iOS silently suppresses re-prompt for dietary perms after prior split-init had asked | "Apple health still doesn't work this is urgent it used to work perfectly" |
+| 2026-04-22 | `AEWQ5gs3vyvs…` | screenshot | 🟡 | sibling of F-57 | "Apple health still not fixed" |
+| 2026-04-22 | `AAcIj2Vc1D60…` | screenshot | 🟡 | sibling of F-57 — 730-day lookback was already shipped (F-44); new alert explains why dietary is empty when body syncs fine | "Apple health successfully synced but it has not pulled in historical meals like it used to (from lose it mfp etc)" |
+| 2026-04-22 | `AGZq4O-Z9qZX…` | screenshot | 🟡 | sibling of F-57 (assumed "still happening" = HealthKit) | "Still happening" |
 | 2026-04-22 | `ADpuHU6O7jEY…` | screenshot | ⏳ | cluster **C2** — Pro entitlement drift on Plans surface | "Also thinks I'm free but I'm on pro" |
 | 2026-04-22 | `AIryDu7i28Rl…` | screenshot | ⏳ | cluster **C2** | "On pro but plans thinks I'm on free" |
 | 2026-04-22 | `AIm3KPwBYlA1…` | screenshot | ⏳ | cluster **C2** | "Im on pro but plan still thinks im on free" |

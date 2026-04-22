@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
@@ -149,6 +149,46 @@ export default function HealthSyncScreen() {
               ? `Imported ${n.imported.length} meal${n.imported.length === 1 ? "" : "s"} from Health.`
               : "No new meals to import from Health.";
           bodyMsg = `${bodyMsg} ${mealLine}`;
+
+          // F-57 (2026-04-22): TestFlight build-28 AEzcUFvXt / AEWQ5gs3 /
+          // AAcIj2Vc — sync succeeds (body data pulls) but 0 historical
+          // meals pull in, and "it used to work". Most likely cause: iOS
+          // silently suppresses a re-prompt for dietary read perms once
+          // a prior version asked for them, so HKHealthStore returns
+          // zero food correlations even when the user thinks they
+          // granted perms. Apple's API offers no way to query read
+          // status. We detect "body moved + dietary empty + no skipped-
+          // own" as a proxy and surface a recovery Alert with a
+          // direct link into the Health app, where the user can toggle
+          // Suppr's dietary read permissions manually under Sharing →
+          // Apps and Services → Suppr.
+          const bodyMovedSomething =
+            result.stepsUpdated ||
+            result.activeEnergyUpdated ||
+            result.workoutsUpdated ||
+            result.basalBurnUpdated;
+          const dietaryLooksDenied =
+            n.imported.length === 0 && n.skippedOwn === 0 && bodyMovedSomething;
+          if (dietaryLooksDenied) {
+            Alert.alert(
+              "Meals not importing from Health",
+              "Body data synced, but Apple Health didn’t return any food entries. This usually means read permission for Nutrition is off for Suppr.\n\nOpen Health → Sharing → Apps and Services → Suppr, then turn on all Nutrition categories.",
+              [
+                { text: "Not now", style: "cancel" },
+                {
+                  text: "Open Health",
+                  onPress: () => {
+                    Linking.openURL("x-apple-health://").catch(() => {
+                      Alert.alert(
+                        "Couldn’t open Health",
+                        "Open the Health app manually, then Sharing → Apps and Services → Suppr.",
+                      );
+                    });
+                  },
+                },
+              ],
+            );
+          }
         } catch {
           const errLine = "Meal import from Health failed.";
           bodyMsg = `${bodyMsg} ${errLine}`;
@@ -323,10 +363,30 @@ export default function HealthSyncScreen() {
           </Text>
         </View>
 
+        {/* F-57 (2026-04-22): always-visible Troubleshoot link that
+            opens the iOS Health app. Gives the user a one-tap path to
+            toggle Suppr's dietary read permissions when iOS won't
+            re-present the auth sheet (see handleSync for why). */}
+        <Pressable
+          onPress={() => {
+            Linking.openURL("x-apple-health://").catch(() => {
+              Alert.alert(
+                "Couldn’t open Health",
+                "Open the Health app manually, then Sharing → Apps and Services → Suppr.",
+              );
+            });
+          }}
+          style={{ alignSelf: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg }}
+        >
+          <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>
+            Open Health app · Manage permissions
+          </Text>
+        </Pressable>
+
         {/* Clear imported data — always visible so user can clean up past imports */}
         <Pressable
           onPress={handleClearImported}
-          style={{ alignSelf: "center", marginTop: Spacing.lg, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg }}
+          style={{ alignSelf: "center", marginTop: Spacing.sm, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg }}
         >
           <Text style={{ fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
             Clear all imported data
