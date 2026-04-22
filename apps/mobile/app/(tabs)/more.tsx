@@ -870,7 +870,7 @@ export default function ProfileScreen() {
       <SectionHeading title="Build" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", paddingHorizontal: 16, paddingVertical: 14 }}>
         <Text style={{ fontSize: 13, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-          {`v${(Constants.expoConfig?.version ?? "?")} · build ${(Constants.expoConfig?.ios?.buildNumber ?? "?")} · MARKER F49-2026-04-22`}
+          {`v${(Constants.expoConfig?.version ?? "?")} · build ${((Constants as unknown as { nativeBuildVersion?: string }).nativeBuildVersion ?? Constants.expoConfig?.ios?.buildNumber ?? "?")} · MARKER F50-2026-04-22`}
         </Text>
       </View>
 

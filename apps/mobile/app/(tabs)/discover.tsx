@@ -10,6 +10,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -223,15 +224,22 @@ export default function DiscoverScreen() {
           }}
         >
           <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-            {/* D8 (2026-04-21): deterministic cuisine-aware
-                gradient+pattern+glyph fallback instead of a flat
-                tint. Shared spec in
-                `src/lib/recipe/recipeHeroFallback.ts`; web parity in
-                `src/app/components/suppr/RecipeHeroFallback.tsx`.
-                When real images land (not yet in `RecipeCard`) the
-                fallback should be conditionally skipped — tracked in
-                `docs/design/discover-hero-fallback.md` §6. */}
-            <RecipeHeroFallback id={item.id} title={item.title} />
+            {/* F-52 (2026-04-22): Discover hero now uses the real
+                `image_url` when present and falls back to the D8
+                gradient+pattern+glyph only when it's missing. Tester
+                on build 26 saw 20 seeded recipes render as grey
+                gradients even though they had image URLs; the card
+                unconditionally rendered the fallback. */}
+            {item.image ? (
+              <Image
+                source={{ uri: item.image }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <RecipeHeroFallback id={item.id} title={item.title} />
+            )}
             <SourceBadge source={item.source} />
           </View>
           <View style={{ padding: 14 }}>
@@ -302,14 +310,23 @@ export default function DiscoverScreen() {
             borderTopColor: colors.cardBorder,
           }}
         >
-          {/* 2026-04-20 prototype port — chef-hat icon-box (40×40).
-              Ionicons doesn't ship `restaurant` as a chef-hat glyph;
-              MaterialCommunityIcons `chef-hat` matches the prototype
-              literally and mirrors the web lucide `ChefHat` icon on
-              `src/app/components/DiscoverFeed.tsx`. */}
-          <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-            <ChefHat size={20} color={colors.textSecondary} />
-          </View>
+          {/* F-55 (2026-04-22): use real thumbnail when the recipe has
+              an image_url (social-feed parity — tester flagged "the
+              more you might like is wrong - this is supposed to be
+              like a social media feed"). Chef-hat glyph box stays as
+              the fallback for image-less rows. */}
+          {item.image ? (
+            <Image
+              source={{ uri: item.image }}
+              style={{ width: 56, height: 56, borderRadius: 10 }}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
+              <ChefHat size={20} color={colors.textSecondary} />
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
               {decodeEntities(item.title)}

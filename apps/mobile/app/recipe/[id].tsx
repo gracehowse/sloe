@@ -463,9 +463,18 @@ export default function RecipeDetailScreen() {
     }
   }, [recipe, userId, isRecipeOwner, recipeYieldDraft, ingredients, recipeId]);
 
-  // Compute totals from actual ingredients so they always match what's displayed
+  // Compute totals from actual ingredients so they always match what's displayed.
+  // F-53 (2026-04-22): if ingredients exist but none of them have per-ingredient
+  // nutrition (seeded recipes where the scraper didn't fill in ingredient
+  // macros), fall back to the recipe-level totals instead of rendering 0 kcal.
+  // Tester saw "Cals section wrong" / "None of the cals and macros are pulling
+  // in" on recipes where recipe.calories was correct but every ingredient row
+  // carried null/0 nutrition.
   const { macros, totalMacros } = useMemo(() => {
-    if (ingredients.length === 0 && recipe) {
+    const ingredientsHaveNutrition = ingredients.some(
+      (i) => (i.calories ?? 0) > 0 || (i.protein ?? 0) > 0 || (i.carbs ?? 0) > 0 || (i.fat ?? 0) > 0,
+    );
+    if (!ingredientsHaveNutrition && recipe) {
       const perServing = {
         calories: recipe.calories,
         protein: recipe.protein,
@@ -690,7 +699,7 @@ export default function RecipeDetailScreen() {
     // on the recipe detail (TestFlight AIf4Z6q1KL2j). Shrink the numeral and
     // trim the surrounding card padding so the macro tiles below get their
     // breathing room back.
-    calorieNumber: { fontSize: 34, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
+    calorieNumber: { fontSize: 26, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
     calorieLabel: { fontSize: 12, color: colors.textSecondary, marginTop: -2 },
 
     card: {
@@ -982,10 +991,18 @@ export default function RecipeDetailScreen() {
 
           {/* Calories hero (per portion); macro tiles follow dashboard widget prefs */}
           <View
+            // F-51 (2026-04-22): further shrink recipe-detail calories
+            // hero. F-23 went 48→34 on build 14; build-26 tester still
+            // reported "Cals section is huge and still wrong". Now
+            // 34→26 with one-line composition + tighter padding so the
+            // whole card takes ~half the vertical space it did.
             style={{
-              alignItems: "center",
+              flexDirection: "row",
+              alignItems: "baseline",
+              justifyContent: "center",
+              gap: 6,
               marginBottom: Spacing.md,
-              paddingVertical: Spacing.md,
+              paddingVertical: Spacing.sm,
               paddingHorizontal: Spacing.lg,
               borderRadius: Radius.lg,
               borderWidth: 1,
@@ -993,11 +1010,8 @@ export default function RecipeDetailScreen() {
               backgroundColor: MacroColors.calories + "14",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: "800", color: MacroColors.calories, letterSpacing: 1 }}>
-              CALORIES PER PORTION
-            </Text>
-            <Text style={[styles.calorieNumber, { marginTop: 4, color: colors.text }]}>{Math.round(macros.calories)}</Text>
-            <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>kilocalories</Text>
+            <Text style={[styles.calorieNumber, { color: colors.text }]}>{Math.round(macros.calories)}</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal per portion</Text>
           </View>
 
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.6, marginBottom: Spacing.sm }}>

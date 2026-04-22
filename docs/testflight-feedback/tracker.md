@@ -19,11 +19,19 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
-## Snapshot (2026-04-21, build-17 queued)
+## Snapshot (2026-04-22, builds 25–27 live)
 
 | Total | ✅ | 🟡 | 🔄 | 🟠 | ⏳ | 🔍 |
 |-------|----|----|----|----|----|----|
-| 82    | 52 | 29 | 0  | 0  | 0  | 1  |
+| 89    | 53 | 35 | 0  | 0  | 0  | 1  |
+
+**2026-04-22 delta (builds 23 → 27):**
+- **F-37..F-42** (build 23): HealthKit init split, household create success Alert, multi-item meal modal stays open, recipe `/n` regex widened, recipe source name clickable, notes `recipe_id` uuid guard.
+- **F-43..F-46** (build 23): RC+promo reconcile on Plan mount (fixes Pro-shown-as-Free); HK nutrition + body lookback 120/366 → 730 days; fit-% pill removed on Discover (web + mobile).
+- **F-47..F-48** (build 23): Today hero calorie section shrunk (Number 80→56, Bar 44, endpoint row killed, gesture caption dropped); household card caption clarified ("Your remaining calories and macros for today. Members' targets are private.").
+- **F-49** (build 26): visible build-stamp in **More → Build** — tester can screenshot "MARKER F49-2026-04-22" to confirm which binary is installed.
+- **F-50** (build 27): **HealthKit single-init** consolidation (reverts F-37 split — iOS was silently skipping the second sheet so dietary perms were never granted → "Connected but no meals"). Also: seed-script `author_id` fix (was `null`, hidden by `.not("author_id","is",null)` Discover filter) + one-shot DB backfill for 20 existing seeded rows.
+- **Build 27 marker** in place — new ledger rows from 2026-04-22 15:03–15:07Z are confirmed against build 26 or 27 via Grace's `ALQ5grg…` "Confirming correct version" screenshot.
 
 Build 17 adds (for the 5 new items that came in after build-15 install):
 - **F-33** Library card grey-band overlay removed (AH96GSgB4pjq).
@@ -87,6 +95,13 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
+| 2026-04-22 | `AKAyzCHqEBAE…` | screenshot | 🟡 | build-28 **F-52** — Discover hero + More-ideas row now render `image_url` when present (RN `Image` with gradient fallback) | "Recipes have finally come in but they don't have images on this page" |
+| 2026-04-22 | `AJgeWQvRSt1v…` | screenshot | 🟡 | build-28 **F-55** — More-ideas rows gained 56×56 thumbnail; chef-hat box only on image-less rows (social-feed parity) | "Should all be like the two at the top with a pic etc. the more you might like is wrong" |
+| 2026-04-22 | `ABMrc96mPkNp…` | screenshot | 🟡 | sibling of F-52 — Discover hero now uses the real image, not the gradient fallback | "Terrible image quality" |
+| 2026-04-22 | `ABCjwJb4cU5U…` | screenshot | 🟡 | build-28 **F-51** — recipe-detail calorie hero shrunk (34→26, single-line composition, tighter padding) | "Cals section is huge and still wrong" |
+| 2026-04-22 | `AA44j8pjh8tZ…` | screenshot | 🟡 | build-28 **F-53** — recipe-detail falls back to recipe-level totals when every ingredient has 0-nutrition (seeded recipes only carry recipe-level totals) | "None of the cals and macros are pulling in" |
+| 2026-04-22 | `ALQ5grg-65Rh…` | screenshot | ✅ | meta — F-49 MARKER confirmed installed on build 26; no code action | "Confirming correct version before sending more feedback" |
+| 2026-04-22 | `APUA9ZBFPysH…` | screenshot | 🟡 | build-27 **F-50** — HealthKit single-init (was splitting into two sheets; iOS skipped the second → no dietary perms → "Health access needed" dialog on every sync). Tester on build 26 screenshot, build 27 ships the fix | "Getting this error again" (HealthKit "Health access needed" dialog) |
 | 2026-04-21 | `AKL4IQ_aQ2bX…` | screenshot | 🟡 | no code fix — build-16 install lag (F-32 avatars land there) | "Still not fixed" — Plan tab household card |
 | 2026-04-21 | `AAOBOOX-2zyX…` | screenshot | 🟡 | build-17 F-36 (clamp Dynamic Type on pills) | "Pills are whether scrunched or huge" (Library filter row) |
 | 2026-04-21 | `AH96GSgB4pjq…` | screenshot | 🟡 | build-17 F-33 (kill grey-band overlay) | "Images on this page look weird why are the grey half" |
