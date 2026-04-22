@@ -54,7 +54,7 @@ export function TodayHeroNumber({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        paddingVertical: 20,
+        paddingVertical: 16,
         paddingHorizontal: Spacing.xl,
       }}
     >
@@ -72,13 +72,17 @@ export function TodayHeroNumber({
       {/* F-47 (2026-04-22): repeated tester feedback across builds
           18/20/21 — "Calorie section is too big" / "still massive".
           Shrunk 80→56 / 92→64 / -2.8→-1.8 and tightened vertical
-          rhythm so the hero takes less than half the viewport. */}
+          rhythm so the hero takes less than half the viewport.
+          F-60 (2026-04-22 build-28 feedback: still massive): 56→44 /
+          64→52 / -1.8→-1.2 + paddingVertical 20→16 on the card below.
+          Matches Bar variant's kcal number so the three hero variants
+          share one size. */}
       <Text
         style={{
-          fontSize: 56,
+          fontSize: 44,
           fontWeight: "800",
-          letterSpacing: -1.8,
-          lineHeight: 64,
+          letterSpacing: -1.2,
+          lineHeight: 52,
           color: textColor,
           fontVariant: ["tabular-nums"],
           marginTop: Spacing.sm,

@@ -111,8 +111,8 @@ Ship rules:
 | 2026-04-22 | `AEwoLmeE5w47…` | screenshot | ⏳ | cluster **C3** — recipe seeding still failing post-F50 backfill | "Recipes still not seeded" |
 | 2026-04-22 | `AKcZwsipNdSx…` | screenshot | ⏳ | cluster **C3** | "Recipes still aren't seeded" |
 | 2026-04-22 | `AJr60qsyVUcM…` | screenshot | ⏳ | cluster **C3** | "Recipes still not seeded" |
-| 2026-04-22 | `AB6WOylB6-Qz…` | screenshot | ⏳ | cluster **C4** — calorie hero still massive despite F-47/F-51 | "Calorie section still massive" |
-| 2026-04-22 | `ADt-4U9u_9NE…` | screenshot | ⏳ | cluster **C4** | "Cals still too big hasn't been fixed" |
+| 2026-04-22 | `AB6WOylB6-Qz…` | screenshot | 🟡 | **F-60** — Ring size 160→140 (+ card paddingY xl→md); Number fontSize 56→44 / lineHeight 64→52 / paddingY 20→16 for parity with Bar. All three hero variants now share one kcal number size | "Calorie section still massive" |
+| 2026-04-22 | `ADt-4U9u_9NE…` | screenshot | 🟡 | sibling of F-60 | "Cals still too big hasn't been fixed" |
 | 2026-04-22 | `ALpppRnGzIx9…` | screenshot | ⏳ | cluster **C5** — household still doesn't match prototype post-F-32 | "Still doesn't look like the prototype for households" |
 | 2026-04-22 | `ALQQyjCHjzbt…` | screenshot | ⏳ | cluster **C5** | "Household sections still doesn't make much sense and doesn't match the prototype for this page" |
 | 2026-04-22 | `AKQGhg8wc6FZ…` | screenshot | ⏳ | cluster **C5** | "I don't really know what the household section is telling me right now" |
@@ -131,8 +131,8 @@ Ship rules:
 | 2026-04-22 | `ALvjyW7wHU7K…` | screenshot | ⏳ | cluster **C9** | "Layout still messed up" |
 | 2026-04-22 | `AHitOL0RmJmQ…` | screenshot | ⏳ | cluster **C9** | "Spacing a little off move up" |
 | 2026-04-22 | `AAtwbwVxlQ70…` | screenshot | ⏳ | cluster **C9** — cals+macros+coloured line not rendering | "Cals and macros and the coloured line not showing here" |
-| 2026-04-22 | `AHS6xzyUumrl…` | screenshot | ⏳ | cluster **C10** — repeat of AA63DQ7xd ("score seems irrelevant"); tester sees it again | "Score doesn't mean anything remove" |
-| 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | ⏳ | cluster **C11** — Edamam restaurant-foods integration status | "Not sure if edamam is still connected as restaurant foods not showing" |
+| 2026-04-22 | `AHS6xzyUumrl…` | screenshot | ✅ | duplicate of `AA63DQ7xd…` (already resolved). Verified 2026-04-22: `grep -r "score" apps/mobile/**/*.tsx` returns no product surfaces — tester's screenshot must predate or cache from an older build | "Score doesn't mean anything remove" |
+| 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | 🟠 | cluster **C11** — ops check required: web route `/api/edamam/search` returns 503 if `EDAMAM_APP_ID`/`EDAMAM_APP_KEY` unset on Vercel prod; mobile silently falls back to empty. Either (a) set keys in Vercel, OR (b) remove "Edamam" from `apps/mobile/app/nutrition-sources.tsx`. See action plan C11 | "Not sure if edamam is still connected as restaurant foods not showing" |
 | 2026-04-22 | `AJNcZdalctgg…` | screenshot | ✅ | meta — tester self-verification ("Confirming build"); no code action | "Confirming build" |
 | 2026-04-22 | `AEaTIZJodtNQ…` | screenshot | 🔍 | no comment — no actionable context | (no comment) |
 | 2026-04-22 | `AKAyzCHqEBAE…` | screenshot | 🟡 | build-28 **F-52** — Discover hero + More-ideas row now render `image_url` when present (RN `Image` with gradient fallback) | "Recipes have finally come in but they don't have images on this page" |

@@ -14,12 +14,15 @@ import { RING_LABELS } from "../../../../src/lib/copy/today";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const SIZE = 160;
+// F-60 (2026-04-22): 160 → 140 to address repeat tester complaints
+// ("calorie section still massive" / "cals still too big hasn't been
+// fixed" on build 28). Macro-ring radii stay proportional.
+const SIZE = 140;
 const STROKE = 8;
 const MACRO_STROKE = 5;
 const CX = SIZE / 2;
 const R = (SIZE - STROKE) / 2 - 2;
-const MACRO_R = [R - 13, R - 24, R - 35];
+const MACRO_R = [R - 12, R - 22, R - 32];
 const CIRC = (r: number) => 2 * Math.PI * r;
 
 type DisplayMode = "remaining" | "consumed";

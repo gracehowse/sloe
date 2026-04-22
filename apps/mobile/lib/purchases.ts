@@ -193,6 +193,37 @@ async function bestPromoTierFromRedemptions(
  * Sync effective plan tier to Supabase `profiles.user_tier`.
  * Merges RevenueCat entitlements with redeemed promo tiers so promos are not wiped by a later RC sync.
  */
+/**
+ * Pure tier-merge with downgrade guard. Extracted so it can be
+ * pinned by `tests/unit/resolveNextTier.test.ts` without pulling in
+ * the RC native module (which breaks under vitest).
+ *
+ * F-58 (2026-04-22): return `null` when RC-derived tier would
+ * downgrade the currently-stored tier. Real cancellations reach the
+ * client via webhooks that write `profiles.user_tier` directly and
+ * never go through this client-side reconcile path, so a stored Pro
+ * always wins over an empty RC response.
+ */
+export type UserTier = "free" | "base" | "pro";
+
+export function resolveNextTier(args: {
+  rc: UserTier;
+  promo: UserTier;
+  current: UserTier;
+}): { next: UserTier; write: boolean; reason: "upgrade" | "downgrade-blocked" | "no-change" } {
+  const { rc, promo, current } = args;
+  const mergedRank = Math.max(tierRank(rc), tierRank(promo));
+  const computed: UserTier = mergedRank >= 2 ? "pro" : mergedRank >= 1 ? "base" : "free";
+
+  if (tierRank(computed) < tierRank(current)) {
+    return { next: current, write: false, reason: "downgrade-blocked" };
+  }
+  if (computed === current) {
+    return { next: current, write: false, reason: "no-change" };
+  }
+  return { next: computed, write: true, reason: "upgrade" };
+}
+
 export async function syncTierToSupabase(
   info: CustomerInfo,
   supabase: SupabaseClient,
@@ -200,9 +231,26 @@ export async function syncTierToSupabase(
 ): Promise<void> {
   const rc = resolvedTier(info);
   const promo = await bestPromoTierFromRedemptions(supabase, userId);
-  const mergedRank = Math.max(tierRank(rc), tierRank(promo));
-  const tier: "free" | "base" | "pro" = mergedRank >= 2 ? "pro" : mergedRank >= 1 ? "base" : "free";
-  const { error } = await supabase.from("profiles").update({ user_tier: tier }).eq("id", userId);
+
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("user_tier")
+    .eq("id", userId)
+    .maybeSingle();
+  const current = (existing?.user_tier as UserTier | null) ?? "free";
+
+  const { next, write, reason } = resolveNextTier({ rc, promo, current });
+  if (!write) {
+    if (__DEV__ && reason === "downgrade-blocked") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[syncTierToSupabase] refusing to downgrade ${current} → computed (RC=${rc}, promo=${promo})`,
+      );
+    }
+    return;
+  }
+
+  const { error } = await supabase.from("profiles").update({ user_tier: next }).eq("id", userId);
   if (error && __DEV__) {
     console.warn("[syncTierToSupabase]", error.message);
   }

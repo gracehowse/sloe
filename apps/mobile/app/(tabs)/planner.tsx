@@ -190,16 +190,33 @@ export default function PlannerScreen() {
   // stale `profiles.user_tier` doesn't downgrade a user who is
   // entitled via RC or promo but whose profile wasn't synced since
   // the last paywall / promo redeem.
+  //
+  // F-58 (2026-04-22, TestFlight build-28 "On pro but plans thinks
+  // I'm on free" x3): two holes in F-43 —
+  //  (a) `getCustomerInfo` was called without first ensuring RC was
+  //      logged in as the Supabase userId. If the user signed in
+  //      after app boot, RC stayed anonymous → no entitlements → the
+  //      merge-max wrote "free" into `profiles.user_tier`, clobbering
+  //      a legitimately Pro profile.
+  //  (b) the `catch {}` was silent, so any RC misconfig (TestFlight
+  //      without RC API key, network hiccup) hid behind a stale
+  //      profile read.
+  // Fix: `ensurePurchasesUser(userId)` before `getCustomerInfo`, and
+  // log the failure mode in dev.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
       try {
-        const { getCustomerInfo, syncTierToSupabase } = await import("@/lib/purchases");
-        const info = await getCustomerInfo();
-        await syncTierToSupabase(info, supabase as any, userId);
-      } catch {
-        // RC unavailable in Expo Go or network hiccup — fall through to profile read.
+        const purchases = await import("@/lib/purchases");
+        await purchases.ensurePurchasesUser(userId);
+        const info = await purchases.getCustomerInfo();
+        await purchases.syncTierToSupabase(info, supabase as any, userId);
+      } catch (err) {
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.warn("[planner] RC reconcile failed — falling back to profile read", err);
+        }
       }
       if (cancelled) return;
       const { data } = await supabase

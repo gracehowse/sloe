@@ -71,7 +71,9 @@ export function TodayHeroRing({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        paddingVertical: Spacing.xl,
+        // F-60 (2026-04-22): xl(20) → md(12) to tighten the card
+        // vertical rhythm after the ring itself shrank 160 → 140.
+        paddingVertical: Spacing.md,
         paddingHorizontal: Spacing.lg,
         alignItems: "center",
         gap: Spacing.md,
