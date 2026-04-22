@@ -39,10 +39,12 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - **C10** `AHS6xzyU…` closed ✅ as duplicate of `AA63DQ7xd…` (score already removed everywhere).
 - **C11** `ANfXXs6H…` 🟠 — ops check: Vercel prod needs `EDAMAM_APP_ID` + `EDAMAM_APP_KEY`, else remove Edamam from `nutrition-sources.tsx`.
 - **C9c** (`AIC05bpyu…`) 🟠 — Health Sync permission style; routed to ui-product-designer.
-- **C5** (`ALpppRnGz…` + 3 siblings) ⏳ — household Netflix-model rethink; routed to product-lead.
-- **C6-chart** (`AKuLcrQU` + 1) ⏳ — weight chart redesign; routed to ui-product-designer.
+- **C5** Household Netflix-model — brief delivered, saved at [../planning/2026-04-22-household-netflix-model-spec.md](../planning/2026-04-22-household-netflix-model-spec.md). Routes next: ui-product-designer, data-integrity, journey-architect, executor.
+- **C6-chart** Weight chart redesign — brief delivered, saved at [../planning/2026-04-22-weight-chart-redesign-brief.md](../planning/2026-04-22-weight-chart-redesign-brief.md). Executor can pick up with the specified file list (WeightChart/WeightRangeToggle/WeightSparseState + shared weightTrend.ts).
+- **C9c** Health Sync redesign — brief delivered, saved at [../planning/2026-04-22-health-sync-redesign-brief.md](../planning/2026-04-22-health-sync-redesign-brief.md). Three new components + one decision doc + web parity pass.
+- **F-64** Recipe image upscale — parser prefers og:image; 12 of 20 prod rows backfilled; 4 new regression tests pinned.
 
-All tracker rows now have IDs mapped to an F-number or routing verdict.
+All tracker rows now have IDs mapped to an F-number, a routing verdict, or a design brief with a concrete executor path.
 
 **2026-04-22 pilot-round pull delta (+34 new rows):** grouped into 11 clusters — **C1** Apple Health still broken (×4), **C2** Pro→Free on Plans (×3), **C3** recipes not seeded (×3), **C4** calorie hero still massive (×2), **C5** household prototype drift (×4), **C6** weight graph (×3), **C7** Discover feed cards (×2), **C8** import "no meals" bug (×2), **C9** layout/spacing/prototype mismatch (×7), **C10** score removal repeat (×1), **C11** Edamam status (×1). Plus 1 meta (✅ Confirming build) + 1 🔍 (no comment).
 
@@ -136,7 +138,7 @@ Ship rules:
 | 2026-04-22 | `AGM9xRpzTLnD…` | screenshot | ⏳ | cluster **C6** | "Weight graph either not accurate or not clear" |
 | 2026-04-22 | `AOVuCyOCNB1p…` | screenshot | 🟡 | **F-56** — `computeWeightTrendCopy` now returns `{delta: null, copy: "Log weight to see trend"}` when most recent weigh-in is >14 days old (test pinned) | "Up 0.9 this week is not correct as I have not logged weight in about a month" |
 | 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | 🟡 | **F-61** — Discover "More ideas" section now renders hero-style cards (same layout/image treatment/kcal+macro row as the top 2), 12px stack gap. Uniform social-feed density across the whole feed | "All recipes should render like the first 2 (bigger feed like)" |
-| 2026-04-22 | `APpAKhhRSuv0…` | screenshot | 🟠 | sibling of F-61 — bigger cards now render the real seed image at 16:10; underlying image quality is a seed-data issue (many seed URLs are low-res thumbnails). Follow-up: either re-seed with 1200px sources or proxy via an image CDN | "Images are here but they are terrible" |
+| 2026-04-22 | `APpAKhhRSuv0…` | screenshot | 🟡 | **F-64** — parser now prefers og:image / twitter:image over JSON-LD thumbnails (social meta tags are 1200×630+ by convention; JSON-LD frequently ships a 225×225 thumbnail). Plus a URL upscaler that strips WP `-WxH` suffixes and Photon `fit/resize/w/h` params. One-shot backfill `scripts/reseed-recipe-images.mjs` ran against prod: 12 of 20 seeded rows upscaled, 8 already correct | "Images are here but they are terrible" |
 | 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | 🟡 | **F-62** — sync-status copy now distinguishes three empty-states: (a) truly empty → F-57 denied-perm Alert fires, (b) all samples were Suppr-authored → "N samples skipped (already logged in Suppr)", (c) nothing new → generic "No new meals" | "Says no new meals but there are" |
 | 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | 🟡 | sibling of F-62 | "Says no meals to import but there are meals to import" |
 | 2026-04-22 | `AIC05bpyuit_…` | screenshot | 🟠 | cluster **C9c** — screenshot = Health Sync screen (`apps/mobile/app/health-sync.tsx`). Apple Health permission rows render empty circles vs prototype toggles. Requires design brief — route to ui-product-designer | "This page doesn't match prototype" |

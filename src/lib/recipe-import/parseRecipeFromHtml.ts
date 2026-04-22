@@ -259,6 +259,43 @@ function isBlockedImageHost(url: string): boolean {
   }
 }
 
+/**
+ * F-64 (2026-04-22): TestFlight build-28 `APpAKhhR` ("Images are here
+ * but they are terrible"). Seeded rows stored 200–225 px thumbnails
+ * directly from JSON-LD because most sites embed the smallest-size
+ * variant there for SEO compatibility. On F-61's new hero-sized
+ * Discover cards (16:10 full-width) those thumbnails look
+ * pixelated. Full-resolution originals live in predictable URL
+ * patterns on the same CDN — strip the WP/Photon sizing suffixes
+ * to recover them.
+ *
+ * Patterns unwound:
+ *   - WordPress core: `-225x225.jpg` / `-300x200.png` suffix → remove.
+ *   - Automattic Photon / Jetpack / tachyon: `?fit=225%2C225`,
+ *     `?resize=300,200`, `?w=400&h=400` query → drop size params.
+ *   - "-scaled" (WP auto-downscale) → leave as-is, already large.
+ */
+function upscaleImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Strip WP/Photon-style size query params
+    for (const k of ["fit", "resize", "w", "h", "width", "height"]) {
+      parsed.searchParams.delete(k);
+    }
+    // Strip WP core `-<W>x<H>` suffix on the filename. Matches
+    // `something-225x225.jpg`, `something-300x200.png`, etc. Does
+    // NOT match `-scaled.jpg` (WP full-size) or filename fragments
+    // that just happen to contain digits-x-digits.
+    parsed.pathname = parsed.pathname.replace(
+      /-(\d{2,4})x(\d{2,4})(\.[a-zA-Z0-9]+)$/,
+      "$3",
+    );
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function firstImageUrl(image: unknown): string | null {
   if (image == null) return null;
   if (typeof image === "string") {
@@ -361,7 +398,40 @@ export function siteNameFromUrl(url: string): string {
   }
 }
 
+/**
+ * F-64 (2026-04-22): og:image and twitter:image meta tags are
+ * usually the 1200×630+ social-share variant (Facebook/Twitter
+ * require those sizes) while JSON-LD often stores the smallest
+ * thumbnail. Prefer OG/Twitter when present; fall back to JSON-LD.
+ */
+function extractOgImage(html: string): string | null {
+  const ogMatch =
+    html.match(
+      /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i,
+    ) ??
+    html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["']/i,
+    );
+  if (ogMatch?.[1]) {
+    const url = ogMatch[1].trim();
+    if (url && !isBlockedImageHost(url)) return url;
+  }
+  const twMatch =
+    html.match(
+      /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
+    ) ??
+    html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]*name=["']twitter:image(?::src)?["']/i,
+    );
+  if (twMatch?.[1]) {
+    const url = twMatch[1].trim();
+    if (url && !isBlockedImageHost(url)) return url;
+  }
+  return null;
+}
+
 export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
+  const ogImage = extractOgImage(html);
   const scripts = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
   for (const m of scripts) {
     const jsonText = m[1]?.trim();
@@ -416,7 +486,14 @@ export function parseRecipeFromHtml(html: string): ParsedRecipeDraft | null {
           cookTimeMin = totalMin;
         }
       }
-      const imageUrl = firstImageUrl(r.image);
+      // F-64: prefer og:image / twitter:image over JSON-LD because
+      // the latter is frequently a 225x225 thumbnail, while social
+      // meta tags are 1200x630+ by convention. Both go through
+      // `upscaleImageUrl` to strip WP/Photon size suffixes when
+      // the CDN-native full-size URL is derivable.
+      const ldImage = firstImageUrl(r.image);
+      const chosen = ogImage ?? ldImage;
+      const imageUrl = chosen ? upscaleImageUrl(chosen) : null;
       const sourceName = extractAuthorName(r.author) ?? extractPublisherName(r.publisher);
       const siteNutrition = extractNutrition(r.nutrition);
 

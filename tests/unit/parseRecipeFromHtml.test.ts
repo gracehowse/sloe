@@ -14,6 +14,63 @@ function wrapGraph(items: Record<string, unknown>[]): string {
 }
 
 describe("parseRecipeFromHtml", () => {
+  // ── F-64 image resolution ──────────────────────────────────────
+
+  it("F-64: prefers og:image over JSON-LD thumbnail", () => {
+    const html = `
+      <html><head>
+        <meta property="og:image" content="https://example.com/hero-1200.jpg"/>
+        <script type="application/ld+json">${JSON.stringify({
+          "@type": "Recipe",
+          name: "T",
+          recipeIngredient: ["x"],
+          image: "https://example.com/hero-225x225.jpg",
+        })}</script>
+      </head><body></body></html>`;
+    const r = parseRecipeFromHtml(html);
+    expect(r?.imageUrl).toBe("https://example.com/hero-1200.jpg");
+  });
+
+  it("F-64: strips WP core -WxH filename suffix when falling back to JSON-LD", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "T",
+      recipeIngredient: ["x"],
+      image: "https://cookieandkate.com/images/2019/01/best-lentil-soup-recipe-4-225x225.jpg",
+    });
+    const r = parseRecipeFromHtml(html);
+    expect(r?.imageUrl).toBe(
+      "https://cookieandkate.com/images/2019/01/best-lentil-soup-recipe-4.jpg",
+    );
+  });
+
+  it("F-64: strips Photon fit/resize/w/h query params", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "T",
+      recipeIngredient: ["x"],
+      image: "https://pinchofyum.com/tachyon/Spicy-Peanut-Chicken-Salad-Soba-Square.png?fit=225%2C225",
+    });
+    const r = parseRecipeFromHtml(html);
+    expect(r?.imageUrl).toBe(
+      "https://pinchofyum.com/tachyon/Spicy-Peanut-Chicken-Salad-Soba-Square.png",
+    );
+  });
+
+  it("F-64: leaves -scaled WP variant alone (already full-size)", () => {
+    const html = wrapJsonLd({
+      "@type": "Recipe",
+      name: "T",
+      recipeIngredient: ["x"],
+      image:
+        "https://www.halfbakedharvest.com/wp-content/uploads/2025/06/Easy-Sheet-Pan-Chicken-Fajitas-1-scaled.jpg",
+    });
+    const r = parseRecipeFromHtml(html);
+    expect(r?.imageUrl).toBe(
+      "https://www.halfbakedharvest.com/wp-content/uploads/2025/06/Easy-Sheet-Pan-Chicken-Fajitas-1-scaled.jpg",
+    );
+  });
+
   // ── Basic extraction ───────────────────────────────────────────
 
   it("extracts title, ingredients, instructions from simple Recipe", () => {
