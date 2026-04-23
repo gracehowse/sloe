@@ -34,7 +34,7 @@ const insertMock = vi.fn(async (payload: Record<string, unknown>) => {
   return { error: insertError };
 });
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("../../lib/supabase", () => ({
   supabase: {
     from: vi.fn((table: string) => {
       if (table === "profiles") return { select: selectMock };
@@ -67,7 +67,11 @@ import {
 } from "../../lib/healthSync";
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 beforeEach(() => {

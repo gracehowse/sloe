@@ -83,6 +83,14 @@ import { formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolv
 import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
+import { WeightChart } from "@/components/progress/WeightChart";
+import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
+import { WeightSparseState } from "@/components/progress/WeightSparseState";
+import {
+  computeWeightTrend,
+  weightKgByDayToPoints,
+  type WeightRange,
+} from "@/lib/progress/weightTrend";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -178,6 +186,8 @@ export default function ProgressScreen() {
   // every other weight surface respected the preference, so an imperial
   // user saw "lb" everywhere except here where it stuck on "kg".
   const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>("metric");
+
+  const [weightChartRange, setWeightChartRange] = useState<WeightRange>("1m");
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -689,6 +699,12 @@ export default function ProgressScreen() {
     const diff = last - first;
     return { diff: Math.round(diff * 10) / 10, direction: diff < 0 ? "down" : diff > 0 ? "up" : "flat" as const };
   }, [weightKgByDay]);
+
+  // Weight chart trend — drives WeightChart + WeightRangeToggle
+  const weightChartTrend = useMemo(
+    () => computeWeightTrend(weightKgByDayToPoints(weightKgByDay), weightChartRange, goalWeightKg),
+    [weightKgByDay, weightChartRange, goalWeightKg],
+  );
 
   // Steps today
   const stepsToday = stepsByDay[todayKey] ?? 0;
@@ -1660,58 +1676,42 @@ export default function ProgressScreen() {
             )}
           </View>
 
-          {/* Weight Card */}
-          {(latestWeightKg != null || Object.keys(weightKgByDay).length > 0) && (
-            <Pressable
-              onPress={() => router.push("/weight-tracker" as const)}
-              accessibilityRole="button"
-              accessibilityLabel="Weight details"
-              accessibilityHint="Opens weight graph and history"
-              style={({ pressed }) => ({
-                backgroundColor: t.elevated,
-                borderRadius: Radius.lg,
-                borderWidth: 1,
-                borderColor: t.border,
-                padding: 16,
-                marginBottom: 14,
-                opacity: pressed ? 0.92 : 1,
-              })}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <IconBox color={t.accent} size={28}>
-                    <Scale size={14} color={t.accent} strokeWidth={1.75} />
-                  </IconBox>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
+          {/* Weight Chart Card */}
+          <View
+            style={{
+              backgroundColor: t.elevated,
+              borderRadius: Radius.lg,
+              borderWidth: 1,
+              borderColor: t.border,
+              padding: 16,
+              marginBottom: 14,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 0.6, color: t.dim, textTransform: "uppercase" }}>WEIGHT</Text>
+              {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
+                <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
                 </View>
-                <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
-              </View>
-              {/* Action 13 Item #7 (2026-04-19) — weight readouts go
-                  through the shared `formatWeightForUnit` helper so
-                  imperial users see "lb" and the start/current/change
-                  numbers on this card all use the same unit. The
-                  goal-suffix used to be a separate template literal
-                  with " kg" hard-coded — same drift class. */}
-              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-                <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {latestWeightKg != null
-                    ? formatWeightForUnit({ kg: latestWeightKg, system: measurementSystem })
-                    : "—"}
-                </Text>
-                <Text style={{ fontSize: 13, color: t.sub }}>
-                  {goalWeightKg
-                    ? ` → ${formatWeightForUnit({ kg: goalWeightKg, system: measurementSystem })} goal`
-                    : ""}
-                </Text>
-              </View>
-              {weightTrend && (
-                <Text style={{ fontSize: 12, color: weightTrend.direction === "down" ? t.green : t.amber, marginTop: 4 }}>
-                  {formatWeightForUnit({ kg: weightTrend.diff, system: measurementSystem, signed: true })} overall trend
-                </Text>
               )}
-              <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent, marginTop: 10 }}>Tap for graph & log weight</Text>
-            </Pressable>
-          )}
+            </View>
+            <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
+            <View style={{ marginTop: 12 }}>
+              {weightChartTrend.points.length >= 3 ? (
+                <WeightChart trend={weightChartTrend} goalKg={goalWeightKg} />
+              ) : (
+                <WeightSparseState
+                  points={weightChartTrend.points}
+                  onLogWeight={() => router.push("/weight-tracker" as const)}
+                />
+              )}
+            </View>
+            {weightChartTrend.points.length >= 3 && (
+              <Text style={{ fontSize: 12, color: t.sub, marginTop: 6 }}>
+                {weightChartTrend.trendCopy} {weightChartTrend.sinceLabel}.
+              </Text>
+            )}
+          </View>
 
           {/* Weight Projection / Journey Card */}
           {latestWeightKg != null &&
