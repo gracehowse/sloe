@@ -17,6 +17,7 @@ import {
   buildFiberAndMicrosFromHealthTotals,
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
+import { stringifyBridgeUnknown } from "./healthSyncBridgeString";
 import {
   bucketEnergyShares,
   buildQuantityIdToCorrelationId,
@@ -203,7 +204,7 @@ function logHealthPermission(message: string, detail?: string): void {
 function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | { ok: false; error: string }> {
   return new Promise((resolve) => {
     hk.isAvailable((err, results) => {
-      if (err) resolve({ ok: false, error: String(err) });
+      if (err) resolve({ ok: false, error: stringifyBridgeUnknown(err) });
       else if (!results) resolve({ ok: false, error: "HealthKit reported not available on this device." });
       else resolve({ ok: true });
     });
@@ -216,7 +217,7 @@ function initHealthKitPromise(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     hk.initHealthKit(permissions, (error) => {
-      if (error) reject(new Error(String(error)));
+      if (error) reject(new Error(stringifyBridgeUnknown(error)));
       else resolve();
     });
   });
@@ -946,8 +947,7 @@ export type HealthKitPermissionOutcome = {
 };
 
 function formatHealthKitStepError(error: unknown, step: string): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  return `${step}: ${msg}`;
+  return `${step}: ${stringifyBridgeUnknown(error)}`;
 }
 
 /**
