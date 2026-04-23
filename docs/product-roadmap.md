@@ -164,6 +164,13 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Per-member remaining macros** on household view — each member sees their own consumed / targets / remaining after the shared meal.
 - **Surfaces:** `HouseholdPanel.tsx` (web), `HouseholdCard.tsx` (mobile).
 
+### In progress (Phase F.2 — Netflix-model v1, 2026-05-01)
+
+- **Per-member sharing preset** — `household_members.share_preset` with five values (`all`, `dinners`, `dinners_weekends`, `lunch_dinner`, `custom`). Supersedes the owner-level `share_lunch` boolean; `custom` preserves the per-cell override grid. Schema shipped; UI + read-path switch pending.
+- **Soft-delete on households** — `households.disbanded_at` gives a 30-day retention window before hard-delete so historical `household_meals` don't orphan. Schema shipped.
+- **Cook display-name snapshot** — `household_meals.cook_display_name` keeps leavers' historical attributions legible. Schema + backfill shipped.
+- **Privacy boundary pin** — structural RLS test (`tests/unit/householdPrivacyRls.test.ts`) fails CI if any household migration ever adds a policy on `profiles`, `weight_entries`, `nutrition_entries`, `health_snapshots`, or similar personal-data tables. See `docs/decisions/2026-05-01-household-netflix-model-v1-schema.md`.
+
 ### Still to build
 
 - **Friends graph** — trusted connections outside of household (one-to-one share).
