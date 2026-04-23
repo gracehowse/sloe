@@ -17,6 +17,12 @@ import {
   buildFiberAndMicrosFromHealthTotals,
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
+import {
+  bucketEnergyShares,
+  buildQuantityIdToCorrelationId,
+  type CorrelationParentRow,
+  dietaryCorrelationKeyForSample,
+} from "./healthSyncCorrelation";
 
 /** Expo Go (no custom native modules). Prefer executionEnvironment; appOwnership is legacy. */
 export function isExpoGoRuntime(): boolean {
@@ -846,15 +852,9 @@ function journalMealSlotForSample(sample: DietarySample, when: Date, meta: Recor
   return mealSlotFromMetadata(meta) ?? inferMealSlotFromLocalTime(when);
 }
 
-/**
- * Energy + macro samples from the same log often share an instant but differ in ISO string
- * formatting; bucket to the same **local clock minute** + source so macros attach reliably.
- */
-function dietaryCorrelationKey(s: DietarySample): string {
-  const t = effectiveConsumptionInstant(s).getTime();
-  if (!Number.isFinite(t)) return `${s.startDate}|${sourceBundleIdOf(s) || "unknown"}`;
-  const minute = Math.floor(t / 60000);
-  return `${minute}|${sourceBundleIdOf(s) || "unknown"}`;
+/** Prefer HK food-correlation parent id; else legacy minute|bundle (`healthSyncCorrelation.ts`). */
+function dietaryCorrelationKey(s: DietarySample, quantityIdToCorrelationId: ReadonlyMap<string, string> | null): string {
+  return dietaryCorrelationKeyForSample(s, quantityIdToCorrelationId).key;
 }
 
 function daysAgo(n: number): Date {
@@ -1288,6 +1288,17 @@ export async function syncNutritionFromHealth(
   userId: string,
   lookbackDays = 120,
 ): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
+  try {
+    return await syncNutritionFromHealthImpl(userId, lookbackDays);
+  } catch {
+    return { imported: [], skippedOwn: 0, skippedNoName: 0 };
+  }
+}
+
+async function syncNutritionFromHealthImpl(
+  userId: string,
+  lookbackDays = 120,
+): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
   const hk = loadAppleHealthKit();
   if (!hk) return { imported: [], skippedOwn: 0, skippedNoName: 0 };
 
@@ -1315,13 +1326,18 @@ export async function syncNutritionFromHealth(
   ]);
 
   const quantityIdToFoodCorrelationMeta = buildQuantitySampleIdToCorrelationMetadata(foodCorrelationRows);
+  const correlationParentRows: CorrelationParentRow[] = foodCorrelationRows.map((row) => ({
+    id: row.id,
+    quantitySampleIds: row.quantitySampleIds,
+  }));
+  const quantityIdToCorrelationId = buildQuantityIdToCorrelationId(correlationParentRows);
 
   const correlated = newCorrelatedTotalsMap();
   for (let i = 0; i < HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.length; i++) {
     const permissionKey = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS[i]!;
     const rows = dietaryFetches[i] ?? [];
     for (const s of rows.filter(isExternal)) {
-      bumpCorrelatedTotals(correlated, dietaryCorrelationKey(s), permissionKey, s.value);
+      bumpCorrelatedTotals(correlated, dietaryCorrelationKey(s, quantityIdToCorrelationId), permissionKey, s.value);
     }
   }
 
@@ -1329,6 +1345,8 @@ export async function syncNutritionFromHealth(
   const energy = (energyIdx >= 0 ? dietaryFetches[energyIdx] : []) ?? [];
   const extEnergy = energy.filter(isExternal);
   let skippedOwn = energy.length - extEnergy.length;
+
+  const energyShares = bucketEnergyShares(extEnergy, quantityIdToCorrelationId);
 
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
@@ -1406,8 +1424,16 @@ export async function syncNutritionFromHealth(
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
-    const inner = correlated.get(dietaryCorrelationKey(sample));
-    const totals = totalsRecordFromInner(inner);
+    const correlationKey = dietaryCorrelationKey(sample, quantityIdToCorrelationId);
+    const inner = correlated.get(correlationKey);
+    const rawTotals = totalsRecordFromInner(inner);
+    const share = energyShares.shareForSample(sample.id, correlationKey);
+    const totals: typeof rawTotals =
+      share === 1
+        ? rawTotals
+        : (Object.fromEntries(
+            Object.entries(rawTotals).map(([k, v]) => [k, (v ?? 0) * share]),
+          ) as typeof rawTotals);
     const { fiberG, micros: builtMicros } = buildFiberAndMicrosFromHealthTotals(totals);
     const microsJson = builtMicros;
 
@@ -1469,18 +1495,29 @@ export async function syncNutritionFromHealthThrottled(userId: string): Promise<
   if (!userId || !isHealthSyncAvailable()) return;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const imp = await AsyncStorage.getItem("health_import_nutrition");
-    if (imp !== "true") return;
+    if ((await AsyncStorage.getItem("health_import_nutrition")) !== "true") return;
   } catch {
     return;
   }
   const now = Date.now();
   if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
-  await syncNutritionFromHealth(userId, 120);
-  // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
-  // is not imported (see backlog note in `exportDayToHealth`).
-  await syncCaffeineFromHealth(userId, 30);
-  lastNutritionImportSyncAt = Date.now();
+
+  try {
+    try {
+      await syncNutritionFromHealth(userId, 120);
+    } catch {
+      /* nutrition import is best-effort — must not block caffeine or throttle */
+    }
+    try {
+      await syncCaffeineFromHealth(userId, 30);
+    } catch {
+      /* caffeine must not prevent advancing the throttle (avoids retry storms) */
+    }
+  } catch {
+    /* belt-and-suspenders: never throw to Today-tab focus callers */
+  } finally {
+    lastNutritionImportSyncAt = Date.now();
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

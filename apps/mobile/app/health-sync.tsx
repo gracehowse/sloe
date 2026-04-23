@@ -30,14 +30,18 @@ export default function HealthSyncScreen() {
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
 
-  // Persist import/export prefs
+  // Persist import/export prefs + whether HealthKit connect completed in this install
   useEffect(() => {
     (async () => {
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const imp = await AsyncStorage.getItem("health_import_nutrition");
-        const gen = await AsyncStorage.getItem("health_import_generic_labels");
-        const exp = await AsyncStorage.getItem("health_export_nutrition");
+        const [conn, imp, gen, exp] = await Promise.all([
+          AsyncStorage.getItem("health_connected"),
+          AsyncStorage.getItem("health_import_nutrition"),
+          AsyncStorage.getItem("health_import_generic_labels"),
+          AsyncStorage.getItem("health_export_nutrition"),
+        ]);
+        if (conn === "true") setConnected(true);
         if (imp === "true") setImportEnabled(true);
         if (gen === "true") setGenericImportLabels(true);
         if (exp === "true") setExportEnabled(true);
@@ -87,6 +91,10 @@ export default function HealthSyncScreen() {
     const granted = await requestHealthPermissions();
     if (granted) {
       setConnected(true);
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        await AsyncStorage.setItem("health_connected", "true");
+      } catch {}
       Alert.alert("Connected", "Health data sync is now enabled.");
     } else {
       Alert.alert(
