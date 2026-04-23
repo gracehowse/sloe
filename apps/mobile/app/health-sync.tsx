@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   isExpoGoRuntime,
   isHealthSyncAvailable,
+  requestDietaryHealthPermissions,
   requestHealthPermissions,
   syncHealthData,
   syncNutritionFromHealth,
@@ -30,18 +31,14 @@ export default function HealthSyncScreen() {
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
 
-  // Persist import/export prefs + whether HealthKit connect completed in this install
+  // Persist import/export prefs
   useEffect(() => {
     (async () => {
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const [conn, imp, gen, exp] = await Promise.all([
-          AsyncStorage.getItem("health_connected"),
-          AsyncStorage.getItem("health_import_nutrition"),
-          AsyncStorage.getItem("health_import_generic_labels"),
-          AsyncStorage.getItem("health_export_nutrition"),
-        ]);
-        if (conn === "true") setConnected(true);
+        const imp = await AsyncStorage.getItem("health_import_nutrition");
+        const gen = await AsyncStorage.getItem("health_import_generic_labels");
+        const exp = await AsyncStorage.getItem("health_export_nutrition");
         if (imp === "true") setImportEnabled(true);
         if (gen === "true") setGenericImportLabels(true);
         if (exp === "true") setExportEnabled(true);
@@ -49,13 +46,35 @@ export default function HealthSyncScreen() {
     })();
   }, []);
 
-  const toggleImport = useCallback(async (val: boolean) => {
-    setImportEnabled(val);
-    try {
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      await AsyncStorage.setItem("health_import_nutrition", val ? "true" : "false");
-    } catch {}
-  }, []);
+  const toggleImport = useCallback(
+    async (val: boolean) => {
+      setImportEnabled(val);
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        await AsyncStorage.setItem("health_import_nutrition", val ? "true" : "false");
+      } catch {}
+
+      if (val && available && connected) {
+        const dietary = await requestDietaryHealthPermissions();
+        if (!dietary.dietaryImportReady) {
+          try {
+            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+            await AsyncStorage.setItem("health_import_nutrition", "false");
+          } catch {}
+          setImportEnabled(false);
+          Alert.alert(
+            "Meal import",
+            `${dietary.userMessage}${dietary.debugDetail ? `\n\nTechnical detail:\n${dietary.debugDetail}` : ""}`,
+            [
+              { text: "OK", style: "default" },
+              { text: "Open Settings", onPress: () => void Linking.openSettings() },
+            ],
+          );
+        }
+      }
+    },
+    [available, connected],
+  );
 
   const toggleExport = useCallback(async (val: boolean) => {
     setExportEnabled(val);
@@ -88,19 +107,24 @@ export default function HealthSyncScreen() {
       );
       return;
     }
-    const granted = await requestHealthPermissions();
-    if (granted) {
+    const outcome = await requestHealthPermissions();
+    if (outcome.ok) {
       setConnected(true);
-      try {
-        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        await AsyncStorage.setItem("health_connected", "true");
-      } catch {}
-      Alert.alert("Connected", "Health data sync is now enabled.");
+      const body = outcome.dietaryImportReady
+        ? outcome.userMessage
+        : `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
+      Alert.alert(outcome.dietaryImportReady ? "Connected" : "Connected (limited)", body, [
+        { text: "OK" },
+        ...(outcome.ok && !outcome.dietaryImportReady
+          ? [{ text: "Open Settings", onPress: () => void Linking.openSettings() }]
+          : []),
+      ]);
     } else {
-      Alert.alert(
-        "Permission or Health access",
-        "Apple didn’t grant access, or Health isn’t available on this device. Try again and tap Allow in the Health prompt. On Simulator, Health data is limited — use a real iPhone if it still fails.",
-      );
+      const body = `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
+      Alert.alert("Permission or Health access", body, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Settings", onPress: () => void Linking.openSettings() },
+      ]);
     }
   }, [available]);
 

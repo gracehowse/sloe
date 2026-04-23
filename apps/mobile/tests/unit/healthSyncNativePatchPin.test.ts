@@ -132,3 +132,13 @@ describe("G-7 structural pin — initHealthKit / isAvailable native @try wrap", 
     expect(patch).toContain("G-7");
   });
 });
+
+describe("EAS / CI — patch-package runs on install so native hunks reach the IPA", () => {
+  it("apps/mobile package.json postinstall invokes patch-package (EAS npm ci applies patches)", () => {
+    const pkgPath = resolve(__dirname, "../../package.json");
+    const raw = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(raw) as { scripts?: { postinstall?: string } };
+    expect(pkg.scripts?.postinstall).toBeDefined();
+    expect(String(pkg.scripts?.postinstall)).toContain("patch-package");
+  });
+});

@@ -173,11 +173,39 @@ function loadAppleHealthKit(): AppleHealthKitNative | null {
   }
 }
 
-function isAvailablePromise(hk: AppleHealthKitNative): Promise<boolean> {
+/** HealthKit body metrics (first `initHealthKit` stage — smaller read set so iOS shows the auth sheet reliably). */
+const HEALTH_KIT_BODY_READ = [
+  "StepCount",
+  "Weight",
+  "BodyFatPercentage",
+  "ActiveEnergyBurned",
+  "BasalEnergyBurned",
+  "Workout",
+] as const;
+
+/** Nutrition export / import writes (kept on both init stages). */
+const HEALTH_KIT_NUTRITION_WRITE = [
+  "EnergyConsumed",
+  "Protein",
+  "Carbohydrates",
+  "FatTotal",
+  "Fiber",
+] as const;
+
+/** Second-stage reads: food correlations + full dietary panel (after body metrics succeed). */
+const HEALTH_KIT_DIETARY_EXTRA_READ: readonly string[] = ["FoodCorrelation", ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
+
+function logHealthPermission(message: string, detail?: string): void {
+  const line = detail ? `${message} — ${detail}` : message;
+  console.warn("[healthSync]", line);
+}
+
+function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | { ok: false; error: string }> {
   return new Promise((resolve) => {
     hk.isAvailable((err, results) => {
-      if (err) resolve(false);
-      else resolve(!!results);
+      if (err) resolve({ ok: false, error: String(err) });
+      else if (!results) resolve({ ok: false, error: "HealthKit reported not available on this device." });
+      else resolve({ ok: true });
     });
   });
 }
@@ -905,38 +933,154 @@ export function isHealthSyncAvailable(): boolean {
   return false;
 }
 
-export async function requestHealthPermissions(): Promise<boolean> {
+export type HealthKitPermissionOutcome = {
+  /** True if at least body-metrics authorization completed (steps, weight, energy, workouts). */
+  ok: boolean;
+  bodySyncReady: boolean;
+  /** True if dietary reads + FoodCorrelation were authorized (meal import path). */
+  dietaryImportReady: boolean;
+  /** Primary copy for `Alert.alert` body. */
+  userMessage: string;
+  /** Native/bridge detail for support or Xcode console (also logged via `console.warn`). */
+  debugDetail?: string;
+};
+
+function formatHealthKitStepError(error: unknown, step: string): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  return `${step}: ${msg}`;
+}
+
+/**
+ * Request Apple Health access in two stages: (1) body metrics only — small enough for the
+ * system sheet to appear reliably; (2) dietary + food correlation reads for meal import.
+ * Surfaces native errors instead of returning an opaque `false`.
+ */
+export async function requestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
-  if (!hk) return false;
+  if (!hk) {
+    const debugDetail = "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
+    logHealthPermission("requestHealthPermissions: no native module", debugDetail);
+    return {
+      ok: false,
+      bodySyncReady: false,
+      dietaryImportReady: false,
+      userMessage:
+        "The Health native module isn’t in this build. From apps/mobile run `npx expo prebuild --platform ios`, then rebuild and install on your iPhone.",
+      debugDetail,
+    };
+  }
+
+  const available = await isAvailableDetailed(hk);
+  if (!available.ok) {
+    logHealthPermission("requestHealthPermissions: isAvailable false", available.error);
+    return {
+      ok: false,
+      bodySyncReady: false,
+      dietaryImportReady: false,
+      userMessage:
+        "Health isn’t available on this device (HealthKit may be restricted, or this isn’t a supported iPhone).",
+      debugDetail: `isAvailable: ${available.error}`,
+    };
+  }
 
   try {
-    const available = await isAvailablePromise(hk);
-    if (!available) return false;
-
     await initHealthKitPromise(hk, {
       permissions: {
-        read: [
-          "StepCount",
-          "Weight",
-          "BodyFatPercentage",
-          "ActiveEnergyBurned",
-          "BasalEnergyBurned",
-          "Workout",
-          "FoodCorrelation",
-          ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
-        ],
-        write: [
-          "EnergyConsumed",
-          "Protein",
-          "Carbohydrates",
-          "FatTotal",
-          "Fiber",
-        ],
+        read: [...HEALTH_KIT_BODY_READ],
+        write: [...HEALTH_KIT_NUTRITION_WRITE],
       },
     });
-    return true;
-  } catch {
-    return false;
+  } catch (e) {
+    const debugDetail = formatHealthKitStepError(e, "body_metrics_init");
+    logHealthPermission("initHealthKit failed (body metrics stage)", debugDetail);
+    return {
+      ok: false,
+      bodySyncReady: false,
+      dietaryImportReady: false,
+      userMessage:
+        "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
+      debugDetail,
+    };
+  }
+
+  try {
+    await initHealthKitPromise(hk, {
+      permissions: {
+        read: [...HEALTH_KIT_BODY_READ, ...HEALTH_KIT_DIETARY_EXTRA_READ],
+        write: [...HEALTH_KIT_NUTRITION_WRITE],
+      },
+    });
+  } catch (e) {
+    const debugDetail = formatHealthKitStepError(e, "dietary_init");
+    logHealthPermission("initHealthKit failed (dietary stage; body metrics OK)", debugDetail);
+    return {
+      ok: true,
+      bodySyncReady: true,
+      dietaryImportReady: false,
+      userMessage:
+        "Apple Health is connected for steps, weight, and energy. Importing meals from other apps needs an extra permission — turn on “Import meals from Health” below to retry.",
+      debugDetail,
+    };
+  }
+
+  return {
+    ok: true,
+    bodySyncReady: true,
+    dietaryImportReady: true,
+    userMessage: "Health data sync is now enabled.",
+  };
+}
+
+/**
+ * Retry the second-stage HealthKit read set (dietary + FoodCorrelation) after body sync
+ * already succeeded — e.g. when the user enables “Import meals from Health”.
+ */
+export async function requestDietaryHealthPermissions(): Promise<HealthKitPermissionOutcome> {
+  const hk = loadAppleHealthKit();
+  if (!hk) {
+    return {
+      ok: false,
+      bodySyncReady: false,
+      dietaryImportReady: false,
+      userMessage: "Health isn’t available in this install.",
+      debugDetail: "Native module missing",
+    };
+  }
+
+  const available = await isAvailableDetailed(hk);
+  if (!available.ok) {
+    return {
+      ok: false,
+      bodySyncReady: false,
+      dietaryImportReady: false,
+      userMessage: "HealthKit isn’t available.",
+      debugDetail: available.error,
+    };
+  }
+
+  try {
+    await initHealthKitPromise(hk, {
+      permissions: {
+        read: [...HEALTH_KIT_BODY_READ, ...HEALTH_KIT_DIETARY_EXTRA_READ],
+        write: [...HEALTH_KIT_NUTRITION_WRITE],
+      },
+    });
+    return {
+      ok: true,
+      bodySyncReady: true,
+      dietaryImportReady: true,
+      userMessage: "Meal import from Health is enabled.",
+    };
+  } catch (e) {
+    const debugDetail = formatHealthKitStepError(e, "dietary_retry");
+    logHealthPermission("requestDietaryHealthPermissions failed", debugDetail);
+    return {
+      ok: true,
+      bodySyncReady: true,
+      dietaryImportReady: false,
+      userMessage: "Couldn’t enable meal import from Apple Health. You can try again after checking Settings.",
+      debugDetail,
+    };
   }
 }
 
