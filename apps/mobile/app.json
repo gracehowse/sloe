@@ -2,7 +2,7 @@
   "expo": {
     "name": "Suppr",
     "slug": "suppr",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "suppr",
@@ -16,7 +16,7 @@
         "NSHealthShareUsageDescription": "Suppr reads your steps, active energy, basal energy, workouts, weight, body fat, and any dietary entries you have in Apple Health so your Suppr tracker stays in sync with the rest of your Health data.",
         "NSHealthUpdateUsageDescription": "Suppr writes the calories, protein, carbohydrates, fat, and fibre of the meals you log so other apps on your phone can read your nutrition from Apple Health.",
         "ITSAppUsesNonExemptEncryption": false,
-        "SupprBuildTag": "2026-04-23-healthkit-bridge-error-string"
+        "SupprBuildTag": "2026-04-23-healthkit-foodcorrelation-stage1"
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
