@@ -366,7 +366,7 @@ export default function HealthSyncScreen() {
           value={lastValues?.workouts}
         />
         <Text style={styles.dataFooter}>
-          Values update each time you tap Sync now. If a row stays blank, that category's read permission is off in the Health app.
+          Values update each time you tap Sync now. If a row stays blank, that category&apos;s read permission is off in the Health app.
         </Text>
       </View>
 
@@ -397,7 +397,7 @@ export default function HealthSyncScreen() {
               />
             </View>
             <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: Spacing.lg }}>
-              Shows "Imported food (N kcal)" instead of food names.
+              Shows &ldquo;Imported food (N kcal)&rdquo; instead of food names.
             </Text>
           </>
         )}
