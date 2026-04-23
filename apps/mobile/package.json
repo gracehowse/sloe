@@ -1,11 +1,12 @@
 {
   "name": "suppr-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start --clear",
     "start:tunnel": "expo start --tunnel",
+    "start:maestro": "expo start --port 8081",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:android",
     "ios": "bash ./scripts/ios-run-device.sh",
@@ -25,6 +26,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "node ./scripts/run-maestro-e2e.mjs",
+    "test:e2e:verify-suite": "node ./scripts/verify-maestro-suite.mjs",
     "test:e2e:watch": "node ./scripts/maestro-watch.mjs",
     "test:detox:build": "detox build --configuration ios.sim.release",
     "test:detox": "detox test --configuration ios.sim.release",

@@ -12,19 +12,11 @@ import { NativeModules, Platform } from "react-native";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { supabase } from "./supabase";
 import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
-import { captureException } from "./errorTracking";
 import {
   HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
   buildFiberAndMicrosFromHealthTotals,
   unitForDietaryImportKey,
 } from "./healthDietaryNutrients";
-import {
-  bucketEnergyShares,
-  buildQuantityIdToCorrelationId,
-  detectBulkSync,
-  dietaryCorrelationKeyForSample,
-  type CorrelationParentRow,
-} from "./healthSyncCorrelation";
 
 /** Expo Go (no custom native modules). Prefer executionEnvironment; appOwnership is legacy. */
 export function isExpoGoRuntime(): boolean {
@@ -65,67 +57,19 @@ type AppleHealthKitNative = {
   ): void;
   getEnergyConsumedSamples(
     options: { startDate: string; endDate: string },
-    callback: (
-      err: string,
-      results: Array<{
-        value: number;
-        startDate: string;
-        endDate?: string;
-        id?: string;
-        metadata?: Record<string, unknown>;
-        sourceName?: string;
-        sourceBundleId?: string;
-        sourceId?: string;
-      }>,
-    ) => void,
+    callback: (err: string, results: Array<{ value: number; startDate: string; metadata?: { HKFoodType?: string }; sourceName?: string; sourceBundleId?: string }>) => void,
   ): void;
   getProteinSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (
-      err: string,
-      results: Array<{
-        value: number;
-        startDate: string;
-        endDate?: string;
-        id?: string;
-        metadata?: Record<string, unknown>;
-        sourceName?: string;
-        sourceBundleId?: string;
-        sourceId?: string;
-      }>,
-    ) => void,
+    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
   ): void;
   getCarbohydratesSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (
-      err: string,
-      results: Array<{
-        value: number;
-        startDate: string;
-        endDate?: string;
-        id?: string;
-        metadata?: Record<string, unknown>;
-        sourceName?: string;
-        sourceBundleId?: string;
-        sourceId?: string;
-      }>,
-    ) => void,
+    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
   ): void;
   getFatTotalSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (
-      err: string,
-      results: Array<{
-        value: number;
-        startDate: string;
-        endDate?: string;
-        id?: string;
-        metadata?: Record<string, unknown>;
-        sourceName?: string;
-        sourceBundleId?: string;
-        sourceId?: string;
-      }>,
-    ) => void,
+    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
   ): void;
   getFiberSamples(
     options: { startDate: string; endDate: string; unit: string },
@@ -903,23 +847,14 @@ function journalMealSlotForSample(sample: DietarySample, when: Date, meta: Recor
 }
 
 /**
- * Group dietary samples produced by the same logged food. See
- * `healthSyncCorrelation.ts` for the full strategy: prefer the parent
- * `HKCorrelationTypeIdentifierFood` UUID (via the `quantitySampleId →
- * correlationId` map built from `getFoodCorrelationSamples`); fall back to the
- * sample's own `metadata.HKCorrelationUUID`; only use the legacy
- * `effectiveMinute|bundleId` heuristic for samples with no correlation
- * information at all.
- *
- * Without per-correlation grouping, third-party loggers (e.g. MFP) that bulk
- * sync a day's meals at one wall-clock instant collapsed every food into one
- * inflated `nutrition_entries` row — see TestFlight `AJHZNp8NHTiFNk9TjQfdYBk`.
+ * Energy + macro samples from the same log often share an instant but differ in ISO string
+ * formatting; bucket to the same **local clock minute** + source so macros attach reliably.
  */
-function dietaryCorrelationKey(
-  s: DietarySample,
-  quantityIdToCorrelationId: ReadonlyMap<string, string> | null,
-): string {
-  return dietaryCorrelationKeyForSample(s, quantityIdToCorrelationId).key;
+function dietaryCorrelationKey(s: DietarySample): string {
+  const t = effectiveConsumptionInstant(s).getTime();
+  if (!Number.isFinite(t)) return `${s.startDate}|${sourceBundleIdOf(s) || "unknown"}`;
+  const minute = Math.floor(t / 60000);
+  return `${minute}|${sourceBundleIdOf(s) || "unknown"}`;
 }
 
 function daysAgo(n: number): Date {
@@ -940,12 +875,7 @@ export const HEALTH_BODY_LOOKBACK_PRESETS = [
   { label: "All", days: 4000 },
 ] as const;
 
-// F-44 / F-46 (2026-04-22): bumped from 366 → 730 so weight-chart range
-// buttons (3M / 6M / 9M / 1Y / 2Y) have real historical weight points to
-// filter against on first connect. Tester reported the range filter
-// "didn't change anything" on builds 20/21; root cause was no deep
-// history to switch between, not a bug in the filter itself.
-const DEFAULT_HEALTH_BODY_LOOKBACK_DAYS = 730;
+const DEFAULT_HEALTH_BODY_LOOKBACK_DAYS = 366;
 
 export async function getHealthBodyLookbackDays(): Promise<number> {
   try {
@@ -975,108 +905,42 @@ export function isHealthSyncAvailable(): boolean {
   return false;
 }
 
-/** Single source for `initHealthKit` read/write unions (Connect + every sync). */
-const APPLE_HEALTH_KIT_PERMISSIONS: {
-  permissions: { read: string[]; write: string[] };
-} = {
-  permissions: {
-    read: [
-      "StepCount",
-      "Weight",
-      "BodyFatPercentage",
-      "ActiveEnergyBurned",
-      "BasalEnergyBurned",
-      "Workout",
-      "FoodCorrelation",
-      ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
-    ],
-    write: ["EnergyConsumed", "Protein", "Carbohydrates", "FatTotal", "Fiber"],
-  },
-};
+export async function requestHealthPermissions(): Promise<boolean> {
+  const hk = loadAppleHealthKit();
+  if (!hk) return false;
 
-/**
- * Re-run the same HealthKit authorization request before reads. iOS does not always
- * surface a second sheet for types already "asked", but this merges any toggles the user
- * applied in Settings since the last cold start and avoids syncing with a stale session
- * that never completed `initHealthKit` after install.
- */
-async function ensureHealthKitPermissionRequest(hk: AppleHealthKitNative): Promise<void> {
   try {
     const available = await isAvailablePromise(hk);
-    if (!available) return;
-    await initHealthKitPromise(hk, APPLE_HEALTH_KIT_PERMISSIONS);
+    if (!available) return false;
+
+    await initHealthKitPromise(hk, {
+      permissions: {
+        read: [
+          "StepCount",
+          "Weight",
+          "BodyFatPercentage",
+          "ActiveEnergyBurned",
+          "BasalEnergyBurned",
+          "Workout",
+          "FoodCorrelation",
+          ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
+        ],
+        write: [
+          "EnergyConsumed",
+          "Protein",
+          "Carbohydrates",
+          "FatTotal",
+          "Fiber",
+        ],
+      },
+    });
+    return true;
   } catch {
-    /* best-effort; per-metric reads still fail closed in their own try/catch */
-  }
-}
-
-export async function requestHealthPermissions(): Promise<boolean> {
-  // Top-level try/catch so a native-side throw during `loadAppleHealthKit`
-  // (module-resolution failure in an RN 0.76 newArch build) or during the
-  // permission sheet callback (iOS 26.5 HKHealthStore edge cases)
-  // surfaces as `false` rather than crashing the `Connect Apple Health`
-  // tap. The Sentry capture lets us symbolicate the stack for the next
-  // build (F-1, 2026-04-19).
-  try {
-    const hk = loadAppleHealthKit();
-    if (!hk) return false;
-
-    try {
-      const available = await isAvailablePromise(hk);
-      if (!available) return false;
-
-      // F-50 (2026-04-22): consolidate F-37's split-init back into a
-      // single pass. iOS HealthKit shows the permission sheet once for
-      // the union of types requested per call; the second call in the
-      // split was either silently being skipped by iOS ("already
-      // asked") or not presenting a sheet, which meant dietary read
-      // perms were never actually granted — root cause of TestFlight
-      // build-25 feedback "says no meals to import but there are
-      // meals to import". The G-7 native-queue fix already prevents
-      // the iOS 26.5 ObjC crash on `initHealthKit`, so the split is
-      // no longer needed. One call = one sheet = all perms granted.
-      await initHealthKitPromise(hk, APPLE_HEALTH_KIT_PERMISSIONS);
-      return true;
-    } catch (inner) {
-      captureException(inner);
-      return false;
-    }
-  } catch (outer) {
-    captureException(outer);
     return false;
   }
 }
 
-const EMPTY_BODY_SYNC_RESULT = {
-  stepsUpdated: false,
-  weightUpdated: false,
-  bodyFatUpdated: false,
-  activeEnergyUpdated: false,
-  workoutsUpdated: false,
-  basalBurnUpdated: false,
-} as const;
-
 export async function syncHealthData(userId: string): Promise<{
-  stepsUpdated: boolean;
-  weightUpdated: boolean;
-  bodyFatUpdated: boolean;
-  activeEnergyUpdated: boolean;
-  workoutsUpdated: boolean;
-  basalBurnUpdated: boolean;
-}> {
-  // F-1 (2026-04-19): top-level try/catch so a native-bridge throw during
-  // body sync does not crash the Today-tab focus effect or the Sync Now
-  // button. Callers (Today, weight-tracker, burn-detail, progress) all
-  // expect a populated result object, never a rejection.
-  try {
-    return await syncHealthDataImpl(userId);
-  } catch (err) {
-    captureException(err);
-    return { ...EMPTY_BODY_SYNC_RESULT };
-  }
-}
-
-async function syncHealthDataImpl(userId: string): Promise<{
   stepsUpdated: boolean;
   weightUpdated: boolean;
   bodyFatUpdated: boolean;
@@ -1094,8 +958,6 @@ async function syncHealthDataImpl(userId: string): Promise<{
       workoutsUpdated: false,
       basalBurnUpdated: false,
     };
-
-  await ensureHealthKitPermissionRequest(hk);
 
   /** How far back to read HealthKit (user preference; default ~12 months). "All" uses 4000d (~11y) cap. */
   const lookbackDays = await getHealthBodyLookbackDays();
@@ -1345,116 +1207,6 @@ async function syncHealthDataImpl(userId: string): Promise<{
 const HEALTH_BODY_SYNC_MIN_MS = 4 * 60 * 1000;
 let lastThrottledHealthBodySyncAt = 0;
 
-/* ─────────────────────────────────────────────────────────────────────
- * health_snapshots write path (D4, 2026-04-21)
- *
- * Append a row to `health_snapshots` after each successful HealthKit
- * fetch so the web Apple Health card has something to read. Design:
- * `docs/design/apple-health-card.md` §7.
- *
- * Cadence: at most once per 15 minutes per process. `explicit: true`
- * bypasses the throttle for user-triggered refresh.
- * ───────────────────────────────────────────────────────────────────── */
-const HEALTH_SNAPSHOT_MIN_MS = 15 * 60 * 1000;
-/** Exported for tests only. */
-export const __healthSnapshotThrottleMs = HEALTH_SNAPSHOT_MIN_MS;
-let lastHealthSnapshotWriteAt = 0;
-
-/** Test-only hook: reset the snapshot throttle so specs can rerun
- *  without needing to mock Date. Production code must not call this. */
-export function __resetHealthSnapshotThrottleForTests(): void {
-  lastHealthSnapshotWriteAt = 0;
-}
-
-/** Stable-ish device id for this install. Uses `expo-constants`
- *  `sessionId` (per-process) as a best-effort tag — we don't have a
- *  persisted install-id today, and the `device_id` column is nullable,
- *  so this is a nice-to-have, not load-bearing. Returns `null` if the
- *  native module is unavailable (e.g. under vitest). */
-async function resolveHealthSnapshotDeviceId(): Promise<string | null> {
-  try {
-    const c = Constants as { sessionId?: string | null; installationId?: string | null };
-    return c.installationId ?? c.sessionId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeHealthSnapshot(
-  userId: string,
-  opts?: { explicit?: boolean },
-): Promise<{ wrote: boolean; throttled: boolean }> {
-  if (!userId) return { wrote: false, throttled: false };
-  const now = Date.now();
-  if (!opts?.explicit && now - lastHealthSnapshotWriteAt < HEALTH_SNAPSHOT_MIN_MS) {
-    return { wrote: false, throttled: true };
-  }
-
-  try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("steps_by_day, activity_burn_by_day, basal_burn_by_day, weight_kg_by_day, weight_kg")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (!profile) return { wrote: false, throttled: false };
-
-    const todayKey = dateKey(new Date());
-    const steps_by_day = (profile.steps_by_day ?? {}) as Record<string, number>;
-    const activity_by_day = (profile.activity_burn_by_day ?? {}) as Record<string, number>;
-    const basal_by_day = (profile.basal_burn_by_day ?? {}) as Record<string, number>;
-    const weight_by_day = (profile.weight_kg_by_day ?? {}) as Record<string, number>;
-
-    const steps = typeof steps_by_day[todayKey] === "number" ? steps_by_day[todayKey] : null;
-    const active_energy_kcal =
-      typeof activity_by_day[todayKey] === "number" ? activity_by_day[todayKey] : null;
-    const resting_burn_kcal =
-      typeof basal_by_day[todayKey] === "number" ? basal_by_day[todayKey] : null;
-    // Weight: today's entry if present, otherwise the profile's latest
-    // cached weight (most recent weigh-in across any day).
-    const weight_kg =
-      typeof weight_by_day[todayKey] === "number"
-        ? weight_by_day[todayKey]
-        : typeof (profile as { weight_kg?: number | null }).weight_kg === "number"
-          ? (profile as { weight_kg: number }).weight_kg
-          : null;
-
-    // Never fabricate: if HealthKit hasn't reported anything for today
-    // AND we have no weight on file, don't append a useless row.
-    if (
-      steps == null &&
-      active_energy_kcal == null &&
-      resting_burn_kcal == null &&
-      weight_kg == null
-    ) {
-      return { wrote: false, throttled: false };
-    }
-
-    const device_id = await resolveHealthSnapshotDeviceId();
-
-    const { error } = await supabase.from("health_snapshots").insert({
-      user_id: userId,
-      steps,
-      active_energy_kcal,
-      resting_burn_kcal,
-      weight_kg,
-      source: "healthkit",
-      device_id,
-    } as never);
-
-    if (error) {
-      captureException(error);
-      return { wrote: false, throttled: false };
-    }
-
-    lastHealthSnapshotWriteAt = Date.now();
-    return { wrote: true, throttled: false };
-  } catch (err) {
-    captureException(err);
-    return { wrote: false, throttled: false };
-  }
-}
-
 /**
  * Steps, weight, body fat, and active energy: read HealthKit and upsert `profiles` (throttled app-wide).
  * Use on Today / Progress focus so the UI does not rely on a manual trip to Health settings.
@@ -1468,13 +1220,6 @@ export async function syncHealthDataThrottled(
   if (!opts?.bypassThrottle && now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS) return;
   await syncHealthData(userId);
   lastThrottledHealthBodySyncAt = Date.now();
-
-  // D4 (2026-04-21) — after a successful profile upsert, append a
-  // `health_snapshots` row so the web Apple Health card has fresh
-  // data. Independent 15-min throttle (vs the 4-min body throttle)
-  // so we don't flood the table on every screen focus. Explicit
-  // refreshes bypass both throttles.
-  await writeHealthSnapshot(userId, { explicit: opts?.bypassThrottle === true });
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1543,27 +1288,8 @@ export async function syncNutritionFromHealth(
   userId: string,
   lookbackDays = 120,
 ): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
-  // F-1 (2026-04-19): top-level try/catch so any failure inside the
-  // correlation / bulk-sync pipeline (native bridge returning unexpected
-  // shapes, supabase insert rejection, metadata-parse throws) degrades
-  // to "no import" instead of crashing the Today-tab focus effect that
-  // calls the throttled wrapper on every resume.
-  try {
-    return await syncNutritionFromHealthImpl(userId, lookbackDays);
-  } catch (err) {
-    captureException(err);
-    return { imported: [], skippedOwn: 0, skippedNoName: 0 };
-  }
-}
-
-async function syncNutritionFromHealthImpl(
-  userId: string,
-  lookbackDays = 120,
-): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
   const hk = loadAppleHealthKit();
   if (!hk) return { imported: [], skippedOwn: 0, skippedNoName: 0 };
-
-  await ensureHealthKitPermissionRequest(hk);
 
   let genericHealthImportLabels = false;
   try {
@@ -1589,23 +1315,13 @@ async function syncNutritionFromHealthImpl(
   ]);
 
   const quantityIdToFoodCorrelationMeta = buildQuantitySampleIdToCorrelationMetadata(foodCorrelationRows);
-  const correlationParentRows: CorrelationParentRow[] = foodCorrelationRows.map((row) => ({
-    id: row.id,
-    quantitySampleIds: row.quantitySampleIds,
-  }));
-  const quantityIdToCorrelationId = buildQuantityIdToCorrelationId(correlationParentRows);
 
   const correlated = newCorrelatedTotalsMap();
   for (let i = 0; i < HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.length; i++) {
     const permissionKey = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS[i]!;
     const rows = dietaryFetches[i] ?? [];
     for (const s of rows.filter(isExternal)) {
-      bumpCorrelatedTotals(
-        correlated,
-        dietaryCorrelationKey(s, quantityIdToCorrelationId),
-        permissionKey,
-        s.value,
-      );
+      bumpCorrelatedTotals(correlated, dietaryCorrelationKey(s), permissionKey, s.value);
     }
   }
 
@@ -1613,31 +1329,6 @@ async function syncNutritionFromHealthImpl(
   const energy = (energyIdx >= 0 ? dietaryFetches[energyIdx] : []) ?? [];
   const extEnergy = energy.filter(isExternal);
   let skippedOwn = energy.length - extEnergy.length;
-
-  // Diagnostic: log once per sync if MFP-style bulk batches were detected (multiple
-  // food correlations sharing one effective minute + bundle id). Helps confirm in
-  // production that the per-correlation grouping is doing real work.
-  const bulk = detectBulkSync(extEnergy, quantityIdToCorrelationId);
-  if (bulk.detected) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[healthSync] bulk-sync detected: ${extEnergy.length} energy samples, bundles=[${bulk.bundles.join(",")}] — using per-correlation grouping`,
-    );
-  }
-
-  // MFP bulk-sync macro mitigation (TestFlight build 7 follow-up,
-  // 2026-04-18): when multiple energy samples share a *legacy*
-  // `minute|bundle` bucket (no HKCorrelationUUID parent), the bucket's
-  // macros must be split proportionally by kcal across the samples
-  // instead of duplicated to all of them. See
-  // `healthSyncCorrelation.bucketEnergyShares` for the rationale.
-  const energyShares = bucketEnergyShares(extEnergy, quantityIdToCorrelationId);
-  if (energyShares.legacyAmbiguousBuckets > 0) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[healthSync] proportional macro split applied to ${energyShares.legacyAmbiguousBuckets} legacy-fallback bucket(s) holding multiple energy samples`,
-    );
-  }
 
   // Now walk each external energy sample — this is the anchor for each food item.
   const skippedNoName = 0;
@@ -1715,19 +1406,8 @@ async function syncNutritionFromHealthImpl(
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
-    const correlationKey = dietaryCorrelationKey(sample, quantityIdToCorrelationId);
-    const inner = correlated.get(correlationKey);
-    const rawTotals = totalsRecordFromInner(inner);
-    // Apply proportional share so the bucket's macros are split by kcal
-    // when multiple energy samples share a legacy `minute|bundle` bucket
-    // (MFP bulk-sync mitigation, 2026-04-18). Single-sample buckets get
-    // share=1, so the existing single-meal pathway is unaffected.
-    const share = energyShares.shareForSample(sample.id, correlationKey);
-    const totals: typeof rawTotals = share === 1
-      ? rawTotals
-      : Object.fromEntries(
-          Object.entries(rawTotals).map(([k, v]) => [k, (v ?? 0) * share]),
-        ) as typeof rawTotals;
+    const inner = correlated.get(dietaryCorrelationKey(sample));
+    const totals = totalsRecordFromInner(inner);
     const { fiberG, micros: builtMicros } = buildFiberAndMicrosFromHealthTotals(totals);
     const microsJson = builtMicros;
 
@@ -1786,37 +1466,21 @@ let lastNutritionImportSyncAt = 0;
  * samples on a modest throttle (Today tab focus + manual sync).
  */
 export async function syncNutritionFromHealthThrottled(userId: string): Promise<void> {
-  // F-1 (2026-04-19): called from the Today-tab focus effect after a
-  // `Connect Apple Health` grant. Must never throw — Today's catch is a
-  // safety net, but letting this propagate hides the root cause and
-  // leaves the throttle timestamp unadvanced (retry storm).
+  if (!userId || !isHealthSyncAvailable()) return;
   try {
-    if (!userId || !isHealthSyncAvailable()) return;
-    try {
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      const imp = await AsyncStorage.getItem("health_import_nutrition");
-      if (imp !== "true") return;
-    } catch {
-      return;
-    }
-    const now = Date.now();
-    if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
-    // F-44: extended lookback — matches user expectation from MFP/LoseIt
-    // that past months of meals backfill on first connect.
-    await syncNutritionFromHealth(userId, 730);
-    // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
-    // is not imported (see backlog note in `exportDayToHealth`).
-    try {
-      await syncCaffeineFromHealth(userId, 30);
-    } catch (caffeineErr) {
-      // Caffeine import is best-effort; don't let it suppress the primary
-      // nutrition import's completion.
-      captureException(caffeineErr);
-    }
-    lastNutritionImportSyncAt = Date.now();
-  } catch (err) {
-    captureException(err);
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const imp = await AsyncStorage.getItem("health_import_nutrition");
+    if (imp !== "true") return;
+  } catch {
+    return;
   }
+  const now = Date.now();
+  if (now - lastNutritionImportSyncAt < NUTRITION_IMPORT_THROTTLE_MS) return;
+  await syncNutritionFromHealth(userId, 120);
+  // Batch 2.5 — piggyback caffeine import on the same throttle. Alcohol
+  // is not imported (see backlog note in `exportDayToHealth`).
+  await syncCaffeineFromHealth(userId, 30);
+  lastNutritionImportSyncAt = Date.now();
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1989,73 +1653,4 @@ export async function syncCaffeineFromHealth(
   }
   await supabase.from("profiles").update({ extra_caffeine_by_day: merged }).eq("id", userId);
   return { daysTouched: Object.keys(byDay).length };
-}
-
-// ─── Health data card "last values" ──────────────────────────────────────────
-// Persisted under `health_last_values` in AsyncStorage so the data rows on the
-// Health Sync screen render on cold open without a fresh sync.
-
-export type HealthLastValues = {
-  steps: string | null;
-  weight: string | null;
-  activeEnergy: string | null;
-  restingEnergy: string | null;
-  workouts: string | null;
-  syncedAt: string | null;
-};
-
-const HEALTH_LAST_VALUES_KEY = "health_last_values";
-
-export async function persistHealthLastValues(userId: string): Promise<void> {
-  try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const { data } = await supabase
-      .from("profiles")
-      .select("steps_by_day, weight_kg_by_day, weight_kg, activity_burn_by_day, basal_burn_by_day, workouts_by_day")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!data) return;
-
-    const today = dateKey(new Date());
-    const stepsVal = (data.steps_by_day as Record<string, number> | null)?.[today];
-    const activeVal = (data.activity_burn_by_day as Record<string, number> | null)?.[today];
-    const restingVal = (data.basal_burn_by_day as Record<string, number> | null)?.[today];
-    const workoutsToday = (data.workouts_by_day as Record<string, unknown[]> | null)?.[today];
-
-    // Weight: today's if available, else most recent from weight_kg_by_day, else profile cached
-    const weightByDay = (data.weight_kg_by_day as Record<string, number> | null) ?? {};
-    const weightKg =
-      weightByDay[today] ??
-      (Object.entries(weightByDay).sort((a, b) => b[0].localeCompare(a[0]))[0]?.[1] ?? null) ??
-      (typeof data.weight_kg === "number" ? (data.weight_kg as number) : null);
-
-    const weightDayKey = weightByDay[today]
-      ? undefined
-      : Object.entries(weightByDay).sort((a, b) => b[0].localeCompare(a[0]))[0]?.[0];
-    const weightDayLabel = weightDayKey ? ` · ${new Date(weightDayKey + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}` : "";
-
-    const vals: HealthLastValues = {
-      steps: stepsVal != null ? `${stepsVal.toLocaleString()} today` : null,
-      weight: weightKg != null ? `${weightKg} kg${weightDayLabel}` : null,
-      activeEnergy: activeVal != null ? `${Math.round(activeVal).toLocaleString()} kcal today` : null,
-      restingEnergy: restingVal != null ? `${Math.round(restingVal).toLocaleString()} kcal today` : null,
-      workouts: workoutsToday != null ? `${workoutsToday.length} today` : null,
-      syncedAt: new Date().toISOString(),
-    };
-
-    await AsyncStorage.setItem(HEALTH_LAST_VALUES_KEY, JSON.stringify(vals));
-  } catch {
-    // non-critical
-  }
-}
-
-export async function loadHealthLastValues(): Promise<HealthLastValues | null> {
-  try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const raw = await AsyncStorage.getItem(HEALTH_LAST_VALUES_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as HealthLastValues;
-  } catch {
-    return null;
-  }
 }
