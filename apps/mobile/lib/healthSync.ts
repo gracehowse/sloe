@@ -174,7 +174,7 @@ function loadAppleHealthKit(): AppleHealthKitNative | null {
   }
 }
 
-/** HealthKit body metrics (first `initHealthKit` stage — smaller read set so iOS shows the auth sheet reliably). */
+/** HealthKit body metrics (steps, weight, energy, workouts). */
 const HEALTH_KIT_BODY_READ = [
   "StepCount",
   "Weight",
@@ -183,6 +183,14 @@ const HEALTH_KIT_BODY_READ = [
   "BasalEnergyBurned",
   "Workout",
 ] as const;
+
+/**
+ * First `initHealthKit` stage: body metrics + **FoodCorrelation** only.
+ * iOS treats `HKCorrelationTypeIdentifierFood` as disallowed if it first appears only in a
+ * follow-up `requestAuthorization` call after the user already completed the sheet for body
+ * metrics alone — it must be included in the initial read set so the system prompt can grant it.
+ */
+const HEALTH_KIT_STAGE1_READ: readonly string[] = [...HEALTH_KIT_BODY_READ, "FoodCorrelation"];
 
 /** Nutrition export / import writes (kept on both init stages). */
 const HEALTH_KIT_NUTRITION_WRITE = [
@@ -193,8 +201,8 @@ const HEALTH_KIT_NUTRITION_WRITE = [
   "Fiber",
 ] as const;
 
-/** Second-stage reads: food correlations + full dietary panel (after body metrics succeed). */
-const HEALTH_KIT_DIETARY_EXTRA_READ: readonly string[] = ["FoodCorrelation", ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
+/** Second stage: stage-1 reads plus all dietary quantity permission keys (micronutrients, etc.). */
+const HEALTH_KIT_STAGE2_READ: readonly string[] = [...HEALTH_KIT_STAGE1_READ, ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
 
 function logHealthPermission(message: string, detail?: string): void {
   const line = detail ? `${message} — ${detail}` : message;
@@ -986,19 +994,19 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
   try {
     await initHealthKitPromise(hk, {
       permissions: {
-        read: [...HEALTH_KIT_BODY_READ],
+        read: [...HEALTH_KIT_STAGE1_READ],
         write: [...HEALTH_KIT_NUTRITION_WRITE],
       },
     });
   } catch (e) {
-    const debugDetail = formatHealthKitStepError(e, "body_metrics_init");
-    logHealthPermission("initHealthKit failed (body metrics stage)", debugDetail);
+    const debugDetail = formatHealthKitStepError(e, "body_and_food_correlation_init");
+    logHealthPermission("initHealthKit failed (stage 1: body + FoodCorrelation)", debugDetail);
     return {
       ok: false,
       bodySyncReady: false,
       dietaryImportReady: false,
       userMessage:
-        "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
+        "Apple Health couldn’t start the permission request for steps, weight, activity, and meal correlations. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
       debugDetail,
     };
   }
@@ -1006,7 +1014,7 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
   try {
     await initHealthKitPromise(hk, {
       permissions: {
-        read: [...HEALTH_KIT_BODY_READ, ...HEALTH_KIT_DIETARY_EXTRA_READ],
+        read: [...HEALTH_KIT_STAGE2_READ],
         write: [...HEALTH_KIT_NUTRITION_WRITE],
       },
     });
@@ -1061,7 +1069,7 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
   try {
     await initHealthKitPromise(hk, {
       permissions: {
-        read: [...HEALTH_KIT_BODY_READ, ...HEALTH_KIT_DIETARY_EXTRA_READ],
+        read: [...HEALTH_KIT_STAGE2_READ],
         write: [...HEALTH_KIT_NUTRITION_WRITE],
       },
     });
