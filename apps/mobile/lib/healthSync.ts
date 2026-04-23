@@ -185,12 +185,9 @@ const HEALTH_KIT_BODY_READ = [
 ] as const;
 
 /**
- * First `initHealthKit` stage: body metrics + **FoodCorrelation** only.
- * iOS treats `HKCorrelationTypeIdentifierFood` as disallowed if it first appears only in a
- * follow-up `requestAuthorization` call after the user already completed the sheet for body
- * metrics alone — it must be included in the initial read set so the system prompt can grant it.
+ * First `initHealthKit` stage: body metrics only (small prompt; reliable sheet).
  */
-const HEALTH_KIT_STAGE1_READ: readonly string[] = [...HEALTH_KIT_BODY_READ, "FoodCorrelation"];
+const HEALTH_KIT_STAGE1_READ: readonly string[] = [...HEALTH_KIT_BODY_READ];
 
 /** Nutrition export / import writes (kept on both init stages). */
 const HEALTH_KIT_NUTRITION_WRITE = [
@@ -201,8 +198,16 @@ const HEALTH_KIT_NUTRITION_WRITE = [
   "Fiber",
 ] as const;
 
-/** Second stage: stage-1 reads plus all dietary quantity permission keys (micronutrients, etc.). */
-const HEALTH_KIT_STAGE2_READ: readonly string[] = [...HEALTH_KIT_STAGE1_READ, ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
+/**
+ * Second stage: body + all **dietary quantity** reads from `HEALTH_DIETARY_IMPORT_PERMISSION_KEYS`.
+ *
+ * **Do not** request `FoodCorrelation` / `HKCorrelationTypeIdentifierFood` here: on current iOS +
+ * `react-native-health`, `initHealthKit` fails with “Authorization to read … HKCorrelationTypeIdentifierFood
+ * is disallowed” even on the first combined prompt. Meal import still works without it:
+ * `getFoodCorrelationSamplesSafe` returns `[]` on denial, and `syncNutritionFromHealthImpl` groups
+ * external samples by minute|bundle + energy anchor (see module docblock above `syncNutritionFromHealth`).
+ */
+const HEALTH_KIT_STAGE2_READ: readonly string[] = [...HEALTH_KIT_BODY_READ, ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS];
 
 function logHealthPermission(message: string, detail?: string): void {
   const line = detail ? `${message} — ${detail}` : message;
@@ -774,7 +779,7 @@ function getFoodCorrelationSamplesPromise(
       return;
     }
     hk.getFoodCorrelationSamples!(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
+      if (err) reject(new Error(stringifyBridgeUnknown(err)));
       else resolve(results ?? []);
     });
   });
@@ -946,7 +951,7 @@ export type HealthKitPermissionOutcome = {
   /** True if at least body-metrics authorization completed (steps, weight, energy, workouts). */
   ok: boolean;
   bodySyncReady: boolean;
-  /** True if dietary reads + FoodCorrelation were authorized (meal import path). */
+  /** True if dietary **quantity** reads were authorized (meal import path; food HKCorrelation is optional). */
   dietaryImportReady: boolean;
   /** Primary copy for `Alert.alert` body. */
   userMessage: string;
@@ -999,14 +1004,14 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
       },
     });
   } catch (e) {
-    const debugDetail = formatHealthKitStepError(e, "body_and_food_correlation_init");
-    logHealthPermission("initHealthKit failed (stage 1: body + FoodCorrelation)", debugDetail);
+    const debugDetail = formatHealthKitStepError(e, "body_metrics_init");
+    logHealthPermission("initHealthKit failed (stage 1: body metrics)", debugDetail);
     return {
       ok: false,
       bodySyncReady: false,
       dietaryImportReady: false,
       userMessage:
-        "Apple Health couldn’t start the permission request for steps, weight, activity, and meal correlations. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
+        "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
       debugDetail,
     };
   }
@@ -1040,7 +1045,7 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
 }
 
 /**
- * Retry the second-stage HealthKit read set (dietary + FoodCorrelation) after body sync
+ * Retry the second-stage HealthKit read set (dietary quantity types) after body sync
  * already succeeded — e.g. when the user enables “Import meals from Health”.
  */
 export async function requestDietaryHealthPermissions(): Promise<HealthKitPermissionOutcome> {
