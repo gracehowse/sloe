@@ -38,10 +38,9 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - **F-63a/b/d/e** Plan day-card density, Library filter pill clip, Household Settings duplicate header, Recipe ingredient kcal clip — closes 6 C9 submissions.
 - **C10** `AHS6xzyU…` closed ✅ as duplicate of `AA63DQ7xd…` (score already removed everywhere).
 - **C11** `ANfXXs6H…` ✅ — ops fix applied 2026-05-01: Grace regenerated the Edamam keys in the developer portal and updated Vercel env vars (`EDAMAM_APP_ID` / `EDAMAM_APP_KEY`). `searchEdamam` resumes returning results; no code change required.
-- **C9c** (`AIC05bpyu…`) 🟠 — Health Sync permission style; routed to ui-product-designer.
-- **C5** Household Netflix-model — brief delivered, saved at [../planning/2026-04-22-household-netflix-model-spec.md](../planning/2026-04-22-household-netflix-model-spec.md). Routes next: ui-product-designer, data-integrity, journey-architect, executor.
-- **C6-chart** Weight chart redesign — brief delivered, saved at [../planning/2026-04-22-weight-chart-redesign-brief.md](../planning/2026-04-22-weight-chart-redesign-brief.md). Executor can pick up with the specified file list (WeightChart/WeightRangeToggle/WeightSparseState + shared weightTrend.ts).
-- **C9c** Health Sync redesign — brief delivered, saved at [../planning/2026-04-22-health-sync-redesign-brief.md](../planning/2026-04-22-health-sync-redesign-brief.md). Three new components + one decision doc + web parity pass.
+- **C9c** (`AIC05bpyu…`) ✅ — Health Sync redesign shipped 2026-04-22 (commit 41b1262). HealthStatusPill + HealthDataRow, three-state pill, AsyncStorage last-values cache, no per-type permission UI. Decision: `docs/decisions/2026-04-22-health-sync-redesign.md`.
+- **C5** Household Netflix-model ✅ — shipped 2026-05-01 in two commits: schema + RLS privacy pin (5cc6b88), then runtime wiring (a5e9fa4). Per-member `share_preset` drives meal filtering; `disbanded_at` soft-delete; `cook_display_name` snapshot on insert; preset picker updated (web + mobile). Decisions: `docs/decisions/2026-05-01-household-netflix-model-v1-schema.md`.
+- **C6-chart** Weight chart redesign ✅ — shipped 2026-04-22 (commit 435335f). Inline SVG chart, 7-day MA, range toggle (1W/1M/3M/1Y/All), sparse-state for <3 weigh-ins, goal line, stale chip.
 - **F-64** Recipe image upscale — parser prefers og:image; 12 of 20 prod rows backfilled; 4 new regression tests pinned.
 
 **2026-04-22 build-29 action shipped (5 F-tracks):**
@@ -57,7 +56,7 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - `AMp-9LdEySJR-4b3FoO5zI0` — 🟡 Can't delete ingredients; F-67 shipped.
 - `AEnCdLrqNCk8S5IbqYD-ma8` — 🟡 360m not formatted; F-68 shipped.
 - `AE2MdvYfJVQL298eoF_fps4` — 🟡 Discover cards protein-only; F-69 shipped.
-- `AD3qa1g9ZI7Co3tvazH-yUQ` — 🟠 C11 repeat (Edamam keys returning 401 — ops: regenerate keys in Edamam portal + update Vercel).
+- `AD3qa1g9ZI7Co3tvazH-yUQ` — ✅ C11 repeat (Edamam keys resolved ops-side 2026-05-01).
 - `AHjCqNMXhdrnnUIikNRWdW0` — 🟡 F-70 shipped: plan algo was storing fit multiplier as `portionMultiplier`; `dayPlanTotalsFromMeals` then double-applied it (e.g. 1,667 kcal plan displayed as 5,421 kcal). Fix: fit mult baked into `calories`, never set as `portionMultiplier`.
 - `AEVC-WdrU9sw9ql6rDR62e8` — ⏳ F-70 weight chart crosshair/zoom (covered by weight chart redesign brief).
 - `AK91aaRcQ6ILWgQIvCatZXI` — 🟡 C5 repeat (household invite in wrong place; Netflix-model brief covers it).
@@ -148,18 +147,18 @@ Ship rules:
 | 2026-04-22 | `AJr60qsyVUcM…` | screenshot | 🟡 | sibling of F-59 | "Recipes still not seeded" |
 | 2026-04-22 | `AB6WOylB6-Qz…` | screenshot | 🟡 | **F-60** — Ring size 160→140 (+ card paddingY xl→md); Number fontSize 56→44 / lineHeight 64→52 / paddingY 20→16 for parity with Bar. All three hero variants now share one kcal number size | "Calorie section still massive" |
 | 2026-04-22 | `ADt-4U9u_9NE…` | screenshot | 🟡 | sibling of F-60 | "Cals still too big hasn't been fixed" |
-| 2026-04-22 | `ALpppRnGzIx9…` | screenshot | ⏳ | cluster **C5** — household still doesn't match prototype post-F-32 | "Still doesn't look like the prototype for households" |
-| 2026-04-22 | `ALQQyjCHjzbt…` | screenshot | ⏳ | cluster **C5** | "Household sections still doesn't make much sense and doesn't match the prototype for this page" |
-| 2026-04-22 | `AKQGhg8wc6FZ…` | screenshot | ⏳ | cluster **C5** | "I don't really know what the household section is telling me right now" |
-| 2026-04-22 | `AGpLe8GO99nQ…` | screenshot | ⏳ | cluster **C5** | "Household still not updated" |
-| 2026-04-22 | `AKuLcrQUR7pf…` | screenshot | ⏳ | cluster **C6** — weight graph still wrong post-F-24/F-27/F-31 | "Weight graph still wrong" |
-| 2026-04-22 | `AGM9xRpzTLnD…` | screenshot | ⏳ | cluster **C6** | "Weight graph either not accurate or not clear" |
+| 2026-04-22 | `ALpppRnGzIx9…` | screenshot | ✅ | cluster **C5** — Netflix-model v1 shipped 2026-05-01 (commits 5cc6b88 + a5e9fa4) | "Still doesn't look like the prototype for households" |
+| 2026-04-22 | `ALQQyjCHjzbt…` | screenshot | ✅ | cluster **C5** — Netflix-model v1 shipped 2026-05-01 | "Household sections still doesn't make much sense and doesn't match the prototype for this page" |
+| 2026-04-22 | `AKQGhg8wc6FZ…` | screenshot | ✅ | cluster **C5** — Netflix-model v1 shipped 2026-05-01 | "I don't really know what the household section is telling me right now" |
+| 2026-04-22 | `AGpLe8GO99nQ…` | screenshot | ✅ | cluster **C5** — Netflix-model v1 shipped 2026-05-01 | "Household still not updated" |
+| 2026-04-22 | `AKuLcrQUR7pf…` | screenshot | ✅ | cluster **C6** — weight chart redesign shipped 2026-04-22 (commit 435335f) | "Weight graph still wrong" |
+| 2026-04-22 | `AGM9xRpzTLnD…` | screenshot | ✅ | cluster **C6** — weight chart redesign shipped 2026-04-22 | "Weight graph either not accurate or not clear" |
 | 2026-04-22 | `AOVuCyOCNB1p…` | screenshot | 🟡 | **F-56** — `computeWeightTrendCopy` now returns `{delta: null, copy: "Log weight to see trend"}` when most recent weigh-in is >14 days old (test pinned) | "Up 0.9 this week is not correct as I have not logged weight in about a month" |
 | 2026-04-22 | `AEq5NTi0ncnZ…` | screenshot | 🟡 | **F-61** — Discover "More ideas" section now renders hero-style cards (same layout/image treatment/kcal+macro row as the top 2), 12px stack gap. Uniform social-feed density across the whole feed | "All recipes should render like the first 2 (bigger feed like)" |
 | 2026-04-22 | `APpAKhhRSuv0…` | screenshot | 🟡 | **F-64** — parser now prefers og:image / twitter:image over JSON-LD thumbnails (social meta tags are 1200×630+ by convention; JSON-LD frequently ships a 225×225 thumbnail). Plus a URL upscaler that strips WP `-WxH` suffixes and Photon `fit/resize/w/h` params. One-shot backfill `scripts/reseed-recipe-images.mjs` ran against prod: 12 of 20 seeded rows upscaled, 8 already correct | "Images are here but they are terrible" |
 | 2026-04-22 | `ABG0cZzoaaeJ…` | screenshot | 🟡 | **F-62** — sync-status copy now distinguishes three empty-states: (a) truly empty → F-57 denied-perm Alert fires, (b) all samples were Suppr-authored → "N samples skipped (already logged in Suppr)", (c) nothing new → generic "No new meals" | "Says no new meals but there are" |
 | 2026-04-22 | `AELbM8VJ40Jl…` | screenshot | 🟡 | sibling of F-62 | "Says no meals to import but there are meals to import" |
-| 2026-04-22 | `AIC05bpyuit_…` | screenshot | 🟠 | cluster **C9c** — screenshot = Health Sync screen (`apps/mobile/app/health-sync.tsx`). Apple Health permission rows render empty circles vs prototype toggles. Requires design brief — route to ui-product-designer | "This page doesn't match prototype" |
+| 2026-04-22 | `AIC05bpyuit_…` | screenshot | ✅ | cluster **C9c** — Health Sync redesign shipped 2026-04-22 (commit 41b1262) | "This page doesn't match prototype" |
 | 2026-04-22 | `AERuv07KITiH…` | screenshot | 🟡 | **F-63a** — Plan day-card: "Day total · X/Y kcal · P/C/F" wrap row removed; calorie target promoted into the day header line in tonally-coloured (neutral/amber/red) form. Macro state continues to flow through the existing delta-pill row below. Test updated | "Day totals section is overcrowded looks messy" |
 | 2026-04-22 | `AJ8Fk6ud6Dl1…` | screenshot | 🟡 | sibling of F-63a | "Macro section is confusing and spacing is off" |
 | 2026-04-22 | `AAUNtlDI0VvV…` | screenshot | 🟡 | **F-63b** — Library filter pills were clipped vertically on iOS when the horizontal ScrollView had no explicit row style. Added `style={{ flexGrow: 0, minHeight: 44 }}` + `alignItems: "center"` + `paddingTop: Spacing.xs` on the content container | "Format layout still terrible on this page" |
@@ -167,7 +166,7 @@ Ship rules:
 | 2026-04-22 | `AHitOL0RmJmQ…` | screenshot | 🟡 | **F-63d** — Household Settings rendered two stacked titles: the auto router header ("Household Settings") + the in-content header ("Household"). `<Stack.Screen options={{ headerShown: false }} />` removes the auto header so the content starts 80pt higher | "Spacing a little off move up" |
 | 2026-04-22 | `AAtwbwVxlQ70…` | screenshot | 🟡 | **F-63e** — Recipe detail ingredients row: long ingredient names were pushing the kcal column off-screen (e.g. rendering as "0 kc"). `ingredientName` now gets `flex: 1, flexShrink: 1`; `ingredientCalories` gets `flexShrink: 0`; row aligns `flex-start` with 8px gap | "Cals and macros and the coloured line not showing here" |
 | 2026-04-22 | `AHS6xzyUumrl…` | screenshot | ✅ | duplicate of `AA63DQ7xd…` (already resolved). Verified 2026-04-22: `grep -r "score" apps/mobile/**/*.tsx` returns no product surfaces — tester's screenshot must predate or cache from an older build | "Score doesn't mean anything remove" |
-| 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | 🟠 | cluster **C11** — ops check required: web route `/api/edamam/search` returns 503 if `EDAMAM_APP_ID`/`EDAMAM_APP_KEY` unset on Vercel prod; mobile silently falls back to empty. Either (a) set keys in Vercel, OR (b) remove "Edamam" from `apps/mobile/app/nutrition-sources.tsx`. See action plan C11 | "Not sure if edamam is still connected as restaurant foods not showing" |
+| 2026-04-22 | `ANfXXs6H1qPP…` | screenshot | ✅ | cluster **C11** — ops fix applied 2026-05-01: Grace regenerated Edamam keys + updated Vercel env vars. | "Not sure if edamam is still connected as restaurant foods not showing" |
 | 2026-04-22 | `AJNcZdalctgg…` | screenshot | ✅ | meta — tester self-verification ("Confirming build"); no code action | "Confirming build" |
 | 2026-04-22 | `AEaTIZJodtNQ…` | screenshot | 🔍 | no comment — no actionable context | (no comment) |
 | 2026-04-22 | `AKAyzCHqEBAE…` | screenshot | 🟡 | build-28 **F-52** — Discover hero + More-ideas row now render `image_url` when present (RN `Image` with gradient fallback) | "Recipes have finally come in but they don't have images on this page" |
