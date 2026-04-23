@@ -36,6 +36,13 @@
  * throw so callers can surface a toast / Alert.
  */
 
+import {
+  coerceSharePreset,
+  slotAllowedForPreset,
+  type CustomShareGrid,
+  type SharePreset,
+} from "./sharePresetFilter";
+
 type SupabaseLike = {
   from: (table: string) => any;
   rpc: (fn: string, params: Record<string, unknown>) => Promise<{ data: any; error: any }>;
@@ -82,6 +89,14 @@ export type MemberSummary = {
   targets?: { calories: number; protein: number; carbs: number; fat: number } | null;
   consumed?: { calories: number; protein: number; carbs: number; fat: number };
   remaining?: { calories: number; protein: number; carbs: number; fat: number } | null;
+  /**
+   * Netflix-model v1 (2026-05-01): per-member sharing preset. Drives
+   * what meals the member sees in the household surface. The caller's
+   * own preset governs the filter in `getMyHousehold`; other members'
+   * presets are exposed so the UI can label rows ("Alex shares dinners
+   * only"). Defaults to `"dinners"` for rows pre-dating the migration.
+   */
+  sharePreset?: SharePreset;
 };
 
 export type HouseholdMeal = {
@@ -98,6 +113,13 @@ export type HouseholdMeal = {
   fiber_per_serving: number | null;
   notes: string | null;
   added_by: string | null;
+  /**
+   * Netflix-model v1 (2026-05-01): snapshot of the cook's display_name
+   * at the time of insert. Survives the cook leaving the household so
+   * historical attribution stays legible. Nullable for pre-migration
+   * rows — the UI should fall back to "A member" when absent.
+   */
+  cook_display_name: string | null;
   created_at: string;
 };
 
@@ -248,12 +270,12 @@ export async function getMyHousehold(
   const [hResp, mResp, mealsResp] = await Promise.all([
     supabase
       .from("households")
-      .select("id, name, owner_id, invite_code, created_at, share_lunch")
+      .select("id, name, owner_id, invite_code, created_at, share_lunch, disbanded_at")
       .eq("id", householdId)
       .single(),
     supabase
       .from("household_members")
-      .select("id, user_id, role, display_name, joined_at, share_targets")
+      .select("id, user_id, role, display_name, joined_at, share_targets, share_preset")
       .eq("household_id", householdId)
       .order("joined_at", { ascending: true }),
     // Fetch all upcoming meals for the household; the meal_label filter
@@ -266,7 +288,7 @@ export async function getMyHousehold(
     supabase
       .from("household_meals")
       .select(
-        "id, date_key, meal_label, recipe_title, recipe_id, servings, calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, fiber_per_serving, notes, added_by, created_at",
+        "id, date_key, meal_label, recipe_title, recipe_id, servings, calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, fiber_per_serving, notes, added_by, cook_display_name, created_at",
       )
       .eq("household_id", householdId)
       .gte("date_key", todayKey())
@@ -286,7 +308,19 @@ export async function getMyHousehold(
     invite_code: string;
     created_at: string;
     share_lunch?: boolean | null;
+    disbanded_at?: string | null;
   } | null;
+
+  // Netflix-model v1 (2026-05-01): a household that has been soft-deleted
+  // stays in the database for a retention window but must not leak back
+  // into the UI. Treat it as "not in a household".
+  if (household?.disbanded_at) {
+    return {
+      data: { household: null, members: [], meals: [] },
+      error: null,
+    };
+  }
+
   const members = (mResp.data ?? []) as Array<{
     id: string;
     user_id: string;
@@ -294,19 +328,28 @@ export async function getMyHousehold(
     display_name: string | null;
     joined_at: string;
     share_targets?: boolean | null;
+    share_preset?: string | null;
   }>;
   const rawMeals = (mealsResp.data ?? []) as HouseholdMeal[];
 
-  // F-16 scope narrowing (legal-approved, TestFlight `AJ1AeYJ--fF`):
-  // Only dinners are shared by default. Lunches are added when the
-  // household flips `share_lunch`. Breakfasts and snacks are NEVER
-  // shared — no opt-in exists for them.
-  const shareLunch = Boolean(household?.share_lunch);
-  const allowedLabels = shareLunch ? new Set(["dinner", "lunch"]) : new Set(["dinner"]);
-  const meals = rawMeals.filter((m) => {
-    const label = (m.meal_label ?? "").trim().toLowerCase();
-    return allowedLabels.has(label);
-  });
+  // Netflix-model v1: each member chooses their own preset. The viewer's
+  // preset governs the meals returned on this call. Legacy rows without
+  // a preset fall back to `dinners` (matches the DB default). The
+  // household-wide `share_lunch` flag is kept as a legacy read-side
+  // signal for clients not yet migrated to preset-aware copy; it is
+  // derived from the viewer's preset so the two sources can't drift.
+  const viewerMember = members.find((m) => m.user_id === userId);
+  const viewerPreset = coerceSharePreset(viewerMember?.share_preset);
+
+  // Custom-preset support lands in a follow-up — the per-cell grid
+  // (`household_member_share_targets`) is not read in this commit; the
+  // `custom` preset currently resolves to "share nothing" until the
+  // read-through wires up.
+  const customGrid: CustomShareGrid | null = null;
+
+  const meals = rawMeals.filter((m) =>
+    slotAllowedForPreset(viewerPreset, m.date_key, m.meal_label, customGrid),
+  );
 
   // Member macros: targets from profiles + today's logged entries.
   const memberIds = members.map((m) => m.user_id);
@@ -359,6 +402,8 @@ export async function getMyHousehold(
     // strip: other members can now opt in per-member, but targets stay
     // private by default. The mirror guard on the REST route
     // (`app/api/household/route.ts`) enforces the same rule server-side.
+    const memberPreset = coerceSharePreset(m.share_preset);
+
     if (!isSelf && !sharesTargets) {
       return {
         userId: m.user_id,
@@ -367,6 +412,7 @@ export async function getMyHousehold(
         shareTargets: false,
         targets: null,
         remaining: null,
+        sharePreset: memberPreset,
       };
     }
 
@@ -401,6 +447,7 @@ export async function getMyHousehold(
         carbs: Math.max(0, roundTo1(targets.carbs - consumed.carbs)),
         fat: Math.max(0, roundTo1(targets.fat - consumed.fat)),
       },
+      sharePreset: memberPreset,
     };
   });
 
@@ -538,6 +585,25 @@ export async function leaveHousehold(
       .from("profiles")
       .update({ household_id: null })
       .eq("id", userId);
+
+    // Netflix-model v1 (2026-05-01) — if that was the last member,
+    // flag the household as disbanded so reads stop returning it but
+    // `household_meals` stay queryable for any lingering history
+    // references. A background job (not yet shipped) hard-deletes
+    // after 30 days. This branch only fires when the non-owner leaves
+    // a household whose owner has already departed — typical member
+    // leaves don't trigger it.
+    const { count: remaining } = (await supabase
+      .from("household_members")
+      .select("id", { count: "exact", head: true })
+      .eq("household_id", householdId)) as { count: number | null };
+
+    if (remaining === 0) {
+      await supabase
+        .from("households")
+        .update({ disbanded_at: new Date().toISOString() })
+        .eq("id", householdId);
+    }
   }
 
   return { data: { wasOwner }, error: null };
@@ -584,6 +650,81 @@ export async function setHouseholdMemberShareTargets(
     .eq("user_id", userId);
   if (error) return { data: null, error: (error as any)?.message || "update_failed" };
   return { data: { shareTargets }, error: null };
+}
+
+/**
+ * Netflix-model v1 (2026-05-01) — per-member share preset write.
+ *
+ * RLS: `household_members` has "Members can update own share_targets"
+ * keyed to `user_id = auth.uid()`. The same predicate lets callers
+ * update their own `share_preset` (presets live on the same row;
+ * Supabase's `UPDATE` policies are table-level, not column-level).
+ * A member cannot flip another member's preset — the update silently
+ * matches zero rows and the caller surfaces `update_failed`.
+ */
+export async function setMemberSharePreset(
+  supabase: SupabaseLike,
+  userId: string,
+  preset: SharePreset,
+): Promise<ClientResult<{ sharePreset: SharePreset }>> {
+  if (!userId) return { data: null, error: "not_authenticated" };
+  const { error } = await supabase
+    .from("household_members")
+    .update({ share_preset: preset })
+    .eq("user_id", userId);
+  if (error) return { data: null, error: (error as any)?.message || "update_failed" };
+  return { data: { sharePreset: preset }, error: null };
+}
+
+/**
+ * Netflix-model v1 (2026-05-01) — snapshot the cook's display_name at
+ * insert time. Callers should use this helper rather than inserting
+ * `household_meals` directly so historical attribution survives the
+ * cook leaving the household. Safe no-op when the current membership
+ * row has no display_name (stays null — UI falls back to "A member").
+ */
+export async function insertHouseholdMealWithCookSnapshot(
+  supabase: SupabaseLike,
+  userId: string,
+  row: Omit<Partial<HouseholdMeal>, "added_by" | "cook_display_name"> & {
+    household_id: string;
+    date_key: string;
+    recipe_title: string;
+  },
+): Promise<ClientResult<{ id: string }>> {
+  if (!userId) return { data: null, error: "not_authenticated" };
+
+  // Resolve current membership display_name for the snapshot. One row
+  // by construction: we insert under the caller's membership and the
+  // unique constraint ensures a single (household_id, user_id).
+  const { data: member, error: memErr } = await supabase
+    .from("household_members")
+    .select("display_name")
+    .eq("household_id", row.household_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (memErr) throw memErr;
+
+  // Fall back to profiles.display_name if the member row is missing
+  // one (legacy rows / pre-snapshot data). Still nullable — that's
+  // acceptable per the column's NULL contract.
+  let cookName = (member as any)?.display_name ?? null;
+  if (!cookName) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .maybeSingle();
+    cookName = (profile as any)?.display_name ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("household_meals")
+    .insert({ ...row, added_by: userId, cook_display_name: cookName })
+    .select("id")
+    .single();
+  if (error) return { data: null, error: (error as any)?.message || "insert_failed" };
+  return { data: { id: (data as any).id }, error: null };
 }
 
 export const __test__ = {

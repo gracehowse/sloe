@@ -88,6 +88,13 @@ const ALL_MEAL_TYPES_TODAY = [
 ];
 
 function makeScopedSupabase(shareLunch: boolean) {
+  // Netflix-model v1 (2026-05-01): the per-member `share_preset`
+  // supersedes the owner-level `share_lunch` flag as the meal-label
+  // filter. The viewer's (caller u1) preset drives the filter in
+  // `getMyHousehold`. We map the legacy scenarios onto the new preset
+  // values so the invariants (breakfast/snack never leak; lunch only
+  // leaks when explicitly opted in) stay pinned.
+  const viewerPreset = shareLunch ? "lunch_dinner" : "dinners";
   return makeSupabase({
     household_members: (op, ctx) => {
       if (op === "select:maybeSingle") {
@@ -98,8 +105,8 @@ function makeScopedSupabase(shareLunch: boolean) {
         expect(ctx.filters["eq:household_id"]).toBe("h1");
         return {
           data: [
-            { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01" },
-            { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01" },
+            { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_preset: viewerPreset },
+            { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_preset: "dinners" },
           ],
           error: null,
         };

@@ -37,6 +37,7 @@ import {
   getMyHousehold,
   setHouseholdMemberShareTargets,
   setHouseholdShareLunch,
+  setMemberSharePreset,
   type HouseholdData,
 } from "../../lib/household/householdClient";
 import {
@@ -53,6 +54,8 @@ import {
   deriveShareLunch,
   emptyGrid,
   presetFromShareLunch,
+  fromSchemaSharePreset,
+  toSchemaSharePreset,
   sharedCellCount,
   toggleCellMember,
   type HouseholdDayId,
@@ -162,7 +165,16 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
             if (stored) {
               if (!cancelled) setSharing(stored);
             } else {
-              const preset = presetFromShareLunch(Boolean(result.household?.shareLunch));
+              // Netflix-model v1 (2026-05-01) — hydrate from the
+              // caller's own `share_preset` on their member row.
+              // Falls back to `presetFromShareLunch` for older accounts
+              // that haven't saved a preset yet, which reads the
+              // legacy `share_lunch` boolean.
+              const me = result.members.find((m) => m.userId === authedUserId);
+              const schemaPreset = me?.sharePreset;
+              const preset = schemaPreset
+                ? fromSchemaSharePreset(schemaPreset)
+                : presetFromShareLunch(Boolean(result.household?.shareLunch));
               if (!cancelled) {
                 setSharing({ preset, grid: buildGridForPreset(preset, memberIds) });
               }
@@ -258,25 +270,35 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
   );
 
   const onSave = useCallback(async () => {
-    if (!data?.household?.id) return;
+    if (!data?.household?.id || !authedUserId) return;
     setSaving(true);
     setError(null);
     try {
-      // 1) persist grid locally (source of truth for the settings UI
-      //    until a grid schema ships).
+      // 1) Persist the full grid to local storage — it stays the
+      //    source of truth for the `custom` preset's per-cell layout
+      //    until the grid-schema migration ships.
       await writeSharingState(webStorage, data.household.id, sharing);
-      // 2) derive + persist the server-side boolean so the
-      //    legal-gated filter matches the grid.
+      // 2) Netflix-model v1 (2026-05-01) — write the per-member
+      //    `share_preset` column. Supersedes the owner-level
+      //    `share_lunch` boolean as the meal-label filter. `share_lunch`
+      //    is kept in step for any clients still reading the legacy
+      //    flag; a future commit retires that column.
+      const schemaPreset = toSchemaSharePreset(sharing.preset);
+      const { error: presetErr } = await setMemberSharePreset(
+        supabase as any,
+        authedUserId,
+        schemaPreset,
+      );
+      if (presetErr) {
+        setError("Your sharing preference couldn't be saved.");
+      }
       const nextShareLunch = deriveShareLunch(sharing.grid);
       if (Boolean(data.household.shareLunch) !== nextShareLunch && data.household.isOwner) {
-        const { error: updErr } = await setHouseholdShareLunch(
+        await setHouseholdShareLunch(
           supabase as any,
           data.household.id,
           nextShareLunch,
         );
-        if (updErr) {
-          setError("Lunch sharing could not be saved on the server.");
-        }
       }
       setSavedToast(true);
       window.setTimeout(() => setSavedToast(false), 1800);
@@ -285,7 +307,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
     } finally {
       setSaving(false);
     }
-  }, [data, sharing]);
+  }, [data, sharing, authedUserId]);
 
   if (!authedUserId) {
     return (

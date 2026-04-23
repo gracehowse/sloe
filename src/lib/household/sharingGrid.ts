@@ -38,6 +38,7 @@ export type HouseholdSharingPreset =
   | "all"
   | "dinners"
   | "weekends"
+  | "lunch_dinner"
   | "none"
   | "custom";
 
@@ -54,7 +55,7 @@ export const HOUSEHOLD_SHARING_PRESETS: ReadonlyArray<{
   { id: "all", label: "All meals", sub: "Everyone eats together" },
   { id: "dinners", label: "Dinners only", sub: "Solo other meals" },
   { id: "weekends", label: "Dinners + weekends", sub: "Casual weekdays" },
-  { id: "none", label: "Individual", sub: "Everyone separate" },
+  { id: "lunch_dinner", label: "Lunch + dinner", sub: "Share two meals a day" },
   { id: "custom", label: "Custom", sub: "Pick per slot below" },
 ];
 
@@ -122,6 +123,8 @@ export function buildGridForPreset(
         if (s === "dinner") grid[d][s] = [...ids];
         else if (WEEKEND_DAYS.has(d)) grid[d][s] = [...ids];
         else grid[d][s] = "solo";
+      } else if (preset === "lunch_dinner") {
+        grid[d][s] = s === "lunch" || s === "dinner" ? [...ids] : "solo";
       }
     }
   }
@@ -233,11 +236,61 @@ export function sharingPresetShortLabel(preset: HouseholdSharingPreset): string 
       return "dinners sharing";
     case "weekends":
       return "dinners + weekends";
+    case "lunch_dinner":
+      return "lunch + dinner";
     case "none":
       return "solo";
     case "custom":
     default:
       return "custom sharing";
+  }
+}
+
+/**
+ * Netflix-model v1 (2026-05-01) — map the UI preset id to the
+ * schema-level `share_preset` enum on `household_members`. `"none"`
+ * maps to `"dinners"` (the default) because v1 kills the "share
+ * nothing" posture — members who want nothing shared leave the
+ * household per spec §2. `"weekends"` maps to `"dinners_weekends"`
+ * (longer canonical name on the schema side).
+ */
+export function toSchemaSharePreset(
+  uiPreset: HouseholdSharingPreset,
+): "all" | "dinners" | "dinners_weekends" | "lunch_dinner" | "custom" {
+  switch (uiPreset) {
+    case "all":
+      return "all";
+    case "dinners":
+      return "dinners";
+    case "weekends":
+      return "dinners_weekends";
+    case "lunch_dinner":
+      return "lunch_dinner";
+    case "custom":
+      return "custom";
+    case "none":
+    default:
+      return "dinners";
+  }
+}
+
+/** Inverse of {@link toSchemaSharePreset} for load-time hydration. */
+export function fromSchemaSharePreset(
+  schemaPreset: string | null | undefined,
+): HouseholdSharingPreset {
+  switch (schemaPreset) {
+    case "all":
+      return "all";
+    case "dinners":
+      return "dinners";
+    case "dinners_weekends":
+      return "weekends";
+    case "lunch_dinner":
+      return "lunch_dinner";
+    case "custom":
+      return "custom";
+    default:
+      return "dinners";
   }
 }
 

@@ -158,18 +158,26 @@ describe("sharingPresetShortLabel", () => {
   });
 });
 
-describe("HOUSEHOLD_SHARING_PRESETS copy — pinned to prototype", () => {
-  it("matches the prototype label + sub ordering verbatim", () => {
+describe("HOUSEHOLD_SHARING_PRESETS copy — Netflix-model v1", () => {
+  // 2026-05-01: spec §2 ("'Share nothing' = leave the household")
+  // removed the `"none"`/Individual preset from the picker and added
+  // the Lunch + dinner preset. The `"none"` type value stays available
+  // for legacy code paths that still pass it in; the picker no longer
+  // offers it.
+  it("matches the Netflix-model spec's five presets", () => {
     expect(HOUSEHOLD_SHARING_PRESETS.map((p) => p.id)).toEqual([
       "all",
       "dinners",
       "weekends",
-      "none",
+      "lunch_dinner",
       "custom",
     ]);
     expect(HOUSEHOLD_SHARING_PRESETS.find((p) => p.id === "weekends")?.label).toBe(
       "Dinners + weekends",
     );
-    expect(HOUSEHOLD_SHARING_PRESETS.find((p) => p.id === "none")?.label).toBe("Individual");
+    expect(HOUSEHOLD_SHARING_PRESETS.find((p) => p.id === "lunch_dinner")?.label).toBe(
+      "Lunch + dinner",
+    );
+    expect(HOUSEHOLD_SHARING_PRESETS.find((p) => p.id === "none")).toBeUndefined();
   });
 });

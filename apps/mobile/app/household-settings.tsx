@@ -38,6 +38,7 @@ import {
   getMyHousehold,
   setHouseholdMemberShareTargets,
   setHouseholdShareLunch,
+  setMemberSharePreset,
   type HouseholdData,
 } from "../../../src/lib/household/householdClient";
 import {
@@ -53,8 +54,10 @@ import {
   cycleCell,
   deriveShareLunch,
   emptyGrid,
+  fromSchemaSharePreset,
   presetFromShareLunch,
   sharedCellCount,
+  toSchemaSharePreset,
   toggleCellMember,
   type HouseholdDayId,
   type HouseholdSharingState,
@@ -164,7 +167,15 @@ export default function HouseholdSettingsScreen() {
               if (stored) {
                 setSharing(stored);
               } else {
-                const preset = presetFromShareLunch(Boolean(result.household?.shareLunch));
+                // Netflix-model v1 (2026-05-01) — hydrate from the
+                // caller's own `share_preset`, falling back to the
+                // legacy `share_lunch` boolean for accounts that
+                // haven't saved a preset yet.
+                const meRow = result.members.find((m) => m.userId === userId);
+                const schemaPreset = meRow?.sharePreset;
+                const preset = schemaPreset
+                  ? fromSchemaSharePreset(schemaPreset)
+                  : presetFromShareLunch(Boolean(result.household?.shareLunch));
                 setSharing({ preset, grid: buildGridForPreset(preset, memberIds) });
               }
             }
@@ -274,21 +285,30 @@ export default function HouseholdSettingsScreen() {
   );
 
   const onSave = useCallback(async () => {
-    if (!data?.household?.id) return;
+    if (!data?.household?.id || !userId) return;
     setSaving(true);
     setError(null);
     try {
       await writeSharingState(asyncStorageAdapter, data.household.id, sharing);
+      // Netflix-model v1 (2026-05-01) — per-member preset write.
+      // Supersedes the owner-level `share_lunch` boolean as the
+      // meal-label filter; kept in step for legacy readers.
+      const schemaPreset = toSchemaSharePreset(sharing.preset);
+      const { error: presetErr } = await setMemberSharePreset(
+        supabase as any,
+        userId,
+        schemaPreset,
+      );
+      if (presetErr) {
+        Alert.alert("Couldn't save on server", "Your sharing preference could not be updated.");
+      }
       const nextShareLunch = deriveShareLunch(sharing.grid);
       if (Boolean(data.household.shareLunch) !== nextShareLunch && data.household.isOwner) {
-        const { error: updErr } = await setHouseholdShareLunch(
+        await setHouseholdShareLunch(
           supabase as any,
           data.household.id,
           nextShareLunch,
         );
-        if (updErr) {
-          Alert.alert("Couldn't save on server", "Lunch sharing could not be updated.");
-        }
       }
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 1800);
@@ -297,7 +317,7 @@ export default function HouseholdSettingsScreen() {
     } finally {
       setSaving(false);
     }
-  }, [data, sharing]);
+  }, [data, sharing, userId]);
 
   if (!userId) {
     return (

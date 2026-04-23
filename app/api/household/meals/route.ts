@@ -104,6 +104,30 @@ export async function POST(req: Request) {
     recipeTitleSnapshot = title || b.recipeTitle.trim();
   }
 
+  // Netflix-model v1 (2026-05-01) — snapshot the cook's display_name
+  // so historical attribution survives the cook leaving the household.
+  // Prefer the `household_members.display_name` (captured at join
+  // time) and fall back to `profiles.display_name`. Nullable — the UI
+  // falls back to "A member" when absent.
+  let cookDisplayName: string | null = null;
+  const { data: memberRow } = await supabase
+    .from("household_members")
+    .select("display_name")
+    .eq("household_id", membership.household_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  cookDisplayName =
+    ((memberRow as { display_name?: string | null } | null)?.display_name ?? null) || null;
+  if (!cookDisplayName) {
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .maybeSingle();
+    cookDisplayName =
+      ((profileRow as { display_name?: string | null } | null)?.display_name ?? null) || null;
+  }
+
   const { data: meal, error } = await supabase
     .from("household_meals")
     .insert({
@@ -121,6 +145,7 @@ export async function POST(req: Request) {
       fiber_per_serving: Number(b.fiberPerServing) || null,
       notes: b.notes?.trim() || null,
       added_by: userId,
+      cook_display_name: cookDisplayName,
     })
     .select("id")
     .single();
