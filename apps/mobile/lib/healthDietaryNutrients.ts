@@ -32,7 +32,11 @@ export {
   type MicroNutrientDisplayRow,
 };
 
-/** HK permission strings supported by `RCTAppleHealthKit+TypesAndPermissions` read mapping. */
+/**
+ * HK permission strings for `initHealthKit` read mapping.
+ * Omit `FatTrans`: `HKQuantityTypeIdentifierDietaryFatTrans` was removed in newer HealthKit
+ * SDKs; requesting it breaks authorization on device (Connect shows generic failure).
+ */
 export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "EnergyConsumed",
   "Protein",
@@ -44,7 +48,6 @@ export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "FatSaturated",
   "FatMonounsaturated",
   "FatPolyunsaturated",
-  "FatTrans",
   "Cholesterol",
   "Caffeine",
   "Calcium",
