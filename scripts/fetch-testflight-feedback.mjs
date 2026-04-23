@@ -81,7 +81,7 @@ function summarise({ builds, screenshots, crashes }) {
     })),
     screenshotFeedback: screenshots.data.map((s) => ({
       id: s.id,
-      submittedDate: s.attributes.submittedDate,
+      submittedDate: s.attributes.submittedDate ?? s.attributes.createdDate,
       comment: s.attributes.comment || null,
       email: s.attributes.email || null,
       deviceModel: s.attributes.deviceModel,
@@ -93,7 +93,7 @@ function summarise({ builds, screenshots, crashes }) {
     })),
     crashFeedback: crashes.data.map((c) => ({
       id: c.id,
-      submittedDate: c.attributes.submittedDate,
+      submittedDate: c.attributes.submittedDate ?? c.attributes.createdDate,
       comment: c.attributes.comment || null,
       email: c.attributes.email || null,
       deviceModel: c.attributes.deviceModel,

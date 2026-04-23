@@ -26,6 +26,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { decodeEntities } from "@/lib/decodeEntities";
 import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
@@ -264,7 +265,9 @@ export default function ImportSharedScreen() {
         setMealTags(autoTags);
         const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
         setPendingRecipe(normalized);
-        setTitle((normalized.title ?? "Imported recipe").trim() || "Imported recipe");
+        setTitle(
+          decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"),
+        );
         setState("review");
       } catch {
         setState("error");
@@ -342,7 +345,7 @@ export default function ImportSharedScreen() {
       });
       setMealTags(autoTags);
       setPendingRecipe(recipe);
-      setTitle(recipe.title ?? "Photo Import");
+      setTitle(decodeEntities(recipe.title ?? "Photo Import"));
       setState("review");
     } catch {
       setState("error");
@@ -935,7 +938,7 @@ export default function ImportSharedScreen() {
         {(state === "review" || state === "saving") && pendingRecipe && (
           <View style={styles.panelCard}>
             <Ionicons name="restaurant-outline" size={36} color={Accent.primary} />
-            <Text style={styles.panelTitle}>{title ?? "Imported recipe"}</Text>
+            <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
                 {previewNutrition.calories} kcal · {previewNutrition.protein}g protein · recipe yields{" "}
@@ -1076,7 +1079,7 @@ export default function ImportSharedScreen() {
             </View>
             <Text style={styles.successKicker}>SAVED</Text>
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
-              {title}
+              {decodeEntities(title)}
             </Text>
             <View style={styles.libraryChip}>
               <Ionicons name="bookmark" size={18} color={Accent.primary} />

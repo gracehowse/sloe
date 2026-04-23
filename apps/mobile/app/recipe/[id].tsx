@@ -46,6 +46,15 @@ function formatMinutes(min: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+/** Evenly split integer totals across ingredient rows (recipe-level-only nutrition). */
+function splitIntAcrossRows(total: number, rowCount: number, rowIndex: number): number {
+  const safe = Math.max(0, Math.round(total));
+  const n = Math.max(1, rowCount);
+  const base = Math.floor(safe / n);
+  const rem = safe - base * n;
+  return base + (rowIndex < rem ? 1 : 0);
+}
+
 const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
 /** Matches Today dashboard widgets except water (not derived from recipe nutrition). */
 const RECIPE_TRACKABLE_MACRO_KEYS = new Set<string>(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
@@ -470,6 +479,14 @@ export default function RecipeDetailScreen() {
     }
   }, [recipe, userId, isRecipeOwner, recipeYieldDraft, ingredients, recipeId]);
 
+  const ingredientsHaveNutrition = useMemo(
+    () =>
+      ingredients.some(
+        (i) => (i.calories ?? 0) > 0 || (i.protein ?? 0) > 0 || (i.carbs ?? 0) > 0 || (i.fat ?? 0) > 0,
+      ),
+    [ingredients],
+  );
+
   // Compute totals from actual ingredients so they always match what's displayed.
   // F-53 (2026-04-22): if ingredients exist but none of them have per-ingredient
   // nutrition (seeded recipes where the scraper didn't fill in ingredient
@@ -478,9 +495,6 @@ export default function RecipeDetailScreen() {
   // in" on recipes where recipe.calories was correct but every ingredient row
   // carried null/0 nutrition.
   const { macros, totalMacros } = useMemo(() => {
-    const ingredientsHaveNutrition = ingredients.some(
-      (i) => (i.calories ?? 0) > 0 || (i.protein ?? 0) > 0 || (i.carbs ?? 0) > 0 || (i.fat ?? 0) > 0,
-    );
     if (!ingredientsHaveNutrition && recipe) {
       const perServing = {
         calories: recipe.calories,
@@ -534,7 +548,7 @@ export default function RecipeDetailScreen() {
         fiber_g: Math.round(sum.fiber_g * 10) / 10,
       },
     };
-  }, [ingredients, recipe]);
+  }, [ingredients, ingredientsHaveNutrition, recipe]);
 
   const recipeMacrosToShow = useMemo(() => {
     const ordered = trackedMacros.filter((k) => RECIPE_TRACKABLE_MACRO_KEYS.has(k));
@@ -1144,10 +1158,24 @@ export default function RecipeDetailScreen() {
                 </Pressable>
               </View>
               {ingredients.map((ing, i) => {
-                const totalMacros = ing.protein + ing.carbs + ing.fat;
-                const proteinPct = totalMacros > 0 ? (ing.protein / totalMacros) * 100 : 0;
-                const carbsPct = totalMacros > 0 ? (ing.carbs / totalMacros) * 100 : 0;
-                const fatPct = totalMacros > 0 ? (ing.fat / totalMacros) * 100 : 0;
+                const nIng = ingredients.length;
+                const useSplit = !ingredientsHaveNutrition && recipe != null && nIng > 0;
+                const rowCal = useSplit
+                  ? splitIntAcrossRows(Math.round(macros.calories), nIng, i)
+                  : Math.round(ing.calories ?? 0);
+                const rowPro = useSplit
+                  ? Math.round((macros.protein / nIng) * 10) / 10
+                  : ing.protein ?? 0;
+                const rowCarbs = useSplit
+                  ? Math.round((macros.carbs / nIng) * 10) / 10
+                  : ing.carbs ?? 0;
+                const rowFat = useSplit
+                  ? Math.round((macros.fat / nIng) * 10) / 10
+                  : ing.fat ?? 0;
+                const totalMacros = rowPro + rowCarbs + rowFat;
+                const proteinPct = totalMacros > 0 ? (rowPro / totalMacros) * 100 : 0;
+                const carbsPct = totalMacros > 0 ? (rowCarbs / totalMacros) * 100 : 0;
+                const fatPct = totalMacros > 0 ? (rowFat / totalMacros) * 100 : 0;
 
                 const conf = ing.confidence != null ? Number(ing.confidence) : null;
                 const confPct = conf != null && Number.isFinite(conf) ? Math.round(conf * 100) : null;
@@ -1167,8 +1195,10 @@ export default function RecipeDetailScreen() {
                         `${decodeEntities(ing.name)}`,
                         `Confidence: ${confPct != null ? `${confPct}% — ${confLabel}` : "Not scored"}\n` +
                         `Source: ${sourceLabel}\n\n` +
-                        `${Math.round(ing.calories)} kcal · P ${Math.round(ing.protein)}g · C ${Math.round(ing.carbs)}g · F ${Math.round(ing.fat)}g\n\n` +
-                        (confPct != null && confPct < 75
+                        `${Math.round(rowCal)} kcal · P ${Math.round(rowPro)}g · C ${Math.round(rowCarbs)}g · F ${Math.round(rowFat)}g\n\n` +
+                        (useSplit
+                          ? "Per-ingredient nutrition isn't available for this recipe — numbers are an even split of the recipe totals for planning."
+                          : confPct != null && confPct < 75
                           ? "This ingredient had a weaker match. The macros may be approximate. You can edit this recipe to improve accuracy."
                           : confPct != null
                             ? "This ingredient was matched to a verified food database entry."
@@ -1184,7 +1214,7 @@ export default function RecipeDetailScreen() {
                     <View style={styles.ingredientNameAndCal}>
                       <View style={styles.ingredientNameRow}>
                         <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
-                        <Text style={styles.ingredientCalories}>{Math.round(ing.calories)} kcal</Text>
+                        <Text style={styles.ingredientCalories}>{Math.round(rowCal)} kcal</Text>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={styles.ingredientQty}>

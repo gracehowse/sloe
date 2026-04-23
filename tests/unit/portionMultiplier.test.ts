@@ -18,7 +18,7 @@ describe("portionMultiplier", () => {
     expect(clampPortionMultiplier(0.25)).toBe(0.5);
   });
 
-  it("dayPlanTotalsFromMeals scales non-placeholder meals", () => {
+  it("dayPlanTotalsFromMeals sums display macros (portion already baked into rows)", () => {
     const meals: DayPlanMeal[] = [
       {
         name: "Breakfast",
@@ -27,16 +27,14 @@ describe("portionMultiplier", () => {
         protein: 30,
         carbs: 50,
         fat: 10,
-        portionMultiplier: 1,
       },
       {
         name: "Dinner",
         recipeTitle: "Salmon",
-        calories: 500,
-        protein: 40,
-        carbs: 20,
-        fat: 20,
-        portionMultiplier: 2,
+        calories: 1000,
+        protein: 80,
+        carbs: 40,
+        fat: 40,
       },
     ];
     expect(dayPlanTotalsFromMeals(meals)).toEqual({

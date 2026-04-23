@@ -151,6 +151,31 @@ type DayPlan = {
   residualProteinGap?: number;
 };
 
+type PlanRecipeRef = { id: string; title: string; calories: number };
+
+/** Portion vs library recipe card — used for "(2.5x)" label and `/recipe?id&portion=` when multiplier isn't stored. */
+function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMult: number; label: string } {
+  const pm = meal.portionMultiplier;
+  if (typeof pm === "number" && Number.isFinite(pm) && Math.abs(pm - 1) > 0.001) {
+    const label = Number.isInteger(pm) ? String(pm) : String(Math.round(pm * 100) / 100);
+    return { displayMult: pm, label };
+  }
+  const ref =
+    (meal.recipeId ? pool.find((r) => r.id === meal.recipeId) : undefined) ??
+    pool.find((r) => r.title.trim() === meal.recipeTitle.trim());
+  const rc = ref && Number(ref.calories) > 0 ? Number(ref.calories) : 0;
+  if (!rc || !Number.isFinite(meal.calories) || meal.calories <= 0) {
+    return { displayMult: 1, label: "1" };
+  }
+  const ratio = meal.calories / rc;
+  if (!Number.isFinite(ratio) || Math.abs(ratio - 1) < 0.02) {
+    return { displayMult: 1, label: "1" };
+  }
+  const rounded = Math.round(ratio * 100) / 100;
+  const label = Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  return { displayMult: Math.max(0.25, Math.min(8, ratio)), label };
+}
+
 export default function PlannerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -160,6 +185,16 @@ export default function PlannerScreen() {
 
   const { recipes: discoverRecipes } = useDiscoverRecipes();
   const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
+
+  const planRecipePool = useMemo<PlanRecipeRef[]>(
+    () =>
+      [...savedRecipes, ...discoverRecipes].map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: Number(r.calories) || 0,
+      })),
+    [savedRecipes, discoverRecipes],
+  );
 
   // Named meal-plan slots — mobile parity for web's
   // `mealPlanSlots / activeMealPlanSlotId / switchMealPlanSlot`
@@ -375,7 +410,8 @@ export default function PlannerScreen() {
                     protein: Math.round(picked.protein * mult),
                     carbs: Math.round(picked.carbs * mult),
                     fat: Math.round(picked.fat * mult),
-                    portionMultiplier: mult !== 1 ? mult : undefined,
+                    // Portion is baked into macros — never persist a parallel
+                    // multiplier or day totals / goal header double-count (F-70).
                   };
                 });
                 const totals = newMeals.reduce(
@@ -854,7 +890,9 @@ export default function PlannerScreen() {
               protein: (m.protein as number) ?? 0,
               carbs: (m.carbs as number) ?? 0,
               fat: (m.fat as number) ?? 0,
-              portionMultiplier: (m.portion_multiplier as number) ?? 1,
+              // Relational rows historically stored `portion_multiplier` alongside
+              // already-scaled kcal from swap/adjust — strip so totals match rows.
+              portionMultiplier: undefined,
               isPlaceholder: (m.is_placeholder as boolean) || undefined,
             })),
             );
@@ -1467,7 +1505,8 @@ export default function PlannerScreen() {
           // macro targets." The shared helper builds an explicit
           // "Day total · X / Y kcal · P / C / F" line with symmetric
           // ±10% / ±20% tolerance bands. Totals respect per-meal
-          // portionMultiplier via dayPlanTotalsFromMeals. When the
+          // `buildDayTotalVsGoalLine` → `dayPlanTotalsFromMeals` sums each
+          // meal row's display macros (portion already baked). When the
           // user has no goals yet (hasTargets=false) we omit the line
           // entirely — never show "—". `planTargets` falsy → skip
           // the helper too (gate belt-and-braces).
@@ -1597,7 +1636,11 @@ export default function PlannerScreen() {
               // Slot order parity with Today: Breakfast → Lunch → Dinner → Snacks.
               const order: Record<PlanSlotIconKey, number> = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 };
               return order[resolvePlanSlotIconKey(a.name)] - order[resolvePlanSlotIconKey(b.name)];
-            }).map((meal, i) => (
+            }).map((meal, i) => {
+              const multMeta = planMealPortionMeta(meal, planRecipePool);
+              const currentMult = multMeta.displayMult;
+              const multLabel = multMeta.label;
+              return (
               <Pressable
                 key={i}
                 style={styles.mealRow}
@@ -1718,10 +1761,9 @@ export default function PlannerScreen() {
                   );
                 }}
                 onPress={() => {
-                  const currentMult = meal.portionMultiplier ?? 1;
                   Alert.alert(
                     meal.recipeTitle,
-                    `${Math.round(meal.calories)} kcal · ${currentMult}x portion`,
+                    `${Math.round(meal.calories)} kcal · ${multLabel}x portion`,
                     [
                       {
                         text: "Swap meal",
@@ -1752,7 +1794,7 @@ export default function PlannerScreen() {
                                         carbs: Math.round(baseCarbs * mult),
                                         fat: Math.round(baseFat * mult),
                                         fiberG: Math.round(baseFiber * mult * 10) / 10,
-                                        portionMultiplier: mult !== 1 ? mult : undefined,
+                                        // Baked portion — omit multiplier (see swapMeal note).
                                       };
                                     });
                                     const totals = newMeals.reduce(
@@ -1819,7 +1861,7 @@ export default function PlannerScreen() {
                   <Text style={styles.mealTitle}>
                     {meal.isPlaceholder || !meal.recipeTitle
                       ? "Empty slot"
-                      : `${meal.recipeTitle}${meal.portionMultiplier && meal.portionMultiplier !== 1 ? ` (${meal.portionMultiplier}x)` : ""}`}
+                      : `${meal.recipeTitle}${multLabel !== "1" ? ` (${multLabel}x)` : ""}`}
                   </Text>
                   <Text style={styles.mealMacros}>
                     {meal.isPlaceholder || !meal.recipeTitle
@@ -1866,7 +1908,7 @@ export default function PlannerScreen() {
                         protein: meal.protein,
                         carbs: meal.carbs,
                         fat: meal.fat,
-                        portion_multiplier: meal.portionMultiplier ?? 1,
+                        portion_multiplier: currentMult,
                       });
                     if (error) {
                       console.error("[planner] log entry failed:", error.message);
@@ -1882,7 +1924,8 @@ export default function PlannerScreen() {
                   <Text style={styles.mealLogBtnText}>Log today</Text>
                 </Pressable>
               </Pressable>
-            ))}
+            );
+            })}
           </View>
           );
         })}

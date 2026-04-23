@@ -569,7 +569,14 @@ export function generateSmartPlan(input: {
               const r = retryJoint.recipes[i]!;
               const mult = retryJoint.multipliers[i]!;
               const scaled = scaleMacros(r, mult);
-              return { name, recipeTitle: r.title, recipeId: r.id, ...scaled, portionMultiplier: mult !== 1 ? mult : undefined };
+              return {
+                name,
+                recipeTitle: r.title,
+                recipeId: r.id,
+                ...scaled,
+                // Same as primary branch — fit multiplier is baked into macros;
+                // never set `portionMultiplier` or day totals double-apply (F-70).
+              };
             });
             residualProteinGap = retryJoint.residualProteinGap;
             break;

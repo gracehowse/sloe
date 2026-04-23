@@ -13,9 +13,9 @@ import type { DayPlanMeal } from "../../src/types/recipe.ts";
  * Build-12 H-5 — `AH8csBqtZsBJJr0uHgXyEcE`: "Plan doesn't tell me how
  * close it is to my macro targets." The helper is the single source of
  * truth for the "Day total · X / Y kcal · P / C / F" summary line on
- * web and mobile. These tests pin: symmetric tolerance bands, scaling
- * respect for `portionMultiplier`, empty-day behaviour, goal=0 safety,
- * formatting, and `hasTargets` gating.
+ * web and mobile. These tests pin: symmetric tolerance bands, baked
+ * per-row plan macros (no double portion math), empty-day behaviour,
+ * goal=0 safety, formatting, and `hasTargets` gating.
  */
 
 function meal(partial: Partial<DayPlanMeal>): DayPlanMeal {
@@ -95,26 +95,25 @@ describe("buildDayTotalVsGoalLine — totals", () => {
     expect(line.totals).toEqual({ calories: 1000, protein: 70, carbs: 120, fat: 25 });
   });
 
-  it("respects 0.5x portionMultiplier in totals", () => {
+  it("treats meal rows as already scaled (0.5x baked into macros)", () => {
     const meals = [
-      meal({ calories: 400, protein: 30, carbs: 50, fat: 10, portionMultiplier: 0.5 }),
+      meal({ calories: 200, protein: 15, carbs: 25, fat: 5 }),
     ];
     const line = buildDayTotalVsGoalLine(meals, goals);
-    // 400 × 0.5 = 200; 30 × 0.5 = 15; 50 × 0.5 = 25; 10 × 0.5 = 5
     expect(line.totals).toEqual({ calories: 200, protein: 15, carbs: 25, fat: 5 });
   });
 
-  it("respects 1.5x portionMultiplier in totals", () => {
+  it("treats meal rows as already scaled (1.5x baked)", () => {
     const meals = [
-      meal({ calories: 400, protein: 30, carbs: 50, fat: 10, portionMultiplier: 1.5 }),
+      meal({ calories: 600, protein: 45, carbs: 75, fat: 15 }),
     ];
     const line = buildDayTotalVsGoalLine(meals, goals);
     expect(line.totals).toEqual({ calories: 600, protein: 45, carbs: 75, fat: 15 });
   });
 
-  it("respects 2x portionMultiplier", () => {
+  it("treats meal rows as already scaled (2x baked)", () => {
     const meals = [
-      meal({ calories: 500, protein: 40, carbs: 20, fat: 20, portionMultiplier: 2 }),
+      meal({ calories: 1000, protein: 80, carbs: 40, fat: 40 }),
     ];
     const line = buildDayTotalVsGoalLine(meals, goals);
     expect(line.totals).toEqual({ calories: 1000, protein: 80, carbs: 40, fat: 40 });
@@ -129,14 +128,13 @@ describe("buildDayTotalVsGoalLine — totals", () => {
     expect(line.totals).toEqual({ calories: 400, protein: 30, carbs: 50, fat: 10 });
   });
 
-  it("mixes scaled and unscaled meals in one day", () => {
+  it("sums multiple baked rows in one day", () => {
     const meals = [
       meal({ calories: 400, protein: 30, carbs: 50, fat: 10 }),
-      meal({ calories: 500, protein: 40, carbs: 20, fat: 20, portionMultiplier: 1.5 }),
-      meal({ calories: 300, protein: 25, carbs: 30, fat: 10, portionMultiplier: 0.5 }),
+      meal({ calories: 750, protein: 60, carbs: 30, fat: 30 }),
+      meal({ calories: 150, protein: 13, carbs: 15, fat: 5 }),
     ];
     const line = buildDayTotalVsGoalLine(meals, goals);
-    // 400 + 750 + 150 = 1300 (scaledMacro rounds per-row)
     expect(line.totals.calories).toBe(400 + 750 + 150);
     expect(line.totals.protein).toBe(30 + 60 + 13);
     expect(line.totals.carbs).toBe(50 + 30 + 15);
@@ -277,15 +275,11 @@ describe("formatDayTotalCell + formatDayTotalVsGoalLine", () => {
   });
 
   it("rounds fractional totals to whole numbers for display", () => {
-    // `dayPlanTotalsFromMeals` already rounds per-meal via `scaledMacro`,
-    // but the formatter should also defensively round in case a caller
-    // ever passes raw totals.
     const line = buildDayTotalVsGoalLine(
-      [meal({ calories: 333, protein: 33, carbs: 33, fat: 11, portionMultiplier: 1.5 })],
+      [meal({ calories: 499.4, protein: 33, carbs: 33, fat: 11 })],
       { calories: 1000, protein: 100, carbs: 100, fat: 50 },
     );
-    // 333 × 1.5 = 499.5 → rounds to 500 inside scaledMacro
     const cal = line.cells[0]!;
-    expect(formatDayTotalCell(cal)).toBe("500 / 1,000 kcal");
+    expect(formatDayTotalCell(cal)).toBe("499 / 1,000 kcal");
   });
 });

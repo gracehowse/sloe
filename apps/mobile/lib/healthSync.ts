@@ -975,6 +975,41 @@ export function isHealthSyncAvailable(): boolean {
   return false;
 }
 
+/** Single source for `initHealthKit` read/write unions (Connect + every sync). */
+const APPLE_HEALTH_KIT_PERMISSIONS: {
+  permissions: { read: string[]; write: string[] };
+} = {
+  permissions: {
+    read: [
+      "StepCount",
+      "Weight",
+      "BodyFatPercentage",
+      "ActiveEnergyBurned",
+      "BasalEnergyBurned",
+      "Workout",
+      "FoodCorrelation",
+      ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
+    ],
+    write: ["EnergyConsumed", "Protein", "Carbohydrates", "FatTotal", "Fiber"],
+  },
+};
+
+/**
+ * Re-run the same HealthKit authorization request before reads. iOS does not always
+ * surface a second sheet for types already "asked", but this merges any toggles the user
+ * applied in Settings since the last cold start and avoids syncing with a stale session
+ * that never completed `initHealthKit` after install.
+ */
+async function ensureHealthKitPermissionRequest(hk: AppleHealthKitNative): Promise<void> {
+  try {
+    const available = await isAvailablePromise(hk);
+    if (!available) return;
+    await initHealthKitPromise(hk, APPLE_HEALTH_KIT_PERMISSIONS);
+  } catch {
+    /* best-effort; per-metric reads still fail closed in their own try/catch */
+  }
+}
+
 export async function requestHealthPermissions(): Promise<boolean> {
   // Top-level try/catch so a native-side throw during `loadAppleHealthKit`
   // (module-resolution failure in an RN 0.76 newArch build) or during the
@@ -1000,27 +1035,7 @@ export async function requestHealthPermissions(): Promise<boolean> {
       // meals to import". The G-7 native-queue fix already prevents
       // the iOS 26.5 ObjC crash on `initHealthKit`, so the split is
       // no longer needed. One call = one sheet = all perms granted.
-      await initHealthKitPromise(hk, {
-        permissions: {
-          read: [
-            "StepCount",
-            "Weight",
-            "BodyFatPercentage",
-            "ActiveEnergyBurned",
-            "BasalEnergyBurned",
-            "Workout",
-            "FoodCorrelation",
-            ...HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
-          ],
-          write: [
-            "EnergyConsumed",
-            "Protein",
-            "Carbohydrates",
-            "FatTotal",
-            "Fiber",
-          ],
-        },
-      });
+      await initHealthKitPromise(hk, APPLE_HEALTH_KIT_PERMISSIONS);
       return true;
     } catch (inner) {
       captureException(inner);
@@ -1079,6 +1094,8 @@ async function syncHealthDataImpl(userId: string): Promise<{
       workoutsUpdated: false,
       basalBurnUpdated: false,
     };
+
+  await ensureHealthKitPermissionRequest(hk);
 
   /** How far back to read HealthKit (user preference; default ~12 months). "All" uses 4000d (~11y) cap. */
   const lookbackDays = await getHealthBodyLookbackDays();
@@ -1545,6 +1562,8 @@ async function syncNutritionFromHealthImpl(
 ): Promise<{ imported: ImportedMeal[]; skippedOwn: number; skippedNoName: number }> {
   const hk = loadAppleHealthKit();
   if (!hk) return { imported: [], skippedOwn: 0, skippedNoName: 0 };
+
+  await ensureHealthKitPermissionRequest(hk);
 
   let genericHealthImportLabels = false;
   try {

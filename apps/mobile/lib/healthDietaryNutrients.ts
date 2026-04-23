@@ -32,7 +32,12 @@ export {
   type MicroNutrientDisplayRow,
 };
 
-/** HK permission strings supported by `RCTAppleHealthKit+TypesAndPermissions` read mapping. */
+/**
+ * HK permission strings supported by `RCTAppleHealthKit+TypesAndPermissions` read mapping.
+ * `FatTrans` is intentionally omitted: `HKQuantityTypeIdentifierDietaryFatTrans` was removed
+ * from the HealthKit SDK (Xcode 16+); passing the key yields a nil type and can undermine
+ * `requestAuthorization` for the rest of the read set on newer iOS builds.
+ */
 export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "EnergyConsumed",
   "Protein",
@@ -44,7 +49,6 @@ export const HEALTH_DIETARY_IMPORT_PERMISSION_KEYS = [
   "FatSaturated",
   "FatMonounsaturated",
   "FatPolyunsaturated",
-  "FatTrans",
   "Cholesterol",
   "Caffeine",
   "Calcium",

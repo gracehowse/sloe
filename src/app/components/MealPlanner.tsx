@@ -2,11 +2,7 @@ import { memo, useMemo, useState } from "react";
 import { RefreshCw, ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import {
-  effectivePortionMultiplier,
-  isMealPlanPlaceholderLikeTitle,
-  scaledMacro,
-} from "../../lib/nutrition/portionMultiplier.ts";
+import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMultiplier.ts";
 import {
   isSameCalendarDay,
   planCalendarDateForIndex,
@@ -155,11 +151,10 @@ export const MealPlanner = memo(function MealPlanner({
         );
         const totals = meals.reduce(
           (acc, m) => {
-            const p = effectivePortionMultiplier(m.portionMultiplier);
-            acc.calories += scaledMacro(m.calories, p);
-            acc.protein += scaledMacro(m.protein, p);
-            acc.carbs += scaledMacro(m.carbs, p);
-            acc.fat += scaledMacro(m.fat, p);
+            acc.calories += Math.max(0, Math.round(Number(m.calories) || 0));
+            acc.protein += Math.max(0, Math.round(Number(m.protein) || 0));
+            acc.carbs += Math.max(0, Math.round(Number(m.carbs) || 0));
+            acc.fat += Math.max(0, Math.round(Number(m.fat) || 0));
             return acc;
           },
           { calories: 0, protein: 0, carbs: 0, fat: 0 },
@@ -289,9 +284,8 @@ export const MealPlanner = memo(function MealPlanner({
                 const isPlaceholder = isMealPlanPlaceholderLikeTitle(meal.recipeTitle, {
                   isPlaceholder: meal.isPlaceholder,
                 });
-                const portion = effectivePortionMultiplier(meal.portionMultiplier);
-                const kcal = Math.round(scaledMacro(meal.calories, portion));
-                const prot = Math.round(scaledMacro(meal.protein, portion));
+                const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
+                const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
                 return (
                   <div

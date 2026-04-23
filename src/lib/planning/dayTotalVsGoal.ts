@@ -8,9 +8,9 @@
  *   - mobile: `apps/mobile/app/(tabs)/planner.tsx`
  *
  * Non-negotiables from the spec (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`):
- * - Totals respect per-meal `portionMultiplier` / "0.5x / 1.5x" scaling.
- *   We delegate to `dayPlanTotalsFromMeals` so the exact scaling rules
- *   (half-step clamp, placeholder skip) stay in one place.
+ * - Day totals are the sum of each slot's **display** macros (same numbers
+ *   as the meal rows). `dayPlanTotalsFromMeals` centralises placeholder skip +
+ *   rounding; portion scale must already be baked into each meal (F-70).
  * - Tolerance bands are *symmetric* over/under the goal:
  *     |delta| / goal <= 10%  → neutral    (within goal band)
  *     10% < |delta| / goal <= 20% → amber (edge of band)
@@ -99,9 +99,9 @@ function goalsAreSet(g: DayTotalVsGoalInputs): boolean {
 }
 
 /**
- * Build the full "Day total vs goal" summary line for one day. Scales
- * totals via `dayPlanTotalsFromMeals` (handles portion multipliers +
- * placeholder skip) and classifies each macro against its goal.
+ * Build the full "Day total vs goal" summary line for one day. Totals
+ * come from `dayPlanTotalsFromMeals` (sum of row display macros +
+ * placeholder skip) and each macro is classified against its goal.
  */
 export function buildDayTotalVsGoalLine(
   meals: DayPlanMeal[],

@@ -42,16 +42,21 @@ export function scaledMacro(base: number, mult: number): number {
   return Math.max(0, Math.round(base * mult));
 }
 
+/**
+ * Sum each slot's **display** macros (what the planner row shows).
+ * `portionMultiplier` must not be applied again here — the generator and
+ * swap/adjust paths already bake scale into `calories` / `protein` / etc.
+ * (Applying multiplier twice was F-70 / TestFlight `AHjCqNMX…`.)
+ */
 export function dayPlanTotalsFromMeals(meals: DayPlanMeal[]): DayPlan["totals"] {
   return meals.reduce(
     (acc, m) => {
       if (m.isPlaceholder) return acc;
-      const p = effectivePortionMultiplier(m.portionMultiplier);
       return {
-        calories: acc.calories + scaledMacro(m.calories, p),
-        protein: acc.protein + scaledMacro(m.protein, p),
-        carbs: acc.carbs + scaledMacro(m.carbs, p),
-        fat: acc.fat + scaledMacro(m.fat, p),
+        calories: acc.calories + Math.max(0, Math.round(Number(m.calories) || 0)),
+        protein: acc.protein + Math.max(0, Math.round(Number(m.protein) || 0)),
+        carbs: acc.carbs + Math.max(0, Math.round(Number(m.carbs) || 0)),
+        fat: acc.fat + Math.max(0, Math.round(Number(m.fat) || 0)),
       };
     },
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
@@ -66,18 +71,40 @@ function normalizeDayPlanMeal(m: unknown): DayPlanMeal | null {
     return null;
   }
   const title = o.recipeTitle.trim();
-  const base = {
-    name: o.name,
-    recipeTitle: title,
-    calories: Math.max(0, Math.round(Number(o.calories) || 0)),
-    protein: Math.max(0, Math.round(Number(o.protein) || 0)),
-    carbs: Math.max(0, Math.round(Number(o.carbs) || 0)),
-    fat: Math.max(0, Math.round(Number(o.fat) || 0)),
-  };
+  const rawCal = Math.max(0, Math.round(Number(o.calories) || 0));
+  const rawPro = Math.max(0, Math.round(Number(o.protein) || 0));
+  const rawCarbs = Math.max(0, Math.round(Number(o.carbs) || 0));
+  const rawFat = Math.max(0, Math.round(Number(o.fat) || 0));
   const mult = effectivePortionMultiplier(
     typeof o.portionMultiplier === "number" ? o.portionMultiplier : undefined,
   );
-  return { ...base, portionMultiplier: mult };
+  const bakedCal = mult !== 1 ? scaledMacro(rawCal, mult) : rawCal;
+  const bakedPro = mult !== 1 ? scaledMacro(rawPro, mult) : rawPro;
+  const bakedCarbs = mult !== 1 ? scaledMacro(rawCarbs, mult) : rawCarbs;
+  const bakedFat = mult !== 1 ? scaledMacro(rawFat, mult) : rawFat;
+
+  const rawFiber = o.fiberG != null ? Number(o.fiberG) : NaN;
+  const bakedFiber =
+    Number.isFinite(rawFiber) && mult !== 1
+      ? Math.round(rawFiber * mult * 10) / 10
+      : Number.isFinite(rawFiber)
+        ? Math.round(rawFiber * 10) / 10
+        : undefined;
+
+  const out: DayPlanMeal = {
+    name: o.name,
+    recipeTitle: title,
+    calories: bakedCal,
+    protein: bakedPro,
+    carbs: bakedCarbs,
+    fat: bakedFat,
+    ...(bakedFiber !== undefined ? { fiberG: bakedFiber } : {}),
+    ...(typeof o.recipeId === "string" && o.recipeId.trim() ? { recipeId: o.recipeId.trim() } : {}),
+    ...(typeof o.leftoverOf === "string" && o.leftoverOf.trim() !== ""
+      ? { leftoverOf: o.leftoverOf.trim(), isLeftover: Boolean(o.isLeftover) }
+      : {}),
+  };
+  return out;
 }
 
 export function normalizeDayPlans(raw: unknown): DayPlan[] | null {

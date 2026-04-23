@@ -93,17 +93,16 @@ describe("mobile planner — shared helper behaves as expected when called direc
     expect(line.hasTargets).toBe(false);
   });
 
-  it("scales totals by portionMultiplier", () => {
+  it("sums baked row macros (portion scale lives in the numbers, not portionMultiplier)", () => {
     const line = buildDayTotalVsGoalLine(
       [
         {
           name: "Dinner",
           recipeTitle: "Salmon bowl",
-          calories: 500,
-          protein: 40,
-          carbs: 30,
-          fat: 20,
-          portionMultiplier: 1.5,
+          calories: 750,
+          protein: 60,
+          carbs: 45,
+          fat: 30,
         },
       ],
       { calories: 2000, protein: 150, carbs: 200, fat: 65 },

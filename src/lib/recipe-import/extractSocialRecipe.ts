@@ -11,6 +11,7 @@
  * even though the full page is JS-rendered.
  */
 
+import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
 
 export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
@@ -117,7 +118,11 @@ function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: str
       const desc = (data.articleBody ?? data.description ?? data.caption ?? "") as string;
       const img = (data.image ?? data.thumbnailUrl ?? "") as string;
       if (desc && desc.length > 20) {
-        return { caption: desc, imageUrl: typeof img === "string" ? img : null, videoUrl: null };
+        return {
+          caption: decodeHtmlEntities(desc),
+          imageUrl: typeof img === "string" ? img : null,
+          videoUrl: null,
+        };
       }
     } catch { /* continue */ }
   }
@@ -141,7 +146,7 @@ function extractFromEmbeddedJson(html: string): { caption: string; imageUrl: str
         if (vidMatch?.[1]) {
           try { vidUrl = JSON.parse(`"${vidMatch[1]}"`); } catch { /* ignore */ }
         }
-        return { caption: decoded, imageUrl: imgUrl, videoUrl: vidUrl };
+        return { caption: decodeHtmlEntities(decoded), imageUrl: imgUrl, videoUrl: vidUrl };
       } catch { /* continue */ }
     }
   }
@@ -249,7 +254,15 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
         const h = caption.match(/@([a-z0-9._]{2,30})\b/i);
         if (h) authorDisplay = `@${h[1]}`;
       }
-      return { platform, caption, imageUrl, title, authorDisplay, rawHtml: html, videoUrl: ogVideo };
+      return {
+        platform,
+        caption: decodeHtmlEntities(caption),
+        imageUrl,
+        title: title ? decodeHtmlEntities(title) : null,
+        authorDisplay,
+        rawHtml: html,
+        videoUrl: ogVideo,
+      };
     }
 
     // Strategy 2: Embedded JSON data in the page
@@ -264,7 +277,7 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       }
       return {
         platform,
-        caption: embedded.caption,
+        caption: decodeHtmlEntities(embedded.caption),
         imageUrl: oembedImageUrl ?? embedded.imageUrl,
         title: null,
         authorDisplay,
@@ -426,17 +439,6 @@ function extractMetaContent(html: string, property: string): string | null {
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, "/");
 }
 
 /**
