@@ -54,25 +54,24 @@ describe("slot weighting", () => {
 });
 
 describe("portion scaling", () => {
-  it("meals can have portionMultiplier != 1", () => {
-    const plan = generatePlanFromLibrary({ savedRecipes: recipes, targets, days: 1, seed: 42 });
-    const day = plan[0];
-    // At least one meal should have a non-1 portionMultiplier (scaled to fit slot target)
-    const hasScaled = day.meals.some((m) => m.portionMultiplier !== undefined && m.portionMultiplier !== 1);
-    // This is probabilistic but with the given recipes + targets, scaling should occur
-    expect(hasScaled || day.meals.length === 0).toBe(true);
-  });
-
-  it("portionMultiplier is between 0.2 and 2.5 (F-15 clamp parity with mobile)", () => {
+  it("fit multiplier is baked into meal calories — portionMultiplier is never set by the generator", () => {
+    // Regression for the double-application bug: the algo used to store the
+    // fit multiplier as portionMultiplier while also baking it into calories,
+    // causing dayPlanTotalsFromMeals to double-apply the scale.
     const plan = generatePlanFromLibrary({ savedRecipes: recipes, targets, days: 3, seed: 42 });
     for (const day of plan) {
       for (const meal of day.meals) {
-        if (meal.portionMultiplier !== undefined) {
-          expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.2);
-          expect(meal.portionMultiplier).toBeLessThanOrEqual(2.5);
-        }
+        expect(meal.portionMultiplier).toBeUndefined();
       }
     }
+  });
+
+  it("scaled calories stay within a reasonable band of the target", () => {
+    const plan = generatePlanFromLibrary({ savedRecipes: recipes, targets, days: 1, seed: 42 });
+    const total = plan[0].totals.calories;
+    // Should be meaningfully closer to target than an unscaled sum
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThan(targets.calories * 2);
   });
 });
 

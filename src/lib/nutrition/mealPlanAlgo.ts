@@ -496,7 +496,6 @@ function buildIndependentSlotDay(
       carbs: scaled.carbs,
       fat: scaled.fat,
       fiberG: scaled.fiberG,
-      portionMultiplier: mult !== 1 ? mult : undefined,
     };
   });
   return { meals, pickedIds, residualProteinGap: fit.residualProteinGap };
@@ -541,7 +540,9 @@ export function generateSmartPlan(input: {
           recipeId: r.id,
           ...scaled,
           fiberG: scaled.fiberG,
-          portionMultiplier: mult !== 1 ? mult : undefined,
+          // portionMultiplier is intentionally NOT set here: the fit
+          // multiplier is already baked into `calories`. Setting it would
+          // cause dayPlanTotalsFromMeals to double-apply the scale.
         };
       });
       residualProteinGap = joint.residualProteinGap;

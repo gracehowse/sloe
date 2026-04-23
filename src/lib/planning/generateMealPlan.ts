@@ -261,7 +261,7 @@ function buildIndependentSlotDay(
       protein: scaled.protein,
       carbs: scaled.carbs,
       fat: scaled.fat,
-      portionMultiplier: mult !== 1 ? mult : undefined,
+      // portionMultiplier not set: fit mult is baked into calories already
     };
   });
   return { meals, pickedIds, residualProteinGap: fit.residualProteinGap };
@@ -306,7 +306,7 @@ export function generatePlanFromLibrary(input: {
           name,
           recipeTitle: r.title,
           ...scaled,
-          portionMultiplier: mult !== 1 ? mult : undefined,
+          // portionMultiplier not set: fit mult is baked into calories already
         };
       });
       residualProteinGap = joint.residualProteinGap;

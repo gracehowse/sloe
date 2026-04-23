@@ -1971,3 +1971,72 @@ export async function syncCaffeineFromHealth(
   await supabase.from("profiles").update({ extra_caffeine_by_day: merged }).eq("id", userId);
   return { daysTouched: Object.keys(byDay).length };
 }
+
+// ─── Health data card "last values" ──────────────────────────────────────────
+// Persisted under `health_last_values` in AsyncStorage so the data rows on the
+// Health Sync screen render on cold open without a fresh sync.
+
+export type HealthLastValues = {
+  steps: string | null;
+  weight: string | null;
+  activeEnergy: string | null;
+  restingEnergy: string | null;
+  workouts: string | null;
+  syncedAt: string | null;
+};
+
+const HEALTH_LAST_VALUES_KEY = "health_last_values";
+
+export async function persistHealthLastValues(userId: string): Promise<void> {
+  try {
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const { data } = await supabase
+      .from("profiles")
+      .select("steps_by_day, weight_kg_by_day, weight_kg, activity_burn_by_day, basal_burn_by_day, workouts_by_day")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!data) return;
+
+    const today = dateKey(new Date());
+    const stepsVal = (data.steps_by_day as Record<string, number> | null)?.[today];
+    const activeVal = (data.activity_burn_by_day as Record<string, number> | null)?.[today];
+    const restingVal = (data.basal_burn_by_day as Record<string, number> | null)?.[today];
+    const workoutsToday = (data.workouts_by_day as Record<string, unknown[]> | null)?.[today];
+
+    // Weight: today's if available, else most recent from weight_kg_by_day, else profile cached
+    const weightByDay = (data.weight_kg_by_day as Record<string, number> | null) ?? {};
+    const weightKg =
+      weightByDay[today] ??
+      (Object.entries(weightByDay).sort((a, b) => b[0].localeCompare(a[0]))[0]?.[1] ?? null) ??
+      (typeof data.weight_kg === "number" ? (data.weight_kg as number) : null);
+
+    const weightDayKey = weightByDay[today]
+      ? undefined
+      : Object.entries(weightByDay).sort((a, b) => b[0].localeCompare(a[0]))[0]?.[0];
+    const weightDayLabel = weightDayKey ? ` · ${new Date(weightDayKey + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}` : "";
+
+    const vals: HealthLastValues = {
+      steps: stepsVal != null ? `${stepsVal.toLocaleString()} today` : null,
+      weight: weightKg != null ? `${weightKg} kg${weightDayLabel}` : null,
+      activeEnergy: activeVal != null ? `${Math.round(activeVal).toLocaleString()} kcal today` : null,
+      restingEnergy: restingVal != null ? `${Math.round(restingVal).toLocaleString()} kcal today` : null,
+      workouts: workoutsToday != null ? `${workoutsToday.length} today` : null,
+      syncedAt: new Date().toISOString(),
+    };
+
+    await AsyncStorage.setItem(HEALTH_LAST_VALUES_KEY, JSON.stringify(vals));
+  } catch {
+    // non-critical
+  }
+}
+
+export async function loadHealthLastValues(): Promise<HealthLastValues | null> {
+  try {
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const raw = await AsyncStorage.getItem(HEALTH_LAST_VALUES_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as HealthLastValues;
+  } catch {
+    return null;
+  }
+}

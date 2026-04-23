@@ -68,22 +68,20 @@ describe("generateSmartPlan", () => {
     expect(allSame).toBe(false);
   });
 
-  it("includes portion multiplier when target is very low", () => {
+  it("scales meal calories toward the target — fit mult is baked into calories, not portionMultiplier", () => {
     const plan = generateSmartPlan({
       recipes: [breakfast, lunch, dinner1, snack],
       targets: { ...targets, calories: 800 },
       days: 1,
     });
-    // With 800 cal target vs recipes totalling ~1350, scaling must happen
-    const hasMultiplier = plan[0].meals.some((m) => m.portionMultiplier != null && m.portionMultiplier < 1);
-    expect(hasMultiplier).toBe(true);
-    // All multipliers must be within bounds
+    // Algo scales meals down to approach the 800 kcal target.
+    // The fit multiplier must be baked into m.calories (not stored as portionMultiplier).
     for (const meal of plan[0].meals) {
-      if (meal.portionMultiplier != null) {
-        expect(meal.portionMultiplier).toBeGreaterThanOrEqual(0.2);
-        expect(meal.portionMultiplier).toBeLessThanOrEqual(2.5);
-      }
+      expect(meal.portionMultiplier).toBeUndefined();
     }
+    // Day total should be closer to 800 than to the unscaled ~1350
+    const total = plan[0].totals.calories;
+    expect(total).toBeLessThan(1200);
   });
 
   it("computes day totals correctly", () => {
@@ -139,5 +137,21 @@ describe("generateSmartPlan", () => {
   it("clamps days to min 1", () => {
     const plan = generateSmartPlan({ recipes: [breakfast, lunch, dinner1, snack], targets, days: 0 });
     expect(plan).toHaveLength(1);
+  });
+
+  it("never sets portionMultiplier on generated meals — fit mult is baked into calories", () => {
+    // Regression for F-70 bug: portionMultiplier was set to the algo's fit
+    // multiplier, causing dayPlanTotalsFromMeals to double-apply the scale.
+    const plan = generateSmartPlan({
+      recipes: [breakfast, lunch, dinner1, snack],
+      targets,
+      days: 3,
+      seed: 1,
+    });
+    for (const day of plan) {
+      for (const meal of day.meals) {
+        expect(meal.portionMultiplier).toBeUndefined();
+      }
+    }
   });
 });

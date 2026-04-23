@@ -37,7 +37,7 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - **F-62** Import empty-state split (denied vs already-own vs genuinely-empty) — closes `ABG0cZzo` + 1 sibling.
 - **F-63a/b/d/e** Plan day-card density, Library filter pill clip, Household Settings duplicate header, Recipe ingredient kcal clip — closes 6 C9 submissions.
 - **C10** `AHS6xzyU…` closed ✅ as duplicate of `AA63DQ7xd…` (score already removed everywhere).
-- **C11** `ANfXXs6H…` 🟠 — ops check: Vercel prod needs `EDAMAM_APP_ID` + `EDAMAM_APP_KEY`, else remove Edamam from `nutrition-sources.tsx`.
+- **C11** `ANfXXs6H…` 🟠 — ops: `EDAMAM_APP_ID`/`EDAMAM_APP_KEY` ARE set in Vercel but are returning 401 from Edamam's API (expired/invalid credentials). `searchEdamam` already returns `[]` gracefully; Discover "Eating out" silently hides when empty. **Grace needs to regenerate Edamam API keys in the Edamam developer portal and update Vercel env vars.** No code change required.
 - **C9c** (`AIC05bpyu…`) 🟠 — Health Sync permission style; routed to ui-product-designer.
 - **C5** Household Netflix-model — brief delivered, saved at [../planning/2026-04-22-household-netflix-model-spec.md](../planning/2026-04-22-household-netflix-model-spec.md). Routes next: ui-product-designer, data-integrity, journey-architect, executor.
 - **C6-chart** Weight chart redesign — brief delivered, saved at [../planning/2026-04-22-weight-chart-redesign-brief.md](../planning/2026-04-22-weight-chart-redesign-brief.md). Executor can pick up with the specified file list (WeightChart/WeightRangeToggle/WeightSparseState + shared weightTrend.ts).
@@ -57,8 +57,8 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 - `AMp-9LdEySJR-4b3FoO5zI0` — 🟡 Can't delete ingredients; F-67 shipped.
 - `AEnCdLrqNCk8S5IbqYD-ma8` — 🟡 360m not formatted; F-68 shipped.
 - `AE2MdvYfJVQL298eoF_fps4` — 🟡 Discover cards protein-only; F-69 shipped.
-- `AD3qa1g9ZI7Co3tvazH-yUQ` — 🟠 C11 repeat (Edamam env vars ops).
-- `AHjCqNMXhdrnnUIikNRWdW0` — ⏳ Plan generates meals wildly over target (plan quality, not display bug).
+- `AD3qa1g9ZI7Co3tvazH-yUQ` — 🟠 C11 repeat (Edamam keys returning 401 — ops: regenerate keys in Edamam portal + update Vercel).
+- `AHjCqNMXhdrnnUIikNRWdW0` — 🟡 F-70 shipped: plan algo was storing fit multiplier as `portionMultiplier`; `dayPlanTotalsFromMeals` then double-applied it (e.g. 1,667 kcal plan displayed as 5,421 kcal). Fix: fit mult baked into `calories`, never set as `portionMultiplier`.
 - `AEVC-WdrU9sw9ql6rDR62e8` — ⏳ F-70 weight chart crosshair/zoom (covered by weight chart redesign brief).
 - `AK91aaRcQ6ILWgQIvCatZXI` — 🟡 C5 repeat (household invite in wrong place; Netflix-model brief covers it).
 
