@@ -192,7 +192,7 @@ export function UpgradePaywallDialog({
   const [busy, setBusy] = useState(false);
   // Period is monthly on this surface — annual toggle lives on
   // `/pricing`. Declared `as const` so the analytics payload types line up.
-  const period: "monthly" = "monthly";
+  const period = "monthly" as const;
 
   // --- Variant selection --------------------------------------------
   const variant: Variant | null =

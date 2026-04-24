@@ -51,10 +51,16 @@ Stop the server when finished (foreground **Ctrl+C** or `kill` the background PI
 
 Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
+The **root** job runs `npm run lint` (ESLint on `src/`, `app/`, `tests/`) after typecheck, then Vitest, `next build`, and Playwright smoke.
+
 Repository **secrets** (Settings → Secrets and variables → Actions):
 
-- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — job-level env so `next build` embeds them; needed for sign-in flows against your project.
-- `E2E_EMAIL` / `E2E_PASSWORD` — dedicated test user; without them, authenticated journeys are skipped (public smoke still runs).
+| Secret / variable | Required for green CI? | Purpose |
+|-------------------|-------------------------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | **Yes** (for build + E2E) | Embedded at build time; app + tests need a real project. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Same. |
+| `E2E_EMAIL` | **For authenticated Playwright** | Without both email + password, [`today-authenticated.spec.ts`](journeys/today-authenticated.spec.ts) and similar specs **skip**; public smoke still runs. |
+| `E2E_PASSWORD` | **With `E2E_EMAIL`** | Test user must be fully onboarded or login loops to `/onboarding`. |
 
 Fork PRs do not receive upstream secrets; expect authenticated tests to skip there.
 

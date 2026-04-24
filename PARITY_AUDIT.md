@@ -1,5 +1,8 @@
 # Platform Parity Audit — Web vs Mobile
 
+> **Status:** Historical / narrative snapshot (feature matrix + dates below).  
+> **Normative scope + process:** [`docs/product/web-mobile-parity-scope.md`](docs/product/web-mobile-parity-scope.md) · **How lists relate:** [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 **Date**: 2026-04-13 (second execution pass) · **2026-04-23** — create-flow bulk paste + OCR parity pass
 
 ---

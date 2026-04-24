@@ -32,6 +32,8 @@ jobs:
         run: npm run verify:production-env
       - name: Typecheck
         run: npm run typecheck
+      - name: ESLint (web + shared tests)
+        run: npm run lint
       - name: Unit/component tests
         run: npm test
       - name: Install Playwright browsers

@@ -4,7 +4,7 @@ Single source of truth for the Suppr product, codebase, and operations.
 
 ### Documentation system (Genesis)
 
-Structured rules for how this tree scales and stays accurate: [genesis/README.md](genesis/README.md). Quick folder → audience map: [genesis/INDEX.md](genesis/INDEX.md). Product hub + ship log: [DOCUMENTATION_HUB.md](DOCUMENTATION_HUB.md).
+Structured rules for how this tree scales and stays accurate: [genesis/README.md](genesis/README.md). Quick folder → audience map: [genesis/INDEX.md](genesis/INDEX.md). Product hub + ship log: [DOCUMENTATION_HUB.md](DOCUMENTATION_HUB.md). **Contributors:** [../CONTRIBUTING.md](../CONTRIBUTING.md) (lint, migrations, types, worklists).
 
 ## Documentation Index
 

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx";
@@ -206,15 +207,15 @@ export default async function RecipePage({ params }: Props) {
       {/* Nav bar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <a href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+          <Link href="/" className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
             Suppr
-          </a>
-          <a
+          </Link>
+          <Link
             href="/login"
             className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
           >
             Plan your week free
-          </a>
+          </Link>
         </div>
       </header>
 

@@ -126,8 +126,8 @@ describe("resolveBillingPortalOutcome", () => {
       userId: "user-uuid",
       stripeCustomerId: "cus_abc",
       openPortal: async () => {
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
-        throw "weird";
+        // Non-Error rejection (defensive path in `resolveBillingPortalOutcome`).
+        throw 7;
       },
     });
     expect(outcome.kind).toBe("fallback");

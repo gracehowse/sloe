@@ -330,7 +330,6 @@ export function QuickAddPanel({
         toast.error(
           alreadyStarred ? "Couldn't remove favourite. Try again." : "Couldn't save favourite. Try again.",
         );
-        // eslint-disable-next-line no-console
         console.error("QuickAddPanel favourite toggle failed", err);
       } finally {
         setPendingKeys((s) => {
@@ -388,7 +387,6 @@ export function QuickAddPanel({
         }
         // Fire-and-forget counter bump. A failure here is not user-facing.
         void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-          // eslint-disable-next-line no-console
           console.warn("QuickAddPanel log-count bump failed", err);
         });
       } finally {
@@ -428,7 +426,6 @@ export function QuickAddPanel({
       } catch (err) {
         setSavedMeals(snapshot);
         toast.error("Couldn't rename. Try again.");
-        // eslint-disable-next-line no-console
         console.error("QuickAddPanel rename failed", err);
       }
     },
@@ -464,7 +461,6 @@ export function QuickAddPanel({
       } catch (err) {
         setSavedMeals(snapshot);
         toast.error("Couldn't delete. Try again.");
-        // eslint-disable-next-line no-console
         console.error("QuickAddPanel delete failed", err);
       }
     },

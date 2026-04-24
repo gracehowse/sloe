@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { headers } from "next/headers";
 import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
@@ -148,19 +149,19 @@ export default async function PricingPage({
 
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur-xl border-b border-border px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <a
+          <Link
             href="/"
             className="text-lg font-bold bg-clip-text text-transparent"
             style={{ backgroundImage: "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)" }}
           >
             Suppr
-          </a>
-          <a
+          </Link>
+          <Link
             href="/login"
             className="px-5 py-2 rounded-xl border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors"
           >
             Sign in
-          </a>
+          </Link>
         </div>
       </header>
 

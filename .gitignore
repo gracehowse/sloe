@@ -27,6 +27,10 @@ Suppr_Product_Audit.docx
 # Expo local
 .expo/
 
+# Accidental empty files (npm/yarn noise in apps/mobile)
+apps/mobile/node
+apps/mobile/suppr-mobile@*
+
 # App Store Connect API keys (never commit these)
 *.p8
 

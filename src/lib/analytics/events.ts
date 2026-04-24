@@ -478,7 +478,7 @@ export type ConfidenceBucket = "high" | "medium" | "low";
  *  with a `source` property. */
 export type RecipeImportedSource = "url" | "image";
 
-// -- TODO 2026-05-18: retirement of rename-cycle legacy names --------
+// -- Rename-cycle retirement (target 2026-05-18): legacy event names --------
 //
 // The following legacy event names are being dual-emitted alongside
 // their canonical replacements during the 2026-04-18 → 2026-05-18

@@ -2,6 +2,8 @@
 
 **The single worklist.** Consolidated 2026-04-19 from 6 scattered lists (see [Sources](#sources) at bottom). Work from this file. Update as items land. Historical source files are at [docs/planning/archive/](docs/planning/archive/).
 
+**Also read:** [CONTRIBUTING.md](CONTRIBUTING.md) — how this file fits next to the audit checklist (`docs/planning/consolidated-audit-todos-2026-04-24.md`), product parity queue, and executor backlog so work is not duplicated.
+
 Orchestrator/executor queue is separate and lives at [docs/planning/sweep-2026-04-executor-backlog.md](docs/planning/sweep-2026-04-executor-backlog.md) — that's an agent-driven queue, not a Grace worklist.
 
 Legend: `[G]` Grace-only (dashboard / human decision) · `[E]` executor / code · `[SP]` specialist review required · 🔴 ship-blocker · 🟠 P0 · 🟡 P1 · 🟢 P2 / tech debt

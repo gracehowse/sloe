@@ -2,7 +2,7 @@
 
 This is the single source of truth for the product.
 
-**Active worklist:** [/TODO.md](../TODO.md) — the master TODO consolidates everything Grace needs to action (Sept 2025 → ongoing). Orchestrator/executor queue is separate at [planning/sweep-2026-04-executor-backlog.md](planning/sweep-2026-04-executor-backlog.md).
+**Active worklist:** [/TODO.md](../TODO.md) — the master TODO consolidates everything Grace needs to action (Sept 2025 → ongoing). Orchestrator/executor queue is separate at [planning/sweep-2026-04-executor-backlog.md](planning/sweep-2026-04-executor-backlog.md). **Contributors:** [CONTRIBUTING.md](../CONTRIBUTING.md) (lint, migrations, types, how worklists relate).
 
 ## Sections
 - `planning/` Sequenced backlogs (e.g. orchestrator-full-sweep → executor)
