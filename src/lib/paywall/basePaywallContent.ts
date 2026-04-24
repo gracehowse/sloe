@@ -67,7 +67,7 @@ export const BASE_PAYWALL_FEATURES: readonly BasePaywallFeature[] = [
     webIcon: "link",
     mobileIcon: "link-outline",
     title: "Import from any source",
-    description: "Instagram, TikTok, blogs. 7-second parse, USDA-verified.",
+    description: "Instagram, TikTok, blogs — parsed and matched against USDA in seconds.",
   },
   {
     key: "unlimited_saves",

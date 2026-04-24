@@ -12,7 +12,16 @@
  * Returns `null` when `recipeId` is missing, not a UUID, or the fetch
  * fails — callers should fall back to logging with no micros rather
  * than block the insert.
+ *
+ * T4 (full-sweep 2026-04-24): also returns `macrosAreCoerced` — true
+ * when the underlying recipe has stated calories but gram columns that
+ * would trigger `coerceMacrosWhenCaloriesButNoGrams`. Journal write
+ * paths use this to refuse logging fabricated macros and route the
+ * user to the verify screen instead (see the "if nutrition is
+ * uncertain, do not guess" project rule).
  */
+import { wouldCoerceMacros } from "../nutrition/coerceRecipeMacrosForPlanning";
+
 export type SupabaseLike = {
   from: (table: string) => {
     select: (cols: string) => {
@@ -32,12 +41,27 @@ export type PlannedMealMicros = {
    * Empty object when no micros are available.
    */
   micros: Record<string, number>;
+  /**
+   * True when the underlying recipe has calories but the gram columns
+   * don't explain them (triggers `coerceMacrosWhenCaloriesButNoGrams`).
+   * Journal writers must refuse to persist fabricated P/C/F when this
+   * is true — prompt the user to verify the recipe first.
+   */
+  macrosAreCoerced: boolean;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function scaleRecipeMicros(
-  recipe: { fiber_g?: number | null; sugar_g?: number | null; sodium_mg?: number | null },
+  recipe: {
+    fiber_g?: number | null;
+    sugar_g?: number | null;
+    sodium_mg?: number | null;
+    calories?: number | null;
+    protein?: number | null;
+    carbs?: number | null;
+    fat?: number | null;
+  },
   mult: number,
 ): PlannedMealMicros {
   const safeMult = Number.isFinite(mult) && mult > 0 ? mult : 1;
@@ -58,7 +82,14 @@ export function scaleRecipeMicros(
     micros.sodiumMg = Math.round(sodiumRaw * safeMult);
   }
 
-  return { fiberG, micros };
+  const macrosAreCoerced = wouldCoerceMacros({
+    calories: Number(recipe.calories) || 0,
+    protein: Number(recipe.protein) || 0,
+    carbs: Number(recipe.carbs) || 0,
+    fat: Number(recipe.fat) || 0,
+  });
+
+  return { fiberG, micros, macrosAreCoerced };
 }
 
 export async function fetchPlannedMealMicros(
@@ -66,18 +97,26 @@ export async function fetchPlannedMealMicros(
   recipeId: string | null | undefined,
   mult: number,
 ): Promise<PlannedMealMicros> {
-  const empty: PlannedMealMicros = { fiberG: null, micros: {} };
+  const empty: PlannedMealMicros = { fiberG: null, micros: {}, macrosAreCoerced: false };
   if (!recipeId || typeof recipeId !== "string" || !UUID_RE.test(recipeId)) return empty;
 
   try {
     const { data, error } = await supabase
       .from("recipes")
-      .select("fiber_g, sugar_g, sodium_mg")
+      .select("fiber_g, sugar_g, sodium_mg, calories, protein, carbs, fat")
       .eq("id", recipeId)
       .maybeSingle();
     if (error || !data || typeof data !== "object") return empty;
     return scaleRecipeMicros(
-      data as { fiber_g?: number | null; sugar_g?: number | null; sodium_mg?: number | null },
+      data as {
+        fiber_g?: number | null;
+        sugar_g?: number | null;
+        sodium_mg?: number | null;
+        calories?: number | null;
+        protein?: number | null;
+        carbs?: number | null;
+        fat?: number | null;
+      },
       mult,
     );
   } catch {

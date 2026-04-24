@@ -114,14 +114,22 @@ export type HouseholdMeal = {
   notes: string | null;
   added_by: string | null;
   /**
-   * Netflix-model v1 (2026-05-01): snapshot of the cook's display_name
-   * at the time of insert. Survives the cook leaving the household so
-   * historical attribution stays legible. Nullable for pre-migration
-   * rows — the UI should fall back to "A member" when absent.
+   * T8 (full-sweep 2026-04-24): resolved at read-time from the cook's
+   * **live** `profiles.display_name` (looked up via `added_by`). Falls
+   * back to `null` when the cook has left the app entirely / profile
+   * was cascade-deleted; UIs render "A member" for null. The DB still
+   * carries a `cook_display_name` snapshot column (2026-05-01 migration)
+   * for admin / forensic use, but the client **never** reads it:
+   * snapshots become stale when a user renames (e.g. after transition),
+   * which produced a dead-name leak on meal attribution. See
+   * docs/decisions/2026-04-24-full-sweep-ship-verdict.md T8.
    */
-  cook_display_name: string | null;
+  cookDisplayName: string | null;
   created_at: string;
 };
+
+/** Raw `household_meals` row shape as returned by the SELECT. Internal. */
+type RawHouseholdMealRow = Omit<HouseholdMeal, "cookDisplayName">;
 
 export type HouseholdData = {
   household: HouseholdSummary | null;
@@ -288,7 +296,10 @@ export async function getMyHousehold(
     supabase
       .from("household_meals")
       .select(
-        "id, date_key, meal_label, recipe_title, recipe_id, servings, calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, fiber_per_serving, notes, added_by, cook_display_name, created_at",
+        // T8: `cook_display_name` intentionally omitted — resolved from
+        // live `profiles.display_name` via `added_by` below to prevent
+        // dead-name leak on post-transition rename.
+        "id, date_key, meal_label, recipe_title, recipe_id, servings, calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, fiber_per_serving, notes, added_by, created_at",
       )
       .eq("household_id", householdId)
       .gte("date_key", todayKey())
@@ -330,7 +341,7 @@ export async function getMyHousehold(
     share_targets?: boolean | null;
     share_preset?: string | null;
   }>;
-  const rawMeals = (mealsResp.data ?? []) as HouseholdMeal[];
+  const rawMeals = (mealsResp.data ?? []) as RawHouseholdMealRow[];
 
   // Netflix-model v1: each member chooses their own preset. The viewer's
   // preset governs the meals returned on this call. Legacy rows without
@@ -347,18 +358,30 @@ export async function getMyHousehold(
   // read-through wires up.
   const customGrid: CustomShareGrid | null = null;
 
-  const meals = rawMeals.filter((m) =>
+  const filteredRaw = rawMeals.filter((m) =>
     slotAllowedForPreset(viewerPreset, m.date_key, m.meal_label, customGrid),
   );
 
   // Member macros: targets from profiles + today's logged entries.
+  // T8: also fetch profiles for `added_by` cooks who may not be current
+  // household members (left / deleted) — so we can resolve the meal
+  // cook name against a live `profiles.display_name` instead of the
+  // stale `cook_display_name` snapshot that would leak dead-names.
   const memberIds = members.map((m) => m.user_id);
+  const cookIds = Array.from(
+    new Set(
+      filteredRaw
+        .map((m) => m.added_by)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  );
+  const profileLookupIds = Array.from(new Set([...memberIds, ...cookIds]));
   const [profilesResp, entriesResp] = await Promise.all([
-    memberIds.length
+    profileLookupIds.length
       ? supabase
           .from("profiles")
           .select("id, target_calories, target_protein, target_carbs, target_fat, display_name")
-          .in("id", memberIds)
+          .in("id", profileLookupIds)
       : Promise.resolve({ data: [], error: null }),
     memberIds.length
       ? supabase
@@ -378,6 +401,18 @@ export async function getMyHousehold(
     target_fat: number | null;
     display_name: string | null;
   }>;
+
+  // T8: resolve cook attribution at read-time from live profile data.
+  // Profile missing / display_name missing → null → UI renders "A member".
+  // Never reads the `cook_display_name` column snapshot (dead-name guard).
+  const liveDisplayName = new Map<string, string>();
+  for (const p of profiles) {
+    if (p.display_name) liveDisplayName.set(p.id, p.display_name);
+  }
+  const meals: HouseholdMeal[] = filteredRaw.map((raw) => ({
+    ...raw,
+    cookDisplayName: raw.added_by ? liveDisplayName.get(raw.added_by) ?? null : null,
+  }));
   const entries = (entriesResp.data ?? []) as Array<{
     user_id: string;
     calories: number | null;
@@ -686,7 +721,7 @@ export async function setMemberSharePreset(
 export async function insertHouseholdMealWithCookSnapshot(
   supabase: SupabaseLike,
   userId: string,
-  row: Omit<Partial<HouseholdMeal>, "added_by" | "cook_display_name"> & {
+  row: Omit<Partial<HouseholdMeal>, "added_by" | "cookDisplayName"> & {
     household_id: string;
     date_key: string;
     recipe_title: string;

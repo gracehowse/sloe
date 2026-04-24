@@ -1,3 +1,13 @@
+/**
+ * Ingredient measure → grams resolver.
+ *
+ * KNOWN APPROXIMATION: the generic `COUNT_WEIGHT_G.{large,medium,small}`
+ * fallback (~180 / 110 / 70 g) is applied before food-specific count
+ * rules are evaluated in some paths. For proteins this produces notable
+ * error (e.g. 2 large chicken breasts → 360 g via generic vs 400 g via
+ * food-specific). Fix: re-order so name-specific rules fire first.
+ * Policy reference: `docs/product/nutrition-approximation-policy.md` §A3.
+ */
 export type CupRegion = "us" | "uk" | "metric";
 
 export type MeasureInput = {

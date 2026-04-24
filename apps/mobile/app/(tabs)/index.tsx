@@ -2715,6 +2715,19 @@ export default function TrackerScreen() {
         pm.recipe_id ?? null,
         mult,
       );
+      // T4 (full-sweep 2026-04-24): refuse to log when the underlying
+      // recipe has kcal but no ingredient macros — the values in `pm`
+      // are the neutral 28/42/30 split from `coerceMacrosWhenCaloriesByNoGrams`,
+      // not real nutrition. Per the project rule "if nutrition is
+      // uncertain, do not guess", route the user to Verify first.
+      if (microsRes.macrosAreCoerced) {
+        Alert.alert(
+          "Verify this recipe first",
+          "This recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+          [{ text: "OK", style: "default" }],
+        );
+        return;
+      }
       const { error } = await supabase.from("nutrition_entries").insert({
         id: entryId,
         user_id: userId,

@@ -318,7 +318,7 @@ function ImportDone({ source }: { source: ImportSource }) {
               color: Accent.successLight,
             }}
           >
-            Matched · 94% confidence
+            Example · matched against USDA
           </Text>
         </View>
         <Text

@@ -1716,6 +1716,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             meal.recipeId ?? null,
             1,
           );
+          // T4 (full-sweep 2026-04-24): refuse to log when the underlying
+          // recipe has kcal but no ingredient macros — `meal` values are
+          // the neutral 28/42/30 split from the planner coerce helper,
+          // not real nutrition. Route the user to Verify first.
+          if (microsRes.macrosAreCoerced) {
+            if (typeof window !== "undefined") {
+              window.alert(
+                "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+              );
+            }
+            return;
+          }
           addLoggedMealForDate(
             selectedDateKey,
             {
@@ -1763,6 +1775,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               meal.recipeId ?? null,
               mult,
             );
+            // T4 (full-sweep 2026-04-24): refuse to log fabricated macros.
+            if (microsRes.macrosAreCoerced) {
+              if (typeof window !== "undefined") {
+                window.alert(
+                  "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+                );
+              }
+              return;
+            }
             addLoggedMealForDate(
               selectedDateKey,
               {

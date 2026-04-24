@@ -251,7 +251,24 @@ export async function syncTierToSupabase(
   }
 
   const { error } = await supabase.from("profiles").update({ user_tier: next }).eq("id", userId);
-  if (error && __DEV__) {
-    console.warn("[syncTierToSupabase]", error.message);
+  if (error) {
+    // T2 (full-sweep 2026-04-24) lockdown: `profiles.user_tier` is no
+    // longer client-writable. This UPDATE returns 42501 once migration
+    // 20260503100000_profiles_tier_column_lockdown.sql has been applied.
+    // The correct write path is the T6 RevenueCat server webhook
+    // (service-role). Until T6 ships, mobile tier sync after purchase
+    // will fail here — tracked in docs/planning/sweep-2026-04-24-executor-backlog.md T6.
+    const locked =
+      (error as { code?: string }).code === "42501" ||
+      /T2: tier column lockdown/.test(error.message ?? "");
+    if (__DEV__) {
+      if (locked) {
+        console.warn(
+          `[syncTierToSupabase] T2 tier-column lockdown rejected client write (expected). Tier sync arrives via RevenueCat webhook (T6). Attempted: ${current} → ${next}`,
+        );
+      } else {
+        console.warn("[syncTierToSupabase]", error.message);
+      }
+    }
   }
 }

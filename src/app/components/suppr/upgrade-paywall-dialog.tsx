@@ -96,7 +96,7 @@ const VARIANT_A_FEATURES: Feature[] = [
   {
     icon: LinkIcon,
     title: "Import from any source",
-    description: "Instagram, TikTok, blogs. 7-second parse, USDA-verified.",
+    description: "Instagram, TikTok, blogs — parsed and matched against USDA in seconds.",
   },
   {
     icon: InfinityIcon,

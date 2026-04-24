@@ -8,9 +8,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
+  InteractionManager,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -36,8 +39,14 @@ import {
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
-import { generateSmartPlan, ALL_MEAL_SLOTS, type PlannerTargets } from "@/lib/mealPlanAlgo";
+import { generateSmartPlan, ALL_MEAL_SLOTS, PORTION_MULTIPLIER_CLAMP, type PlannerTargets } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
+import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+import {
+  planCalendarDateForIndex,
+  stripMidnight,
+} from "../../../../src/lib/mealPlan/planCalendarAnchor";
+import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
 import {
   buildDayTotalVsGoalLine,
   formatDayTotalCell,
@@ -82,6 +91,46 @@ function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: 
   );
 }
 
+/** Keep meal rows in Breakfast → Lunch → Dinner → Snacks order. */
+function sortMealsBySlotOrder<T extends { name: string }>(meals: T[]): T[] {
+  const order: Record<PlanSlotIconKey, number> = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 };
+  const rank = (name: string) => order[resolvePlanSlotIconKey(name)] ?? 99;
+  return [...meals].sort((a, b) => rank(a.name) - rank(b.name));
+}
+
+function slotsPresentInDay(meals: { name: string }[]): Set<string> {
+  const s = new Set<string>();
+  for (const m of meals) {
+    const n = normaliseMealSlot(m.name);
+    if (n) s.add(n);
+  }
+  return s;
+}
+
+/** Canonical slots (Breakfast…Snacks) with no row on this day — used for + Add back chips.
+ *  Intentionally not gated on `enabledSlots`: that Set is only in-memory for regenerate
+ *  and can be empty/out of sync after navigation, which would hide all add-back actions. */
+function canonicalSlotsMissingFromDay(meals: { name: string }[]): string[] {
+  const present = slotsPresentInDay(meals);
+  return ALL_MEAL_SLOTS.filter((slot) => !present.has(slot));
+}
+
+/** True when this row has a chosen recipe (ignore stale `isPlaceholder` flags). */
+function planMealHasRecipe(meal: { recipeTitle?: string }): boolean {
+  return !!(meal.recipeTitle && String(meal.recipeTitle).trim());
+}
+
+/** All portion steps from the shared planner clamp (0.2× … 2.5×, 0.1 step). */
+function plannerPortionMultiplierSteps(): number[] {
+  const { min, max, step } = PORTION_MULTIPLIER_CLAMP;
+  const inv = 1 / step;
+  const out: number[] = [];
+  for (let x = min; x <= max + 1e-9; x += step) {
+    out.push(Math.round(x * inv) / inv);
+  }
+  return out;
+}
+
 const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
@@ -107,19 +156,6 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
   dinner: Accent.primary,
   snacks: MacroColors.fat,
 };
-
-function stripMidnight(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-/** Calendar date for plan row at index `idx`, offset from today by `offset` days. */
-function planCalendarDateForIndex(idx: number, offset: number = 0): Date {
-  const d = stripMidnight(new Date());
-  d.setDate(d.getDate() + idx + offset);
-  return d;
-}
 
 type PlanMeal = {
   name: string;
@@ -281,6 +317,9 @@ export default function PlannerScreen() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  /** When a plan exists: expand to change day count / slots / start before regenerating. */
+  const [planSetupExpanded, setPlanSetupExpanded] = useState(false);
+  const [portionModal, setPortionModal] = useState<{ dayIdx: number; mealIndex: number } | null>(null);
 
   // Batch 3.10 (mobile parity, 2026-04-18 audit C2) — Move meal state.
   // Long-press a meal row → action sheet → "Move to another slot…" opens
@@ -345,6 +384,51 @@ export default function PlannerScreen() {
       });
   }, [userId, plan]);
 
+  /**
+   * Persist a plan back to Supabase — relational tables first with legacy
+   * JSONB fallback. Mirrors the tail of `generatePlan`. Declared before
+   * `swapMeal` so recipe swaps can persist immediately.
+   */
+  const persistPlan = useCallback(
+    async (nextPlan: DayPlan[]) => {
+      if (!userId) return;
+      const { error: delErr } = await supabase
+        .from("meal_plan_days")
+        .delete()
+        .eq("user_id", userId)
+        .eq("slot_id", "default");
+      if (delErr) {
+        void upsertMealPlanJson(supabase, userId, nextPlan);
+        return;
+      }
+      for (const dp of nextPlan) {
+        const { data: dayRow } = await supabase
+          .from("meal_plan_days")
+          .insert({ user_id: userId, slot_id: "default", day: dp.day })
+          .select("id")
+          .single();
+        if (!dayRow) continue;
+        const mealInserts = dp.meals.map((m, idx) => ({
+          plan_day_id: dayRow.id,
+          slot_index: idx,
+          name: m.name,
+          recipe_title: m.recipeTitle,
+          recipe_id: m.recipeId ?? null,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          portion_multiplier: m.portionMultiplier ?? 1,
+          is_placeholder: m.isPlaceholder ?? false,
+        }));
+        if (mealInserts.length > 0) {
+          await supabase.from("meal_plan_meals").insert(mealInserts);
+        }
+      }
+    },
+    [userId],
+  );
+
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     const allPool = [...savedRecipes, ...discoverRecipes];
     // Audit L5 (2026-04-18): canonical slot via `normaliseMealSlot`
@@ -398,7 +482,7 @@ export default function PlannerScreen() {
           const doSwap = () => {
             setPlan((prev) => {
               if (!prev) return prev;
-              return prev.map((dp, di) => {
+              const next = prev.map((dp, di) => {
                 if (di !== dayIndex) return dp;
                 const newMeals = dp.meals.map((m, mi) => {
                   if (mi !== mealIndex) return m;
@@ -410,6 +494,10 @@ export default function PlannerScreen() {
                     protein: Math.round(picked.protein * mult),
                     carbs: Math.round(picked.carbs * mult),
                     fat: Math.round(picked.fat * mult),
+                    isPlaceholder: false,
+                    leftoverOf: undefined,
+                    isLeftover: undefined,
+                    portionMultiplier: undefined,
                     // Portion is baked into macros — never persist a parallel
                     // multiplier or day totals / goal header double-count (F-70).
                   };
@@ -420,6 +508,8 @@ export default function PlannerScreen() {
                 );
                 return { ...dp, meals: newMeals, totals };
               });
+              void persistPlan(next);
+              return next;
             });
           };
 
@@ -439,50 +529,7 @@ export default function PlannerScreen() {
         },
       })),
     );
-  }, [savedRecipes, discoverRecipes, plan, planTargets]);
-
-  /**
-   * Persist a plan back to Supabase — relational tables first with legacy
-   * JSONB fallback. Mirrors the tail of `generatePlan`.
-   */
-  const persistPlan = useCallback(
-    async (nextPlan: DayPlan[]) => {
-      if (!userId) return;
-      const { error: delErr } = await supabase
-        .from("meal_plan_days")
-        .delete()
-        .eq("user_id", userId)
-        .eq("slot_id", "default");
-      if (delErr) {
-        void upsertMealPlanJson(supabase, userId, nextPlan);
-        return;
-      }
-      for (const dp of nextPlan) {
-        const { data: dayRow } = await supabase
-          .from("meal_plan_days")
-          .insert({ user_id: userId, slot_id: "default", day: dp.day })
-          .select("id")
-          .single();
-        if (!dayRow) continue;
-        const mealInserts = dp.meals.map((m, idx) => ({
-          plan_day_id: dayRow.id,
-          slot_index: idx,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          is_placeholder: m.isPlaceholder ?? false,
-        }));
-        if (mealInserts.length > 0) {
-          await supabase.from("meal_plan_meals").insert(mealInserts);
-        }
-      }
-    },
-    [userId],
-  );
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan]);
 
   // Batch 3.10 mobile parity — move a meal between slots / days.
   // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
@@ -567,6 +614,8 @@ export default function PlannerScreen() {
     });
     return { hits, total: plan.length, worstShort };
   }, [plan, planTargets]);
+
+  const portionMultiplierList = useMemo(() => plannerPortionMultiplierSteps(), []);
 
   // Helper to truncate meal names in day cards
   const truncateMealName = (name: string, maxLen: number = 12) => {
@@ -883,18 +932,26 @@ export default function PlannerScreen() {
           }
           const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
             const meals = stripPlanPlaceholders(
-              (mealsByDay.get(d.id) ?? []).map((m) => ({
-              name: (m.name as string) ?? "",
-              recipeTitle: (m.recipe_title as string) ?? "",
-              calories: (m.calories as number) ?? 0,
-              protein: (m.protein as number) ?? 0,
-              carbs: (m.carbs as number) ?? 0,
-              fat: (m.fat as number) ?? 0,
-              // Relational rows historically stored `portion_multiplier` alongside
-              // already-scaled kcal from swap/adjust — strip so totals match rows.
-              portionMultiplier: undefined,
-              isPlaceholder: (m.is_placeholder as boolean) || undefined,
-            })),
+              (mealsByDay.get(d.id) ?? []).map((m) => {
+                const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                  calories: (m.calories as number) ?? 0,
+                  protein: (m.protein as number) ?? 0,
+                  carbs: (m.carbs as number) ?? 0,
+                  fat: (m.fat as number) ?? 0,
+                });
+                return {
+                  name: (m.name as string) ?? "",
+                  recipeTitle: (m.recipe_title as string) ?? "",
+                  calories: coerced.calories,
+                  protein: coerced.protein,
+                  carbs: coerced.carbs,
+                  fat: coerced.fat,
+                  // Relational rows historically stored `portion_multiplier` alongside
+                  // already-scaled kcal from swap/adjust — strip so totals match rows.
+                  portionMultiplier: undefined,
+                  isPlaceholder: (m.is_placeholder as boolean) || undefined,
+                };
+              }),
             );
             const totals = meals.reduce(
               (acc, ml) => ({
@@ -934,6 +991,14 @@ export default function PlannerScreen() {
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
+  // Keep "Plan length" chips aligned with the loaded plan (e.g. after sync).
+  useEffect(() => {
+    if (!plan?.length) return;
+    if (plan.length === 1 || plan.length === 3 || plan.length === 7) {
+      setDays(plan.length as 1 | 3 | 7);
+    }
+  }, [plan?.length]);
 
   const generatePlan = useCallback(async () => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
@@ -984,35 +1049,74 @@ export default function PlannerScreen() {
 
       // Use saved recipes first, then fill with discover recipes if the user doesn't
       // have enough variety to populate all meal slots.
-      const savedPool = savedRecipes.map((r) => ({
-        id: r.id,
-        title: r.title,
-        calories: r.calories,
-        protein: r.protein,
-        carbs: r.carbs,
-        fat: r.fat,
-        fiberG: (r as any).fiber_g ?? (r as any).fiberG ?? 0,
-        mealType: r.mealSlots ?? null,
-      }));
-      const discoverPool = discoverRecipes
-        .filter((r) => !savedRecipes.some((s) => s.id === r.id))
-        .map((r) => ({
-          id: r.id,
-          title: r.title,
+      const savedPool = savedRecipes.map((r) => {
+        const c = coerceMacrosWhenCaloriesButNoGrams({
           calories: r.calories,
           protein: r.protein,
           carbs: r.carbs,
           fat: r.fat,
-          mealType: (r as any).mealSlots ?? null,
-        }));
+          fiberG: (r as { fiberG?: number }).fiberG,
+        });
+        return {
+          id: r.id,
+          title: r.title,
+          calories: c.calories,
+          protein: c.protein,
+          carbs: c.carbs,
+          fat: c.fat,
+          fiberG: c.fiberG ?? (r as { fiber_g?: number }).fiber_g ?? (r as { fiberG?: number }).fiberG ?? 0,
+          mealType: r.mealSlots ?? null,
+        };
+      });
+      const discoverPool = discoverRecipes
+        .filter((r) => !savedRecipes.some((s) => s.id === r.id))
+        .map((r) => {
+          const c = coerceMacrosWhenCaloriesButNoGrams({
+            calories: r.calories,
+            protein: r.protein,
+            carbs: r.carbs,
+            fat: r.fat,
+            fiberG: r.fiberG,
+          });
+          return {
+            id: r.id,
+            title: r.title,
+            calories: c.calories,
+            protein: c.protein,
+            carbs: c.carbs,
+            fat: c.fat,
+            mealType: (r as { mealSlots?: string[] | null }).mealSlots ?? null,
+          };
+        });
       const fullPool = [...savedPool, ...discoverPool];
       const recipePool = savedPool.length >= 6 ? savedPool : fullPool;
 
-      const rawPlan = generateSmartPlan({
-        recipes: recipePool,
-        targets,
+      // T14 (full-sweep 2026-04-24): `generateSmartPlan` is a sync
+      // sampler over ~20k combinations — 6-11s on-device at pool ≥30.
+      // Yield to the UI thread via InteractionManager before running
+      // so the regenerate spinner actually paints, and instrument
+      // duration so we can tune the sampler cap with real data.
+      const slotCount = ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)).length;
+      const generateStartMs = Date.now();
+      const rawPlan = await new Promise<ReturnType<typeof generateSmartPlan>>((resolve) => {
+        InteractionManager.runAfterInteractions(() => {
+          resolve(
+            generateSmartPlan({
+              recipes: recipePool,
+              targets,
+              days,
+              slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
+            }),
+          );
+        });
+      });
+      const generateDurationMs = Date.now() - generateStartMs;
+      track(AnalyticsEvents.meal_plan_generated, {
         days,
-        slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
+        durationMs: generateDurationMs,
+        poolSize: recipePool.length,
+        slotCount,
+        platform: "mobile",
       });
       const stripped = rawPlan.map((dp) => {
         const meals = stripPlanPlaceholders(dp.meals);
@@ -1092,6 +1196,7 @@ export default function PlannerScreen() {
               slot_index: idx,
               name: m.name,
               recipe_title: m.recipeTitle,
+              recipe_id: m.recipeId ?? null,
               calories: m.calories,
               protein: m.protein,
               carbs: m.carbs,
@@ -1350,6 +1455,110 @@ export default function PlannerScreen() {
             pills row; the household surface is secondary. */}
         <HouseholdCard />
 
+        {/* Plan setup — visible whenever a plan exists so users can change
+            day count, start date, and included slots before regenerating
+            without clearing the whole plan first. */}
+        {plan && plan.length > 0 ? (
+          <View style={styles.card}>
+            <Pressable
+              onPress={() => setPlanSetupExpanded((v) => !v)}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+              accessibilityRole="button"
+              accessibilityLabel={planSetupExpanded ? "Collapse plan setup" : "Expand plan setup"}
+            >
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.cardTitle}>Plan setup</Text>
+                <Text style={styles.cardDesc}>
+                  {planSetupExpanded
+                    ? "Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately."
+                    : "Tap to change how many days, which meals to include, and start date — then regenerate."}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 18, color: colors.textSecondary }}>{planSetupExpanded ? "▼" : "▶"}</Text>
+            </Pressable>
+            {planSetupExpanded ? (
+              <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
+                <Text style={styles.sectionLabel}>Plan length</Text>
+                <View style={styles.daysRow}>
+                  {([1, 3, 7] as const).map((d) => {
+                    const locked = isFree && d > 1;
+                    return (
+                      <Pressable
+                        key={d}
+                        style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                        onPress={() => {
+                          if (locked) {
+                            Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available on Base and above.", [
+                              { text: "Continue for free", style: "cancel" },
+                              { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
+                            ]);
+                            return;
+                          }
+                          setDays(d);
+                        }}
+                      >
+                        <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                          {d} day{d > 1 ? "s" : ""}{locked ? " 🔒" : ""}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.sectionLabel}>Start from</Text>
+                <View style={styles.daysRow}>
+                  {([
+                    { val: 0 as const, label: "Today" },
+                    { val: 1 as const, label: "Tomorrow" },
+                    { val: 7 as const, label: "Next week" },
+                  ]).map((o) => (
+                    <Pressable
+                      key={o.val}
+                      style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                      onPress={() => setStartOffset(o.val)}
+                    >
+                      <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>{o.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={styles.sectionLabel}>Include when regenerating</Text>
+                <View style={[styles.daysRow, { flexWrap: "wrap" }]}>
+                  {ALL_MEAL_SLOTS.map((slot) => {
+                    const active = enabledSlots.has(slot);
+                    return (
+                      <Pressable
+                        key={slot}
+                        style={[styles.dayBtn, active && styles.dayBtnActive]}
+                        onPress={() => toggleSlot(slot)}
+                      >
+                        {active ? (
+                          <CheckCircle2 size={14} color="#fff" strokeWidth={1.75} style={{ marginRight: 4 }} />
+                        ) : (
+                          <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                        )}
+                        <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{slot}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 17 }}>
+                  To drop a slot on one day, long-press that row →{" "}
+                  <Text style={{ fontWeight: "700" }}>Remove slot (this day)</Text>. Use{" "}
+                  <Text style={{ fontWeight: "700" }}>+ Add …</Text> under the day to bring a slot back.
+                </Text>
+                <Pressable
+                  style={[styles.generateBtn, { marginTop: Spacing.sm }, generating && { opacity: 0.7 }]}
+                  onPress={generatePlan}
+                  disabled={generating}
+                  accessibilityRole="button"
+                  accessibilityLabel="Regenerate plan with current setup"
+                >
+                  {generating ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateBtnText}>Regenerate with these settings</Text>}
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Day summary strip — compact row that fits on screen */}
         {plan && plan.length > 1 && planTargets && (
           <View style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}>
@@ -1395,6 +1604,16 @@ export default function PlannerScreen() {
               {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
               {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
             </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/library" as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Open recipe library"
+              style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+                Open recipe library
+              </Text>
+            </Pressable>
 
             <View style={styles.daysRow}>
               {([1, 3, 7] as const).map((d) => {
@@ -1491,11 +1710,21 @@ export default function PlannerScreen() {
         )}
 
         {plan && plan.length > 0 && (
-          <Text style={styles.sectionLabel}>
-            {plan.length === 1
-              ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
-              : `Your ${plan.length}-day plan`}
-          </Text>
+          <View style={{ marginBottom: Spacing.sm }}>
+            <Text style={styles.sectionLabel}>
+              {plan.length === 1
+                ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
+                : `Your ${plan.length}-day plan`}
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/library" as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Browse recipe library"
+              style={{ marginTop: 4 }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>Browse recipe library</Text>
+            </Pressable>
+          </View>
         )}
 
         {/* Plan display */}
@@ -1531,7 +1760,7 @@ export default function PlannerScreen() {
           // present; also omits leftover-companion rows implicitly
           // because those still carry macros and belong in the total.
           const dayTotalKcal = dp.meals
-            .filter((m) => !m.isPlaceholder && !!m.recipeTitle)
+            .filter((m) => planMealHasRecipe(m))
             .reduce((sum, m) => sum + (m.calories || 0), 0);
           // Prototype port (2026-04-20) — day section header reads
           // "Mon" / "Tue" / "Wed" (3-letter weekday) instead of
@@ -1611,7 +1840,7 @@ export default function PlannerScreen() {
             {(() => {
               const gap = dp.residualProteinGap;
               if (gap == null || gap >= -10) return null;
-              const scorable = dp.meals.filter((m) => !m.isPlaceholder && !!m.recipeTitle);
+              const scorable = dp.meals.filter((m) => planMealHasRecipe(m));
               if (scorable.length === 0) return null;
               const lowest = scorable.reduce((low, m) => (m.protein < low.protein ? m : low), scorable[0]!);
               const under = Math.abs(gap);
@@ -1628,21 +1857,18 @@ export default function PlannerScreen() {
             })()}
 
             {dp.meals.length === 0 ? (
-              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.md }}>
-                No meals for this day. Generate again after saving recipes that match each slot, or pick a shorter day range.
+              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.sm }}>
+                No slots on this day yet. Add one below, or regenerate the plan.
               </Text>
             ) : null}
-            {[...dp.meals].sort((a, b) => {
-              // Slot order parity with Today: Breakfast → Lunch → Dinner → Snacks.
-              const order: Record<PlanSlotIconKey, number> = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 };
-              return order[resolvePlanSlotIconKey(a.name)] - order[resolvePlanSlotIconKey(b.name)];
-            }).map((meal, i) => {
+            {sortMealsBySlotOrder(dp.meals).map((meal) => {
+              const mealIndexInDay = dp.meals.indexOf(meal);
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
               return (
               <Pressable
-                key={i}
+                key={`${dp.day}-${mealIndexInDay}-${meal.name}`}
                 style={styles.mealRow}
                 delayLongPress={400}
                 onLongPress={() => {
@@ -1650,19 +1876,20 @@ export default function PlannerScreen() {
                   // Long-press → action sheet with Move / Swap / Delete / Cancel.
                   // Factual copy, no shame.
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  const isPlaceholder = !meal.recipeTitle || meal.isPlaceholder;
+                  const hasRecipe = planMealHasRecipe(meal);
+                  const isEmptyRow = !hasRecipe;
                   const sourceDay = plan?.[dayIdx]?.day;
-                  if (sourceDay == null) return;
+                  if (sourceDay == null || mealIndexInDay < 0) return;
                   Alert.alert(
-                    meal.recipeTitle || "Empty slot",
-                    isPlaceholder
+                    hasRecipe ? meal.recipeTitle! : "Empty slot",
+                    isEmptyRow
                       ? "No meal in this slot."
                       : `${Math.round(meal.calories)} kcal · ${meal.name}`,
                     [
                       {
                         text: "Move to another slot…",
                         onPress: () => {
-                          if (isPlaceholder) {
+                          if (isEmptyRow) {
                             Alert.alert("Nothing to move", "This slot is empty.");
                             return;
                           }
@@ -1672,7 +1899,7 @@ export default function PlannerScreen() {
                           const leftoverCount =
                             rid && plan ? countLeftoversOfRecipe(plan, rid) : 0;
                           const openSheet = () => {
-                            setMoveSource({ day: sourceDay, slotIndex: i });
+                            setMoveSource({ day: sourceDay, slotIndex: mealIndexInDay });
                             setMoveSheetOpen(true);
                           };
                           if (leftoverCount > 0 && rid && plan) {
@@ -1709,114 +1936,78 @@ export default function PlannerScreen() {
                       {
                         text: "Swap with another meal…",
                         onPress: () => {
-                          if (isPlaceholder) {
-                            Alert.alert("Nothing to swap", "This slot is empty.");
-                            return;
-                          }
-                          swapMeal(dayIdx, i, meal.name);
+                          swapMeal(dayIdx, mealIndexInDay, meal.name);
                         },
                       },
-                      ...(isPlaceholder
-                        ? []
-                        : [
+                      ...(hasRecipe
+                        ? [
                             {
-                              text: "Delete",
-                              style: "destructive" as const,
-                              onPress: () => {
-                                setPlan((prev) => {
-                                  if (!prev) return prev;
-                                  const next = prev.map((dpRow, di) => {
-                                    if (di !== dayIdx) return dpRow;
-                                    const newMeals = dpRow.meals.map((m, mi) => {
-                                      if (mi !== i) return m;
-                                      return {
-                                        name: m.name,
-                                        recipeTitle: "",
-                                        calories: 0,
-                                        protein: 0,
-                                        carbs: 0,
-                                        fat: 0,
-                                        isPlaceholder: true,
-                                      } as PlanMeal;
-                                    });
-                                    const totals = newMeals.reduce(
-                                      (a, m) => ({
-                                        calories: a.calories + m.calories,
-                                        protein: a.protein + m.protein,
-                                        carbs: a.carbs + m.carbs,
-                                        fat: a.fat + m.fat,
-                                      }),
-                                      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-                                    );
-                                    return { ...dpRow, meals: newMeals, totals };
-                                  });
-                                  void persistPlan(next);
-                                  return next;
-                                });
-                              },
+                              text: "Adjust portion…",
+                              onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
                             },
-                          ]),
+                          ]
+                        : []),
+                      {
+                        text: "Remove slot (this day)",
+                        style: "destructive" as const,
+                        onPress: () => {
+                          setPlan((prev) => {
+                            if (!prev) return prev;
+                            const next = prev.map((dpRow, di) => {
+                              if (di !== dayIdx) return dpRow;
+                              const newMeals = sortMealsBySlotOrder(
+                                dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
+                              );
+                              const totals = newMeals.reduce(
+                                (a, m) => ({
+                                  calories: a.calories + m.calories,
+                                  protein: a.protein + m.protein,
+                                  carbs: a.carbs + m.carbs,
+                                  fat: a.fat + m.fat,
+                                }),
+                                { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                              );
+                              return { ...dpRow, meals: newMeals, totals };
+                            });
+                            void persistPlan(next);
+                            return next;
+                          });
+                        },
+                      },
                       { text: "Cancel", style: "cancel" },
                     ],
                   );
                 }}
                 onPress={() => {
+                  const hasRecipeTap = planMealHasRecipe(meal);
                   Alert.alert(
-                    meal.recipeTitle,
-                    `${Math.round(meal.calories)} kcal · ${multLabel}x portion`,
+                    hasRecipeTap ? meal.recipeTitle! : meal.name,
+                    hasRecipeTap
+                      ? `${Math.round(meal.calories)} kcal · ${multLabel}x portion`
+                      : "Tap Swap to choose a recipe for this slot.",
                     [
                       {
                         text: "Swap meal",
-                        onPress: () => swapMeal(dayIdx, i, meal.name),
+                        onPress: () => swapMeal(dayIdx, mealIndexInDay, meal.name),
                       },
-                      {
-                        text: "Adjust portion",
-                        onPress: () => {
-                          Alert.alert("Portion", "Choose a portion size:", [
-                            ...[0.5, 0.75, 1, 1.25, 1.5, 2].map((mult) => ({
-                              text: `${mult}x (${Math.round(meal.calories / currentMult * mult)} kcal)`,
+                      ...(hasRecipeTap
+                        ? [
+                            {
+                              text: "Adjust portion…",
+                              onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
+                            },
+                            {
+                              text: "View recipe",
                               onPress: () => {
-                                setPlan((prev) => {
-                                  if (!prev) return prev;
-                                  return prev.map((dp, di) => {
-                                    if (di !== dayIdx) return dp;
-                                    const baseCals = meal.calories / currentMult;
-                                    const basePro = meal.protein / currentMult;
-                                    const baseCarbs = meal.carbs / currentMult;
-                                    const baseFat = meal.fat / currentMult;
-                                    const baseFiber = (meal.fiberG ?? 0) / currentMult;
-                                    const newMeals = dp.meals.map((m, mi) => {
-                                      if (mi !== i) return m;
-                                      return {
-                                        ...m,
-                                        calories: Math.round(baseCals * mult),
-                                        protein: Math.round(basePro * mult),
-                                        carbs: Math.round(baseCarbs * mult),
-                                        fat: Math.round(baseFat * mult),
-                                        fiberG: Math.round(baseFiber * mult * 10) / 10,
-                                        // Baked portion — omit multiplier (see swapMeal note).
-                                      };
-                                    });
-                                    const totals = newMeals.reduce(
-                                      (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
-                                      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-                                    );
-                                    return { ...dp, meals: newMeals, totals };
-                                  });
-                                });
+                                const id =
+                                  meal.recipeId ??
+                                  savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ??
+                                  discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
+                                if (id) router.push(`/recipe/${id}?portion=${currentMult}`);
                               },
-                            })),
-                            { text: "Cancel", style: "cancel" },
-                          ]);
-                        },
-                      },
-                      {
-                        text: "View recipe",
-                        onPress: () => {
-                          const id = meal.recipeId ?? savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ?? discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
-                          if (id) router.push(`/recipe/${id}?portion=${currentMult}`);
-                        },
-                      },
+                            },
+                          ]
+                        : []),
                       { text: "Cancel", style: "cancel" },
                     ],
                   );
@@ -1859,14 +2050,19 @@ export default function PlannerScreen() {
                       line (already present for real meals) stays
                       unchanged — no duplication. */}
                   <Text style={styles.mealTitle}>
-                    {meal.isPlaceholder || !meal.recipeTitle
-                      ? "Empty slot"
-                      : `${meal.recipeTitle}${multLabel !== "1" ? ` (${multLabel}x)` : ""}`}
+                    {planMealHasRecipe(meal)
+                      ? `${meal.recipeTitle}${multLabel !== "1" ? ` (${multLabel}x)` : ""}`
+                      : "Empty slot"}
                   </Text>
                   <Text style={styles.mealMacros}>
-                    {meal.isPlaceholder || !meal.recipeTitle
-                      ? "— kcal · P —g · C —g · F —g"
-                      : `${Math.round(meal.calories)} kcal · P ${Math.round(meal.protein)}g · C ${Math.round(meal.carbs)}g · F ${Math.round(meal.fat)}g`}
+                    {planMealHasRecipe(meal)
+                      ? formatPlannedMealKcalMacrosLine(
+                          meal.calories,
+                          meal.protein,
+                          meal.carbs,
+                          meal.fat,
+                        )
+                      : "— kcal · P —g · C —g · F —g"}
                   </Text>
                 </View>
                 {/* Swap shortcut — prototype-port (2026-04-20). 30×30
@@ -1879,7 +2075,7 @@ export default function PlannerScreen() {
                   hitSlop={6}
                   onPress={(e) => {
                     e.stopPropagation?.();
-                    swapMeal(dayIdx, i, meal.name);
+                    swapMeal(dayIdx, mealIndexInDay, meal.name);
                   }}
                   style={styles.mealSwapBtn}
                   accessibilityRole="button"
@@ -1926,6 +2122,79 @@ export default function PlannerScreen() {
               </Pressable>
             );
             })}
+            {(() => {
+              const missing = canonicalSlotsMissingFromDay(dp.meals);
+              if (missing.length === 0) return null;
+              return (
+                <View
+                  style={{
+                    marginTop: Spacing.sm,
+                    paddingTop: Spacing.sm,
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: colors.border,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.sm }}>
+                    Add a meal slot
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {missing.map((slot) => (
+                      <Pressable
+                        key={slot}
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setPlan((prev) => {
+                            if (!prev) return prev;
+                            const next = prev.map((dpRow, di) => {
+                              if (di !== dayIdx) return dpRow;
+                              if (slotsPresentInDay(dpRow.meals).has(slot)) return dpRow;
+                              const newMeal: PlanMeal = {
+                                name: slot,
+                                recipeTitle: "",
+                                calories: 0,
+                                protein: 0,
+                                carbs: 0,
+                                fat: 0,
+                                isPlaceholder: true,
+                              };
+                              const meals = sortMealsBySlotOrder([...dpRow.meals, newMeal]);
+                              const totals = meals.reduce(
+                                (a, m) => ({
+                                  calories: a.calories + m.calories,
+                                  protein: a.protein + m.protein,
+                                  carbs: a.carbs + m.carbs,
+                                  fat: a.fat + m.fat,
+                                }),
+                                { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                              );
+                              return { ...dpRow, meals, totals };
+                            });
+                            void persistPlan(next);
+                            return next;
+                          });
+                        }}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: Radius.md,
+                          borderWidth: 1,
+                          borderColor: Accent.primary + "55",
+                          backgroundColor: Accent.primary + "12",
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add ${slot} slot`}
+                      >
+                        <Plus size={14} color={Accent.primary} strokeWidth={2} />
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>{slot}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
           </View>
           );
         })}
@@ -2155,6 +2424,7 @@ export default function PlannerScreen() {
                 onPress: () => {
                   const next = applyTemplateToWeek(tmpl);
                   setPlan(next as DayPlan[]);
+                  void persistPlan(next as DayPlan[]);
                   track(AnalyticsEvents.plan_template_applied, {
                     dayCount: tmpl.dayCount,
                     slotCount: tmpl.slots.length,
@@ -2173,6 +2443,112 @@ export default function PlannerScreen() {
           return { ok: true };
         }}
       />
+      <Modal
+        visible={portionModal != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPortionModal(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setPortionModal(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation?.()}
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: Radius.lg,
+              borderTopRightRadius: Radius.lg,
+              paddingTop: Spacing.md,
+              paddingBottom: insets.bottom + Spacing.lg,
+              maxHeight: "70%",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm }}>
+              Portion size
+            </Text>
+            {portionModal && plan?.[portionModal.dayIdx]?.meals[portionModal.mealIndex] ? (
+              <Text style={{ fontSize: 13, color: colors.textSecondary, paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm }} numberOfLines={2}>
+                {plan[portionModal.dayIdx]!.meals[portionModal.mealIndex]!.recipeTitle ||
+                  plan[portionModal.dayIdx]!.meals[portionModal.mealIndex]!.name}
+              </Text>
+            ) : null}
+            <FlatList
+              data={portionMultiplierList}
+              keyExtractor={(m) => String(m)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item: mult }) => {
+                if (!portionModal || !plan) return <View />;
+                const mealAt = plan[portionModal.dayIdx]?.meals[portionModal.mealIndex];
+                if (!mealAt) return <View />;
+                const curMeta = planMealPortionMeta(mealAt, planRecipePool);
+                const cur = curMeta.displayMult;
+                const kcal = Math.round((mealAt.calories / cur) * mult);
+                return (
+                  <Pressable
+                    onPress={() => {
+                      setPlan((prev) => {
+                        if (!prev || !portionModal) return prev;
+                        const { dayIdx, mealIndex } = portionModal;
+                        const next = prev.map((dp, di) => {
+                          if (di !== dayIdx) return dp;
+                          const m0 = dp.meals[mealIndex];
+                          if (!m0) return dp;
+                          const c0 = planMealPortionMeta(m0, planRecipePool).displayMult;
+                          const baseCals = m0.calories / c0;
+                          const basePro = m0.protein / c0;
+                          const baseCarbs = m0.carbs / c0;
+                          const baseFat = m0.fat / c0;
+                          const baseFiber = (m0.fiberG ?? 0) / c0;
+                          const newMeals = dp.meals.map((m, mi) => {
+                            if (mi !== mealIndex) return m;
+                            return {
+                              ...m,
+                              calories: Math.round(baseCals * mult),
+                              protein: Math.round(basePro * mult),
+                              carbs: Math.round(baseCarbs * mult),
+                              fat: Math.round(baseFat * mult),
+                              fiberG: Math.round(baseFiber * mult * 10) / 10,
+                            };
+                          });
+                          const totals = newMeals.reduce(
+                            (a, m) => ({
+                              calories: a.calories + m.calories,
+                              protein: a.protein + m.protein,
+                              carbs: a.carbs + m.carbs,
+                              fat: a.fat + m.fat,
+                            }),
+                            { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                          );
+                          return { ...dp, meals: newMeals, totals };
+                        });
+                        void persistPlan(next);
+                        return next;
+                      });
+                      setPortionModal(null);
+                    }}
+                    style={{
+                      paddingVertical: 14,
+                      paddingHorizontal: Spacing.xl,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colors.border,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text }}>{mult}×</Text>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>~{kcal} kcal</Text>
+                  </Pressable>
+                );
+              }}
+            />
+            <Pressable
+              onPress={() => setPortionModal(null)}
+              style={{ paddingVertical: 16, alignItems: "center" }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <MoveMealSheet
         visible={moveSheetOpen}
         onClose={() => {

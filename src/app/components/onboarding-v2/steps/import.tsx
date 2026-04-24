@@ -217,7 +217,7 @@ function ImportDone({ source }: { source: ImportSource }) {
       <div className="p-4">
         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-success mb-2">
           <Check className="size-3.5" strokeWidth={2.5} />
-          Matched · 94% confidence
+          Example · matched against USDA
         </div>
         <div className="text-[17px] font-bold text-foreground tracking-tight mb-1">
           Sheet-pan chicken with roasted peppers

@@ -1,7 +1,7 @@
 # Decision log: orchestrator-full-sweep ship verdict (2026-04)
 
-**Date:** 2026-04-13  
-**Status:** active  
+**Date:** 2026-04-13
+**Status:** **SUPERSEDED** by [2026-04-24 full-sweep ship verdict](./2026-04-24-full-sweep-ship-verdict.md) — the 2026-04-24 sweep discovered blocker #1 (tier RLS) was only half-closed (read-side fixed; write-side never audited — `profiles.user_tier` remained client-writable enabling full paywall bypass). See the superseding doc for the complete updated verdict.
 **Agents involved:** orchestrator-full-sweep, planner, product-memory (capture)
 
 ---

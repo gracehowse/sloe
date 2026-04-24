@@ -190,7 +190,7 @@ function FloatingPreview() {
         <Text
           style={{ fontSize: 11, fontWeight: "700", color: Accent.successLight }}
         >
-          Matched to USDA · 94%
+          Matched against USDA
         </Text>
       </View>
     </View>
