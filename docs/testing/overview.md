@@ -2,13 +2,15 @@
 
 **Audience:** Developers / QA
 
+**Testing system spec (priorities, human case format, tiers, honesty bar):** [SYSTEM.md](./SYSTEM.md)
+
 ## Test Stack
 
 | Tool | Purpose |
 |------|---------|
 | Vitest | Unit + integration tests |
 | Playwright | E2E browser tests |
-| Midscene | AI-assisted natural language E2E tests |
+| Midscene | AI-assisted natural language E2E (dependency present; **not** the primary merge gate — optional / nightly; see [SYSTEM.md](./SYSTEM.md)) |
 
 ## Test Coverage
 
@@ -77,9 +79,9 @@
 | Recipe import pipeline | No happy-path test | Medium — requires API keys |
 | Verification pipeline (end-to-end) | Golden + **mocked USDA + mocked OFF** integration tests; FatSecret branch still thin | Low–medium — add mocked FatSecret serving edge cases if FS stays in product |
 | RecipeDetail component | No tests | Medium |
-| Mobile screens | No tests | Medium |
+| Mobile UI (full screens) | **Vitest + RNTL** for many components/helpers under `apps/mobile/tests/unit/`; **Maestro** for device flows in `apps/mobile/.maestro/` (see [qa/SCREEN_TEST_MATRIX.md](../qa/SCREEN_TEST_MATRIX.md)); not every screen has automation | Medium |
 | Offline cache | No tests | Low |
-| Auth flow | E2E only | Low |
+| Auth flow | Web: Playwright E2E; mobile: Maestro + manual matrix | Low–medium |
 
 ### Manual / critical path (examples)
 
@@ -89,27 +91,30 @@
 ## Running Tests
 
 ```bash
-# Unit + integration
+# Unit + integration (web + shared)
 npm test
 
 # E2E (local: Playwright starts dev server; CI uses build + start — see tests/e2e/README.md)
 npm run test:e2e
 
-# Type checking
+# Type checking (web)
 npm run typecheck
+
+# Mobile belt (lint, tsc, vitest, Maestro manifest — no simulator required)
+npm run mobile:verify
 ```
 
 ## CI Pipeline
 
 GitHub Actions (`.github/workflows/ci.yml`):
-1. `npm ci`
-2. `verify:production-env` — env validation
-3. `tsc --noEmit` — typecheck
-4. `npm test` — Vitest
-5. Install Playwright (Chromium)
-6. `npm run build` — Next.js build
-7. Start `next start` on port 3100
-8. Run Playwright E2E tests
+
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm test` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+
+**Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm test` (Vitest), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
 
 ## Related Documents
+
+- [Testing system specification](./SYSTEM.md)
+- [Test plan / inventory](./test-plan.md)
+- [Screen ↔ Maestro matrix](../qa/SCREEN_TEST_MATRIX.md)
 - [Technical Architecture](../technical/architecture.md)

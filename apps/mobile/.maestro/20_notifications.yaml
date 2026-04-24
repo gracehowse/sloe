@@ -1,35 +1,41 @@
+# @cases TC-NOTIF-01
+# @screen (tabs)/notifications
 appId: com.supprclub.supprapp
 name: "Notifications — inbox, mark read, empty state"
 ---
 - runFlow: shared/login.yaml
 
-# Navigate to notifications
+- tapOn: ".*More, tab.*"
+- waitForAnimationToEnd
+
+- scrollUntilVisible:
+    element: ".*Notifications.*"
+    direction: DOWN
+- tapOn: ".*Notifications.*"
+- waitForAnimationToEnd
+
+- assertVisible: ".*Notifications.*"
+
+# Empty inbox
 - runFlow:
     when:
-      visible: ".*Notifications.*"
+      visible: ".*No unread notifications.*"
     commands:
-      - tapOn: ".*Notifications.*"
-      - waitForAnimationToEnd
+      - assertVisible: ".*No unread notifications.*"
 
-      - assertVisible: ".*Notifications.*"
+# Inbox actions when messages exist
+- runFlow:
+    when:
+      visible: ".*Mark all read.*"
+    commands:
+      - assertVisible: ".*Mark all read.*"
 
-      # Should show either notifications or empty state
-      - runFlow:
-          when:
-            visible: ".*No unread notifications.*"
-          commands:
-            - assertVisible: ".*No unread notifications.*"
+- runFlow:
+    when:
+      visible: ".*unread.*"
+    commands:
+      - assertVisible: ".*unread.*"
 
-      # If there are notifications, check mark all read
-      - runFlow:
-          when:
-            visible: ".*Mark all read.*"
-          commands:
-            - assertVisible: ".*Mark all read.*"
-
-      # If there are unread notifications
-      - runFlow:
-          when:
-            visible: ".*unread.*"
-          commands:
-            - assertVisible: ".*unread.*"
+- tapOn:
+    point: "5%,8%"
+- waitForAnimationToEnd

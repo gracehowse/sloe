@@ -14,6 +14,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import { parseRecipeFromHtml, siteNameFromUrl } from "../src/lib/recipe-import/parseRecipeFromHtml";
+import { allocateIngredientMacrosFromLines } from "../src/lib/nutrition/allocateIngredientMacrosFromLines";
 
 const SEED_AUTHOR_ID = "e9f85055-876b-4bde-9267-476567b16884";
 const SEED_DESCRIPTION_PREFIX = "[TEMP SEED] ";
@@ -217,21 +218,27 @@ async function main() {
       continue;
     }
 
-    const ingRows = parsed.ingredients.map((line) => ({
-      recipe_id: recipeId,
-      name: line.slice(0, 500),
-      amount: null,
-      unit: null,
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      fiber_g: 0,
-      sugar_g: 0,
-      sodium_mg: 0,
-      is_verified: false,
-      source: "seed",
-    }));
+    const perServingCal = Math.round(sn?.calories ?? 0);
+    const fills = allocateIngredientMacrosFromLines(parsed.ingredients, perServingCal, servings);
+    const ingRows = parsed.ingredients.map((line, i) => {
+      const f = fills[i]!;
+      return {
+        recipe_id: recipeId,
+        name: line.slice(0, 500),
+        amount: null,
+        unit: null,
+        calories: f.calories,
+        protein: f.protein,
+        carbs: f.carbs,
+        fat: f.fat,
+        fiber_g: f.fiber_g,
+        sugar_g: f.sugar_g,
+        sodium_mg: f.sodium_mg,
+        is_verified: false,
+        source: f.source,
+        ...(f.confidence != null ? { confidence: f.confidence } : {}),
+      };
+    });
     const { error: iErr } = await sb.from("recipe_ingredients").insert(ingRows);
     if (iErr) {
       console.error(`  ! insert ingredients failed: ${iErr.message}`);

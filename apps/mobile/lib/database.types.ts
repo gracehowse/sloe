@@ -1271,6 +1271,13 @@ export type Database = {
         Args: { p_recipe_id: string }
         Returns: number
       }
+      public_recipe_save_counts_batch: {
+        Args: { p_recipe_ids: string[] }
+        Returns: {
+          recipe_id: string
+          save_count: number
+        }[]
+      }
       redeem_promo_code: {
         Args: { p_code: string }
         Returns: Json

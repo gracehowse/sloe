@@ -48,6 +48,7 @@ import {
 } from "./appData/persistence.ts";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
+import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import {
   looksLikeMissingTableError,
   syncDisabledBecauseSchemaMessage,
@@ -729,7 +730,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       };
     });
 
-    setUploadedRecipes(mapped);
+    let enriched = mapped;
+    try {
+      const counts = await fetchPublicRecipeSaveCounts(supabase, mapped.map((r) => r.id));
+      enriched = mapped.map((r) => ({ ...r, savedCount: counts.get(r.id) ?? 0 }));
+    } catch (e) {
+      console.warn("[refreshDiscoverRecipes] public save counts failed:", e);
+    }
+
+    setUploadedRecipes(enriched);
   }, []);
 
   useEffect(() => {

@@ -777,6 +777,7 @@ export default function ProgressScreen() {
 
               <View style={styles.inputRow}>
                 <TextInput
+                  testID="weight-tracker-input"
                   style={[styles.input, { flex: 1 }]}
                   placeholder={
                     isImperial ? "Weight (lb)" : "Weight (kg)"

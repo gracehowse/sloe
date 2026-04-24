@@ -3,7 +3,7 @@ name: "Cook mode — step navigation, timer, completion"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover.*"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
 
 # Tap the first recipe card

@@ -1142,17 +1142,13 @@ export default function TrackerScreen() {
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
 
-  const maintenanceKcal = useMemo(
-    () => maintenanceIntakeFromTargetCalories(targets.calories, profileGoal, profilePlanPace),
-    [targets.calories, profileGoal, profilePlanPace],
-  );
-
-  // Maintenance tile + popover single source of truth. Resolves via
+  // Maintenance tile + popover + activity-bonus baseline. Resolves via
   // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
   // confidence AND not stale, otherwise the static Mifflin formula.
   // Progress reads from the same helper so "Maintenance 1,675" and
   // "Your TDEE 1,777" (TestFlight `ADFYpDgEEb0QH-j3BXshPTo`, build 10)
-  // can no longer disagree.
+  // can no longer disagree. Burn detail (`/burn-detail`) uses the same
+  // resolver so the "Maintenance" row matches Progress / Today tile.
   const resolvedMaintenance = useMemo(
     () =>
       resolveMaintenance({
@@ -1177,6 +1173,13 @@ export default function TrackerScreen() {
     ],
   );
   const profileMaintenanceTdeeKcal = resolvedMaintenance?.kcal ?? null;
+
+  /** Same baseline as Burn detail + Progress: prefer `resolveMaintenance`, else implied from saved calorie target. */
+  const maintenanceKcal = useMemo(() => {
+    const k = resolvedMaintenance?.kcal;
+    if (k != null && k > 0) return k;
+    return maintenanceIntakeFromTargetCalories(targets.calories, profileGoal, profilePlanPace);
+  }, [resolvedMaintenance, targets.calories, profileGoal, profilePlanPace]);
   const profileMaintenanceSource = resolvedMaintenance?.source ?? null;
   const profileMaintenanceConfidence = resolvedMaintenance?.confidence ?? null;
 

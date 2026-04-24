@@ -3,7 +3,7 @@ name: "Macro detail — breakdown by meal"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
 # Tap on a macro card (Protein, Carbs, or Fat)

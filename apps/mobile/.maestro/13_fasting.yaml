@@ -3,7 +3,7 @@ name: "Fasting — timer ring, start/end, history"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Look for fasting link in profile/settings

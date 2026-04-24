@@ -61,3 +61,16 @@ The sweep surfaced **correctness** (billing limits wrong for paying users), **da
 ## Supersedes
 
 — (first entry in this log for this verdict)
+
+---
+
+## 2026-04-23 — Engineering reconciliation (code vs blockers)
+
+Read-only verification against the repo; **no privacy/legal copy** was changed here.
+
+| Blocker | Verdict | Evidence |
+|---------|---------|----------|
+| **#1 Tier RLS / `getUserTier`** | **Closed in code** | `getUserTier` in `src/lib/supabase/serverAnonClient.ts` reads `profiles.user_tier` with **`createSupabaseServiceRoleClient()`** after the caller’s `userId` is established from JWT/cookies — RLS no longer hides the tier row for API routes that use this helper. |
+| **#2 Journal parity (mobile vs web legacy JSONB)** | **Closed in code** | Mobile Today (`apps/mobile/app/(tabs)/index.tsx`) loads `nutrition_entries` first; on missing-table error or **empty relational result** it calls **`loadLegacyByDay()`** so legacy `nutrition_journals` / renamed JSONB paths still surface (see ~L2163–L2198). |
+| **#3 Privacy policy vs processors** | **Still a product/legal gate** | Store-ready policy wording (OpenAI, image/social import, Web Speech, subprocessors) is **not** verified here; treat as unchanged until legal/product sign-off. |
+| **#4 Mobile legal links** | **Closed in code** | More tab (`apps/mobile/app/(tabs)/more.tsx`) exposes **Privacy policy** and **Terms of use** rows that open `${getSupprWebBase()}${path}` via `openLegalPath` (~L85–L95, ~L863–L864). |

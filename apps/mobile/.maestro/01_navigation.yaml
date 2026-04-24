@@ -1,3 +1,5 @@
+# @cases TC-NAV-01
+# @screen (tabs)
 appId: com.supprclub.supprapp
 name: "Tab navigation — all 5 tabs load and respond"
 ---
@@ -14,7 +16,9 @@ name: "Tab navigation — all 5 tabs load and respond"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: ".*Recipes that fit your macros.*"
+# Discover prototype header (Browse + Discover); not the old macro subtitle.
+- assertVisible: ".*Browse.*"
+- assertVisible: ".*Discover.*"
 
 # Plan tab — verify content loads
 - tapOn: ".*Plan, tab.*"
@@ -32,8 +36,8 @@ name: "Tab navigation — all 5 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|progress will appear).*"
 
-# Profile tab — verify content loads
-- tapOn: ".*Profile, tab.*"
+# More tab (tab title is "More", not "Profile")
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -48,7 +52,7 @@ name: "Tab navigation — all 5 tabs load and respond"
 - tapOn: ".*Discover, tab.*"
 - tapOn: ".*Plan, tab.*"
 - tapOn: ".*Progress, tab.*"
-- tapOn: ".*Profile, tab.*"
+- tapOn: ".*More, tab.*"
 - tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Today, tab.*"

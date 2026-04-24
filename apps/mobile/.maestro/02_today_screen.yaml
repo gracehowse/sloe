@@ -1,9 +1,11 @@
+# @cases TC-TODAY-01
+# @screen (tabs)/index
 appId: com.supprclub.supprapp
 name: "Today screen — ring, macros, quick-log buttons"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
 # Calorie ring visible
@@ -14,8 +16,8 @@ name: "Today screen — ring, macros, quick-log buttons"
 - assertVisible:
     text: ".*(?:Protein|Carbs|Fat).*"
 
-# Quick-log buttons visible
-- assertVisible: ".*Photo.*"
+# Quick-log strip — labels are Search / Voice / Snap / Scan (Snap = photo log).
+- assertVisible: ".*Snap.*"
 - assertVisible: ".*Voice.*"
 - assertVisible: ".*Search.*"
 - assertVisible: ".*Scan.*"
@@ -36,16 +38,28 @@ name: "Today screen — ring, macros, quick-log buttons"
     duration: 400
 - waitForAnimationToEnd
 
-# Verify Quick-log buttons are functional — tap Voice and verify fallback
-- tapOn: ".*Voice.*"
+# Voice — Pro: voice sheet; Free/Base: in-flow Pro upsell (tap Not now).
+- tapOn:
+    id: "today-quick-log-voice"
 - waitForAnimationToEnd
-- assertVisible:
-    text: ".*(?:Describe what you ate|Cancel).*"
-- tapOn: ".*Cancel.*"
-- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: ".*Voice logging is a Pro feature.*"
+    commands:
+      - tapOn: ".*Not now.*"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: ".*Describe what you ate.*"
+    commands:
+      - assertVisible:
+          text: ".*(?:Describe what you ate|Cancel).*"
+      - tapOn: ".*Cancel.*"
+      - waitForAnimationToEnd
 
-# Verify Search quick-log opens search
-- tapOn: ".*Search.*"
+# Search quick-log opens food search modal
+- tapOn:
+    id: "today-quick-log-search"
 - waitForAnimationToEnd
 - assertVisible:
     text: ".*(?:Food search|Search foods).*"

@@ -1,26 +1,29 @@
+# @cases TC-DISCOVER-01
+# @screen (tabs)/discover
 appId: com.supprclub.supprapp
 name: "Discover — search, filters, import CTA, recipe cards"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover.*"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
 
-# Header and subtitle
+# Header (prototype: BROWSE + Discover — no "Recipes that fit your macros" subtitle)
+- assertVisible: ".*Browse.*"
 - assertVisible: ".*Discover.*"
-- assertVisible: ".*Recipes that fit your macros.*"
 
-# Search bar
-- assertVisible: ".*Search or paste a link....*"
+# Search bar (placeholder updated 2026-04)
+- assertVisible: ".*Search 48,000.*"
 
 # Filter pills visible
 - assertVisible: ".*For You.*"
 - assertVisible: ".*Popular.*"
 - assertVisible: ".*Quick.*"
 - assertVisible: ".*High Protein.*"
+- assertVisible: ".*Low Carb.*"
 
-# Import CTA
-- assertVisible: ".*Import from TikTok, Instagram....*"
+# Import CTA (ellipsis is three dots in UI)
+- assertVisible: ".*Import from TikTok, Instagram.*"
 
 # My Library CTA
 - assertVisible: ".*My Library.*"
@@ -42,8 +45,8 @@ name: "Discover — search, filters, import CTA, recipe cards"
 - tapOn: ".*For You.*"
 - waitForAnimationToEnd
 
-# Try search
-- tapOn: ".*Search or paste a link....*"
+# Try search (TextInput placeholder may not be tappable; header button focuses the field)
+- tapOn: ".*Focus search.*"
 - inputText: "chicken"
 - waitForAnimationToEnd
 - tapOn:
@@ -63,7 +66,7 @@ name: "Discover — search, filters, import CTA, recipe cards"
       - assertVisible: ".*No recipes found.*"
 
 # Clear search
-- tapOn: ".*Search or paste a link....*"
+- tapOn: ".*Focus search.*"
 - eraseText: 7
 - tapOn:
     point: "50%,15%"
@@ -81,7 +84,7 @@ name: "Discover — search, filters, import CTA, recipe cards"
 - waitForAnimationToEnd
 
 # Verify import button navigates
-- tapOn: ".*Import from TikTok, Instagram....*"
+- tapOn: ".*Import from TikTok.*"
 - waitForAnimationToEnd
 - assertVisible:
     text: ".*(?:IMPORT|Paste a recipe link|Looking for a link).*"

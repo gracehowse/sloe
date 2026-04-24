@@ -3,7 +3,7 @@ name: "Burn detail — navigation and content"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
 # Scroll down to burn card (if Health data exists)

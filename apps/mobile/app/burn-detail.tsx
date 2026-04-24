@@ -9,8 +9,23 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
+import { resolveMaintenance } from "../../../src/lib/nutrition/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
+
+function profileAgeYears(p: { dob?: string | null; age?: number | null }): number | null {
+  if (p.age != null) {
+    const a = typeof p.age === "number" ? p.age : Number(p.age);
+    if (Number.isFinite(a) && a > 0) return Math.round(Math.min(100, Math.max(14, a)));
+  }
+  if (p.dob) {
+    const dobMs = new Date(p.dob).getTime();
+    if (Number.isFinite(dobMs)) {
+      return Math.max(14, Math.min(100, Math.floor((Date.now() - dobMs) / 31557600000)));
+    }
+  }
+  return null;
+}
 
 export default function BurnDetailScreen() {
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
@@ -44,17 +59,34 @@ export default function BurnDetailScreen() {
       if (cancelled) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace")
+        .select(
+          "activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
+        )
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !profile) return;
       const p = profile as any;
       const targetCal = Number(p.target_calories) || 0;
+      const ageYears = profileAgeYears({ dob: p.dob, age: p.age });
+      const resolved = resolveMaintenance({
+        adaptive_tdee: p.adaptive_tdee != null ? Number(p.adaptive_tdee) : null,
+        adaptive_tdee_confidence: p.adaptive_tdee_confidence ?? null,
+        adaptive_tdee_updated_at: p.adaptive_tdee_updated_at ?? null,
+        sex: p.sex ?? null,
+        weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
+        height_cm: p.height_cm != null ? Number(p.height_cm) : null,
+        age: ageYears,
+        activity_level: p.activity_level ?? null,
+      });
+      const maintenanceKcal =
+        resolved != null && resolved.kcal > 0
+          ? resolved.kcal
+          : maintenanceIntakeFromTargetCalories(targetCal, p.goal, p.plan_pace);
       setData({
         activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
         restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
         steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
-        maintenanceKcal: maintenanceIntakeFromTargetCalories(targetCal, p.goal, p.plan_pace),
+        maintenanceKcal,
         workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
       });
     })();

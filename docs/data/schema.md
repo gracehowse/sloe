@@ -38,6 +38,10 @@ PostgreSQL via Supabase. Row-Level Security (RLS) enabled on all tables.
 
 ## Key Design Decisions
 
+### Regional nutrition markets (UK, Australia, …)
+
+Canonical `foods` / `food_sources` rows are **not** region-scoped today; the verify pipeline is **USDA-first** then worldwide **Open Food Facts** (`searchOffProducts` already supports an optional `countryTag` — not yet wired from user profile). For a phased approach to UK/AU coverage (preference column, OFF bias, optional national datasets), see [`docs/planning/region-food-data-uk-au.md`](../planning/region-food-data-uk-au.md).
+
 ### Per-serving macros on recipes table
 The `recipes` table stores **per-serving** values (calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg). The UI multiplies by `servings` to show recipe totals. This matches how nutrition labels work.
 
@@ -67,7 +71,8 @@ The `recipes` table stores **per-serving** values (calories, protein, carbs, fat
 | `redeem_promo_code(text)` | Atomically validate + redeem promo code | SECURITY DEFINER |
 | `handle_new_user()` | Auto-create profile on auth signup | SECURITY DEFINER trigger |
 | `notify_followers_on_recipe_publish()` | Fan out notifications on recipe publish | SECURITY DEFINER trigger |
-| `public_recipe_save_count(uuid)` | Count saves without exposing individual savers | SECURITY DEFINER |
+| `public_recipe_save_count(uuid)` | Count saves for one recipe without exposing individual savers | SECURITY DEFINER |
+| `public_recipe_save_counts_batch(uuid[])` | Same as above for many recipe IDs in one query (Discover) | SECURITY DEFINER |
 | `public_creator_follower_count(uuid)` | Count creator followers | SECURITY DEFINER |
 | `public_author_follower_count(uuid)` | Count author followers | SECURITY DEFINER |
 | `my_recipe_save_stats()` | Author's own recipe save counts | SECURITY DEFINER |
@@ -191,7 +196,7 @@ Every event name lives in `src/lib/analytics/events.ts`. The table below locks t
 ```
 "manual"         // FoodSearch text/inline search confirm
 "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
-"saved_meal"     // Re-log from My meals tab
+"saved_meal"     // Re-log from Usual meals tab (Quick add)
 "custom_food"    // Logged from custom food entry
 "copy_meal"      // Per-meal copy flow
 "duplicate_day"  // Day-level duplicate flow

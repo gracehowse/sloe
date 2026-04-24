@@ -111,6 +111,15 @@ describe("markNotificationsPromptDismissed", () => {
 });
 
 describe("registerExpoPushTokenForUser", () => {
+  beforeEach(() => {
+    // Success path is quiet; error-path tests expect intentional
+    // `console.warn` from the helper — keep CI output free of red herrings.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.mocked(console.warn).mockRestore();
+  });
+
   it("fetches the token with the EAS project ID and writes it to profiles.expo_push_token", async () => {
     const mod = await import("../../lib/expoPushToken");
     const result = await mod.registerExpoPushTokenForUser("user-123");

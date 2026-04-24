@@ -16,6 +16,17 @@ import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
+import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
+import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
+import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog.tsx";
 
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
@@ -199,6 +210,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [lineOverrides, setLineOverrides] = useState<
     Record<number, { kind: "USDA"; fdcId: number; description: string } | { kind: "OFF"; barcode: string; description: string }>
   >({});
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteDraft, setPasteDraft] = useState("");
   const [matchPickerIdx, setMatchPickerIdx] = useState<number | null>(null);
   const [matchQuery, setMatchQuery] = useState("");
   const [matchHits, setMatchHits] = useState<UsdaHit[] | null>(null);
@@ -396,16 +409,22 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   };
 
   const runOcrFromImage = async () => {
-    const url = coverImageUrl;
-    if (!url.startsWith("data:")) {
-      toast.error("Choose or paste a local image first.");
-      return;
-    }
     setOcrBusy(true);
     try {
-      const blob = await fetch(url).then((r) => r.blob());
+      let file: File | null = coverImageFile;
+      if (!file) {
+        const url = coverImageUrl;
+        if (url.startsWith("blob:") || url.startsWith("data:")) {
+          const blob = await fetch(url).then((r) => r.blob());
+          file = new File([blob], "recipe.jpg", { type: blob.type || "image/jpeg" });
+        }
+      }
+      if (!file) {
+        toast.error("Choose or paste a recipe photo first (file or screenshot).");
+        return;
+      }
       const fd = new FormData();
-      fd.append("image", new File([blob], "recipe.jpg", { type: blob.type || "image/jpeg" }));
+      fd.append("image", file);
       const res = await fetch("/api/recipe-import/image", { method: "POST", body: fd });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -413,6 +432,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         steps?: string[];
         title?: string | null;
         message?: string;
+        nutrition?: { perServing?: unknown } | null;
       };
       if (!res.ok || !data.ok) {
         toast.error(data.message ?? "Could not extract text from this image.");
@@ -426,6 +446,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         track(AnalyticsEvents.recipe_import_image, importImagePayload);
         track(AnalyticsEvents.recipe_imported, { ...importImagePayload, source: "image" as const });
       }
+      track(AnalyticsEvents.recipe_create_photo_extracted, {
+        ingredientCount: data.ingredients?.length ?? 0,
+        platform: "web",
+        hasServerNutrition: Boolean(data.nutrition?.perServing),
+      });
       if (data.title) setTitle(data.title);
       if (data.ingredients?.length) {
         setIngredients(
@@ -739,6 +764,112 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     }
   };
 
+  type VerifyRecipeSuccess = {
+    ok: true;
+    verified: VerifiedLine[];
+    totals: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
+    perServing: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
+    primarySource?: string;
+    minIngredientConfidence?: number;
+    avgIngredientConfidence?: number;
+  };
+
+  const applyPasteListMatch = async () => {
+    const lines = splitPastedIngredientLines(pasteDraft);
+    if (lines.length === 0) {
+      toast.error("Paste at least one ingredient line.");
+      return;
+    }
+    if (lines.length > 60) {
+      toast.error("Use at most 60 lines per batch.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/nutrition/verify-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ingredients: parseRawIngredients(lines),
+          servings: Math.max(1, Math.round(servings) || 1),
+          provider: "auto" as const,
+          overrides: [],
+        }),
+      });
+      const data = (await res.json()) as VerifyRecipeSuccess | { ok?: false; message?: string; error?: string };
+      if (!("ok" in data) || !data.ok) {
+        toast.error(data.message ?? "Verification failed");
+        return;
+      }
+      const newIngs: Ingredient[] = lines.map((line, idx) => {
+        const p = parseIngredientLine(line);
+        const name = p.name.trim() || line.trim();
+        const id =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `paste-${Date.now()}-${idx}-${Math.random().toString(16).slice(2)}`;
+        return { id, name, amount: p.amount, unit: p.unit };
+      });
+      const avgConfidence =
+        typeof data.avgIngredientConfidence === "number" && Number.isFinite(data.avgIngredientConfidence)
+          ? Math.round(data.avgIngredientConfidence * 100) / 100
+          : data.verified.length > 0
+            ? Math.round(
+                (data.verified.reduce((acc, v) => acc + (Number.isFinite(v.confidence) ? v.confidence : 0), 0) /
+                  data.verified.length) *
+                  100,
+              ) / 100
+            : 0;
+      const minConfidence =
+        typeof data.minIngredientConfidence === "number" && Number.isFinite(data.minIngredientConfidence)
+          ? data.minIngredientConfidence
+          : data.verified.length > 0
+            ? Math.min(...data.verified.map((v) => (Number.isFinite(v.confidence) ? v.confidence : 1)))
+            : 0;
+      setLineOverrides({});
+      setIngredients(newIngs);
+      setVerifiedLines(data.verified);
+      setVerifiedTotals({
+        totals: data.totals,
+        perServing: data.perServing,
+        avgConfidence,
+        minConfidence,
+        primarySource: data.primarySource,
+      });
+      setPasteDialogOpen(false);
+      setPasteDraft("");
+      track(AnalyticsEvents.recipe_create_paste_list_matched, {
+        lineCount: lines.length,
+        platform: "web",
+        avgConfidence: avgConfidence,
+      });
+      const needsReview = ingredientVerifyNeedsReview(data.avgIngredientConfidence, data.minIngredientConfidence);
+      if (needsReview) {
+        track(AnalyticsEvents.recipe_verify_needs_review, {
+          source: "create_paste",
+          platform: "web",
+          avgIngredientConfidence: data.avgIngredientConfidence,
+          minIngredientConfidence: data.minIngredientConfidence,
+        });
+      }
+      toast.success(
+        needsReview
+          ? `Matched ${lines.length} ingredients — review low-confidence lines`
+          : `Matched ${lines.length} ingredients (${data.primarySource ?? "auto"})`,
+        {
+          description: needsReview
+            ? `${data.perServing.calories} kcal per serving · some matches are uncertain; check amounts before publishing.`
+            : `${data.perServing.calories} kcal per serving · review rows before saving.`,
+          duration: needsReview ? 9000 : 5000,
+        },
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // Auto-run best-available verification (USDA → FatSecret → fallback) when ingredients change.
   useEffect(() => {
     if (!isCreator) return;
@@ -1024,6 +1155,43 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         </div>
       ) : null}
 
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Paste ingredient list</DialogTitle>
+            <DialogDescription>
+              One line per ingredient. We run the same database match as the mobile create screen (USDA, Open Food Facts,
+              FatSecret, Edamam, then estimation only if needed).
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={pasteDraft}
+            onChange={(e) => setPasteDraft(e.target.value)}
+            rows={12}
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder={"2 tbsp olive oil\n1 onion, diced\n400 g canned tomatoes"}
+          />
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPasteDialogOpen(false)}
+              disabled={verifying}
+              className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/60 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={verifying}
+              onClick={() => void applyPasteListMatch()}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+            >
+              {verifying ? "Matching…" : "Match to database"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import from URL (import flow only — matches mobile prototype) */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
@@ -1263,6 +1431,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               className="px-4 py-2 rounded-lg border border-primary/30 text-primary text-sm font-medium hover:bg-primary/10"
             >
               Re-split lines
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasteDialogOpen(true)}
+              className="px-4 py-2 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-muted/80"
+            >
+              Paste ingredient list
             </button>
             <button
               type="button"

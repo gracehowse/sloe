@@ -1,10 +1,12 @@
+# @cases TC-SETTINGS-01
+# @screen (tabs)/more
 appId: com.supprclub.supprapp
 name: "Settings hub — sections, navigation, profile info"
 ---
 - runFlow: shared/login.yaml
 
 # Navigate to Profile/More tab
-- tapOn: ".*Profile, tab.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Verify profile header — tier subtitle (Free/Pro/Base) appears under the name
@@ -56,7 +58,7 @@ name: "Settings hub — sections, navigation, profile info"
     direction: DOWN
 - assertVisible: ".*Reset or erase everything.*"
 
-# Navigate into Daily Targets (profile editor)
+# Navigate into Daily Targets (profile editor) — scroll up from bottom sections
 - scrollUntilVisible:
     element: ".*Daily Targets.*"
     direction: UP

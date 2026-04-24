@@ -39,6 +39,7 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
+import { isHealthSyncAvailable } from "@/lib/healthSync";
 import { nukeAllUserAppData, clearStructuredMealPlans } from "@/lib/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
@@ -381,17 +382,6 @@ export default function ProfileScreen() {
    * Switch which commits on tap — no Save button. */
   const [weeklyRecapPushEnabled, setWeeklyRecapPushEnabled] = useState<boolean>(true);
   const [weeklyRecapPushPickerOpen, setWeeklyRecapPushPickerOpen] = useState(false);
-  const [healthConnected, setHealthConnected] = useState<boolean>(false);
-
-  // Load health connected state
-  useEffect(() => {
-    void (async () => {
-      try {
-        const val = await AsyncStorage.getItem("health_connected");
-        setHealthConnected(val === "true");
-      } catch {}
-    })();
-  }, []);
 
   // Load dashboard + hydration targets settings
   useEffect(() => {
@@ -458,6 +448,7 @@ export default function ProfileScreen() {
             "health_import_nutrition",
             "health_export_nutrition",
             "health_import_generic_labels",
+            "health_sync_apple_connected",
           ]);
         } catch {
           /* ignore */
@@ -758,7 +749,7 @@ export default function ProfileScreen() {
       {/* Connections */}
       <SectionHeading title="Connections" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
-        <SettingsRow isFirst icon={HeartPulse} iconColor={t.green} label="Apple Health" sub={healthConnected ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
+        <SettingsRow isFirst icon={HeartPulse} iconColor={t.green} label="Apple Health" sub={isHealthSyncAvailable() ? "Connected" : "Not connected"} onPress={() => router.push("/health-sync" as any)} />
         <SettingsRow
           icon={Bell}
           iconColor={t.accent}

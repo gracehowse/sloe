@@ -1,9 +1,11 @@
+# @cases TC-LIB-01
+# @screen (tabs)/library
 appId: com.supprclub.supprapp
 name: "Library — header, search, sort, empty state"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover.*"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
 
 # Tap My Library CTA
@@ -17,8 +19,8 @@ name: "Library — header, search, sort, empty state"
 - assertVisible:
     text: ".*(?:Recent|Calories|Protein).*"
 
-# Search input
-- assertVisible: ".*Search your recipes.*"
+# Search field (placeholder and/or accessibilityLabel)
+- assertVisible: ".*(?:Search saved recipes|Search your recipes).*"
 
 # If there are saved recipes, verify card structure
 - runFlow:

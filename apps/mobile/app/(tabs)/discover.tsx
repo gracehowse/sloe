@@ -26,6 +26,7 @@ import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
+import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 
 const FILTERS = ["For You", "Popular", "Quick", "High Protein", "Low Carb"];
 
@@ -173,7 +174,7 @@ export default function DiscoverScreen() {
     if (filter === "For You") return true;
     // Popular — real filter (was `|| true`, which silently disabled
     // the gate; ui-critic flagged 2026-04-20).
-    if (filter === "Popular") return (r.saves ?? 0) >= 50;
+    if (filter === "Popular") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
     if (filter === "Quick") {
       const cm = r.cookTimeMin;
       if (cm != null && cm > 0) return cm <= 20;

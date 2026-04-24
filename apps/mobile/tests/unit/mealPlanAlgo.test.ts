@@ -2,6 +2,10 @@
  * Mobile parity tests for the meal plan algorithm.
  * Mirrors a subset of tests/unit/mealPlanTargets.test.ts to ensure
  * the shared algorithm works identically when imported via mobile paths.
+ *
+ * Performance note: this file can take ~10–12s wall-clock on typical CI
+ * runners (many `generateSmartPlan` permutations). That is expected;
+ * do not delete coverage to chase a faster local run without discussion.
  */
 import { describe, it, expect } from "vitest";
 import { generateSmartPlan, type SimpleRecipe } from "../../../../src/lib/nutrition/mealPlanAlgo";

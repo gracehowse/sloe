@@ -979,6 +979,19 @@ as $$
   select count(*)::bigint from public.saves where recipe_id = p_recipe_id;
 $$;
 
+create or replace function public.public_recipe_save_counts_batch(p_recipe_ids uuid[])
+returns table (recipe_id uuid, save_count bigint)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select s.recipe_id, count(*)::bigint as save_count
+  from public.saves s
+  where s.recipe_id = any(p_recipe_ids)
+  group by s.recipe_id;
+$$;
+
 create or replace function public.public_creator_follower_count(p_creator_id uuid)
 returns bigint
 language sql
@@ -1028,6 +1041,7 @@ as $$
 $$;
 
 grant execute on function public.public_recipe_save_count(uuid) to anon, authenticated;
+grant execute on function public.public_recipe_save_counts_batch(uuid[]) to anon, authenticated;
 grant execute on function public.public_creator_follower_count(uuid) to anon, authenticated;
 grant execute on function public.public_author_follower_count(uuid) to anon, authenticated;
 grant execute on function public.my_recipe_save_stats() to authenticated;

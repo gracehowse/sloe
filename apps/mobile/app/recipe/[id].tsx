@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import {
   ActivityIndicator,
@@ -7,6 +7,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -30,29 +31,41 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { getSupprApiBase } from "@/lib/supprWeb";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
+import { allocateIngredientMacrosFromLines } from "../../../../src/lib/nutrition/allocateIngredientMacrosFromLines";
+import {
+  flatMacroRowsFromVerifyJson,
+  overallConfidenceFromVerifyJson,
+  perServingFromVerifyJson,
+  type FlatVerifiedMacroRow,
+} from "../../../../src/lib/nutrition/verifyRecipeResponse";
+import { parseRawIngredients } from "../../../../src/lib/recipe-ingredients/parseRawIngredients";
+import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+
+function verifyJsonNeedsReviewNudge(json: Record<string, unknown>): boolean {
+  const avg = json.avgIngredientConfidence;
+  const min = json.minIngredientConfidence;
+  return ingredientVerifyNeedsReview(
+    typeof avg === "number" ? avg : undefined,
+    typeof min === "number" ? min : undefined,
+  );
+}
 
 function formatMinutes(min: number): string {
   if (min < 60) return `${min}m`;
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
-/** Evenly split integer totals across ingredient rows (recipe-level-only nutrition). */
-function splitIntAcrossRows(total: number, rowCount: number, rowIndex: number): number {
-  const safe = Math.max(0, Math.round(total));
-  const n = Math.max(1, rowCount);
-  const base = Math.floor(safe / n);
-  const rem = safe - base * n;
-  return base + (rowIndex < rem ? 1 : 0);
 }
 
 const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
@@ -110,6 +123,25 @@ type Ingredient = {
   source?: string | null;
 };
 
+function mergeVerifiedMacroRows(base: Ingredient[], rows: FlatVerifiedMacroRow[]): Ingredient[] {
+  return base.map((ing, i) => {
+    const r = rows[i];
+    if (!r) return ing;
+    return {
+      ...ing,
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiber_g: r.fiber,
+      sugar_g: r.sugar,
+      sodium_mg: r.sodium,
+      confidence: r.confidence,
+      source: r.source,
+    };
+  });
+}
+
 function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelColor }: { value: number; goal: number; color: string; label: string; size?: number; ringBgColor: string; labelColor: string }) {
   const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
@@ -147,6 +179,11 @@ export default function RecipeDetailScreen() {
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [reverifying, setReverifying] = useState(false);
+  /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
+  const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
+  const autoVerifySucceededForRecipeId = useRef<string | null>(null);
+  /** At most one low-confidence alert per recipe per mount for auto-verify (avoid nag on focus). */
+  const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
   const [userTargets, setUserTargets] = useState({ protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
@@ -201,11 +238,125 @@ export default function RecipeDetailScreen() {
     }, [loadProfileMacroPrefs]),
   );
 
+  const applyVerifyJsonToStateAndDb = useCallback(
+    async (
+      json: Record<string, unknown>,
+      ingredientSnapshot: Ingredient[],
+      opts: {
+        persist: boolean;
+        reloadAfter: boolean;
+        verifiedSource: string;
+        /** When API omits `perServing`, derive from `totals` / this yield. */
+        servingsForPerServing?: number;
+      },
+    ) => {
+      const rows = flatMacroRowsFromVerifyJson(json);
+      const perServing = perServingFromVerifyJson(json, {
+        servings: opts.servingsForPerServing,
+      });
+      if (!rows?.length || !perServing) return { ok: false as const };
+
+      const sumLineCals = rows.reduce((s, r) => s + (r.calories ?? 0), 0);
+      if (sumLineCals < 1 && (perServing.calories ?? 0) < 1) {
+        return { ok: false as const };
+      }
+
+      setIngredients(mergeVerifiedMacroRows(ingredientSnapshot, rows));
+      setRecipe((prev) =>
+        prev
+          ? {
+              ...prev,
+              calories: Math.round(perServing.calories),
+              protein: Math.round(perServing.protein),
+              carbs: Math.round(perServing.carbs),
+              fat: Math.round(perServing.fat),
+              fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : prev.fiber_g,
+              sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : prev.sugar_g,
+              sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : prev.sodium_mg,
+            }
+          : prev,
+      );
+
+      const overallConf = overallConfidenceFromVerifyJson(json);
+
+      let persistHadError = false;
+      if (opts.persist) {
+        const { data: dbIngs } = await supabase
+          .from("recipe_ingredients")
+          .select("id, name")
+          .eq("recipe_id", recipeId)
+          .order("created_at", { ascending: true });
+
+        if (dbIngs) {
+          for (let i = 0; i < Math.min(rows.length, dbIngs.length); i++) {
+            const r = rows[i]!;
+            const { error: ingErr } = await supabase
+              .from("recipe_ingredients")
+              .update({
+                calories: Math.round(r.calories),
+                protein: Math.round(r.protein),
+                carbs: Math.round(r.carbs),
+                fat: Math.round(r.fat),
+                fiber_g: Math.round(r.fiber * 10) / 10,
+                sugar_g: Math.round(r.sugar * 10) / 10,
+                sodium_mg: Math.round(r.sodium),
+                source: r.source,
+                confidence: r.confidence,
+              })
+              .eq("id", dbIngs[i]!.id);
+            if (ingErr) persistHadError = true;
+          }
+        }
+
+        const { error: recipeErr } = await supabase
+          .from("recipes")
+          .update({
+            calories: Math.round(perServing.calories),
+            protein: Math.round(perServing.protein),
+            carbs: Math.round(perServing.carbs),
+            fat: Math.round(perServing.fat),
+            fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
+            sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
+            sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
+            is_verified: true,
+            verified_at: new Date().toISOString(),
+            verified_confidence: overallConf,
+            verified_source: opts.verifiedSource,
+          })
+          .eq("id", recipeId);
+        if (recipeErr) persistHadError = true;
+      }
+
+      if (opts.reloadAfter && opts.persist && !persistHadError) {
+        let reloadRes = await supabase
+          .from("recipe_ingredients")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
+          .eq("recipe_id", recipeId)
+          .order("created_at", { ascending: true });
+        if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
+          reloadRes = await supabase
+            .from("recipe_ingredients")
+            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+            .eq("recipe_id", recipeId)
+            .order("created_at", { ascending: true }) as any;
+        }
+        if (!reloadRes.error && reloadRes.data) setIngredients(reloadRes.data as Ingredient[]);
+      }
+
+      return { ok: true as const };
+    },
+    [recipeId],
+  );
+
   const reverifyNutrition = async () => {
     if (!recipe || ingredients.length === 0 || !session?.access_token) return;
     setReverifying(true);
     try {
-      const apiBase = __DEV__ ? "http://localhost:3000" : process.env.EXPO_PUBLIC_API_URL ?? "";
+      const apiBase = getSupprApiBase();
+      if (!apiBase) {
+        Alert.alert("API not configured", "Set supprApiUrl in app config or EXPO_PUBLIC_API_URL.");
+        return;
+      }
       const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
         method: "POST",
         headers: {
@@ -213,77 +364,44 @@ export default function RecipeDetailScreen() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          ingredients: ingredients.map((ing) => ({
-            name: ing.name,
-            amount: String(ing.amount ?? ""),
-            unit: ing.unit ?? "",
-          })),
+          ingredients: parseRawIngredients(ingredients.map((ing) => ing.name)),
           servings: recipe.servings ?? 1,
         }),
       });
-      const json = await res.json();
-      if (!json.ok || !json.ingredientRows) {
-        Alert.alert("Verification failed", json.message ?? "Could not verify ingredients.");
+      const json = (await res.json()) as Record<string, unknown>;
+      const rows = flatMacroRowsFromVerifyJson(json);
+      if (!json.ok || !rows?.length) {
+        Alert.alert("Verification failed", (json.message as string) ?? "Could not verify ingredients.");
         return;
       }
-      const rows = json.ingredientRows as Array<{
-        name: string; grams: number; calories: number; protein: number; carbs: number; fat: number;
-        fiber?: number; sugar?: number; sodium?: number; source: string; confidence: number;
-      }>;
-      const perServing = json.perServing as { calories: number; protein: number; carbs: number; fat: number; fiber?: number; sugar?: number; sodium?: number };
-
-      const { data: dbIngs } = await supabase
-        .from("recipe_ingredients")
-        .select("id, name")
-        .eq("recipe_id", recipeId)
-        .order("created_at", { ascending: true });
-
-      if (dbIngs) {
-        for (let i = 0; i < Math.min(rows.length, dbIngs.length); i++) {
-          const r = rows[i];
-          await supabase.from("recipe_ingredients").update({
-            calories: Math.round(r.calories),
-            protein: Math.round(r.protein),
-            carbs: Math.round(r.carbs),
-            fat: Math.round(r.fat),
-            fiber_g: r.fiber != null ? Math.round(r.fiber * 10) / 10 : 0,
-            sugar_g: r.sugar != null ? Math.round(r.sugar * 10) / 10 : 0,
-            sodium_mg: r.sodium != null ? Math.round(r.sodium) : 0,
-            source: r.source,
-            confidence: r.confidence,
-          }).eq("id", dbIngs[i].id);
-        }
+      const canPersist = Boolean(userId && recipe.author_id === userId);
+      const applied = await applyVerifyJsonToStateAndDb(json, ingredients, {
+        persist: canPersist,
+        reloadAfter: canPersist,
+        verifiedSource: "re-verified",
+        servingsForPerServing: recipe.servings ?? 1,
+      });
+      if (!applied.ok) {
+        Alert.alert("Verification incomplete", "The server response could not be applied. Try again.");
+        return;
       }
-
-      await supabase.from("recipes").update({
-        calories: Math.round(perServing.calories),
-        protein: Math.round(perServing.protein),
-        carbs: Math.round(perServing.carbs),
-        fat: Math.round(perServing.fat),
-        fiber_g: perServing.fiber != null ? Math.round(perServing.fiber * 10) / 10 : 0,
-        sugar_g: perServing.sugar != null ? Math.round(perServing.sugar * 10) / 10 : 0,
-        sodium_mg: perServing.sodium != null ? Math.round(perServing.sodium) : 0,
-        is_verified: true,
-        verified_at: new Date().toISOString(),
-        verified_confidence: json.overallConfidence ?? null,
-        verified_source: "re-verified",
-      }).eq("id", recipeId);
-
-      // Reload
-      let reloadRes = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
-        .eq("recipe_id", recipeId);
-      if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
-        reloadRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-          .eq("recipe_id", recipeId) as any;
+      const needsReview = verifyJsonNeedsReviewNudge(json);
+      if (needsReview) {
+        const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
+        track(AnalyticsEvents.recipe_verify_needs_review, {
+          recipe_id: recipeId,
+          source: "re_verified",
+          platform: plat,
+          avgIngredientConfidence: json.avgIngredientConfidence,
+          minIngredientConfidence: json.minIngredientConfidence,
+        });
       }
-      if (reloadRes.data) setIngredients(reloadRes.data as Ingredient[]);
-      setRecipe((prev) => prev ? { ...prev, calories: Math.round(perServing.calories), protein: Math.round(perServing.protein), carbs: Math.round(perServing.carbs), fat: Math.round(perServing.fat) } : prev);
-
-      Alert.alert("Re-verified", `Nutrition updated for ${ingredients.length} ingredients.`);
+      Alert.alert(
+        "Re-verified",
+        needsReview
+          ? `Nutrition updated for ${ingredients.length} ingredients. Some matches are uncertain — review each line on the Ingredients tab.`
+          : `Nutrition updated for ${ingredients.length} ingredients.`,
+      );
     } catch (e) {
       Alert.alert("Error", e instanceof Error ? e.message : "Verification failed");
     } finally {
@@ -487,13 +605,128 @@ export default function RecipeDetailScreen() {
     [ingredients],
   );
 
-  // Compute totals from actual ingredients so they always match what's displayed.
-  // F-53 (2026-04-22): if ingredients exist but none of them have per-ingredient
-  // nutrition (seeded recipes where the scraper didn't fill in ingredient
-  // macros), fall back to the recipe-level totals instead of rendering 0 kcal.
-  // Tester saw "Cals section wrong" / "None of the cals and macros are pulling
-  // in" on recipes where recipe.calories was correct but every ingredient row
-  // carried null/0 nutrition.
+  /** Seeded / legacy rows often store text-only lines with zero macros; derive display macros without mutating DB. */
+  const ingredientsForIngredientsTab = useMemo(() => {
+    if (ingredients.length === 0 || !recipe) return ingredients;
+    if (ingredientsHaveNutrition) return ingredients;
+    if (autoVerifyingIngredients) return ingredients;
+    const c = recipe.calories ?? 0;
+    if (c <= 0) return ingredients;
+    const lines = ingredients.map((i) => i.name);
+    const fills = allocateIngredientMacrosFromLines(lines, c, recipe.servings ?? 1);
+    return ingredients.map((ing, i) => {
+      const f = fills[i];
+      if (!f) return ing;
+      return {
+        ...ing,
+        calories: f.calories,
+        protein: f.protein,
+        carbs: f.carbs,
+        fat: f.fat,
+        fiber_g: f.fiber_g,
+        sugar_g: f.sugar_g,
+        sodium_mg: f.sodium_mg,
+        confidence: f.confidence,
+        source: f.source,
+      };
+    });
+  }, [ingredients, ingredientsHaveNutrition, recipe, autoVerifyingIngredients]);
+
+  useEffect(() => {
+    autoVerifySucceededForRecipeId.current = null;
+    lowConfidenceAutoNudgeShown.current.clear();
+  }, [recipeId]);
+
+  /** USDA / FatSecret / OFF / Edamam / Suppr DB — same pipeline as manual re-verify (match-first; local staples only as API fallback). */
+  useEffect(() => {
+    if (loading || !recipeId || !recipe || !session?.access_token || ingredients.length === 0) return;
+    if (ingredientsHaveNutrition) return;
+    if (autoVerifySucceededForRecipeId.current === recipeId) return;
+    if (
+      (recipe.calories ?? 0) <= 0 &&
+      (recipe.protein ?? 0) <= 0 &&
+      (recipe.carbs ?? 0) <= 0 &&
+      (recipe.fat ?? 0) <= 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const snap = ingredients;
+
+    (async () => {
+      const apiBase = getSupprApiBase();
+      if (!apiBase) return;
+      setAutoVerifyingIngredients(true);
+      try {
+        const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            ingredients: parseRawIngredients(snap.map((ing) => ing.name)),
+            servings: recipe.servings ?? 1,
+          }),
+        });
+        const json = (await res.json()) as Record<string, unknown>;
+        if (cancelled) return;
+        const rows = flatMacroRowsFromVerifyJson(json);
+        if (!json.ok || !rows?.length) return;
+        const persist = Boolean(userId && recipe.author_id === userId);
+        const applied = await applyVerifyJsonToStateAndDb(json, snap, {
+          persist,
+          reloadAfter: persist,
+          verifiedSource: "auto_verify",
+          servingsForPerServing: recipe.servings ?? 1,
+        });
+        if (applied.ok) {
+          autoVerifySucceededForRecipeId.current = recipeId;
+          if (verifyJsonNeedsReviewNudge(json)) {
+            const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
+            track(AnalyticsEvents.recipe_verify_needs_review, {
+              recipe_id: recipeId,
+              source: "auto_verify",
+              platform: plat,
+              avgIngredientConfidence: json.avgIngredientConfidence,
+              minIngredientConfidence: json.minIngredientConfidence,
+            });
+            if (!lowConfidenceAutoNudgeShown.current.has(recipeId)) {
+              lowConfidenceAutoNudgeShown.current.add(recipeId);
+              Alert.alert(
+                "Review nutrition matches",
+                "Some ingredient lines matched with low confidence. Check each line on the Ingredients tab; edit names or amounts and tap Re-verify to save an update.",
+              );
+            }
+          }
+        }
+      } catch {
+        /* Local allocate fallback remains in ingredientsForIngredientsTab */
+      } finally {
+        if (!cancelled) setAutoVerifyingIngredients(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    loading,
+    recipeId,
+    recipe,
+    ingredients,
+    ingredientsHaveNutrition,
+    session?.access_token,
+    userId,
+    applyVerifyJsonToStateAndDb,
+  ]);
+
+  // Compute header / Nutrition-tab totals. When no row has per-ingredient macros,
+  // fall back to recipe-level totals so the summary isn't 0 while the recipe
+  // still has calories. Ingredient rows keep their stored values (usually 0);
+  // we do **not** split recipe totals across rows — that implied every line had
+  // a fake share (e.g. 600 kcal ÷ 24 → 25 kcal each).
   const { macros, totalMacros } = useMemo(() => {
     if (!ingredientsHaveNutrition && recipe) {
       const perServing = {
@@ -1150,28 +1383,48 @@ export default function RecipeDetailScreen() {
 
           {/* Ingredients Tab */}
           {activeTab === "ingredients" && ingredients.length > 0 && (
-            <View>
+              <View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
                 <Text style={styles.cardTitle}>Ingredients</Text>
                 <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
                   <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>Edit</Text>
                 </Pressable>
               </View>
-              {ingredients.map((ing, i) => {
-                const nIng = ingredients.length;
-                const useSplit = !ingredientsHaveNutrition && recipe != null && nIng > 0;
-                const rowCal = useSplit
-                  ? splitIntAcrossRows(Math.round(macros.calories), nIng, i)
-                  : Math.round(ing.calories ?? 0);
-                const rowPro = useSplit
-                  ? Math.round((macros.protein / nIng) * 10) / 10
-                  : ing.protein ?? 0;
-                const rowCarbs = useSplit
-                  ? Math.round((macros.carbs / nIng) * 10) / 10
-                  : ing.carbs ?? 0;
-                const rowFat = useSplit
-                  ? Math.round((macros.fat / nIng) * 10) / 10
-                  : ing.fat ?? 0;
+              {autoVerifyingIngredients && (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    marginBottom: Spacing.md,
+                    lineHeight: 17,
+                  }}
+                >
+                  Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when
+                  configured)…
+                </Text>
+              )}
+              {!autoVerifyingIngredients &&
+                !ingredientsHaveNutrition &&
+                recipe != null &&
+                (recipe.calories > 0 || recipe.protein > 0 || recipe.carbs > 0 || recipe.fat > 0) && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginBottom: Spacing.md,
+                      lineHeight: 17,
+                    }}
+                  >
+                    Per-line calories below are a local fallback (staples + scaling) when the database lookup could not
+                    run — open this screen signed in with the API reachable, or use the{" "}
+                    <Text style={{ fontWeight: "700" }}>Nutrition</Text> tab for totals.
+                  </Text>
+                )}
+              {ingredientsForIngredientsTab.map((ing, i) => {
+                const rowCal = Math.round(ing.calories ?? 0);
+                const rowPro = ing.protein ?? 0;
+                const rowCarbs = ing.carbs ?? 0;
+                const rowFat = ing.fat ?? 0;
                 const totalMacros = rowPro + rowCarbs + rowFat;
                 const proteinPct = totalMacros > 0 ? (rowPro / totalMacros) * 100 : 0;
                 const carbsPct = totalMacros > 0 ? (rowCarbs / totalMacros) * 100 : 0;
@@ -1196,8 +1449,10 @@ export default function RecipeDetailScreen() {
                         `Confidence: ${confPct != null ? `${confPct}% — ${confLabel}` : "Not scored"}\n` +
                         `Source: ${sourceLabel}\n\n` +
                         `${Math.round(rowCal)} kcal · P ${Math.round(rowPro)}g · C ${Math.round(rowCarbs)}g · F ${Math.round(rowFat)}g\n\n` +
-                        (useSplit
-                          ? "Per-ingredient nutrition isn't available for this recipe — numbers are an even split of the recipe totals for planning."
+                        (!ingredientsHaveNutrition
+                          ? recipe != null && (recipe.calories ?? 0) > 0
+                            ? "These per-line macros are locally estimated from the ingredient text and scaled to the recipe’s calorie total. Use the Nutrition tab for full-dish aggregates."
+                            : "This recipe doesn't have per-ingredient nutrition in the database — use the Nutrition tab for recipe-level totals."
                           : confPct != null && confPct < 75
                           ? "This ingredient had a weaker match. The macros may be approximate. You can edit this recipe to improve accuracy."
                           : confPct != null

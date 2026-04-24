@@ -473,10 +473,10 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - Android mic permission prompt for Voice log on Android dev builds — handled by Expo's generic request flow; UAT on a physical Android device before GA.
 - Server-side Whisper audio upload — the current release uses OS STT + typed fallback only.
 
-### 7.14 Quick add panel — Favourites / Frequent / Recent / My meals
+### 7.14 Quick add panel — Usual meals / Recent / Frequent / Favourites (Ship M1)
 - Components: mobile `apps/mobile/components/QuickAddPanel.tsx`, web `src/app/components/suppr/quick-add-panel.tsx`. Both are render-only wrappers around the shared helpers in `src/lib/nutrition/foodHistory.ts`, `favoriteFoods.ts`, `savedMeals.ts`, `savedMealsLogic.ts`. AI-source detection shared via `isAiSourcedFoodHistoryItem(row)` (audit H1, 2026-04-18).
 - EXP: FAB → Previous opens the Quick add panel. Header reads "Quick add" with "Logging to {slot}" subtext.
-- EXP: tab row — Favourites / Frequent / Recent / My meals. Default tab is Recent (matches prior "Previous Meals" behaviour).
+- EXP: tab row — **Usual meals** / Recent / Frequent / Favourites (that order). Initial tab is **`resolveQuickAddDefaultTab`** — lands on **Usual meals** when the user already has ≥1 saved usual meal, otherwise **Recent**.
 - **Recent tab**: up to 20 unique meals ordered most recent first. Tap any row → logs a duplicate with a new timestamp to the active slot and closes the panel.
 - **Frequent tab**: up to 20 unique meals ordered by count desc. Tap logs the same way.
 - **Favourites tab**: loads from Supabase on mount (per `userId`). Empty state: "Star meals you log often for one-tap re-logging."
@@ -497,21 +497,21 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - EDGE: viewing a past or future day (`isToday=false`) → banner hidden.
 - PARITY: web shows the same banner at the top of the Day view, dismissed state persisted in `localStorage` under the same key.
 
-### 7.14d Saved meal combos (Batch 2.6)
+### 7.14d Usual meals (saved bundles — Batch 2.6 + Ship M1 copy)
 Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPanel`; mobile `SaveMealSheet.tsx` + `QuickAddPanel.tsx` (first-class component as of audit H1, 2026-04-18 — previously inline in `app/(tabs)/index.tsx`). Shared helpers: `src/lib/nutrition/savedMeals.ts`, `savedMealsLogic.ts`.
 
 **Save gate & entry point**
-- EXP: in a meal slot with **1 item** logged today, the slot header row shows **no** "Save combo" chip.
-- EXP: logging a **2nd item** into the same slot reveals the "Save combo" chip on that slot header.
-- EXP: tapping "Save combo" on a slot with 2+ items opens `SaveMealSheet`. The name field is pre-filled with `"My {slot} combo"` (e.g. "My breakfast combo"), the default-slot chip for the source slot is preselected, and the items list reflects the slot's items in logged order.
-- EDGE: signed-out user taps "Save combo" → Alert "Sign in to save meal combos."
-- EDGE: user taps "Save combo" but the slot drops below 2 items before the sheet opens (race) → Alert "Save meal combo — Log 2 or more items in this slot first, then save the combo."
+- EXP: in a meal slot with **1 item** logged today, the slot section shows **no** full-width **Save {slot} as a meal** row (Ship M1 — the old header "Save combo" chip is retired).
+- EXP: logging a **2nd item** into the same slot reveals the full-width **Save {slot} as a meal** row under that slot’s items (still gated at **≥2 items**).
+- EXP: tapping that row on a slot with 2+ items opens `SaveMealSheet` / `SaveMealDialog`. Name prefill follows the host (e.g. mobile `My usual {slot}` seed). Default-slot chip for the source slot is preselected; items list matches logged order.
+- EDGE: signed-out user attempts save → Alert **"Sign in to save a usual meal."** (mobile; web equivalent).
+- EDGE: user opens save but the slot drops below 2 items before the sheet opens (race) → Alert **"Save as a usual meal"** body: *Log 2 or more items in this slot first, then save as a usual meal.*
 
 **Save form**
 - EXP: name input has `accessibilityLabel="Meal combo name"` and `maxLength={80}`. Clearing it disables Save.
 - EXP: default-slot chips (No default / Breakfast / Lunch / Dinner / Snacks) act as a radio group with `accessibilityRole="radio"` and `accessibilityState.selected`.
 - EXP: each item row has chevron-up / chevron-down / remove buttons with per-item `accessibilityLabel`s (e.g. "Move Oatmeal up", "Remove Oatmeal from combo"). Chevron-up on index 0 and chevron-down on last item are disabled + dimmed.
-- EXP: Save button dims and shows "Saving…" during the write. On success the sheet closes, the host bumps `savedMealsRefreshToken` so the Quick add panel refetches + auto-switches to "My meals" tab, and the new combo is visible. Same behaviour on web.
+- EXP: Save button dims and shows "Saving…" during the write. On success the sheet closes, the host bumps `savedMealsRefreshToken` so the Quick add panel refetches + auto-switches to the **Usual meals** tab, and the new bundle is visible. Same behaviour on web.
 - NEG: items cleared down to 0 → Save is disabled, copy reads "No items left. Cancel and pick more items to save." with `accessibilityLiveRegion="polite"`.
 - EDGE: items insert fails on the server → parent is deleted so no zombie combo; Alert "Could not save — We couldn't save that combo. Try again."
 
@@ -519,7 +519,7 @@ Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPa
 - EXP: saving a combo with the same name twice is accepted at the DB layer (no unique constraint by design — users can have two "My snack" combos if they want). The Quick add list shows both rows; user can rename or delete to tidy up.
 
 **Re-log**
-- EXP: "My meals" tab lists combos, newest-re-logged first. Each row shows name + "N items · XXX kcal · P / C / F". Row's `accessibilityLabel` includes the bundle totals ("Log My usual breakfast to Breakfast. 3 items, 470 kcal, protein 35 grams, carbs 65 grams, fat 8 grams. Long-press for more actions.").
+- EXP: **Usual meals** tab lists bundles, newest-re-logged first. Each row shows name + "N items · XXX kcal · P / C / F". Row's `accessibilityLabel` includes the bundle totals ("Log My usual breakfast to Breakfast. 3 items, 470 kcal, protein 35 grams, carbs 65 grams, fat 8 grams. Long-press for more actions.").
 - EXP: tap the `add-circle` on a row → every item is inserted as its own row into today's journal under the combo's `default_meal_slot` (falls back to active slot). Each row gets a fresh `id`; quick add closes; `log_count` bumps; list reorders so the just-logged combo sits at the top.
 - EDGE: double-tap `+` rapidly → guarded by the optimistic pending set — only one batch of entries is inserted.
 - EDGE: `incrementLogCount` fails → user-facing log still succeeds (the counter is a sort key, not a billing counter). Warning goes to console only.
@@ -536,8 +536,8 @@ Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPa
 - EXP: confirming Delete fires `saved_meal_deleted` once.
 
 **Parity**
-- Web: `NutritionTracker.tsx` renders a "Save combo" chip on each meal-slot header when the slot has 2+ items; the chip calls the host's `handleOpenSaveCombo(slot, seedItems)` which opens the host-owned `SaveMealDialog` (audit H4, 2026-04-18 — replaced the prior `suppr:open-save-meal-dialog` CustomEvent bridge with a direct prop callback). `QuickAddPanel` also receives `onOpenSaveCombo` as a prop for parity + future use. Identical states, identical analytics events, identical labels.
-- Mobile: same shape — `app/(tabs)/index.tsx` renders the "Save combo" chip on each meal-slot header, opens the host-owned `SaveMealSheet`, bumps `savedMealsRefreshToken` after persist, and hands the token plus `onLogSavedMeal` / `onOpenSaveCombo` to `<QuickAddPanel />`. The panel itself is render-only (audit H1, 2026-04-18).
+- Web: `NutritionTracker.tsx` / meal-slot section renders the **Save {slot} as a meal** affordance when the slot has 2+ items and drives the host-owned `SaveMealDialog` via **`handleOpenSaveCombo`** (audit H4 — no `window` CustomEvent bridge). `QuickAddPanel` still accepts **`onOpenSaveCombo`** as part of the shared prop contract even though the primary save entry point lives on the slot section (Ship M1).
+- Mobile: `app/(tabs)/index.tsx` owns **`SaveMealSheet`**, slot-header **Log usual:** pill when a matching saved meal exists, full-width **Save {slot} as a meal** row at ≥2 items, bumps `savedMealsRefreshToken` after persist, and passes `onLogSavedMeal` / `onOpenSaveCombo` into `<QuickAddPanel />` (render-only; audit H1).
 - Intentional differences: mobile uses `Alert.prompt` for rename on iOS and a future-work copy on Android; web uses `window.prompt`. Both are documented and tracked.
 
 ### 7.14e Custom foods (Batch 3.9)
@@ -1500,7 +1500,7 @@ For every shared feature, verify behaviour matches `apps/web/`:
 
 Documented divergences (not bugs): Apple Health (mobile only), Apple Sign-In (mobile only), RevenueCat (mobile) vs Stripe (web), share intent / clipboard forwarding (mobile only), drag-drop plan swap (web) vs Alert picker (mobile).
 
-Parity risks to verify: Discover "Popular" filter (mobile no-op — FLAG), date locale, week start default.
+Parity risks to verify: Discover **Popular** filter (must match web — global save counts via `public_recipe_save_counts_batch` from `fetchPublicRecipeSaveCounts`; recipe detail may call `public_recipe_save_count` once; threshold `DISCOVER_POPULAR_MIN_SAVES` in `src/lib/recipes/fetchPublicRecipeSaveCounts.ts`), date locale, week start default.
 
 ---
 

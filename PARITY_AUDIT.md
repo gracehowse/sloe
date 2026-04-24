@@ -1,6 +1,6 @@
 # Platform Parity Audit — Web vs Mobile
 
-**Date**: 2026-04-13 (second execution pass)
+**Date**: 2026-04-13 (second execution pass) · **2026-04-23** — create-flow bulk paste + OCR parity pass
 
 ---
 
@@ -26,7 +26,7 @@
 | **Library** | `Library`: saved/created/imported, filter/sort | `library.tsx`: saved grid with macros | In sync |
 | **Recipe detail** | `RecipeDetail`: macros, ingredients with inline verify via food search, cook mode, publish, serving scaler | `recipe/[id].tsx`: macro rings, ingredients with micros, verify link, cook link | In sync |
 | **Recipe import** | `RecipeUpload`: URL import, image import (OpenAI) with nutrition verification, manual entry | `import-shared.tsx`: URL/share/clipboard/deep-link import | In sync; image import now runs `verifyIngredients` |
-| **Recipe creation** | `RecipeUpload`: full editor, image upload, publish to community | `create-recipe.tsx`: full editor with image upload, publish toggle, description, meal tags | In sync |
+| **Recipe creation** | `RecipeUpload`: full editor, image upload, publish; **Paste ingredient list** → `/api/nutrition/verify-recipe`; **Extract from image** works with file picker + blob/data URLs | `create-recipe.tsx`: same + **Paste list** modal + **Scan photo** (`/api/recipe-import/image`); shared `splitPastedIngredientLines` | In sync (bulk paste + DB verify on both; mobile-only polish: explicit scan CTA) |
 | **Ingredient verification** | Embedded in `RecipeDetail` via food search dialog | Dedicated `/recipe/verify` screen with `FoodSearchModal` + barcode | Both functional (different UX patterns — intentional) |
 | **Food search** | `FoodSearch.tsx`: USDA/OFF results, portion selection | `FoodSearchModal.tsx`: same + barcode integration | In sync |
 | **Nutrition pipeline** | Shared `src/lib/nutrition/verifyIngredients.ts` | Same via API routes | In sync |
@@ -104,6 +104,13 @@
 | Analytics events | `src/lib/analytics/events.ts` | Web + mobile |
 
 ---
+
+## Automation & nutrition policy (2026-04-23)
+
+- **Playwright:** `tests/e2e/journeys/recipe-create-paste.spec.ts` — create flow bulk paste + mocked `verify-recipe` (no live USDA keys in CI).
+- **Maestro:** `21_create_recipe.yaml` — opens **Paste list** modal and asserts **Match** (closes with **Close** to avoid clashing with screen **Cancel**).
+- **PostHog:** `recipe_create_paste_list_matched`, `recipe_create_photo_extracted` (web `RecipeUpload` + mobile `create-recipe`).
+- **Shared thresholds:** `src/lib/nutrition/verifyConfidencePolicy.ts` — `ingredientVerifyNeedsReview` drives soft review toasts on web after paste match.
 
 ## Test inventory (as of 2026-04-13)
 

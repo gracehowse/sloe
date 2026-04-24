@@ -4,7 +4,7 @@
 
 ## What is Suppr?
 
-Suppr is a recipe and nutrition tracking platform that helps users import recipes from the web, verify their nutritional content against USDA/FDA databases, plan meals to hit personal macro targets, and track daily food intake.
+Suppr is a recipe and nutrition tracking platform that helps users import recipes from the web, verify their nutritional content against USDA/FDA databases (with Open Food Facts, Edamam, and FatSecret in the stack where applicable), plan meals to hit personal macro targets, and track daily food intake.
 
 ## Who is it for?
 
@@ -25,7 +25,7 @@ Health-conscious home cooks who want accurate nutrition data for the recipes the
 ## Core Value Proposition
 
 1. **Import any recipe** — paste a URL, we extract ingredients and instructions automatically
-2. **Real nutrition data** — verified against USDA FoodData Central, Open Food Facts, and FatSecret
+2. **Real nutrition data** — verified against USDA FoodData Central, Open Food Facts, Edamam (parser / food search), and FatSecret
 3. **Smart meal planning** — macro-aware algorithm that respects meal type tags and portion-scales to hit targets
 4. **Track everything** — daily/weekly food diary with barcode scanning and previous meal re-logging
 
@@ -78,7 +78,7 @@ Everything else reveals as the user demonstrates relevance.
 | Card / surface | Visibility rule |
 |---|---|
 | Day strip, calorie hero ring, remaining macros bar, dashboard macro tiles, Meals section | Always visible in day view. |
-| Quick add panel (Favourites / Frequent / Recent / My meals) | Collapsed by default behind a single "Quick add" CTA above Meals. Tap expands inline (web + mobile). The last open/closed choice persists per device under `suppr-quick-add-collapsed-v1` — localStorage on web, AsyncStorage on mobile. The full-screen panel (mobile FAB → Previous) remains the power-user path. |
+| Quick add panel (Usual meals / Recent / Frequent / Favourites) | Collapsed by default behind a single "Quick add" CTA above Meals. Tap expands inline (web + mobile). The last open/closed choice persists per device under `suppr-quick-add-collapsed-v1` — localStorage on web, AsyncStorage on mobile. The full-screen panel (mobile FAB → Previous) remains the power-user path. |
 | Hydration & stimulants card | Visible once the user has a non-zero `target_water_ml` **OR** has logged water / caffeine / alcohol (directly or via a meal that carries `waterMl`). Hidden first-run fallback: a compact "Track hydration?" link that reveals the card on tap — no state is written until the user logs something. |
 | Steps & activity card | Visible once Apple Health / Google Fit has synced at least once (`steps_by_day` or `activity_burn_by_day` non-empty for any day). Hidden first-run fallback: a compact "Connect health" link (mobile opens the Health Sync screen; web reveals the card so the user can log steps manually). |
 | Adaptive TDEE hint | Visible once `adaptive_tdee_confidence` is medium/high **OR** the user has logged ≥ 14 days. Matches the `getEffectiveTDEE` threshold so the hint and the calorie budget agree. |

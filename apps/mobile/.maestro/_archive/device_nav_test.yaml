@@ -1,0 +1,27 @@
+# Ad-hoc / manual navigation smoke (not listed in config.yaml suite).
+# Run explicitly: maestro test apps/mobile/.maestro/_archive/device_nav_test.yaml
+appId: com.supprclub.supprapp
+name: "Device — quick navigation test"
+---
+- runFlow: shared/login.yaml
+
+- assertVisible: ".*(?:Today, tab|Today).*"
+
+- tapOn: ".*Discover, tab.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Discover, tab.*"
+
+- tapOn: ".*Plan, tab.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Meal Plan.*"
+
+- tapOn: ".*Progress, tab.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Progress, tab.*"
+
+- tapOn: ".*More, tab.*"
+- waitForAnimationToEnd
+
+- tapOn: ".*Today, tab.*"
+- waitForAnimationToEnd
+- assertVisible: ".*(?:Today, tab|Today).*"

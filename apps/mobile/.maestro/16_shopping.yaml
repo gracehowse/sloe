@@ -1,10 +1,17 @@
+# @cases TC-SHOP-01
+# @screen shopping list (from planner)
 appId: com.supprclub.supprapp
 name: "Shopping list — items, check off, share"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Plan.*"
+- tapOn: ".*Plan, tab.*"
 - waitForAnimationToEnd
+
+# Same tab as meal plan; list CTA is often below the first screenful
+- scrollUntilVisible:
+    element: ".*Shopping List.*"
+    direction: DOWN
 
 # Shopping List button should be visible after a plan is generated
 - runFlow:

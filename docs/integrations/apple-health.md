@@ -20,4 +20,10 @@ Google **Health Connect** is the analogue; same idea: native module, not web.
 ## Current app behaviour
 
 - **Web & mobile** support **manual** steps and weigh-ins on the **Progress** screen (`steps_by_day`, `weight_kg_by_day` on `profiles`).
-- Automatic Apple Health sync is **planned** for a dev build; this document is the implementation checklist.
+- **iOS native app:** Apple Health sync and permissions are implemented on **More → Health Sync** (`apps/mobile/app/health-sync.tsx`) with **`react-native-health`** in `apps/mobile/lib/healthSync.ts`.
+
+### If Health Connect breaks again
+
+Use the canonical runbook (timeouts, staged init, AsyncStorage key, why the global mutex was removed):
+
+**[`apple-health-mobile-permissions.md`](./apple-health-mobile-permissions.md)**

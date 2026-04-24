@@ -20,7 +20,7 @@ name: "Create test account"
     when:
       visible: ".*Today.*"
     commands:
-      - tapOn: ".*Today.*"
+      - tapOn: ".*Today, tab.*"
 
 - runFlow:
     when:

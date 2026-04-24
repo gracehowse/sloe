@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.supprclub.supprapp",
       "usesAppleSignIn": true,
       "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Suppr uses the local network in development to discover the Metro JavaScript bundler running on your Mac (Expo Dev Client).",
         "NSHealthShareUsageDescription": "Suppr reads your steps, active energy, basal energy, workouts, weight, body fat, and any dietary entries you have in Apple Health so your Suppr tracker stays in sync with the rest of your Health data.",
         "NSHealthUpdateUsageDescription": "Suppr writes the calories, protein, carbohydrates, fat, and fibre of the meals you log so other apps on your phone can read your nutrition from Apple Health.",
         "ITSAppUsesNonExemptEncryption": false,

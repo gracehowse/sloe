@@ -45,6 +45,7 @@ export function TodayQuickLogStrip({
       {entries.map(({ label, iconName, color, onPress, locked }) => (
         <Pressable
           key={label}
+          testID={`today-quick-log-${label.toLowerCase()}`}
           accessibilityRole="button"
           accessibilityLabel={locked ? `${label} — Pro feature` : label}
           onPress={onPress}

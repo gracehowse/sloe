@@ -3,7 +3,7 @@ name: "Profile & settings — sections, navigation, data export"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Check top-of-screen sections (visible without scroll)

@@ -27,10 +27,27 @@
  * by JSX tags, or composed from constants, still counts.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+
+/** One shared client so `CheckoutButton` + `CurrentTierBadge` do not each mint a GoTrueClient (test noise). */
+vi.mock("@supabase/supabase-js", () => {
+  const shared = {
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+        })),
+      })),
+    })),
+  };
+  return { createClient: vi.fn(() => shared) };
+});
 
 import { LandingPage } from "../../app/(landing)/LandingPage";
 import { PricingTiersGrid } from "../../app/pricing/PricingTiersGrid";

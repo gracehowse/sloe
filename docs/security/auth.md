@@ -53,19 +53,25 @@ All tables have RLS enabled. Key policies:
 | Author write | recipes, recipe_ingredients | `auth.uid() = author_id` |
 | No direct read | promo_codes, food_reports, recipe_plan_add_events | Access only via SECURITY DEFINER functions |
 
-## API Security
+## API route reference
 
-| Route | Auth Required | Rate Limit |
-|-------|-------------|------------|
-| `/api/recipe-import` | Yes (Bearer token) | 20/min/IP |
-| `/api/nutrition/verify-recipe` | Yes (Bearer token) | 10/min/IP |
-| `/api/usda/search` | Yes (Bearer token) | 60/min/IP |
-| `/api/usda/food` | Yes (Bearer token) | 60/min/IP |
-| `/api/account/delete` | Yes (Bearer token) | None |
-| `/api/stripe/checkout` | Yes (Bearer token) | None |
-| `/api/stripe/webhook` | Stripe signature | None |
+**Canonical detail** for every `app/api/**/route.ts` handler — methods, status codes, tier gates, cron headers, env vars — lives in **[API endpoints — Route index](../api/endpoints.md#route-index)**. Prefer updating that file over duplicating tables here.
 
-**Rate limiting:** Upstash Redis in production, in-memory fallback in dev. In-memory is per-instance only — not distributed.
+## API Security (auth-sensitive routes)
+
+This table lists only **non-standard** or **high-risk** patterns (cron secret, webhooks, service-role fan-out, tier gates, origin checks). Bearer-only routes with standard session checks are documented in the index above.
+
+| Route / pattern | Auth / verification | Notes |
+|-----------------|---------------------|--------|
+| `/api/push/weekly-recap` | `X-Cron-Secret` = `SUPPR_CRON_SECRET` | No user JWT; service-role reads `profiles` |
+| `/api/stripe/webhook` | Stripe `Stripe-Signature` | Uses `STRIPE_WEBHOOK_SECRET` |
+| `/api/account/delete` | Bearer + **`assertOrigin`** | Service-role deletes; see [endpoints](../api/endpoints.md#account) |
+| `/api/nutrition/voice-log`, `/api/nutrition/photo-log` | Bearer + **Pro tier** | `403` `upgrade_required` for Free/Base |
+| `/api/recipe-import/image` | Bearer + tier ≠ `free` | `403` `pro_required` |
+| `/api/household` `POST`, `/api/household/join`, `/api/household/leave`, `/api/household/meals` | Bearer; some use **`assertOrigin`** | Server uses service-role client scoped to session user — see [endpoints § Household](../api/endpoints.md#household) |
+| `/api/user-foods`, `/api/user-foods/vote` | Bearer | Service-role for catalog reads/writes |
+
+**Rate limiting:** Upstash Redis in production, in-memory fallback in dev. In-memory is per-instance only — not distributed. Per-route limits (IP prefix, user id, etc.) are specified in [endpoints](../api/endpoints.md#route-index).
 
 ## Data Protection
 

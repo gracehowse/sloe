@@ -828,6 +828,7 @@ export default function VerifyScreen() {
         visible={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
         onAdd={onAddIngredient}
+        recipeId={recipeId || undefined}
         colors={{
           text: colors.text,
           textSecondary: colors.textSecondary,

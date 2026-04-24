@@ -15,6 +15,15 @@ import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics
  */
 
 describe("AnalyticsEvents registry", () => {
+  it("registers recipe create bulk-paste and photo-extract funnel events", () => {
+    expect(AnalyticsEvents.recipe_create_paste_list_matched).toBe("recipe_create_paste_list_matched");
+    expect(AnalyticsEvents.recipe_create_photo_extracted).toBe("recipe_create_photo_extracted");
+  });
+
+  it("registers recipe_verify_needs_review for low-confidence verify nudges", () => {
+    expect(AnalyticsEvents.recipe_verify_needs_review).toBe("recipe_verify_needs_review");
+  });
+
   it("registers week_start_day_changed with the canonical value", () => {
     expect(AnalyticsEvents.week_start_day_changed).toBe("week_start_day_changed");
   });

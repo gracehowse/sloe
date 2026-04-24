@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
 import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
+import { fetchPublicRecipeSaveCounts } from "../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 
 // F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
 // a single shared Unsplash salad, so every placeholder recipe looked identical
@@ -79,6 +80,7 @@ export function useDiscoverRecipes() {
           fiberG: r.fiber_g ?? 0,
           isVerified: r.is_verified ?? false,
           savedCount: 0,
+          saves: 0,
           isSaved: false,
           authorId: r.author_id,
           sourceUrl: r.source_url ?? null,
@@ -90,16 +92,41 @@ export function useDiscoverRecipes() {
           cookTime: formatRecipeMinutes(cookOk ? cookM : null),
         };
       });
-      setRecipes(mapped);
-      if (mapped.length > 0) {
-        void cacheDiscoverRecipes(mapped); // Cache for offline
+      let enriched = mapped;
+      try {
+        const counts = await fetchPublicRecipeSaveCounts(supabase, mapped.map((r) => r.id));
+        enriched = mapped.map((r) => {
+          const n = counts.get(r.id) ?? 0;
+          return { ...r, savedCount: n, saves: n };
+        });
+      } catch (e) {
+        console.warn("[useDiscoverRecipes] public save counts failed:", e);
+      }
+      setRecipes(enriched);
+      if (enriched.length > 0) {
+        // Persist counts too so offline / cold-cache Popular matches online (P-P2-3).
+        void cacheDiscoverRecipes(enriched);
       }
     } else if (error) {
       // Network failure — try offline cache
       console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
       const cached = await getCachedDiscoverRecipes();
       if (cached && Array.isArray(cached)) {
-        setRecipes(cached as RecipeCard[]);
+        let list = cached as RecipeCard[];
+        // If we're online enough for Supabase RPC, refresh global save counts on top of cache.
+        try {
+          const ids = list.map((r) => r.id).filter(Boolean);
+          if (ids.length > 0) {
+            const counts = await fetchPublicRecipeSaveCounts(supabase, ids);
+            list = list.map((r) => {
+              const n = counts.get(r.id) ?? r.saves ?? 0;
+              return { ...r, savedCount: n, saves: n };
+            });
+          }
+        } catch (e) {
+          console.warn("[useDiscoverRecipes] save counts on cache path failed:", e);
+        }
+        setRecipes(list);
       }
     }
     setLoading(false);

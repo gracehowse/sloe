@@ -3,7 +3,7 @@ name: "Nutrition Sources — info screen with all data sources"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Navigate to Help & Information, or directly to nutrition sources

@@ -214,22 +214,50 @@ function logHealthPermission(message: string, detail?: string): void {
   console.warn("[healthSync]", line);
 }
 
+const HEALTH_IS_AVAILABLE_TIMEOUT_MS = 20_000;
+
 function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | { ok: false; error: string }> {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (out: { ok: true } | { ok: false; error: string }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(t);
+      resolve(out);
+    };
+    const t = setTimeout(() => {
+      finish({
+        ok: false,
+        error: `HealthKit “isAvailable” did not respond within ${HEALTH_IS_AVAILABLE_TIMEOUT_MS / 1000}s. Restart the app, then try Connect again from More → Health Sync.`,
+      });
+    }, HEALTH_IS_AVAILABLE_TIMEOUT_MS);
     hk.isAvailable((err, results) => {
-      if (err) resolve({ ok: false, error: stringifyBridgeUnknown(err) });
-      else if (!results) resolve({ ok: false, error: "HealthKit reported not available on this device." });
-      else resolve({ ok: true });
+      if (err) finish({ ok: false, error: stringifyBridgeUnknown(err) });
+      else if (!results) finish({ ok: false, error: "HealthKit reported not available on this device." });
+      else finish({ ok: true });
     });
   });
 }
 
-function initHealthKitPromise(
+/** Permission `initHealthKit` can wait while the system sheet stays open; 45s was too short. */
+const HEALTH_PERMISSION_INIT_TIMEOUT_MS = 180_000;
+
+function initHealthKitPromiseWithTimeout(
   hk: AppleHealthKitNative,
   permissions: { permissions: { read: string[]; write?: string[] } },
+  stepLabel: string,
 ): Promise<void> {
+  const waitMin = Math.max(1, Math.round(HEALTH_PERMISSION_INIT_TIMEOUT_MS / 60_000));
   return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      reject(
+        new Error(
+          `HealthKit did not respond within ${waitMin} min (step: ${stepLabel}). If the Apple Health permission sheet is open, tap Allow or Don’t Allow first. Stay on the Health Sync screen until it finishes. Otherwise close this screen and try again, or restart the app.`,
+        ),
+      );
+    }, HEALTH_PERMISSION_INIT_TIMEOUT_MS);
     hk.initHealthKit(permissions, (error) => {
+      clearTimeout(t);
       if (error) reject(new Error(stringifyBridgeUnknown(error)));
       else resolve();
     });
@@ -967,8 +995,15 @@ function formatHealthKitStepError(error: unknown, step: string): string {
  * Request Apple Health access in two stages: (1) body metrics only — small enough for the
  * system sheet to appear reliably; (2) dietary + food correlation reads for meal import.
  * Surfaces native errors instead of returning an opaque `false`.
+ *
+ * Not deduped globally: a stuck native callback would otherwise make every later tap await
+ * the same hung promise forever. The Health Sync screen disables the button while `connecting`.
  */
 export async function requestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
+  return runRequestHealthPermissions();
+}
+
+async function runRequestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     const debugDetail = "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
@@ -997,41 +1032,57 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
   }
 
   try {
-    await initHealthKitPromise(hk, {
-      permissions: {
-        read: [...HEALTH_KIT_STAGE1_READ],
-        write: [...HEALTH_KIT_NUTRITION_WRITE],
+    await initHealthKitPromiseWithTimeout(
+      hk,
+      {
+        permissions: {
+          read: [...HEALTH_KIT_STAGE1_READ],
+          write: [...HEALTH_KIT_NUTRITION_WRITE],
+        },
       },
-    });
+      "body_metrics_init",
+    );
   } catch (e) {
     const debugDetail = formatHealthKitStepError(e, "body_metrics_init");
     logHealthPermission("initHealthKit failed (stage 1: body metrics)", debugDetail);
+    const detailLower = debugDetail.toLowerCase();
+    const looksLikeTimeout =
+      detailLower.includes("did not respond within") || detailLower.includes("healthkit did not respond");
     return {
       ok: false,
       bodySyncReady: false,
       dietaryImportReady: false,
-      userMessage:
-        "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
+      userMessage: looksLikeTimeout
+        ? "Apple Health didn’t finish in time. Open More → Health Sync, tap Connect, and stay on that screen until the system sheet appears and you choose Allow or Don’t Allow. If no sheet appears, use Open Settings → Privacy & Security → Health → Data Access & Devices → Suppr."
+        : "Apple Health couldn’t start the permission request for steps, weight, and activity. Check the technical detail below, or try Open Settings → Privacy & Security → Health.",
       debugDetail,
     };
   }
 
   try {
-    await initHealthKitPromise(hk, {
-      permissions: {
-        read: [...HEALTH_KIT_STAGE2_READ],
-        write: [...HEALTH_KIT_NUTRITION_WRITE],
+    await initHealthKitPromiseWithTimeout(
+      hk,
+      {
+        permissions: {
+          read: [...HEALTH_KIT_STAGE2_READ],
+          write: [...HEALTH_KIT_NUTRITION_WRITE],
+        },
       },
-    });
+      "dietary_init",
+    );
   } catch (e) {
     const debugDetail = formatHealthKitStepError(e, "dietary_init");
     logHealthPermission("initHealthKit failed (dietary stage; body metrics OK)", debugDetail);
+    const detailLower = debugDetail.toLowerCase();
+    const looksLikeTimeout =
+      detailLower.includes("did not respond within") || detailLower.includes("healthkit did not respond");
     return {
       ok: true,
       bodySyncReady: true,
       dietaryImportReady: false,
-      userMessage:
-        "Apple Health is connected for steps, weight, and energy. Importing meals from other apps needs an extra permission — turn on “Import meals from Health” below to retry.",
+      userMessage: looksLikeTimeout
+        ? "Steps and activity are set up, but the extra meal-import permission didn’t finish in time. Stay on Health Sync, turn on “Import meals from Health” again, and respond to the sheet. Or adjust access under Settings → Health → Data Access & Devices → Suppr."
+        : "Apple Health is connected for steps, weight, and energy. Importing meals from other apps needs an extra permission — turn on “Import meals from Health” below to retry.",
       debugDetail,
     };
   }
@@ -1040,7 +1091,8 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
     ok: true,
     bodySyncReady: true,
     dietaryImportReady: true,
-    userMessage: "Health data sync is now enabled.",
+    userMessage:
+      "Health data sync is now enabled. If the permission sheet did not appear, iOS may already remember your last choice—use Sync Now to pull data.",
   };
 }
 
@@ -1072,12 +1124,16 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
   }
 
   try {
-    await initHealthKitPromise(hk, {
-      permissions: {
-        read: [...HEALTH_KIT_STAGE2_READ],
-        write: [...HEALTH_KIT_NUTRITION_WRITE],
+    await initHealthKitPromiseWithTimeout(
+      hk,
+      {
+        permissions: {
+          read: [...HEALTH_KIT_STAGE2_READ],
+          write: [...HEALTH_KIT_NUTRITION_WRITE],
+        },
       },
-    });
+      "dietary_retry",
+    );
     return {
       ok: true,
       bodySyncReady: true,

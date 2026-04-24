@@ -88,3 +88,5 @@ jobs:
           echo "All cross-boundary imports resolved."
       - name: Mobile unit tests
         run: npm test
+      - name: Maestro suite manifest (listed flows + shared runFlow exist)
+        run: npm run test:e2e:verify-suite

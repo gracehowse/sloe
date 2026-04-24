@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +17,9 @@ import {
 } from "@/lib/healthSync";
 import { supabase } from "@/lib/supabase";
 
+/** Remember that the user completed Health connect so this screen shows Sync Now after navigation. */
+const HEALTH_APPLE_CONNECTED_KEY = "health_sync_apple_connected";
+
 export default function HealthSyncScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)/more");
@@ -24,6 +28,7 @@ export default function HealthSyncScreen() {
   const colors = useThemeColors();
 
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [importEnabled, setImportEnabled] = useState(false);
@@ -31,7 +36,7 @@ export default function HealthSyncScreen() {
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
 
-  // Persist import/export prefs
+  // Persist import/export prefs + whether Apple Health connect completed (UI only)
   useEffect(() => {
     (async () => {
       try {
@@ -39,12 +44,23 @@ export default function HealthSyncScreen() {
         const imp = await AsyncStorage.getItem("health_import_nutrition");
         const gen = await AsyncStorage.getItem("health_import_generic_labels");
         const exp = await AsyncStorage.getItem("health_export_nutrition");
+        const apple = await AsyncStorage.getItem(HEALTH_APPLE_CONNECTED_KEY);
         if (imp === "true") setImportEnabled(true);
         if (gen === "true") setGenericImportLabels(true);
         if (exp === "true") setExportEnabled(true);
+        if (apple === "true") setConnected(true);
       } catch {}
     })();
   }, []);
+
+  // If native never calls back, don’t leave the Connect button spinning when leaving this screen.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setConnecting(false);
+      };
+    }, []),
+  );
 
   const toggleImport = useCallback(
     async (val: boolean) => {
@@ -107,24 +123,47 @@ export default function HealthSyncScreen() {
       );
       return;
     }
-    const outcome = await requestHealthPermissions();
-    if (outcome.ok) {
-      setConnected(true);
-      const body = outcome.dietaryImportReady
-        ? outcome.userMessage
-        : `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
-      Alert.alert(outcome.dietaryImportReady ? "Connected" : "Connected (limited)", body, [
-        { text: "OK" },
-        ...(outcome.ok && !outcome.dietaryImportReady
-          ? [{ text: "Open Settings", onPress: () => void Linking.openSettings() }]
-          : []),
-      ]);
-    } else {
-      const body = `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
-      Alert.alert("Permission or Health access", body, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Open Settings", onPress: () => void Linking.openSettings() },
-      ]);
+    setConnecting(true);
+    setLastResult(null);
+    try {
+      const outcome = await requestHealthPermissions();
+      if (outcome.ok) {
+        setConnected(true);
+        try {
+          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+          await AsyncStorage.setItem(HEALTH_APPLE_CONNECTED_KEY, "true");
+        } catch {
+          /* ignore */
+        }
+        const body = outcome.dietaryImportReady
+          ? outcome.userMessage
+          : `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
+        setLastResult(
+          outcome.dietaryImportReady
+            ? "Health connected. Use Sync Now to pull your latest data."
+            : "Health connected with limited permissions. See the alert for details.",
+        );
+        Alert.alert(outcome.dietaryImportReady ? "Connected" : "Connected (limited)", body, [
+          { text: "OK" },
+          ...(outcome.ok && !outcome.dietaryImportReady
+            ? [{ text: "Open Settings", onPress: () => void Linking.openSettings() }]
+            : []),
+        ]);
+      } else {
+        const body = `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
+        setLastResult("Could not finish Health setup. See the alert for details.");
+        Alert.alert("Permission or Health access", body, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => void Linking.openSettings() },
+        ]);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[health-sync] handleConnect", e);
+      setLastResult("Something went wrong while connecting to Health.");
+      Alert.alert("Health connect failed", msg, [{ text: "OK" }]);
+    } finally {
+      setConnecting(false);
     }
   }, [available]);
 
@@ -356,11 +395,15 @@ export default function HealthSyncScreen() {
 
       {!connected ? (
         <Pressable
-          style={[styles.btn, { backgroundColor: available ? Accent.primary : colors.textTertiary }]}
+          style={[styles.btn, { backgroundColor: available && !connecting ? Accent.primary : colors.textTertiary }]}
           onPress={handleConnect}
-          disabled={!available}
+          disabled={!available || connecting}
         >
-          <Text style={styles.btnText}>Connect Health Data</Text>
+          {connecting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Connect Health Data</Text>
+          )}
         </Pressable>
       ) : (
         <Pressable

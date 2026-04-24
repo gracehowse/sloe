@@ -3,7 +3,7 @@ name: "Weight tracker — sections, input, charts"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Progress.*"
+- tapOn: ".*Progress, tab.*"
 - waitForAnimationToEnd
 
 # Scroll to find weight entry point
@@ -18,9 +18,13 @@ name: "Weight tracker — sections, input, charts"
 # Weight tracker screen sections
 - assertVisible: ".*Weight.*"
 
-# Should see input field for weight
+# Weight entry (testID is stable vs placeholder kg/lb copy)
+- scrollUntilVisible:
+    element:
+      id: "weight-tracker-input"
+    direction: DOWN
 - assertVisible:
-    text: ".*(?:Weight \\(kg\\)|Weight \\(lb\\)).*"
+    id: "weight-tracker-input"
 
 # Save button
 - assertVisible: ".*Save.*"

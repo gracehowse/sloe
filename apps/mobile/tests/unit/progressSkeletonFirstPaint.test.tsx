@@ -30,7 +30,7 @@
  * tree stays in `loading` for the assertion window.
  */
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
 void React;
@@ -146,40 +146,71 @@ vi.mock("@/components/Digest", () => ({
 import ProgressScreen from "../../app/(tabs)/progress";
 
 describe("Progress tab — skeleton-first paint (H-4 regression pin)", () => {
-  it("renders the skeleton scaffold while data is loading", () => {
-    // Realistic 180-day dataset is only relevant post-load; during the
-    // loading window the render tree is the skeleton regardless of
-    // dataset size. The point of the perf budget is that the FIRST
-    // paint is cheap and dataset-independent, so we assert that path
-    // here and rely on the structural source test for the post-load
-    // gate.
-    //
-    // Note: RNTL's `render` triggers the screen's `useFocusEffect`
-    // callback after the initial paint, which logs a benign "not
-    // wrapped in act()" warning. The warning is noise — we're
-    // deliberately asserting on the snapshot BEFORE the effect fires
-    // state updates, and wrapping `render` in `act()` would unmount
-    // before we could query the tree.
-    const { getByTestId, queryByTestId } = render(<ProgressScreen />);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    // The skeleton ScrollView renders at the top.
-    expect(getByTestId("progress-skeleton")).toBeTruthy();
-    // All four stat-tile placeholders are present.
-    expect(getByTestId("progress-skeleton-tile-0")).toBeTruthy();
-    expect(getByTestId("progress-skeleton-tile-1")).toBeTruthy();
-    expect(getByTestId("progress-skeleton-tile-2")).toBeTruthy();
-    expect(getByTestId("progress-skeleton-tile-3")).toBeTruthy();
+  it("renders the skeleton scaffold while data is loading", async () => {
+    // `useFocusEffect` schedules work after the first paint; React logs a
+    // dev-only "not wrapped in act()" to console.error. Wrapping
+    // `render` in `act()` would flush updates and can unmount the
+    // renderer (never-resolving supabase + effect cleanup) — we only
+    // filter that single warning and keep all other `console.error` output.
+    const origErr = console.error.bind(console);
+    const origWarn = console.warn.bind(console);
+    const filterActNoise = (...args: unknown[]) => {
+      const a0 = args[0];
+      if (typeof a0 !== "string" || !a0.includes("not wrapped in act")) {
+        return false;
+      }
+      return args[1] === "ProgressScreen" || a0.includes("ProgressScreen");
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      if (filterActNoise(...args)) return;
+      (origErr as (...a: unknown[]) => void)(...args);
+    });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
+      if (filterActNoise(...args)) return;
+      (origWarn as (...a: unknown[]) => void)(...args);
+    });
+    try {
+      // Realistic 180-day dataset is only relevant post-load; during the
+      // loading window the render tree is the skeleton regardless of
+      // dataset size. The point of the perf budget is that the FIRST
+      // paint is cheap and dataset-independent, so we assert that path
+      // here and rely on the structural source test for the post-load
+      // gate.
+      const { getByTestId, queryByTestId } = render(<ProgressScreen />);
 
-    // The heavy chart block must NOT be in the initial tree — the
-    // `chartsReady` effect only flips after `loading` clears, and
-    // `loading` is held by the pending supabase mock.
-    expect(queryByTestId("progress-charts-pending")).toBeNull();
-    // The real chart cards' "Daily Calories" header also shouldn't be
-    // mounted yet — this is the load-bearing cross-check that the
-    // skeleton really is replacing the heavy path, not rendering
-    // on top of it.
-    // (We scope the check to the render tree below the skeleton view —
-    // both the skeleton and the loaded path have a `ScrollView` root,
-    // so the only reliable signal is the absence of the chart card.)
+      // The skeleton ScrollView renders at the top.
+      expect(getByTestId("progress-skeleton")).toBeTruthy();
+      // All four stat-tile placeholders are present.
+      expect(getByTestId("progress-skeleton-tile-0")).toBeTruthy();
+      expect(getByTestId("progress-skeleton-tile-1")).toBeTruthy();
+      expect(getByTestId("progress-skeleton-tile-2")).toBeTruthy();
+      expect(getByTestId("progress-skeleton-tile-3")).toBeTruthy();
+
+      // The heavy chart block must NOT be in the initial tree — the
+      // `chartsReady` effect only flips after `loading` clears, and
+      // `loading` is held by the pending supabase mock.
+      expect(queryByTestId("progress-charts-pending")).toBeNull();
+      // The real chart cards' "Daily Calories" header also shouldn't be
+      // mounted yet — this is the load-bearing cross-check that the
+      // skeleton really is replacing the heavy path, not rendering
+      // on top of it.
+      // (We scope the check to the render tree below the skeleton view —
+      // both the skeleton and the loaded path have a `ScrollView` root,
+      // so the only reliable signal is the absence of the chart card.)
+    } finally {
+      // `useFocusEffect` can emit the act() warning one tick after the
+      // sync assertion window — keep the filter until the queue drains.
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          errorSpy.mockRestore();
+          warnSpy.mockRestore();
+          resolve();
+        }, 0);
+      });
+    }
   });
 });

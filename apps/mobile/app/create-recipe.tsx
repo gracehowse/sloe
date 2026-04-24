@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,10 +31,20 @@ try {
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
+import { decodeEntities } from "@/lib/decodeEntities";
 import { supabase } from "@/lib/supabase";
-import FoodSearchModal from "@/components/FoodSearchModal";
+import { authedFetch } from "@/lib/authedFetch";
+import { getSupprApiBase } from "@/lib/supprWeb";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import MealTypePicker from "@/components/MealTypePicker";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
+import { parseIngredientLine } from "../../../src/lib/recipe-ingredients/parseIngredientLine";
+import { parseRawIngredients } from "../../../src/lib/recipe-ingredients/parseRawIngredients";
+import { splitPastedIngredientLines } from "../../../src/lib/recipe-ingredients/splitPastedIngredientLines";
+import { flatMacroRowsFromVerifyJson } from "../../../src/lib/nutrition/verifyRecipeResponse";
+import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
 
 type Ingredient = {
   id: string;
@@ -49,7 +60,110 @@ type Ingredient = {
 };
 
 let _nextId = 0;
-function newIngId() { return `ing_${Date.now()}_${_nextId++}`; }
+function newIngId() {
+  return `ing_${Date.now()}_${_nextId++}`;
+}
+
+type ImageImportNutritionRow = {
+  name?: string;
+  amount?: string;
+  unit?: string;
+  confidence?: number;
+  source?: string;
+  macros?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG?: number;
+    sugarG?: number;
+    sodiumMg?: number;
+  } | null;
+};
+
+function ingredientsFromLinesAndVerify(
+  lines: string[],
+  verifyJson: Record<string, unknown>,
+): Ingredient[] {
+  const rows = flatMacroRowsFromVerifyJson(verifyJson);
+  const out: Ingredient[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    const p = parseIngredientLine(line);
+    const r = rows?.[i];
+    if (r) {
+      out.push({
+        id: newIngId(),
+        name: line,
+        amount: p.amount || "1",
+        unit: p.unit || "",
+        calories: Math.round(r.calories),
+        protein: Math.round(r.protein * 10) / 10,
+        carbs: Math.round(r.carbs * 10) / 10,
+        fat: Math.round(r.fat * 10) / 10,
+        fiberG: Math.round(r.fiber * 10) / 10,
+        source: r.source || "Verified",
+      });
+    } else {
+      out.push({
+        id: newIngId(),
+        name: line,
+        amount: p.amount || "1",
+        unit: p.unit || "",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiberG: 0,
+        source: "Pending",
+      });
+    }
+  }
+  return out;
+}
+
+function ingredientsFromImageResponse(
+  lines: string[],
+  nutrition: { ingredientRows?: ImageImportNutritionRow[] } | null | undefined,
+): Ingredient[] {
+  if (!nutrition?.ingredientRows?.length) {
+    return lines.map((line) => {
+      const p = parseIngredientLine(line.trim());
+      return {
+        id: newIngId(),
+        name: line.trim(),
+        amount: p.amount || "1",
+        unit: p.unit || "",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiberG: 0,
+        source: "Pending",
+      };
+    });
+  }
+  const out: Ingredient[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    const row = nutrition.ingredientRows[i];
+    const p = parseIngredientLine(line);
+    const m = row?.macros;
+    out.push({
+      id: newIngId(),
+      name: line,
+      amount: row?.amount ?? p.amount ?? "1",
+      unit: row?.unit ?? p.unit ?? "",
+      calories: Math.round(m?.calories ?? 0),
+      protein: Math.round((m?.protein ?? 0) * 10) / 10,
+      carbs: Math.round((m?.carbs ?? 0) * 10) / 10,
+      fat: Math.round((m?.fat ?? 0) * 10) / 10,
+      fiberG: Math.round((m?.fiberG ?? 0) * 10) / 10,
+      source: row?.source ?? (m ? "Verified" : "Pending"),
+    });
+  }
+  return out;
+}
 
 export default function CreateRecipeScreen() {
   const insets = useSafeAreaInsets();
@@ -70,6 +184,12 @@ export default function CreateRecipeScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
+  /** When set, the food search modal replaces this ingredient instead of appending. */
+  const [searchReplaceId, setSearchReplaceId] = useState<string | null>(null);
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteDraft, setPasteDraft] = useState("");
+  const [bulkMatching, setBulkMatching] = useState(false);
+  const [imageExtracting, setImageExtracting] = useState(false);
 
   const totals = useMemo(() => {
     return ingredients.reduce(
@@ -91,11 +211,198 @@ export default function CreateRecipeScreen() {
     fat: Math.round(totals.fat / srv),
   };
 
-  const onFoodSelected = useCallback((result: any) => {
+  const mergePastedIngredients = useCallback((built: Ingredient[], mode: "replace" | "append") => {
+    setIngredients((prev) => (mode === "append" ? [...prev, ...built] : built));
+  }, []);
+
+  const matchPastedIngredients = useCallback(async () => {
+    if (!session?.access_token) {
+      Alert.alert("Sign in", "You need to be signed in to match ingredients.");
+      return;
+    }
+    const apiBase = getSupprApiBase();
+    if (!apiBase) {
+      Alert.alert("API not configured", "Set supprApiUrl in app config.");
+      return;
+    }
+    const lines = splitPastedIngredientLines(pasteDraft);
+    if (lines.length === 0) {
+      Alert.alert("Nothing to paste", "Add one ingredient per line (e.g. 2 cups diced tomatoes).");
+      return;
+    }
+    if (lines.length > 60) {
+      Alert.alert("Too many lines", "Use at most 60 ingredients per batch.");
+      return;
+    }
+    const srv = Math.max(1, parseInt(servings, 10) || 1);
+    setBulkMatching(true);
+    try {
+      const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          ingredients: parseRawIngredients(lines),
+          servings: srv,
+        }),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      const rows = flatMacroRowsFromVerifyJson(json);
+      if (!json.ok || !rows?.length) {
+        Alert.alert(
+          "Could not match",
+          (json.message as string) || (json.error as string) || "Try again or shorten the list.",
+        );
+        return;
+      }
+      const built = ingredientsFromLinesAndVerify(lines, json);
+      const needsReview = ingredientVerifyNeedsReview(
+        typeof json.avgIngredientConfidence === "number" ? json.avgIngredientConfidence : undefined,
+        typeof json.minIngredientConfidence === "number" ? json.minIngredientConfidence : undefined,
+      );
+      const apply = (mode: "replace" | "append") => {
+        mergePastedIngredients(built, mode);
+        const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
+        track(AnalyticsEvents.recipe_create_paste_list_matched, {
+          lineCount: lines.length,
+          platform: plat,
+          avgConfidence:
+            typeof json.avgIngredientConfidence === "number" ? json.avgIngredientConfidence : undefined,
+        });
+        if (needsReview) {
+          track(AnalyticsEvents.recipe_verify_needs_review, {
+            source: "create_paste",
+            platform: plat,
+            avgIngredientConfidence:
+              typeof json.avgIngredientConfidence === "number" ? json.avgIngredientConfidence : undefined,
+            minIngredientConfidence:
+              typeof json.minIngredientConfidence === "number" ? json.minIngredientConfidence : undefined,
+          });
+        }
+        setPasteModalOpen(false);
+        setPasteDraft("");
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (needsReview) {
+          Alert.alert(
+            "Review nutrition matches",
+            "Some ingredient lines matched with low confidence. Check each line before saving or publishing.",
+          );
+        }
+      };
+      if (ingredients.length > 0) {
+        Alert.alert(
+          "Add matched ingredients",
+          needsReview
+            ? "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods. Some matches are uncertain—review each row after adding."
+            : "Lines were matched against USDA, Open Food Facts, FatSecret, Edamam, and Suppr foods.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Append", onPress: () => apply("append") },
+            { text: "Replace all", style: "destructive", onPress: () => apply("replace") },
+          ],
+        );
+      } else {
+        apply("replace");
+      }
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Match failed");
+    } finally {
+      setBulkMatching(false);
+    }
+  }, [session?.access_token, pasteDraft, servings, ingredients.length, mergePastedIngredients]);
+
+  const importRecipeFromPhoto = useCallback(async () => {
+    if (!ImagePicker) {
+      Alert.alert("Unavailable", "Photo import needs a development build (not Expo Go).");
+      return;
+    }
+    if (!session?.access_token) {
+      Alert.alert("Sign in", "Sign in to scan a recipe photo.");
+      return;
+    }
+    const apiBase = getSupprApiBase();
+    if (!apiBase) {
+      Alert.alert("API not configured", "Set supprApiUrl in app config.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      base64: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setImageExtracting(true);
+    try {
+      const asset = result.assets[0];
+      const form = new FormData();
+      form.append("image", {
+        uri: asset.uri,
+        name: asset.fileName ?? "photo.jpg",
+        type: asset.mimeType ?? "image/jpeg",
+      } as any);
+
+      const res = await authedFetch(`${apiBase}/api/recipe-import/image`, {
+        method: "POST",
+        body: form,
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        title?: string | null;
+        ingredients?: string[];
+        steps?: string[];
+        message?: string;
+        error?: string;
+        nutrition?: { ingredientRows?: ImageImportNutritionRow[] } | null;
+      };
+      if (res.status === 403 && data.error === "pro_required") {
+        Alert.alert("Pro feature", data.message ?? "Scanning recipe photos requires Pro.");
+        return;
+      }
+      if (!data.ok || !data.ingredients?.length) {
+        Alert.alert(
+          "Could not read photo",
+          data.message ?? data.error ?? "Try a clearer photo of the ingredient list or card.",
+        );
+        return;
+      }
+      const lines = data.ingredients.map((s) => String(s).trim()).filter(Boolean);
+      const decodedTitle = decodeEntities((data.title ?? "").trim());
+      setTitle((t) => (t.trim() ? t : decodedTitle || "Imported recipe"));
+      if (Array.isArray(data.steps) && data.steps.length > 0) {
+        setInstructions((prev) => (prev.trim() ? prev : data.steps!.map((s) => String(s).trim()).join("\n\n")));
+      }
+      setImageUri(asset.uri);
+      const merged = ingredientsFromImageResponse(lines, data.nutrition);
+      const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
+      track(AnalyticsEvents.recipe_create_photo_extracted, {
+        ingredientCount: lines.length,
+        platform: plat,
+        hasServerNutrition: Boolean(data.nutrition?.ingredientRows?.length),
+      });
+      if (ingredients.length > 0) {
+        Alert.alert("Replace ingredients?", "Photo scan found ingredients with database nutrition where possible.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Append", onPress: () => setIngredients((p) => [...p, ...merged]) },
+          { text: "Replace all", style: "destructive", onPress: () => setIngredients(merged) },
+        ]);
+      } else {
+        setIngredients(merged);
+      }
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Error", "Network error while scanning the photo.");
+    } finally {
+      setImageExtracting(false);
+    }
+  }, [session?.access_token, ingredients.length]);
+
+  const onFoodSelected = useCallback((result: SelectedFood) => {
     const grams = result.chosenPortion.gramWeight * result.quantity;
     const f = grams / 100;
-    const newIng: Ingredient = {
-      id: newIngId(),
+    const patch: Omit<Ingredient, "id"> = {
       name: result.name,
       amount: String(result.quantity),
       unit: result.chosenPortion.label,
@@ -106,10 +413,47 @@ export default function CreateRecipeScreen() {
       fiberG: Math.round((result.macrosPer100g.fiberG ?? 0) * f * 10) / 10,
       source: result.source,
     };
-    setIngredients((prev) => [...prev, newIng]);
+    setIngredients((prev) => {
+      if (searchReplaceId) {
+        return prev.map((i) => (i.id === searchReplaceId ? { ...i, ...patch } : i));
+      }
+      return [...prev, { id: newIngId(), ...patch }];
+    });
+    setSearchReplaceId(null);
     setSearchOpen(false);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [searchReplaceId]);
+
+  const openAddIngredientSearch = useCallback(() => {
+    setSearchReplaceId(null);
+    setSearchOpen(true);
   }, []);
+
+  const openReplaceIngredientSearch = useCallback((id: string) => {
+    setSearchReplaceId(id);
+    setSearchOpen(true);
+  }, []);
+
+  const searchModalIngredient = useMemo(
+    () => (searchReplaceId ? ingredients.find((i) => i.id === searchReplaceId) : undefined),
+    [ingredients, searchReplaceId],
+  );
+
+  const foodSearchInitial = useMemo(() => {
+    const ing = searchModalIngredient;
+    if (!ing) {
+      return { query: "", amount: null as number | null, unit: null as string | null, original: null as string | null };
+    }
+    const p = parseIngredientLine(ing.name);
+    const q = p.name.trim() || ing.name.trim();
+    const amt = parseFloat(ing.amount);
+    return {
+      query: q,
+      amount: Number.isFinite(amt) && amt > 0 ? amt : null,
+      unit: ing.unit?.trim() ? ing.unit.trim() : null,
+      original: ing.name.trim(),
+    };
+  }, [searchModalIngredient]);
 
   const removeIngredient = useCallback((id: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
@@ -252,7 +596,6 @@ export default function CreateRecipeScreen() {
     },
     ingName: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text },
     ingDetail: { fontSize: 12, color: colors.textSecondary },
-    ingCals: { fontSize: 14, fontWeight: "700", color: colors.text, marginRight: Spacing.sm },
     removeBtn: { padding: 4 },
 
     addBtn: {
@@ -295,6 +638,38 @@ export default function CreateRecipeScreen() {
       justifyContent: "center", alignItems: "center",
       backgroundColor: colors.card,
     },
+    quickRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+    quickBtn: {
+      flexDirection: "row", alignItems: "center", gap: 6,
+      paddingVertical: 10, paddingHorizontal: 12,
+      borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    quickBtnText: { fontSize: 13, fontWeight: "600", color: colors.text },
+    modalBackdrop: { flex: 1, backgroundColor: "#0007", justifyContent: "flex-end" },
+    modalCard: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: Radius.lg,
+      borderTopRightRadius: Radius.lg,
+      paddingHorizontal: Spacing.xl,
+      paddingTop: Spacing.lg,
+      paddingBottom: Spacing.xl,
+      gap: Spacing.md,
+      maxHeight: "88%",
+    },
+    pasteInput: {
+      minHeight: 160,
+      textAlignVertical: "top" as const,
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: Spacing.md,
+      color: colors.text,
+      fontSize: 15,
+    },
+    modalActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end" },
+    modalBtn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: Radius.md },
     publishRow: {
       flexDirection: "row", alignItems: "center", gap: Spacing.md,
       backgroundColor: colors.card, borderRadius: Radius.md,
@@ -358,19 +733,59 @@ export default function CreateRecipeScreen() {
         {/* Ingredients */}
         <View style={{ gap: Spacing.sm }}>
           <Text style={styles.label}>Ingredients</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+            Paste a list or scan a photo to pre-fill lines. Tap the search icon on any row to pick the correct food from
+            the database if a match looks wrong.
+          </Text>
+          <View style={styles.quickRow}>
+            <Pressable
+              style={[styles.quickBtn, (bulkMatching || !session) && { opacity: 0.45 }]}
+              onPress={() => setPasteModalOpen(true)}
+              disabled={bulkMatching || !session}
+            >
+              <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
+              <Text style={styles.quickBtnText}>Paste list</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.quickBtn, (imageExtracting || !session) && { opacity: 0.45 }]}
+              onPress={() => void importRecipeFromPhoto()}
+              disabled={imageExtracting || !session}
+            >
+              <Ionicons name="scan-outline" size={18} color={Accent.primary} />
+              <Text style={styles.quickBtnText}>Scan photo</Text>
+            </Pressable>
+          </View>
+          {(bulkMatching || imageExtracting) && (
+            <View style={styles.row}>
+              <ActivityIndicator color={Accent.primary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                {imageExtracting ? "Reading recipe from photo…" : "Matching ingredients to database…"}
+              </Text>
+            </View>
+          )}
           {ingredients.map((ing) => (
             <View key={ing.id} style={styles.ingCard}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.ingName}>{ing.name}</Text>
-                <Text style={styles.ingDetail}>{ing.amount} {ing.unit} · {ing.calories} kcal</Text>
+                <Text style={styles.ingDetail}>
+                  {ing.amount} {ing.unit} · {ing.calories} kcal · {ing.source}
+                </Text>
               </View>
-              <Text style={styles.ingCals}>{ing.calories}</Text>
-              <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)}>
+              <Pressable
+                style={styles.removeBtn}
+                onPress={() => openReplaceIngredientSearch(ing.id)}
+                accessibilityRole="button"
+                accessibilityLabel="Search or change ingredient"
+                hitSlop={8}
+              >
+                <Ionicons name="search-outline" size={22} color={Accent.primary} />
+              </Pressable>
+              <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)} accessibilityLabel="Remove ingredient">
                 <Ionicons name="close-circle" size={22} color={Accent.destructive + "80"} />
               </Pressable>
             </View>
           ))}
-          <Pressable style={styles.addBtn} onPress={() => setSearchOpen(true)}>
+          <Pressable style={styles.addBtn} onPress={openAddIngredientSearch}>
             <Ionicons name="add" size={18} color={Accent.primary} />
             <Text style={styles.addBtnText}>Add ingredient</Text>
           </Pressable>
@@ -449,12 +864,59 @@ export default function CreateRecipeScreen() {
         </Pressable>
       </View>
 
+      <Modal visible={pasteModalOpen} animationType="slide" transparent onRequestClose={() => setPasteModalOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => !bulkMatching && setPasteModalOpen(false)}>
+          <Pressable style={[styles.modalCard, { paddingBottom: insets.bottom + Spacing.lg }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.label, { letterSpacing: 0 }]}>Paste ingredient list</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+              One ingredient per line (amounts help). We match each line like MyFitnessPal: USDA, Open Food Facts, FatSecret, Edamam, then Suppr foods.
+            </Text>
+            <TextInput
+              style={styles.pasteInput}
+              value={pasteDraft}
+              onChangeText={setPasteDraft}
+              placeholder={"2 tbsp olive oil\n1 onion, diced\n400g canned tomatoes"}
+              placeholderTextColor={colors.textTertiary}
+              multiline
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.card }]}
+                onPress={() => !bulkMatching && setPasteModalOpen(false)}
+                disabled={bulkMatching}
+              >
+                <Text style={{ fontWeight: "600", color: colors.text }}>Close</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: Accent.primary }]}
+                onPress={() => void matchPastedIngredients()}
+                disabled={bulkMatching}
+              >
+                {bulkMatching ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ fontWeight: "700", color: "#fff" }}>Match</Text>
+                )}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Food search modal */}
       <FoodSearchModal
         visible={searchOpen}
-        initialQuery=""
+        initialQuery={foodSearchInitial.query}
+        initialAmount={foodSearchInitial.amount}
+        initialUnit={foodSearchInitial.unit}
+        originalDescription={foodSearchInitial.original}
+        supabase={supabase}
+        userId={userId ?? null}
         onSelect={onFoodSelected}
-        onClose={() => setSearchOpen(false)}
+        onClose={() => {
+          setSearchOpen(false);
+          setSearchReplaceId(null);
+        }}
       />
     </KeyboardAvoidingView>
   );

@@ -1568,6 +1568,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         open={addIngOpen}
         onOpenChange={setAddIngOpen}
         onAdd={handleAddIngredient}
+        recipeId={recipe.id}
       />
 
       {/* Batch 2.7 — Per-ingredient override dialog */}

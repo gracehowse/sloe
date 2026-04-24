@@ -1,23 +1,49 @@
 appId: com.supprclub.supprapp
 name: "Ensure authenticated (assumes app is already running)"
 ---
-# The auth provider auto-signs in at startup when EXPO_PUBLIC_E2E_AUTH_ENABLED=true
-# is baked into the build. Flows using this helper never interact with the login
-# form — see 30_login_auth.yaml for the only flow that tests login UI directly.
+# Two ways to reach the main tabs:
 #
-# Required build-time env (in apps/mobile/.env when running E2E):
-#   EXPO_PUBLIC_E2E_AUTH_ENABLED=true
-#   EXPO_PUBLIC_E2E_EMAIL=<test account>
-#   EXPO_PUBLIC_E2E_PASSWORD=<test password>
+# A) Auto sign-in: AuthProvider calls signInWithPassword when the **bundled** env has
+#    EXPO_PUBLIC_E2E_AUTH_ENABLED=true plus EXPO_PUBLIC_E2E_EMAIL / EXPO_PUBLIC_E2E_PASSWORD
+#    (set in apps/mobile/.env before `expo run:ios` or present when Metro bundles).
 #
-# IMPORTANT: launch the app once before running the suite via:
+# B) UI sign-in (this file): If the login form is visible, Maestro fills **E2E_EMAIL** /
+#    **E2E_PASSWORD** from `run-maestro-e2e.mjs` (-e flags). You should see taps/typing
+#    on the simulator when auto sign-in is not active.
+#
+# Test user must have profiles.onboarding_completed=true or flows will never see "Today".
+#
+# Launch the app before the suite if needed:
 #   xcrun simctl launch booted com.supprclub.supprapp
-# Maestro's own launchApp under XCUITest stalls the Expo Release build, so
-# this helper does NOT relaunch — it just verifies authenticated state.
+
+- runFlow:
+    when:
+      visible:
+        id: "login-email"
+    commands:
+      - tapOn:
+          id: "login-email"
+          retryTapIfNoChange: true
+      - eraseText: 80
+      - inputText: ${E2E_EMAIL}
+      - tapOn:
+          id: "login-password"
+          retryTapIfNoChange: true
+      - eraseText: 80
+      - inputText: ${E2E_PASSWORD}
+      - tapOn:
+          point: "50%,12%"
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "login-submit"
+          retryTapIfNoChange: true
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
 
 - extendedWaitUntil:
-    visible: ".*Today.*"
-    timeout: 60000
+    visible: ".*(?:Today, tab|Today|LOGGED).*"
+    timeout: 120000
 
 - runFlow:
     when:

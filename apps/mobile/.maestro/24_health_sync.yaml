@@ -3,7 +3,7 @@ name: "Health Sync — screen layout, feature list, connect button"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Navigate to Health Sync via Apple Health row in Connections

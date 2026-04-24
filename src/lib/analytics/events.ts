@@ -370,6 +370,19 @@ export const AnalyticsEvents = {
    *      surface: "upgrade_dialog", platform: "web",
    *      user_tier: "free" | "base" } */
   upsell_variant_dismissed: "upsell_variant_dismissed",
+  /** Create flow: bulk-pasted ingredient lines matched via `POST /api/nutrition/verify-recipe`
+   * (web `RecipeUpload` or mobile `create-recipe`). Payload:
+   * `{ lineCount, platform: "web" | "ios" | "android", avgConfidence?: number }`. */
+  recipe_create_paste_list_matched: "recipe_create_paste_list_matched",
+  /** Create flow: recipe photo OCR on create surface (`POST /api/recipe-import/image`).
+   * Payload: `{ ingredientCount, platform: "web" | "ios" | "android", hasServerNutrition: boolean }`.
+   * Complements `recipe_imported { source: "image" }` on import funnel — this is create UX attribution. */
+  recipe_create_photo_extracted: "recipe_create_photo_extracted",
+  /** Recipe detail / create: verify result had low average or minimum line confidence (mobile + web).
+   * Payload: `{ recipe_id?: string, source: "auto_verify" | "re_verified" | "create_paste" | "add_ingredient_match",
+   *   platform?: "web" | "ios" | "android", avgIngredientConfidence?, minIngredientConfidence? }`.
+   * `recipe_id` omitted on create paste; set on recipe detail / verify flows when the recipe exists. */
+  recipe_verify_needs_review: "recipe_verify_needs_review",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

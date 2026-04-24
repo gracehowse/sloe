@@ -380,13 +380,7 @@ function normalizeQueryForUsda(name: string): string {
   return t;
 }
 
-/** Parse raw ingredient strings (e.g. "200g chicken breast") into structured input. */
-export function parseRawIngredients(lines: string[]): { name: string; amount: string; unit: string }[] {
-  return lines.map((line) => {
-    const p = parseIngredientLine(line);
-    return { name: p.name || line, amount: p.amount || "1", unit: p.unit || "" };
-  });
-}
+export { parseRawIngredients } from "../recipe-ingredients/parseRawIngredients";
 
 /**
  * Verify a list of ingredients against USDA, FatSecret, and local estimation.

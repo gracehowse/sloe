@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "verified": [
+    {
+      "input": { "name": "flour", "amount": "1", "unit": "cup" },
+      "resolved": { "name": "flour", "amount": "1", "unit": "cup" },
+      "fatSecretFoodId": null,
+      "matchedName": "Wheat flour, white",
+      "confidence": 0.88,
+      "source": "USDA",
+      "macros": { "calories": 455, "protein": 13, "carbs": 95, "fat": 1.2, "fiberG": 3.4, "sugarG": 0.3, "sodiumMg": 2 }
+    },
+    {
+      "input": { "name": "eggs", "amount": "2", "unit": "" },
+      "resolved": { "name": "eggs", "amount": "2", "unit": "" },
+      "fatSecretFoodId": null,
+      "matchedName": "Egg, whole, raw",
+      "confidence": 0.9,
+      "source": "USDA",
+      "macros": { "calories": 143, "protein": 13, "carbs": 1, "fat": 10, "fiberG": 0, "sugarG": 0.4, "sodiumMg": 142 }
+    }
+  ],
+  "totals": { "calories": 598, "protein": 26, "carbs": 96, "fat": 11.2, "fiberG": 3.4, "sugarG": 0.7, "sodiumMg": 144 },
+  "perServing": { "calories": 598, "protein": 26, "carbs": 96, "fat": 11.2, "fiberG": 3.4, "sugarG": 0.7, "sodiumMg": 144 },
+  "primarySource": "USDA",
+  "avgIngredientConfidence": 0.89,
+  "minIngredientConfidence": 0.88
+}

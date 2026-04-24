@@ -23,7 +23,8 @@
  *
  * Callers:
  *   - `src/app/components/NutritionTracker.tsx` (web Today)
- *   - `apps/mobile/app/(tabs)/index.tsx` (mobile Today)
+ *   - `apps/mobile/app/(tabs)/index.tsx` (mobile Today — bonus baseline + tile)
+ *   - `apps/mobile/app/burn-detail.tsx` (mobile Activity Bonus breakdown)
  *   - `src/app/components/ProgressDashboard.tsx` (web Progress)
  *   - `apps/mobile/app/(tabs)/progress.tsx` (mobile Progress)
  *

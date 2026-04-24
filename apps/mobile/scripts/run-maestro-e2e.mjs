@@ -67,30 +67,61 @@ function buildChildEnv() {
   return { ...process.env, ...fromRoot, ...fromMobile };
 }
 
+async function sleep(ms) {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Metro can take 15–40s after `expo start` on a cold cache or large monorepo graph.
+ * Maestro only needs `/status` on the host (simulator reaches Metro via the host loopback).
+ */
 async function assertMetroUp(env) {
   const expoUrl = env.EXPO_DEV_SERVER_URL ?? "exp://127.0.0.1:8081";
   const statusUrl = metroStatusUrl(expoUrl);
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 8000);
-  try {
-    const res = await fetch(statusUrl, { signal: ac.signal });
-    const text = await res.text();
-    if (!res.ok || !text.includes("packager-status:running")) {
-      console.error(
-        `[maestro-e2e] Metro not ready at ${statusUrl} (HTTP ${res.status}).`,
-        "\nStart Expo from apps/mobile: `npx expo start` (port must match EXPO_DEV_SERVER_URL).",
-      );
-      process.exit(1);
+  const perAttemptMs = 8000;
+  const attempts = 15;
+  const pauseMs = 2000;
+
+  let lastDetail = "";
+
+  for (let i = 1; i <= attempts; i++) {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), perAttemptMs);
+    try {
+      const res = await fetch(statusUrl, { signal: ac.signal });
+      const text = await res.text();
+      if (res.ok && text.includes("packager-status:running")) {
+        if (i > 1) {
+          console.log(`[maestro-e2e] Metro became ready after ${i} attempt(s) (~${((i - 1) * pauseMs) / 1000}s wait).`);
+        }
+        return;
+      }
+      lastDetail = `HTTP ${res.status} body=${JSON.stringify(text.slice(0, 200))}`;
+    } catch (e) {
+      lastDetail = e instanceof Error ? e.message : String(e);
+    } finally {
+      clearTimeout(t);
     }
-  } catch {
-    console.error(
-      `[maestro-e2e] Cannot reach Metro at ${statusUrl}.`,
-      "\nStart Expo and set EXPO_DEV_SERVER_URL to the exp:// URL Metro prints if not on 8081.",
-    );
-    process.exit(1);
-  } finally {
-    clearTimeout(t);
+
+    if (i < attempts) {
+      console.warn(`[maestro-e2e] Metro not ready yet (${i}/${attempts}): ${lastDetail}`);
+      await sleep(pauseMs);
+    }
   }
+
+  console.error(
+    `[maestro-e2e] Metro never became ready at ${statusUrl}.`,
+    `\nLast error: ${lastDetail}`,
+    "\n\nFix checklist:",
+    "\n  1. Start Metro from this app (not repo root bare `expo`):",
+    "\n       cd apps/mobile && npx expo start",
+    "\n     or from repo root:  npm run mobile:dev",
+    "\n  2. Port in EXPO_DEV_SERVER_URL must match Metro (default exp://127.0.0.1:8081).",
+    "\n  3. If 8081 is stuck:  lsof -i :8081   then kill the old node, or  npx expo start --port 8082",
+    "\n     and export EXPO_DEV_SERVER_URL=exp://127.0.0.1:8082",
+    "\n  4. Stale graph:  npm run start:clear --prefix apps/mobile",
+  );
+  process.exit(1);
 }
 
 warnDisk();

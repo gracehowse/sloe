@@ -4,6 +4,35 @@
 
 All API routes are Next.js Route Handlers at `app/api/`.
 
+## Route index
+
+Canonical implementation paths live under `app/api/**/route.ts`. Detail for heavily used routes is below; every row is implemented.
+
+| Path | Methods | Auth | Purpose |
+|------|---------|------|---------|
+| `/api/recipe-import` | POST | Bearer (see route) | URL / social recipe import |
+| `/api/recipe-import/image` | POST | Bearer + tier | Multipart image → ingredient lines (OpenAI); Free tier **403** |
+| `/api/nutrition/verify-recipe` | POST | Bearer | Ingredient verification pipeline |
+| `/api/nutrition/voice-log` | POST | Bearer + **Pro** | Transcript → parsed items; **403** if not Pro; daily rate limit |
+| `/api/nutrition/photo-log` | POST | Bearer + **Pro** | Multipart photo → items; **403** if not Pro |
+| `/api/nutrition/adaptive-tdee` | GET | Bearer | Static vs adaptive TDEE snapshot for user |
+| `/api/nutrition/analyze-recipe` | POST | Bearer | Edamam full-recipe analysis |
+| `/api/usda/search` | GET | Bearer | USDA FDC search |
+| `/api/usda/food` | GET | Bearer | USDA FDC food detail |
+| `/api/edamam/search` | GET | Bearer | Edamam parser search (`q`, optional `mode`) |
+| `/api/off/barcode` | GET | Bearer (see route) | OFF barcode lookup |
+| `/api/barcode-mapping` | GET/POST | See route | Community barcode mapping |
+| `/api/stripe/checkout` | POST | Bearer | Checkout session |
+| `/api/stripe/webhook` | POST | Stripe signature | Subscription webhooks |
+| `/api/account/delete` | DELETE | Bearer + origin | Full account deletion (service role) |
+| `/api/household` | GET, POST | Bearer | Household read / owner create-reset |
+| `/api/household/join` | POST | Bearer | Join via invite code |
+| `/api/household/leave` | POST | Bearer | Leave household |
+| `/api/household/meals` | GET, POST, DELETE | Bearer | Shared household meals |
+| `/api/user-foods` | GET, POST | Bearer | Community custom foods search / submit |
+| `/api/user-foods/vote` | POST | Bearer | Vote on pending food |
+| `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push |
+
 ## Recipe Import
 
 ### `POST /api/recipe-import`
@@ -298,6 +327,148 @@ stamped so the next cron re-tries them.)
   uses service-role access because the fan-out needs to read every
   opted-in profile (RLS would hide other users' rows) and to write
   back to `profiles` without a user session.
+
+---
+
+## Nutrition — Voice log
+
+### `POST /api/nutrition/voice-log`
+
+**Auth:** Bearer session required. **Tier:** **Pro only** — `403` with `upgrade_required` for `free` / `base`.
+
+**Rate limit:** 100 requests / 24h per user (`voice_log_${userId}`).
+
+**Body:** JSON `{ transcript: string }`.
+
+**Errors:** `401` unauthorized; `403` upgrade_required; `429` rate_limited; `400` invalid_body / missing_transcript; `503` `openai_not_configured` when `OPENAI_API_KEY` unset.
+
+**Runtime:** `nodejs`. Implementation: [app/api/nutrition/voice-log/route.ts](../../app/api/nutrition/voice-log/route.ts).
+
+---
+
+## Nutrition — Photo log
+
+### `POST /api/nutrition/photo-log`
+
+**Auth:** Bearer. **Tier:** **Pro only** — same pattern as voice-log.
+
+**Body:** `multipart/form-data` (image file).
+
+**Errors:** `401`; `403` upgrade_required; `429` rate_limited; `400` expected_multipart / invalid image; `503` OpenAI not configured.
+
+**Runtime:** `nodejs`. Implementation: [app/api/nutrition/photo-log/route.ts](../../app/api/nutrition/photo-log/route.ts).
+
+---
+
+## Nutrition — Adaptive TDEE
+
+### `GET /api/nutrition/adaptive-tdee`
+
+**Auth:** Bearer. Uses **service-role** client scoped to the authenticated `userId`.
+
+**Returns:** Static Mifflin–St Jeor TDEE vs adaptive TDEE, active choice, confidence (see route JSON).
+
+**Errors:** `401`; `404` profile_not_found; `503` server_misconfigured / missing service role.
+
+Implementation: [app/api/nutrition/adaptive-tdee/route.ts](../../app/api/nutrition/adaptive-tdee/route.ts).
+
+---
+
+## Nutrition — Analyze recipe (Edamam)
+
+### `POST /api/nutrition/analyze-recipe`
+
+**Auth:** Bearer. **Requires** Edamam env (`hasEdamamConfig()`).
+
+**Body:** JSON `{ ingredientLines: string[], servings?: number, title?: string }`.
+
+**Rate limit:** 5/min per IP prefix `api:analyze-recipe`.
+
+**Errors:** `401`; `503` not_configured; `429` rate_limited; `400` validation failures.
+
+Implementation: [app/api/nutrition/analyze-recipe/route.ts](../../app/api/nutrition/analyze-recipe/route.ts).
+
+---
+
+## Recipe import — Image
+
+### `POST /api/recipe-import/image`
+
+**Auth:** Bearer. **Tier:** `free` → **403** `pro_required` (Base/Pro allowed).
+
+**Body:** `multipart/form-data`. **Rate limit:** 15/min per user.
+
+**Errors:** `401`; `403` pro_required; `429`; `400` expected_multipart / invalid_body; `503` OpenAI not configured.
+
+Implementation: [app/api/recipe-import/image/route.ts](../../app/api/recipe-import/image/route.ts).
+
+---
+
+## Edamam search
+
+### `GET /api/edamam/search?q=&mode=`
+
+**Auth:** Bearer. **Query:** `q` required (non-empty); `mode` = `foods` (default) or `meals`.
+
+**Rate limit:** 30/min.
+
+**Errors:** `401`; `400` missing_q; `429`; `503` when Edamam not configured.
+
+Implementation: [app/api/edamam/search/route.ts](../../app/api/edamam/search/route.ts).
+
+---
+
+## Household
+
+**Shared notes:** Service role + `assertOrigin` where applicable; responses gate member targets via `share_targets` (see `GET /api/household` docstring).
+
+### `GET /api/household`
+
+**Auth:** Bearer. Returns `{ ok, household }` — `household` may be `null`.
+
+### `POST /api/household`
+
+**Auth:** Bearer (owner flows — invite rotation, create). **`assertOrigin`** runs first (same pattern as other mutating routes). See route for payload branches (`name`, `rotateInvite`).
+
+### `POST /api/household/join`
+
+**Auth:** Bearer. Invite code join; rate-limit guarded. Implementation: [app/api/household/join/route.ts](../../app/api/household/join/route.ts).
+
+### `POST /api/household/leave`
+
+**Auth:** Bearer. Member or owner leave semantics. [app/api/household/leave/route.ts](../../app/api/household/leave/route.ts).
+
+### `GET|POST|DELETE /api/household/meals`
+
+**Auth:** Bearer. Shared meals CRUD; `DELETE` includes IDOR guards (see integration tests).
+
+---
+
+## User foods (community catalog)
+
+### `GET /api/user-foods?q=&limit=`
+
+**Auth:** Bearer. Service-role read of verified / community-visible `user_foods` rows. Min query length 2.
+
+### `POST /api/user-foods`
+
+**Auth:** Bearer. Submit a new community food (barcode + macros); validation and plausibility checks.
+
+### `POST /api/user-foods/vote`
+
+**Auth:** Bearer. Vote on pending entries.
+
+Implementation: [app/api/user-foods/route.ts](../../app/api/user-foods/route.ts), [vote/route.ts](../../app/api/user-foods/vote/route.ts).
+
+---
+
+## Account
+
+### `DELETE /api/account/delete`
+
+**Auth:** Bearer + **origin** check (`assertOrigin`). **Service role** required on server.
+
+Deletes user-owned rows then auth user; **500** if a data delete step fails (auth deletion aborted). See [app/api/account/delete/route.ts](../../app/api/account/delete/route.ts).
 
 ---
 

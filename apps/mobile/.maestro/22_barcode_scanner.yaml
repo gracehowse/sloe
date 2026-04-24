@@ -1,13 +1,15 @@
+# @cases TC-BARCODE-01
+# @screen barcode scanner
 appId: com.supprclub.supprapp
 name: "Barcode Scanner — permission screen, UI elements"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
-# Tap the Scan quick-log button on the Today screen
-- tapOn: ".*Scan.*"
+- tapOn:
+    id: "today-quick-log-scan"
 - waitForAnimationToEnd
 
 # The barcode screen should show either:
@@ -31,5 +33,5 @@ name: "Barcode Scanner — permission screen, UI elements"
       - assertVisible: ".*Point at a product barcode.*"
 
 # Navigate back to Today
-- tapOn: ".*Today.*"
+- tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd

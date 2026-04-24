@@ -1,3 +1,5 @@
+# @cases TC-SEARCH-02
+# @screen FoodSearchModal
 appId: com.supprclub.supprapp
 name: "Food search modal — search, results, portion selection"
 ---
@@ -6,8 +8,8 @@ name: "Food search modal — search, results, portion selection"
 - tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
-# Open food search via the Search quick-log button
-- tapOn: ".*Search.*"
+- tapOn:
+    id: "today-quick-log-search"
 - waitForAnimationToEnd
 
 # Verify food search screen/modal loaded

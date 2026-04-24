@@ -3,7 +3,7 @@ name: "Create Recipe — form fields, ingredient add, totals, validation"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Navigate to Create Recipe via the settings row
@@ -26,6 +26,17 @@ name: "Create Recipe — form fields, ingredient add, totals, validation"
 - assertVisible: ".*Recipe name.*"
 - assertVisible: ".*Servings.*"
 - assertVisible: ".*Ingredients.*"
+
+# Bulk paste entry (opens modal — no API dependency; cancel out)
+- scrollUntilVisible:
+    element: ".*Paste list.*"
+    direction: DOWN
+- tapOn: ".*Paste list.*"
+- waitForAnimationToEnd
+- assertVisible: ".*Paste ingredient list.*"
+- assertVisible: ".*Match.*"
+- tapOn: ".*Close.*"
+- waitForAnimationToEnd
 
 # Verify the Add ingredient button is visible
 - scrollUntilVisible:

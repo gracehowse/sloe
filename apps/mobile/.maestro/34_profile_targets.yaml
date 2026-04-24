@@ -4,10 +4,12 @@ name: "Profile & targets — nutrition goals, dietary prefs, body stats"
 - runFlow: shared/login.yaml
 
 # Navigate to Profile tab
-- tapOn: ".*Profile, tab.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
-# Tap Daily Targets to open the profile editor
+- scrollUntilVisible:
+    element: ".*Daily Targets.*"
+    direction: DOWN
 - tapOn: ".*Daily Targets.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd

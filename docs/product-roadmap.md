@@ -2,7 +2,7 @@
 
 This document extends the MVP hardening work with **nutrition depth**, **activity-adjusted targets**, and **social discovery**. It is the north-star for prioritization; implementation order should follow dependencies below.
 
-**Last reviewed:** 2026-04-18. This is a living doc — update phases as beta feedback arrives.
+**Last reviewed:** 2026-04-23. This is a living doc — update phases as beta feedback arrives.
 
 **Supabase (2026-04-18):** migration drift on the linked prod project is **reconciled** through **`20260421180000`** (`supabase db push --linked`). Process and replay notes: [`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md).
 
@@ -22,7 +22,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 
 | Phase | Theme | State |
 |---|---|---|
-| A | Macro-native meal planning | **Mostly shipped** (fiber, water, caffeine/alcohol, dietary prefs, custom foods, saved combos, copy/duplicate, favourites, leftovers, plan templates) |
+| A | Macro-native meal planning | **Mostly shipped** (fiber, water, caffeine/alcohol, dietary prefs, custom foods, usual-meal bundles, copy/duplicate, favourites, leftovers, plan templates) |
 | B | Activity-adjusted calories + HealthKit | **Shipped on iOS** (HealthKit read/write, adaptive TDEE, deficit projection, burn detail); **web relies on manual burn entry** |
 | C | Daily summary quality / retention | **Mostly shipped** (remaining macros bar, fit-this-in, streak freeze, weekly recap + push, CSV export). Weekly fiber/hydration rollups still TBD |
 | D | Social feed | **Partial** — publish moderation + verified notification are in; discover feed polish, creator loop, and multi-format authoring still TBD |
@@ -42,7 +42,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Caffeine + alcohol tracking** (Batch 2.5). `profiles.target_caffeine_mg` (FDA 400 mg default), `profiles.target_alcohol_g_weekly` (opt-in, row hidden until set). Quick-add chips, week-rolling alcohol sum, factual over-target copy in amber (never red whole-card shame). Shared `hydrationStimulants.ts`.
 - **Dietary requirements + preferences.** `profiles.dietary` stores `vegetarian / vegan / pescatarian / gluten-free / dairy-free / nut-free / halal / kosher` via the canonical `DIETARY_PREFERENCE_ENTRIES` set (`src/constants/dietaryPreferences.ts`). Recipe labeling and discovery filtering apply the same ids. **Coeliac-strict and allergen-ingredient-level filtering is still TBD**.
 - **Custom foods** (Batch 3.9). Homemade / local-only foods with any number of named serving shortcuts (`1 bowl = 80g`). Shared `scaleMacrosForGrams`. Owner-only RLS on `user_custom_foods`. **FoodSearch integration shipped 2026-04-18 (audit C1)** — `FoodSearch.tsx` + `FoodSearchModal.tsx` now list custom foods at top of results with a "Custom" badge, a "+ Create custom food" row always below results, portion chips for named servings, and edit/delete via overflow menu (web) / long-press (mobile). Primary log path on web NutritionTracker inline search still uses legacy USDA-only search (C1a backlog follow-up).
-- **Saved meal combos** (Batch 2.6). 2+ logged items saved as a named bundle, re-logged in one tap from the "My meals" tab. Parent `user_saved_meals` + child `user_saved_meal_items`.
+- **Usual meals** (Batch 2.6 + Ship M1). 2+ logged items saved as a named bundle, re-logged in one tap from the **Usual meals** tab in Quick add. Parent `user_saved_meals` + child `user_saved_meal_items`.
 - **Favourites / Frequent / Recent Quick Add** (Batch 1.3). Tabbed picker; star any meal to one-tap re-log. "Eat again" clock-aware banner. `user_favorite_foods` with unique key on `user_id + lower(title) + round(cal)`.
 - **Copy meal / Duplicate day** (Batch 1.4). Per-meal and per-day copy to single day or inclusive range. Shared `copyMeals.ts`.
 - **Add ingredient + per-ingredient overrides** (Batch 2.7). Add a missed ingredient post-import or pin manual "label values" on one row without losing the match. `recipe_ingredients.override_macros` + `added_by_user`.
@@ -54,6 +54,7 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Allergen / ingredient-level filtering** — ingredient-level gluten detection for coeliac-strict, peanut/tree-nut splits, sesame, shellfish, etc. Current dietary prefs are profile-level flags; recipes tag themselves, but we don't yet inspect the parsed ingredients to catch hidden conflicts.
 - **Hard-filter vs soft-warn policy** — confirm product call for each restriction (see Open decisions below).
 - **Recipe label confidence** — surface *why* a recipe is labelled gluten-free (author tag vs derived).
+- **Period & pregnancy target presets (account-only, non-medical)** — optional profile / Settings modes so users can **re-point calorie and macro targets** when life stage changes (e.g. switch from a weight-loss band to **maintenance** for first trimester, then apply a **user-entered** +kcal delta per trimester or week that mirrors what their clinician suggested). v1 scope: **no** cycle prediction, symptom logging, coaching copy, or implied clinical accuracy — only structured goal edits + honest disclaimers. Surfaces: web + mobile goal / targets flows; may reuse existing target override + provenance fields (`target_calories_source` pattern) for auditability. **Also on public roadmap** (`src/lib/landing/content.ts` → `/roadmap`).
 
 *Depends on:* stable `nutrition_entries` / per-day logging patterns (✅).
 

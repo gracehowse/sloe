@@ -1,17 +1,23 @@
+# @cases TC-IMPORT-01
+# @screen import-shared
 appId: com.supprclub.supprapp
 name: "Import Shared Recipe — idle state, URL input, source grid"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover.*"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
 
-# Tap the import CTA on Discover (if visible)
+- scrollUntilVisible:
+    element: ".*Import from TikTok.*"
+    direction: DOWN
+
+# Tap the Discover import row (avoid matching unrelated "Import" UI)
 - runFlow:
     when:
-      visible: ".*Import.*"
+      visible: ".*Import from TikTok.*"
     commands:
-      - tapOn: ".*Import.*"
+      - tapOn: ".*Import from TikTok.*"
       - waitForAnimationToEnd
 
 # Verify import screen loaded

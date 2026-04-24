@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +32,9 @@ import {
   sanitizeOverrideInput,
   type IngredientOverride,
 } from "../../../src/lib/nutrition/ingredientOverrides";
+import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
 type Theme = {
   text: string;
@@ -79,6 +83,8 @@ type Props = {
   onClose: () => void;
   onAdd: (payload: AddIngredientPayload) => void | Promise<void>;
   colors: Theme;
+  /** When set, low-confidence matches emit `recipe_verify_needs_review` (parity with web `AddIngredientDialog`). */
+  recipeId?: string;
 };
 
 const UNITS = ["g", "ml", "oz", "lb", "tbsp", "tsp", "cup", "piece", "slice"] as const;
@@ -88,7 +94,7 @@ function apiBase(): string {
   return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
-export default function AddIngredientSheet({ visible, onClose, onAdd, colors }: Props) {
+export default function AddIngredientSheet({ visible, onClose, onAdd, colors, recipeId }: Props) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("1");
   const [unit, setUnit] = useState<string>("g");
@@ -148,11 +154,28 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors }: 
         setMatch(null);
         return;
       }
-      const json = (await res.json()) as { ok: boolean; verified?: Match[] };
+      const json = (await res.json()) as {
+        ok: boolean;
+        verified?: Match[];
+        avgIngredientConfidence?: number;
+        minIngredientConfidence?: number;
+      };
       const v = json.ok && Array.isArray(json.verified) ? json.verified[0] : null;
       if (v && v.macros) {
         setMatch(v);
         setMatchError(null);
+        const avg = typeof json.avgIngredientConfidence === "number" ? json.avgIngredientConfidence : v.confidence;
+        const min = typeof json.minIngredientConfidence === "number" ? json.minIngredientConfidence : v.confidence;
+        if (ingredientVerifyNeedsReview(avg, min)) {
+          const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
+          track(AnalyticsEvents.recipe_verify_needs_review, {
+            ...(recipeId ? { recipe_id: recipeId } : {}),
+            source: "add_ingredient_match",
+            platform: plat,
+            avgIngredientConfidence: avg,
+            minIngredientConfidence: min,
+          });
+        }
       } else {
         setMatch(null);
         setMatchError("No confident match. Use manual macros below.");

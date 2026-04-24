@@ -177,6 +177,10 @@ export const ROADMAP: RoadmapBucket[] = [
       { text: "Grocery delivery integrations (Instacart, Amazon Fresh)", status: "planned" },
       { text: "Recipe Q&A with your own saved library", status: "planned" },
       { text: "Garmin, Fitbit, Whoop integrations", status: "planned" },
+      {
+        text: "Period & pregnancy target presets — optional account settings to shift calorie and macro goals (e.g. move from a deficit to maintenance, or apply user-entered per-trimester bumps from your clinician). No cycle prediction, coaching, or medical advice — just clearer goal editing for life changes.",
+        status: "planned",
+      },
     ],
   },
 ];

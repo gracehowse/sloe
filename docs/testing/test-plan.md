@@ -2,9 +2,11 @@
 
 **Audience:** QA / Developers
 
+**How this fits:** Process, tiers, and human-case rules live in [SYSTEM.md](./SYSTEM.md). This file is the **inventory + gap log** for automated tests.
+
 ## Test Inventory
 
-### Unit Tests (28 files tracked here, 226 tests — see gap note below)
+### Unit Tests (curated inventory U01–U44; **~203** files under `tests/unit/` — see gap note)
 
 | ID | File | Tests | Area | Priority |
 |----|------|-------|------|----------|
@@ -53,29 +55,37 @@
 | U40 | `settingsWeekStartRoundTrip.test.ts` | 9 | **M11 audit (2026-04-18) — G8 web week-start round-trip** — mocked supabase-js chainable client; `saveWeekStartDay` userId + invalid-day guards / Monday tap dispatches `update({ week_start_day: "monday" }).eq("id", uid)` / Sunday tap same with "sunday" / supabase error propagates so the UI can roll back local state and toast; `loadWeekStartDay` empty userId skips supabase / hydrates Monday / hydrates Sunday / absent & unknown & null values → null (UI default wins) / error → null (never throws — hydration must not crash the screen). Shared helper `src/lib/nutrition/weekStartDayClient.ts` backs both web `Settings.tsx` and mobile `apps/mobile/app/(tabs)/more.tsx`. | High |
 | U41 | `copyMealDialog.test.tsx` | 5 | **M11 audit (2026-04-18) — F2 web CopyMealDialog** — RTL render test; defaults target to source +1 and fires `onConfirm(["2026-04-18"])` on confirm / custom date input path / `+3 days` chip extends to 3 consecutive days starting from the primary date / picking source as target disables confirm and `onConfirm` is never called / picking source as primary plus active range chip auto-drops the source from the payload (`sanitizeCopyTargets` contract). | High |
 | U42 | `duplicateDayDialog.test.tsx` | 5 | **M11 audit (2026-04-18) — F2 web DuplicateDayDialog** — RTL render test; single-day mode default (source +1) confirms with `[source+1]` / date-range mode expands inclusive range and excludes source day / reversed range (end < start) disables confirm / `sourceMealCount === 0` disables confirm entirely and shows the empty-source copy / custom single-day target picker path. | High |
-| U43 | `foodSearchFitThisIn.test.tsx` | 2 | **M11 audit (2026-04-18) — G16 web fit-this-in reactivity** — RTL render test; mocks `customFoodsClient` with a seeded custom food and stubs `fetch` to empty so the only surfaced result is the seeded one; clicking it opens the portion preview and shows the "If you log this" status region / changing the quantity input from 100 g → 50 g → 200 g updates the projected-remaining kcal (1600 → 1800 → 1200) live / when consumed kcal already leaves only 200 kcal of budget, logging 100 g (400 kcal) flips the hint to "+200 over" framing. Mobile counterpart deferred — `@testing-library/react-native` not installed on `apps/mobile`. | High |
+| U43 | `foodSearchFitThisIn.test.tsx` | 2 | **M11 audit (2026-04-18) — G16 web fit-this-in reactivity** — RTL render test; mocks `customFoodsClient` with a seeded custom food and stubs `fetch` to empty so the only surfaced result is the seeded one; clicking it opens the portion preview and shows the "If you log this" status region / changing the quantity input from 100 g → 50 g → 200 g updates the projected-remaining kcal (1600 → 1800 → 1200) live / when consumed kcal already leaves only 200 kcal of budget, logging 100 g (400 kcal) flips the hint to "+200 over" framing. Mobile parity lives under `apps/mobile/tests/` with `@testing-library/react-native` (see hub “Post-ship #3”). | High |
 | U44 | `apps/mobile/tests/unit/moreWeekStartRoundTrip.test.ts` | 6 | **M11 audit (2026-04-18) — G8 mobile week-start round-trip** — mocked supabase-js chainable client; Monday tap dispatches `update({ week_start_day: "monday" }).eq("id", uid)` / Sunday tap same with "sunday" / supabase error propagates so the More screen can roll back local state and show `Alert` / `loadWeekStartDay` hydrates Monday / hydrates Sunday / absent + unknown + error states all return null. Shares the `src/lib/nutrition/weekStartDayClient.ts` helper with web — a drift in either caller surfaces as a failure on this suite. | High |
 
 **Note:** The unit test inventory above is not exhaustive. As of Apr 2026, `tests/unit/` contains significantly more files than listed (e.g. `adaptiveTdee`, `confidenceGating`, `confidenceScoring`, `deficitProjection`, `dietaryPreferences`, `exportNutritionCsv`, `foodSearchQuery`, `jsonLdEscape`, `mealPlanFingerprint`, `mealPlanSmartFeatures`, `mealPlanTargets`, `nutritionConfidence`, `nutritionSourceBadge`, `nutritionTrackerHelpers`, `offServingPortions`, `pepperDisambiguation`, `rateLimitFallback`, `resolvedTier`, `shoppingListGeneration`, `socialCaptionTimes`, `socialImportSourceName`, `ssrfProtection`, `tdee`, `usdaNormalize`, `weightJourneyBaseline`, and others). This inventory should be brought up to date by running `ls tests/unit/` and adding any missing rows.
 
-### Integration Tests (5 files)
-
-| ID | File | Tests | Area | Priority |
-|----|------|-------|------|----------|
-| I01 | `stripe-webhook-process.test.ts` | 3 | Stripe webhook handling | Critical |
-| I02 | `verify-recipe-route.test.ts` | 2 | Verify API error cases | High |
-| I03 | `recipeImportPipeline.test.ts` | — | End-to-end recipe import pipeline | Critical |
-| I04 | `accountDelete.test.ts` | — | Account deletion data cleanup | High |
-| I05 | `verify-ingredients-*.test.ts` (3 files) | — | Ingredient verification — golden, OFF mock, USDA mock | Critical |
-
-### E2E Tests (4 files)
+### Integration Tests (13 files under `tests/integration/`)
 
 | ID | File | Area | Priority |
 |----|------|------|----------|
-| E01 | `auth-and-public.spec.ts` | Login, public pages | Critical |
-| E02 | `authenticated-views.spec.ts` | App shell views | High |
-| E03 | `suppr-natural-language.spec.ts` | AI-driven tests | Low |
-| E04 | `views-placeholder.spec.ts` | View placeholders | Low |
+| I01 | `stripe-webhook-process.test.ts` | Stripe webhook handling | Critical |
+| I02 | `verify-recipe-route.test.ts` | Verify API error cases | High |
+| I03 | `recipeImportPipeline.test.ts` | Recipe import pipeline | Critical |
+| I04 | `accountDelete.test.ts` | Account deletion gates + transactional abort | High |
+| I05 | `verify-ingredients-golden.test.ts`, `verify-ingredients-off-mock.test.ts`, `verify-ingredients-usda-mock.test.ts` | Ingredient verification | Critical |
+| I06 | `userFoodsVote.test.ts` | User-foods vote route | Medium |
+| I07 | `householdMealsDelete.test.ts` | Household meals DELETE / IDOR | High |
+| I08 | `householdJoinLeaveRoute.test.ts` | Household join/leave + GET gates | High |
+| I09 | `voiceLogRoute.test.ts` | Voice-log auth, tier, body validation | High |
+| I10 | `photoLogRoute.test.ts` | Photo-log auth, tier, multipart | High |
+| I11 | `stripeCheckoutRoute.test.ts` | Checkout auth + invalid tier (route-level) | High |
+
+### E2E Tests (Playwright — 6 spec files)
+
+| ID | File | Area | Priority |
+|----|------|------|----------|
+| E01 | `tests/e2e/journeys/auth-and-public.spec.ts` | Login, public pages | Critical |
+| E02 | `tests/e2e/journeys/authenticated-views.spec.ts` | App shell views | High |
+| E03 | `tests/e2e/journeys/core-flows.spec.ts` | Core journeys | High |
+| E04 | `tests/e2e/journeys/recipe-create-paste.spec.ts` | Recipe create / paste | Medium |
+| E05 | `tests/e2e/ai/suppr-natural-language.spec.ts` | AI-driven tests | Low |
+| E06 | `tests/e2e/ai/views-placeholder.spec.ts` | View placeholders | Low |
 
 ---
 
@@ -316,7 +326,7 @@
 
 ### Mobile Maestro E2E Tests
 
-30 Maestro tests in `apps/mobile/.maestro/` cover the full mobile surface:
+YAML flows under `apps/mobile/.maestro/` cover the mobile surface. The **default ordered suite** (`apps/mobile/.maestro/config.yaml` → `flowsOrder`) runs **29** flows; additional YAML files exist for manual / flaky / long flows (see comments at top of `config.yaml`).
 
 | Test | What it covers |
 |------|---------------|
@@ -351,14 +361,15 @@
 | 28_notifications_prompt | Notification prompt: enable/skip flow |
 | 29_more_menu | Profile/More: all settings sections, widget picker, week start, reset modal |
 
-**In default suite (config.yaml):** 01–22, 24–25, 27, 29 (24 flows).
-**Manual only:** 00_connect, 09_onboarding, 19_paywall, 23_nutrition_sources, 26_recipe_verify, 28_notifications_prompt.
+**In default suite (`flowsOrder`):** login/auth, navigation, today, meal journal, meal plan, profile/settings hubs, recipe detail, burn, progress, voice, search + food-search modal, discover, library, fasting, weight, meal nutrition, shopping, cook mode, macro detail, notifications, create recipe, barcode, health sync, import shared, progress metric, more menu — **29** entries (see `config.yaml` for the exact ordered list).
+
+**Omitted from default suite (by design in `config.yaml`):** `00_connect`, `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt`.
 
 Run all (from `apps/mobile`, with Metro URL + test user): `E2E_EMAIL=… E2E_PASSWORD=… npm run test:e2e` — see `apps/mobile/.maestro/README.md` (`EXPO_DEV_SERVER_URL` defaults to `exp://127.0.0.1:8081` in the npm script).
 
 ## Regression Tests (run weekly)
 
-All unit tests (141) + integration tests (5) + E2E auth tests + all 8 smoke tests + all 30 Maestro mobile E2E tests above.
+Full root `npm test` (all `tests/unit` + `tests/integration`), Playwright specs you care about for the release train, the smoke checklist above, and the **29-flow** Maestro suite from `config.yaml` (or your release override — see `apps/mobile/.maestro/README.md`).
 
 ---
 

@@ -1,3 +1,5 @@
+# @cases TC-JOURNAL-01
+# @screen (tabs)/index
 appId: com.supprclub.supprapp
 name: "Meal journal — day strip, logged meals, long-press actions"
 ---
@@ -44,7 +46,7 @@ name: "Meal journal — day strip, logged meals, long-press actions"
       - waitForAnimationToEnd
       # Should open food logging modal/sheet
       - assertVisible:
-          text: ".*(?:Search|Voice|Photo|Scan|Log|food).*"
+          text: ".*(?:Search|Voice|Snap|Scan|Log|food).*"
       # Dismiss
       - runFlow:
           when:
@@ -68,8 +70,8 @@ name: "Meal journal — day strip, logged meals, long-press actions"
     duration: 400
 - waitForAnimationToEnd
 
-# Verify quick-log buttons are still accessible
-- assertVisible: ".*Photo.*"
+# Quick-log strip
+- assertVisible: ".*Snap.*"
 - assertVisible: ".*Voice.*"
 - assertVisible: ".*Search.*"
 - assertVisible: ".*Scan.*"

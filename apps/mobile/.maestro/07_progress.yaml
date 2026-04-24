@@ -3,7 +3,7 @@ name: "Progress screen — stats, charts, weight journey, time range"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Progress.*"
+- tapOn: ".*Progress, tab.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd

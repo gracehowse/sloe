@@ -1,9 +1,11 @@
+# @cases TC-PLAN-01
+# @screen (tabs)/planner
 appId: com.supprclub.supprapp
 name: "Meal plan — generate, view, shopping list"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Plan.*"
+- tapOn: ".*Plan, tab.*"
 - assertVisible: ".*Meal Plan.*"
 
 # Generate button should be visible
@@ -23,5 +25,18 @@ name: "Meal plan — generate, view, shopping list"
 - assertVisible:
     text: ".*(?:Breakfast|Lunch|Dinner).*"
 
-# Shopping list button should appear
+# Shopping list entry (may require scroll on smaller viewports)
+- scrollUntilVisible:
+    element: ".*Shopping List.*"
+    direction: DOWN
 - assertVisible: ".*Shopping List.*"
+
+# Planner supports horizontal day strip — swipe should not crash
+- swipe:
+    direction: LEFT
+    duration: 300
+- waitForAnimationToEnd
+- swipe:
+    direction: RIGHT
+    duration: 300
+- waitForAnimationToEnd

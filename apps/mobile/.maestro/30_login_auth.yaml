@@ -9,12 +9,12 @@ name: "Login — form validation, error states, successful auth"
     visible: ".*(?:Sign In|Today).*"
     timeout: 90000
 
-# If already authenticated, sign out first via Profile > More
+# If already authenticated, sign out first via More tab > scroll to Sign Out
 - runFlow:
     when:
       visible: ".*Today.*"
     commands:
-      - tapOn: ".*Profile.*"
+      - tapOn: ".*More, tab.*"
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element: ".*Sign Out.*"
@@ -95,10 +95,10 @@ name: "Login — form validation, error states, successful auth"
     id: "login-submit"
     retryTapIfNoChange: true
 
-# Wait for successful navigation — Today screen or onboarding
+# Wait for main tabs (avoid matching onboarding-only copy without the Today surface).
 - extendedWaitUntil:
-    visible: ".*(?:LOGGED|Today|Enter your|What should we call you|Welcome).*"
-    timeout: 60000
+    visible: ".*(?:Today, tab|Today|LOGGED).*"
+    timeout: 90000
 
 # Dismiss any system dialogs
 - runFlow:

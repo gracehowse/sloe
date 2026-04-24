@@ -10,6 +10,7 @@ import type { UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
@@ -387,6 +388,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         if (cm != null && cm > 0) return cm <= 20;
         return true;
       }
+      if (quickFilter === "Popular" && (recipe.savedCount ?? 0) < DISCOVER_POPULAR_MIN_SAVES) return false;
       return true;
     });
   }, [

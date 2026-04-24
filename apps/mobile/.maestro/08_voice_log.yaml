@@ -6,8 +6,8 @@ name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
 - tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 
-# Tap Voice quick-log button
-- tapOn: ".*Voice.*"
+- tapOn:
+    id: "today-quick-log-voice"
 - waitForAnimationToEnd
 
 # M2 (2026-04-18) — free-tier / Base users now see the in-flow
@@ -59,8 +59,8 @@ name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
-# Re-open and dismiss via backdrop again
-- tapOn: ".*Voice.*"
+- tapOn:
+    id: "today-quick-log-voice"
 - waitForAnimationToEnd
 - tapOn:
     point: "50%,10%"

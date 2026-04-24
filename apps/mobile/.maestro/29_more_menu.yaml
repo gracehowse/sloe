@@ -1,9 +1,11 @@
+# @cases TC-MORE-01
+# @screen (tabs)/more
 appId: com.supprclub.supprapp
 name: "More/Profile tab — full settings verification, sign out, danger zone"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Profile.*"
+- tapOn: ".*More, tab.*"
 - waitForAnimationToEnd
 
 # Verify avatar/name area
@@ -21,7 +23,10 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 - assertVisible: ".*Dashboard Widgets.*"
 - assertVisible: ".*Week Starts On.*"
 
-# Verify Connections section
+# Connections + notifications rows sit below the fold on small phones
+- scrollUntilVisible:
+    element: ".*Connections.*"
+    direction: DOWN
 - assertVisible: ".*Connections.*"
 - assertVisible: ".*Apple Health.*"
 - assertVisible: ".*Notifications.*"

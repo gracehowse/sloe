@@ -3,7 +3,7 @@ name: "Recipe detail — ingredients, nutrition, portions, cook, log"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover.*"
+- tapOn: ".*Discover, tab.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 
