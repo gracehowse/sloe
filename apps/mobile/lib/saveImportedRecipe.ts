@@ -24,6 +24,12 @@ export type ApiImportedRecipe = {
   mealType?: string[] | null;
   sourceUrl?: string | null;
   sourceName?: string | null;
+  captionNutrition?: {
+    caloriesPerServing: number | null;
+    proteinG: number | null;
+    carbsG: number | null;
+    fatG: number | null;
+  } | null;
   ingredientMacros?: {
     name: string;
     amount?: string;
@@ -129,6 +135,17 @@ export async function saveImportedRecipe(
       fiber_g: Math.round((recipe.fiberG ?? 0) * 10) / 10,
       sugar_g: Math.round((recipe.sugarG ?? 0) * 10) / 10,
       sodium_mg: Math.round(recipe.sodiumMg ?? 0),
+      // Persist the creator's stated per-serving claim (when extractable)
+      // so the Verify screen can surface a mismatch banner without having
+      // to refetch the caption on every mount.
+      caption_nutrition_claim:
+        recipe.captionNutrition &&
+        (recipe.captionNutrition.caloriesPerServing != null ||
+          recipe.captionNutrition.proteinG != null ||
+          recipe.captionNutrition.carbsG != null ||
+          recipe.captionNutrition.fatG != null)
+          ? recipe.captionNutrition
+          : null,
     })
     .select("id")
     .single();

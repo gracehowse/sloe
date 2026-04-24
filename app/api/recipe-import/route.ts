@@ -10,6 +10,7 @@ import {
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
+import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 
@@ -314,6 +315,7 @@ export async function POST(req: Request) {
                   })),
               primarySource: nutrition?.primarySource ?? "Unverified",
               importedFromWebsite: true,
+              captionNutrition: extractCaptionNutrition(captionText),
             },
           });
         }
@@ -403,6 +405,7 @@ export async function POST(req: Request) {
                 matchedName: null,
               })),
           primarySource: nutrition?.primarySource ?? "Unverified",
+          captionNutrition: extractCaptionNutrition(captionText),
         },
       });
     }
@@ -562,6 +565,13 @@ export async function POST(req: Request) {
           mealType,
           sourceUrl: attribution.source_url,
           sourceName: attribution.source_name,
+          // HTML importer: the recipe description is usually the creator's
+          // intro text and frequently contains per-serving macro claims.
+          // Pulling it through the same extractor means website imports
+          // also get the caption-vs-calculated sanity check.
+          captionNutrition: extractCaptionNutrition(
+            [parsed.description, parsed.title].filter(Boolean).join("\n\n"),
+          ),
         },
       });
     }

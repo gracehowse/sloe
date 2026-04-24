@@ -1,6 +1,7 @@
 import React from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { Accent } from "@/constants/theme";
+import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
 
 /**
  * TodayPlannedMealsCard — "Planned" list on the Today screen when the
@@ -16,6 +17,8 @@ export type TodayPlannedMealEntry = {
   protein?: number;
   carbs?: number;
   fat?: number;
+  /** Lets the Today log path pull fiber/sugar/sodium from the saved recipe. */
+  recipe_id?: string | null;
 };
 
 export interface TodayPlannedMealsCardProps {
@@ -39,8 +42,12 @@ export function TodayPlannedMealsCard({
           <View style={{ flex: 1 }}>
             <Text style={[styles.mealName, { opacity: 0.7 }]}>{pm.recipe_title ?? pm.name}</Text>
             <Text style={styles.mealMeta}>
-              {Math.round(pm.calories ?? 0)} kcal · P {Math.round(pm.protein ?? 0)}g · C {Math.round(pm.carbs ?? 0)}g · F{" "}
-              {Math.round(pm.fat ?? 0)}g
+              {formatPlannedMealKcalMacrosLine(
+                Number(pm.calories) || 0,
+                Number(pm.protein) || 0,
+                Number(pm.carbs) || 0,
+                Number(pm.fat) || 0,
+              )}
             </Text>
           </View>
           <Pressable

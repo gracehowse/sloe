@@ -62,6 +62,12 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
+import {
+  findLegacyPlanDayForCalendarDate,
+  findPlanDayIdForCalendarDate,
+} from "../../../../src/lib/mealPlan/planCalendarAnchor";
+import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+import { fetchPlannedMealMicros, type SupabaseLike } from "../../../../src/lib/planning/plannedMealMicros";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
@@ -349,7 +355,7 @@ export default function TrackerScreen() {
   const [activityBonusCaloriesOnly, setActivityBonusCaloriesOnly] = useState(false);
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
-  const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number}>>([]);
+  const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}>>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
   // Target fast length in hours, parsed from `profiles.fasting_window`
   // (stored as "16:8" style). Defaults to 16 until the profile loads.
@@ -380,6 +386,8 @@ export default function TrackerScreen() {
   const [editPortion, setEditPortion] = useState("1");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
+  /** Avoid double-fetch on mount (useFocusEffect already loads the journal). */
+  const skipJournalReloadOnFirstDateEffect = useRef(true);
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
@@ -2131,16 +2139,14 @@ export default function TrackerScreen() {
       return out;
     };
 
-    // M9 (2026-04-21) — `nutrition_entries` and the top-of-day
-    // `meal_plan_days` lookup are independent (different tables,
-    // different filters). Kick both off in parallel; the dependent
-    // `meal_plan_meals` fetch below still waits on `dayRow` because
-    // it uses the returned id. Sequential execution used to cost us
-    // the round-trip difference on every tab focus.
-    const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    // M9 (2026-04-21) — `nutrition_entries` and all `meal_plan_days`
+    // rows load in parallel; `meal_plan_meals` still follows in a
+    // second round-trip once we know which plan-day id matches the
+    // journal `selectedDate` (plan index ≠ weekday — see
+    // `planCalendarAnchor.ts`).
     const [
       { data: rows, error },
-      { data: dayRow },
+      { data: planDayRows },
     ] = await Promise.all([
       supabase
         .from("nutrition_entries")
@@ -2151,12 +2157,18 @@ export default function TrackerScreen() {
         .limit(20_000),
       supabase
         .from("meal_plan_days")
-        .select("id")
+        .select("id, day")
         .eq("user_id", userId)
-        .eq("day", todayDow)
         .eq("slot_id", "default")
-        .maybeSingle(),
+        .order("day", { ascending: true }),
     ]);
+    const planDayId =
+      planDayRows && planDayRows.length > 0
+        ? findPlanDayIdForCalendarDate(
+            planDayRows as { id: string; day: number }[],
+            selectedDate,
+          )
+        : null;
 
     let loaded: ByDay = {};
 
@@ -2200,26 +2212,34 @@ export default function TrackerScreen() {
     }
     setHydrated(true);
 
-    // Today's planned meals: the `meal_plan_days` row was fetched in
-    // parallel above (M9). We now use `dayRow` to drive the dependent
-    // `meal_plan_meals` fetch, or fall back to legacy JSON when the
-    // relational day row is missing.
-    if (dayRow?.id) {
+    // Planned meals for the journal `selectedDate`: `meal_plan_days.day`
+    // is plan index 1..7 (same as Plan tab), not weekday — match via
+    // calendar date + start offsets (today / tomorrow / next week).
+    if (planDayId) {
       const { data: mealRows } = await supabase
         .from("meal_plan_meals")
-        .select("name, recipe_title, calories, protein, carbs, fat")
-        .eq("plan_day_id", dayRow.id)
+        .select("name, recipe_title, calories, protein, carbs, fat, recipe_id")
+        .eq("plan_day_id", planDayId)
         .order("slot_index", { ascending: true });
       if (mealRows && mealRows.length > 0) {
         setPlannedMeals(
-          mealRows.map((m) => ({
-            name: (m.name as string) ?? "",
-            recipe_title: (m.recipe_title as string) ?? "",
-            calories: (m.calories as number) ?? 0,
-            protein: (m.protein as number) ?? 0,
-            carbs: (m.carbs as number) ?? 0,
-            fat: (m.fat as number) ?? 0,
-          })),
+          mealRows.map((m) => {
+            const coerced = coerceMacrosWhenCaloriesButNoGrams({
+              calories: (m.calories as number) ?? 0,
+              protein: (m.protein as number) ?? 0,
+              carbs: (m.carbs as number) ?? 0,
+              fat: (m.fat as number) ?? 0,
+            });
+            return {
+              name: (m.name as string) ?? "",
+              recipe_title: (m.recipe_title as string) ?? "",
+              calories: coerced.calories,
+              protein: coerced.protein,
+              carbs: coerced.carbs,
+              fat: coerced.fat,
+              recipe_id: (m.recipe_id as string | null) ?? null,
+            };
+          }),
         );
       } else {
         setPlannedMeals([]);
@@ -2237,23 +2257,42 @@ export default function TrackerScreen() {
       };
       type LegacyDay = { day: number; meals?: LegacyMeal[] };
       if (planJson != null && Array.isArray(planJson)) {
-        const dayPlan = (planJson as LegacyDay[]).find((d) => d.day === todayDow);
+        const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
         const meals = dayPlan?.meals ?? [];
         setPlannedMeals(
-          meals.map((m) => ({
-            name: m.name,
-            recipe_title: m.recipeTitle ?? m.recipe_title,
-            calories: m.calories,
-            protein: m.protein,
-            carbs: m.carbs,
-            fat: m.fat,
-          })),
+          meals.map((m) => {
+            const coerced = coerceMacrosWhenCaloriesButNoGrams({
+              calories: Number(m.calories) || 0,
+              protein: Number(m.protein) || 0,
+              carbs: Number(m.carbs) || 0,
+              fat: Number(m.fat) || 0,
+            });
+            return {
+              name: m.name,
+              recipe_title: m.recipeTitle ?? m.recipe_title,
+              calories: coerced.calories,
+              protein: coerced.protein,
+              carbs: coerced.carbs,
+              fat: coerced.fat,
+            };
+          }),
         );
       } else {
         setPlannedMeals([]);
       }
     }
-  }, [userId]);
+  }, [userId, selectedDate]);
+
+  // Re-resolve planned meals when the journal date changes (focus alone
+  // does not re-run when the user stays on this tab and swipes dates).
+  useEffect(() => {
+    if (skipJournalReloadOnFirstDateEffect.current) {
+      skipJournalReloadOnFirstDateEffect.current = false;
+      return;
+    }
+    if (!userId) return;
+    void loadJournal();
+  }, [selectedDate, userId, loadJournal]);
 
   // Reload journal + targets every time this tab comes into focus
   useFocusEffect(
@@ -2660,13 +2699,22 @@ export default function TrackerScreen() {
 
   const logPlannedMealWithPortion = useCallback(
     async (
-      pm: { name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number },
+      pm: { name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null },
       portion: number,
     ) => {
       if (!userId) return;
       const mult = Math.max(0.125, Math.min(24, portion));
       const entryId = newMealId();
       const dk = dateKeyFromDate(selectedDate);
+      // Pull fiber/sugar/sodium off the saved recipe row so the journal
+      // entry carries more than just kcal/P/C/F. `meal_plan_meals`
+      // doesn't store these (migration 20260413100000), but `recipes`
+      // does via the verify flow.
+      const microsRes = await fetchPlannedMealMicros(
+        supabase as unknown as SupabaseLike,
+        pm.recipe_id ?? null,
+        mult,
+      );
       const { error } = await supabase.from("nutrition_entries").insert({
         id: entryId,
         user_id: userId,
@@ -2678,8 +2726,9 @@ export default function TrackerScreen() {
         protein: Math.round((pm.protein ?? 0) * mult * 10) / 10,
         carbs: Math.round((pm.carbs ?? 0) * mult * 10) / 10,
         fat: Math.round((pm.fat ?? 0) * mult * 10) / 10,
-        fiber_g: (pm as any).fiber_g != null ? Math.round(Number((pm as any).fiber_g) * mult * 10) / 10 : null,
-        water_ml: (pm as any).water_ml != null ? Math.round(Number((pm as any).water_ml) * mult) : null,
+        fiber_g: microsRes.fiberG,
+        water_ml: null,
+        nutrition_micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : {},
         portion_multiplier: mult,
         source: "Meal plan",
       });

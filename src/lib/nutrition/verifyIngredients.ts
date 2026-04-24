@@ -308,7 +308,10 @@ const NAME_ALIASES: [RegExp, string][] = [
   [/^honey$/i, "honey"],
   [/^salmon$/i, "salmon atlantic raw"],
   [/^tuna$/i, "tuna light canned"],
-  [/^tofu$/i, "tofu firm raw"],
+  // Silken tofu must come BEFORE the bare-tofu alias so it isn't
+  // rewritten to firm (firm ≈ 145 kcal/100 g vs silken ≈ 55 kcal/100 g).
+  [/\bsilken tofu\b/i, "tofu silken"],
+  [/^(?!.*\bsilken\b)tofu$/i, "tofu firm raw"],
   // Poultry cuts
   [/^chicken breasts?$/i, "chicken breast meat raw"],
   [/^chicken thighs?$/i, "chicken thigh meat raw"],
@@ -344,7 +347,7 @@ const NAME_ALIASES: [RegExp, string][] = [
   [/\bpancetta\b/i, "pancetta pork cured"],
 ];
 
-function applyNameAliases(name: string): string {
+export function applyNameAliases(name: string): string {
   let result = name;
   for (const [pattern, replacement] of NAME_ALIASES) {
     result = result.replace(pattern, replacement);
@@ -352,7 +355,7 @@ function applyNameAliases(name: string): string {
   return result;
 }
 
-function normalizeQueryForUsda(name: string): string {
+export function normalizeQueryForUsda(name: string): string {
   // Extract ingredient hints from parenthetical notes like "(we used unsweetened almond milk)"
   // or "(such as cheddar)" — use the hint as the primary search term instead of discarding it
   let t = name;
@@ -361,6 +364,15 @@ function normalizeQueryForUsda(name: string): string {
     t = parenHint[1]!;
   } else {
     t = t.replace(/\([^)]*\)/g, " ");
+  }
+  // Compound "X or Y" ingredient names (e.g. "blonde or white chocolate")
+  // confuse the matcher — the disjunction pulls the top hit toward neither.
+  // Keep the second branch, which is typically the more common/searchable
+  // term ("white chocolate" > "blonde chocolate"). Only split when both
+  // sides look like ingredient words, not when "or" is part of a descriptor.
+  const orSplit = t.match(/^(.+?)\s+or\s+(.+)$/i);
+  if (orSplit && orSplit[1]!.split(/\s+/).length <= 3 && orSplit[2]!.split(/\s+/).length <= 4) {
+    t = orSplit[2]!;
   }
   t = t
     .replace(/[,，].*$/g, " ")

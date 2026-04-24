@@ -68,6 +68,8 @@ export type TodayMealSectionPlanEntry = {
   carbs: number;
   fat: number;
   isPlaceholder?: boolean;
+  /** Lets the Today log path pull fiber/sugar/sodium from the saved recipe. */
+  recipeId?: string | null;
 };
 
 export interface TodayMealsSectionProps {

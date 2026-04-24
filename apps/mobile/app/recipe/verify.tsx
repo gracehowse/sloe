@@ -22,6 +22,7 @@ import {
   fetchIngredientsForVerification,
   saveVerifiedIngredients,
   scaleMacros,
+  totalGramsForVerifyScale,
   parseIngredientForSearch,
   sourceLabel,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
@@ -47,6 +48,10 @@ import {
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { classifyConfidence } from "../../../../src/lib/nutrition/aiLogging";
+import {
+  nutritionDelta,
+  type CaptionNutritionClaim,
+} from "../../../../src/lib/recipe-import/extractCaptionNutrition";
 
 /** Standard units always available for editing */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -66,6 +71,7 @@ export default function VerifyScreen() {
   const recipeId = typeof id === "string" ? id : "";
 
   const [recipe, setRecipe] = useState<{ title: string; servings: number } | null>(null);
+  const [captionClaim, setCaptionClaim] = useState<CaptionNutritionClaim | null>(null);
   const [ingredients, setIngredients] = useState<VerifiableIngredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,11 +87,23 @@ export default function VerifyScreen() {
     let cancelled = false;
     (async () => {
       const [recipeRes, ings] = await Promise.all([
-        supabase.from("recipes").select("title, servings").eq("id", recipeId).maybeSingle(),
+        supabase
+          .from("recipes")
+          .select("title, servings, caption_nutrition_claim")
+          .eq("id", recipeId)
+          .maybeSingle(),
         fetchIngredientsForVerification(recipeId),
       ]);
       if (cancelled) return;
-      if (recipeRes.data) setRecipe(recipeRes.data as any);
+      if (recipeRes.data) {
+        const r = recipeRes.data as {
+          title: string;
+          servings: number;
+          caption_nutrition_claim?: CaptionNutritionClaim | null;
+        };
+        setRecipe({ title: r.title, servings: r.servings });
+        setCaptionClaim(r.caption_nutrition_claim ?? null);
+      }
       setIngredients(ings);
       setLoading(false);
     })();
@@ -169,7 +187,7 @@ export default function VerifyScreen() {
 
   // Barcode scan
   const onBarcodeScanned = useCallback(
-    (barcode: string, product: BarcodeProduct) => {
+    (_barcode: string, product: BarcodeProduct) => {
       if (barcodeIndex == null) return;
       const ing = ingredients[barcodeIndex];
       if (!ing) return;
@@ -178,12 +196,28 @@ export default function VerifyScreen() {
         carbs: product.carbs, fat: product.fat,
         fiberG: product.fiberG, sugarG: 0, sodiumMg: 0,
       };
-      const grams = ing.unit === "g" && ing.amount ? ing.amount : product.servingSizeG ?? 100;
-      const scaled = scaleMacros(per100g, grams);
+      const defaultGrams =
+        ing.unit === "g" && ing.amount != null && ing.amount > 0
+          ? ing.amount
+          : product.servingSizeG ?? 100;
+      const offPortions: FoodPortion[] = (product.servingOptions ?? []).map((o) => ({
+        label: o.label,
+        gramWeight: o.grams,
+        amount: 1,
+      }));
+      const seen = new Set(offPortions.map((p) => p.label));
+      const mergedPortions = [...offPortions, ...STANDARD_UNITS.filter((s) => !seen.has(s.label))];
+      const chosenPortion: FoodPortion = { label: "g", gramWeight: 1, amount: 1 };
+      const scaled = scaleMacros(per100g, defaultGrams);
       updateIngredient(barcodeIndex, {
         matchedName: product.name, source: "OFF",
         confidence: 1.0, isVerified: true,
-        macrosPer100g: per100g, ...scaled,
+        macrosPer100g: per100g,
+        portions: mergedPortions,
+        chosenPortion,
+        unit: "g",
+        amount: defaultGrams,
+        ...scaled,
       });
       setBarcodeIndex(null);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -197,9 +231,8 @@ export default function VerifyScreen() {
       const num = parseFloat(text) || null;
       const ing = ingredients[index];
       if (!ing) return;
-      if (ing.macrosPer100g && num && num > 0) {
-        const gramsPer = ing.chosenPortion?.gramWeight ?? 100;
-        const grams = gramsPer * num;
+      if (ing.macrosPer100g && num != null && num > 0) {
+        const grams = totalGramsForVerifyScale({ ...ing, amount: num }, num);
         const scaled = scaleMacros(ing.macrosPer100g, grams);
         updateIngredient(index, { amount: num, ...scaled });
       } else {
@@ -224,7 +257,8 @@ export default function VerifyScreen() {
       }
       const updates: Partial<VerifiableIngredient> = { chosenPortion: portion, unit: portion.label, amount: qty };
       if (ing.macrosPer100g && qty > 0) {
-        const grams = portion.gramWeight * qty;
+        const nextIng: VerifiableIngredient = { ...ing, ...updates, amount: qty };
+        const grams = totalGramsForVerifyScale(nextIng, qty);
         Object.assign(updates, scaleMacros(ing.macrosPer100g, grams));
       }
       updateIngredient(index, updates);
@@ -411,6 +445,30 @@ export default function VerifyScreen() {
     recipeName: { fontSize: 22, fontWeight: "700", color: colors.text },
     subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md },
 
+    claimBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      backgroundColor: "#FEF3C7",
+      borderColor: "#FDE68A",
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      marginBottom: Spacing.md,
+    },
+    claimBannerTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: "#92400E",
+      lineHeight: 18,
+    },
+    claimBannerBody: {
+      fontSize: 12,
+      color: "#92400E",
+      marginTop: 2,
+      lineHeight: 16,
+    },
+
     // Totals card
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
@@ -520,6 +578,33 @@ export default function VerifyScreen() {
           </Text>
         )}
 
+        {(() => {
+          if (!captionClaim) return null;
+          const delta = nutritionDelta(captionClaim, totals.perServing.calories);
+          if (!delta.materiallyDiverges || captionClaim.caloriesPerServing == null) return null;
+          const over = (delta.caloriesDelta ?? 0) > 0;
+          return (
+            <View style={styles.claimBanner}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color="#B45309"
+                style={{ marginRight: 8, marginTop: 1 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.claimBannerTitle}>
+                  Creator says {captionClaim.caloriesPerServing} kcal/serving — we calculated{" "}
+                  {totals.perServing.calories}.
+                </Text>
+                <Text style={styles.claimBannerBody}>
+                  {over ? "Likely an over-match" : "Likely a missed ingredient"} — tap ingredients
+                  below to check.
+                </Text>
+              </View>
+            </View>
+          );
+        })()}
+
         {/* Live totals */}
         <View style={styles.totalsCard}>
           <Text style={styles.totalsLabel}>
@@ -553,7 +638,12 @@ export default function VerifyScreen() {
           const needsReview =
             !ing.isVerified || ing.confidence < RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
           const displayName = decodeEntities(ing.matchedName ?? ing.name);
-          const amountStr = ing.amount != null ? `${ing.amount}${ing.unit ? ` ${ing.unit}` : ""}` : "";
+          const amountStr =
+            ing.amount != null && ing.unit
+              ? `${ing.amount} × ${ing.unit}`
+              : ing.amount != null
+                ? String(ing.amount)
+                : "";
           const rowHasOverride = hasOverride(ing);
           const rowAdded = Boolean(ing.addedByUser);
           // When an override is present we show the effective calories so the
@@ -699,7 +789,7 @@ export default function VerifyScreen() {
                       {ing.chosenPortion?.label ?? ing.unit ?? "g"}
                     </Text>
                     <Text style={{ fontSize: 11, color: colors.textTertiary }}>
-                      = {Math.round((ing.chosenPortion?.gramWeight ?? 1) * (ing.amount ?? 1) * 10) / 10} g
+                      = {Math.round(totalGramsForVerifyScale(ing, ing.amount ?? 0) * 10) / 10} g
                     </Text>
                   </View>
 

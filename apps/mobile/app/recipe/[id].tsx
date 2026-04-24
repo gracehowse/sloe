@@ -794,6 +794,9 @@ export default function RecipeDetailScreen() {
       protein: Math.round(macros.protein * logPortion * 10) / 10,
       carbs: Math.round(macros.carbs * logPortion * 10) / 10,
       fat: Math.round(macros.fat * logPortion * 10) / 10,
+      fiber_g: macros.fiber_g > 0 ? Math.round(macros.fiber_g * logPortion * 10) / 10 : null,
+      sugar_g: macros.sugar_g > 0 ? Math.round(macros.sugar_g * logPortion * 10) / 10 : null,
+      sodium_mg: macros.sodium_mg > 0 ? Math.round(macros.sodium_mg * logPortion) : null,
     }),
     [macros, logPortion],
   );
@@ -805,6 +808,9 @@ export default function RecipeDetailScreen() {
       const dk = dateKeyFromDate(new Date());
       const slot = journalSlotFromMealTypes(recipe.meal_type);
       const mult = Math.max(0.125, Math.min(24, logPortion));
+      const micros: Record<string, number> = {};
+      if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
+      if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
       const { error } = await supabase.from("nutrition_entries").insert({
         id: newMealId(),
         user_id: userId,
@@ -816,6 +822,8 @@ export default function RecipeDetailScreen() {
         protein: scaledForLog.protein,
         carbs: scaledForLog.carbs,
         fat: scaledForLog.fat,
+        fiber_g: scaledForLog.fiber_g,
+        nutrition_micros: Object.keys(micros).length > 0 ? micros : {},
         portion_multiplier: mult,
         source: "Recipe",
       });

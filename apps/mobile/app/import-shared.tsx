@@ -31,6 +31,10 @@ import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
 import MealTypePicker from "@/components/MealTypePicker";
+import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
+import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
+import { scaleMacros } from "@/lib/verifyRecipe";
+import { parseIngredientForSearch } from "@/lib/verifyRecipe";
 import {
   extractUrlFromShareText,
   urlFromDeepLink,
@@ -76,6 +80,31 @@ function normalizeApiImportedRecipe(raw: Record<string, unknown>): ApiImportedRe
 function nutritionRescale(recipe: ApiImportedRecipe, draftStr: string) {
   const base = Math.max(1, recipe.servings ?? 1);
   const draft = parseRecipeYieldDraft(draftStr, base);
+  // When the user has edited ingredient matches (tap-to-search or
+  // override on the preview), recipe-level `calories` is the stale
+  // import-time number. Prefer the live sum over `ingredientMacros`
+  // so the preview header reflects whatever the user just did.
+  const macros = Array.isArray(recipe.ingredientMacros) ? recipe.ingredientMacros : [];
+  const hasEdited = macros.some((m) => (m.calories ?? 0) > 0);
+  if (hasEdited) {
+    const total = macros.reduce(
+      (acc, m) => ({
+        calories: acc.calories + (m.calories ?? 0),
+        protein: acc.protein + (m.protein ?? 0),
+        carbs: acc.carbs + (m.carbs ?? 0),
+        fat: acc.fat + (m.fat ?? 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    );
+    return {
+      draft,
+      factor: 1 / draft,
+      calories: Math.round(total.calories / draft),
+      protein: Math.round((total.protein / draft) * 10) / 10,
+      carbs: Math.round((total.carbs / draft) * 10) / 10,
+      fat: Math.round((total.fat / draft) * 10) / 10,
+    };
+  }
   const factor = base / draft;
   return {
     draft,
@@ -110,6 +139,12 @@ export default function ImportSharedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [manualUrl, setManualUrl] = useState("");
   const [pendingRecipe, setPendingRecipe] = useState<ApiImportedRecipe | null>(null);
+  // Index of the ingredient row currently being edited via the
+  // food-search modal (tap) or the override sheet (long-press). Null
+  // when no sheet is open. Kept separate from `pendingRecipe` so
+  // dismissing a sheet doesn't perturb the underlying recipe state.
+  const [searchIngredientIdx, setSearchIngredientIdx] = useState<number | null>(null);
+  const [overrideIngredientIdx, setOverrideIngredientIdx] = useState<number | null>(null);
   const [reviewServingsDraft, setReviewServingsDraft] = useState("1");
   const [servingsEditorOpen, setServingsEditorOpen] = useState(false);
   const [mealTags, setMealTags] = useState<string[]>([]);
@@ -363,6 +398,71 @@ export default function ImportSharedScreen() {
     if (!pendingRecipe) return null;
     return nutritionRescale(pendingRecipe, reviewServingsDraft);
   }, [pendingRecipe, reviewServingsDraft]);
+
+  /** Replace one ingredient's match with a food-search result (tap path). */
+  const onIngredientSearchSelected = useCallback(
+    (result: SelectedFood) => {
+      const idx = searchIngredientIdx;
+      if (idx == null) return;
+      setPendingRecipe((prev) => {
+        if (!prev || !Array.isArray(prev.ingredientMacros)) return prev;
+        const grams = result.chosenPortion.gramWeight * result.quantity;
+        const scaled = scaleMacros(result.macrosPer100g, grams);
+        const next = prev.ingredientMacros.map((row, i) =>
+          i === idx
+            ? {
+                ...row,
+                name: row.name, // preserve original raw line for reference
+                amount: String(result.quantity),
+                unit: result.chosenPortion.label,
+                calories: scaled.calories,
+                protein: scaled.protein,
+                carbs: scaled.carbs,
+                fat: scaled.fat,
+                fiberG: scaled.fiberG,
+                sugarG: scaled.sugarG,
+                sodiumMg: scaled.sodiumMg,
+                source: result.source,
+              }
+            : row,
+        );
+        return { ...prev, ingredientMacros: next };
+      });
+      setSearchIngredientIdx(null);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [searchIngredientIdx],
+  );
+
+  /** Directly overwrite one row's macros (long-press / override path). */
+  const onIngredientOverrideSaved = useCallback(
+    (override: { calories: number; protein: number; carbs: number; fat: number; fiber?: number }) => {
+      const idx = overrideIngredientIdx;
+      if (idx == null) return;
+      setPendingRecipe((prev) => {
+        if (!prev || !Array.isArray(prev.ingredientMacros)) return prev;
+        const next = prev.ingredientMacros.map((row, i) =>
+          i === idx
+            ? {
+                ...row,
+                calories: Math.round(override.calories),
+                protein: Math.round(override.protein * 10) / 10,
+                carbs: Math.round(override.carbs * 10) / 10,
+                fat: Math.round(override.fat * 10) / 10,
+                ...(override.fiber != null
+                  ? { fiberG: Math.round(override.fiber * 10) / 10 }
+                  : {}),
+                source: "Override",
+              }
+            : row,
+        );
+        return { ...prev, ingredientMacros: next };
+      });
+      setOverrideIngredientIdx(null);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [overrideIngredientIdx],
+  );
 
   const confirmSave = useCallback(async () => {
     if (!pendingRecipe || !userId) return;
@@ -862,6 +962,60 @@ export default function ImportSharedScreen() {
       letterSpacing: 0.5,
       marginBottom: Spacing.sm,
     },
+
+    // Editable ingredient list on the import preview (pre-save).
+    // Rows are tap-to-search / long-press-to-override, so they need to
+    // read as interactive — not just as a static list.
+    importIngList: {
+      alignSelf: "stretch",
+      marginTop: Spacing.md,
+      marginBottom: Spacing.md,
+      gap: 8,
+    },
+    importIngHeader: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      marginBottom: 4,
+    },
+    importIngHeaderTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.text,
+      letterSpacing: 0.3,
+    },
+    importIngHeaderHint: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      fontWeight: "500",
+    },
+    importIngRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.md,
+    },
+    importIngRowNeedsReview: {
+      borderColor: Accent.warning,
+      backgroundColor: Accent.warning + "10",
+    },
+    importIngRowPressed: {
+      opacity: 0.75,
+    },
+    importIngName: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    importIngDetail: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
   }), [colors]);
 
   return (
@@ -1042,8 +1196,70 @@ export default function ImportSharedScreen() {
               </View>
             )}
 
-            {/* Ingredient count — avoid `unknown &&` in JSX (tsc ReactNode) */}
-            {Array.isArray(pendingRecipe.ingredients) ? (
+            {/* Editable ingredient list — tap a row to search for a
+                different match, long-press to override macros manually.
+                Sheets are rendered at screen root (below) so they don't
+                nest inside the card's ScrollView. */}
+            {Array.isArray(pendingRecipe.ingredientMacros) && pendingRecipe.ingredientMacros.length > 0 ? (
+              <View style={styles.importIngList}>
+                <View style={styles.importIngHeader}>
+                  <Text style={styles.importIngHeaderTitle}>
+                    Ingredients ({pendingRecipe.ingredientMacros.length})
+                  </Text>
+                  <Text style={styles.importIngHeaderHint}>
+                    Tap to change match · Long-press to edit macros
+                  </Text>
+                </View>
+                {pendingRecipe.ingredientMacros.map((m, i) => {
+                  const needsReview = !m.source || m.source === "Estimated" || m.source === "Unverified";
+                  const displayName = decodeEntities((m.name ?? "").trim() || "Ingredient");
+                  const amountStr =
+                    m.amount && m.unit
+                      ? `${m.amount} × ${m.unit}`
+                      : m.amount ?? "";
+                  return (
+                    <Pressable
+                      key={`imping-${i}-${displayName}`}
+                      onPress={() => setSearchIngredientIdx(i)}
+                      onLongPress={() => setOverrideIngredientIdx(i)}
+                      delayLongPress={300}
+                      style={({ pressed }) => [
+                        styles.importIngRow,
+                        needsReview && styles.importIngRowNeedsReview,
+                        pressed && styles.importIngRowPressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit match for ${displayName}`}
+                      accessibilityHint="Tap to search a different food. Long-press to edit macros manually."
+                    >
+                      {needsReview && (
+                        <Ionicons
+                          name="alert-circle"
+                          size={18}
+                          color={Accent.warning}
+                          style={{ marginRight: 8, marginTop: 2 }}
+                        />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.importIngName} numberOfLines={1}>
+                          {displayName}
+                        </Text>
+                        <Text style={styles.importIngDetail} numberOfLines={1}>
+                          {amountStr ? `${amountStr} · ` : ""}
+                          {Math.round(m.calories ?? 0)} kcal
+                          {m.source ? ` · ${m.source}` : ""}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={18}
+                        color={colors.textTertiary}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : Array.isArray(pendingRecipe.ingredients) ? (
               <Text style={styles.ingredientCountLabel}>
                 Parsed ingredients ({pendingRecipe.ingredients.length})
               </Text>
@@ -1257,6 +1473,66 @@ export default function ImportSharedScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Food-search modal — opened when the user taps an ingredient
+          row on the import preview to replace a bad automatic match
+          (e.g. "blonde or white chocolate" matching wrong branch). */}
+      <FoodSearchModal
+        visible={searchIngredientIdx != null && Boolean(pendingRecipe?.ingredientMacros?.[searchIngredientIdx])}
+        initialQuery={
+          searchIngredientIdx != null
+            ? parseIngredientForSearch(
+                pendingRecipe?.ingredientMacros?.[searchIngredientIdx]?.name ?? "",
+              ).searchTerm
+            : ""
+        }
+        initialAmount={
+          searchIngredientIdx != null
+            ? Number(pendingRecipe?.ingredientMacros?.[searchIngredientIdx]?.amount ?? 0) || null
+            : null
+        }
+        initialUnit={
+          searchIngredientIdx != null
+            ? pendingRecipe?.ingredientMacros?.[searchIngredientIdx]?.unit ?? null
+            : null
+        }
+        originalDescription={
+          searchIngredientIdx != null
+            ? pendingRecipe?.ingredientMacros?.[searchIngredientIdx]?.name ?? null
+            : null
+        }
+        supabase={supabase}
+        userId={userId}
+        onSelect={onIngredientSearchSelected}
+        onClose={() => setSearchIngredientIdx(null)}
+      />
+
+      {/* Manual macro override sheet — long-press path. Lets users
+          type exact label values when no DB match is close enough. */}
+      <OverrideIngredientSheet
+        visible={overrideIngredientIdx != null && Boolean(pendingRecipe?.ingredientMacros?.[overrideIngredientIdx])}
+        onClose={() => setOverrideIngredientIdx(null)}
+        ingredientName={
+          overrideIngredientIdx != null
+            ? pendingRecipe?.ingredientMacros?.[overrideIngredientIdx]?.name ?? ""
+            : ""
+        }
+        currentMacros={
+          overrideIngredientIdx != null && pendingRecipe?.ingredientMacros?.[overrideIngredientIdx]
+            ? {
+                calories: pendingRecipe.ingredientMacros[overrideIngredientIdx]!.calories ?? 0,
+                protein: pendingRecipe.ingredientMacros[overrideIngredientIdx]!.protein ?? 0,
+                carbs: pendingRecipe.ingredientMacros[overrideIngredientIdx]!.carbs ?? 0,
+                fat: pendingRecipe.ingredientMacros[overrideIngredientIdx]!.fat ?? 0,
+                fiber: pendingRecipe.ingredientMacros[overrideIngredientIdx]!.fiberG ?? 0,
+              }
+            : { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        }
+        hasExistingOverride={false}
+        onSave={onIngredientOverrideSaved}
+        onReset={() => setOverrideIngredientIdx(null)}
+        colors={colors}
+      />
     </KeyboardAvoidingView>
   );
 }

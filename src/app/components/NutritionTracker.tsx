@@ -8,6 +8,7 @@ import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
+import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -1709,7 +1710,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
         mealPlanFirstDay={mealPlan && mealPlan.length > 0 ? mealPlan[0]! : null}
-        onLogPlanMeal={(meal) => {
+        onLogPlanMeal={async (meal) => {
+          const microsRes = await fetchPlannedMealMicros(
+            supabase as unknown as SupabaseLike,
+            meal.recipeId ?? null,
+            1,
+          );
           addLoggedMealForDate(
             selectedDateKey,
             {
@@ -1720,6 +1726,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               protein: meal.protein,
               carbs: meal.carbs,
               fat: meal.fat,
+              ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : {}),
+              ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
               source: "Meal plan",
             },
             "planner",
@@ -1744,8 +1752,17 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {mealPlan && mealPlan.length > 0 && (mealPlan[0]?.meals ?? []).length > 0 ? (
         <TodayPlannedMealsCard
           plannedMeals={mealPlan[0]!.meals}
-          onLogPlannedMealWithPortion={(meal, portion) => {
+          onLogPlannedMealWithPortion={async (meal, portion) => {
             const mult = Math.max(0.125, Math.min(24, portion));
+            // Pull fiber/sugar/sodium off the saved recipe so the
+            // journal entry carries more than just kcal/P/C/F. Mobile
+            // parity: `apps/mobile/app/(tabs)/index.tsx`
+            // logPlannedMealWithPortion.
+            const microsRes = await fetchPlannedMealMicros(
+              supabase as unknown as SupabaseLike,
+              meal.recipeId ?? null,
+              mult,
+            );
             addLoggedMealForDate(
               selectedDateKey,
               {
@@ -1756,6 +1773,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
                 protein: Math.round((meal.protein ?? 0) * mult * 10) / 10,
                 carbs: Math.round((meal.carbs ?? 0) * mult * 10) / 10,
                 fat: Math.round((meal.fat ?? 0) * mult * 10) / 10,
+                ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : {}),
+                ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
                 source: "Meal plan",
               },
               "planner",
