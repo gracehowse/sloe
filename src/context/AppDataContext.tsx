@@ -599,10 +599,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (async () => {
       if (!dbMealPlanEnabled) return;
 
-      // Try relational tables first
+      // Try relational tables first. T7 (2026-04-24): SELECT start_date
+      // so downstream resolvers (Today's planned meals, "which day is
+      // today?" lookups) read the persisted anchor.
       const { data: dayRows, error: dayErr } = await supabase
         .from("meal_plan_days")
-        .select("id, day, slot_id")
+        .select("id, day, slot_id, start_date")
         .eq("user_id", authedUserId)
         .eq("slot_id", "default")
         .order("day", { ascending: true });
@@ -1191,11 +1193,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Bulk insert all days in one call to minimise partial-failure window.
+      // Bulk insert all days in one call to minimise partial-failure
+      // window. T7 (2026-04-24): persist `start_date` = today so the
+      // anchor is stored explicitly (web planner has no next-week chip
+      // today; every save anchors to the current date).
+      const webStartDate = (() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      })();
       const dayRows = mealPlan.map((dp) => ({
         user_id: authedUserId,
         slot_id: "default",
         day: dp.day,
+        start_date: webStartDate,
       }));
       const { data: insertedDays, error: dayInsertErr } = await supabase
         .from("meal_plan_days")

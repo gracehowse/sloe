@@ -2157,7 +2157,9 @@ export default function TrackerScreen() {
         .limit(20_000),
       supabase
         .from("meal_plan_days")
-        .select("id, day")
+        // T7 (2026-04-24): SELECT start_date so the resolver uses the
+        // persisted anchor instead of iterating [0,1,7] offsets.
+        .select("id, day, start_date")
         .eq("user_id", userId)
         .eq("slot_id", "default")
         .order("day", { ascending: true }),
@@ -2165,7 +2167,7 @@ export default function TrackerScreen() {
     const planDayId =
       planDayRows && planDayRows.length > 0
         ? findPlanDayIdForCalendarDate(
-            planDayRows as { id: string; day: number }[],
+            planDayRows as { id: string; day: number; start_date?: string | null }[],
             selectedDate,
           )
         : null;

@@ -43,7 +43,9 @@ import { generateSmartPlan, ALL_MEAL_SLOTS, PORTION_MULTIPLIER_CLAMP, type Plann
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
 import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
 import {
+  findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
+  startDateForOffset,
   stripMidnight,
 } from "../../../../src/lib/mealPlan/planCalendarAnchor";
 import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
@@ -401,10 +403,14 @@ export default function PlannerScreen() {
         void upsertMealPlanJson(supabase, userId, nextPlan);
         return;
       }
+      // T7 (2026-04-24): persist the calendar start date so day 1 is
+      // unambiguous. `startOffset` is the UI chip (0=today, 1=tomorrow,
+      // 7=next week); startDateForOffset returns YYYY-MM-DD local.
+      const startDate = startDateForOffset(new Date(), startOffset);
       for (const dp of nextPlan) {
         const { data: dayRow } = await supabase
           .from("meal_plan_days")
-          .insert({ user_id: userId, slot_id: "default", day: dp.day })
+          .insert({ user_id: userId, slot_id: "default", day: dp.day, start_date: startDate } as never)
           .select("id")
           .single();
         if (!dayRow) continue;
@@ -426,7 +432,7 @@ export default function PlannerScreen() {
         }
       }
     },
-    [userId],
+    [userId, startOffset],
   );
 
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
@@ -907,10 +913,13 @@ export default function PlannerScreen() {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      // Try relational tables
+      // Try relational tables. T7 (2026-04-24): SELECT start_date so
+      // consumers that resolve "today's plan day" read the persisted
+      // calendar anchor instead of iterating offsets. Column added in
+      // migration 20260503100300_meal_plan_days_start_date.sql.
       const { data: dayRows, error: dayErr } = await supabase
         .from("meal_plan_days")
-        .select("id, day")
+        .select("id, day, start_date")
         .eq("user_id", userId)
         .eq("slot_id", "default")
         .order("day", { ascending: true });
@@ -1184,10 +1193,12 @@ export default function PlannerScreen() {
             return;
           }
 
+          // T7 (2026-04-24): persist calendar anchor (same as persistPlan).
+          const startDate = startDateForOffset(new Date(), startOffset);
           for (const dp of newPlan) {
             const { data: dayRow } = await supabase
               .from("meal_plan_days")
-              .insert({ user_id: userId, slot_id: "default", day: dp.day })
+              .insert({ user_id: userId, slot_id: "default", day: dp.day, start_date: startDate } as never)
               .select("id")
               .single();
             if (!dayRow) continue;

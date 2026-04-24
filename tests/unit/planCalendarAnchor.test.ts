@@ -4,22 +4,18 @@ import {
   findLegacyPlanDayForCalendarDate,
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
+  startDateForOffset,
   stripMidnight,
 } from "../../src/lib/mealPlan/planCalendarAnchor";
 
 /**
- * T5 (full-sweep 2026-04-24): this suite was previously pinning the
- * first-match-offset BUG as correct. The sweep flagged that a plan saved
- * with `startOffset = 7` (next week) gets resolved into today's lookup the
- * moment it's saved, because the resolver iterates `[0, 1, 7]` and returns
- * the first match with no persisted anchor to disambiguate.
+ * T7 (full-sweep 2026-04-24) — verifies the persisted-anchor resolver.
  *
- * Tests below assert the CORRECT behaviour expected after T7 ships
- * (`meal_plans` gains a persisted `start_date` and the resolver takes it
- * as an explicit argument). They deliberately fail on the current
- * implementation so the red goes away when — and only when — T7 lands.
- *
- * See docs/planning/sweep-2026-04-24-executor-backlog.md T5 + T7.
+ * Pre-T7 this file used `it.fails` markers to document the first-match-
+ * offset bug. With the `meal_plan_days.start_date` migration applied
+ * and the resolver rewritten to read the anchor, those tests now pass.
+ * Legacy offset-iteration behaviour is preserved ONLY for rows missing
+ * `start_date` (the rollout-window escape hatch).
  */
 
 describe("planCalendarDateForIndex", () => {
@@ -41,7 +37,27 @@ describe("planCalendarDateForIndex", () => {
   });
 });
 
-describe("findPlanDayIdForCalendarDate — single-plan cases", () => {
+describe("startDateForOffset (persist-path helper)", () => {
+  const todayDate = new Date(2026, 3, 24, 12, 0, 0);
+
+  it("returns today for offset 0", () => {
+    expect(startDateForOffset(todayDate, 0)).toBe("2026-04-24");
+  });
+
+  it("returns tomorrow for offset 1", () => {
+    expect(startDateForOffset(todayDate, 1)).toBe("2026-04-25");
+  });
+
+  it("returns today+7 for offset 7 (next week)", () => {
+    expect(startDateForOffset(todayDate, 7)).toBe("2026-05-01");
+  });
+
+  it("pads month and day to two digits", () => {
+    expect(startDateForOffset(new Date(2026, 0, 2, 12), 0)).toBe("2026-01-02");
+  });
+});
+
+describe("findPlanDayIdForCalendarDate — T7 persisted-anchor path", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 3, 24, 12, 0, 0));
@@ -50,23 +66,51 @@ describe("findPlanDayIdForCalendarDate — single-plan cases", () => {
     vi.useRealTimers();
   });
 
-  it("matches plan day 1 to today with offset 0", () => {
-    const id = findPlanDayIdForCalendarDate([{ id: "row-a", day: 1 }], new Date(2026, 3, 24));
+  it("matches day 1 to today when start_date = today", () => {
+    const id = findPlanDayIdForCalendarDate(
+      [{ id: "row-a", day: 1, start_date: "2026-04-24" }],
+      new Date(2026, 3, 24),
+    );
     expect(id).toBe("row-a");
   });
 
-  it("matches plan day 2 to tomorrow with offset 0", () => {
-    const id = findPlanDayIdForCalendarDate([{ id: "row-b", day: 2 }], new Date(2026, 3, 25));
+  it("matches day 2 to start_date + 1", () => {
+    const id = findPlanDayIdForCalendarDate(
+      [{ id: "row-b", day: 2, start_date: "2026-04-24" }],
+      new Date(2026, 3, 25),
+    );
     expect(id).toBe("row-b");
   });
 
-  it("returns null when no row covers the date", () => {
-    const id = findPlanDayIdForCalendarDate([{ id: "row-d", day: 1 }], new Date(2026, 3, 30));
+  it("next-week plan does NOT resolve to today", () => {
+    // start_date = 2026-05-01; day 1 = May 1, not April 24
+    const rows = [{ id: "row-next-week", day: 1, start_date: "2026-05-01" }];
+    expect(findPlanDayIdForCalendarDate(rows, new Date(2026, 3, 24))).toBeNull();
+    expect(findPlanDayIdForCalendarDate(rows, new Date(2026, 4, 1))).toBe("row-next-week");
+  });
+
+  it("distinguishes overlapping day-1 rows by start_date", () => {
+    // Two plans hypothetically with different anchors (the current
+    // unique constraint prevents this in prod, but the resolver must
+    // still return the right row if anchors diverge).
+    const rows = [
+      { id: "row-today", day: 1, start_date: "2026-04-24" },
+      { id: "row-next-week", day: 1, start_date: "2026-05-01" },
+    ];
+    expect(findPlanDayIdForCalendarDate(rows, new Date(2026, 3, 24))).toBe("row-today");
+    expect(findPlanDayIdForCalendarDate(rows, new Date(2026, 4, 1))).toBe("row-next-week");
+  });
+
+  it("returns null when no row's start_date + day - 1 equals the target date", () => {
+    const id = findPlanDayIdForCalendarDate(
+      [{ id: "row-d", day: 1, start_date: "2026-04-24" }],
+      new Date(2026, 3, 30),
+    );
     expect(id).toBeNull();
   });
 });
 
-describe("findPlanDayIdForCalendarDate — ambiguity between plans", () => {
+describe("findPlanDayIdForCalendarDate — legacy fallback (row without start_date)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 3, 24, 12, 0, 0));
@@ -76,45 +120,30 @@ describe("findPlanDayIdForCalendarDate — ambiguity between plans", () => {
   });
 
   /**
-   * BUG: two plans (one saved with startOffset=0, one with startOffset=7)
-   * both carry a day=1 row. Today's lookup silently picks the offset-0
-   * match — which may be the wrong plan entirely. The resolver cannot
-   * disambiguate without a persisted anchor.
-   *
-   * Marked `it.fails` so CI stays green while the bug is documented.
-   * Passes once T7 ships a startDate-aware signature or a guard that
-   * refuses ambiguous input — at which point the marker must be removed.
+   * The legacy path is deliberately imprecise — it's the pre-T7 behaviour
+   * preserved only as a rollout-window escape hatch for rows that haven't
+   * been backfilled. Tests pin the behaviour so nobody accidentally
+   * removes the fallback before the backfill is complete.
    */
-  it.fails("T7: must not silently pick first-match when two day-1 rows overlap today", () => {
-    const rows = [
-      { id: "row-today-plan", day: 1 },
-      { id: "row-next-week-plan", day: 1 },
-    ];
-    const id = findPlanDayIdForCalendarDate(rows, new Date(2026, 3, 24));
-    // Correct behaviour once an anchor is available: either return null
-    // (ambiguous, caller must re-ask with an explicit plan anchor) or the
-    // row from the actual plan the user saved last. Silently picking the
-    // first-match offset-0 row is wrong and produces the "next-week plan
-    // bleeds into today" regression the sweep flagged.
-    expect(id).toBeNull();
+  it("falls back to offset iteration when rows lack start_date", () => {
+    const id = findPlanDayIdForCalendarDate(
+      [{ id: "row-a", day: 1 }],
+      new Date(2026, 3, 24),
+    );
+    expect(id).toBe("row-a");
   });
 
-  /**
-   * Previously this test asserted the first-match behaviour as correct
-   * ("matches plan day 1 to today when plan was saved as next-week start
-   * (offset 7)"). That assertion locked the bug in. T7 replaces it with
-   * the requirement that next-week plans only resolve for +7 from today,
-   * not for today itself.
-   */
-  it.fails("T7: a next-week plan must not resolve as today", () => {
-    const rows = [{ id: "row-next-week-only", day: 1 }];
-    // This row is day 1 of a plan saved with startOffset=7 — it should
-    // only match May 1 (today + 7), NOT April 24.
-    const idToday = findPlanDayIdForCalendarDate(rows, new Date(2026, 3, 24));
-    // Under the fixed signature, the caller would pass the plan's own
-    // startDate; without it the resolver should default to conservative
-    // (null) rather than optimistic first-match.
-    expect(idToday).toBeNull();
+  it("falls back if ANY row is missing start_date (mixed legacy + T7 input)", () => {
+    // Mixed input → legacy path → offset iteration.
+    const id = findPlanDayIdForCalendarDate(
+      [
+        { id: "row-legacy", day: 2 },
+        { id: "row-anchored", day: 1, start_date: "2026-05-01" },
+      ],
+      new Date(2026, 3, 25),
+    );
+    // Legacy offset iteration: day 2 + offset 0 → tomorrow → matches row-legacy
+    expect(id).toBe("row-legacy");
   });
 });
 
@@ -127,7 +156,7 @@ describe("findLegacyPlanDayForCalendarDate", () => {
     vi.useRealTimers();
   });
 
-  it("returns the day object whose calendar date matches", () => {
+  it("returns the day object whose calendar date matches (JSONB legacy plans)", () => {
     const hit = findLegacyPlanDayForCalendarDate(
       [
         { day: 1, meals: [] },
