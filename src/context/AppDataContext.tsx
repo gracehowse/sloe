@@ -35,6 +35,10 @@ import {
 } from "../lib/planning/generateMealPlan.ts";
 import { clearLocalProfile, loadLocalProfile } from "../lib/profile/profileStorage.ts";
 import { normalizeMacroTargets, type MacroTargets } from "../types/profile.ts";
+import {
+  coerceWeightSurfaceMode,
+  type WeightSurfaceMode,
+} from "../lib/nutrition/weightSurfaceMode.ts";
 import { AnalyticsEvents, type FoodLoggedSource } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
@@ -90,6 +94,11 @@ interface AppDataContextValue {
   /** Display preference from profile; internal storage remains metric. */
   profileMeasurementSystem: "metric" | "imperial";
   setProfileMeasurementSystem: Dispatch<SetStateAction<"metric" | "imperial">>;
+  /** T13 (2026-04-24) — Digest + Progress + weight-chart opt-out for
+   *  ED / dysphoria-sensitive users. `"show"` is legacy default; users
+   *  opt into `"hide"` / `"trends_only"` under Settings. */
+  profileWeightSurfaceMode: WeightSurfaceMode;
+  setProfileWeightSurfaceMode: Dispatch<SetStateAction<WeightSurfaceMode>>;
   redeemPromoCode: (code: string) => Promise<RedeemPromoResult>;
   signOut: () => Promise<void>;
   generateMealPlan: (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => Promise<void>;
@@ -321,6 +330,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
   const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
+  const [profileWeightSurfaceMode, setProfileWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
   const [dbSavesEnabled, setDbSavesEnabled] = useState(true);
   const [dbSavesWarned, setDbSavesWarned] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
@@ -439,7 +449,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
+          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -460,6 +470,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setProfileDisplayName((data?.display_name as string | null) ?? null);
       const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
       setProfileMeasurementSystem(ms);
+      setProfileWeightSurfaceMode(coerceWeightSurfaceMode(data?.weight_surface_mode));
       setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
       const hasTargets = Boolean(
         data?.target_calories &&
@@ -498,7 +509,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories",
+        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -508,6 +519,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setProfileDisplayName((data?.display_name as string | null) ?? null);
     const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
     setProfileMeasurementSystem(ms);
+    setProfileWeightSurfaceMode(coerceWeightSurfaceMode(data?.weight_surface_mode));
     setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
     const hasTargets = Boolean(
       data?.target_calories &&
@@ -938,7 +950,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           toast.error("Save at least one recipe from Discover (or your uploads) to generate a macro-aware plan.");
           return;
         }
+        // T14 (full-sweep 2026-04-24): instrument generation duration +
+        // pool size so we can set the sampler cap from real data and
+        // compare web vs mobile perf. `generatePlanFromLibrary` is
+        // already sync on web — the durationMs captures the sampler cost.
+        const generateStartMs = Date.now();
         const plan = generatePlanFromLibrary({ savedRecipes, targets, days });
+        const generateDurationMs = Date.now() - generateStartMs;
         setMealPlan(plan);
         toast.success("Meal plan generated");
         if (notificationPrefs.mealReminders) {
@@ -948,7 +966,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             body: "Your plan has been updated. You can swap meals or start logging.",
           });
         }
-        track(AnalyticsEvents.meal_plan_generated, { days });
+        track(AnalyticsEvents.meal_plan_generated, {
+          days,
+          durationMs: generateDurationMs,
+          poolSize: savedRecipes.length,
+          platform: "web",
+        });
       } finally {
         setIsGeneratingPlan(false);
       }
@@ -1745,6 +1768,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,
+      profileWeightSurfaceMode,
+      setProfileWeightSurfaceMode,
       redeemPromoCode,
       signOut,
       generateMealPlan,
@@ -1827,6 +1852,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,
+      profileWeightSurfaceMode,
+      setProfileWeightSurfaceMode,
       redeemPromoCode,
       signOut,
       generateMealPlan,

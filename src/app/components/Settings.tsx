@@ -23,6 +23,7 @@ import {
   nutritionLogCsvFilename,
 } from "../../lib/export/nutritionLogToCsv.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
+import type { WeightSurfaceMode } from "../../lib/nutrition/weightSurfaceMode.ts";
 import {
   loadWeekStartDay,
   saveWeekStartDay,
@@ -94,6 +95,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     setTargetCaffeineMg,
     targetAlcoholGWeekly,
     setTargetAlcoholGWeekly,
+    profileWeightSurfaceMode,
+    setProfileWeightSurfaceMode,
   } = useAppData();
   const { theme, setTheme } = useTheme();
   const promoSectionRef = useRef<HTMLDivElement>(null);
@@ -533,6 +536,52 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               >
                 Imperial (oz, lb, cups)
               </button>
+            </div>
+          </div>
+          {/*
+            T13 (2026-04-24) — Digest + Progress + weight-chart opt-out.
+            Closes DI-P0-03: users can soften how weight surfaces without
+            abandoning progress tracking. "Show numbers" is the legacy
+            default so existing users see no change until they opt in.
+          */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-foreground">
+              How weight shows up
+            </label>
+            <p className="text-xs text-muted-foreground mb-3 max-w-xl">
+              Soften how weight appears on the Digest, Progress, and weight chart. We still save the data you log — this only changes what you see.
+            </p>
+            <div className="grid grid-cols-3 gap-2" data-testid="weight-surface-mode-picker">
+              {(
+                [
+                  { mode: "show" as const, label: "Show numbers", hint: "±kg, chart, weigh-ins" },
+                  { mode: "trends_only" as const, label: "Trends only", hint: "direction, no kg" },
+                  { mode: "hide" as const, label: "Hide", hint: "swap for logging stat" },
+                ]
+              ).map(({ mode, label, hint }) => {
+                const selected = profileWeightSurfaceMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-testid={`weight-surface-mode-${mode}`}
+                    aria-pressed={selected}
+                    onClick={() => {
+                      const next: WeightSurfaceMode = mode;
+                      setProfileWeightSurfaceMode(next);
+                      void savePref({ weight_surface_mode: next });
+                    }}
+                    className={`px-3 py-3 rounded-xl border-2 transition-all text-left ${
+                      selected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/30 text-foreground"
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div>

@@ -49,6 +49,10 @@ import {
   formatWeightForUnit,
   type MeasurementSystem,
 } from "../../../../src/lib/measurements";
+import {
+  coerceWeightSurfaceMode,
+  type WeightSurfaceMode,
+} from "../../../../src/lib/nutrition/weightSurfaceMode";
 import { computeWeightTrendCopy } from "../../../../src/lib/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "@/lib/progressWeekReport";
@@ -186,6 +190,10 @@ export default function ProgressScreen() {
   // every other weight surface respected the preference, so an imperial
   // user saw "lb" everywhere except here where it stuck on "kg".
   const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>("metric");
+  // T13 (2026-04-24) — Digest + Progress + weight-chart opt-out mode.
+  // Loaded from profiles.weight_surface_mode; defaults to "show" to
+  // preserve legacy behaviour.
+  const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
 
   const [weightChartRange, setWeightChartRange] = useState<WeightRange>("1m");
 
@@ -315,7 +323,7 @@ export default function ProgressScreen() {
         .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode")
         .eq("id", userId)
         .maybeSingle(),
     ]);
@@ -397,6 +405,7 @@ export default function ProgressScreen() {
       // Action 13 #6 + #7 — single source for the imperial / metric
       // preference on every weight readout on this screen.
       setMeasurementSystem(coerceMeasurementSystem((profile as any).measurement_system));
+      setWeightSurfaceMode(coerceWeightSurfaceMode((profile as any).weight_surface_mode));
       const eff = getEffectiveTDEE({
         adaptive_tdee: aTdee,
         adaptive_tdee_confidence: aConf,
@@ -1047,6 +1056,7 @@ export default function ProgressScreen() {
                 narrative={{ closestToTarget, maintenanceLine, usualMeal }}
                 shareText={formatRecapForShare(recap)}
                 state={digestState}
+                weightSurfaceMode={weightSurfaceMode}
                 onShare={() => { /* Digest owns share sheet + analytics */ }}
                 onDismiss={dismissRecap}
                 onOpenSaveCombo={(slot, items) => {

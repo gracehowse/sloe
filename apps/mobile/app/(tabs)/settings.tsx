@@ -25,6 +25,10 @@ import { supabase } from "@/lib/supabase";
 import { usePromoCode, normalizeUserTier as normalizeUserTierShared } from "@/hooks/usePromoCode";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { normalizeWeekSummaryMode, type WeekSummaryMode } from "../../../../src/lib/nutrition/weekSummaryWindow";
+import {
+  coerceWeightSurfaceMode,
+  type WeightSurfaceMode,
+} from "../../../../src/lib/nutrition/weightSurfaceMode";
 import ActivityLevelPreview from "@/components/ActivityLevelPreview";
 import {
   ACTIVITY_SHORT_LABELS,
@@ -82,6 +86,8 @@ export default function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("free");
   const [activityAdjust, setActivityAdjust] = useState(false);
+  // T13 (2026-04-24) — weight surface opt-out (DI-P0-03).
+  const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
   const {
     code: promoCode,
     setCode: setPromoCode,
@@ -184,7 +190,7 @@ export default function SettingsScreen() {
     (async () => {
       const { data, error: qErr } = await supabase
         .from("profiles")
-        .select("notification_prefs, prefer_activity_adjusted_calories")
+        .select("notification_prefs, prefer_activity_adjusted_calories, weight_surface_mode")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
@@ -198,6 +204,7 @@ export default function SettingsScreen() {
           setPrefs(merged);
         }
         setActivityAdjust(Boolean((data as any)?.prefer_activity_adjusted_calories));
+        setWeightSurfaceMode(coerceWeightSurfaceMode((data as any)?.weight_surface_mode));
       }
       setLoading(false);
     })();
@@ -600,6 +607,60 @@ export default function SettingsScreen() {
                   }}
                   trackColor={{ true: Accent.primary }}
                 />
+              </View>
+              {/*
+                T13 (2026-04-24) — weight surface opt-out (DI-P0-03).
+                Default = "show" so existing users see no change.
+              */}
+              <View style={[styles.row, { flexDirection: "column", alignItems: "stretch", gap: 10 }]}>
+                <Text style={styles.rowLabel}>How weight shows up</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                  Soften how weight appears on the Digest, Progress, and chart. We still save what you log.
+                </Text>
+                <View style={styles.segmentedRow}>
+                  {(
+                    [
+                      { mode: "show" as const, label: "Show" },
+                      { mode: "trends_only" as const, label: "Trends only" },
+                      { mode: "hide" as const, label: "Hide" },
+                    ]
+                  ).map(({ mode, label }, idx, arr) => {
+                    const selected = weightSurfaceMode === mode;
+                    return (
+                      <Pressable
+                        key={mode}
+                        testID={`weight-surface-mode-${mode}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        style={[
+                          styles.segmentBtn,
+                          selected && styles.segmentBtnActive,
+                          idx < arr.length - 1 ? { borderRightWidth: 1, borderRightColor: colors.border } : null,
+                        ]}
+                        onPress={async () => {
+                          const next: WeightSurfaceMode = mode;
+                          setWeightSurfaceMode(next);
+                          if (userId) {
+                            await supabase
+                              .from("profiles")
+                              .update({ weight_surface_mode: next } as never)
+                              .eq("id", userId);
+                          }
+                        }}
+                        disabled={saving}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentBtnText,
+                            selected && styles.segmentBtnTextActive,
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
               <View style={[styles.row, styles.rowLast, { flexDirection: "column", alignItems: "stretch", gap: 10 }]}>
                 <Text style={styles.rowLabel}>Burn / deficit summary window</Text>

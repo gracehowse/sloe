@@ -123,7 +123,12 @@ function ProgressDashboardContent() {
   const searchParams = useSearchParams();
   const metricParam = coerceProgressMetric(searchParams.get("metric"));
   const { authedUserId } = useAuthSession();
-  const { profileMeasurementSystem, nutritionByDay, nutritionTargets } = useAppData();
+  const {
+    profileMeasurementSystem,
+    nutritionByDay,
+    nutritionTargets,
+    profileWeightSurfaceMode,
+  } = useAppData();
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -990,6 +995,7 @@ function ProgressDashboardContent() {
             narrative={{ closestToTarget, maintenanceLine, usualMeal }}
             shareText={formatRecapForShare(recap)}
             state={digestState}
+            weightSurfaceMode={profileWeightSurfaceMode}
             onShare={() => { /* Digest handles share sheet + analytics */ }}
             onDismiss={dismissRecap}
             onOpenSaveCombo={(slot, items) => {

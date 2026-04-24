@@ -29,6 +29,13 @@ import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
 import { Icons } from "../ui/icons";
 import { cn } from "../ui/utils";
+import {
+  decideWeightSurface,
+  DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT,
+  DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL,
+  formatLoggingConsistencyValue,
+  type WeightSurfaceMode,
+} from "../../../lib/nutrition/weightSurfaceMode";
 
 /** Four slots the save-prompt CTA can target. */
 export type DigestSlot = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
@@ -85,6 +92,14 @@ export interface DigestProps {
   };
   /** Pre-formatted share string. Host computes via `formatRecapForShare`. */
   shareText: string;
+  /**
+   * T13 (2026-04-24): controls how weight data surfaces on the Digest.
+   *   - `"show"` (default, legacy) — Weight tile with ±kg delta + weigh-in line.
+   *   - `"hide"` — Weight tile replaced with a logging-consistency stat; weigh-in line suppressed.
+   *   - `"trends_only"` — Weight tile shows direction only ("Slightly down"); no kg number; weigh-in line suppressed.
+   * Missing / unknown values fall through to "show" via `coerceWeightSurfaceMode`.
+   */
+  weightSurfaceMode?: WeightSurfaceMode;
   /** UI state selector (§7). Defaults to "success". */
   state?: "loading" | "empty" | "partial" | "success" | "error" | "offline";
   /** Relative "synced X ago" label — only used when state === "offline". */
@@ -118,6 +133,7 @@ export function Digest(props: DigestProps) {
     onDismiss,
     onOpenSaveCombo,
     onStartUsualMealSave,
+    weightSurfaceMode = "show",
     className,
   } = props;
 
@@ -231,10 +247,15 @@ export function Digest(props: DigestProps) {
   const shareDisabled = isEmpty || isOffline;
 
   const hasWeight = stats.weightDeltaKg != null;
+  // T13: honour the user's weight surface mode. "hide" replaces the
+  // Weight tile with logging-consistency and suppresses the weigh-in
+  // line; "trends_only" shows direction label without absolute kg.
+  const weightDecision = decideWeightSurface(weightSurfaceMode, stats.weightDeltaKg);
   const weightDeltaStr = hasWeight
     ? `${stats.weightDeltaKg! > 0 ? "+" : ""}${stats.weightDeltaKg} kg`
     : "—";
   const weightFirstLastLine =
+    weightDecision.kind === "show" &&
     stats.weightFirstKg != null &&
     stats.weightLastKg != null &&
     stats.weightDeltaKg != null
@@ -323,12 +344,36 @@ export function Digest(props: DigestProps) {
           hint={isEmpty ? "—" : proteinHint}
           muted={isEmpty}
         />
-        <Stat
-          label="Weight"
-          value={hasWeight ? weightDeltaStr : "—"}
-          hint={hasWeight ? "first → last weigh-in" : "log weight any day"}
-          muted={!hasWeight}
-        />
+        {weightDecision.kind === "hidden" ? (
+          <Stat
+            label={DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL}
+            value={isEmpty ? "—" : formatLoggingConsistencyValue(daysLogged)}
+            hint={isEmpty ? "log any day to start" : DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT}
+            muted={isEmpty}
+          />
+        ) : weightDecision.kind === "trends" ? (
+          <Stat
+            label="Weight"
+            value={
+              weightDecision.direction === "up"
+                ? "↑"
+                : weightDecision.direction === "down"
+                  ? "↓"
+                  : weightDecision.direction === "stable"
+                    ? "→"
+                    : "—"
+            }
+            hint={weightDecision.label}
+            muted={weightDecision.direction === null}
+          />
+        ) : (
+          <Stat
+            label="Weight"
+            value={hasWeight ? weightDeltaStr : "—"}
+            hint={hasWeight ? "first → last weigh-in" : "log weight any day"}
+            muted={!hasWeight}
+          />
+        )}
       </div>
 
       {/* Narrative — each line suppresses when data missing. */}
