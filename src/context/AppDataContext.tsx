@@ -688,7 +688,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -739,6 +739,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         cookTimeMin: cookOk ? Math.round(cookM) : null,
         prepTime: formatRecipeMinutes(prepOk ? prepM : null),
         cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+        allergens: Array.isArray((row as { allergens?: string[] }).allergens)
+          ? ((row as { allergens?: string[] }).allergens as string[])
+          : [],
       };
     });
 
@@ -763,7 +766,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min, allergens",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
@@ -805,6 +808,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         cookTimeMin: cookOk ? Math.round(cookM) : null,
         prepTime: formatRecipeMinutes(prepOk ? prepM : null),
         cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+        allergens: Array.isArray((row as { allergens?: string[] }).allergens)
+          ? ((row as { allergens?: string[] }).allergens as string[])
+          : [],
       };
     });
     setMyLibraryRecipes(mapped);

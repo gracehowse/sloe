@@ -20,6 +20,8 @@ import {
   recomputeRecipeTotals,
   type IngredientOverride,
 } from "../../../src/lib/nutrition/ingredientOverrides";
+import { totalGramsForVerifyScale as totalGramsForVerifyScaleImpl } from "../../../src/lib/nutrition/totalGramsForVerifyScale";
+import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -322,7 +324,10 @@ export async function fetchIngredientsForVerification(
       isDirty: false,
       macrosPer100g: per100g,
       portions: [],
-      chosenPortion: null,
+      chosenPortion:
+        unit === "g" || unit === "ml"
+          ? { label: unit, gramWeight: 1, amount: 1 }
+          : null,
       ...(overrideMacros ? { overrideMacros } : {}),
       ...(r.added_by_user ? { addedByUser: true as const } : {}),
     };
@@ -962,6 +967,10 @@ export async function submitFoodCorrection(opts: {
   }
 }
 
+export function totalGramsForVerifyScale(ing: VerifiableIngredient, amountNum: number): number {
+  return totalGramsForVerifyScaleImpl(ing, amountNum);
+}
+
 /** Scale per-100g macros to a given gram weight. */
 export function scaleMacros(
   per100g: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG?: number; sodiumMg?: number },
@@ -1008,6 +1017,16 @@ export async function saveVerifiedIngredients(
     sodiumMg: Math.round(totals.sodiumMg / safeServings),
   };
 
+  // T12 (2026-04-24): infer regulated allergens from ingredient names
+  // at ≥0.70 match confidence. Closes DI-P0-01 on the verify path
+  // (import path is wired in the same commit via the same helper).
+  const inferredAllergens = inferAllergensFromIngredients(
+    ingredients.map((ing) => ({
+      name: ing.matchedName ?? ing.name,
+      confidence: ing.confidence,
+    })),
+  );
+
   const { error: recipeErr } = await supabase
     .from("recipes")
     .update({
@@ -1019,10 +1038,34 @@ export async function saveVerifiedIngredients(
       sugar_g: perServing.sugarG,
       sodium_mg: perServing.sodiumMg,
       is_verified: true,
+      allergens: inferredAllergens,
     })
     .eq("id", recipeId);
 
-  if (recipeErr) return { error: recipeErr.message };
+  if (recipeErr) {
+    // Fallback: if the column doesn't exist yet in this environment
+    // (migration pending in dev), retry without allergens so the rest
+    // of the save still goes through. Matches the pattern used on the
+    // recipe SELECT in apps/mobile/app/recipe/[id].tsx.
+    if ((recipeErr as { code?: string }).code === "42703") {
+      const { error: fallbackErr } = await supabase
+        .from("recipes")
+        .update({
+          calories: perServing.calories,
+          protein: perServing.protein,
+          carbs: perServing.carbs,
+          fat: perServing.fat,
+          fiber_g: perServing.fiberG,
+          sugar_g: perServing.sugarG,
+          sodium_mg: perServing.sodiumMg,
+          is_verified: true,
+        })
+        .eq("id", recipeId);
+      if (fallbackErr) return { error: fallbackErr.message };
+    } else {
+      return { error: recipeErr.message };
+    }
+  }
 
   // 2. Update individual ingredients — collect errors instead of aborting on
   //    first failure. Preserve `override_macros` and `added_by_user` on every

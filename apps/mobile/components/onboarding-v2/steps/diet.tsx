@@ -16,7 +16,25 @@ const DIETS: { id: string; title: string; icon: keyof typeof Ionicons.glyphMap }
   { id: "mediterranean", title: "Mediterranean", icon: "sunny-outline" },
 ];
 
-const ALLERGIES = ["Gluten", "Dairy", "Eggs", "Nuts", "Shellfish", "Soy"];
+// T12 (2026-04-24) — 14 EU FIC / UK FSA regulated allergens. Mirrors
+// the web onboarding diet step (parity required). Source of truth:
+// src/constants/regulatedAllergens.ts.
+const ALLERGIES = [
+  "Peanuts",
+  "Tree nuts",
+  "Milk",
+  "Eggs",
+  "Fish",
+  "Shellfish",
+  "Soy",
+  "Wheat",
+  "Sesame",
+  "Mustard",
+  "Celery",
+  "Sulfites",
+  "Lupin",
+  "Gluten",
+];
 
 export function MobileDietStep() {
   const { state, set } = useOnboardingV2();

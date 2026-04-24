@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
+import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -951,6 +952,21 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           }
         : perServing;
 
+      // T12 (2026-04-24) — regulated allergens inferred from matched
+      // ingredient names at ≥0.70 confidence. Uses `matchedName` when
+      // the verifier resolved a catalog match; otherwise falls back to
+      // the user's raw line (still inferred, but will skip the
+      // confidence gate for unverified lines via the default 1).
+      // Closes DI-P0-01 on the upload path.
+      const allergensPayload = verifiedOk
+        ? inferAllergensFromIngredients(
+            verifiedLines!.map((v) => ({
+              name: v.matchedName ?? v.input?.name ?? v.resolved?.name ?? "",
+              confidence: v.confidence,
+            })),
+          )
+        : inferAllergensFromIngredients(cleanedIngredients.map((i) => i.name));
+
       // Upload image to Supabase Storage if a local file was selected
       let finalImageUrl = coverImageUrl;
       if (coverImageFile) {
@@ -1005,6 +1021,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             fiber_g: verifiedOk ? verifiedTotals.perServing.fiberG : 0,
             sugar_g: verifiedOk ? verifiedTotals.perServing.sugarG : 0,
             sodium_mg: verifiedOk ? verifiedTotals.perServing.sodiumMg : 0,
+            allergens: allergensPayload,
           },
           { onConflict: "id" },
         )

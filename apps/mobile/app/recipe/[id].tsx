@@ -47,6 +47,10 @@ import {
   type FlatVerifiedMacroRow,
 } from "../../../../src/lib/nutrition/verifyRecipeResponse";
 import { parseRawIngredients } from "../../../../src/lib/recipe-ingredients/parseRawIngredients";
+import {
+  formatContainsLine,
+  normaliseAllergenIds,
+} from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
@@ -95,6 +99,8 @@ type FullRecipe = {
   source_name: string | null;
   author_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
+  /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
+  allergens: string[] | null;
 };
 
 function journalSlotFromMealTypes(mealType: string[] | null | undefined): string {
@@ -417,7 +423,7 @@ export default function RecipeDetailScreen() {
       let recipeRes = await supabase
         .from("recipes")
         .select(
-          "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id",
+          "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, allergens",
         )
         .eq("id", recipeId)
         .maybeSingle();
@@ -468,6 +474,7 @@ export default function RecipeDetailScreen() {
           source_name: (r.source_name as string | null | undefined) ?? null,
           author_id: aid,
           author,
+          allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
         } as FullRecipe);
       }
       if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
@@ -1357,6 +1364,44 @@ export default function RecipeDetailScreen() {
               <Text style={styles.descText}>{decodeEntities(recipe.description)}</Text>
             </View>
           )}
+
+          {/*
+            T12 (2026-04-24) — regulated-allergen callout on every
+            recipe. Closes DI-P0-01. Empty array still surfaces the
+            caveat so silence is never read as safety. Never paywalled.
+          */}
+          {(() => {
+            const normalised = normaliseAllergenIds(recipe.allergens ?? []);
+            const containsLine = formatContainsLine(normalised);
+            return (
+              <View
+                style={styles.card}
+                accessibilityRole="text"
+                accessibilityLabel="Regulated-allergen information"
+                testID="recipe-allergen-callout"
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: colors.text,
+                    marginBottom: 4,
+                  }}
+                >
+                  {containsLine ?? "Not tagged for allergens"}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    lineHeight: 17,
+                  }}
+                >
+                  We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
+                </Text>
+              </View>
+            );
+          })()}
 
           {/* Portion adjustment banner */}
           {portionMultiplier !== 1 && (

@@ -15,7 +15,26 @@ const DIETS: { id: string; title: string; icon: React.ReactNode }[] = [
   { id: "mediterranean", title: "Mediterranean", icon: <Apple className="size-4" /> },
 ];
 
-const ALLERGIES = ["Gluten", "Dairy", "Eggs", "Nuts", "Shellfish", "Soy"];
+// T12 (2026-04-24) — 14 EU FIC / UK FSA regulated allergens. Split
+// "Nuts" into Peanuts + Tree nuts (legally distinct). Ordered roughly
+// by consumer familiarity. Source of truth:
+// src/constants/regulatedAllergens.ts.
+const ALLERGIES = [
+  "Peanuts",
+  "Tree nuts",
+  "Milk",
+  "Eggs",
+  "Fish",
+  "Shellfish",
+  "Soy",
+  "Wheat",
+  "Sesame",
+  "Mustard",
+  "Celery",
+  "Sulfites",
+  "Lupin",
+  "Gluten",
+];
 
 export function DietStep() {
   const { state, set } = useOnboardingV2();

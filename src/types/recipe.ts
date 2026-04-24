@@ -55,6 +55,13 @@ export interface RecipeCard {
   /** Raw minutes from DB — used for Quick filters when set. */
   prepTimeMin?: number | null;
   cookTimeMin?: number | null;
+  /**
+   * T12 (2026-04-24) — regulated allergens inferred at import / verify time.
+   * Canonical slugs from `src/constants/regulatedAllergens.ts` (EU FIC + FDA).
+   * Empty array means NOT TAGGED, not SAFE — UIs must pair any
+   * "Contains: …" chip with a "verify ingredients" caveat per DI-P0-01.
+   */
+  allergens?: readonly string[];
 }
 
 /**

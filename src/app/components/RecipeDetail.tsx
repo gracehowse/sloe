@@ -3,6 +3,10 @@ import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import {
+  formatContainsLine,
+  normaliseAllergenIds,
+} from "../../constants/regulatedAllergens";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -1058,6 +1062,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         {!isCatalogRecipe && dbDescription && (
           <p className="text-muted-foreground leading-relaxed">{dbDescription}</p>
         )}
+
+        {/*
+          T12 (2026-04-24) — regulated-allergen callout. Closes DI-P0-01.
+          Empty array means "not tagged," not "safe" — the caveat runs
+          both when allergens are present and when the array is empty so
+          a user with a severe allergy never reads silence as safety.
+          Never paywalled.
+        */}
+        {(() => {
+          const allergensFromRecipe = Array.isArray((recipe as { allergens?: readonly string[] }).allergens)
+            ? ((recipe as { allergens?: readonly string[] }).allergens as readonly string[])
+            : [];
+          const normalised = normaliseAllergenIds(allergensFromRecipe);
+          const containsLine = formatContainsLine(normalised);
+          return (
+            <div
+              className="rounded-xl border border-border bg-card/60 p-3 text-xs"
+              role="note"
+              aria-label="Regulated-allergen information"
+              data-testid="recipe-allergen-callout"
+            >
+              {containsLine ? (
+                <p className="font-semibold text-foreground mb-1">{containsLine}</p>
+              ) : (
+                <p className="font-semibold text-foreground mb-1">Not tagged for allergens</p>
+              )}
+              <p className="text-muted-foreground leading-snug">
+                We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Creator Info */}
         <div className="flex items-center gap-4 p-6 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-lg">
