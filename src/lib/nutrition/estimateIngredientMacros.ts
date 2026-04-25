@@ -113,6 +113,12 @@ const STAPLES: Record<string, Staple> = {
   prawn: { per100g: { calories: 99, protein: 24, carbs: 0.2, fat: 0.3, fiberG: 0 } },
   shrimp: { per100g: { calories: 99, protein: 24, carbs: 0.2, fat: 0.3, fiberG: 0 } },
   tofu: { per100g: { calories: 76, protein: 8, carbs: 1.9, fat: 4.8, fiberG: 0.3 } },
+  // Silken tofu is structurally / nutritionally distinct from firm/soft —
+  // ~30% lower kcal density (Mori-Nu Silken Soft, Kikkoman Silken etc).
+  // USDA SR Legacy doesn't carry a "silken" variant, so the matcher
+  // falls through to this estimator entry rather than producing 76
+  // kcal/100g (firm density). Multi-word key outranks bare "tofu".
+  "silken tofu": { per100g: { calories: 55, protein: 5.5, carbs: 2, fat: 2.7, fiberG: 0.1 } },
   banana: { per100g: { calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiberG: 2.6 } },
   apple: { per100g: { calories: 52, protein: 0.3, carbs: 14, fat: 0.2, fiberG: 2.4 } },
   avocado: { per100g: { calories: 160, protein: 2, carbs: 9, fat: 15, fiberG: 6.7 } },

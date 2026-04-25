@@ -243,6 +243,21 @@ describe("estimateLineMacros", () => {
     const cheese = estimateLineMacros({ name: "cheese", amount: "50", unit: "g" });
     expect(cheese.fiberG).toBe(0);
   });
+
+  // ── Silken tofu carve-out (USDA has no "silken" variant; firm
+  //    density ≈ 76 kcal/100g would over-count silken by ~38%) ─────
+  it("estimates silken tofu at ~55 kcal/100g, not firm density", () => {
+    const result = estimateLineMacros({ name: "silken tofu, well drained", amount: "300", unit: "g" });
+    // 300 g × 55 kcal/100g = 165 kcal; firm tofu would yield ~228.
+    expect(result.calories).toBeGreaterThan(150);
+    expect(result.calories).toBeLessThan(180);
+  });
+
+  it("does not regress firm tofu — bare 'tofu' still uses firm density", () => {
+    const firm = estimateLineMacros({ name: "tofu", amount: "300", unit: "g" });
+    expect(firm.calories).toBeGreaterThan(220);
+    expect(firm.calories).toBeLessThan(240);
+  });
 });
 
 describe("sumMacros", () => {
