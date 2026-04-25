@@ -25,6 +25,26 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 |-------|----|----|----|----|----|----|
 | 132   | 55 | 66 | 0  | 5  | 4  | 2  |
 
+**2026-04-25 ASC pull (build 39; `npm run testflight:feedback`):** 139 screenshot / 6 crash threads. **+4 new rows** vs the 2026-04-24 pull:
+
+- `AKtz5LtrL39b39-CPXdFE08` — ⏳ **F-73** (search relevance + DB coverage) — "cortado" returns Spanish cheeses/lacón cuts, not the coffee drink. Two compounding causes: (a) OFF user-uploaded rows for unrelated foods named *cortado* outrank our intended hits with no trust weighting; (b) common drinks (cortado, flat white, cappuccino) need first-class generic rows in our seed. Ranking fix is a sibling of F-71/F-74; DB coverage is its own track.
+- `AN3mTmZK5T2Nhj13aMFLk2E` — ⏳ **F-74** (logged-food → caffeine/alcohol cross-update) — log a cortado in the food diary, the Caffeine card stays at 0/400 mg. Same for wine → Alcohol. Currently the Hydration & Stimulants chips and the food log are isolated stores. Architectural: `caffeine_mg` and `alcohol_g` should be **derived** from logged foods + manual quick-add, not a separate ledger.
+- `AO5PEI1xgamOQ-Nx4Gbr8Ok` — ⏳ **F-75** ("Tap meal for full nutrition" misleads) — copy promises a meal-aggregate detail; tap routes to per-item detail. Either the meal-aggregate route is missing or the copy lies. Decide which.
+- `AFVnLJIVdjQY7bkWyi0AG8A` — ⏳ **F-76** (caption-as-title on import) — Instagram/TikTok captions sometimes land in `recipe_title`. Stricter title-trim rule needed (already partially handled by `stripSectionPrefix`; this is the title not the ingredient row).
+
+**Internal observations (Grace, 2026-04-25 review session — not on TestFlight as separate IDs but actioned same day):**
+- **F-77** OFF poisoned generic-name rows (`Eggs` → 210 kcal / 3 g protein @ 40 g) outrank verified USDA. Atwater plausibility gate + trust-weighted ranking — see commit closing this row.
+- **F-78** Barcode `lookupBarcode` JSON parse error toast despite UI populating. Missing `res.ok` guard before `res.json()` on direct OFF v2 fetch + duplicate-call race from `expo-camera` re-fires. `res.ok` guard + `useRef`-based dedup.
+- **F-79** OFF micronutrient pull-through — sugar/sodium/satfat/mono/poly/trans/cholesterol/caffeine/calcium/iron/magnesium/phosphorus all "—" on logged OFF items. Web `fetchProductByBarcode.ts` parses only kcal/P/C/F/fiber/sugar/sodium — every other micro is dropped at ingest. (Mobile parser TBC.) Larger track — **deferred** (separate PR; needs DB column audit first).
+
+**2026-04-24 ASC pull (build 39; `npm run testflight:feedback` @ 16:03Z):** 136 screenshot / 6 crash threads. Deduped summary now ships **`screenshots[].url`** (time-limited) for vision triage — see `scripts/fetch-testflight-feedback.mjs`.
+
+**2026-04-24 action shipped (F-71 / F-72):**
+- **F-71** — Meal-plan coherence when DB rows have kcal but P/C/F ≈ 0: shared `src/lib/nutrition/coerceRecipeMacrosForPlanning.ts`; applied in `generateSmartPlan` + web `generatePlanFromLibrary` (sampler adds `mealPlanPortionSpreadPenalty` for extreme 0.2× vs 1.8× spreads); mobile `planner.tsx` coerces relational `meal_plan_meals` rows + generator pool inputs. Targets TestFlight `AGSeM-FnnYbZy6FJveUKBoc` (portion + 0g macro rows), `APPRkg_BADnAUvYA2GNIILY`, `ALbFGzbT4ImWVgX0FzXDGOY`, `AHQdqnRxBaTHxYN3vuzV4CM`, `AJ_dfDvM2j6rnkOAgHTpwig` (partial — household layout still C5).
+- **F-72** — Plan tab library entry: **Open recipe library** (empty plan card) + **Browse recipe library** (when a plan exists). Targets `APHEBaM02gFAhoeHQ5mtxuE`, `AFF_UA88-CeE5TDCRhbaY_M`.
+
+**Same pull — still open / design-only:** `ABo2673OW9Z_GsXuifRsOjo` (⏳ MFP-style secondary IA — needs product pass, not a one-line fix).
+
 **Action-round plan:** per-cluster next steps in [../planning/testflight-2026-04-22-action-plan.md](../planning/testflight-2026-04-22-action-plan.md).
 
 **2026-04-22 pilot-round action shipped (8 F-tracks):**
@@ -135,6 +155,19 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
+| 2026-04-25 | `AKtz5LtrL39b39-CPXdFE08` | screenshot | ⏳ | **F-73** — search relevance + DB coverage for common drinks | "cortado should have lots of options" |
+| 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ⏳ | **F-74** — derive caffeine_mg/alcohol_g from logged foods (logged cortado → Caffeine card increments) | "Alcohol and caffeine should auto update from things logged" |
+| 2026-04-25 | `AO5PEI1xgamOQ-Nx4Gbr8Ok` | screenshot | ⏳ | **F-75** — meal-aggregate detail OR copy fix ("tap an item for nutrition") | "Tap meal for full nutrition doesn't show … full nutrition for the meal" |
+| 2026-04-25 | `AFVnLJIVdjQY7bkWyi0AG8A` | screenshot | ⏳ | **F-76** — recipe-import title trim rule (caption rejection) | "Some recipes pulling in with the whole caption on the title" |
+| 2026-04-24 | `AGSeM-FnnYbZy6FJveUKBoc` | screenshot | 🟡 | **F-71** — coerce zero-macro recipe rows + penalise extreme portion spreads in meal-plan sampler; hydrate relational plan rows | "Portioning is not logical - … double lunch and 0.2 breakfast" |
+| 2026-04-24 | `APHEBaM02gFAhoeHQ5mtxuE` | screenshot | 🟡 | **F-72** — Plan tab explicit library links | "Need to be more obvious ways to access the library" |
+| 2026-04-24 | `ABo2673OW9Z_GsXuifRsOjo` | screenshot | ⏳ | cluster **C12-IA** — MFP-style secondary surfaces (design) | "This should be on a secondary more subtle page like mfp" |
+| 2026-04-24 | `AFF_UA88-CeE5TDCRhbaY_M` | screenshot | 🟡 | **F-72** | "No way to add from library here" |
+| 2026-04-24 | `APPRkg_BADnAUvYA2GNIILY` | screenshot | 🟡 | **F-71** sibling (zero pull-through) | "Still pulling in 0" |
+| 2026-04-24 | `ALbFGzbT4ImWVgX0FzXDGOY` | screenshot | 🟠 | **F-71** improves macro row honesty; fibre on imports still tracked separately | "Fibre and other nutrients not pulling in" |
+| 2026-04-23 | `AJ_dfDvM2j6rnkOAgHTpwig` | screenshot | 🟡 | **F-71** + existing **C5** household Netflix model — re-verify on build ≥39 | "House hold looks the same and calories are still way off compared to targets" |
+| 2026-04-23 | `AHQdqnRxBaTHxYN3vuzV4CM` | screenshot | 🟡 | **F-71** sibling (seeded recipe zeros) | "Seeded recipes still don’t have macros or calories" |
+| 2026-04-23 | `ALlGgnDVP-rzqUojRWknayY` | screenshot | 🟡 | **F-57** sibling | "Same apple health error message" |
 | 2026-04-22 | `AEzcUFvXt-ux…` | screenshot | 🟡 | **F-57** — health-sync gains (a) always-visible "Open Health app · Manage permissions" deeplink that opens `x-apple-health://`, (b) post-sync Alert when body data moved but dietary returned empty AND no Suppr-owned samples (proxy for silent dietary-read-denied). Root cause: iOS silently suppresses re-prompt for dietary perms after prior split-init had asked | "Apple health still doesn't work this is urgent it used to work perfectly" |
 | 2026-04-22 | `AEWQ5gs3vyvs…` | screenshot | 🟡 | sibling of F-57 | "Apple health still not fixed" |
 | 2026-04-22 | `AAcIj2Vc1D60…` | screenshot | 🟡 | sibling of F-57 — 730-day lookback was already shipped (F-44); new alert explains why dietary is empty when body syncs fine | "Apple health successfully synced but it has not pulled in historical meals like it used to (from lose it mfp etc)" |

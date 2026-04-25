@@ -9,6 +9,10 @@
 //   ASC_APP_ID         Numeric ascAppId (e.g. 6762522932)
 //
 // Usage: node scripts/fetch-testflight-feedback.mjs
+//
+// Summary JSON includes `screenshots[]` with signed JPEG URLs from Apple
+// (`tf-feedback.itunes.apple.com`). URLs expire — use soon after fetch; see
+// each asset's `expirationDate`.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { createPrivateKey, createSign } from "node:crypto";
@@ -62,6 +66,22 @@ async function main() {
   console.log(
     `\nSummary: ${summary.screenshotFeedback.length} screenshot, ${summary.crashFeedback.length} crash submissions across ${summary.builds.length} builds.`,
   );
+  console.log(
+    "Each screenshot row includes `screenshots[].url` (time-limited); re-run this script after URLs expire.",
+  );
+}
+
+/** @param {unknown} raw */
+function normaliseScreenshotAssets(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((shot) => shot && typeof shot.url === "string" && shot.url.length > 0)
+    .map((shot) => ({
+      url: shot.url,
+      width: typeof shot.width === "number" ? shot.width : null,
+      height: typeof shot.height === "number" ? shot.height : null,
+      expirationDate: typeof shot.expirationDate === "string" ? shot.expirationDate : null,
+    }));
 }
 
 function summarise({ builds, screenshots, crashes }) {
@@ -79,18 +99,22 @@ function summarise({ builds, screenshots, crashes }) {
       processingState: b.attributes.processingState,
       expired: b.attributes.expired,
     })),
-    screenshotFeedback: screenshots.data.map((s) => ({
-      id: s.id,
-      submittedDate: s.attributes.submittedDate ?? s.attributes.createdDate,
-      comment: s.attributes.comment || null,
-      email: s.attributes.email || null,
-      deviceModel: s.attributes.deviceModel,
-      osVersion: s.attributes.osVersion,
-      locale: s.attributes.locale,
-      buildId: s.relationships?.build?.data?.id,
-      buildVersion: buildMeta[s.relationships?.build?.data?.id]?.version,
-      screenshotCount: s.attributes.screenshots?.length ?? 0,
-    })),
+    screenshotFeedback: screenshots.data.map((s) => {
+      const shots = normaliseScreenshotAssets(s.attributes.screenshots);
+      return {
+        id: s.id,
+        submittedDate: s.attributes.submittedDate ?? s.attributes.createdDate,
+        comment: s.attributes.comment || null,
+        email: s.attributes.email || null,
+        deviceModel: s.attributes.deviceModel,
+        osVersion: s.attributes.osVersion,
+        locale: s.attributes.locale,
+        buildId: s.relationships?.build?.data?.id,
+        buildVersion: buildMeta[s.relationships?.build?.data?.id]?.version,
+        screenshotCount: shots.length,
+        screenshots: shots,
+      };
+    }),
     crashFeedback: crashes.data.map((c) => ({
       id: c.id,
       submittedDate: c.attributes.submittedDate ?? c.attributes.createdDate,

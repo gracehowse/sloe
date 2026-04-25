@@ -474,6 +474,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     name: string;
     source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
     macrosPer100g: MacrosPer100g;
+    /** F-79 — full per-100g micros forwarded to commit. */
+    microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
@@ -766,7 +768,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, microsPer100g: item.microsPer100g, portions, chosenPortion: portion, quantity });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
       // Edamam (restaurant + branded foods) — TestFlight `AOI9xgY88Dx-uphiXI8IzEk`,
       // 2026-04-18. Macros come back per-100 g already inline. Source label
@@ -908,6 +910,7 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       name: preview.name,
       source: preview.source,
       macrosPer100g: preview.macrosPer100g,
+      ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
       portions: preview.portions,
       chosenPortion: preview.chosenPortion,
       quantity: preview.quantity,

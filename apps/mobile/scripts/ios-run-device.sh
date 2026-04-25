@@ -10,7 +10,10 @@
 # Device: set EXPO_IOS_DEVICE=<UDID> or pass UDID as args (after -- when using npm).
 # Metro: defaults to --tunnel so the phone can load JS without LAN reachability to your Mac.
 #        Use EXPO_IOS_LAN=1 for plain "expo start" (same Wi‑Fi as Mac; may fail with AP isolation).
+#        When EXPO_IOS_LAN=1, an existing Metro on 8081 is restarted without --tunnel so the dev
+#        client does not keep a stale exp.direct URL (tunnel died → "Could not connect").
 # SUPPR_SKIP_METRO_RESTART=1 — keep Metro already on 8081 (e.g. `npx expo start --tunnel` in another tab).
+# SUPPR_KEEP_METRO=1 — never stop/restart Metro (use if you intentionally started Metro yourself).
 # List devices: xcrun xctrace list devices
 #
 # Hangs on "Connecting to: <iPhone>" + flaky dev server: Expo uses USB first, then devicectl (often
@@ -48,12 +51,16 @@ ensure_metro() {
       log "Metro already on 8081 — SUPPR_SKIP_METRO_RESTART=1, reusing existing process."
       return 0
     fi
-    if [[ "$want_tunnel" == "1" ]] && [[ "${SUPPR_KEEP_METRO:-}" != "1" ]]; then
-      log "Metro is already on 8081 — restarting with --tunnel so your phone does not rely on LAN 192.168.x.x (override with SUPPR_KEEP_METRO=1)."
+    if [[ "${SUPPR_KEEP_METRO:-}" == "1" ]]; then
+      log "Metro already responding on http://127.0.0.1:8081 — SUPPR_KEEP_METRO=1, reusing."
+      return 0
+    fi
+    if [[ "$want_tunnel" == "1" ]]; then
+      log "Metro is already on 8081 — restarting with --tunnel so your phone does not rely on LAN 192.168.x.x."
       stop_metro_8081
     else
-      log "Metro already responding on http://127.0.0.1:8081 — reusing."
-      return 0
+      log "Metro is already on 8081 — restarting without --tunnel (LAN packager) so the dev client is not stuck on an old exp.direct URL."
+      stop_metro_8081
     fi
   fi
 
@@ -101,6 +108,29 @@ ensure_metro() {
       log "--- Metro log (last 35 lines; copy exp+ / https URL into Dev Client → Enter URL manually) ---"
       tail -35 "$logfile" 2>/dev/null || true
       log "--- end Metro log excerpt ---"
+    fi
+  fi
+
+  # Tunnel/ngrok can pass /status briefly then exit when ngrok is down — don't hand off to Xcode with dead Metro.
+  if ! metro_up; then
+    local ok2=0
+    log "Metro not responding right after startup wait — retrying /status for up to 45s…"
+    for _ in $(seq 1 45); do
+      if metro_up; then
+        ok2=1
+        break
+      fi
+      sleep 1
+    done
+    if [[ "$ok2" != "1" ]]; then
+      log "Metro never stayed up on http://127.0.0.1:8081 (tunnel start often fails when ngrok is unreachable)." >&2
+      log "Last log lines from $logfile:" >&2
+      tail -60 "$logfile" >&2 || true
+      log "" >&2
+      log "Fix: same Wi‑Fi as this Mac →  EXPO_IOS_LAN=1 npm run ios   (skips tunnel)" >&2
+      log "Or: wait for ngrok / Expo tunnel recovery → https://status.ngrok.com/" >&2
+      log "Or: Terminal 1:  cd apps/mobile && npx expo start --tunnel   then Terminal 2:  SUPPR_SKIP_METRO_RESTART=1 npm run ios" >&2
+      exit 1
     fi
   fi
 }
