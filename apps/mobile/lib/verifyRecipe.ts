@@ -22,6 +22,7 @@ import {
 } from "../../../src/lib/nutrition/ingredientOverrides";
 import { totalGramsForVerifyScale as totalGramsForVerifyScaleImpl } from "../../../src/lib/nutrition/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
+import { isPlausibleMacrosPer100g } from "../../../src/lib/nutrition/macroPlausibility";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -466,7 +467,18 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
             ? p.serving_size.trim()
             : null,
         };
-      });
+      })
+      // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility
+      // check. Closes the "Eggs · 210 kcal · 3 g protein" failure mode where
+      // a poisoned user-uploaded row outranked verified USDA generics.
+      .filter((h) =>
+        isPlausibleMacrosPer100g({
+          calories: h.calories,
+          protein: h.protein,
+          carbs: h.carbs,
+          fat: h.fat,
+        }),
+      );
   } catch (e) {
     console.error("[searchOFF] failed:", e instanceof Error ? e.message : e);
     return [];
@@ -724,6 +736,11 @@ function mergeResults(
       { calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat },
       item.servingSize,
     );
+    // F-77 (2026-04-25) — trust-weight: OFF user-uploaded rows lose to
+    // USDA on tie/near-tie. Branded OFF rows (have a brand string) are
+    // intrinsically more trustworthy than generic-name OFF rows because
+    // they map to a real packaged product, so the demotion is smaller.
+    const offTrustPenalty = brand ? 0.10 : 0.20;
     results.push({
       key: `off-${item.code}`,
       name: displayName,
@@ -744,7 +761,7 @@ function mergeResults(
       primaryServing,
       _source: "OFF",
       _offCode: item.code,
-      _relevance: searchRelevance(query, displayName),
+      _relevance: Math.max(0, searchRelevance(query, displayName) - offTrustPenalty),
     });
   }
 
@@ -865,8 +882,21 @@ export async function lookupBarcode(
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${trimmed}.json`,
+      { headers: { Accept: "application/json" } },
     );
-    const data = await res.json();
+    // F-78 (2026-04-25) — guard res.ok before .json(). Without this, OFF
+    // 429/5xx/HTML error pages throw `JSON Parse error` and surface as a
+    // toast even when an earlier successful call already populated the
+    // UI (duplicate-call race from expo-camera re-fires).
+    if (!res.ok) return null;
+    const text = await res.text();
+    let data: { status?: number; product?: unknown };
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.warn("[lookupBarcode] non-JSON OFF response:", text.slice(0, 200));
+      return null;
+    }
     if (data.status !== 1 || !data.product) return null;
 
     const p = data.product as {

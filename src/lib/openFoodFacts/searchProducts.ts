@@ -4,6 +4,8 @@
  * and covers UK, EU, US, AU products.
  */
 
+import { isPlausibleMacrosPer100g } from "../nutrition/macroPlausibility";
+
 export type OffSearchHit = {
   code: string;
   name: string;
@@ -82,7 +84,16 @@ export async function searchOffProducts(
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
         };
       })
-      .filter((h) => h.calories > 0 || h.protein > 0); // Skip items with no nutrition data
+      // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility
+      // check. Closes the "Eggs · 210 kcal · 3 g protein" failure mode.
+      .filter((h) =>
+        isPlausibleMacrosPer100g({
+          calories: h.calories,
+          protein: h.protein,
+          carbs: h.carbs,
+          fat: h.fat,
+        }),
+      );
   } catch {
     return [];
   }

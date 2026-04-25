@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -38,6 +38,11 @@ export default function BarcodeScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
+  // F-78 (2026-04-25) — `last` setState is async, so the closure inside
+  // `onBarcode` reads stale state when expo-camera re-fires the same scan
+  // event before React commits. The ref is written synchronously, so a
+  // duplicate event for the same code can never start a second lookup.
+  const lastRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<BarcodeProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +86,8 @@ export default function BarcodeScreen() {
 
   const onBarcode = useCallback(
     async (e: { data: string }) => {
-      if (loading || last === e.data) return;
+      if (loading || lastRef.current === e.data) return;
+      lastRef.current = e.data;
       setLast(e.data);
       setLoading(true);
       setError(null);
@@ -153,7 +159,7 @@ export default function BarcodeScreen() {
         });
       }
       Alert.alert("Logged", `${product.name} (${portionSummary}) added to today's tracker.`, [
-        { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); } },
+        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
@@ -190,7 +196,7 @@ export default function BarcodeScreen() {
       // F-2 — freeze today's target on first log of the day.
       void snapshotDailyTargetIfMissing(supabase, userId);
       Alert.alert("Logged", `${manualName.trim()} added to today's tracker.`, [
-        { text: "Scan another", onPress: () => { setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); } },
+        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
@@ -238,6 +244,7 @@ export default function BarcodeScreen() {
   }, [last, userId, corrName, corrCalories, corrProtein, corrCarbs, corrFat, product]);
 
   const resetScan = useCallback(() => {
+    lastRef.current = null;
     setLast(null);
     setProduct(null);
     setError(null);

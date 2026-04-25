@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
+import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   projectRemaining,
   type MacroConsumed,
@@ -271,7 +272,17 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
           _offCode: p.code,
         };
       })
-      .filter((r: SearchResult) => r.calsPer100g && r.calsPer100g > 0);
+      .filter((r: SearchResult) => {
+        if (!r.calsPer100g || r.calsPer100g <= 0) return false;
+        // F-77 (2026-04-25) — Atwater plausibility on every OFF hit.
+        if (!r.macrosPer100g) return false;
+        return isPlausibleMacrosPer100g({
+          calories: r.macrosPer100g.calories,
+          protein: r.macrosPer100g.protein,
+          carbs: r.macrosPer100g.carbs,
+          fat: r.macrosPer100g.fat,
+        });
+      });
   } catch { return []; }
 }
 
@@ -585,8 +596,23 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     const customResults = customs
       .map((c) => ({ ...customFoodToSearchResult(c), _rel: searchRelevance(q, c.name) }))
       .sort((a, b) => b._rel - a._rel);
+    // F-77 (2026-04-25) — trust-weighted ranking. USDA Foundation /
+    // SR Legacy / Survey rows are unbranded generics with verified
+    // nutrition, so they should outrank OFF user-uploaded rows on
+    // tie/near-tie. Branded OFF rows (have a brand string) are kept
+    // closer to par because they map to a real packaged product.
+    const trustWeight = (r: SearchResult): number => {
+      if (r._source === "USDA" && r.verified) return 0.05;
+      if (r._source === "USDA") return 0;
+      if (r._source === "Edamam") return -0.05;
+      if (r._source === "OFF") {
+        const hasBrand = /·/.test(r.name); // OFF display name = "Brand · Product"
+        return hasBrand ? -0.10 : -0.20;
+      }
+      return 0;
+    };
     const external = [...usda, ...off, ...edamam]
-      .map((r) => ({ ...r, _rel: searchRelevance(q, r.name) }))
+      .map((r) => ({ ...r, _rel: Math.max(0, searchRelevance(q, r.name) + trustWeight(r)) }))
       .sort((a, b) => b._rel - a._rel);
     const seen = new Set<string>();
     const deduped: SearchResult[] = [];
