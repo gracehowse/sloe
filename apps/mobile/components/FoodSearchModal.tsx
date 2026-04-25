@@ -90,6 +90,13 @@ export type SelectedFood = {
   name: string;
   source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   macrosPer100g: Macros;
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set in canonical
+   * camelCase keys. Forwarded to the commit site (Today food log /
+   * verify-ingredient flow) so `nutrition_entries.nutrition_micros`
+   * can be populated. Empty object when the source didn't expose any.
+   */
+  microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
   quantity: number;
@@ -305,6 +312,8 @@ export default function FoodSearchModal({
     name: string;
     source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
     macrosPer100g: Macros;
+    /** F-79 — full per-100g micros forwarded to commit. */
+    microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
@@ -521,6 +530,8 @@ export default function FoodSearchModal({
           name: item.name,
           source: "OFF",
           macrosPer100g: item.macrosPer100g,
+          // F-79 — full per-100g micros from OFF.
+          microsPer100g: item.microsPer100g,
           portions: allPortions,
           chosenPortion: portion,
           quantity,
@@ -760,6 +771,8 @@ export default function FoodSearchModal({
         name: preview.name,
         source: preview.source,
         macrosPer100g: preview.macrosPer100g,
+        // F-79 — forward per-100g micros so commit site can persist them.
+        ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
         portions: preview.portions,
         chosenPortion: preview.chosenPortion,
         quantity: preview.quantity,

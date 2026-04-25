@@ -5,6 +5,7 @@
  */
 
 import { isPlausibleMacrosPer100g } from "../nutrition/macroPlausibility";
+import { parseOffMicrosPer100g } from "./parseOffMicros";
 
 export type OffSearchHit = {
   code: string;
@@ -18,6 +19,8 @@ export type OffSearchHit = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** F-79 — full micronutrient set per 100g, canonical camelCase keys. */
+  microsPer100g?: Record<string, number>;
 };
 
 /**
@@ -38,7 +41,7 @@ export async function searchOffProducts(
     action: "process",
     json: "1",
     page_size: String(pageSize),
-    fields: "code,product_name,brands,nutriments",
+    fields: "code,product_name,brands,nutriments,serving_size",
   });
   // Optionally filter by country (e.g. "united-kingdom", "france")
   if (opts?.countryTag) {
@@ -82,6 +85,8 @@ export async function searchOffProducts(
           fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
           sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+          // F-79 — pull every micro OFF exposes; commit sites scale + persist.
+          microsPer100g: parseOffMicrosPer100g(n),
         };
       })
       // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility

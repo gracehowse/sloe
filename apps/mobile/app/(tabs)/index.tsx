@@ -112,6 +112,7 @@ import {
 } from "../../../../src/lib/nutrition/todayProgressiveDisclosure";
 import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
+import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
@@ -3424,9 +3425,17 @@ export default function TrackerScreen() {
             caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
             alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
           });
-          const micros: Record<string, number> = {};
-          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) micros.alcoholG = alcoholG;
+          // F-79 (2026-04-25) — scale the full OFF micro set for `grams` and
+          // merge with caffeine/alcohol overrides (F-13). Empty when the
+          // source didn't expose any micros (USDA / Edamam / custom rows).
+          const explicitMicros: Record<string, number> = {};
+          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+          const micros = scaleMicrosForGrams(
+            result.microsPer100g ?? {},
+            grams,
+            explicitMicros,
+          );
           const meal: JournalMeal = {
             id: newMealId(),
             name: activeMealSlot,

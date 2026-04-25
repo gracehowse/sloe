@@ -28,6 +28,7 @@ import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
 import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
+import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -126,9 +127,18 @@ export default function BarcodeScreen() {
       caffeineMgPer100g: product.caffeineMgPer100g ?? null,
       alcoholGPer100g: product.alcoholGPer100g ?? null,
     });
-    const nutritionMicros: Record<string, number> = {};
-    if (caffeineMg > 0) nutritionMicros.caffeineMg = caffeineMg;
-    if (alcoholG > 0) nutritionMicros.alcoholG = alcoholG;
+    // F-79 (2026-04-25) — scale the full OFF micro set for `grams` and merge
+    // with caffeine/alcohol overrides (F-13 already explicitly computed those
+    // via `scaleCaffeineAlcohol`, so they take precedence over the generic
+    // micro scaler). Empty when OFF didn't expose any micros for the row.
+    const explicit: Record<string, number> = {};
+    if (caffeineMg > 0) explicit.caffeineMg = caffeineMg;
+    if (alcoholG > 0) explicit.alcoholG = alcoholG;
+    const nutritionMicros = scaleMicrosForGrams(
+      product.microsPer100g ?? {},
+      grams,
+      explicit,
+    );
     const { error: dbErr } = await supabase.from("nutrition_entries").insert({
       id: mealId,
       user_id: userId,

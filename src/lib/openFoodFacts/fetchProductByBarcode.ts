@@ -3,6 +3,7 @@ import {
   pickDefaultServingGrams,
   type OffServingOption,
 } from "./offServingPortions.ts";
+import { parseOffMicrosPer100g } from "./parseOffMicros.ts";
 
 export type { OffServingOption };
 
@@ -19,6 +20,14 @@ export interface OffProductMacros {
   /** F-13 auto-track; null when OFF doesn't expose it. */
   caffeineMgPer100g?: number | null;
   alcoholGPer100g?: number | null;
+  /**
+   * F-79 (2026-04-25) — full OFF micronutrient set per 100g, in canonical
+   * camelCase keys matching `MICRO_LINES` in `microNutrientDisplay.ts`.
+   * Scale by `grams / 100` and merge into `nutrition_micros` at commit time
+   * so the food-detail "Vitamins, minerals & more" panel renders real
+   * values instead of "—" on every row.
+   */
+  microsPer100g?: Record<string, number>;
   servingLabel: string;
   /** If OFF provides a serving size like "50 g", parse to grams. */
   servingSizeG?: number;
@@ -74,6 +83,20 @@ export async function fetchProductByBarcode(code: string): Promise<
     const fiberG = Math.round(n.fiber_100g ?? n.fiber ?? 0);
     const sugarG = Math.round((n["sugars_100g"] ?? n.sugars ?? 0) * 10) / 10;
     const sodiumMg = Math.round((n.sodium_100g ?? n.sodium ?? 0) * 1000);
+    // F-79 (2026-04-25) — extract F-13 caffeine/alcohol + the full
+    // micronutrient set so commit sites can persist them on
+    // `nutrition_entries.nutrition_micros`.
+    const caffRaw = n.caffeine_100g ?? n.caffeine;
+    const caffeineMgPer100g =
+      typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
+        ? Math.round(caffRaw * 1000 * 10) / 10
+        : null;
+    const alcRaw = n.alcohol_100g ?? n.alcohol;
+    const alcoholGPer100g =
+      typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
+        ? Math.round(alcRaw * 100) / 100
+        : null;
+    const microsPer100g = parseOffMicrosPer100g(n);
     const servingOptions = buildOffServingOptionsFromProduct(p);
     const servingSizeG = pickDefaultServingGrams(servingOptions);
     const rawServing = (p.serving_size ?? "").trim();
@@ -88,6 +111,9 @@ export async function fetchProductByBarcode(code: string): Promise<
         fiberG,
         sugarG,
         sodiumMg,
+        caffeineMgPer100g,
+        alcoholGPer100g,
+        microsPer100g,
         servingLabel: rawServing ? `per 100 g (label: ${rawServing})` : "per 100 g (approximate)",
         servingSizeG,
         servingOptions,

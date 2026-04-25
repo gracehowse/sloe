@@ -23,6 +23,7 @@ import {
 import { totalGramsForVerifyScale as totalGramsForVerifyScaleImpl } from "../../../src/lib/nutrition/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
 import { isPlausibleMacrosPer100g } from "../../../src/lib/nutrition/macroPlausibility";
+import { parseOffMicrosPer100g } from "../../../src/lib/openFoodFacts/parseOffMicros";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -155,6 +156,12 @@ export type BarcodeProduct = {
   sugarG?: number | null;
   sodiumMg?: number | null;
   saturatedFatG?: number | null;
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set in canonical
+   * camelCase keys. Scale by `grams / 100` on commit and merge into
+   * `nutrition_micros`. Closes the "every micro row shows —" failure.
+   */
+  microsPer100g?: Record<string, number>;
   /** OFF-style presets (label + grams) for scaling per-100g macros. */
   servingOptions?: OffServingOption[];
   /** Filled by scanner when confirming (e.g. "4 dumplings"). */
@@ -397,6 +404,13 @@ export type OffSearchResult = {
    */
   caffeineMgPer100g: number | null;
   alcoholGPer100g: number | null;
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set in canonical
+   * camelCase keys. Scale by `grams / 100` and persist on
+   * `nutrition_entries.nutrition_micros` so the meal-detail "Vitamins,
+   * minerals & more" panel renders real values instead of every row "—".
+   */
+  microsPer100g?: Record<string, number>;
   imageUrl: string | null;
   /** Free-text serving string from OFF, e.g. "1 slice (28 g)". */
   servingSize: string | null;
@@ -462,6 +476,8 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
           caffeineMgPer100g,
           alcoholGPer100g,
+          // F-79 (2026-04-25) — extract every micro OFF exposes.
+          microsPer100g: parseOffMicrosPer100g(n),
           imageUrl: p.image_small_url ?? null,
           servingSize: typeof p.serving_size === "string" && p.serving_size.trim()
             ? p.serving_size.trim()
@@ -507,6 +523,13 @@ export type UnifiedSearchResult = {
     caffeineMgPer100g?: number | null;
     alcoholGPer100g?: number | null;
   };
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set in canonical
+   * camelCase keys (`saturatedFatG`, `cholesterolMg`, etc.). Populated
+   * from OFF; empty for USDA / Edamam until those sources are extended.
+   * Commit sites scale by `grams / 100` and merge into `nutrition_micros`.
+   */
+  microsPer100g?: Record<string, number>;
   /** Quick calorie display (per 100g) */
   calsPer100g?: number;
   imageUrl?: string | null;
@@ -757,6 +780,9 @@ function mergeResults(
         caffeineMgPer100g: item.caffeineMgPer100g,
         alcoholGPer100g: item.alcoholGPer100g,
       },
+      // F-79 — thread the OFF micro set through so commit sites can
+      // persist on `nutrition_entries.nutrition_micros`.
+      microsPer100g: item.microsPer100g,
       imageUrl: item.imageUrl,
       primaryServing,
       _source: "OFF",
@@ -941,6 +967,8 @@ export async function lookupBarcode(
       servingSizeG,
       caffeineMgPer100g,
       alcoholGPer100g,
+      // F-79 (2026-04-25) — full micros per 100g for scanned barcode.
+      microsPer100g: parseOffMicrosPer100g(n),
       servingOptions,
       source: "open_food_facts",
       verified: false,
