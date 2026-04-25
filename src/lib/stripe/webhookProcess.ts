@@ -87,31 +87,51 @@ async function applyTierForSubscription(sub: Stripe.Subscription): Promise<void>
 }
 
 /**
- * In-memory deduplication cache for webhook events within a server instance lifecycle.
- * Stripe may deliver the same event multiple times for reliability.
- * All tier update operations are idempotent (set tier = X, not tier += 1),
- * so duplicates are safe but wasteful. This cache prevents redundant DB writes.
+ * T23 (2026-04-24) — persisted deduplication via `stripe_webhook_events`.
+ *
+ * Replaces the previous in-memory `Set<string>` which lost state on
+ * every cold start / function eviction (Stripe retries up to 72h).
+ *
+ * Pattern: try to INSERT the event.id. Unique-key violation (23505)
+ * means we've seen this event already → return true (skip handler).
+ * Any other error (connection, env unset, etc.) returns false so the
+ * handler still runs — fail-safe matching the previous in-memory
+ * behaviour on faults. Duplicate-processing of an idempotent handler
+ * is strictly better than dropping a real event.
  */
-const processedEventIds = new Set<string>();
-const MAX_CACHED_EVENTS = 1000;
+async function isAlreadyProcessed(eventId: string): Promise<boolean> {
+  if (!eventId) return false;
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return false; // env not configured (tests, dev) → never dedup
+  const { error } = await sb
+    .from("stripe_webhook_events")
+    .insert({ event_id: eventId });
+  if (!error) return false; // first time seeing this id
+  if ((error as { code?: string }).code === "23505") return true;
+  // Any other error: log + fail-safe (process the event).
+  // 42P01 (undefined_table) or 42883 covers a partial deploy without
+  // the migration; treat the same as a transient fault.
+  console.warn(
+    "[stripe_webhook] dedup INSERT failed; processing event without dedup:",
+    error.message,
+  );
+  return false;
+}
 
-/** @internal — exposed for tests only */
+/** @internal — exposed for tests only.
+ *  Retained as a no-op for backward compat with existing test setups
+ *  that called this in `beforeEach`. The dedup is now DB-backed; tests
+ *  without a service-role client (typical) bypass dedup entirely. */
 export function _clearProcessedEventsForTesting(): void {
-  processedEventIds.clear();
+  /* no-op since T23 — dedup state lives in stripe_webhook_events */
 }
 
 /**
  * Core Stripe webhook business logic (testable without HTTP).
  */
 export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
-  // Skip already-processed events (deduplication)
-  if (processedEventIds.has(event.id)) return;
-  processedEventIds.add(event.id);
-  // Prevent unbounded memory growth
-  if (processedEventIds.size > MAX_CACHED_EVENTS) {
-    const first = processedEventIds.values().next().value;
-    if (first) processedEventIds.delete(first);
-  }
+  // Skip already-processed events (T23 persisted dedup).
+  if (await isAlreadyProcessed(event.id)) return;
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
