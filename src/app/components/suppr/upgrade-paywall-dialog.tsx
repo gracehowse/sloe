@@ -190,9 +190,12 @@ export function UpgradePaywallDialog({
   bypassSessionCap = false,
 }: UpgradePaywallDialogProps) {
   const [busy, setBusy] = useState(false);
-  // Period is monthly on this surface — annual toggle lives on
-  // `/pricing`. Declared `as const` so the analytics payload types line up.
-  const period = "monthly" as const;
+  // T24 (full-sweep 2026-04-24): the highest-intent purchase surface
+  // (this dialog) was hardcoded to monthly, so a user converting from
+  // here always paid ~60% more per year vs. annual. Default monthly
+  // matches the /pricing default but the user can flip to annual
+  // before checkout — no second-screen trip required.
+  const [period, setPeriod] = useState<"monthly" | "annual">("monthly");
 
   // --- Variant selection --------------------------------------------
   const variant: Variant | null =
@@ -213,13 +216,25 @@ export function UpgradePaywallDialog({
   const baseTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Base"), []);
   const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
 
-  const basePriceLabel = baseTier?.price ?? "£3.99";
-  const basePeriodLabel = baseTier?.period ?? "/month";
+  const isAnnual = period === "annual";
+
+  const baseMonthlyPrice = baseTier?.price ?? "£3.99";
+  const baseAnnualPrice = baseTier?.annualPrice ?? "£29.99";
+  const basePriceLabel = isAnnual ? baseAnnualPrice : baseMonthlyPrice;
+  const basePeriodLabel = isAnnual
+    ? (baseTier?.annualPeriod ?? "/year")
+    : (baseTier?.period ?? "/month");
   const basePeriodShort = basePeriodLabel.replace(/^\//, "");
 
-  const proPriceLabel = proTier?.price ?? "£7.99";
-  const proPeriodLabel = proTier?.period ?? "/month";
+  const proMonthlyPrice = proTier?.price ?? "£7.99";
+  const proAnnualPrice = proTier?.annualPrice ?? "£59.99";
+  const proPriceLabel = isAnnual ? proAnnualPrice : proMonthlyPrice;
+  const proPeriodLabel = isAnnual
+    ? (proTier?.annualPeriod ?? "/year")
+    : (proTier?.period ?? "/month");
   const proPeriodShort = proPeriodLabel.replace(/^\//, "");
+
+  const annualSavingsLabel = baseTier?.annualSavings ?? "Save 37%";
 
   // --- StrictMode double-fire guard (shared across new + legacy emits) ---
   const viewedForOpenRef = useRef(false);
@@ -401,12 +416,24 @@ export function UpgradePaywallDialog({
   // §1: Variant A carries the "Most popular" badge; Variant B does not.
   const showMostPopular = isA;
 
-  const renewalNote = isA
-    ? "Cancel anytime. Annual plan saves 37%."
-    : // Variant B is LOCKED to this neutral string — the
-      // "You keep Base if you downgrade" line is factually wrong
-      // per docs/decisions/2026-04-21-pro-downgrade-path.md.
-      "Cancel anytime. Annual plan saves 37%. Manage your plan at any time.";
+  // T24 (full-sweep 2026-04-24): full CMA-aligned disclosure replaces
+  // the previous one-line renewal note. Mirrors the mobile paywall
+  // string (apps/mobile/app/paywall.tsx ~540) so the highest-intent
+  // web surface and the iOS surface make the same commitment to the
+  // user. No trial on web upgrade-dialog flow today; if/when added,
+  // append the trial-end + first-charge clause from mobile.
+  const productName = isA ? "Suppr Base" : "Suppr Pro";
+  const periodNoun = isAnnual ? "year" : "month";
+  const altLine =
+    isAnnual
+      ? ` (or ${isA ? baseMonthlyPrice : proMonthlyPrice} per month on the monthly plan)`
+      : "";
+  // Variant B was LOCKED to a neutral string — the "You keep Base if
+  // you downgrade" line is factually wrong per
+  // docs/decisions/2026-04-21-pro-downgrade-path.md. Both variants
+  // now share the same disclosure shape because both are honest
+  // commitments to renewal terms.
+  const renewalNote = `${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
 
   const primaryCtaLabel = isA
     ? `Continue with Base · ${priceLabel}/${periodShort}`
@@ -491,8 +518,53 @@ export function UpgradePaywallDialog({
             ))}
           </ul>
 
+          {/* T24: monthly / annual toggle — matches the /pricing toggle
+              pattern so a user converting from inside the product can
+              pick annual without leaving the dialog. */}
+          <div
+            className="mt-5 inline-flex w-full rounded-xl border border-border bg-card p-1"
+            role="tablist"
+            aria-label="Billing period"
+            data-testid="upsell-period-toggle"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isAnnual}
+              data-testid="upsell-period-monthly"
+              onClick={() => setPeriod("monthly")}
+              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors ${
+                !isAnnual
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isAnnual}
+              data-testid="upsell-period-annual"
+              onClick={() => setPeriod("annual")}
+              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                isAnnual
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Annual
+              <span
+                className="px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[9px] font-bold uppercase tracking-wide"
+                aria-hidden
+              >
+                {annualSavingsLabel}
+              </span>
+            </button>
+          </div>
+
           {/* Pricing card */}
-          <div className="mt-5 rounded-2xl border-2 border-primary bg-card p-4 flex items-start justify-between gap-3">
+          <div className="mt-3 rounded-2xl border-2 border-primary bg-card p-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[15px] font-bold text-foreground">

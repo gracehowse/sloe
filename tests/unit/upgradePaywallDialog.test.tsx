@@ -212,13 +212,16 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
       screen.getByRole("button", { name: /Upgrade to Pro · /i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Stay on Base$/i })).toBeInTheDocument();
-    // Locked renewal note — the "You keep Base if you downgrade" line
-    // is FALSE per docs/decisions/2026-04-21-pro-downgrade-path.md and
-    // must not appear.
+    // T24 (full-sweep 2026-04-24): full CMA disclosure replaces the
+    // previous one-line note. The "You keep Base if you downgrade"
+    // line is FALSE per docs/decisions/2026-04-21-pro-downgrade-path.md
+    // and must still not appear.
     const renewal = screen.getByTestId("upsell-renewal-note");
     expect(renewal).toHaveTextContent(
-      "Cancel anytime. Annual plan saves 37%. Manage your plan at any time.",
+      /Suppr Pro renews automatically at .* per month until cancelled\./i,
     );
+    expect(renewal).toHaveTextContent(/Cancel anytime/i);
+    expect(renewal).toHaveTextContent(/refund policy/i);
     expect(renewal).not.toHaveTextContent(/keep base/i);
   });
 
@@ -277,6 +280,49 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
         /Voice and photo logging require Pro\. Base unlocks everything else\./i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("T24: defaults to monthly + renders the period toggle with annual savings badge", () => {
+    render(<Harness userTier="free" />);
+    const monthlyBtn = screen.getByTestId("upsell-period-monthly");
+    const annualBtn = screen.getByTestId("upsell-period-annual");
+    expect(monthlyBtn).toHaveAttribute("aria-selected", "true");
+    expect(annualBtn).toHaveAttribute("aria-selected", "false");
+    // Annual savings badge is visible without clicking.
+    expect(annualBtn).toHaveTextContent(/Save 37%/i);
+    // Monthly default — disclosure says "per month".
+    expect(screen.getByTestId("upsell-renewal-note")).toHaveTextContent(
+      /per month until cancelled/i,
+    );
+  });
+
+  it("T24: tapping Annual swaps the price + period across CTA, card, and disclosure", async () => {
+    const user = userEvent.setup();
+    render(<Harness userTier="free" />);
+
+    await user.click(screen.getByTestId("upsell-period-annual"));
+
+    // CTA renews to per-year and shows the annual price.
+    expect(
+      screen.getByRole("button", { name: /Continue with Base · £29\.99\/year/i }),
+    ).toBeInTheDocument();
+
+    // Disclosure now reads "per year" + alt monthly equivalence line.
+    const renewal = screen.getByTestId("upsell-renewal-note");
+    expect(renewal).toHaveTextContent(/per year/i);
+    expect(renewal).toHaveTextContent(/until cancelled/i);
+    expect(renewal).toHaveTextContent(/£3\.99 per month on the monthly plan/i);
+  });
+
+  it("T24: full CMA disclosure includes renews-until-cancelled, cancel path, refund policy", () => {
+    render(<Harness userTier="free" />);
+    const renewal = screen.getByTestId("upsell-renewal-note");
+    expect(renewal).toHaveTextContent(
+      /Suppr Base renews automatically at .* per month until cancelled\./i,
+    );
+    expect(renewal).toHaveTextContent(/Cancel anytime from Account → Billing/i);
+    expect(renewal).toHaveTextContent(/Prices include any applicable VAT/i);
+    expect(renewal).toHaveTextContent(/7-day refund policy/i);
   });
 
   it("session cap suppresses a second auto-open but bypassSessionCap shows it", () => {
