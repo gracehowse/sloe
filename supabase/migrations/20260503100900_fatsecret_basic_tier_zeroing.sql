@@ -25,6 +25,27 @@
 
 begin;
 
+-- 0. Defensive schema repair (2026-04-25 — schema drift discovered on remote).
+--
+-- Migration 20260408143000_add_verified_nutrition_micros is recorded in
+-- supabase_migrations.schema_migrations but its DDL did not actually
+-- apply (likely an early MCP apply_migration that recorded the version
+-- without running the statements — exactly the failure mode CLAUDE.md
+-- warns about). Re-asserting the intended columns here is idempotent
+-- and lets the UPDATE below match its WHERE clause when run on the
+-- drifted DB. On a clean DB these IF NOT EXISTS guards are no-ops.
+alter table public.recipes
+  add column if not exists fiber_g numeric not null default 0,
+  add column if not exists sugar_g numeric not null default 0,
+  add column if not exists sodium_mg numeric not null default 0,
+  add column if not exists verified_source text,
+  add column if not exists verified_at timestamptz,
+  add column if not exists verified_confidence numeric;
+
+alter table public.recipe_ingredients
+  add column if not exists fatsecret_food_id text,
+  add column if not exists confidence numeric;
+
 -- 1. recipe_ingredients — strip cached macros from every FatSecret-matched row.
 update public.recipe_ingredients
 set
