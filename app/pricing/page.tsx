@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
-import { PageViewTracker } from "../../src/app/components/PageViewTracker.tsx";
+import { PageViewTracker, PageDismissTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { detectRegion } from "../../src/lib/region/detectRegion.ts";
@@ -142,6 +142,21 @@ export default async function PricingPage({
         properties={{
           from: paywallFrom,
           tier: "pro",
+          surface: "route",
+          platform: "web",
+        }}
+      />
+      {/* T22 (full-sweep 2026-04-24): emit `paywall_dismissed` on
+          unmount (page leave / SPA route change). F2 conversion
+          funnel previously had no dismiss counterpart on the web
+          /pricing surface — drop-off was indistinguishable from
+          "still considering". Fires regardless of cause; checkout
+          conversions still emit `checkout_started` separately so
+          the funnel can subtract. */}
+      <PageDismissTracker
+        event={AnalyticsEvents.paywall_dismissed}
+        properties={{
+          from: paywallFrom,
           surface: "route",
           platform: "web",
         }}

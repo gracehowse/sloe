@@ -225,6 +225,11 @@ export default function PaywallScreen() {
   // re-fire over a separate `paywall_tier_viewed` event to keep funnel
   // F2 on a single event and use `tier` as a funnel-step property.
   const [focusedTier, setFocusedTier] = useState<"pro" | "base">("pro");
+  // T22 (full-sweep 2026-04-24): dedup `paywall_viewed` by tier within
+  // a single mount. The audit flagged that bouncing between tiers
+  // re-fires the same `tier: "pro"` event on every return, inflating
+  // F2's denominator. Each (mount, tier) fires once.
+  const viewedTiersRef = useRef<Set<string>>(new Set());
 
   // Promo-code expander (D9 M1, 2026-04-21). Collapsed by default;
   // tap "Have a promo code?" to reveal TextInput + Apply. On success,
@@ -274,12 +279,16 @@ export default function PaywallScreen() {
       // reflects the default visual focus on this screen; if/when we
       // add `paywall_tier_viewed` for Base focus shifts, that will be
       // a separate event (flagged for analytics-engineer).
-      track(AnalyticsEvents.paywall_viewed, {
-        from: paywallFrom,
-        tier: "pro",
-        surface: "route",
-        platform: Platform.OS === "ios" ? "ios" : "android",
-      });
+      // T22 (2026-04-24): dedup by tier within a single mount.
+      if (!viewedTiersRef.current.has("pro")) {
+        viewedTiersRef.current.add("pro");
+        track(AnalyticsEvents.paywall_viewed, {
+          from: paywallFrom,
+          tier: "pro",
+          surface: "route",
+          platform: Platform.OS === "ios" ? "ios" : "android",
+        });
+      }
     })();
     return () => {
       cancelled = true;
@@ -358,12 +367,18 @@ export default function PaywallScreen() {
     // regex in `tests/unit/analyticsEvents.test.ts` sees the key.
     if (tier !== focusedTier) {
       setFocusedTier(tier);
-      track(AnalyticsEvents.paywall_viewed, {
-        from: paywallFrom,
-        tier: tier,
-        surface: "route",
-        platform: Platform.OS === "ios" ? "ios" : "android",
-      });
+      // T22 (2026-04-24): dedup by tier within a single mount — see
+      // viewedTiersRef declaration. Tier-focus shifts that revisit a
+      // tier already fired in this session are no-ops.
+      if (!viewedTiersRef.current.has(tier)) {
+        viewedTiersRef.current.add(tier);
+        track(AnalyticsEvents.paywall_viewed, {
+          from: paywallFrom,
+          tier: tier,
+          surface: "route",
+          platform: Platform.OS === "ios" ? "ios" : "android",
+        });
+      }
     }
 
     const pkg = tier === "pro" ? currentProPkg : currentBasePkg;
@@ -453,6 +468,16 @@ export default function PaywallScreen() {
 
   function onClose() {
     if (purchasing) return;
+    // T22 (full-sweep 2026-04-24): emit `paywall_dismissed` so F2's
+    // conversion denominator gets a real dismiss counterpart on mobile.
+    // Fired before the navigation kicks off so the route change can't
+    // race the analytics flush.
+    track(AnalyticsEvents.paywall_dismissed, {
+      from: paywallFrom,
+      reason: "close_button",
+      surface: "route",
+      platform: Platform.OS === "ios" ? "ios" : "android",
+    });
     // Onboarding + trial-end are forward-only flows; every other entry
     // surface came from a user-initiated navigation, so `back()` is the
     // correct cancel. Falls back to the onboarding route if there's no
