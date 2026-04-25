@@ -1163,40 +1163,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, [authedUserId, dbSavesEnabled, dbSavesWarned]);
 
-  // Persist meal plan to Supabase relational tables (debounced).
+  // Persist meal plan to Supabase via T15 atomic RPC (debounced).
   useEffect(() => {
     if (!authedUserId || !dbMealPlanEnabled || !mealPlan) return;
     const t = setTimeout(async () => {
-      // Delete existing plan days (cascade deletes meals), then re-insert
-      const { error: delErr } = await supabase
-        .from("meal_plan_days")
-        .delete()
-        .eq("user_id", authedUserId)
-        .eq("slot_id", "default");
-
-      if (delErr && looksLikeMissingTableError(delErr.message ?? "")) {
-        void upsertMealPlanJson(supabase, authedUserId, mealPlan).then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (
-              looksLikeMissingTableError(msg) ||
-              msg.toLowerCase().includes("no meal_plans json table")
-            ) {
-              setDbMealPlanEnabled(false);
-              if (!dbMealPlanWarned) {
-                setDbMealPlanWarned(true);
-                toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
-              }
-            }
-          }
-        });
-        return;
-      }
-
-      // Bulk insert all days in one call to minimise partial-failure
-      // window. T7 (2026-04-24): persist `start_date` = today so the
-      // anchor is stored explicitly (web planner has no next-week chip
-      // today; every save anchors to the current date).
+      // T7 (2026-04-24) anchor: web planner has no next-week chip yet,
+      // so every save anchors to today. T15 (2026-04-24) atomic save:
+      // single RPC replaces the previous DELETE + bulk-INSERT pair so
+      // a network drop mid-save can no longer leave an orphaned half.
       const webStartDate = (() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
@@ -1205,31 +1179,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const day = String(d.getDate()).padStart(2, "0");
         return `${y}-${m}-${day}`;
       })();
-      const dayRows = mealPlan.map((dp) => ({
-        user_id: authedUserId,
-        slot_id: "default",
+      const planPayload = mealPlan.map((dp) => ({
         day: dp.day,
-        start_date: webStartDate,
-      }));
-      const { data: insertedDays, error: dayInsertErr } = await supabase
-        .from("meal_plan_days")
-        .insert(dayRows)
-        .select("id, day");
-
-      if (dayInsertErr || !insertedDays?.length) {
-        console.error("[mealPlan] bulk day insert failed:", dayInsertErr?.message);
-        return; // Don't insert orphan meals
-      }
-
-      // Map day index → inserted row ID
-      const dayIdByDay = new Map(insertedDays.map((r) => [r.day as number, r.id as string]));
-
-      // Bulk insert all meals in one call
-      const allMealRows = mealPlan.flatMap((dp) => {
-        const dayId = dayIdByDay.get(dp.day);
-        if (!dayId) return [];
-        return dp.meals.map((m, idx) => ({
-          plan_day_id: dayId,
+        meals: dp.meals.map((m, idx) => ({
           slot_index: idx,
           name: m.name,
           recipe_title: m.recipeTitle,
@@ -1239,14 +1191,41 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           fat: m.fat,
           portion_multiplier: m.portionMultiplier ?? 1,
           is_placeholder: m.isPlaceholder ?? false,
-        }));
-      });
+        })),
+      }));
+      const { error } = await supabase.rpc("save_meal_plan", {
+        p_slot_id: "default",
+        p_start_date: webStartDate,
+        p_plan: planPayload,
+      } as never);
 
-      if (allMealRows.length > 0) {
-        const { error: mealErr } = await supabase.from("meal_plan_meals").insert(allMealRows);
-        if (mealErr) {
-          console.error("[mealPlan] bulk meal insert failed:", mealErr.message);
+      if (error) {
+        const msg = error.message ?? "";
+        // 42883 = function does not exist (env without the migration);
+        // table-not-found patterns indicate the relational schema is
+        // missing entirely. Fall back to legacy JSONB persistence.
+        if (
+          (error as { code?: string }).code === "42883" ||
+          looksLikeMissingTableError(msg)
+        ) {
+          void upsertMealPlanJson(supabase, authedUserId, mealPlan).then(({ error: jsonErr }) => {
+            if (jsonErr) {
+              const jsonMsg = jsonErr.message ?? "";
+              if (
+                looksLikeMissingTableError(jsonMsg) ||
+                jsonMsg.toLowerCase().includes("no meal_plans json table")
+              ) {
+                setDbMealPlanEnabled(false);
+                if (!dbMealPlanWarned) {
+                  setDbMealPlanWarned(true);
+                  toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
+                }
+              }
+            }
+          });
+          return;
         }
+        console.error("[mealPlan] save_meal_plan failed:", msg);
       }
     }, 600);
     return () => clearTimeout(t);

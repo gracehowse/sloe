@@ -394,28 +394,16 @@ export default function PlannerScreen() {
   const persistPlan = useCallback(
     async (nextPlan: DayPlan[]) => {
       if (!userId) return;
-      const { error: delErr } = await supabase
-        .from("meal_plan_days")
-        .delete()
-        .eq("user_id", userId)
-        .eq("slot_id", "default");
-      if (delErr) {
-        void upsertMealPlanJson(supabase, userId, nextPlan);
-        return;
-      }
-      // T7 (2026-04-24): persist the calendar start date so day 1 is
-      // unambiguous. `startOffset` is the UI chip (0=today, 1=tomorrow,
-      // 7=next week); startDateForOffset returns YYYY-MM-DD local.
+      // T15 (2026-04-24): single atomic RPC replaces the legacy
+      // delete + 7-day-insert + 7-meals-insert chain (15 RTTs, no
+      // transaction). save_meal_plan does the whole replace inside
+      // one Postgres statement transaction — backgrounding the app
+      // mid-save can no longer leave a partial plan.
+      // T7: startOffset (UI chip 0/1/7) → start_date YYYY-MM-DD.
       const startDate = startDateForOffset(new Date(), startOffset);
-      for (const dp of nextPlan) {
-        const { data: dayRow } = await supabase
-          .from("meal_plan_days")
-          .insert({ user_id: userId, slot_id: "default", day: dp.day, start_date: startDate } as never)
-          .select("id")
-          .single();
-        if (!dayRow) continue;
-        const mealInserts = dp.meals.map((m, idx) => ({
-          plan_day_id: dayRow.id,
+      const planPayload = nextPlan.map((dp) => ({
+        day: dp.day,
+        meals: dp.meals.map((m, idx) => ({
           slot_index: idx,
           name: m.name,
           recipe_title: m.recipeTitle,
@@ -426,9 +414,21 @@ export default function PlannerScreen() {
           fat: m.fat,
           portion_multiplier: m.portionMultiplier ?? 1,
           is_placeholder: m.isPlaceholder ?? false,
-        }));
-        if (mealInserts.length > 0) {
-          await supabase.from("meal_plan_meals").insert(mealInserts);
+        })),
+      }));
+      const { error } = await supabase.rpc("save_meal_plan", {
+        p_slot_id: "default",
+        p_start_date: startDate,
+        p_plan: planPayload,
+      } as never);
+      if (error) {
+        // Legacy fallback for environments missing the migration
+        // (function-not-found 42883). After the rollout window this
+        // branch can be removed.
+        if ((error as { code?: string }).code === "42883") {
+          void upsertMealPlanJson(supabase, userId, nextPlan);
+        } else if (__DEV__) {
+          console.warn("[persistPlan] save_meal_plan failed:", error.message);
         }
       }
     },
@@ -1178,32 +1178,13 @@ export default function PlannerScreen() {
         setShoppingItemCount(0);
       }
 
-      // Persist — relational tables with legacy fallback
+      // Persist via T15 atomic RPC (one round-trip, transactional).
       if (userId) {
         (async () => {
-          // Delete existing then re-insert
-          const { error: delErr } = await supabase
-            .from("meal_plan_days")
-            .delete()
-            .eq("user_id", userId)
-            .eq("slot_id", "default");
-
-          if (delErr) {
-            void upsertMealPlanJson(supabase, userId, newPlan);
-            return;
-          }
-
-          // T7 (2026-04-24): persist calendar anchor (same as persistPlan).
           const startDate = startDateForOffset(new Date(), startOffset);
-          for (const dp of newPlan) {
-            const { data: dayRow } = await supabase
-              .from("meal_plan_days")
-              .insert({ user_id: userId, slot_id: "default", day: dp.day, start_date: startDate } as never)
-              .select("id")
-              .single();
-            if (!dayRow) continue;
-            const mealInserts = dp.meals.map((m, idx) => ({
-              plan_day_id: dayRow.id,
+          const planPayload = newPlan.map((dp) => ({
+            day: dp.day,
+            meals: dp.meals.map((m, idx) => ({
               slot_index: idx,
               name: m.name,
               recipe_title: m.recipeTitle,
@@ -1214,9 +1195,18 @@ export default function PlannerScreen() {
               fat: m.fat,
               portion_multiplier: m.portionMultiplier ?? 1,
               is_placeholder: m.isPlaceholder ?? false,
-            }));
-            if (mealInserts.length > 0) {
-              await supabase.from("meal_plan_meals").insert(mealInserts);
+            })),
+          }));
+          const { error } = await supabase.rpc("save_meal_plan", {
+            p_slot_id: "default",
+            p_start_date: startDate,
+            p_plan: planPayload,
+          } as never);
+          if (error) {
+            if ((error as { code?: string }).code === "42883") {
+              void upsertMealPlanJson(supabase, userId, newPlan);
+            } else if (__DEV__) {
+              console.warn("[persistPlan/regenerate] save_meal_plan failed:", error.message);
             }
           }
         })();
