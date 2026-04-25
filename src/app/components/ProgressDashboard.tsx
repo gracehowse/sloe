@@ -870,15 +870,36 @@ function ProgressDashboardContent() {
         data-testid="progress-phase2-grid"
         className="md:grid md:grid-cols-2 md:gap-3"
       >
-        <WeightRangeCardWeb
-          series={weightRange.series}
-          latestKg={weightRange.latestKg}
-          weekDeltaKg={weightRange.weekDeltaKg}
-          deltaKg={weightRange.deltaKg}
-          rangeKey={range as RangeKey}
-          goalWeightKg={goalWeightKg}
-          measurementSystem={profileMeasurementSystem}
-        />
+        {/*
+          T13.2 (full-sweep follow-up, 2026-04-25): honour
+          profileWeightSurfaceMode on Progress — release-gate C1
+          gate for cohort expand. "hide" suppresses the card; "trends_only"
+          renders the lightweight WeightTrendOnlyCard with a direction
+          label (no absolute kg). "show" keeps the legacy behaviour.
+          Helper: decideWeightSurface in src/lib/nutrition/weightSurfaceMode.ts.
+        */}
+        {(() => {
+          if (profileWeightSurfaceMode === "hide") return null;
+          if (profileWeightSurfaceMode === "trends_only") {
+            return (
+              <WeightTrendOnlyCardWeb
+                weekDeltaKg={weightRange.weekDeltaKg}
+                rangeKey={range as RangeKey}
+              />
+            );
+          }
+          return (
+            <WeightRangeCardWeb
+              series={weightRange.series}
+              latestKg={weightRange.latestKg}
+              weekDeltaKg={weightRange.weekDeltaKg}
+              deltaKg={weightRange.deltaKg}
+              rangeKey={range as RangeKey}
+              goalWeightKg={goalWeightKg}
+              measurementSystem={profileMeasurementSystem}
+            />
+          );
+        })()}
         <CaloriesRangeCardWeb
           avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
           deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
@@ -1481,7 +1502,15 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* WEIGHT TRACKING */}
+      {/* WEIGHT TRACKING — T13.2 (full-sweep follow-up, 2026-04-25):
+          gate the whole tracker section on profileWeightSurfaceMode.
+          "hide" + "trends_only" suppress the absolute kg displays,
+          the goal kg, and the weight-line chart. The trends-only
+          card at the top of Progress (WeightTrendOnlyCardWeb) covers
+          direction. Users who want to log a weight while in opt-out
+          mode flip back to "show" in Settings — that's the explicit
+          opt-in we want, not a secondary side-channel here. */}
+      {profileWeightSurfaceMode === "show" ? (
       <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
         <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
         <div className="flex gap-6 mb-3">
@@ -1519,9 +1548,13 @@ function ProgressDashboardContent() {
           <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
+      ) : null}
 
-      {/* JOURNEY / WEIGHT PROJECTION */}
-      {weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
+      {/* JOURNEY / WEIGHT PROJECTION — also gated on profileWeightSurfaceMode
+          (T13.2): the projection visualises absolute weight progression
+          toward a goal kg, which is the exact thing trends_only / hide
+          users opted out of. */}
+      {profileWeightSurfaceMode === "show" && weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
         const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg, weightKgByDay });
         // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`): use
         // the canonical `(start - current) / (start - goal)` formula
@@ -1745,6 +1778,68 @@ function WeightSparkline({
       />
       <circle cx={last[0]} cy={last[1]} r={3} fill={color} />
     </svg>
+  );
+}
+
+/**
+ * T13.2 (full-sweep follow-up, 2026-04-25): trends-only weight card
+ * for users who chose `weight_surface_mode = "trends_only"`. Shows
+ * a direction label ("Slightly down this week" / "Stable" / "Up") +
+ * a window note. Never emits an absolute kg value — that's the whole
+ * point of the opt-out. Mirrors the Digest's trends-only behaviour
+ * (see decideWeightSurface in src/lib/nutrition/weightSurfaceMode.ts).
+ */
+function WeightTrendOnlyCardWeb({
+  weekDeltaKg,
+  rangeKey,
+}: {
+  weekDeltaKg: number | null;
+  rangeKey: RangeKey;
+}) {
+  const direction =
+    weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
+      ? null
+      : Math.abs(weekDeltaKg) < 0.3
+        ? "stable"
+        : weekDeltaKg < 0
+          ? "down"
+          : "up";
+  const arrow =
+    direction === "up" ? "↑" : direction === "down" ? "↓" : direction === "stable" ? "→" : "—";
+  const label =
+    direction === "up"
+      ? "Slightly up this week"
+      : direction === "down"
+        ? "Slightly down this week"
+        : direction === "stable"
+          ? "Stable this week"
+          : "Log a weight to see your trend";
+  const windowLabel =
+    rangeKey === "7d"
+      ? "last 7 days"
+      : rangeKey === "30d"
+        ? "last 30 days"
+        : rangeKey === "90d"
+          ? "last 90 days"
+          : "all time";
+  return (
+    <div
+      data-testid="progress-weight-trend-only-card"
+      className="rounded-xl bg-card border border-border p-4 mb-4"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Weight trend
+      </p>
+      <p className="mt-2 flex items-baseline gap-2">
+        <span className="text-[24px] font-bold text-foreground" aria-hidden>
+          {arrow}
+        </span>
+        <span className="text-[15px] font-semibold text-foreground">{label}</span>
+      </p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
+      </p>
+    </div>
   );
 }
 

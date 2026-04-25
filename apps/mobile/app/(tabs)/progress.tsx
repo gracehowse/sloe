@@ -948,16 +948,30 @@ export default function ProgressScreen() {
           reads from the shared `progressRangeStats` helpers so web +
           mobile numbers can't drift. Household bar sits elsewhere
           (owned by another agent). */}
-      <WeightRangeCard
-        series={weightRange.series}
-        latestKg={weightRange.latestKg}
-        weekDeltaKg={weightRange.weekDeltaKg}
-        deltaKg={weightRange.deltaKg}
-        rangeKey={rangeKey}
-        goalWeightKg={goalWeightKg}
-        measurementSystem={measurementSystem}
-        theme={t}
-      />
+      {/* T13.2 — gate the absolute-weight surface on profile.weight_surface_mode.
+          "show": full WeightRangeCard with kg/lb numbers (legacy default).
+          "trends_only": direction tile only (arrow + "Slightly down/up/Stable").
+          "hide": skip entirely. Same gate applies to the WeightChart and
+          Weight Projection / Journey cards lower in the screen so a single
+          opt-out reflects everywhere on Progress. */}
+      {weightSurfaceMode === "hide" ? null : weightSurfaceMode === "trends_only" ? (
+        <WeightTrendOnlyCard
+          weekDeltaKg={weightRange.weekDeltaKg ?? weightRange.deltaKg}
+          rangeKey={rangeKey}
+          theme={t}
+        />
+      ) : (
+        <WeightRangeCard
+          series={weightRange.series}
+          latestKg={weightRange.latestKg}
+          weekDeltaKg={weightRange.weekDeltaKg}
+          deltaKg={weightRange.deltaKg}
+          rangeKey={rangeKey}
+          goalWeightKg={goalWeightKg}
+          measurementSystem={measurementSystem}
+          theme={t}
+        />
+      )}
       <CaloriesRangeCard
         avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
         deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
@@ -1686,7 +1700,10 @@ export default function ProgressScreen() {
             )}
           </View>
 
-          {/* Weight Chart Card */}
+          {/* Weight Chart Card — T13.2: only render in full "show" mode.
+              The chart visualises absolute kg progression, which is
+              exactly what trends_only / hide users opted out of. */}
+          {weightSurfaceMode === "show" ? (
           <View
             style={{
               backgroundColor: t.elevated,
@@ -1722,9 +1739,13 @@ export default function ProgressScreen() {
               </Text>
             )}
           </View>
+          ) : null}
 
-          {/* Weight Projection / Journey Card */}
-          {latestWeightKg != null &&
+          {/* Weight Projection / Journey Card — T13.2: also gated on
+              weightSurfaceMode === "show". Projection visualises absolute
+              kg vs goal kg, which is the exact thing opt-out users hide. */}
+          {weightSurfaceMode === "show" &&
+            latestWeightKg != null &&
             goalWeightKg != null &&
             Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
             (() => {
@@ -2008,6 +2029,76 @@ function pillStyle(bg: string) {
     borderRadius: 999,
     backgroundColor: bg,
   } as const;
+}
+
+/**
+ * T13.2 — direction-only Weight tile rendered in `trends_only` mode.
+ * Mirrors `WeightTrendOnlyCardWeb` in `src/app/components/ProgressDashboard.tsx`
+ * so opt-out behaviour is identical across web and mobile.
+ *
+ * Never surfaces an absolute kg/lb — only "Slightly down/up/Stable this
+ * week" + an arrow glyph. Threshold (0.3 kg) matches the web copy.
+ */
+function WeightTrendOnlyCard({
+  weekDeltaKg,
+  rangeKey,
+  theme,
+}: {
+  weekDeltaKg: number | null;
+  rangeKey: "7d" | "30d" | "90d" | "all";
+  theme: CardTheme;
+}) {
+  const direction =
+    weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
+      ? null
+      : Math.abs(weekDeltaKg) < 0.3
+        ? "stable"
+        : weekDeltaKg < 0
+          ? "down"
+          : "up";
+  const arrow = direction === "up" ? "↑" : direction === "down" ? "↓" : direction === "stable" ? "→" : "—";
+  const label =
+    direction === "up"
+      ? "Slightly up this week"
+      : direction === "down"
+        ? "Slightly down this week"
+        : direction === "stable"
+          ? "Stable this week"
+          : "Log a weight to see your trend";
+  const windowLabel =
+    rangeKey === "7d"
+      ? "last 7 days"
+      : rangeKey === "30d"
+        ? "last 30 days"
+        : rangeKey === "90d"
+          ? "last 90 days"
+          : "all time";
+  return (
+    <View
+      testID="progress-weight-trend-only-card"
+      style={{
+        backgroundColor: theme.elevated,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: theme.border,
+        padding: 16,
+        marginBottom: 14,
+      }}
+    >
+      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
+        Weight trend
+      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.text }} accessibilityElementsHidden>
+          {arrow}
+        </Text>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>{label}</Text>
+      </View>
+      <Text style={{ fontSize: 12, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
+        Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
+      </Text>
+    </View>
+  );
 }
 
 function WeightRangeCard({

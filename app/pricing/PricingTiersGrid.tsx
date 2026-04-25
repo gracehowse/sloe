@@ -326,7 +326,10 @@ function BillingDisclosure({
    *  is detected as UK/EU we always render an inclusive-VAT note
    *  regardless of the Stripe flag, because the non-established-supplier
    *  rules in the 2026-04-19 consumer VAT memo require it. For
-   *  default / unknown regions we fall back to the flag-gated clause. */
+   *  default / unknown regions we fall back to the flag-gated clause.
+   *  T22-E (2026-04-25): non-empty regionVatNote also signals UK/EU
+   *  for the statutory cancellation clause — same region branch
+   *  reused so the two disclosures can't drift. */
   regionVatNote: string;
 }) {
   const periodNoun = isAnnual ? "year" : "month";
@@ -337,11 +340,19 @@ function BillingDisclosure({
     : stripeTaxEnabled
       ? "Price includes any applicable VAT."
       : "Price excludes any applicable taxes.";
+  // T22-E (2026-04-25 paywall dark-pattern audit, item E): UK/EU
+  // visitors see the statutory 14-day right alongside the 7-day
+  // goodwill policy. Per the 2026-04-25 decision doc, path (a) ships
+  // without counsel — we surface rights consumers already have by
+  // law. Rest of world unchanged. See
+  // docs/decisions/2026-04-25-uk-eu-statutory-cancellation.md.
+  const isUkEu = regionVatNote.length > 0;
   return (
     <p
       className={`mt-2 text-xs leading-snug text-center ${
         isProDark ? "text-slate-300" : "text-slate-600 dark:text-slate-300"
       }`}
+      data-testid="billing-disclosure"
     >
       {`${price}${period}, charged today and automatically renews each ${periodNoun} until you cancel. Cancel anytime in `}
       <a
@@ -353,15 +364,37 @@ function BillingDisclosure({
         account settings
       </a>
       .{" "}
-      <a
-        href="/terms#refunds"
-        className={`underline underline-offset-2 ${
-          isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
-        }`}
-      >
-        7-day refund policy
-      </a>
-      . {taxClause}
+      {isUkEu ? (
+        <>
+          <span data-testid="billing-disclosure-statutory">
+            UK/EU customers: under the Consumer Contracts Regulations 2013
+            (UK) and Directive 2011/83/EU you have a 14-day right to cancel
+            distance contracts for a full refund. Beyond that, our{" "}
+          </span>
+          <a
+            href="/terms#refunds"
+            className={`underline underline-offset-2 ${
+              isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
+            }`}
+          >
+            7-day goodwill refund policy
+          </a>
+          {" "}applies.{" "}
+        </>
+      ) : (
+        <>
+          <a
+            href="/terms#refunds"
+            className={`underline underline-offset-2 ${
+              isProDark ? "hover:text-slate-100" : "hover:text-slate-900 dark:hover:text-slate-100"
+            }`}
+          >
+            7-day refund policy
+          </a>
+          .{" "}
+        </>
+      )}
+      {taxClause}
     </p>
   );
 }
