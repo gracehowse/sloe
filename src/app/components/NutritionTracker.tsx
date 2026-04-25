@@ -30,6 +30,7 @@ import {
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
 import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
+import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import {
   clampPortionMultiplier,
   effectivePortionMultiplier,
@@ -1966,9 +1967,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
             alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
           });
-          const micros: Record<string, number> = {};
-          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) micros.alcoholG = alcoholG;
+          // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
+          // merged with caffeine/alcohol overrides. Mirrors mobile Today.
+          const explicitMicros: Record<string, number> = {};
+          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+          const micros = scaleMicrosForGrams(
+            (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
+            grams,
+            explicitMicros,
+          );
           addLoggedMeal(
             {
               name: mealSlot,
@@ -2106,9 +2114,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             caffeineMgPer100g: payload.product.caffeineMgPer100g ?? null,
             alcoholGPer100g: payload.product.alcoholGPer100g ?? null,
           });
-          const micros: Record<string, number> = {};
-          if (caffeineMg > 0) micros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) micros.alcoholG = alcoholG;
+          // F-79 — full OFF micro set scaled for `grams`, merged with
+          // caffeine/alcohol overrides. Mirrors mobile barcode commit.
+          const explicitMicros: Record<string, number> = {};
+          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+          const micros = scaleMicrosForGrams(
+            (payload.product as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
+            payload.grams,
+            explicitMicros,
+          );
           addLoggedMeal(
             {
               name: mealSlot,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
+import { parseOffMicrosPer100g } from "@/lib/openFoodFacts/parseOffMicros";
 import {
   projectRemaining,
   type MacroConsumed,
@@ -69,6 +70,12 @@ type SearchResult = {
   subtitle?: string;
   calsPer100g?: number;
   macrosPer100g?: MacrosPer100g;
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set (canonical
+   * camelCase keys). Populated for OFF rows; empty for USDA / Edamam /
+   * custom rows until those sources are extended.
+   */
+  microsPer100g?: Record<string, number>;
   verified?: boolean;
   imageUrl?: string | null;
   /**
@@ -91,6 +98,13 @@ export type FoodSearchSelection = {
   name: string;
   source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
   macrosPer100g: MacrosPer100g;
+  /**
+   * F-79 (2026-04-25) — full per-100g micronutrient set forwarded so the
+   * commit site (`NutritionTracker` `addLoggedMeal`) can scale by `grams`
+   * and persist on `nutrition_entries.nutrition_micros`. Empty / absent
+   * for non-OFF sources.
+   */
+  microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
   quantity: number;
@@ -267,6 +281,8 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
           name: displayName,
           calsPer100g: cals,
           macrosPer100g: macros,
+          // F-79 — extract every micro OFF exposes; commit sites scale + persist.
+          microsPer100g: parseOffMicrosPer100g(n),
           primaryServing,
           _source: "OFF" as const,
           _offCode: p.code,
