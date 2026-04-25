@@ -55,6 +55,11 @@ function mapJoinError(code: string): string {
       return "This household has reached the maximum of 8 members.";
     case "not_authenticated":
       return "Please sign in again.";
+    // T20 (2026-04-24): distinct codes from the hardened RPC.
+    case "household_disbanded":
+      return "This household has been disbanded.";
+    case "invite_expired":
+      return "This invite code has expired. Ask the owner for a new one.";
     default:
       return code || "Couldn't join household.";
   }

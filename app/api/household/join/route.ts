@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   // Rate-limited above (5/min/IP) to blunt code-stuffing attacks.
   const { data: household } = await supabase
     .from("households")
-    .select("id, name, invite_code_expires_at")
+    .select("id, name, invite_code_expires_at, disbanded_at")
     .eq("invite_code", inviteCode)
     .maybeSingle();
 
@@ -76,6 +76,22 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, error: "invalid_code", message: "No household found with that invite code." },
       { status: 404 },
+    );
+  }
+
+  // T20 (2026-04-24): reject codes for disbanded households. The
+  // mobile RPC was missing this filter, letting users rejoin a
+  // soft-deleted household. Web has the same exposure if the household
+  // was disbanded after the code was issued — close the parity gap.
+  const disbandedAt = (household as { disbanded_at?: string | null }).disbanded_at;
+  if (disbandedAt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "household_disbanded",
+        message: "This household has been disbanded.",
+      },
+      { status: 410 },
     );
   }
 
