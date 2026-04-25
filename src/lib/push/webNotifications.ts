@@ -189,25 +189,57 @@ export async function subscribeToWebPush(
     return { ok: false, reason: "subscribe_failed", error: "missing_fields" };
   }
 
+  // T21 (2026-04-24): use the SECURITY DEFINER `claim_web_push_subscription`
+  // RPC instead of an upsert on (endpoint). The previous upsert path
+  // failed when the endpoint was already held by a *different* user
+  // (RLS blocked the UPDATE) — leaving the row owned by the prior
+  // user, so the cron sent that user's recap body to the new user's
+  // browser. The RPC atomically deletes any prior row for the
+  // endpoint and inserts a fresh one for the caller. The unused
+  // `userId` parameter is preserved for caller signatures; the RPC
+  // derives ownership from `auth.uid()` server-side.
   try {
-    const { error } = await supabase.from("web_push_subscriptions").upsert(
-      {
-        user_id: userId,
-        endpoint: payload.endpoint,
-        p256dh: payload.keys.p256dh,
-        auth: payload.keys.auth,
-        user_agent:
-          typeof navigator !== "undefined" ? navigator.userAgent : null,
-        last_seen_at: new Date().toISOString(),
-      },
-      { onConflict: "endpoint" },
-    );
+    const { error } = await supabase.rpc("claim_web_push_subscription", {
+      p_endpoint: payload.endpoint,
+      p_p256dh: payload.keys.p256dh,
+      p_auth: payload.keys.auth,
+      p_user_agent:
+        typeof navigator !== "undefined" ? navigator.userAgent : null,
+    } as never);
     if (error) {
-      return {
-        ok: false,
-        reason: "persist_failed",
-        error: error.message,
-      };
+      // Legacy fallback (env without the migration). Keeps the
+      // pre-T21 upsert path so a partial deployment doesn't leave
+      // users with no subscription at all. Remove once the migration
+      // has rolled to all environments.
+      if ((error as { code?: string }).code === "42883") {
+        const { error: legacyErr } = await supabase
+          .from("web_push_subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              endpoint: payload.endpoint,
+              p256dh: payload.keys.p256dh,
+              auth: payload.keys.auth,
+              user_agent:
+                typeof navigator !== "undefined" ? navigator.userAgent : null,
+              last_seen_at: new Date().toISOString(),
+            },
+            { onConflict: "endpoint" },
+          );
+        if (legacyErr) {
+          return {
+            ok: false,
+            reason: "persist_failed",
+            error: legacyErr.message,
+          };
+        }
+      } else {
+        return {
+          ok: false,
+          reason: "persist_failed",
+          error: error.message,
+        };
+      }
     }
   } catch (e) {
     return {
