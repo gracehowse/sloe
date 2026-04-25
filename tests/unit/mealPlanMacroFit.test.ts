@@ -14,6 +14,7 @@ import {
   clampPlannerMultiplier,
   fitDayToTargets,
   generateSmartPlan,
+  mealPlanDeviationFromOnePenalty,
   type PlannerTargets,
   type SimpleRecipe,
 } from "../../src/lib/nutrition/mealPlanAlgo";
@@ -152,6 +153,29 @@ describe("fitDayToTargets — joint scaler", () => {
     expect(fit.residualProteinGap).toBeLessThanOrEqual(0);
   });
 
+  it("F-73 snaps multipliers toward 1× when slight asymmetry still satisfies all bands", () => {
+    const recipes = [
+      macro(283, 25, 30, 10),
+      macro(425, 37, 45, 14),
+      macro(397, 28, 40, 13),
+    ];
+    const targets: PlannerTargets = {
+      calories: 1105,
+      protein: 90,
+      carbs: 115,
+      fat: 37,
+      calorieBandPct: 5,
+      carbFatBandPct: 15,
+    };
+    const fit = fitDayToTargets({
+      recipes,
+      multipliers: [1.03, 0.97, 1.0],
+      targets,
+    });
+    const dev = fit.multipliers.reduce((a, m) => a + Math.abs(m - 1), 0);
+    expect(dev).toBeLessThan(0.15);
+  });
+
   it("does not trade protein band for calorie band (priority order holds)", () => {
     // Set up a situation where dropping calories could be achieved by
     // shrinking a protein-rich slot — scaler must refuse that trade.
@@ -165,6 +189,13 @@ describe("fitDayToTargets — joint scaler", () => {
     // Protein must stay in band (±10%) — must NOT be dropped to help calories.
     expect(protein).toBeGreaterThanOrEqual(targets.protein * 0.9);
     expect(protein).toBeLessThanOrEqual(targets.protein * 1.1);
+  });
+});
+
+describe("mealPlanDeviationFromOnePenalty", () => {
+  it("increases with distance from 1×", () => {
+    expect(mealPlanDeviationFromOnePenalty([1, 1, 1, 1])).toBe(0);
+    expect(mealPlanDeviationFromOnePenalty([1.2, 0.8, 1, 1])).toBeGreaterThan(0);
   });
 });
 

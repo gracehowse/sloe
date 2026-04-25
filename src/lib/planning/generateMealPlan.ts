@@ -1,20 +1,24 @@
-import { dayPlanTotalsFromMeals } from "../nutrition/portionMultiplier.ts";
+import { dayPlanTotalsFromMeals } from "../nutrition/portionMultiplier";
+import {
+  coerceMacrosWhenCaloriesButNoGrams,
+  mealPlanPortionSpreadPenalty,
+} from "../nutrition/coerceRecipeMacrosForPlanning";
 import {
   PORTION_MULTIPLIER_CLAMP,
-  clampPlannerMultiplier,
   fitDayToTargets,
-} from "../nutrition/mealPlanAlgo.ts";
+  mealPlanDeviationFromOnePenalty,
+} from "../nutrition/mealPlanAlgo";
 import type {
   DayPlan,
   DayPlanMeal,
   PlannerMealSlot,
   RecipeCard,
-} from "../../types/recipe.ts";
-import { PLANNER_MEAL_SLOT_LABELS } from "../../types/recipe.ts";
+} from "../../types/recipe";
+import { PLANNER_MEAL_SLOT_LABELS } from "../../types/recipe";
 
 // F-15 re-export so the planner UI can pull the single shared clamp from
 // either of the two entry modules (web callers already import from here).
-export { PORTION_MULTIPLIER_CLAMP } from "../nutrition/mealPlanAlgo.ts";
+export { PORTION_MULTIPLIER_CLAMP } from "../nutrition/mealPlanAlgo";
 
 /** Daily macro targets + optional tolerance bands for the optimizer. */
 export interface PlannerTargets {
@@ -71,8 +75,8 @@ export function recipeFitsMealSlot(recipe: RecipeCard, slot: PlannerMealSlot): b
 // Unified smart meal planning algorithm.
 // Shared by both web and mobile. Features:
 // - Configurable slots (can exclude any meal slot)
-// - Slot-weighted calorie targets (breakfast 25%, lunch 30%, dinner 35%, snack 10%)
-// - Portion scaling 0.5x–2x to hit per-slot calorie targets
+// - Slot-weighted calorie targets (used for recipe sort bias on mobile)
+// - Joint portion scaling (0.2×–2.5×) with 1.0×-first + snap toward 1× (F-73)
 // - Strong recency penalty for day variety
 // - Per-day unique seed for reproducible randomness
 // ---------------------------------------------------------------------------
@@ -152,23 +156,6 @@ function scoreMealSet(
   return e;
 }
 
-/** Calorie fraction per slot type (sums to 1 when all 4 slots are used). */
-const SLOT_WEIGHTS: Record<string, number> = {
-  breakfast: 0.25,
-  lunch: 0.30,
-  dinner: 0.35,
-  snack: 0.10,
-  snacks: 0.10,
-};
-
-function slotCalorieTargets(slots: string[], targets: PlannerTargets): number[] {
-  const totalWeight = slots.reduce((a, s) => a + (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25), 0);
-  return slots.map((s) => {
-    const w = (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25) / totalWeight;
-    return targets.calories * w;
-  });
-}
-
 /** Only recipes tagged for the slot (or untagged). Never fills a slot from unrelated recipes. */
 function findBestSmartMealSet(
   pool: RecipeCard[],
@@ -184,8 +171,6 @@ function findBestSmartMealSet(
   );
   if (perSlot.some((p) => p.length === 0)) return null;
 
-  const slotCalTargets = slotCalorieTargets(slots, targets);
-
   let best:
     | { recipes: RecipeCard[]; multipliers: number[]; score: number; residualProteinGap: number }
     | null = null;
@@ -195,18 +180,17 @@ function findBestSmartMealSet(
     const picks = perSlot.map((p) => p[Math.floor(rand() * p.length)]!);
     const ids = picks.map((r) => r.id);
 
-    // F-15 — initial multipliers hit per-slot calorie share (seed), then
-    // `fitDayToTargets` pushes toward joint protein / calorie / carb+fat
-    // bands within the shared `PORTION_MULTIPLIER_CLAMP` (0.2..2.5, 0.1).
-    const initial = picks.map((r, j) => {
-      if (r.calories <= 0) return 1;
-      return clampPlannerMultiplier(slotCalTargets[j] / r.calories);
-    });
+    // Seed at 1.0× per slot; joint fit only moves levers when bands need it
+    // (parity with mobile `generateSmartPlan` / `mealPlanAlgo`, F-73).
+    const initial = picks.map(() => 1);
     const fit = fitDayToTargets({ recipes: picks, multipliers: initial, targets });
     const multipliers = fit.multipliers;
 
     const scaledMeals = picks.map((r, j) => scaleMacros(r, multipliers[j]));
-    const s = scoreMealSet(scaledMeals, targets, ids, recentIds);
+    const s =
+      scoreMealSet(scaledMeals, targets, ids, recentIds) +
+      mealPlanPortionSpreadPenalty(multipliers) +
+      mealPlanDeviationFromOnePenalty(multipliers);
 
     if (!best || s < best.score) {
       best = {
@@ -228,7 +212,6 @@ function buildIndependentSlotDay(
   targets: PlannerTargets,
   rand: () => number,
 ): { meals: DayPlanMeal[]; pickedIds: string[]; residualProteinGap: number } {
-  const slotCalTargets = slotCalorieTargets(slots, targets);
   const picks: { pick: RecipeCard; name: string; slotIndex: number }[] = [];
   const pickedIds: string[] = [];
   for (let j = 0; j < slots.length; j++) {
@@ -242,10 +225,7 @@ function buildIndependentSlotDay(
   if (picks.length === 0) {
     return { meals: [], pickedIds, residualProteinGap: 0 };
   }
-  const initial = picks.map(({ pick, slotIndex }) => {
-    if (pick.calories <= 0) return 1;
-    return clampPlannerMultiplier(slotCalTargets[slotIndex]! / pick.calories);
-  });
+  const initial = picks.map(() => 1);
   const fit = fitDayToTargets({
     recipes: picks.map((p) => p.pick),
     multipliers: initial,
@@ -282,6 +262,16 @@ export function generatePlanFromLibrary(input: {
   seed?: number;
 }): DayPlan[] {
   const { savedRecipes, targets } = input;
+  const pool = savedRecipes.map((r) => ({
+    ...r,
+    ...coerceMacrosWhenCaloriesButNoGrams({
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiberG: r.fiberG,
+    }),
+  }));
   const daysCount = clamp(Math.floor(input.days), 1, 7);
   const slots = input.slots ?? PLAN_MEAL_SLOTS.slice();
   const baseSeed = input.seed ?? Date.now();
@@ -292,8 +282,8 @@ export function generatePlanFromLibrary(input: {
   for (let d = 1; d <= daysCount; d++) {
     if (d > 1 && (d - 1) % 3 === 0) recentIds.clear();
 
-    const rand = mulberry32(baseSeed + d * 7919 + savedRecipes.length * 31);
-    const joint = findBestSmartMealSet(savedRecipes, slots, targets, recentIds, rand);
+    const rand = mulberry32(baseSeed + d * 7919 + pool.length * 31);
+    const joint = findBestSmartMealSet(pool, slots, targets, recentIds, rand);
     let meals: DayPlanMeal[];
     let residualProteinGap = 0;
     if (joint) {
@@ -312,7 +302,7 @@ export function generatePlanFromLibrary(input: {
       residualProteinGap = joint.residualProteinGap;
     } else {
       const { meals: indMeals, pickedIds, residualProteinGap: indGap } =
-        buildIndependentSlotDay(savedRecipes, slots, targets, rand);
+        buildIndependentSlotDay(pool, slots, targets, rand);
       meals = indMeals;
       residualProteinGap = indGap;
       for (const id of pickedIds) recentIds.add(id);

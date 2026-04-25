@@ -15,7 +15,20 @@
  * library can't reach the protein target. Clamp parity: mobile's 0.2..2.5
  * at 0.1 step is adopted everywhere (wider range gives the scaler more
  * headroom than the old web 0.5..2.0 at 0.25 step).
+ *
+ * F-71 (2026-04-24, TestFlight `AGSeM-FnnYbZ` + siblings): coerce recipes whose
+ * calories are mostly unexplained by P/C/F before joint-fit, and penalise
+ * extreme portion spreads in the sampler score.
+ *
+ * F-73 (2026-04-24): joint fit seeds at 1.0× per slot (not per-slot calorie
+ * share), snaps multipliers toward 1 when macro bands still hold, and adds a
+ * sampler penalty for deviation from 1× so full portions win when feasible.
  */
+
+import {
+  coerceMacrosWhenCaloriesButNoGrams,
+  mealPlanPortionSpreadPenalty,
+} from "./coerceRecipeMacrosForPlanning";
 
 export type SimpleRecipe = {
   id: string;
@@ -256,6 +269,67 @@ function sumMacros(rs: readonly Macros[], mults: readonly number[]): Macros {
   return { calories, protein, carbs, fat };
 }
 
+/** Sampler score bump: prefer per-slot multipliers near 1.0× (full portions). */
+export function mealPlanDeviationFromOnePenalty(multipliers: readonly number[]): number {
+  let s = 0;
+  for (const m of multipliers) {
+    if (Number.isFinite(m)) s += Math.abs(m - 1);
+  }
+  return s * 18;
+}
+
+/**
+ * After the iterative fit, nudge each multiplier one 0.1 step toward 1.0
+ * whenever the joint macro bands still hold — removes "0.8× / 1.2×"
+ * artefacts when 1× for everyone is equally valid.
+ */
+function snapMultipliersTowardOneWhileFeasible(
+  recipes: readonly Macros[],
+  multsIn: readonly number[],
+  targets: PlannerTargets,
+): number[] {
+  const n = recipes.length;
+  if (n === 0) return [];
+  const mults = multsIn.map((m) => clampPlannerMultiplier(m));
+  const proLo = targets.protein * 0.9;
+  const proHi = targets.protein * 1.1;
+  const calLo = targets.calories * 0.95;
+  const calHi = targets.calories * 1.05;
+  const cfBand = (targets.carbs + targets.fat) * 0.15;
+  const inBand = (m: readonly number[]) => {
+    const s = sumMacros(recipes, m);
+    const proOk = s.protein >= proLo && s.protein <= proHi;
+    const calOk = s.calories >= calLo && s.calories <= calHi;
+    const cfOk = Math.abs(s.carbs - targets.carbs) + Math.abs(s.fat - targets.fat) <= cfBand;
+    return proOk && calOk && cfOk;
+  };
+  if (!inBand(mults)) return mults;
+
+  const { step } = PORTION_MULTIPLIER_CLAMP;
+  for (let round = 0; round < 48; round++) {
+    let changed = false;
+    const order = mults
+      .map((m, i) => ({ i, d: Math.abs(m - 1) }))
+      .sort((a, b) => b.d - a.d);
+    for (const { i } of order) {
+      const cur = mults[i]!;
+      if (Math.abs(cur - 1) < step / 2 - 1e-9) continue;
+      const dir = cur > 1 ? -1 : 1;
+      const trialM = clampPlannerMultiplier(cur + dir * step);
+      if (trialM === cur) continue;
+      const prev = mults[i]!;
+      mults[i] = trialM;
+      if (!inBand(mults)) {
+        mults[i] = prev;
+      } else {
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return mults;
+}
+
 export function fitDayToTargets(input: JointFitInput): JointFitResult {
   const { recipes, targets } = input;
   const n = recipes.length;
@@ -381,6 +455,11 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
     if (!changed) break;
   }
 
+  const snapped = snapMultipliersTowardOneWhileFeasible(recipes, mults, targets);
+  for (let i = 0; i < n; i++) {
+    mults[i] = snapped[i]!;
+  }
+
   const final = sumMacros(recipes, mults);
   // Residual protein gap — negative grams below lower band; 0 when at or
   // above the lower band. UI surfaces it only at `< -10g` (don't nag).
@@ -425,19 +504,20 @@ function findBestMealSet(
     });
     const ids = picks.map((r) => r.id);
 
-    // Initial multipliers hit per-slot calorie share; joint-fit scaler
-    // then pushes toward the daily protein / calories / carbs+fat bands.
-    const initial = picks.map((r, j) => {
-      if (r.calories <= 0) return 1;
-      return clampPlannerMultiplier(slotCalTargets[j] / r.calories);
-    });
+    // Start at 1.0× per slot so the joint fitter only moves levers when
+    // bands require it; avoids seeding arbitrary 0.8×/1.2× spreads when
+    // full portions already land near targets (F-73, 2026-04-24).
+    const initial = picks.map(() => 1);
 
     // F-15 — joint macro-fit scaler.
     const fit = fitDayToTargets({ recipes: picks, multipliers: initial, targets });
     const multipliers = fit.multipliers;
 
     const scaledMeals = picks.map((r, j) => scaleMacros(r, multipliers[j]));
-    const s = scoreMealSet(scaledMeals, targets, ids, recentIds);
+    const s =
+      scoreMealSet(scaledMeals, targets, ids, recentIds) +
+      mealPlanPortionSpreadPenalty(multipliers) +
+      mealPlanDeviationFromOnePenalty(multipliers);
 
     if (!best || s < best.score) {
       best = {
@@ -458,7 +538,6 @@ function buildIndependentSlotDay(
   targets: PlannerTargets,
   rand: () => number,
 ): { meals: PlanMeal[]; pickedIds: string[]; residualProteinGap: number } {
-  const slotCalTargets = slotCalorieTargets(slots, targets);
   const picks: { pick: SimpleRecipe; name: string; slotIndex: number }[] = [];
   const pickedIds: string[] = [];
   for (let j = 0; j < slots.length; j++) {
@@ -475,10 +554,7 @@ function buildIndependentSlotDay(
   // F-15 — same joint-fit treatment as `findBestMealSet`. Even with
   // partial day coverage we push toward the day-level protein target
   // rather than stopping at per-slot calorie shares.
-  const initial = picks.map(({ pick, slotIndex }) => {
-    if (pick.calories <= 0) return 1;
-    return clampPlannerMultiplier(slotCalTargets[slotIndex]! / pick.calories);
-  });
+  const initial = picks.map(() => 1);
   const fit = fitDayToTargets({
     recipes: picks.map((p) => p.pick),
     multipliers: initial,
@@ -510,6 +586,16 @@ export function generateSmartPlan(input: {
   seed?: number;
 }): DayPlan[] {
   const { recipes, targets } = input;
+  const pool = recipes.map((r) => ({
+    ...r,
+    ...coerceMacrosWhenCaloriesButNoGrams({
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiberG: r.fiberG,
+    }),
+  }));
   const daysCount = Math.min(7, Math.max(1, Math.floor(input.days)));
   const slots = input.slotConfig?.slots ?? ["Breakfast", "Lunch", "Snacks", "Dinner"];
   const baseSeed = input.seed ?? Date.now();
@@ -523,9 +609,9 @@ export function generateSmartPlan(input: {
     if (d > 1 && (d - 1) % 5 === 0) recentIds.clear();
 
     // Unique seed per day
-    const rand = mulberry32(baseSeed + d * 7919 + recipes.length * 31);
+    const rand = mulberry32(baseSeed + d * 7919 + pool.length * 31);
 
-    const joint = findBestMealSet(recipes, slots, targets, recentIds, rand);
+    const joint = findBestMealSet(pool, slots, targets, recentIds, rand);
     let meals: PlanMeal[];
     let residualProteinGap = 0;
     if (joint) {
@@ -548,7 +634,7 @@ export function generateSmartPlan(input: {
       residualProteinGap = joint.residualProteinGap;
     } else {
       const { meals: indMeals, pickedIds, residualProteinGap: indGap } =
-        buildIndependentSlotDay(recipes, slots, targets, rand);
+        buildIndependentSlotDay(pool, slots, targets, rand);
       meals = indMeals;
       residualProteinGap = indGap;
       for (const id of pickedIds) recentIds.add(id);
@@ -556,11 +642,11 @@ export function generateSmartPlan(input: {
 
     // Reject exact duplicate day combinations — retry with a different seed
     const combo = meals.map((m) => m.recipeId ?? m.recipeTitle).sort().join("|");
-    if (usedCombinations.has(combo) && recipes.length > slots.length) {
+    if (usedCombinations.has(combo) && pool.length > slots.length) {
       // Try up to 3 retries with offset seeds
       for (let retry = 1; retry <= 3; retry++) {
         const retryRand = mulberry32(baseSeed + d * 7919 + retry * 13337);
-        const retryJoint = findBestMealSet(recipes, slots, targets, recentIds, retryRand);
+        const retryJoint = findBestMealSet(pool, slots, targets, recentIds, retryRand);
         if (retryJoint) {
           const retryCombo = retryJoint.recipes.map((r) => r.id).sort().join("|");
           if (!usedCombinations.has(retryCombo)) {
