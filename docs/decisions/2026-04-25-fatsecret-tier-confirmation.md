@@ -1,8 +1,8 @@
 # Decision log: FatSecret tier confirmation + caching compliance (2026-04-25)
 
 **Date:** 2026-04-25
-**Status:** **OPEN — Grace action required**
-**Owner:** `integration-manager` (audit), Grace (tier confirmation), `executor` (downstream)
+**Status:** **Resolved — Path B confirmed (Grace 2026-04-25: account is Basic)**
+**Owner:** `integration-manager` (audit), Grace (tier confirmed), `executor` (Path B implementation)
 
 Supersedes the unchecked action items in [2026-04-19 FatSecret caching](./2026-04-19-fatsecret-caching.md). Closes T19 from the [2026-04-24 full-sweep ship verdict](./2026-04-24-full-sweep-ship-verdict.md) once Grace confirms.
 
@@ -12,7 +12,9 @@ Supersedes the unchecked action items in [2026-04-19 FatSecret caching](./2026-0
 
 The FatSecret client requests `scope: "basic"` on the OAuth2 token exchange (`src/lib/fatsecret/client.ts:74`). On Basic tier the FatSecret Platform API ToS **prohibits** caching macro values. We currently cache them in `recipe_ingredients`, `recipes`, `nutrition_entries`, and `user_favorite_foods`. The licence page at `/licences` claims a "FatSecret Platform terms (commercial licence)" — that claim is **not supported by the API credentials in use**. Either credentials are Premier and the scope request is wrong, or the licence claim is aspirational.
 
-**Grace must log into [platform.fatsecret.com](https://platform.fatsecret.com) and confirm the account tier. Everything else follows from that single data point.**
+~~Grace must log into [platform.fatsecret.com](https://platform.fatsecret.com) and confirm the account tier.~~
+
+**Resolved 2026-04-25:** Grace confirmed `Account Type: Basic`. Path B is the path. The OAuth `scope: "basic"` request is *correct* — it's the cache that's the violation, not the scope. The `/licences` page claim must be revised: we hold a Basic developer licence, not a "commercial licence". Action below.
 
 ---
 
@@ -76,7 +78,25 @@ USDA covers most generic ingredients. OpenFoodFacts covers barcoded products. Th
 
 ## Recommendation
 
-**Path A if Grace confirms Premier within 48 hours; otherwise Path B.** The app cannot submit to the App Store with unresolved ToS non-compliance on a dependency whose terms explicitly prohibit caching.
+~~Path A if Grace confirms Premier within 48 hours; otherwise Path B.~~
+
+**Resolved 2026-04-25 — Path B is the path.** Implementation sequence below.
+
+---
+
+## Path B implementation sequence (executor)
+
+1. **Migration** (`supabase/migrations/20260503100900_fatsecret_basic_tier_zeroing.sql`):
+   - On every `recipe_ingredients` row where `fatsecret_food_id IS NOT NULL`: set `calories=0, protein=0, carbs=0, fat=0, fiber_g=0, sugar_g=0, sodium_mg=0, is_verified=false, source='Unverified'`.
+   - On every `recipes` row where `verified_source='FatSecret'`: same nullification on the aggregate columns + `verified_source='Unverified'`.
+   - **Keep `fatsecret_food_id`** — it's the permitted reference pointer, only the co-stored macros are the violation.
+   - **Do not touch** `nutrition_entries` or `user_favorite_foods` — owned user data once logged/starred.
+2. **Runtime re-fetch hook** — recipe detail load (web + mobile): if any ingredient row has `fatsecret_food_id IS NOT NULL` and `is_verified=false`, fire a server-side call to `/api/nutrition/verify-recipe` before render. ~300–600ms per recipe; invisible at solo-tester scale.
+3. **Block re-caching** — in `RecipeUpload.tsx:1064` and the equivalent mobile import path, when a FatSecret match is selected, write `fatsecret_food_id` only; do **not** persist the macros to `recipe_ingredients`. Macros stay request-scoped only.
+4. **`/licences` page revision** — update copy to reflect Basic developer licence (not commercial). Single string change.
+5. **Tests** — vitest covering: (a) migration zeroes the right rows and not the wrong rows, (b) re-fetch fires when needed, (c) write path stops persisting macros for FatSecret matches.
+
+**Estimated scope:** ~half-day of executor work. Migration is the destructive piece; Grace runs `supabase db push --linked` after review (per CLAUDE.md, MCP `apply_migration` is forbidden).
 
 ---
 
@@ -92,11 +112,13 @@ FatSecret has historically been lenient with small developers, but their ToS exi
 
 ## Pending Grace actions
 
-1. Open [platform.fatsecret.com](https://platform.fatsecret.com).
-2. Find the account tier on the dashboard plan/billing page.
-3. Reply with the tier (`Basic` / `Premier` / commercial-name).
-4. **If Premier**: take the screenshot, fix the scope string, sign off this doc.
-5. **If Basic**: green-light Path B; executor lands the migration + runtime re-fetch.
+1. ~~Open [platform.fatsecret.com](https://platform.fatsecret.com).~~ Done.
+2. ~~Find the account tier on the dashboard plan/billing page.~~ Done — Basic.
+3. ~~Reply with the tier.~~ Done — Basic.
+4. ~~If Premier~~: N/A.
+5. **If Basic**: ✅ green-light Path B given. Executor scopes + Grace runs `supabase db push --linked` after migration review.
+
+**Outstanding Grace action:** review the migration file when staged, then run `supabase db push --linked`. Migration touches existing recipe nutrition data — destructive in the "modifies thousands of rows" sense, so the human-in-the-loop review is the right shape of safety check.
 
 ---
 

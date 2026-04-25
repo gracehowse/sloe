@@ -8,17 +8,22 @@ Closes T17 (canonical domain) and T18 ("Suppr Club" naming) from the [2026-04-24
 
 ---
 
-## 1. Canonical domain: `supprclub.com` (no hyphen)
+## 1. Canonical domain: `suppr-club.com` (hyphenated — confirmed 2026-04-25)
 
-**Picked the unhyphenated form.** Three reasons in priority order:
+**Updated 2026-04-25 (Grace):** `supprclub.com` is **not available** at registrar. Only `suppr-club.com` was registrable. The hybrid recommendation in the original draft assumed the unhyphenated form was obtainable; it isn't.
 
-1. **Legibility + premium feel.** Hyphens read as SEO-bait or as the fallback when the clean string wasn't available. A premium brand owns the clean string.
-2. **Verbal parity.** Nobody says "suppr dash club dot com." Spoken and written should match.
-3. **Cost of migration is bounded.** ~12 surfaces cite the hyphenated form (DMCA agent, privacy controller, refund support, VAPID subject, Stripe support, App Store support URL, paywall footer, mobile `app.json`, etc.). One-afternoon sweep with a 301 forward from the hyphenated domain held defensively.
+**Decision: keep `suppr-club.com` as the canonical domain. No migration needed.**
 
-The TM-collision weight argument (project memory `project_trademark_risk.md`) cuts the same direction: if "Suppr Club" naming gets pulled (see §2), the *-club.com domain question is mostly moot for marketing surfaces — both forms become operational/legal aliases. Pick the legible one.
+This collapses the entire T17 workstream:
 
-**Caveat — registrar ownership.** Verify `supprclub.com` is actually under Suppr's control before any migration. Audit-flag implies it might not be. **If it isn't, that's the blocker — resolve registrar ownership first, then migrate.**
+- The ~12 surfaces already cite `suppr-club.com` — they are correct, not legacy.
+- No 301 forward is needed (we don't own the unhyphenated form to forward *from*).
+- DMCA-agent registration stays as-is on the hyphenated form.
+- Spoken parity is moot — there's no alternative to refer back to.
+
+The TM-collision weight argument (`project_trademark_risk.md`) cuts the *opposite* direction now: with the unhyphenated domain unavailable, the "Suppr Club" rebrand below (§2) does **more** of the work to decouple the product name from the domain. The domain becomes a legal/operational alias, the wordmark is "Suppr".
+
+~~Caveat — registrar ownership.~~ Resolved: Grace confirms `suppr-club.com` is registered to her.
 
 ---
 
@@ -55,26 +60,23 @@ The 2026-04-21 [welcome copy divergence](./2026-04-21-onboarding-welcome-copy-pl
 
 ---
 
-## 5. Sequencing — T18 first, then T17, same week
+## 5. Sequencing — T17 closed, T18 ships solo
 
-**Ship T18 (rename) first, then T17 (domain) — separate PRs, same week.**
+**Updated 2026-04-25:** With `supprclub.com` unavailable, T17 is **closed without a migration**. T18 (rename) ships solo as the only T17/T18 work.
 
-- The rename changes the *shape* of the domain decision. Once "Suppr Club" is off first-impression surfaces, `supprclub.com` is just an operational/legal alias — lower stakes, cleaner migration.
-- Reverse order entrenches the colliding mark for another sprint while domain work happens.
-- Same-week because the App Store DMCA-agent bounce risk is real and Grace is solo-tester right now — the cohort blast radius for the domain migration is N=1, which is the cheapest it will ever be.
+The original argument for sequencing (rename first so the domain becomes "just an alias") still holds — it's just become moot in the same step. The rename is the *only* work that decouples product name from domain when the domain is forced to remain hyphenated.
 
 **PR sequence:**
 
-1. **T18 PR** — web onboarding welcome + landing + paywall copy sweep, kill divergence carve-out, update sync-enforcer rules.
-2. **T17 PR** — registrar ownership confirmed → migrate all ~12 surfaces to `supprclub.com`, hold `suppr-club.com` as defensive forward, update DMCA-agent registration last (it's the safe-harbour-critical one).
+1. **T18 PR (only)** — web onboarding welcome + landing + paywall copy sweep, kill divergence carve-out, update sync-enforcer rules. No domain string changes.
 
 ---
 
 ## Pending Grace actions
 
-1. **Confirm registrar ownership of `supprclub.com`.** This gates T17 PR.
+1. ~~**Confirm registrar ownership of `supprclub.com`.**~~ Resolved 2026-04-25: only `suppr-club.com` was registrable; canonical stays hyphenated.
 2. **Accept this recommendation in writing** (Slack / commit message / 👍 on this doc) so executor can ship T18 PR.
-3. **Re-register DMCA agent** at the new email after T17 PR ships (only Grace can do this; agent registration is a manual federal-DMCA-database flow).
+3. ~~**Re-register DMCA agent** at the new email after T17 PR ships~~ Not needed — domain unchanged.
 
 ---
 

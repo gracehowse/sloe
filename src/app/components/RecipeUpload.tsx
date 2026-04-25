@@ -10,6 +10,11 @@ import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredien
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
+import {
+  recipeAggregateHasFatSecret,
+  scrubFatSecretMacros,
+  ZEROED_RECIPE_AGGREGATE,
+} from "../../lib/nutrition/fatsecretCacheGuard.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { uploadRecipeImage } from "../../lib/supabase/uploadRecipeImage.ts";
 import { track } from "../../lib/analytics/track.ts";
@@ -992,6 +997,16 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           ? normaliseSource({ url: importedSourceUrl, name: importedSourceName })
           : { source_url: null, source_name: null };
 
+      // T19 Path B (2026-04-25) — FatSecret Basic-tier ToS prohibits
+      // caching macro values. If any line in this recipe is FatSecret-
+      // sourced the aggregate is also a FatSecret cache (it sums those
+      // macros) and must not be persisted. The recipe-detail render
+      // path will trigger a runtime re-fetch when ingredient rows have
+      // `fatsecret_food_id is not null && is_verified=false`.
+      const aggregateHasFs =
+        verifiedOk && recipeAggregateHasFatSecret(verifiedLines!.map((v) => ({ source: v.source ?? null })));
+      const aggregateScrub = aggregateHasFs ? ZEROED_RECIPE_AGGREGATE : null;
+
       const { data: recipeRow, error: recipeError } = await supabase
         .from("recipes")
         .upsert(
@@ -1008,19 +1023,43 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             meal_type: [mealType],
             dietary,
             published: effectivePublished,
-            is_verified: verifiedOk,
-            verified_source: verifiedOk ? "FatSecret" : null,
-            verified_confidence: verifiedOk ? verifiedTotals.minConfidence : null,
-            verified_at: verifiedOk ? new Date().toISOString() : null,
+            is_verified: aggregateScrub ? aggregateScrub.is_verified : verifiedOk,
+            verified_source: aggregateScrub
+              ? aggregateScrub.verified_source
+              : verifiedOk
+                ? "FatSecret"
+                : null,
+            verified_confidence: aggregateScrub
+              ? aggregateScrub.verified_confidence
+              : verifiedOk
+                ? verifiedTotals.minConfidence
+                : null,
+            verified_at: aggregateScrub
+              ? aggregateScrub.verified_at
+              : verifiedOk
+                ? new Date().toISOString()
+                : null,
             source_url: attributionUrl,
             source_name: attributionName,
-            calories: chosenPerServing.calories,
-            protein: chosenPerServing.protein,
-            carbs: chosenPerServing.carbs,
-            fat: chosenPerServing.fat,
-            fiber_g: verifiedOk ? verifiedTotals.perServing.fiberG : 0,
-            sugar_g: verifiedOk ? verifiedTotals.perServing.sugarG : 0,
-            sodium_mg: verifiedOk ? verifiedTotals.perServing.sodiumMg : 0,
+            calories: aggregateScrub ? aggregateScrub.calories : chosenPerServing.calories,
+            protein: aggregateScrub ? aggregateScrub.protein : chosenPerServing.protein,
+            carbs: aggregateScrub ? aggregateScrub.carbs : chosenPerServing.carbs,
+            fat: aggregateScrub ? aggregateScrub.fat : chosenPerServing.fat,
+            fiber_g: aggregateScrub
+              ? aggregateScrub.fiber_g
+              : verifiedOk
+                ? verifiedTotals.perServing.fiberG
+                : 0,
+            sugar_g: aggregateScrub
+              ? aggregateScrub.sugar_g
+              : verifiedOk
+                ? verifiedTotals.perServing.sugarG
+                : 0,
+            sodium_mg: aggregateScrub
+              ? aggregateScrub.sodium_mg
+              : verifiedOk
+                ? verifiedTotals.perServing.sodiumMg
+                : 0,
             allergens: allergensPayload,
           },
           { onConflict: "id" },
@@ -1044,11 +1083,19 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         return;
       }
 
+      // T19 Path B — every row goes through `scrubFatSecretMacros`
+      // before insert. If `v.source === 'FatSecret'` the row's macros
+      // are zeroed and `source` is rewritten to 'Unverified'; the
+      // `fatsecret_food_id` survives so the runtime re-fetch on
+      // recipe-detail load can match against FatSecret again. Rows
+      // from USDA / OFF / Edamam pass through untouched (those sources
+      // permit caching).
       const inserts = cleanedIngredients.map((i, idx) => {
         const est = lineEstimates[idx]!;
         const v = verifiedOk ? verifiedLines![idx] : null;
         const macros = v?.macros ?? null;
-        return {
+        const rowSource = v?.source ?? (macros ? "FatSecret" : "Estimated");
+        const baseRow = {
           recipe_id: id,
           ingredient_id: null,
           name: i.name,
@@ -1064,8 +1111,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
           confidence: v?.confidence ?? null,
           is_verified: Boolean(macros),
-          source: macros ? "FatSecret" : "Estimated",
+          source: rowSource,
         };
+        return scrubFatSecretMacros(baseRow);
       });
 
       const { error: insertError } = await supabase.from("recipe_ingredients").insert(inserts);

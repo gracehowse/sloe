@@ -26,6 +26,11 @@ import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import {
+  recipeAggregateHasFatSecret,
+  scrubFatSecretMacros,
+  ZEROED_RECIPE_AGGREGATE,
+} from "../../../../src/lib/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -127,6 +132,10 @@ type Ingredient = {
   sodium_mg?: number;
   confidence?: number | null;
   source?: string | null;
+  /** T19 Path B (2026-04-25) — kept on the row even when macros are zeroed
+      under Basic-tier ToS, so the recipe-detail render path can detect a
+      zeroed FatSecret cache and trigger a runtime re-fetch. */
+  fatsecret_food_id?: string | null;
 };
 
 function mergeVerifiedMacroRows(base: Ingredient[], rows: FlatVerifiedMacroRow[]): Ingredient[] {
@@ -293,42 +302,58 @@ export default function RecipeDetailScreen() {
           .eq("recipe_id", recipeId)
           .order("created_at", { ascending: true });
 
+        // T19 Path B (2026-04-25) — FatSecret Basic-tier ToS prohibits
+        // caching macro values. Run each row through `scrubFatSecretMacros`
+        // before update; FatSecret rows write zeros + source='Unverified'
+        // (the `fatsecret_food_id` is preserved upstream). USDA / OFF /
+        // Edamam rows pass through.
         if (dbIngs) {
           for (let i = 0; i < Math.min(rows.length, dbIngs.length); i++) {
             const r = rows[i]!;
+            const scrubbed = scrubFatSecretMacros({
+              calories: Math.round(r.calories),
+              protein: Math.round(r.protein),
+              carbs: Math.round(r.carbs),
+              fat: Math.round(r.fat),
+              fiber_g: Math.round(r.fiber * 10) / 10,
+              sugar_g: Math.round(r.sugar * 10) / 10,
+              sodium_mg: Math.round(r.sodium),
+              source: r.source,
+              confidence: r.confidence,
+            });
             const { error: ingErr } = await supabase
               .from("recipe_ingredients")
-              .update({
-                calories: Math.round(r.calories),
-                protein: Math.round(r.protein),
-                carbs: Math.round(r.carbs),
-                fat: Math.round(r.fat),
-                fiber_g: Math.round(r.fiber * 10) / 10,
-                sugar_g: Math.round(r.sugar * 10) / 10,
-                sodium_mg: Math.round(r.sodium),
-                source: r.source,
-                confidence: r.confidence,
-              })
+              .update(scrubbed)
               .eq("id", dbIngs[i]!.id);
             if (ingErr) persistHadError = true;
           }
         }
 
+        // T19 Path B — recipe aggregate is also a FatSecret cache when
+        // any line is FatSecret-sourced. Replace with zeros + verified=
+        // false in that case; otherwise persist the per-serving totals.
+        const aggregateHasFs = recipeAggregateHasFatSecret(
+          rows.map((r) => ({ source: r.source ?? null })),
+        );
+        const aggregateUpdate = aggregateHasFs
+          ? ZEROED_RECIPE_AGGREGATE
+          : {
+              calories: Math.round(perServing.calories),
+              protein: Math.round(perServing.protein),
+              carbs: Math.round(perServing.carbs),
+              fat: Math.round(perServing.fat),
+              fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
+              sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
+              sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
+              is_verified: true,
+              verified_at: new Date().toISOString(),
+              verified_confidence: overallConf,
+              verified_source: opts.verifiedSource,
+            };
+
         const { error: recipeErr } = await supabase
           .from("recipes")
-          .update({
-            calories: Math.round(perServing.calories),
-            protein: Math.round(perServing.protein),
-            carbs: Math.round(perServing.carbs),
-            fat: Math.round(perServing.fat),
-            fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
-            sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
-            sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
-            is_verified: true,
-            verified_at: new Date().toISOString(),
-            verified_confidence: overallConf,
-            verified_source: opts.verifiedSource,
-          })
+          .update(aggregateUpdate)
           .eq("id", recipeId);
         if (recipeErr) persistHadError = true;
       }
@@ -336,7 +361,7 @@ export default function RecipeDetailScreen() {
       if (opts.reloadAfter && opts.persist && !persistHadError) {
         let reloadRes = await supabase
           .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, fatsecret_food_id")
           .eq("recipe_id", recipeId)
           .order("created_at", { ascending: true });
         if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
@@ -612,6 +637,24 @@ export default function RecipeDetailScreen() {
     [ingredients],
   );
 
+  // T19 Path B (2026-04-25) — true when the recipe has at least one
+  // ingredient with a FatSecret food ID and zero macros, which is the
+  // exact shape of a Basic-tier-zeroed cache. Triggers runtime re-fetch
+  // so the user sees verified macros without persistence.
+  const hasZeroedFatSecretIngredients = useMemo(
+    () =>
+      ingredients.some(
+        (i) =>
+          typeof i.fatsecret_food_id === "string" &&
+          i.fatsecret_food_id.length > 0 &&
+          (i.calories ?? 0) <= 0 &&
+          (i.protein ?? 0) <= 0 &&
+          (i.carbs ?? 0) <= 0 &&
+          (i.fat ?? 0) <= 0,
+      ),
+    [ingredients],
+  );
+
   /** Seeded / legacy rows often store text-only lines with zero macros; derive display macros without mutating DB. */
   const ingredientsForIngredientsTab = useMemo(() => {
     if (ingredients.length === 0 || !recipe) return ingredients;
@@ -644,12 +687,23 @@ export default function RecipeDetailScreen() {
     lowConfidenceAutoNudgeShown.current.clear();
   }, [recipeId]);
 
-  /** USDA / FatSecret / OFF / Edamam / Suppr DB — same pipeline as manual re-verify (match-first; local staples only as API fallback). */
+  /** USDA / FatSecret / OFF / Edamam / Suppr DB — same pipeline as manual re-verify (match-first; local staples only as API fallback).
+   *
+   * T19 Path B (2026-04-25) — also fires when the recipe has zeroed
+   * FatSecret-cached rows (`fatsecret_food_id` set, macros zero). The
+   * Basic-tier ToS prohibits caching macros, so the migration zeroed
+   * existing rows; this hook re-fetches them at render time so the user
+   * sees verified totals without the DB ever holding the cache.
+   */
   useEffect(() => {
     if (loading || !recipeId || !recipe || !session?.access_token || ingredients.length === 0) return;
-    if (ingredientsHaveNutrition) return;
     if (autoVerifySucceededForRecipeId.current === recipeId) return;
+
+    const needsFatSecretRefresh = hasZeroedFatSecretIngredients;
+    if (ingredientsHaveNutrition && !needsFatSecretRefresh) return;
+
     if (
+      !needsFatSecretRefresh &&
       (recipe.calories ?? 0) <= 0 &&
       (recipe.protein ?? 0) <= 0 &&
       (recipe.carbs ?? 0) <= 0 &&
@@ -724,6 +778,7 @@ export default function RecipeDetailScreen() {
     recipe,
     ingredients,
     ingredientsHaveNutrition,
+    hasZeroedFatSecretIngredients,
     session?.access_token,
     userId,
     applyVerifyJsonToStateAndDb,
