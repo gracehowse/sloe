@@ -112,6 +112,13 @@ export function TodayDateHeader({
           </Pressable>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {/* F-84 (2026-04-25) — icon-style scope toggle. Was "Day | Week"
+              text, which read as date-nav alongside the prev/next chevrons
+              and week strip and confused first-time users (customer-lens
+              2026-04-25: "three time-navigation things on one screen.
+              Why?"). Sun = Day (single-day dashboard), grid = Week (week
+              roll-up). Accessibility labels carry the original text so
+              screen readers still announce "Day view" / "Week view". */}
           <View
             style={{
               flexDirection: "row",
@@ -124,29 +131,41 @@ export function TodayDateHeader({
           >
             <Pressable
               onPress={() => onViewModeChange("day")}
+              accessibilityRole="button"
+              accessibilityLabel="Day view"
+              accessibilityState={{ selected: viewMode === "day" }}
               style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
+                paddingHorizontal: 8,
+                paddingVertical: 6,
                 backgroundColor: viewMode === "day" ? Accent.primary : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 10, fontWeight: "700", color: viewMode === "day" ? "#fff" : textSecondaryColor }}>
-                Day
-              </Text>
+              <Ionicons
+                name="sunny-outline"
+                size={14}
+                color={viewMode === "day" ? "#fff" : textSecondaryColor}
+              />
             </Pressable>
             <Pressable
               onPress={() => onViewModeChange("week")}
+              accessibilityRole="button"
+              accessibilityLabel="Week view"
+              accessibilityState={{ selected: viewMode === "week" }}
               style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
+                paddingHorizontal: 8,
+                paddingVertical: 6,
                 backgroundColor: viewMode === "week" ? Accent.primary : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <Text
-                style={{ fontSize: 10, fontWeight: "700", color: viewMode === "week" ? "#fff" : textSecondaryColor }}
-              >
-                Week
-              </Text>
+              <Ionicons
+                name="grid-outline"
+                size={14}
+                color={viewMode === "week" ? "#fff" : textSecondaryColor}
+              />
             </Pressable>
           </View>
           <View

@@ -296,6 +296,10 @@ export default function ProfileScreen() {
         },
       );
 
+      const resolvedTier: "free" | "base" | "pro" = (() => {
+        const t = typeof p.user_tier === "string" ? p.user_tier : null;
+        return t === "free" || t === "base" || t === "pro" ? t : "free";
+      })();
       setProfileData({
         savedCount,
         streak,
@@ -305,10 +309,16 @@ export default function ProfileScreen() {
         targetFat: targets.fat,
         usingDefaults: targets.usingDefaults,
         targetResolution: targets.resolution,
-        userTier: (typeof p.user_tier === "string" ? p.user_tier : null) ?? "free",
+        userTier: resolvedTier,
         dietaryRestrictions: restrictions,
         notificationPref: notifTime,
       });
+      // F-91 (2026-04-25, sync-enforcer P0-7) — keep the cached tier
+      // in sync from this surface too, so the next Plan-tab mount has
+      // the latest value even if the user opened More first.
+      void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
+        saveCachedUserTier(resolvedTier),
+      );
       } finally {
         setProfileTargetsSubReady(true);
         profileTargetsShownOnceRef.current = true;
@@ -608,30 +618,21 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* 3 Stat Pills — real data */}
+      {/* P1-20 (TestFlight `AHS6xzyUumrl5AhMlDimJvQ`,
+          `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-21+): "Score" pill removed.
+          Tester rejected it twice ("Score doesn't mean anything,
+          remove" / "Score seems irrelevant"); same call already
+          accepted on Today (`project_today_screen_direction_apr2026`).
+          Keep Recipes + Streak — both reflect concrete user state
+          rather than an invented composite. */}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
         {([
-          [String(profileData.savedCount), "Recipes", t.accent, null],
-          [String(profileData.streak), "Streak", t.green, null],
-          [String(Math.min(100, Math.round(
-            (Math.min(profileData.streak, 7) / 7) * 40 +
-            (Math.min(profileData.savedCount, 10) / 10) * 30 +
-            30 // base points for being active
-          ))), "Score", t.amber, () => Alert.alert(
-            "Your Suppr Score",
-            "Your score (0–100) reflects how actively you're using Suppr.\n\n"
-            + "• Logging streak — log meals consistently to build your streak (up to 40 pts)\n"
-            + "• Saved recipes — save recipes to your library (up to 30 pts)\n"
-            + "• Active account — you get 30 pts just for being here\n\n"
-            + "Your score reflects how actively you use Suppr."
-          )],
-        ] as [string, string, string, (() => void) | null][]).map(([v, l, c, onPress]) => (
-          <Pressable key={l} onPress={onPress ?? undefined} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 14, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
+          [String(profileData.savedCount), "Recipes", t.accent],
+          [String(profileData.streak), "Streak", t.green],
+        ] as [string, string, string][]).map(([v, l, c]) => (
+          <Pressable key={l} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 14, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>{v}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
-              <Text style={{ fontSize: 10, color: colors.textTertiary }}>{l}</Text>
-              {onPress ? <Info size={12} color={colors.textTertiary} strokeWidth={1.75} /> : null}
-            </View>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{l}</Text>
           </Pressable>
         ))}
       </View>
@@ -734,7 +735,12 @@ export default function ProfileScreen() {
           icon={Coffee}
           iconColor={t.accent}
           label="Caffeine limit"
-          sub={`${targetCaffeineMg} mg/day · FDA guideline is 400 mg`}
+          // P2-36 (2026-04-25 customer-lens): citation should be
+          // region-aware. EFSA + FDA both land at 400 mg/day for
+          // healthy adults — quote both bodies so the source feels
+          // generic rather than US-only to UK/EU users (Grace's
+          // primary cohort).
+          sub={`${targetCaffeineMg} mg/day · EFSA & FDA upper limit 400 mg`}
           onPress={() => setCaffeineTargetPickerOpen(true)}
         />
         <SettingsRow
@@ -1098,7 +1104,7 @@ export default function ProfileScreen() {
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl, paddingHorizontal: Spacing.xl }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: Spacing.lg }} />
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Caffeine limit</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>FDA upper bound for healthy adults is 400 mg/day. Set your own comfortable ceiling.</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}>EFSA and FDA both set 400 mg/day as the upper limit for healthy adults. Set your own comfortable ceiling.</Text>
             <TextInput
               accessibilityLabel="Caffeine limit in milligrams per day"
               keyboardType="number-pad"

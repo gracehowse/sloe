@@ -823,7 +823,12 @@ export default function CreateRecipeScreen() {
             style={[styles.input, styles.multilineInput]}
             value={instructions}
             onChangeText={setInstructions}
-            placeholder={"Step 1: ...\nStep 2: ..."}
+            // P1-26 (TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`, 2026-04-25):
+            // RN's TextInput placeholder doesn't honour the `\n` escape
+            // on iOS — the user saw a literal "\n" in the field.
+            // Switch to a single-line directive that holds up across
+            // platforms.
+            placeholder="Describe each step on a new line"
             placeholderTextColor={colors.textTertiary}
             multiline
           />

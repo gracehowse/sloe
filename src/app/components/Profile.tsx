@@ -43,7 +43,6 @@ interface ProfileProps {
 
 export const Profile = memo(function Profile({ userTier, displayName, onUpgrade, onOpenNutrition }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<"targets" | "progress">("targets");
-  const [scoreInfoOpen, setScoreInfoOpen] = useState(false);
   const {
     nutritionTargets,
     setNutritionTargets,
@@ -84,20 +83,6 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
   const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
   const recipeCount = savedRecipesForLibrary?.length ?? 0;
-  // Adherence score: % of last 7 tracked days where calories were within 10% of target
-  const adherenceScore = useMemo(() => {
-    const target = normalizeMacroTargets(nutritionTargets).calories;
-    if (!target) return 0;
-    const sortedKeys = Object.keys(nutritionByDay).sort((a, b) => b.localeCompare(a)).slice(0, 7);
-    if (sortedKeys.length === 0) return 0;
-    let hits = 0;
-    for (const key of sortedKeys) {
-      const dayMeals = nutritionByDay[key] ?? [];
-      const dayCal = dayMeals.reduce((s, m) => s + (m.calories ?? 0), 0);
-      if (dayCal > 0 && Math.abs(dayCal - target) / target <= 0.1) hits++;
-    }
-    return Math.round((hits / sortedKeys.length) * 100);
-  }, [nutritionByDay, nutritionTargets]);
   // Dynamic profile metadata
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
   const [notificationPref, setNotificationPref] = useState<string | null>(null);
@@ -424,10 +409,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         </span>
       </div>
 
-      {/* Stat Pills — real data (recipes / streak / score). The Score
-          tile is interactive — opens an info popover explaining the
-          0–100 formula (mobile parity:
-          `apps/mobile/app/(tabs)/more.tsx` 397). */}
+      {/* P1-20 web parity (TestFlight `AHS6xzy…` / `AA63DQ7xd…`,
+          2026-04-21+): Score pill removed — tester rejected it twice
+          ("doesn't mean anything, remove"). Mobile parity:
+          `apps/mobile/app/(tabs)/more.tsx`. Recipes + Streak stay. */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
           <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
@@ -437,18 +422,6 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setScoreInfoOpen(true)}
-          className="flex-1 text-center p-3 rounded-xl bg-card border border-border hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Show how Suppr Score is calculated"
-        >
-          <p className="text-lg font-bold text-warning tabular-nums">{adherenceScore}</p>
-          <div className="flex items-center justify-center gap-1 mt-0.5">
-            <span className="text-[10px] text-muted-foreground">Score</span>
-            <Icons.info className="h-2.5 w-2.5 text-muted-foreground" aria-hidden />
-          </div>
-        </button>
       </div>
 
       {/* Upgrade banner — shown to free + base users (mobile parity:
@@ -479,51 +452,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         </button>
       ) : null}
 
-      {/* Suppr Score info popover — modal-style overlay so it works on
-          desktop + mobile-web. Same explanatory copy as mobile's
-          Alert (`apps/mobile/app/(tabs)/more.tsx` 397). */}
-      {scoreInfoOpen ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="score-info-title"
-          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-          onClick={() => setScoreInfoOpen(false)}
-        >
-          <div
-            className="max-w-sm w-full rounded-2xl border border-border bg-card p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="score-info-title" className="text-base font-bold text-foreground mb-2">
-              Your Suppr Score
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Your score (0–100) reflects how actively you&apos;re using Suppr.
-            </p>
-            <ul className="mt-3 space-y-2 text-sm text-foreground">
-              <li className="flex gap-2">
-                <span className="text-primary mt-1">•</span>
-                <span><strong>Logging streak</strong> — log meals consistently to build your streak (up to 40 pts)</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary mt-1">•</span>
-                <span><strong>Saved recipes</strong> — save recipes to your library (up to 30 pts)</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary mt-1">•</span>
-                <span><strong>Active account</strong> — you get 30 pts just for being here</span>
-              </li>
-            </ul>
-            <button
-              type="button"
-              onClick={() => setScoreInfoOpen(false)}
-              className="mt-4 w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {/* P1-20 web parity (2026-04-25): Suppr Score info popover
+          removed alongside the Score pill. */}
 
       {/* Everything else — prototype "More → Household" row. Renders
           only when the user is in a household (mirrors mobile

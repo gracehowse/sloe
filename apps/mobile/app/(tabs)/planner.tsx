@@ -82,7 +82,7 @@ import {
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
-import { HouseholdCard } from "@/components/HouseholdCard";
+import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -257,6 +257,22 @@ export default function PlannerScreen() {
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
+  // F-91 (2026-04-25, sync-enforcer P0-7) — hydrate from cached tier
+  // synchronously on mount so Pro users don't see a "free" gate flash
+  // while the async profile + RC reconcile resolves. Cache is rewritten
+  // at every successful resolve below.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { loadCachedUserTier } = await import("@/lib/cachedUserTier");
+      const cached = await loadCachedUserTier();
+      if (!cancelled) setUserTier(cached);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load user tier from profile. F-43 (2026-04-22, TestFlight "Pro
   // user shown as Free on Plan" x2): reconcile profile with
   // RevenueCat entitlements + promo redemptions before reading, so a
@@ -299,11 +315,14 @@ export default function PlannerScreen() {
         .maybeSingle();
       if (cancelled) return;
       const tier = (data?.user_tier as string | null) ?? null;
-      if (tier === "free" || tier === "base" || tier === "pro") {
-        setUserTier(tier);
-      } else {
-        setUserTier("free");
-      }
+      const resolved: "free" | "base" | "pro" =
+        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      setUserTier(resolved);
+      // F-91 — persist for next mount so the gate doesn't flash Free
+      // again on the next Plan-tab open.
+      void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
+        saveCachedUserTier(resolved),
+      );
     })();
     return () => {
       cancelled = true;
@@ -329,6 +348,12 @@ export default function PlannerScreen() {
   const [moveSheetOpen, setMoveSheetOpen] = useState(false);
   const [moveSource, setMoveSource] = useState<{ day: number; slotIndex: number } | null>(null);
 
+  // P2-40 (TestFlight `APU2FBCjLALmugeCLmQ4Ii0`, 2026-04-25):
+  // generic "Could not load templates" toast was a dead end —
+  // no retry, no explanation. Add a retry counter so the alert
+  // gives the user a button to try again, plus a friendlier
+  // explanation when the error is offline-shaped.
+  const [templatesLoadAttempt, setTemplatesLoadAttempt] = useState(0);
   useEffect(() => {
     if (!templatesOpen || !userId) return;
     let cancelled = false;
@@ -337,7 +362,18 @@ export default function PlannerScreen() {
       .then(({ templates, error }) => {
         if (cancelled) return;
         if (error) {
-          Alert.alert("Templates", `Could not load templates: ${error}`);
+          const friendly =
+            String(error).match(/network|fetch|offline/i)
+              ? "Couldn't reach Suppr. Check your connection and try again."
+              : `Could not load templates: ${error}`;
+          Alert.alert(
+            "Templates",
+            friendly,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => setTemplatesOpen(false) },
+              { text: "Try again", onPress: () => setTemplatesLoadAttempt((n) => n + 1) },
+            ],
+          );
           return;
         }
         setPlanTemplates(templates);
@@ -348,7 +384,7 @@ export default function PlannerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [templatesOpen, userId]);
+  }, [templatesOpen, userId, templatesLoadAttempt]);
 
   // Load shopping item count. The shopping list is ephemeral — it
   // only makes sense in the context of an active plan. When there is
@@ -460,12 +496,27 @@ export default function PlannerScreen() {
     const slotTarget = planTargets ? planTargets.calories * slotRatio : 400;
     const sorted = [...fits].sort((a, b) => Math.abs(a.calories - slotTarget) - Math.abs(b.calories - slotTarget));
 
-    const options = sorted.slice(0, 10).map((r) => `${r.title} (${r.calories} kcal)`);
+    // P1-22 (TestFlight `APHEBaM02gFAhoeHQ5mtxuE`,
+    // `AFF_UA88-CeE5TDCRhbaY_M`, 2026-04-24): tester couldn't find a
+    // way to add a library recipe to a specific slot. The picker
+    // already pulls saved recipes first — surface that with a label
+    // tag and a clearer title so the action reads as "pick from your
+    // library" rather than just "swap".
+    const savedSet = new Set(savedRecipes.map((r) => r.id));
+    const options = sorted.slice(0, 10).map(
+      (r) => `${savedSet.has(r.id) ? "★ " : ""}${r.title} (${r.calories} kcal)`,
+    );
     options.push("Cancel");
 
+    const savedCount = sorted.slice(0, 10).filter((r) => savedSet.has(r.id)).length;
+    const subtitle =
+      savedCount > 0
+        ? `★ from your library · Target ~${Math.round(slotTarget)} kcal`
+        : `Target: ~${Math.round(slotTarget)} kcal for this slot`;
+
     Alert.alert(
-      `Swap ${slotName}`,
-      `Target: ~${Math.round(slotTarget)} kcal for this slot`,
+      `Pick recipe for ${slotName}`,
+      subtitle,
       options.map((label, idx) => ({
         text: label,
         style: idx === options.length - 1 ? "cancel" as const : "default" as const,
@@ -1017,6 +1068,26 @@ export default function PlannerScreen() {
 
     setGenerating(true);
 
+    // P1-24 (TestFlight `AMXSjeaXJeCf6QtKgUTMkD0`,
+    // `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-22+): when the user starts
+    // a fresh plan, the previous plan's shopping_items rows were
+    // still in the DB so the "37 items from this week" subtitle
+    // would persist alongside the "Generate Shopping List" button —
+    // two UIs disagreeing about whether the list existed. Wipe the
+    // shopping items at the start of every plan generation so the
+    // count truthfully resets to 0 until the user re-generates the
+    // list against the new plan. Web parity: `AppDataContext.tsx`'s
+    // shopping-clear effect already handles plan-cleared
+    // transitions; this covers the plan-replaced case.
+    if (userId) {
+      try {
+        await supabase.from("shopping_items").delete().eq("user_id", userId);
+      } catch {
+        /* best-effort — generation should still proceed */
+      }
+      setShoppingItemCount(0);
+    }
+
     // Smart macro-aware plan generation
     {
       // Load targets from user profile
@@ -1450,11 +1521,14 @@ export default function PlannerScreen() {
           </View>
         )}
 
-        {/* Household shared meals. Positioned BELOW the "This week"
-            summary card (2026-04-20 prototype port) so the weekly
-            at-a-glance copy is the first thing a user sees after the
-            pills row; the household surface is secondary. */}
-        <HouseholdCard />
+        {/* P1-12 / P1-13 (TestFlight `ALQQyjCHjzbtxaCSPW18glk` +5,
+            2026-04-22): the full HouseholdCard with sharing grid + invite
+            UI was eating the Plan tab's above-the-fold and confused
+            testers about which screen owned what. Replaced with a 1-line
+            summary row that opens the dedicated household-settings
+            screen; tester ask was explicit ("this page should just be
+            showing the household, like the prototype"). */}
+        <HouseholdSummaryRow />
 
         {/* Plan setup — visible whenever a plan exists so users can change
             day count, start date, and included slots before regenerating
@@ -1748,12 +1822,15 @@ export default function PlannerScreen() {
                 fat: planTargets.fat,
               })
             : null;
+          // P1-10 / Carryover rule #1 (2026-04-25): over-budget reads
+          // amber, not red. Red is reserved for hard errors. Plan day
+          // total can be over-budget ("ok-ish, you've gone over") which
+          // should look distinct from "broken" — amber matches the
+          // prototype carryover and the Today over-budget treatment.
           const toneColor = (tone: DayTotalTone): string =>
             tone === "neutral"
               ? colors.textSecondary
-              : tone === "amber"
-                ? Accent.warning
-                : Accent.destructive;
+              : Accent.warning;
           // Prototype port (2026-04-20) — day total surfaces as
           // "1,820 kcal" (thousands-separator, right-aligned) in the
           // day header. Sum from non-placeholder meals so cleared
@@ -2050,12 +2127,42 @@ export default function PlannerScreen() {
                       instead of going blank. The existing kcal/macros
                       line (already present for real meals) stays
                       unchanged — no duplication. */}
-                  <Text style={styles.mealTitle}>
-                    {planMealHasRecipe(meal)
-                      ? `${meal.recipeTitle}${multLabel !== "1" ? ` (${multLabel}x)` : ""}`
-                      : "Empty slot"}
-                  </Text>
-                  <Text style={styles.mealMacros}>
+                  {/* P1-11 (TestFlight `AERuv07KI` 2026-04-22): the
+                      portion multiplier was concatenated onto the title
+                      ("Best Green Shakshuka Recipe (2.5x)"), wrapping
+                      to two or three lines when paired with the
+                      one-line macro string. Render the multiplier as a
+                      separate trailing badge and clamp the title to a
+                      single line. */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={[styles.mealTitle, { flexShrink: 1 }]} numberOfLines={1}>
+                      {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
+                    </Text>
+                    {planMealHasRecipe(meal) && multLabel !== "1" ? (
+                      <View
+                        style={{
+                          paddingHorizontal: 6,
+                          paddingVertical: 1,
+                          borderRadius: 4,
+                          backgroundColor: Accent.primary + "1A",
+                          flexShrink: 0,
+                        }}
+                        accessibilityLabel={`Portion ${multLabel} times`}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: Accent.primary,
+                            fontVariant: ["tabular-nums"],
+                          }}
+                        >
+                          {`${multLabel}×`}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.mealMacros} numberOfLines={1}>
                     {planMealHasRecipe(meal)
                       ? formatPlannedMealKcalMacrosLine(
                           meal.calories,
@@ -2080,7 +2187,7 @@ export default function PlannerScreen() {
                   }}
                   style={styles.mealSwapBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`Swap ${meal.name}`}
+                  accessibilityLabel={`Pick a recipe for ${meal.name} from your library or Discover`}
                 >
                   <RefreshCw size={13} color={colors.textSecondary} strokeWidth={1.75} />
                 </Pressable>

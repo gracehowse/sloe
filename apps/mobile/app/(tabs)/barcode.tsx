@@ -541,7 +541,9 @@ export default function BarcodeScreen() {
                 ) : (
                   <Ionicons name="add-circle" size={20} color="#fff" />
                 )}
-                <Text style={styles.logBtnText}>{logging ? "Logging…" : `Log (${portionSummary})`}</Text>
+                <Text style={styles.logBtnText} numberOfLines={1}>
+                  {logging ? "Logging…" : "Log this"}
+                </Text>
               </Pressable>
               <Pressable style={styles.secondaryBtn} onPress={resetScan} accessibilityLabel="Scan another barcode">
                 <Text style={styles.secondaryBtnText}>Scan again</Text>

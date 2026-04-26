@@ -18,7 +18,15 @@
  *   5. For `DeviceNotRegistered` tickets the route nulls
  *      `profiles.expo_push_token` so we stop pushing to dead installs.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Bumped per-test timeout from the vitest 5s default. Each test
+// passes in <100ms in isolation, but the full suite uses
+// `vi.doMock` + `vi.resetModules` per case + a route-import dynamic
+// chain that can stall past 5s under heavy parallel load.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 15_000 });
+});
 
 // --- Supabase admin client mock ---------------------------------------------
 //

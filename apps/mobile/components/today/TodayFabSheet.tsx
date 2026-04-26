@@ -121,44 +121,42 @@ export function TodayFabSheet(props: TodayFabSheetProps) {
               Photo and voice send data to our servers and may use AI (see Privacy policy in More).
             </Text>
 
-            <View style={{ flexDirection: "row", gap: Spacing.md }}>
+            {/* P1-18 (TestFlight 2026-04-25 ui-critic): the previous
+                4+2 grid of equally-weighted icon tiles offered six
+                top-level entry points with no hierarchy. Search is the
+                expected default — promote to a full-width row at top
+                that reads as the primary input surface; demote the
+                rest to a single 4-icon-strip below (Previous / Scan /
+                Photo / Voice). Quick Add was redundant with the
+                in-page accordion on Today and is dropped from the
+                sheet (still reachable on Today directly). */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Search foods"
+              onPress={onOpenSearch}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: Spacing.sm,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: 14,
+                borderRadius: Radius.md,
+                backgroundColor: Accent.primary,
+                marginBottom: Spacing.md,
+              }}
+            >
+              <Ionicons name="search" size={18} color="#fff" />
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                Search foods…
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#fff" />
+            </Pressable>
+
+            <View style={{ flexDirection: "row", gap: Spacing.sm }}>
               {[
                 { icon: "time-outline" as const, label: "Previous", onPress: onOpenPrevious },
-                { icon: "search" as const, label: "Search", onPress: onOpenSearch },
                 { icon: "barcode-outline" as const, label: "Scan", onPress: onOpenBarcode },
-                { icon: "add-circle-outline" as const, label: "Quick Add", onPress: onOpenQuickAdd },
-              ].map((item) => (
-                <Pressable
-                  key={item.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  onPress={item.onPress}
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    paddingVertical: Spacing.lg,
-                    borderRadius: Radius.md,
-                    backgroundColor: Accent.primary + "15",
-                    borderWidth: 1,
-                    borderColor: Accent.primary + "30",
-                  }}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={24}
-                    color={Accent.primary}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
-                  />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary, marginTop: 6 }}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
-              {[
-                { icon: "camera-outline" as const, label: "Photo (AI)", onPress: onOpenPhotoLog },
+                { icon: "camera-outline" as const, label: "Photo", onPress: onOpenPhotoLog },
                 { icon: "mic-outline" as const, label: "Voice", onPress: onOpenVoiceLog },
               ].map((item) => (
                 <Pressable
@@ -172,21 +170,37 @@ export function TodayFabSheet(props: TodayFabSheetProps) {
                     paddingVertical: Spacing.md,
                     borderRadius: Radius.md,
                     backgroundColor: inputBgColor,
+                    borderWidth: 1,
+                    borderColor: borderColor,
                   }}
                 >
                   <Ionicons
                     name={item.icon}
-                    size={20}
+                    size={22}
                     color={textSecondaryColor}
                     accessibilityElementsHidden
                     importantForAccessibility="no"
                   />
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: textSecondaryColor, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: textSecondaryColor, marginTop: 6 }}>
                     {item.label}
                   </Text>
                 </Pressable>
               ))}
             </View>
+            {/* Quick Add demoted to a footer link — still reachable but
+                no longer competing with Search for primary visual
+                weight. The in-page Today accordion remains the main
+                quick-add surface. */}
+            <Pressable
+              onPress={onOpenQuickAdd}
+              accessibilityRole="button"
+              accessibilityLabel="Quick add (calories or macros)"
+              style={{ alignItems: "center", paddingVertical: Spacing.md, marginTop: Spacing.sm }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>
+                Or enter calories manually
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

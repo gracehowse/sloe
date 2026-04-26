@@ -83,24 +83,33 @@ export function TodayDateHeader({
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* F-84 web parity (2026-04-25 sync-enforcer D-1) — mobile
+              shipped a Sun/Grid icon-only toggle but web kept text labels.
+              Same intent, same accessibility names; icon-only matches the
+              prototype carryover and resolves the customer-lens
+              "three time-navigation things" pile-up. */}
           <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
             <button
               type="button"
               onClick={() => onViewModeChange("day")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
-                viewMode === "day" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              aria-label="Day view"
+              aria-pressed={viewMode === "day"}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === "day" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Day
+              <Icons.lightMode className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => onViewModeChange("week")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
-                viewMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              aria-label="Week view"
+              aria-pressed={viewMode === "week"}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === "week" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Week
+              <Icons.layoutGrid className="w-4 h-4" />
             </button>
           </div>
           <div

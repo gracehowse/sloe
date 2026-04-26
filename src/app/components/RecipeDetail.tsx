@@ -17,6 +17,7 @@ import { ConfidenceDot } from "./suppr/confidence-dot";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
+import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
 import {
@@ -913,7 +914,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         {/* 2026-04-20 prototype port — centred bold title in the
             sticky top bar (was a gradient left-aligned headline).
             Truncated with ellipsis if overflowing. */}
-        <h2 className="flex-1 text-center font-semibold text-foreground truncate">{recipe.title}</h2>
+        {/* F-85 (2026-04-25) — web parity for de-CAPS recipe title. */}
+        <h2 className="flex-1 text-center font-semibold text-foreground truncate">{normaliseRecipeDisplayTitle(recipe.title)}</h2>
         {isMyRecipe ? (
           <button
             type="button"
@@ -1216,20 +1218,52 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         </div>
 
-        {/* Calories hero + macro tiles from profile tracked_macros */}
-        <div
-          className="mb-3 rounded-2xl border px-5 py-6 text-center"
-          style={{
-            borderColor: "color-mix(in srgb, var(--macro-calories) 45%, var(--border))",
-            backgroundColor: "color-mix(in srgb, var(--macro-calories) 14%, transparent)",
-          }}
-        >
-          <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--macro-calories)" }}>
-            Calories per portion
-          </div>
-          <div className="mt-2 text-4xl font-extrabold tabular-nums text-foreground">{Math.round(scaledMacros.calories)}</div>
-          <div className="mt-1 text-xs text-muted-foreground">kilocalories</div>
-        </div>
+        {/* Calories hero + macro tiles from profile tracked_macros.
+            P1-16 web parity (TestFlight `ABCjwJb4cU5UabbaXfYEbOY`,
+            2026-04-25): when nutrition is missing on a recipe, show a
+            dimmed "not yet computed" state instead of a confident
+            "0 kilocalories" in a green frame. Also drop the verbose
+            "kilocalories" caption — kcal is the standard unit. */}
+        {(() => {
+          const kcalNum = Math.round(scaledMacros.calories);
+          const hasNutrition =
+            kcalNum > 0 ||
+            scaledMacros.protein > 0 ||
+            scaledMacros.carbs > 0 ||
+            scaledMacros.fat > 0;
+          if (!hasNutrition) {
+            return (
+              <div className="mb-3 rounded-2xl border px-5 py-5 text-center text-muted-foreground border-border bg-muted/30">
+                <div className="text-[11px] font-extrabold uppercase tracking-wider">
+                  Calories per portion
+                </div>
+                <div className="mt-2 text-sm font-semibold">
+                  Not yet computed — open the Ingredients tab to verify
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div
+              className="mb-3 rounded-2xl border px-5 py-6 text-center"
+              style={{
+                borderColor: "color-mix(in srgb, var(--macro-calories) 45%, var(--border))",
+                backgroundColor: "color-mix(in srgb, var(--macro-calories) 14%, transparent)",
+              }}
+            >
+              <div
+                className="text-[11px] font-extrabold uppercase tracking-wider"
+                style={{ color: "var(--macro-calories)" }}
+              >
+                Calories per portion
+              </div>
+              <div className="mt-2 text-4xl font-extrabold tabular-nums text-foreground">
+                {kcalNum}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">kcal</div>
+            </div>
+          );
+        })()}
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Macros</p>
         <div className="mb-4 flex flex-wrap gap-2">
           {recipeMacrosToShow.map((macro) => {
@@ -1398,7 +1432,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                             : ingredient.unit}
                         </p>
                       </div>
-                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ingCal} kcal</span>
+                      {/* P2-30 web parity (2026-04-25 ui-critic):
+                          suppress the "0 kcal" right column when the
+                          ingredient has no resolved nutrition. */}
+                      {ingCal > 0 ? (
+                        <span className="text-xs text-muted-foreground tabular-nums shrink-0">{ingCal} kcal</span>
+                      ) : null}
                       {/* Stacked P/C/F bar */}
                       <div className="w-12 h-2 rounded-full overflow-hidden flex shrink-0">
                         <div style={{ width: `${(ingP / macroTotal) * 100}%`, backgroundColor: "var(--macro-protein)" }} />

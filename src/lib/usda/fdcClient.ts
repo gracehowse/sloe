@@ -78,26 +78,30 @@ export function fdcConfigFromEnv(): FdcConfig {
   return { apiKey: requiredEnv("USDA_FDC_API_KEY") };
 }
 
-export async function fdcFoodsSearch(
+/**
+ * F-87 (2026-04-25) — generic-name searches (e.g. "eggs") were dominated
+ * by USDA Branded rows because USDA's default scoring boosts exact-name
+ * matches against branded products. The result: a misnamed branded product
+ * called "EGGS" (525 kcal / 100g, a baked/glazed product) outranked the
+ * verified Foundation row "Eggs, Grade A, Large, egg whole" (~143 kcal /
+ * 100g), and the tester saw "1 egg 40g · 210 kcal" — physically impossible.
+ *
+ * Two-stage fetch: pull verified rows first (Foundation / SR Legacy /
+ * Survey (FNDDS)), then top up with branded for queries where users want
+ * a brand ("Cheerios", "Lay's"). Verified rows always lead the merged list.
+ *
+ * If the caller passes an explicit `dataType` filter we honour it and
+ * skip the two-stage path (used by audit / verify-ingredient flows that
+ * deliberately scope to one corpus).
+ */
+const VERIFIED_DATA_TYPES = ["Foundation", "SR Legacy", "Survey (FNDDS)"];
+
+async function fdcFetchSingle(
   cfg: FdcConfig,
-  query: string,
-  opts?: { dataType?: string[]; pageNumber?: number; pageSize?: number },
-): Promise<FdcFoodSearchHit[]> {
+  body: Record<string, unknown>,
+): Promise<unknown[]> {
   const url = new URL(`${API_BASE}/foods/search`);
   url.searchParams.set("api_key", cfg.apiKey);
-
-  // `pageNumber` is 1-indexed in USDA FDC. Forwarded from the search
-  // route so the food-search UI can scroll through additional pages
-  // (TestFlight F-10, `AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Pre-existing
-  // single-page callers pass no opts and keep the historical page 1 /
-  // size 10 behaviour.
-  const pageSize = opts?.pageSize && opts.pageSize > 0 ? opts.pageSize : 10;
-  const pageNumber = opts?.pageNumber && opts.pageNumber > 0 ? opts.pageNumber : 1;
-  const body: Record<string, unknown> = { query, pageSize, pageNumber };
-  if (opts?.dataType?.length) {
-    body.dataType = opts.dataType;
-  }
-
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
@@ -114,6 +118,65 @@ export async function fdcFoodsSearch(
   }
   const json = (await res.json()) as unknown;
   const foods = (json as { foods?: unknown }).foods;
+  return Array.isArray(foods) ? foods : [];
+}
+
+export async function fdcFoodsSearch(
+  cfg: FdcConfig,
+  query: string,
+  opts?: { dataType?: string[]; pageNumber?: number; pageSize?: number },
+): Promise<FdcFoodSearchHit[]> {
+  // `pageNumber` is 1-indexed in USDA FDC. Forwarded from the search
+  // route so the food-search UI can scroll through additional pages
+  // (TestFlight F-10, `AHnI_fIc7SKbaRcdd5SZB9Q`, 2026-04-19). Pre-existing
+  // single-page callers pass no opts and keep the historical page 1 /
+  // size 10 behaviour.
+  const pageSize = opts?.pageSize && opts.pageSize > 0 ? opts.pageSize : 10;
+  const pageNumber = opts?.pageNumber && opts.pageNumber > 0 ? opts.pageNumber : 1;
+
+  // F-87 — explicit dataType from caller bypasses the two-stage path.
+  let foods: unknown[];
+  if (opts?.dataType?.length) {
+    foods = await fdcFetchSingle(cfg, {
+      query,
+      pageSize,
+      pageNumber,
+      dataType: opts.dataType,
+    });
+  } else {
+    // Two-stage fetch on page 1 only — page 2+ is branded long-tail.
+    if (pageNumber === 1) {
+      const verifiedSlice = Math.max(3, Math.floor(pageSize * 0.6));
+      const brandedSlice = Math.max(2, pageSize - verifiedSlice);
+      const [verified, branded] = await Promise.all([
+        fdcFetchSingle(cfg, {
+          query,
+          pageSize: verifiedSlice,
+          pageNumber: 1,
+          dataType: VERIFIED_DATA_TYPES,
+        }),
+        fdcFetchSingle(cfg, {
+          query,
+          pageSize: brandedSlice,
+          pageNumber: 1,
+        }),
+      ]);
+      // Drop branded rows that already appeared in the verified slice
+      // (USDA returns the same row across both queries when it matches).
+      const seenIds = new Set(
+        verified
+          .map((f: any) => (typeof f?.fdcId === "number" ? f.fdcId : null))
+          .filter((id): id is number => id != null),
+      );
+      const dedupedBranded = branded.filter((f: any) => {
+        const id = typeof f?.fdcId === "number" ? f.fdcId : null;
+        return id == null || !seenIds.has(id);
+      });
+      foods = [...verified, ...dedupedBranded];
+    } else {
+      foods = await fdcFetchSingle(cfg, { query, pageSize, pageNumber });
+    }
+  }
   if (!Array.isArray(foods)) return [];
   return foods
     .map((f) => f as Partial<FdcFoodSearchHit>)

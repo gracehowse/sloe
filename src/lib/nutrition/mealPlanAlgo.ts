@@ -88,6 +88,14 @@ export const ALL_MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as cons
  * scaler and the planner portion stepper on both platforms. Single source
  * of truth so web + mobile can't drift (see F-15). Wider than the old web
  * clamp (0.5..2.0 at 0.25 step) to give the scaler more headroom.
+ *
+ * Note (P1-23, 2026-04-25): we considered tightening this to discourage
+ * "0.3× breakfast + 1.8× lunch" outputs, but the cascading failure
+ * mode in the existing tests showed the joint-fit scaler genuinely
+ * needs the headroom for low-calorie targets. Spread is now controlled
+ * by `mealPlanPortionSpreadPenalty` at scoring time + the 0-macro pool
+ * exclusion in `generateMealPlan.ts` (which removes the worst
+ * offenders — recipes with no nutritional signal).
  */
 export const PORTION_MULTIPLIER_CLAMP = {
   min: 0.2,

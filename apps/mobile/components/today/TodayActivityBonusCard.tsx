@@ -225,11 +225,23 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         ) : null}
         <View style={{ width: 1, backgroundColor: borderColor }} />
         <View style={{ alignItems: "center", flex: 1 }}>
+          {/* P2-31 (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
+              2026-04-25 visual-qa): when no food was logged the
+              "Net deficit" was rendered green (success), affirming
+              data that's really just "we haven't subtracted anything
+              yet". When `consumedCalories === 0` the deficit is just
+              the burn — render in neutral grey so the user can tell
+              this isn't a real net. */}
           <Text
             style={{
               fontSize: 20,
               fontWeight: "800",
-              color: isDeficit ? Accent.success : Accent.warning,
+              color:
+                consumedCalories === 0
+                  ? textSecondaryColor
+                  : isDeficit
+                    ? Accent.success
+                    : Accent.warning,
               fontVariant: ["tabular-nums"],
             }}
           >

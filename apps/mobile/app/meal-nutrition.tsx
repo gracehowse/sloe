@@ -11,6 +11,10 @@ import { listMicroNutrientsCompleteDisplay, mealContributedFiberG } from "@/lib/
 import { parseNutritionMicrosJson, type JournalMeal } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import {
+  macroSplitConfidence,
+  macroSplitIncompleteCopy,
+} from "../../../src/lib/nutrition/macroSplitConfidence";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -111,6 +115,23 @@ export default function MealNutritionScreen() {
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
   );
+  // F-82 (2026-04-25) — refuse to draw the macro split bar / "100% of
+  // macro calories" labels when only one macro is non-zero AND that macro
+  // can't account for the kcal claim (i.e. the source published kcal but
+  // not the full macro breakdown). Closes the "Fly By Jing chili crisp =
+  // 100% fat" failure mode for OFF entries with partial nutriments.
+  const splitConfidence = useMemo(
+    () =>
+      meal
+        ? macroSplitConfidence({
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+          })
+        : ({ state: "empty" } as const),
+    [meal],
+  );
 
   const openEditOnToday = useCallback(() => {
     if (!meal || !dateKey) return;
@@ -187,23 +208,40 @@ export default function MealNutritionScreen() {
         <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
         <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
 
-        <View style={styles.macroBar}>
-          {split.proteinKcal + split.carbsKcal + split.fatKcal > 0 ? (
-            <>
-              <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: MacroColors.protein }]} />
-              <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: MacroColors.carbs }]} />
-              <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: MacroColors.fat }]} />
-            </>
-          ) : (
-            <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
-          )}
-        </View>
+        {splitConfidence.state === "single_macro" ? (
+          // F-82 — incomplete-data state. Skip the misleading bar +
+          // "100% of macro calories" labels and explain what's missing.
+          <View style={styles.incompleteMacroPanel}>
+            <Text style={[styles.incompleteMacroCopy, { color: colors.textSecondary }]}>
+              {macroSplitIncompleteCopy(splitConfidence.presentMacro)}
+            </Text>
+            <View style={styles.macroGrid}>
+              <MacroStat label="Protein" grams={meal.protein} pct={null} color={MacroColors.protein} textColor={colors.text} />
+              <MacroStat label="Carbs" grams={meal.carbs} pct={null} color={MacroColors.carbs} textColor={colors.text} />
+              <MacroStat label="Fat" grams={meal.fat} pct={null} color={MacroColors.fat} textColor={colors.text} />
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={styles.macroBar}>
+              {splitConfidence.state === "complete" ? (
+                <>
+                  <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: MacroColors.protein }]} />
+                  <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: MacroColors.carbs }]} />
+                  <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: MacroColors.fat }]} />
+                </>
+              ) : (
+                <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
+              )}
+            </View>
 
-        <View style={styles.macroGrid}>
-          <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={MacroColors.protein} textColor={colors.text} />
-          <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={MacroColors.carbs} textColor={colors.text} />
-          <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={MacroColors.fat} textColor={colors.text} />
-        </View>
+            <View style={styles.macroGrid}>
+              <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={MacroColors.protein} textColor={colors.text} />
+              <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={MacroColors.carbs} textColor={colors.text} />
+              <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={MacroColors.fat} textColor={colors.text} />
+            </View>
+          </>
+        )}
 
         <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
           <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
@@ -223,17 +261,45 @@ export default function MealNutritionScreen() {
 
       <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Vitamins, minerals & more</Text>
-        <Text style={[styles.sectionSub, { color: colors.textTertiary }]}>
-          Every field we store for this entry; values reflect portion ×{portionLabel}.
-        </Text>
-        {microRows.map((row) => (
-          <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
-            <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
-              {row.label}
-            </Text>
-            <Text style={[styles.microValue, { color: colors.textSecondary }]}>{row.value}</Text>
-          </View>
-        ))}
+        {/* F-86 (2026-04-25) — when every micro row is "—" the panel reads
+            as a debug surface (ui-critic 2026-04-25: "the database talking
+            instead of product voice"). Collapse to a source-attributed
+            empty state in that case; otherwise render the full list with
+            an attribution line that re-frames absence as the source's
+            gap, not Suppr's. */}
+        {(() => {
+          const populatedCount = microRows.filter((row) => row.value !== "—").length;
+          const sourceLabel = meal.source ? meal.source : "the data source";
+          if (populatedCount === 0) {
+            return (
+              <Text style={[styles.sectionSub, { color: colors.textTertiary, marginBottom: 0 }]}>
+                {sourceLabel} did not publish vitamin or mineral data for this product.
+              </Text>
+            );
+          }
+          return (
+            <>
+              <Text style={[styles.sectionSub, { color: colors.textTertiary }]}>
+                {populatedCount} of {microRows.length} fields published by {sourceLabel}; values reflect portion ×{portionLabel}.
+              </Text>
+              {microRows.map((row) => (
+                <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
+                  <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
+                    {row.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.microValue,
+                      { color: row.value === "—" ? colors.textTertiary : colors.textSecondary },
+                    ]}
+                  >
+                    {row.value === "—" ? "Not published" : row.value}
+                  </Text>
+                </View>
+              ))}
+            </>
+          );
+        })()}
       </View>
 
       <Pressable
@@ -261,7 +327,8 @@ function MacroStat({
 }: {
   label: string;
   grams: number;
-  pct: number;
+  /** F-82 — `null` suppresses the "X% of macro calories" line for incomplete-data rows. */
+  pct: number | null;
   color: string;
   textColor: string;
 }) {
@@ -272,7 +339,9 @@ function MacroStat({
         <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{label}</Text>
       </View>
       <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
-      <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of macro calories</Text>
+      {pct != null ? (
+        <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of macro calories</Text>
+      ) : null}
     </View>
   );
 }
@@ -305,6 +374,8 @@ const styles = StyleSheet.create({
   },
   microLabel: { flex: 1, fontSize: 14 },
   microValue: { fontSize: 14, fontVariant: ["tabular-nums"] },
+  incompleteMacroPanel: { marginBottom: Spacing.md },
+  incompleteMacroCopy: { fontSize: 13, lineHeight: 18, marginBottom: Spacing.sm },
   editCta: {
     flexDirection: "row",
     alignItems: "center",

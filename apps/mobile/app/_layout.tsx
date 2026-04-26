@@ -317,6 +317,12 @@ const STACK_HEADER_HIDDEN = new Set([
   "nutrition-sources",
   "create-recipe",
   "recipe/[id]",
+  // P1-27 (TestFlight `AHitOL0RmJmQqYwdVzqw-2c`, 2026-04-22):
+  // household-settings has its own in-page back chevron + title.
+  // Without an entry here the auto-titled "Household Settings" nav
+  // bar rendered on top, leaving the user with two stacked back
+  // affordances 80pt apart.
+  "household-settings",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */

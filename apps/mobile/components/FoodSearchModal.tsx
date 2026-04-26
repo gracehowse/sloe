@@ -503,11 +503,15 @@ export default function FoodSearchModal({
         const result = await getFoodMacros(item._fdcId);
         setLoadingKey(null);
         if (!result) return;
-        const allPortions = buildPortionList(result.portions, item.primaryServing);
-        // Default to the natural portion when the source exposes one —
-        // TestFlight `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19): MFP/LoseIt
-        // parity. Otherwise fall back to the recipe-hint resolution.
-        const { portion, quantity } = item.primaryServing
+        // F-88 (2026-04-25) — fall back to the server-derived
+        // `primaryPortion` (best-scored foodPortions row) when the
+        // search-stage `item.primaryServing` was null. USDA's search
+        // endpoint doesn't ship foodPortions for Foundation / SR Legacy
+        // hits, so without this the picker defaults to grams for
+        // single-unit items like eggs and bananas.
+        const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
+        const allPortions = buildPortionList(result.portions, effectivePrimary);
+        const { portion, quantity } = effectivePrimary
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
         setPreview({
@@ -876,13 +880,19 @@ export default function FoodSearchModal({
                 {item.name}
               </Text>
             </View>
+            {/* P1-25 (TestFlight `AHnI_fIc7SKbaRcdd5SZB9Q` ui-critic
+                2026-04-25): the right-side large `headlineKcal` number
+                already carries the calorie value. The macro preview
+                line previously repeated `{kcal} kcal` on the left,
+                which was visual noise and inconsistent with how the
+                same row reads on the verified path. Drop the
+                duplicate kcal — keep P/C/F only. */}
             {headline.mode === "per-serving" ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={styles.macroPreviewText}>{headline.macros.calories} kcal</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{headline.macros.fat}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
                 </View>
                 <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
                 <Text style={styles.per100g}>
@@ -893,18 +903,14 @@ export default function FoodSearchModal({
             ) : headline.mode === "per-100g" && headline.macros ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={styles.macroPreviewText}>{headline.macros.calories} kcal</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P:{headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C:{headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F:{headline.macros.fat}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
                 </View>
                 <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
               </>
             ) : headline.mode === "per-100g" ? (
-              <>
-                <Text style={styles.macroPreviewText}>{headline.headlineKcal} kcal</Text>
-                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-              </>
+              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
             ) : (
               <Text style={styles.per100g}>Tap for nutrition info</Text>
             )}

@@ -32,6 +32,7 @@ import {
   ZEROED_RECIPE_AGGREGATE,
 } from "../../../../src/lib/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
+import { normaliseRecipeDisplayTitle } from "../../../../src/lib/recipe/normaliseDisplayTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -1176,7 +1177,7 @@ export default function RecipeDetailScreen() {
     const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
     const origin = (extra?.supprApiUrl ?? "").replace(/\/$/, "") || "https://suppr-club.com";
     const url = webRecipeDeepLink(String(recipeId), origin);
-    const title = decodeEntities(recipe.title);
+    const title = normaliseRecipeDisplayTitle(decodeEntities(recipe.title));
     void Share.share({ message: `${title}\n${url}`, url }).catch(() => {
       void Linking.openURL(url);
     });
@@ -1203,7 +1204,11 @@ export default function RecipeDetailScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
           <Text style={styles.topBarTitle} numberOfLines={1} ellipsizeMode="tail">
-            {decodeEntities(recipe.title)}
+            {/* F-85 (2026-04-25) — de-CAPS shouty imported titles
+                ("HEALTHY 3 INGREDIENT WHIPPED PISTACHIO TIRAMISU" →
+                "Healthy 3 Ingredient Whipped Pistachio Tiramisu").
+                Display-only normalisation; the stored title is untouched. */}
+            {normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}
           </Text>
           <View style={styles.topBarActions}>
             <Pressable
@@ -1249,7 +1254,7 @@ export default function RecipeDetailScreen() {
 
         <View style={styles.body}>
           {/* Title + meta */}
-          <Text style={styles.title}>{decodeEntities(recipe.title)}</Text>
+          <Text style={styles.title}>{normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}</Text>
           {recipeByline.label ? (
             <Pressable
               onPress={() => {
@@ -1312,37 +1317,68 @@ export default function RecipeDetailScreen() {
                 <Text style={styles.infoLabel}>Servings</Text>
               </View>
             )}
-            <View style={styles.infoItem}>
-              <Ionicons name="checkmark-circle-outline" size={20} color={Accent.success} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>92%</Text>
-              <Text style={styles.infoLabel}>Confidence</Text>
-            </View>
+            {/* P2-33 (2026-04-25 design-system-enforcer): "Confidence
+                92%" was a backstage signal in a user-facing meta strip
+                — the user has no actionable interpretation of "92%
+                confident". Removed; the existing source-attribution
+                row in the Nutrition tab is the right surface if the
+                user wants to dig into trust. */}
           </View>
 
           {/* Calories hero (per portion); macro tiles follow dashboard widget prefs */}
-          <View
-            // F-51 (2026-04-22): further shrink recipe-detail calories
-            // hero. F-23 went 48→34 on build 14; build-26 tester still
-            // reported "Cals section is huge and still wrong". Now
-            // 34→26 with one-line composition + tighter padding so the
-            // whole card takes ~half the vertical space it did.
-            style={{
-              flexDirection: "row",
-              alignItems: "baseline",
-              justifyContent: "center",
-              gap: 6,
-              marginBottom: Spacing.md,
-              paddingVertical: Spacing.sm,
-              paddingHorizontal: Spacing.lg,
-              borderRadius: Radius.lg,
-              borderWidth: 1,
-              borderColor: MacroColors.calories + "55",
-              backgroundColor: MacroColors.calories + "14",
-            }}
-          >
-            <Text style={[styles.calorieNumber, { color: colors.text }]}>{Math.round(macros.calories)}</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal per portion</Text>
-          </View>
+          {(() => {
+            // P1-16 (TestFlight `ABCjwJb4cU5UabbaXfYEbOY`, 2026-04-22):
+            // when a recipe has 0 calories (import-time nutrition
+            // failed, or the user just opened a stub), the green
+            // accent card confidently rendered "0 kcal per portion".
+            // Render a dimmed "Calculating…" state instead so the
+            // user can tell that nutrition is missing, not zero.
+            const kcalNum = Math.round(macros.calories);
+            const hasNutrition =
+              kcalNum > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fat > 0;
+            return (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  justifyContent: "center",
+                  gap: 6,
+                  marginBottom: Spacing.md,
+                  paddingVertical: Spacing.sm,
+                  paddingHorizontal: Spacing.lg,
+                  borderRadius: Radius.lg,
+                  borderWidth: 1,
+                  borderColor: hasNutrition
+                    ? MacroColors.calories + "55"
+                    : colors.border,
+                  backgroundColor: hasNutrition
+                    ? MacroColors.calories + "14"
+                    : "transparent",
+                  opacity: hasNutrition ? 1 : 0.7,
+                }}
+                accessibilityLabel={
+                  hasNutrition
+                    ? `${kcalNum} kcal per portion`
+                    : "Calories not yet computed for this recipe"
+                }
+              >
+                {hasNutrition ? (
+                  <>
+                    <Text style={[styles.calorieNumber, { color: colors.text }]}>
+                      {kcalNum}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                      kcal per portion
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>
+                    Calories not yet computed — open the Ingredients tab to verify
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
 
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.6, marginBottom: Spacing.sm }}>
             Macros
@@ -1577,21 +1613,37 @@ export default function RecipeDetailScreen() {
                     <View style={styles.ingredientNameAndCal}>
                       <View style={styles.ingredientNameRow}>
                         <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
-                        <Text style={styles.ingredientCalories}>{Math.round(rowCal)} kcal</Text>
+                        {/* P2-30 (2026-04-25 ui-critic): suppress the
+                            "0 kcal" right-column when the ingredient
+                            has no resolved nutrition. The "0" reads as
+                            a confident value when it really means
+                            "didn't compute"; blank space lets the
+                            ingredient text breathe. */}
+                        {rowCal > 0 ? (
+                          <Text style={styles.ingredientCalories}>{Math.round(rowCal)} kcal</Text>
+                        ) : null}
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={styles.ingredientQty}>
-                          {ing.amount != null ? `${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""}` : "as needed"}
-                        </Text>
+                        {/* P2-30: also suppress the "as needed" parser
+                            fallback when no amount was extracted —
+                            it's not a real instruction, it's a parser
+                            shrug. */}
+                        {ing.amount != null ? (
+                          <Text style={styles.ingredientQty}>
+                            {`${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""}`}
+                          </Text>
+                        ) : null}
                         {confPct != null && (
                           <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>{confPct}%</Text>
                         )}
                       </View>
-                      <View style={styles.macroBar}>
-                        {proteinPct > 0 && <View style={{ flex: proteinPct, backgroundColor: MacroColors.protein }} />}
-                        {carbsPct > 0 && <View style={{ flex: carbsPct, backgroundColor: MacroColors.carbs }} />}
-                        {fatPct > 0 && <View style={{ flex: fatPct, backgroundColor: MacroColors.fat }} />}
-                      </View>
+                      {/* F-85 (2026-04-25) — per-ingredient macro split bar
+                          removed. Per ui-critic: a user cooking pancakes
+                          does not need to see "egg is mostly fat" at a
+                          glance. The recipe-level macro split in the
+                          Nutrition tab is the source of truth; per-row
+                          bars added visual noise that competed with the
+                          ingredient name and gram count for the eye. */}
                     </View>
                   </Pressable>
                 );

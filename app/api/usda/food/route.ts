@@ -4,6 +4,7 @@ import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { pickUsdaFoodPortionsPrimaryServing } from "@/lib/nutrition/primaryServing";
 
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -37,20 +38,49 @@ export async function GET(req: Request) {
     }
     const macrosPer100g = fdcFoodMacrosPer100g(food);
 
-    // Extract portion measures (e.g. "1 medium", "1 cup, sliced") with gram weights
+    // F-88 (2026-04-25) — strip out USDA "standard serving" rows
+    // (NLEA / household reference / undetermined) that look like
+    // jargon to a user, and clean up the label assembly so an
+    // "undetermined" measureUnit doesn't leak into the chip text.
+    // Result: a tester searching "banana" gets "1 medium" (118g) /
+    // "1 large" (136g) / "1 small" (101g) chips, not "1 undetermined
+    // NLEA serving".
+    const cleanUnit = (u: string | null | undefined): string => {
+      const s = (u ?? "").trim().toLowerCase();
+      if (!s || s === "undetermined" || s === "n/a" || s === "not specified") return "";
+      return s;
+    };
+    const NLEA_OR_BLOCK = (mod: string, desc: string): boolean => {
+      const m = (mod ?? "").trim().toLowerCase();
+      const d = (desc ?? "").trim().toLowerCase();
+      const blocked = new Set(["quantity not specified", "undetermined", "1 g", "1g", "100 g", "100g", "not specified", "nlea serving", "household reference"]);
+      return blocked.has(m) || blocked.has(d);
+    };
+
     const portions = (food.foodPortions ?? [])
       .filter((p) => p.gramWeight && p.gramWeight > 0)
+      .filter((p) => !NLEA_OR_BLOCK(p.modifier ?? "", p.portionDescription ?? ""))
       .map((p) => {
-        const unit = p.measureUnit?.name ?? p.measureUnit?.abbreviation ?? "";
-        const modifier = p.modifier ?? "";
-        const desc = p.portionDescription
-          ?? [p.amount ?? 1, unit, modifier].filter(Boolean).join(" ").trim();
+        const unit = cleanUnit(p.measureUnit?.name ?? p.measureUnit?.abbreviation ?? "");
+        const modifier = (p.modifier ?? "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+        const desc = (p.portionDescription ?? "").trim();
+        const label = desc
+          || [p.amount ?? 1, unit, modifier].filter(Boolean).join(" ").trim()
+          || `${p.gramWeight}g`;
         return {
-          label: desc || `${p.gramWeight}g`,
+          label: label.toLowerCase(),
           gramWeight: p.gramWeight!,
           amount: p.amount ?? 1,
         };
       });
+
+    // F-88 — pick the best primary portion using the shared scoring
+    // helper (medium/large/whole > generic > NLEA). The client uses
+    // this as the default chip when the search-stage primaryServing
+    // wasn't set (USDA's search endpoint doesn't ship foodPortions
+    // on non-branded hits, so the search hit had no primary serving
+    // until the food detail loaded).
+    const primaryPortion = pickUsdaFoodPortionsPrimaryServing(macrosPer100g, food.foodPortions ?? null);
 
     return NextResponse.json({
       ok: true,
@@ -58,6 +88,7 @@ export async function GET(req: Request) {
       description: food.description,
       macrosPer100g,
       portions,
+      ...(primaryPortion ? { primaryPortion } : {}),
     });
   } catch (e) {
     return NextResponse.json(

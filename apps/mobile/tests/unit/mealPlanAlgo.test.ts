@@ -59,7 +59,7 @@ describe("generateSmartPlan (mobile parity)", () => {
     expect(hasFiber).toBe(true);
   });
 
-  it("7-day plan has no identical day combinations", () => {
+  it("7-day plan rotates through multiple distinct day combinations", () => {
     const plan = generateSmartPlan({
       recipes,
       targets: makeTargets(2000),
@@ -70,7 +70,12 @@ describe("generateSmartPlan (mobile parity)", () => {
       d.meals.map((m) => m.recipeId ?? m.recipeTitle).sort().join("|"),
     );
     const unique = new Set(combos);
-    expect(unique.size).toBeGreaterThanOrEqual(5);
+    // Mirror of `tests/unit/mealPlanTargets.test.ts` (web): F-73's
+    // 1×-first joint optimizer converges on the small set of
+    // macro-best-fit combinations and rotates through them rather
+    // than picking worse-fit sets just for raw variety. Three
+    // distinct combos cycled across 7 days is the new floor.
+    expect(unique.size).toBeGreaterThanOrEqual(3);
   });
 
   it("no same recipe appears twice in one day", () => {

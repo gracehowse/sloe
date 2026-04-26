@@ -262,16 +262,31 @@ export function generatePlanFromLibrary(input: {
   seed?: number;
 }): DayPlan[] {
   const { savedRecipes, targets } = input;
-  const pool = savedRecipes.map((r) => ({
-    ...r,
-    ...coerceMacrosWhenCaloriesButNoGrams({
-      calories: r.calories,
-      protein: r.protein,
-      carbs: r.carbs,
-      fat: r.fat,
-      fiberG: r.fiberG,
-    }),
-  }));
+  const pool = savedRecipes
+    .map((r) => ({
+      ...r,
+      ...coerceMacrosWhenCaloriesButNoGrams({
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: r.fiberG,
+      }),
+    }))
+    // P1-23 (TestFlight `AGSeM-FnnYbZy6FJveUKBoc`,
+    // `APO0Nk_bre7hVGh9ORM7bGw`, 2026-04-22+): exclude recipes that
+    // still have 0 calories AND 0 macros after the planning coercion
+    // helper above. The joint-fit scaler can produce nonsense
+    // multipliers when handed a recipe with no nutritional signal
+    // (it tries to absorb the day's macro gap by scaling something
+    // with no macros) — keep them out of the pool entirely.
+    .filter(
+      (r) =>
+        (Number.isFinite(r.calories) && r.calories > 0) ||
+        (Number.isFinite(r.protein) && r.protein > 0) ||
+        (Number.isFinite(r.carbs) && r.carbs > 0) ||
+        (Number.isFinite(r.fat) && r.fat > 0),
+    );
   const daysCount = clamp(Math.floor(input.days), 1, 7);
   const slots = input.slots ?? PLAN_MEAL_SLOTS.slice();
   const baseSeed = input.seed ?? Date.now();

@@ -59,15 +59,16 @@ describe("mobile create-recipe — placeholder + write-side normalise (E-1)", ()
     expect(MOBILE_CREATE_SRC).toMatch(/from\(["']recipes["']\)\s*\.insert/);
   });
 
-  it("placeholder is a braced expression so \\n becomes a real newline", () => {
-    // The fix: JSX string attributes never evaluate escapes, so the old
-    // form `placeholder="Step 1: ...\nStep 2: ..."` rendered literally.
-    // The brace form passes a JS string where `\n` is parsed to U+000A.
-    expect(MOBILE_CREATE_SRC).toMatch(
-      /placeholder=\{\s*"Step 1: \.\.\.\\nStep 2: \.\.\."\s*\}/,
-    );
-    // Defence: no JSX attribute string should still carry a `\n` escape.
+  it("placeholder is single-line text — no \\n escape leaks (P1-26)", () => {
+    // P1-26 (TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`, 2026-04-25):
+    // even the braced `{"...\n..."}` form still rendered as a literal
+    // backslash-n inside `TextInput.placeholder` on iOS. Switched to a
+    // single-line directive so the escape can never leak.
+    expect(MOBILE_CREATE_SRC).toMatch(/placeholder="Describe each step on a new line"/);
+    // Defence: no JSX attribute string should carry a `\n` escape.
     expect(MOBILE_CREATE_SRC).not.toMatch(/placeholder="[^"{]*\\n[^"]*"/);
+    // Defence: no braced placeholder containing a multi-step Step 1/Step 2 pattern.
+    expect(MOBILE_CREATE_SRC).not.toMatch(/placeholder=\{[^}]*Step 1.*Step 2[^}]*\}/);
   });
 });
 

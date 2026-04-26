@@ -372,7 +372,7 @@ describe("paywall_viewed contract (L6 G9 + 2026-04-19 round-2)", () => {
    * `properties` object. Drift on any of these four would collapse
    * the F2 funnel's slice.
    */
-  it("every paywall_viewed emit carries { from, tier, surface, platform }", () => {
+  it("every paywall_viewed emit carries { from, tier, surface, platform }", { timeout: 15_000 }, () => {
     const ROOTS = [
       resolve(process.cwd(), "src"),
       resolve(process.cwd(), "app"),

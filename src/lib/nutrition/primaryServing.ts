@@ -84,6 +84,44 @@ const USDA_PORTION_BLOCKLIST = new Set(
   ].map((s) => s.toLowerCase()),
 );
 
+/**
+ * F-88 (2026-04-25) — modifiers that indicate a "standard FDA label
+ * serving" rather than a natural unit. NLEA = Nutrition Labeling and
+ * Education Act; these rows describe the serving size that appears on
+ * the Nutrition Facts panel (e.g. 126 g for bananas, 30 g for cereal).
+ *
+ * A user searching "banana" expects to log "1 medium banana", not
+ * "1 NLEA serving (126 g)". Skip these rows when better natural-unit
+ * portions are present in the same `foodPortions[]` array.
+ */
+const USDA_NLEA_MODIFIERS = new Set(
+  ["nlea serving", "household reference"].map((s) => s.toLowerCase()),
+);
+
+/**
+ * F-88 — preferred modifier substrings. When a foodPortions array has
+ * multiple entries, prefer rows whose modifier reads as a recognisable
+ * unit ("medium banana", "large egg") over generic ones. Ranked by how
+ * close the row is to "what most people mean by 1 of these".
+ */
+const USDA_PREFERRED_MODIFIER_RANKS: Array<{ pattern: RegExp; rank: number }> = [
+  // Negative lookbehind keeps `\blarge\b` from matching "extra large", and
+  // `\bsmall\b` from matching "extra small". Without this, both "large
+  // (8\")" and "extra large (9\")" tie at rank 90 and the picker returns
+  // whichever USDA shipped first.
+  { pattern: /\bmedium\b/i, rank: 100 },
+  { pattern: /(?<!extra )\blarge\b/i, rank: 90 },
+  { pattern: /\bwhole\b/i, rank: 85 },
+  { pattern: /(?<!extra )\bsmall\b/i, rank: 80 },
+  { pattern: /\bextra large\b/i, rank: 70 },
+  { pattern: /\bextra small\b/i, rank: 60 },
+  { pattern: /\bslice\b/i, rank: 55 },
+  { pattern: /\bpiece\b/i, rank: 50 },
+  { pattern: /\bcup\b/i, rank: 30 },
+  { pattern: /\btbsp\b/i, rank: 20 },
+  { pattern: /\btsp\b/i, rank: 15 },
+];
+
 /** Round a macro to one decimal place. Keeps the primary chip stable. */
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -168,33 +206,76 @@ export function pickUsdaBrandedPrimaryServing(
 }
 
 /**
- * Pick the first non-placeholder portion from a USDA Survey/Foundation/
- * SR Legacy `foodPortions[]` array. Returns `null` when every entry is
- * the "quantity not specified" / "1 g" placeholder we shouldn't surface.
+ * F-88 (2026-04-25) — score a portion candidate so the highest-scoring
+ * row wins as the primary serving. Higher = better. Negative = unusable.
+ *
+ * Scoring rationale:
+ *  - Reject NLEA / household reference rows outright (USDA "standard
+ *    serving" rows that read as opaque jargon to a user).
+ *  - Reject blocklisted placeholder rows.
+ *  - Boost rows whose modifier reads as a recognisable natural unit
+ *    ("medium banana", "large egg") via `USDA_PREFERRED_MODIFIER_RANKS`.
+ *  - Mild preference for shorter labels (less likely to read awkwardly
+ *    when concatenated with measureUnit).
+ */
+function scoreUsdaPortion(p: UsdaFoodPortion): number {
+  const grams = typeof p.gramWeight === "number" ? p.gramWeight : Number(p.gramWeight ?? 0);
+  if (!Number.isFinite(grams) || grams <= 0) return -1;
+  const desc = (p.portionDescription ?? "").trim().toLowerCase();
+  const mod = (p.modifier ?? "").trim().toLowerCase();
+  if (USDA_PORTION_BLOCKLIST.has(desc) || USDA_PORTION_BLOCKLIST.has(mod)) return -1;
+  if (USDA_NLEA_MODIFIERS.has(mod) || USDA_NLEA_MODIFIERS.has(desc)) return -1;
+
+  // Match the highest-priority preferred modifier substring.
+  const text = `${desc} ${mod}`.trim();
+  let bestRank = 0;
+  for (const { pattern, rank } of USDA_PREFERRED_MODIFIER_RANKS) {
+    if (pattern.test(text) && rank > bestRank) bestRank = rank;
+  }
+  return bestRank > 0 ? bestRank : 1; // 1 = "usable but generic"
+}
+
+/** F-88 — strip "undetermined" / placeholder unit names from a label. */
+function cleanUnitToken(unit: string | null | undefined): string {
+  const u = (unit ?? "").trim().toLowerCase();
+  if (!u || u === "undetermined" || u === "n/a" || u === "not specified") return "";
+  return u;
+}
+
+/**
+ * Pick the best-scoring portion from a USDA Survey/Foundation/SR Legacy
+ * `foodPortions[]` array. Prefers natural-unit modifiers ("medium",
+ * "large", "whole") over USDA "standard serving" jargon ("NLEA serving").
+ *
+ * Returns `null` when every entry scores below zero (all placeholders).
  */
 export function pickUsdaFoodPortionsPrimaryServing(
   per100g: MacrosPer100gLite,
   portions: UsdaFoodPortion[] | null | undefined,
 ): PrimaryServing | null {
   if (!Array.isArray(portions) || portions.length === 0) return null;
+  let best: { portion: UsdaFoodPortion; score: number } | null = null;
   for (const p of portions) {
-    const grams = typeof p.gramWeight === "number" ? p.gramWeight : Number(p.gramWeight ?? 0);
-    if (!Number.isFinite(grams) || grams <= 0) continue;
-    const desc = (p.portionDescription ?? "").trim();
-    const mod = (p.modifier ?? "").trim();
-    const descLower = desc.toLowerCase();
-    const modLower = mod.toLowerCase();
-    if (USDA_PORTION_BLOCKLIST.has(descLower) || USDA_PORTION_BLOCKLIST.has(modLower)) {
-      continue;
-    }
-    const amount = typeof p.amount === "number" && p.amount > 0 ? p.amount : 1;
-    const unit = p.measureUnit?.name ?? p.measureUnit?.abbreviation ?? "";
-    const label = desc
-      || [amount, unit, mod].filter(Boolean).join(" ").trim()
-      || `${grams} g`;
-    return scalePrimaryServingFromPer100g(per100g, label.toLowerCase(), grams);
+    const score = scoreUsdaPortion(p);
+    if (score < 0) continue;
+    if (!best || score > best.score) best = { portion: p, score };
   }
-  return null;
+  if (!best) return null;
+  const p = best.portion;
+  const grams = typeof p.gramWeight === "number" ? p.gramWeight : Number(p.gramWeight ?? 0);
+  const desc = (p.portionDescription ?? "").trim();
+  const mod = (p.modifier ?? "").trim();
+  const amount = typeof p.amount === "number" && p.amount > 0 ? p.amount : 1;
+  const unit = cleanUnitToken(p.measureUnit?.name ?? p.measureUnit?.abbreviation ?? "");
+  // F-88 — assemble a clean label. Drop the parenthetical size hint
+  // ("(7" to 7-7/8" long)") that USDA tacks onto banana modifiers — the
+  // gram weight already conveys "this is a medium one". Result reads
+  // "1 medium" rather than `1 medium (7" to 7-7/8" long)`.
+  const cleanedMod = mod.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const label = desc
+    || [amount, unit, cleanedMod].filter(Boolean).join(" ").trim()
+    || `${grams} g`;
+  return scalePrimaryServingFromPer100g(per100g, label.toLowerCase(), grams);
 }
 
 /**

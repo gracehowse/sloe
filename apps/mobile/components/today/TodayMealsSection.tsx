@@ -235,18 +235,37 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 >
                   <SlotIcon spec={ic} size={16} color={col} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{slot}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {/* F-80 (2026-04-25) — `numberOfLines={1}` on both the slot
+                      title and the meta line. Without these, the "Log usual:
+                      <name>" pill in the trailing row crowds the title column
+                      down to ~80 px and the title letter-wraps ("Brea / kfast
+                      / 4 / items / · tap a / meal / for full / nutriti / on").
+                      The pill itself is also constrained below; `minWidth: 0`
+                      on this column lets RN actually shrink the text under
+                      pressure (RN flex defaults to `minWidth: auto` which is
+                      content-width and prevents shrink). */}
+                  <Text
+                    style={{ fontSize: 13, fontWeight: "600", color: textColor }}
+                    numberOfLines={1}
+                  >
+                    {slot}
+                  </Text>
                   {hasMeals ? (
-                    <Text style={{ fontSize: 11, color: textTertiaryColor }}>
-                      {meals.length} item{meals.length > 1 ? "s" : ""} · tap a meal for full nutrition
+                    <Text
+                      style={{ fontSize: 11, color: textTertiaryColor }}
+                      numberOfLines={1}
+                    >
+                      {meals.length} item{meals.length > 1 ? "s" : ""} · tap an item for nutrition
                     </Text>
                   ) : (
-                    <Text style={{ fontSize: 11, color: textTertiaryColor }}>Tap to add</Text>
+                    <Text style={{ fontSize: 11, color: textTertiaryColor }} numberOfLines={1}>
+                      Tap to add
+                    </Text>
                   )}
                 </View>
                 {hasMeals ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {/* F-17 (2026-04-19, TestFlight `AIjmgrBMmY-M6B363x_hT8I`)
                         — populated slots had no "+" affordance, leaving the
                         tester stuck ("now I've added yogurt for breakfast
@@ -306,6 +325,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           backgroundColor: Accent.primary + "18",
                           borderWidth: 1,
                           borderColor: Accent.primary + "40",
+                          // F-80 — cap the chip so it cannot starve the title
+                          // column when the meal name is long. `flexShrink: 1`
+                          // lets it compress further if both columns are
+                          // squeezed (e.g. larger Dynamic Type).
+                          maxWidth: 160,
+                          flexShrink: 1,
                         }}
                       >
                         <Ionicons name="refresh-outline" size={11} color={Accent.primary} />

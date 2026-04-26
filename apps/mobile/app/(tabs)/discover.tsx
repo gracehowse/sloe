@@ -226,13 +226,21 @@ export default function DiscoverScreen() {
             overflow: "hidden",
           }}
         >
-          <View style={{ aspectRatio: 16 / 10, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-            {/* F-52 (2026-04-22): Discover hero now uses the real
-                `image_url` when present and falls back to the D8
-                gradient+pattern+glyph only when it's missing. Tester
-                on build 26 saw 20 seeded recipes render as grey
-                gradients even though they had image URLs; the card
-                unconditionally rendered the fallback. */}
+          {/* P1-19 (2026-04-25 ui-critic): when image is missing, the
+              16:10 gradient+glyph fallback dominated the card and made
+              every image-less recipe look broken. Image-bearing rows
+              keep the full hero; image-less rows collapse to a thin
+              category band (8:1) that signals bucket without taking
+              over the card. Title + macros below carry the visual
+              weight in the no-image case. */}
+          <View
+            style={{
+              aspectRatio: item.image ? 16 / 10 : 8,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+          >
             {item.image ? (
               <Image
                 source={{ uri: item.image }}
@@ -364,33 +372,19 @@ export default function DiscoverScreen() {
       >
         {/* Header — prototype treatment: BROWSE overline + large
             Discover title + round search-icon button top-right. */}
-        <View style={{ paddingTop: 18, paddingBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <View>
-            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
-              Browse
-            </Text>
-            <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
-              Discover
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => searchInputRef.current?.focus()}
-            accessibilityRole="button"
-            accessibilityLabel="Focus search"
-            hitSlop={10}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 999,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Search size={18} color={colors.text} />
-          </Pressable>
+        {/* P2-34 (2026-04-25 visual-qa): the round search-icon button
+            in the top-right was a duplicate of the search bar
+            immediately below it. Two affordances for the same job on
+            the same screen reads as indecision. The header now carries
+            only the title; the search bar below is the single
+            search entry point. */}
+        <View style={{ paddingTop: 18, paddingBottom: 14 }}>
+          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
+            Browse
+          </Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
+            Discover
+          </Text>
         </View>
 
         {/* Search bar — prototype treatment: bigger, 48kcat placeholder. */}

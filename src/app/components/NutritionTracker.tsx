@@ -1333,6 +1333,35 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   // Same rules as mobile via shared `todayProgressiveDisclosure` helpers.
   // Sticky once open: a returning user who has ever set a water target or
   // synced Health will keep seeing these cards.
+  // F-74 (TestFlight `AN3mTmZK5T2Nhj13aMFLk2E`, 2026-04-25, mobile +
+  // web parity): Hydration & Stimulants card now derives caffeine and
+  // alcohol from logged foods (`nutrition_micros.caffeineMg` /
+  // `alcoholG`) plus the manual quick-add ledger. Pre-F-74 the card
+  // only read the quick-add ledger, so logging a coffee/wine in food
+  // search left the card at 0/400 mg / 0/14 g.
+  const caffeineFromMealsMgToday = useMemo(() => {
+    const meals = nutritionByDay[selectedDateKey] ?? [];
+    let sum = 0;
+    for (const m of meals) {
+      const n = Number((m as { micros?: { caffeineMg?: number } }).micros?.caffeineMg ?? 0);
+      if (Number.isFinite(n) && n > 0) sum += n;
+    }
+    return Math.round(sum);
+  }, [nutritionByDay, selectedDateKey]);
+  const alcoholByDayMerged = useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = { ...extraAlcoholGByDay };
+    for (const [k, meals] of Object.entries(nutritionByDay)) {
+      let dayMeals = 0;
+      for (const m of meals ?? []) {
+        const n = Number((m as { micros?: { alcoholG?: number } }).micros?.alcoholG ?? 0);
+        if (Number.isFinite(n) && n > 0) dayMeals += n;
+      }
+      if (dayMeals > 0) {
+        out[k] = (out[k] ?? 0) + Math.round(dayMeals * 10) / 10;
+      }
+    }
+    return out;
+  }, [nutritionByDay, extraAlcoholGByDay]);
   const hydrationCardGateOpen = useMemo(
     () =>
       isHydrationCardVisible({
@@ -1340,9 +1369,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         extraWaterByDay,
         waterFromMealsMl: Math.max(0, totalWaterMl - extraWaterMlForSelectedDay),
         extraCaffeineByDay: _extraCaffeineByDay,
-        extraAlcoholGByDay,
+        extraAlcoholGByDay: alcoholByDayMerged,
       }),
-    [targets.waterMl, extraWaterByDay, totalWaterMl, extraWaterMlForSelectedDay, _extraCaffeineByDay, extraAlcoholGByDay],
+    [targets.waterMl, extraWaterByDay, totalWaterMl, extraWaterMlForSelectedDay, _extraCaffeineByDay, alcoholByDayMerged],
   );
   const stepsCardGateOpen = useMemo(
     () => isStepsCardVisible({ stepsByDay, activityBurnByDay }),
@@ -1865,8 +1894,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           }}
           waterTotalMl={totalWaterMl}
           waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
-          caffeineTotalMg={extraCaffeineMgForSelectedDay}
-          alcoholByDayG={extraAlcoholGByDay}
+          caffeineTotalMg={extraCaffeineMgForSelectedDay + caffeineFromMealsMgToday}
+          alcoholByDayG={alcoholByDayMerged}
           measurementSystem={profileMeasurementSystem}
           onAddWater={addWaterMlForSelectedDay}
           onAddCaffeine={addCaffeineMgForSelectedDay}

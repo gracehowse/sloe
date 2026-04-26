@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, S
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
+import { Footprints, Flame, HeartPulse, Dumbbell, Scale } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -132,6 +133,20 @@ export default function HealthSyncScreen() {
         try {
           const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
           await AsyncStorage.setItem(HEALTH_APPLE_CONNECTED_KEY, "true");
+          // P1-15 (TestFlight `AAcIj2Vc1D60ujE1j76PKLw`, 2026-04-25):
+          // tester expectation gap — "Apple Health successfully synced
+          // but hasn't pulled in historical meals." The import toggle
+          // was opt-in and buried below the connect button. Auto-enable
+          // it on first successful connect so the user gets the meal
+          // backfill they expect; user can still toggle it off if they
+          // don't want it. Idempotent — re-connects don't override an
+          // explicit opt-out (tracked by the existing key, written
+          // here for the first-time-grant case only).
+          const existing = await AsyncStorage.getItem("health_import_nutrition");
+          if (existing == null) {
+            await AsyncStorage.setItem("health_import_nutrition", "true");
+            setImportEnabled(true);
+          }
         } catch {
           /* ignore */
         }
@@ -281,29 +296,33 @@ export default function HealthSyncScreen() {
           Automatically sync your steps, weight, and active energy from Apple Health (iOS) or Google Health Connect (Android). Steps and active energy appear on the Today tab for whichever day you select; water there is from quick-adds plus water logged on foods.
         </Text>
 
+        {/* P1-21 (2026-04-25 design-system-enforcer + Carryover rule
+            #2): swap Ionicons for lucide-react-native to match the
+            Claude Design prototype's icon language used everywhere else
+            in the product. */}
         <View style={{ marginTop: Spacing.lg }}>
           <View style={styles.feature}>
-            <Ionicons name="footsteps-outline" size={20} color={Accent.primary} />
+            <Footprints size={20} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.featureText}>Daily step count</Text>
             <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={styles.feature}>
-            <Ionicons name="scale-outline" size={20} color={Accent.primary} />
+            <Scale size={20} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.featureText}>Weight measurements</Text>
             <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={styles.feature}>
-            <Ionicons name="flame-outline" size={20} color={Accent.primary} />
+            <Flame size={20} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.featureText}>Active energy burned</Text>
             <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={styles.feature}>
-            <Ionicons name="bed-outline" size={20} color={Accent.primary} />
+            <HeartPulse size={20} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.featureText}>Resting energy burned</Text>
             <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>
           <View style={styles.feature}>
-            <Ionicons name="barbell-outline" size={20} color={Accent.primary} />
+            <Dumbbell size={20} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.featureText}>Workouts</Text>
             <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
           </View>

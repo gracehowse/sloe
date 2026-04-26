@@ -69,9 +69,22 @@ describe("generateSmartPlan", () => {
   });
 
   it("scales meal calories toward the target — fit mult is baked into calories, not portionMultiplier", () => {
+    // F-73 (2026-04-22) changed the scaler to "1×-first joint fit":
+    // levers only move when the protein/calorie bands disagree.
+    // Targets must therefore be internally consistent — halving
+    // calories without halving protein/carbs/fat asks for an
+    // impossible joint fit, and the scaler correctly refuses to
+    // breach the protein band.
     const plan = generateSmartPlan({
       recipes: [breakfast, lunch, dinner1, snack],
-      targets: { ...targets, calories: 800 },
+      targets: {
+        calories: 800,
+        protein: 50,
+        carbs: 80,
+        fat: 22,
+        calorieBandPct: 15,
+        carbFatBandPct: 20,
+      },
       days: 1,
     });
     // Algo scales meals down to approach the 800 kcal target.
@@ -79,9 +92,10 @@ describe("generateSmartPlan", () => {
     for (const meal of plan[0].meals) {
       expect(meal.portionMultiplier).toBeUndefined();
     }
-    // Day total should be closer to 800 than to the unscaled ~1350
+    // Day total should be closer to 800 than to the unscaled ~1350.
+    // Within the 15% calorie band → ≤ 920 kcal.
     const total = plan[0].totals.calories;
-    expect(total).toBeLessThan(1200);
+    expect(total).toBeLessThanOrEqual(960);
   });
 
   it("computes day totals correctly", () => {

@@ -1639,9 +1639,48 @@ export default function TrackerScreen() {
   );
   /** Used for Today macro strip when "water" is enabled in dashboard widgets. */
   const totalWaterMl = extraWaterToday + waterFromMealsMl;
-  /** Batch 2.5 — today's caffeine total in mg (from quick-add; per-meal
-   *  caffeine lives in `nutrition_micros.caffeineMg` and is summed elsewhere). */
-  const extraCaffeineToday = extraCaffeineByDay[dayKey] ?? 0;
+  /** F-74 (TestFlight `AN3mTmZK5T2Nhj13aMFLk2E`, 2026-04-25): today's
+   *  caffeine total in mg = manual quick-add (`extra_caffeine_by_day`)
+   *  + per-meal caffeine summed from `nutrition_micros.caffeineMg`.
+   *  Before F-74 the Hydration card only read the quick-add ledger,
+   *  so logging a coffee in food search left the card at 0/400 mg.
+   *  Same shape applies to alcohol below. */
+  const caffeineFromMealsMg = useMemo(() => {
+    let sum = 0;
+    for (const m of mealsToday) {
+      const n = Number(m.micros?.caffeineMg ?? 0);
+      if (Number.isFinite(n) && n > 0) sum += n;
+    }
+    return Math.round(sum);
+  }, [mealsToday]);
+  const alcoholFromMealsG = useMemo(() => {
+    let sum = 0;
+    for (const m of mealsToday) {
+      const n = Number(m.micros?.alcoholG ?? 0);
+      if (Number.isFinite(n) && n > 0) sum += n;
+    }
+    return Math.round(sum * 10) / 10;
+  }, [mealsToday]);
+  const extraCaffeineToday = (extraCaffeineByDay[dayKey] ?? 0) + caffeineFromMealsMg;
+  /** F-74 — alcohol-by-day merge: HydrationStimulantsCard expects a
+   *  per-day map (week summary needs per-day to render the bar chart),
+   *  so we fold per-meal alcohol from `nutrition_micros.alcoholG`
+   *  into every day key currently loaded in `byDay`. The quick-add
+   *  ledger remains the writable persistence; this merge is read-only. */
+  const alcoholByDayMerged = useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = { ...extraAlcoholGByDay };
+    for (const [k, meals] of Object.entries(byDay)) {
+      let dayMeals = 0;
+      for (const m of meals) {
+        const n = Number(m.micros?.alcoholG ?? 0);
+        if (Number.isFinite(n) && n > 0) dayMeals += n;
+      }
+      if (dayMeals > 0) {
+        out[k] = (out[k] ?? 0) + Math.round(dayMeals * 10) / 10;
+      }
+    }
+    return out;
+  }, [byDay, extraAlcoholGByDay]);
   const stepsRecorded = Object.prototype.hasOwnProperty.call(stepsByDay, dayKey);
   const stepsCount = stepsRecorded ? (stepsByDay[dayKey] ?? 0) : null;
   const activityBurnRecorded = Object.prototype.hasOwnProperty.call(activityBurnByDay, dayKey);
@@ -3007,17 +3046,29 @@ export default function TrackerScreen() {
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
         {/* Eat again — suggest re-logging the most recent meal in the
-            slot matching the current clock time. Dismissible per day. */}
-        {viewMode === "day" && isToday && eatAgainSuggestion && !eatAgainDismissedForToday && (
-          <TodayEatAgainBanner
-            suggestion={eatAgainSuggestion}
-            slot={currentSlotFromTime}
-            textColor={colors.text}
-            textSecondaryColor={colors.textSecondary}
-            onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
-            onDismiss={dismissEatAgain}
-          />
-        )}
+            slot matching the current clock time. Dismissible per day.
+            P1-17 (TestFlight `AJ2q4OgYYXE7755xfTwVXE8`, 2026-04-25):
+            tester flagged "middle section feels quite cluttered with 3
+            prompts" — deficit + eat-again + quick-add accordion all
+            stacking above meals. Show Eat Again only when the deficit
+            insight ISN'T showing (i.e. day is logged out or budget is
+            already met) so we never have two aspirational prompts on
+            screen at the same time. The Quick Add accordion stays
+            collapsed by default so it doesn't add weight. */}
+        {viewMode === "day" &&
+          isToday &&
+          eatAgainSuggestion &&
+          !eatAgainDismissedForToday &&
+          !(remaining > 0) && (
+            <TodayEatAgainBanner
+              suggestion={eatAgainSuggestion}
+              slot={currentSlotFromTime}
+              textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
+              onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
+              onDismiss={dismissEatAgain}
+            />
+          )}
 
         {/* Audit M4 (2026-04-18) — Quick add CTA above Meals.
             Default collapsed on first run; user's last open/closed choice
@@ -3230,7 +3281,7 @@ export default function TrackerScreen() {
             waterTotalMl={totalWaterMl}
             waterFromMealsMl={waterFromMealsMl}
             caffeineTotalMg={extraCaffeineToday}
-            alcoholByDayG={extraAlcoholGByDay}
+            alcoholByDayG={alcoholByDayMerged}
             measurementSystem={measurementSystem}
             onAddWater={(ml) => void addWaterMl(ml)}
             onAddCaffeine={(mg, preset) => void addCaffeineMg(mg, preset ?? null)}

@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
+import {
+  isBareGenericNounRow,
+  isLowRelevanceNonVerifiedRow,
+} from "@/lib/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@/lib/openFoodFacts/parseOffMicros";
 import {
   projectRemaining,
@@ -38,6 +42,7 @@ import {
   primaryServingToPortionChip,
   type PrimaryServing,
 } from "../../lib/nutrition/primaryServing";
+import { inferNaturalServingFromName } from "../../lib/nutrition/inferNaturalServing";
 import {
   resolveFoodSearchHeadline,
   FOOD_SEARCH_PER_SERVING_BADGE,
@@ -217,6 +222,11 @@ async function searchUsda(query: string, page: number = 1): Promise<SearchResult
         carbs: h.carbs ?? 0,
         fat: h.fat ?? 0,
       };
+      const isVerified = /foundation|sr legacy|survey/i.test(h.dataType ?? "");
+      // F-91 (2026-04-25) — fall back to name-based natural-serving
+      // inference for verified rows when USDA's search endpoint omits
+      // foodPortions[]. Search row then displays "1 medium banana" /
+      // "1 large egg" instead of "per 100g".
       const primaryServing =
         pickUsdaBrandedPrimaryServing(per100g, {
           servingSize: typeof h.servingSize === "number" ? h.servingSize : null,
@@ -227,13 +237,14 @@ async function searchUsda(query: string, page: number = 1): Promise<SearchResult
         pickUsdaFoodPortionsPrimaryServing(
           per100g,
           Array.isArray(h.foodPortions) ? h.foodPortions : null,
-        );
+        ) ??
+        inferNaturalServingFromName(h.description ?? "", per100g, isVerified);
       return {
         key: `usda-${h.fdcId}`,
         name: titleCase(h.description ?? "Unknown"),
         calsPer100g: h.calories,
         macrosPer100g: h.calories != null ? { calories: h.calories, protein: h.protein ?? 0, carbs: h.carbs ?? 0, fat: h.fat ?? 0, fiberG: 0, sugarG: 0, sodiumMg: 0 } : undefined,
-        verified: /foundation|sr legacy|survey/i.test(h.dataType ?? ""),
+        verified: isVerified,
         primaryServing,
         _source: "USDA" as const,
         _fdcId: h.fdcId,
@@ -358,12 +369,25 @@ async function searchEdamam(query: string, page: number = 1): Promise<SearchResu
   }
 }
 
-async function fetchUsdaDetail(fdcId: number): Promise<{ macrosPer100g: MacrosPer100g; portions: FoodPortion[] } | null> {
+async function fetchUsdaDetail(
+  fdcId: number,
+): Promise<{
+  macrosPer100g: MacrosPer100g;
+  portions: FoodPortion[];
+  primaryPortion?: PrimaryServing | null;
+} | null> {
   try {
     const res = await fetch(`/api/usda/food?fdcId=${fdcId}`);
     const json = await res.json();
     if (!json.ok) return null;
-    return { macrosPer100g: json.macrosPer100g, portions: Array.isArray(json.portions) ? json.portions : [] };
+    // F-88 — server returns a `primaryPortion` (best-scored foodPortions
+    // row) so the picker can default to "1 medium" / "1 large" instead
+    // of grams when the search-stage primaryServing was null.
+    return {
+      macrosPer100g: json.macrosPer100g,
+      portions: Array.isArray(json.portions) ? json.portions : [],
+      primaryPortion: json.primaryPortion ?? null,
+    };
   } catch { return null; }
 }
 
@@ -614,14 +638,17 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     const customResults = customs
       .map((c) => ({ ...customFoodToSearchResult(c), _rel: searchRelevance(q, c.name) }))
       .sort((a, b) => b._rel - a._rel);
-    // F-77 (2026-04-25) — trust-weighted ranking. USDA Foundation /
+    // F-77 + F-87 (2026-04-25) — trust-weighted ranking. USDA Foundation /
     // SR Legacy / Survey rows are unbranded generics with verified
     // nutrition, so they should outrank OFF user-uploaded rows on
-    // tie/near-tie. Branded OFF rows (have a brand string) are kept
-    // closer to par because they map to a real packaged product.
+    // tie/near-tie. F-87: USDA Branded takes a larger penalty than
+    // OFF-branded because the failure mode is worse (USDA Branded "EGGS"
+    // looks authoritative but is a misnamed packaged product); closes the
+    // "1 egg 40g 210 kcal" failure where a 525-kcal/100g branded "EGGS"
+    // outranked the Foundation "Eggs, Grade A, Large, egg whole" row.
     const trustWeight = (r: SearchResult): number => {
-      if (r._source === "USDA" && r.verified) return 0.05;
-      if (r._source === "USDA") return 0;
+      if (r._source === "USDA" && r.verified) return 0.10;
+      if (r._source === "USDA") return -0.15;
       if (r._source === "Edamam") return -0.05;
       if (r._source === "OFF") {
         const hasBrand = /·/.test(r.name); // OFF display name = "Brand · Product"
@@ -631,7 +658,17 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     };
     const external = [...usda, ...off, ...edamam]
       .map((r) => ({ ...r, _rel: Math.max(0, searchRelevance(q, r.name) + trustWeight(r)) }))
-      .sort((a, b) => b._rel - a._rel);
+      .sort((a, b) => b._rel - a._rel)
+      // F-89 + F-90 (2026-04-25) — drop bare-generic-noun unverified
+      // rows ("Egg" / "Eggs" Edamam poison) and very-low-relevance
+      // unverified rows ("Cacio E Pepe Ravioli" for "eggs"). Verified
+      // USDA exempt.
+      .filter((r) => {
+        const isVerified = Boolean(r.verified);
+        if (isBareGenericNounRow(r.name, isVerified)) return false;
+        if (isLowRelevanceNonVerifiedRow(r._rel, isVerified)) return false;
+        return true;
+      });
     const seen = new Set<string>();
     const deduped: SearchResult[] = [];
     for (const r of [...customResults, ...external]) {
@@ -754,11 +791,12 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       const detail = await fetchUsdaDetail(item._fdcId);
       setLoadingKey(null);
       if (!detail) return;
-      const portions = buildPortions(detail.portions, item.primaryServing);
-      // Default to natural portion when present — TestFlight
-      // `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19). Otherwise honour the
-      // recipe-hint resolution used elsewhere in the codebase.
-      const { portion, quantity } = item.primaryServing
+      // F-88 — fall back to server-derived primaryPortion when the
+      // search-stage primaryServing was null (USDA search endpoint
+      // doesn't ship foodPortions for Foundation / SR Legacy hits).
+      const effectivePrimary = item.primaryServing ?? detail.primaryPortion ?? null;
+      const portions = buildPortions(detail.portions, effectivePrimary);
+      const { portion, quantity } = effectivePrimary
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });

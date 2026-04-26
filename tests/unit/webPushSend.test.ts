@@ -6,9 +6,17 @@
  * requests to push services.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 describe("sendWebPush", () => {
+  // Heavy `vi.doMock` + `vi.resetModules` per-test churn made this
+  // file flake under full-suite parallel load (5s default timeout
+  // exceeded on cold cache). Each test passes in <50ms in isolation;
+  // the timeout headroom is for resource contention, not real work.
+  beforeAll(() => {
+    vi.setConfig({ testTimeout: 15_000 });
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();

@@ -25,6 +25,7 @@ import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import { stripSectionPrefix } from "../../lib/recipe-import/extractSocialRecipe.ts";
 import {
   Dialog,
   DialogContent,
@@ -609,7 +610,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         setIngredients(
           ings.map((r, idx) => ({
             id: (r.id as string) ?? `ing-${idx}`,
-            name: (r.name as string) ?? "",
+            // F-34 defence-in-depth (TestFlight ANmFiVpOfYEN re-fired
+            // 2026-04-25): strip "For [section]:" prefix on display so
+            // legacy/poisoned imports stay legible in the editor.
+            name: stripSectionPrefix((r.name as string) ?? ""),
             amount: r.amount != null ? String(r.amount) : "",
             unit: (r.unit as string) ?? "g",
           })),

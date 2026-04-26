@@ -221,9 +221,9 @@ export default function LibraryScreen() {
       borderColor: Accent.primary,
     },
     filterPillText: {
-      fontSize: 12,
-      fontWeight: "500",
-      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.text,
     },
     filterPillTextActive: {
       color: Accent.primary,
@@ -350,7 +350,10 @@ export default function LibraryScreen() {
         <Pressable
           style={styles.card}
           onPress={() => router.push(`/recipe/${item.id}`)}
-          accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories`}
+          // P2-32 (2026-04-25): long-press → confirm-remove flow now
+          // owns deletion (replacing the always-visible trash button).
+          onLongPress={() => confirmRemove(item)}
+          accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories. Long-press to remove from library.`}
         >
           <View style={styles.cardImageWrap}>
             <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
@@ -360,17 +363,12 @@ export default function LibraryScreen() {
                 <Ionicons name="bookmark" size={14} color={Accent.primary} />
               </View>
             ) : null}
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                confirmRemove(item);
-              }}
-              style={styles.removeBtn}
-              hitSlop={10}
-              accessibilityLabel={`Remove ${item.title} from library`}
-            >
-              <Ionicons name="trash-outline" size={14} color="#fff" />
-            </Pressable>
+            {/* P2-32 (2026-04-25 ui-critic): the trash-can in the
+                top-left of every library card was a hostile destructive
+                default — destructive action sitting where the eye lands
+                first, on every row. Move delete behind a long-press
+                instead, and drop the visible trash icon. The bookmark
+                dot on the right remains the friendly affordance. */}
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>

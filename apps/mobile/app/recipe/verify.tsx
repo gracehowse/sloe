@@ -537,9 +537,12 @@ export default function VerifyScreen() {
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
     footerLabel: { fontSize: 12, color: Accent.primary, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
+    // P2-35 (2026-04-25 ui-critic): Save/Confirm CTAs were green
+    // (Accent.success), fighting the brand blue accent. Green is
+    // reserved for confirmed-success states; primary actions are blue.
     confirmBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Accent.success,
+      gap: Spacing.sm, backgroundColor: Accent.primary,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },

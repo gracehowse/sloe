@@ -585,7 +585,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 >
                   <div
                     className="relative overflow-hidden"
-                    style={{ aspectRatio: "16 / 10" }}
+                    // P1-19 web parity (2026-04-25 ui-critic): image-less
+                    // hero collapses from 16:10 to a thin 8:1 category
+                    // band so the title + macros below carry the
+                    // visual weight. Image-bearing rows keep the
+                    // full hero.
+                    style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
                   >
                     {recipe.image ? (
                       <img
@@ -594,12 +599,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       />
                     ) : (
-                      // D8 (2026-04-21): cuisine-aware gradient +
-                      // pattern + glyph fallback. Shared spec in
-                      // `src/lib/recipe/recipeHeroFallback.ts`;
-                      // mobile parity at
-                      // `apps/mobile/components/RecipeHeroFallback.tsx`.
-                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={40} />
+                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
                     )}
                     {recipe.sourcePlatform && (
                       <div className="absolute top-2 left-2">
@@ -687,18 +687,17 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     onClick={() => setSelectedRecipe(recipe)}
                     className="text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full"
                   >
-                    {/* 16:10 hero, full card width, rounded top only
-                        (parent `overflow-hidden` clips to card radius). */}
+                    {/* P1-19 web parity: hero collapses to 8:1 band when
+                        no image (mobile parity, see DiscoverFeed grid above
+                        and apps/mobile/app/(tabs)/discover.tsx). */}
                     <div
                       className="flex items-center justify-center relative overflow-hidden"
-                      style={{ aspectRatio: "16 / 10" }}
+                      style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
                     >
                       {recipe.image ? (
                         <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        // D8 (2026-04-21): see desktop grid above
-                        // — same shared fallback component.
-                        <RecipeHeroFallback id={recipe.id} title={recipe.title} />
+                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
                       )}
                       {recipe.sourcePlatform && (
                         <div className="absolute top-2 left-2">

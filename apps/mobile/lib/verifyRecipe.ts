@@ -15,6 +15,7 @@ import {
   parseOffPrimaryServing,
   type PrimaryServing,
 } from "../../../src/lib/nutrition/primaryServing";
+import { inferNaturalServingFromName } from "../../../src/lib/nutrition/inferNaturalServing";
 import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
@@ -23,7 +24,12 @@ import {
 import { totalGramsForVerifyScale as totalGramsForVerifyScaleImpl } from "../../../src/lib/nutrition/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
 import { isPlausibleMacrosPer100g } from "../../../src/lib/nutrition/macroPlausibility";
+import {
+  isBareGenericNounRow,
+  isLowRelevanceNonVerifiedRow,
+} from "../../../src/lib/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "../../../src/lib/openFoodFacts/parseOffMicros";
+import { stripSectionPrefix } from "../../../src/lib/recipe-import/extractSocialRecipe";
 
 /** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
 export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
@@ -313,9 +319,15 @@ export async function fetchIngredientsForVerification(
             ...(Number.isFinite(ov.fiber) ? { fiber: Number(ov.fiber) } : {}),
           }
         : undefined;
+    // F-34 defence-in-depth (TestFlight ANmFiVpOfYEN re-fired 2026-04-25):
+    // strip "For [section]:" prefix at READ time too, not just at import time.
+    // Older imports + LLM regressions can leave the prefix baked into the
+    // stored row; stripping on display keeps the verify list legible without
+    // a destructive backfill. Underlying DB row stays intact.
+    const displayName = stripSectionPrefix(r.name ?? "");
     return {
       id: r.id,
-      name: r.name ?? "",
+      name: displayName,
       amount,
       unit,
       calories: r.calories ?? 0,
@@ -381,9 +393,35 @@ export async function searchUsda(query: string, opts?: { page?: number }): Promi
       ...(Array.isArray(h.foodPortions) ? { foodPortions: h.foodPortions } : {}),
     }));
   } catch (e) {
-    console.error("[searchUsda] failed:", e instanceof Error ? e.message : e);
+    // F-81 (2026-04-25) — AbortError is benign: fired when the user types
+    // another character (debounced re-fetch cancels the in-flight request)
+    // or when the component unmounts. Console.error here surfaces as a
+    // LogBox / toast on TestFlight ("[searchUsda] failed: Aborted") even
+    // though nothing is actually wrong. Swallow benign aborts; only log
+    // genuine network / server errors.
+    if (!isBenignAbort(e)) {
+      console.error("[searchUsda] failed:", e instanceof Error ? e.message : e);
+    }
     return [];
   }
+}
+
+/**
+ * F-81 — distinguish AbortController-fired aborts (benign — just means a
+ * later request superseded this one) from real network errors. Native
+ * fetch on iOS / Android throws a `DOMException` with `name === "AbortError"`,
+ * but the message can be `"Aborted"` or `"The operation was aborted"`.
+ * Cross-runtime safe: also handles plain `Error` objects with `.name`
+ * stamped to `"AbortError"`.
+ */
+function isBenignAbort(e: unknown): boolean {
+  if (!e) return false;
+  if (typeof e !== "object") return false;
+  const name = (e as { name?: unknown }).name;
+  if (typeof name === "string" && name === "AbortError") return true;
+  const message = (e as { message?: unknown }).message;
+  if (typeof message === "string" && /^aborted$/i.test(message.trim())) return true;
+  return false;
 }
 
 export type OffSearchResult = {
@@ -496,6 +534,7 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
         }),
       );
   } catch (e) {
+    if (isBenignAbort(e)) return [];
     console.error("[searchOFF] failed:", e instanceof Error ? e.message : e);
     return [];
   }
@@ -612,6 +651,7 @@ export async function searchEdamam(
     // (including `servingSizes`), so we pass the array through.
     return json.hits as EdamamSearchResult[];
   } catch (e) {
+    if (isBenignAbort(e)) return [];
     console.error("[searchEdamam] failed:", e instanceof Error ? e.message : e);
     return [];
   }
@@ -719,12 +759,21 @@ function mergeResults(
     };
     // Branded foods → `servingSize` + `householdServingFullText`.
     // Foundation / Survey / SR Legacy → `foodPortions[]`.
+    // F-91 (2026-04-25) — USDA's `/foods/search` endpoint does not ship
+    // `foodPortions[]` for Foundation / SR Legacy hits, so the previous
+    // chain returned null for "Eggs, Grade A, Large, egg whole" /
+    // "Bananas, raw" / etc, leaving the search row to render "per 100g".
+    // Pattern-match the description against a known-natural-serving
+    // table (1 large egg = 50g, 1 medium banana = 118g, …) when other
+    // sources of primary serving are absent, but only on verified rows.
     const primaryServing = hasCals
       ? (pickUsdaBrandedPrimaryServing(per100g, {
           servingSize: item.servingSize ?? null,
           servingSizeUnit: item.servingSizeUnit ?? null,
           householdServingFullText: item.householdServingFullText ?? null,
-        }) ?? pickUsdaFoodPortionsPrimaryServing(per100g, item.foodPortions ?? null))
+        })
+        ?? pickUsdaFoodPortionsPrimaryServing(per100g, item.foodPortions ?? null)
+        ?? inferNaturalServingFromName(item.description, per100g, isVerified))
       : null;
     results.push({
       key: `usda-${item.fdcId}`,
@@ -747,7 +796,18 @@ function mergeResults(
       primaryServing,
       _source: "USDA",
       _fdcId: item.fdcId,
-      _relevance: searchRelevance(query, item.description),
+      // F-87 (2026-04-25) — trust-weight USDA results: verified types
+      // (Foundation / SR Legacy / Survey) get a small boost; USDA Branded
+      // takes a larger penalty than OFF-branded because the failure mode
+      // is worse (USDA Branded "EGGS" looks authoritative but is a misnamed
+      // packaged product, where OFF-branded at least has a real brand
+      // string). Closes the "1 egg 40g 210 kcal" failure where a
+      // 525-kcal/100g branded "EGGS" outranked the verified Foundation
+      // "Eggs, Grade A, Large, egg whole" row.
+      _relevance: Math.max(
+        0,
+        searchRelevance(query, item.description) + (isVerified ? 0.10 : -0.15),
+      ),
     });
   }
 
@@ -829,10 +889,28 @@ function mergeResults(
 
   results.sort((a, b) => b._relevance - a._relevance);
 
+  // F-89 + F-90 (2026-04-25) — defence-in-depth filters that fire AFTER
+  // the trust-weighted sort:
+  //   F-89: drop bare-generic-noun rows from non-verified sources (the
+  //         "Egg" / "Eggs" / "Banana" Edamam poison that passes Atwater
+  //         but isn't actually the canonical food).
+  //   F-90: drop very-low-relevance rows from non-verified sources (the
+  //         "Cacio E Pepe Ravioli" surfacing for "eggs" via Edamam's
+  //         category tagging).
+  // Verified USDA Foundation / SR Legacy / Survey rows are exempt — the
+  // tester typed something the verified corpus matched, that's the
+  // canonical answer.
+  const filtered = results.filter((r) => {
+    const isVerified = Boolean(r.verified);
+    if (isBareGenericNounRow(r.name, isVerified)) return false;
+    if (isLowRelevanceNonVerifiedRow(r._relevance, isVerified)) return false;
+    return true;
+  });
+
   // Deduplicate — skip items with same normalized name
   const seen = new Set<string>();
   const deduped: UnifiedSearchResult[] = [];
-  for (const r of results) {
+  for (const r of filtered) {
     const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (seen.has(norm)) continue;
     seen.add(norm);
@@ -846,7 +924,18 @@ function mergeResults(
 /** Get full macros for a specific USDA food (per 100g) plus available portions. */
 export async function getFoodMacros(
   fdcId: number,
-): Promise<{ macrosPer100g: MacrosPer100g; portions: FoodPortion[] } | null> {
+): Promise<{
+  macrosPer100g: MacrosPer100g;
+  portions: FoodPortion[];
+  /**
+   * F-88 (2026-04-25) — best-fit natural-portion ("1 medium" / "1 large")
+   * derived from the food's foodPortions[]. The client defaults the
+   * portion picker to this when the search-stage primaryServing was null
+   * (USDA's search endpoint doesn't ship foodPortions on non-branded
+   * hits). Null when every portion is a placeholder (NLEA / undetermined).
+   */
+  primaryPortion?: PrimaryServing | null;
+} | null> {
   const base = apiBase();
   if (!base) return null;
 
@@ -855,8 +944,10 @@ export async function getFoodMacros(
     const json = await res.json();
     if (!json.ok) return null;
     const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
-    return { macrosPer100g: json.macrosPer100g, portions };
+    const primaryPortion: PrimaryServing | null = json.primaryPortion ?? null;
+    return { macrosPer100g: json.macrosPer100g, portions, primaryPortion };
   } catch (e) {
+    if (isBenignAbort(e)) return null;
     console.error("[getFoodMacros] failed for fdcId", fdcId, ":", e instanceof Error ? e.message : e);
     return null;
   }

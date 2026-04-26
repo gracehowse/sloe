@@ -956,7 +956,14 @@ export default function ProgressScreen() {
           opt-out reflects everywhere on Progress. */}
       {weightSurfaceMode === "hide" ? null : weightSurfaceMode === "trends_only" ? (
         <WeightTrendOnlyCard
-          weekDeltaKg={weightRange.weekDeltaKg ?? weightRange.deltaKg}
+          // P1-14 (TestFlight `AOVuCyOCNB1pI_TjMGNiAeg`, `AHEeeC9a4-lKIyW5n7HgJxs`,
+          // 2026-04-22): when there's no weigh-in in the past 7 days,
+          // `weekDeltaKg` is null. The previous fallback to the
+          // whole-range `deltaKg` then labelled a month-old delta as
+          // "this week" — pure fiction. Drop the fallback: if no recent
+          // data, the card shows direction copy only ("Stable this
+          // week"-style — see WeightTrendOnlyCard for the threshold).
+          weekDeltaKg={weightRange.weekDeltaKg}
           rangeKey={rangeKey}
           theme={t}
         />

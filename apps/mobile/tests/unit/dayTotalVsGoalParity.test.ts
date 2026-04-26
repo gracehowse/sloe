@@ -43,16 +43,19 @@ describe("mobile planner — day total vs goal wiring", () => {
     expect(PLANNER_SRC).toMatch(/goalLine\s*&&\s*goalLine\.hasTargets/);
   });
 
-  it("has a tone → colour map covering all three classifications", () => {
-    // Keep the mapping close to the JSX so the test fails if a future
-    // refactor deletes one branch by accident.
+  it("has a tone → colour map: neutral grey, anything else amber (P1-10 / Carryover #1)", () => {
+    // P1-10 (2026-04-25, Carryover rule #1): over-budget reads amber,
+    // not red. The previous test pinned a destructive (red) fallback;
+    // the new map collapses both "amber" and "red" tones to
+    // `Accent.warning` since the user complaint was that the day
+    // total looked broken (red) when it was just over-budget (amber).
     expect(PLANNER_SRC).toMatch(
       /tone === "neutral"[\s\S]*?colors\.textSecondary/,
     );
-    expect(PLANNER_SRC).toMatch(/tone === "amber"[\s\S]*?Accent\.warning/);
-    // `: Accent.destructive` is the "red" fallback after the two
-    // ternary branches.
-    expect(PLANNER_SRC).toMatch(/Accent\.destructive/);
+    // Either branch (amber or anything else) maps to Accent.warning.
+    expect(PLANNER_SRC).toMatch(/Accent\.warning/);
+    // Destructive is no longer used in the day-total tone path.
+    expect(PLANNER_SRC).not.toMatch(/toneColor[\s\S]{0,200}Accent\.destructive/);
   });
 
   it("promotes the calorie goal into the day header (F-63a — was 'Day total · X/Y kcal' wrap row)", () => {

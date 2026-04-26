@@ -97,7 +97,15 @@ export function TodayDeficitInsight({
       <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
         ~{remaining} kcal {NET_DEFICIT_LABEL} so far today
       </Text>
-      {avgDeficit != null && avgDeficit > 0 ? (
+      {/* F-83 (2026-04-25) — hide the rolling-average sub-line when it
+          sits in the noise floor (<50 kcal/day). A "~2 kcal/day deficit"
+          line is below logging precision and reads as broken to the user
+          (customer-lens 2026-04-25: "I've been logging for a week and the
+          summary is meaningless — why am I doing this?"). 50 kcal/day is
+          ~0.05 kg/week — anything below is statistically noise, not a
+          deficit signal. Sub-line returns once the average crosses that
+          floor in either direction. */}
+      {avgDeficit != null && Math.abs(avgDeficit) >= 50 ? (
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4 }}>
           {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit} kcal/day {NET_DEFICIT_LABEL}
         </Text>
