@@ -109,13 +109,18 @@ describe("F-83 — 7-day avg below 50 kcal noise floor hidden", () => {
 });
 
 describe("F-84 — Day/Week toggle uses icons, not 'Day' / 'Week' text", () => {
-  it("Mobile DateHeader no longer renders the literal 'Day' / 'Week' words inside the toggle", () => {
-    // The toggle previously had `<Text>Day</Text>` / `<Text>Week</Text>`.
-    // Now it uses Ionicons sunny-outline / grid-outline.
-    expect(SRC.dateHeader).toMatch(/name="sunny-outline"/);
-    expect(SRC.dateHeader).toMatch(/name="grid-outline"/);
+  it("Mobile DateHeader uses lucide Sun / LayoutGrid (post §1.5 sweep, 2026-04-27)", () => {
+    // The toggle previously had `<Text>Day</Text>` / `<Text>Week</Text>`,
+    // then Ionicons sunny-outline / grid-outline (F-84). The §1.5 lucide
+    // sweep replaces those with the equivalent lucide-react-native
+    // glyphs (Sun / LayoutGrid) — same shape, same semantics.
+    expect(SRC.dateHeader).toMatch(/from\s*["']lucide-react-native["']/);
+    expect(SRC.dateHeader).toMatch(/\bSun\b/);
+    expect(SRC.dateHeader).toMatch(/\bLayoutGrid\b/);
     expect(SRC.dateHeader).toMatch(/accessibilityLabel="Day view"/);
     expect(SRC.dateHeader).toMatch(/accessibilityLabel="Week view"/);
+    // Ionicons must be gone from this surface.
+    expect(SRC.dateHeader).not.toMatch(/@expo\/vector-icons/);
   });
 
   // F-84 web parity (sync-enforcer D-1, 2026-04-25): mobile shipped the

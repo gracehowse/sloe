@@ -12,7 +12,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Minus,
+  Plus,
+  Search as SearchIcon,
+  X,
+} from "lucide-react-native";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -903,7 +911,7 @@ export default function FoodSearchModal({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               {isCustom && <Badge variant="custom">Custom</Badge>}
               {item.verified && !isCustom && (
-                <Ionicons name="checkmark-circle" size={14} color={Accent.success} />
+                <CheckCircle2 size={14} color={Accent.success} />
               )}
               <Text style={styles.resultName} numberOfLines={2}>
                 {item.name}
@@ -950,7 +958,7 @@ export default function FoodSearchModal({
           {isLoading ? (
             <ActivityIndicator size="small" color={Accent.primary} />
           ) : (
-            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            <ChevronRight size={16} color={colors.textTertiary} />
           )}
         </Pressable>
       );
@@ -1034,12 +1042,12 @@ export default function FoodSearchModal({
         <View style={styles.header}>
           <Text style={styles.title}>Search Foods</Text>
           <Pressable onPress={onClose} hitSlop={12}>
-            <Ionicons name="close" size={24} color={colors.text} />
+            <X size={24} color={colors.text} />
           </Pressable>
         </View>
 
         <View style={styles.searchRow}>
-          <Ionicons name="search" size={18} color={colors.textTertiary} style={styles.searchIcon} />
+          <SearchIcon size={18} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
             value={query}
             onChangeText={onChangeText}
@@ -1132,7 +1140,7 @@ export default function FoodSearchModal({
                   }}
                   style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
                 >
-                  <Ionicons name="remove" size={18} color={colors.text} />
+                  <Minus size={18} color={colors.text} />
                 </Pressable>
                 <TextInput
                   value={preview.quantityText}
@@ -1158,7 +1166,7 @@ export default function FoodSearchModal({
                   }}
                   style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
                 >
-                  <Ionicons name="add" size={18} color={colors.text} />
+                  <Plus size={18} color={colors.text} />
                 </Pressable>
                 <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
                   = {totalGrams} g
@@ -1237,7 +1245,7 @@ export default function FoodSearchModal({
                   style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
                   onPress={onConfirmPreview}
                 >
-                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Check size={18} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Use this</Text>
                 </Pressable>
                 <Pressable
@@ -1309,7 +1317,7 @@ export default function FoodSearchModal({
                       borderRadius: Radius.md,
                     }}
                   >
-                    <Ionicons name="add" size={16} color={Accent.primary} />
+                    <Plus size={16} color={Accent.primary} />
                     <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
                       Create custom food
                     </Text>

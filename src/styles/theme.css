@@ -10,6 +10,14 @@
   --pm-duration-md: 250ms;
   --pm-duration-lg: 350ms;
 
+  /** Production design spec — 2026-04-27 §1.1 motion tokens.
+   *  `--ease-spring-soft` is the CSS approximation of the gentle-overshoot
+   *  spring used for sheet present + confirm-success. Native side uses
+   *  `withSpring({ damping: 18, stiffness: 220, mass: 0.9 })`.
+   *  `--ease-decel` is the iOS-standard out curve used for dismiss + fade-out. */
+  --ease-spring-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+
   /** Type scale (1.2 modular ratio, base 15px) */
   --text-xs: 0.6875rem;   /* 11px */
   --text-sm: 0.8125rem;   /* 13px */
@@ -89,6 +97,35 @@
   --confidence-high: #22a860;
   --confidence-med: #e8a020;
   --confidence-low: #e04848;
+  /** Confidence chip — neutral grey base used for adaptive TDEE display
+   *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm. */
+  --confidence-neutral: #94a3b8;
+
+  /** Source / provenance dots — production design spec §1.6.
+   *  USDA = success-green, OFF = primary-blue, FatSecret = orange,
+   *  Manual = text-tertiary grey, AI = magenta (paired with sparkle glyph). */
+  --source-usda: #22a860;
+  --source-off: #4c6ce0;
+  --source-fatsecret: #f97316;
+  --source-manual: #94a3b8;
+  --source-ai: #e04888;
+
+  /** North-star block — gradient SupprCard on Today. Spec §1.4. */
+  --north-star-bg-from: rgba(76, 108, 224, 0.08);
+  --north-star-bg-to: rgba(224, 72, 136, 0.04);
+  --north-star-border: rgba(76, 108, 224, 0.18);
+
+  /** Over-budget — amber, never red. Per project memory + spec §1.4. */
+  --over-budget-fg: #e8a020;
+  --over-budget-soft: rgba(232, 160, 32, 0.08);
+
+  /** Depth ladder — production design spec §1.3.
+   *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
+   *  FloatPrimary = FAB (primary tint underneath). */
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
+  --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.4);
 
   /** Chart colours (mapped to macro + accent system) */
   --chart-1: #4c6ce0;
@@ -182,6 +219,37 @@
   --confidence-high: #4cd080;
   --confidence-med: #ffc04c;
   --confidence-low: #ff6b6b;
+  --confidence-neutral: #64748b;
+
+  /** Source / provenance dots — dark.
+   *  Lifted hues for OLED contrast; mirrors macro/semantic dark adjustments. */
+  --source-usda: #4cd080;
+  --source-off: #6c8cff;
+  --source-fatsecret: #fb923c;
+  --source-manual: #64748b;
+  --source-ai: #ff7eb3;
+
+  /** North-star block — dark. Stronger gradient + border for OLED.
+   *  Visual-qa V-1 (spec): A/B against a more muted variant before locking. */
+  --north-star-bg-from: rgba(108, 140, 255, 0.14);
+  --north-star-bg-to: rgba(255, 126, 179, 0.08);
+  --north-star-border: rgba(108, 140, 255, 0.32);
+
+  /** Over-budget — dark amber. Spec §1.4. */
+  --over-budget-fg: #ffc04c;
+  --over-budget-soft: rgba(255, 192, 76, 0.14);
+
+  /** Depth ladder — dark.
+   *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
+   *  dark, so cards rely on borders + 1px hairline highlight. We keep
+   *  the same elev-* tokens for surface-tier consistency, but consumers
+   *  on dark mode should layer a 1px top-edge `rgba(255,255,255,0.06)`
+   *  highlight via the SupprCard primitive. Sheet drops box-shadow,
+   *  keeps backdrop blur. */
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --elev-float-primary: 0 4px 16px rgba(108, 140, 255, 0.4);
 
   /** Chart colours — dark */
   --chart-1: #6c8cff;
@@ -261,6 +329,23 @@
   --color-confidence-high: var(--confidence-high);
   --color-confidence-med: var(--confidence-med);
   --color-confidence-low: var(--confidence-low);
+  --color-confidence-neutral: var(--confidence-neutral);
+
+  /* Source / provenance — production design spec §1.6 */
+  --color-source-usda: var(--source-usda);
+  --color-source-off: var(--source-off);
+  --color-source-fatsecret: var(--source-fatsecret);
+  --color-source-manual: var(--source-manual);
+  --color-source-ai: var(--source-ai);
+
+  /* Over-budget */
+  --color-over-budget-fg: var(--over-budget-fg);
+  --color-over-budget-soft: var(--over-budget-soft);
+
+  /* North-star (gradient bounds + border) */
+  --color-north-star-bg-from: var(--north-star-bg-from);
+  --color-north-star-bg-to: var(--north-star-bg-to);
+  --color-north-star-border: var(--north-star-border);
 
   /* Charts */
   --color-chart-1: var(--chart-1);
@@ -290,8 +375,11 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Spacing */
+  /* Easing tokens (production design spec §1.1) */
   --ease-pm: var(--pm-ease);
+  /* --ease-spring-soft and --ease-decel are read directly from :root */
+
+  /* Spacing */
   --spacing-pm-1: 0.25rem;
   --spacing-pm-2: 0.5rem;
   --spacing-pm-3: 0.75rem;
@@ -313,9 +401,29 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /** Production design spec §1.2 — tabular-nums + stylistic set 01
+     *  shipped globally so every numeric inherits Inter's tnum + ss01
+     *  glyphs (calorie totals, macro grams, dates, durations, etc).
+     *  cv02/03/04/11 stay for character-variant alignment. */
+    font-feature-settings: "tnum" 1, "ss01" 1, "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /** Production design spec §1.1 — reduce-motion fallback.
+   *  Every CSS transition / animation tied to --pm-ease /
+   *  --ease-spring-soft / --ease-decel collapses to a near-instant
+   *  fade. Components using framer-motion read `useReducedMotion()`
+   *  separately; this rule covers tailwind/utility-driven motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   html {

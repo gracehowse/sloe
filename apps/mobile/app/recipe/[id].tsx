@@ -19,7 +19,19 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Bookmark,
+  ChevronLeft,
+  Clock,
+  Minus,
+  Plus,
+  PlusCircle,
+  Share2,
+  Timer,
+  UtensilsCrossed,
+  Users,
+  X,
+} from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
@@ -1270,7 +1282,7 @@ export default function RecipeDetailScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top }]}>
         <View style={styles.topBarRow}>
           <Pressable onPress={goBack} style={styles.topBarIconBtn} accessibilityRole="button" accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+            <ChevronLeft size={24} color={colors.text} />
           </Pressable>
           <Text style={styles.topBarTitle} numberOfLines={1} ellipsizeMode="tail">
             {/* F-85 (2026-04-25) — de-CAPS shouty imported titles
@@ -1286,10 +1298,10 @@ export default function RecipeDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={saved ? "Remove from library" : "Save to library"}
             >
-              <Ionicons
-                name={saved ? "bookmark" : "bookmark-outline"}
+              <Bookmark
                 size={22}
                 color={saved ? Accent.success : colors.text}
+                fill={saved ? Accent.success : "transparent"}
               />
             </Pressable>
             <Pressable
@@ -1298,7 +1310,7 @@ export default function RecipeDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel="Share recipe"
             >
-              <Ionicons name="share-outline" size={22} color={colors.text} />
+              <Share2 size={22} color={colors.text} />
             </Pressable>
           </View>
         </View>
@@ -1352,14 +1364,14 @@ export default function RecipeDetailScreen() {
           {/* Info row: Prep time, Cook time, Servings, Confidence */}
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+              <Clock size={20} color={colors.textSecondary} style={styles.infoIcon} />
               <Text style={styles.infoValue}>
                 {recipe.prep_time_min != null && recipe.prep_time_min > 0 ? formatMinutes(recipe.prep_time_min) : "—"}
               </Text>
               <Text style={styles.infoLabel}>Prep</Text>
             </View>
             <View style={styles.infoItem}>
-              <Ionicons name="timer-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+              <Timer size={20} color={colors.textSecondary} style={styles.infoIcon} />
               <Text style={styles.infoValue}>
                 {recipe.cook_time_min != null && recipe.cook_time_min > 0 ? formatMinutes(recipe.cook_time_min) : "—"}
               </Text>
@@ -1376,13 +1388,13 @@ export default function RecipeDetailScreen() {
                 accessibilityLabel="Servings"
                 accessibilityHint="Opens editor to change how many portions the full recipe makes"
               >
-                <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+                <Users size={20} color={colors.textSecondary} style={styles.infoIcon} />
                 <Text style={styles.infoValue}>{recipe.servings}</Text>
                 <Text style={styles.infoLabel}>Servings</Text>
               </Pressable>
             ) : (
               <View style={styles.infoItem}>
-                <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={styles.infoIcon} />
+                <Users size={20} color={colors.textSecondary} style={styles.infoIcon} />
                 <Text style={styles.infoValue}>{recipe.servings}</Text>
                 <Text style={styles.infoLabel}>Servings</Text>
               </View>
@@ -1843,7 +1855,7 @@ export default function RecipeDetailScreen() {
                   onPress={() => setLogPortion((p) => Math.max(0.125, Math.round((p - 0.25) * 1000) / 1000))}
                   style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
                 >
-                  <Ionicons name="remove" size={16} color={colors.text} />
+                  <Minus size={16} color={colors.text} />
                 </Pressable>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, minWidth: 40, textAlign: "center", fontVariant: ["tabular-nums"] }}>
                   {(Math.round(logPortion * 1000) / 1000).toString()}×
@@ -1852,7 +1864,7 @@ export default function RecipeDetailScreen() {
                   onPress={() => setLogPortion((p) => Math.min(24, Math.round((p + 0.25) * 1000) / 1000))}
                   style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: colors.border }}
                 >
-                  <Ionicons name="add" size={16} color={colors.text} />
+                  <Plus size={16} color={colors.text} />
                 </Pressable>
                 <View style={{ flex: 1 }} />
                 <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
@@ -1904,7 +1916,7 @@ export default function RecipeDetailScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="add-circle-outline" size={16} color="#fff" />
+                    <PlusCircle size={16} color="#fff" />
                     <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Log</Text>
                   </>
                 )}
@@ -1918,7 +1930,7 @@ export default function RecipeDetailScreen() {
               style={[styles.actionBtn, { backgroundColor: Accent.primary, flex: 1 }]}
               onPress={() => { setCookStep(0); setCookMode(true); }}
             >
-              <Ionicons name="restaurant-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <UtensilsCrossed size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.actionBtnText}>Start Cooking</Text>
             </Pressable>
           </View>
@@ -2044,7 +2056,7 @@ export default function RecipeDetailScreen() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
               <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
               <Pressable onPress={() => setCookMode(false)}>
-                <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+                <X size={28} color={colors.textSecondary} />
               </Pressable>
             </View>
             <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>

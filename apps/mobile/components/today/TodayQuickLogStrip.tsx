@@ -1,6 +1,13 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Camera,
+  Lock,
+  Mic,
+  ScanBarcode,
+  Search,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent } from "@/constants/theme";
 
 /**
@@ -9,6 +16,9 @@ import { Accent } from "@/constants/theme";
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
  * 2026-04-18). Voice + Snap are Pro-gated (Batch 5.13); the gating +
  * paywall dispatch stay in the host.
+ *
+ * 2026-04-27 — production design spec §1.5: Ionicons → lucide
+ * (Search / Mic / Camera / ScanBarcode / Lock).
  */
 export interface TodayQuickLogStripProps {
   userTier: "free" | "base" | "pro";
@@ -34,15 +44,21 @@ export function TodayQuickLogStrip({
   textTertiaryColor,
 }: TodayQuickLogStripProps) {
   const proLocked = userTier !== "pro";
-  const entries = [
-    { label: "Search", iconName: "search-outline" as const, color: Accent.warning, onPress: onOpenSearch, locked: false },
-    { label: "Voice", iconName: "mic-outline" as const, color: Accent.success, onPress: onOpenVoice, locked: proLocked },
-    { label: "Snap", iconName: "camera-outline" as const, color: Accent.primary, onPress: onOpenPhoto, locked: proLocked },
-    { label: "Scan", iconName: "scan-outline" as const, color: Accent.magenta, onPress: onOpenBarcode, locked: false },
+  const entries: readonly {
+    label: string;
+    Glyph: LucideIcon;
+    color: string;
+    onPress: () => void;
+    locked: boolean;
+  }[] = [
+    { label: "Search", Glyph: Search, color: Accent.warning, onPress: onOpenSearch, locked: false },
+    { label: "Voice", Glyph: Mic, color: Accent.success, onPress: onOpenVoice, locked: proLocked },
+    { label: "Snap", Glyph: Camera, color: Accent.primary, onPress: onOpenPhoto, locked: proLocked },
+    { label: "Scan", Glyph: ScanBarcode, color: Accent.magenta, onPress: onOpenBarcode, locked: false },
   ];
   return (
     <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
-      {entries.map(({ label, iconName, color, onPress, locked }) => (
+      {entries.map(({ label, Glyph, color, onPress, locked }) => (
         <Pressable
           key={label}
           testID={`today-quick-log-${label.toLowerCase()}`}
@@ -71,11 +87,11 @@ export function TodayQuickLogStrip({
               justifyContent: "center",
             }}
           >
-            <Ionicons name={iconName} size={14} color={color} />
+            <Glyph size={14} color={color} />
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
             <Text style={{ fontSize: 10, fontWeight: "500", color: textSecondaryColor }}>{label}</Text>
-            {locked && <Ionicons name="lock-closed" size={9} color={textTertiaryColor} />}
+            {locked && <Lock size={9} color={textTertiaryColor} />}
           </View>
         </Pressable>
       ))}

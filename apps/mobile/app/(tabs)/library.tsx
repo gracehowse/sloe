@@ -15,8 +15,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { Beef, Wheat, Droplets, Leaf, Flame, Clock } from "lucide-react-native";
+import {
+  Beef,
+  Wheat,
+  Droplets,
+  Leaf,
+  Flame,
+  Clock,
+  Bookmark,
+  ChevronLeft,
+  ArrowUpDown,
+  Search as SearchIcon,
+  BookOpen,
+} from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -361,7 +372,7 @@ export default function LibraryScreen() {
             <View style={styles.cardGradient} pointerEvents="none" />
             {item.isSaved ? (
               <View style={styles.bookmarkDot} accessibilityLabel="Saved">
-                <Ionicons name="bookmark" size={14} color={Accent.primary} />
+                <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
               </View>
             ) : null}
             {/* P2-32 (2026-04-25 ui-critic): the trash-can in the
@@ -432,7 +443,7 @@ export default function LibraryScreen() {
           without crowding the title. */}
       <View style={styles.topBar}>
         <Pressable onPress={goBack} hitSlop={12} style={styles.backHit} accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <View style={styles.titleBlock}>
           <Text style={styles.headerTitle}>Library</Text>
@@ -441,7 +452,7 @@ export default function LibraryScreen() {
           </Text>
         </View>
         <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
-          <Ionicons name="swap-vertical" size={14} color={colors.textSecondary} />
+          <ArrowUpDown size={14} color={colors.textSecondary} />
           <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
         </Pressable>
       </View>
@@ -505,12 +516,12 @@ export default function LibraryScreen() {
           ListEmptyComponent={
             search.trim() ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                <SearchIcon size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
                 <Text style={styles.emptyTitle}>No results for &ldquo;{search.trim()}&rdquo;</Text>
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Ionicons name="book-outline" size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                <BookOpen size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
                 <Text style={styles.emptyTitle}>No saved recipes</Text>
                 <Text style={styles.emptySubtext}>
                   Save recipes from Discover or paste a recipe URL — everything you save shows up here for meal plans.

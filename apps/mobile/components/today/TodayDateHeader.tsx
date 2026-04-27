@@ -1,6 +1,11 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  Sun,
+} from "lucide-react-native";
 import { Accent } from "@/constants/theme";
 import DayStrip from "@/components/charts/DayStrip";
 
@@ -74,7 +79,7 @@ export function TodayDateHeader({
               justifyContent: "center",
             }}
           >
-            <Ionicons name="chevron-back" size={16} color={textColor} />
+            <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
             <Text
@@ -108,7 +113,7 @@ export function TodayDateHeader({
               justifyContent: "center",
             }}
           >
-            <Ionicons name="chevron-forward" size={16} color={textColor} />
+            <ChevronRight size={16} color={textColor} />
           </Pressable>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -142,8 +147,7 @@ export function TodayDateHeader({
                 justifyContent: "center",
               }}
             >
-              <Ionicons
-                name="sunny-outline"
+              <Sun
                 size={14}
                 color={viewMode === "day" ? "#fff" : textSecondaryColor}
               />
@@ -161,8 +165,7 @@ export function TodayDateHeader({
                 justifyContent: "center",
               }}
             >
-              <Ionicons
-                name="grid-outline"
+              <LayoutGrid
                 size={14}
                 color={viewMode === "week" ? "#fff" : textSecondaryColor}
               />

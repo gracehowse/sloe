@@ -1,7 +1,19 @@
 import React, { useState } from "react";
 import { Alert, Modal, Pressable, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Bookmark,
+  ChevronRight,
+  Coffee,
+  Cookie,
+  Copy,
+  Plus,
+  RefreshCw,
+  Sun,
+  Trash2,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -61,26 +73,26 @@ export interface TodayMealsSectionProps {
 }
 
 /**
- * F-12 (in-session snack-parity report 2026-04-19) — web's Snacks slot uses
- * lucide-react `Cookie` (`src/app/components/ui/icons.ts` → `snack: Cookie`).
- * Mobile historically mapped Snacks to Ionicons `"cafe-outline"` (a coffee
- * cup), so the two platforms showed two different glyphs for the same slot.
- * MaterialCommunityIcons ships `cookie-outline`, which matches the web
- * lucide shape closely; Ionicons has no cookie glyph. We use a tiny
- * discriminated union per slot so Snacks can pull from
- * MaterialCommunityIcons while the other slots stay on Ionicons (where
- * their current glyphs live).
+ * F-12 (2026-04-19) → spec §1.5 lucide mapping (2026-04-27).
+ *
+ * Production design spec §1.5 defines the canonical meal-slot glyph
+ * set on `lucide-react-native`:
+ *   - Coffee  (Breakfast)
+ *   - Sun     (Lunch)
+ *   - UtensilsCrossed (Dinner)
+ *   - Cookie  (Snack / Snacks)
+ *
+ * This replaces the previous F-12 cross-family workaround (a mix of
+ * @expo/vector-icons and MCI cookie-outline). Both platforms now
+ * share the identical lucide glyph set so the parity test
+ * (`mealSlotIconFamilyParity.test.ts`) pins the lucide names directly.
  */
-type SlotIconSpec =
-  | { family: "ionicons"; name: keyof typeof Ionicons.glyphMap }
-  | { family: "material-community"; name: keyof typeof MaterialCommunityIcons.glyphMap };
-
-const SLOT_ICON: Record<string, SlotIconSpec> = {
-  Breakfast: { family: "ionicons", name: "cafe-outline" },
-  Lunch: { family: "ionicons", name: "sunny-outline" },
-  Dinner: { family: "ionicons", name: "restaurant-outline" },
-  Snacks: { family: "material-community", name: "cookie-outline" },
-  Snack: { family: "material-community", name: "cookie-outline" },
+const SLOT_ICON: Record<string, LucideIcon> = {
+  Breakfast: Coffee,
+  Lunch: Sun,
+  Dinner: UtensilsCrossed,
+  Snacks: Cookie,
+  Snack: Cookie,
 };
 
 const SLOT_COLOR: Record<string, string> = {
@@ -91,8 +103,8 @@ const SLOT_COLOR: Record<string, string> = {
   Snack: MacroColors.fat,
 };
 
-function slotIcon(s: string): SlotIconSpec {
-  return SLOT_ICON[s] ?? { family: "ionicons", name: "restaurant-outline" };
+function slotIcon(s: string): LucideIcon {
+  return SLOT_ICON[s] ?? UtensilsCrossed;
 }
 
 function slotColor(s: string): string {
@@ -100,18 +112,15 @@ function slotColor(s: string): string {
 }
 
 function SlotIcon({
-  spec,
+  Glyph,
   size,
   color,
 }: {
-  spec: SlotIconSpec;
+  Glyph: LucideIcon;
   size: number;
   color: string;
 }) {
-  if (spec.family === "material-community") {
-    return <MaterialCommunityIcons name={spec.name} size={size} color={color} />;
-  }
-  return <Ionicons name={spec.name} size={size} color={color} />;
+  return <Glyph size={size} color={color} />;
 }
 
 /** Pull the saved meals whose `defaultMealSlot === slot`, newest-logged first. */
@@ -180,7 +189,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               backgroundColor: Accent.primary + "12",
             }}
           >
-            <Ionicons name="copy-outline" size={12} color={Accent.primary} />
+            <Copy size={12} color={Accent.primary} />
             <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>Duplicate day…</Text>
           </Pressable>
         </View>
@@ -233,7 +242,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     justifyContent: "center",
                   }}
                 >
-                  <SlotIcon spec={ic} size={16} color={col} />
+                  <SlotIcon Glyph={ic} size={16} color={col} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   {/* F-80 (2026-04-25) — `numberOfLines={1}` on both the slot
@@ -294,7 +303,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         borderColor: Accent.primary + "40",
                       }}
                     >
-                      <Ionicons name="add" size={16} color={Accent.primary} />
+                      <Plus size={16} color={Accent.primary} />
                     </Pressable>
                     {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
                         the picker modal; 1 match logs on tap. */}
@@ -333,7 +342,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           flexShrink: 1,
                         }}
                       >
-                        <Ionicons name="refresh-outline" size={11} color={Accent.primary} />
+                        <RefreshCw size={11} color={Accent.primary} />
                         <Text
                           style={{
                             fontSize: 11,
@@ -353,7 +362,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     <Text style={{ fontSize: 10, color: textTertiaryColor }}>kcal</Text>
                   </View>
                 ) : (
-                  <Ionicons name="add" size={14} color={textTertiaryColor} />
+                  <Plus size={14} color={textTertiaryColor} />
                 )}
               </Pressable>
               {hasMeals &&
@@ -380,7 +389,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           accessibilityRole="button"
                           accessibilityLabel="Remove meal"
                         >
-                          <Ionicons name="trash-outline" size={22} color="#fff" />
+                          <Trash2 size={22} color="#fff" />
                           <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", marginTop: 4 }}>Remove</Text>
                         </Pressable>
                       </View>
@@ -435,7 +444,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                           {Math.round(m.calories)}
                         </Text>
-                        <Ionicons name="chevron-forward" size={12} color={textTertiaryColor} />
+                        <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
                     </Pressable>
                   </Swipeable>
@@ -480,7 +489,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: Accent.primary,
                       }}
                     >
-                      <Ionicons name="bookmark-outline" size={12} color="#fff" />
+                      <Bookmark size={12} color="#fff" />
                       <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
                         Save as usual
                       </Text>
@@ -519,7 +528,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     borderTopColor: cardBorderColor + "30",
                   }}
                 >
-                  <Ionicons name="bookmark-outline" size={14} color={Accent.primary} />
+                  <Bookmark size={14} color={Accent.primary} />
                   <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>
                     Save {slot} as a meal
                   </Text>

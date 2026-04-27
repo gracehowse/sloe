@@ -207,6 +207,63 @@ export function findNodeHandle(_ref: unknown): number | null {
   return null;
 }
 
+/** Animated — minimal stub. Sufficient for SkeletonRow's opacity loop
+ *  + Animated.View pass-through. Real animations are skipped under
+ *  vitest (we only render once and assert structure). */
+class AnimatedValue {
+  _value: number;
+  constructor(initial: number) {
+    this._value = initial;
+  }
+  setValue(v: number): void {
+    this._value = v;
+  }
+  interpolate(): this {
+    return this;
+  }
+  addListener(): string {
+    return "0";
+  }
+  removeListener(): void {}
+  removeAllListeners(): void {}
+}
+
+function noopAnim() {
+  return {
+    start: (cb?: (info: { finished: boolean }) => void) =>
+      cb?.({ finished: true }),
+    stop: () => undefined,
+    reset: () => undefined,
+  };
+}
+
+export const Animated = {
+  Value: AnimatedValue,
+  View,
+  Text,
+  Image,
+  ScrollView,
+  timing: noopAnim,
+  spring: noopAnim,
+  decay: noopAnim,
+  sequence: noopAnim,
+  parallel: noopAnim,
+  loop: noopAnim,
+  delay: noopAnim,
+  stagger: noopAnim,
+  createAnimatedComponent: <T,>(Component: T) => Component,
+  event: () => () => undefined,
+};
+
+export const Easing = {
+  linear: (t: number) => t,
+  ease: (t: number) => t,
+  in: (fn: (t: number) => number) => fn,
+  out: (fn: (t: number) => number) => fn,
+  inOut: (fn: (t: number) => number) => fn,
+  bezier: () => (t: number) => t,
+};
+
 export const PixelRatio = {
   get: () => 2,
   getFontScale: () => 1,
@@ -239,4 +296,6 @@ export default {
   AccessibilityInfo,
   findNodeHandle,
   PixelRatio,
+  Animated,
+  Easing,
 };

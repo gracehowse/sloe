@@ -1,10 +1,91 @@
 # Design tokens — canonical UI patterns
 
-**Last reviewed:** 2026-04-26 (UI consistency polish round 2).
+**Last reviewed:** 2026-04-27 (Phase 1 production design spec, source-of-truth at `docs/specs/2026-04-27-production-design-spec.md`).
 
-This document codifies the canonical typography, casing, button, pill, and section-header patterns used in Suppr. It exists so future PRs have a reference for which pattern to use when adding new screens or surfaces.
+This document codifies the canonical typography, casing, button, pill, section-header, source/provenance, depth, motion and icon patterns used in Suppr. It exists so future PRs have a reference for which pattern to use when adding new screens or surfaces.
 
 If you're adding a new component, find the closest existing pattern below and match it. If a new pattern is genuinely needed, add it here in the same PR.
+
+---
+
+## Phase 1 token additions (2026-04-27)
+
+Phase 1 of the production design spec adds the following tokens. They ship without changing visible structure — they're consumed by the new primitives (SupprCard / TrustChip / SourceDot / ConfidenceChip / EmptyState / SkeletonRow + SkeletonCard) and by Phase 2 surface refactors.
+
+### Web — `src/styles/theme.css`
+
+Light + dark blocks both carry these:
+
+| Token | Role |
+|---|---|
+| `--source-usda` | USDA-verified dot (success-green) |
+| `--source-off` | Open Food Facts dot (primary-blue) |
+| `--source-fatsecret` | FatSecret dot (orange) |
+| `--source-manual` | Manual entry dot (text-tertiary grey) |
+| `--source-ai` | AI-estimated dot (magenta) — pairs with lucide `Sparkles` 8px to its left |
+| `--confidence-neutral` | ConfidenceChip background base — calm grey, NOT a warning |
+| `--north-star-bg-from` / `--north-star-bg-to` / `--north-star-border` | North-star block on Today |
+| `--over-budget-fg` | Amber, never red, per memory |
+| `--over-budget-soft` | Tinted bg for over-budget tiles |
+| `--elev-card` | List rows on a card — `0 1px 2px rgba(0,0,0,0.04)` |
+| `--elev-sheet` | Bottom-sheets — `0 -8px 32px rgba(0,0,0,0.12)` |
+| `--elev-float` | Popovers / dropdowns — `0 4px 16px rgba(0,0,0,0.12)` |
+| `--elev-float-primary` | FAB tint — `0 4px 16px rgba(76,108,224,0.4)` |
+| `--ease-spring-soft` | Sheet present + confirm-success — `cubic-bezier(0.34, 1.56, 0.64, 1)` |
+| `--ease-decel` | Dismiss + fade-out — `cubic-bezier(0.05, 0.7, 0.1, 1)` |
+
+`body { font-feature-settings: "tnum" 1, "ss01" 1, ... }` ships globally so every numeric inherits Inter's tabular-nums + stylistic set 01.
+
+A global `@media (prefers-reduced-motion: reduce)` rule collapses `animation-duration` + `transition-duration` to ~0ms across the app. Components that drive their own animations (framer-motion) should additionally branch on `useReducedMotion()`.
+
+### Mobile — `apps/mobile/constants/theme.ts`
+
+```ts
+import { Type, Elevation, IconSize, Spring, Colors } from "@/constants/theme";
+
+// Type ladder — apply directly to <Text> (pair with fontVariant tabular-nums on numerics)
+<Text style={[Type.title, { color: colors.text }]}>Today</Text>
+<Text style={[Type.body, { fontVariant: ["tabular-nums"] }]}>553 left</Text>
+
+// Elevation — spread into a View style
+<View style={[{ backgroundColor: colors.card }, Elevation.card]} />
+
+// IconSize — pair with lucide-react-native
+<Bookmark size={IconSize.base} color={Accent.primary} />
+
+// Spring — Reanimated config
+withSpring(toValue, Spring.softSheet)
+
+// Colours — sourceUsda, sourceOff, sourceFatsecret, sourceManual, sourceAi,
+// confidenceNeutral, northStarBgFrom, northStarBgTo, northStarBorder,
+// overBudgetFg, overBudgetSoft, destructiveForeground, primaryForeground
+const colors = useThemeColors();
+<View style={{ backgroundColor: colors.northStarBgFrom }} />
+```
+
+### Phase 1 primitives (callers NOT swept yet — that's Phase 2)
+
+| Primitive | Web path | Mobile path |
+|---|---|---|
+| `SupprCard` | `src/app/components/ui/suppr-card.tsx` | `apps/mobile/components/ui/SupprCard.tsx` |
+| `TrustChip` | `src/app/components/ui/trust-chip.tsx` | `apps/mobile/components/ui/TrustChip.tsx` |
+| `SourceDot` | `src/app/components/ui/source-dot.tsx` | `apps/mobile/components/ui/SourceDot.tsx` |
+| `ConfidenceChip` | `src/app/components/ui/confidence-chip.tsx` | `apps/mobile/components/ui/ConfidenceChip.tsx` |
+| `EmptyState` (universal) | `src/app/components/ui/empty-state.tsx` | `apps/mobile/components/ui/EmptyState.tsx` |
+| `SkeletonRow` / `SkeletonCard` | `src/app/components/ui/skeleton-row.tsx` | `apps/mobile/components/ui/SkeletonRow.tsx` |
+
+Universal `EmptyState` uses `icon` / `title` / `body` / `primaryCta` / `secondaryCta`. It coexists with the older `EmptyState` at `src/app/components/suppr/empty-state.tsx` (and `apps/mobile/components/EmptyState.tsx`) which use `description` + `action`. Phase 2 sweeps callers; Phase 1 ships the primitive.
+
+### Iconography (lucide-only)
+
+The mobile sweep replaces every `@expo/vector-icons` (`Ionicons` + `MaterialCommunityIcons`) usage with `lucide-react-native` per the spec §1.5 mapping table. **Phase 1 status (2026-04-27):** the named Today surfaces and a handful of frequently-touched files have been converted; a long-tail of ~70 files remains for Phase 1 follow-up. See `docs/ux/lucide-sweep-status.md` for the audit.
+
+Per-icon canonical mapping lives in `docs/specs/2026-04-27-production-design-spec.md` §1.5. Do not introduce new icon glyphs not in the mapping; if a need surfaces, propose to the spec rather than picking unilaterally.
+
+### Reduce-motion
+
+- **Web:** the global `@media (prefers-reduced-motion: reduce)` rule in `theme.css` honours system preference. Components that animate via framer-motion / View Transitions should additionally branch on `useReducedMotion()`.
+- **Mobile:** `useReduceMotion()` at `apps/mobile/hooks/use-reduce-motion.ts` is the canonical hook. Components driving Reanimated worklets / `Animated.timing` should branch on this and skip the spring/translate paths in favour of an opacity-only fallback.
 
 ---
 

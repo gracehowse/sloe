@@ -107,6 +107,24 @@ export const Colors = {
     tabIconSelected: Accent.primary,
     inputBg: '#ededf2',             // ↔ web --input-background
     overlay: '#00000088',
+    /** Production design spec §1.6 source / provenance dots. Mirrors web
+     *  --source-* tokens. */
+    sourceUsda: '#22a860',
+    sourceOff: '#4c6ce0',
+    sourceFatsecret: '#f97316',
+    sourceManual: '#94a3b8',
+    sourceAi: '#e04888',
+    confidenceNeutral: '#94a3b8',
+    /** Production design spec §1.4 north-star + over-budget tokens. */
+    northStarBgFrom: 'rgba(76, 108, 224, 0.08)',
+    northStarBgTo: 'rgba(224, 72, 136, 0.04)',
+    northStarBorder: 'rgba(76, 108, 224, 0.18)',
+    overBudgetFg: '#e8a020',
+    overBudgetSoft: 'rgba(232, 160, 32, 0.08)',
+    /** Foreground tokens that previously lived only in CSS — wired
+     *  here so RN consumers can stop hardcoding `#fff`. */
+    destructiveForeground: '#ffffff',
+    primaryForeground: '#ffffff',
   },
   dark: {
     text: '#e4e4e8',                // ↔ web --foreground (dark)
@@ -123,6 +141,21 @@ export const Colors = {
     tabIconSelected: Accent.primaryLight,
     inputBg: '#202028',             // ↔ web --input-background (dark)
     overlay: '#000000aa',
+    /** Source / provenance dots — dark. Lifted hues for OLED contrast. */
+    sourceUsda: '#4cd080',
+    sourceOff: '#6c8cff',
+    sourceFatsecret: '#fb923c',
+    sourceManual: '#64748b',
+    sourceAi: '#ff7eb3',
+    confidenceNeutral: '#64748b',
+    /** North-star + over-budget — dark. Visual-qa V-1 to A/B saturation. */
+    northStarBgFrom: 'rgba(108, 140, 255, 0.14)',
+    northStarBgTo: 'rgba(255, 126, 179, 0.08)',
+    northStarBorder: 'rgba(108, 140, 255, 0.32)',
+    overBudgetFg: '#ffc04c',
+    overBudgetSoft: 'rgba(255, 192, 76, 0.14)',
+    destructiveForeground: '#ffffff',
+    primaryForeground: '#ffffff',
   },
 };
 
@@ -163,3 +196,102 @@ export const Fonts = Platform.select({
     mono: 'monospace',
   },
 });
+
+/**
+ * Production design spec — 2026-04-27 §1.2 typography ladder.
+ *
+ * Five canonical steps + landing display + numeric specials. Apply
+ * `fontVariant: ['tabular-nums']` per usage on numeric Text.
+ *
+ * Display is mobile-only on the onboarding success screen; never
+ * in-product for routine reading.
+ */
+export const Type = {
+  display: { fontSize: 32, lineHeight: 36, fontWeight: '800' as const, letterSpacing: -0.6 },
+  title:   { fontSize: 24, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.5 },
+  headline:{ fontSize: 17, lineHeight: 22, fontWeight: '700' as const, letterSpacing: -0.2 },
+  body:    { fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0 },
+  bodyMuted:{ fontSize: 14, lineHeight: 20, fontWeight: '400' as const, letterSpacing: 0 },
+  label:   {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700' as const,
+    letterSpacing: 0.88, // 11 * 0.08em
+    textTransform: 'uppercase' as const,
+  },
+  caption: { fontSize: 11, lineHeight: 14, fontWeight: '500' as const, letterSpacing: 0 },
+  /** Numeric specials — pair with `fontVariant: ['tabular-nums']` per usage. */
+  ringValue:   { fontSize: 36, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.7 },
+  ringValueLg: { fontSize: 56, lineHeight: 56, fontWeight: '700' as const, letterSpacing: -1.2 },
+};
+
+/**
+ * Production design spec §1.3 — depth ladder (mobile mirror of web
+ * --elev-* tokens).
+ *
+ * Use shape: `<View style={[Elevation.card, { backgroundColor: ... }]}>`.
+ * Note: RN does not honour `shadowColor` on dark surfaces well — the
+ * SupprCard primitive layers a 1px hairline highlight on dark mode to
+ * compensate.
+ */
+export const Elevation = {
+  card: {
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  sheet: {
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 8,
+  },
+  float: {
+    shadowColor: '#000',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  /** FAB tint — primary-blue glow underneath. */
+  floatPrimary: {
+    shadowColor: Accent.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+} as const;
+
+/**
+ * Production design spec §1.5 — icon sizing scale.
+ *
+ * Pair every numeric size with the matching role (see spec §1.5
+ * Lucide → role mapping table). Do not introduce off-grid sizes.
+ */
+export const IconSize = {
+  xs: 10,
+  sm: 12,
+  md: 14,
+  base: 16,
+  lg: 18,
+  xl: 20,
+  hero: 24,
+} as const;
+
+/**
+ * Production design spec §1.1 — Reanimated spring configs.
+ *
+ * Pass these directly to `withSpring(toValue, Spring.softSheet)` /
+ * `withSpring(toValue, Spring.snapSegment)`. Prefer these over bespoke
+ * configs so motion stays consistent across the app.
+ */
+export const Spring = {
+  /** Sheet present + confirm-success (gentle overshoot). */
+  softSheet: { damping: 18, stiffness: 220, mass: 0.9 },
+  /** Tab switch + segmented control thumb (crisp settle). */
+  snapSegment: { damping: 22, stiffness: 320 },
+} as const;

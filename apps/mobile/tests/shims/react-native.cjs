@@ -247,6 +247,80 @@ function findNodeHandle() {
   return null;
 }
 
+/** Animated — minimal stub. Sufficient for SkeletonRow's opacity loop
+ *  + Animated.View pass-through. Real animations are skipped under
+ *  vitest (we only render once and assert structure). */
+function AnimatedValue(initial) {
+  this._value = initial;
+}
+AnimatedValue.prototype.setValue = function setValue(v) {
+  this._value = v;
+};
+AnimatedValue.prototype.interpolate = function interpolate() {
+  return this;
+};
+AnimatedValue.prototype.addListener = function addListener() {
+  return "0";
+};
+AnimatedValue.prototype.removeListener = function removeListener() {};
+AnimatedValue.prototype.removeAllListeners = function removeAllListeners() {};
+
+function noopAnim() {
+  return {
+    start: function start(cb) {
+      if (typeof cb === "function") cb({ finished: true });
+    },
+    stop: function stop() {},
+    reset: function reset() {},
+  };
+}
+
+const Animated = {
+  Value: AnimatedValue,
+  View: View,
+  Text: Text,
+  Image: Image,
+  ScrollView: ScrollView,
+  timing: noopAnim,
+  spring: noopAnim,
+  decay: noopAnim,
+  sequence: noopAnim,
+  parallel: noopAnim,
+  loop: noopAnim,
+  delay: noopAnim,
+  stagger: noopAnim,
+  createAnimatedComponent: function createAnimatedComponent(Component) {
+    return Component;
+  },
+  event: function event() {
+    return function noop() {};
+  },
+};
+
+/** Easing — passthrough functions. Tests don't observe interpolation. */
+const Easing = {
+  linear: function linear(t) {
+    return t;
+  },
+  ease: function ease(t) {
+    return t;
+  },
+  in: function easeIn(fn) {
+    return fn;
+  },
+  out: function easeOut(fn) {
+    return fn;
+  },
+  inOut: function easeInOut(fn) {
+    return fn;
+  },
+  bezier: function bezier() {
+    return function curve(t) {
+      return t;
+    };
+  },
+};
+
 /** Legacy `Touchable` mixin. `react-native-svg` imports `Touchable.Mixin`
  *  on module load — add a stub so transitive loads don't crash. The mixin
  *  is never used in tests; `Pressable` (above) handles tap flow. */
@@ -293,6 +367,8 @@ const reactNative = {
   findNodeHandle,
   PixelRatio,
   Touchable,
+  Animated,
+  Easing,
 };
 
 module.exports = reactNative;
