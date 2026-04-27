@@ -47,6 +47,11 @@ Tap "Save Changes" → writes all dirty ingredients back to Supabase
   → Updates recipe_ingredients rows (preserves override_macros / added_by_user)
   → Recalculates recipe header macros (per-serving) using effectiveMacros()
   → Haptic feedback on success
+  → Mobile: router.replace(`/recipe/${recipeId}`) — back to detail
+    immediately so the user can log without manually navigating.
+    (journey-architect 2026-04-27 Top Broken Journey #3.) Error path
+    leaves the user on the verify screen with the existing alert so
+    they can retry without losing edits.
 ```
 
 ### Step 5: Add a missing ingredient (Batch 2.7)

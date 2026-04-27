@@ -61,20 +61,12 @@ const CONSUMERS: readonly Consumer[] = [
     importPatterns: [/from\s+["']@\/components\/ActivityLevelPreview["']/],
     renderTag: /<ActivityLevelPreview\b/,
   },
-  {
-    // Web `/onboarding` is now a 307 redirect to `/onboarding/v2` (see
-    // app/onboarding/page.tsx). The legacy 4-step form lives in
-    // `app/onboarding/legacy-form.tsx` for emergency rollback only —
-    // pin its imports here so the shared ActivityLevelPreview can't
-    // silently regress to an inline copy on the rollback path.
-    label: "web onboarding (legacy fallback form)",
-    path: "app/onboarding/legacy-form.tsx",
-    root: REPO_ROOT,
-    importPatterns: [
-      /from\s+["']\.\.\/\.\.\/src\/app\/components\/suppr\/activity-level-preview(?:\.tsx)?["']/,
-    ],
-    renderTag: /<ActivityLevelPreview\b/,
-  },
+  // Web onboarding legacy form was tombstoned 2026-04-27 per
+  // `docs/decisions/2026-04-27-delete-legacy-onboarding.md` — the
+  // file is now just `export {};` and the route unconditionally
+  // redirects to `/onboarding/v2`. The legacy-form consumer entry
+  // was removed here when the form was tombstoned. Web onboarding
+  // is now covered through the v2 components elsewhere.
   {
     label: "web Settings",
     path: "src/app/components/Settings.tsx",

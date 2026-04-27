@@ -58,7 +58,7 @@ import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
 } from "../../../../src/lib/nutrition/weekSummaryWindow";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
 import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
@@ -138,6 +138,7 @@ import {
   parsePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
 import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
@@ -354,6 +355,10 @@ export default function TrackerScreen() {
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   /** surplus-only: add only burn above maintenance TDEE (needs resting + active from Health). */
   const [activityBonusCaloriesOnly, setActivityBonusCaloriesOnly] = useState(false);
+  // P3-30 (2026-04-25): net-carbs lens. Source of truth:
+  // `profiles.net_carbs_lens_enabled`. Tracker macro tile swaps "Carbs"
+  // → "Net carbs" via the shared netCarbs.ts helper.
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}>>([]);
@@ -476,6 +481,27 @@ export default function TrackerScreen() {
   }, [params.date, params._t]);
 
   useEffect(() => subscribeOffline(setIsOffline), []);
+
+  // P3-30 (2026-04-25): one-shot fetch of the net-carbs lens flag.
+  // Re-fires when the user changes; stays in local state until next
+  // mount or focus. Defaulting to false on any error preserves the
+  // current "Carbs" display.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("net_carbs_lens_enabled")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
+    })().catch(() => { /* noop — preserve default */ });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   // Batch 5.13 — load profile tier for Voice / AI photo gating. Same
   // pattern as `planner.tsx`; defaults to "free" on any error.
@@ -1890,7 +1916,18 @@ export default function TrackerScreen() {
     };
   }, [userId, addWaterMl, startFastFromShortcut]);
 
-  /** Batch 2.5 — caffeine quick-add for the selected day. */
+  /** Batch 2.5 — caffeine quick-add for the selected day.
+   *
+   * 2026-04-26 polish (round 3): tester reported "adding a coffee still
+   * doesn't impact the caffeine numbers". Local state DOES update
+   * synchronously (the +chip flips the count to e.g. 95/400 mg
+   * immediately), but the supabase persist was happening fire-and-forget
+   * — any error (RLS denial, missing column, network failure) was
+   * silently swallowed. On next app refresh the count reverted to 0
+   * because nothing was actually saved server-side. Now: capture the
+   * error, roll back local state, surface a toast so the user knows
+   * the chip didn't take. Fixes the symptom of "added a coffee, came
+   * back to the screen, count is back at 0". */
   const addCaffeineMg = useCallback(
     async (mg: number, preset: string | null = null) => {
       if (!userId) return;
@@ -1903,10 +1940,24 @@ export default function TrackerScreen() {
         return next;
       });
       if (persisted) {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({ extra_caffeine_by_day: persisted })
           .eq("id", userId);
+        if (error) {
+          // Roll back local state so display matches what's actually saved.
+          setExtraCaffeineByDay((prev) => {
+            const reverted = { ...prev };
+            const current = reverted[dayKey] ?? 0;
+            const after = Math.max(0, current - add);
+            if (after === 0) delete reverted[dayKey];
+            else reverted[dayKey] = after;
+            return reverted;
+          });
+          console.error("[addCaffeineMg] persist failed:", error.message, error);
+          Alert.alert("Couldn't save caffeine", error.message ?? "Try again.");
+          return;
+        }
       }
       track(AnalyticsEvents.stimulant_logged, {
         type: "caffeine",
@@ -1923,7 +1974,9 @@ export default function TrackerScreen() {
     [userId, dayKey],
   );
 
-  /** Batch 2.5 — alcohol quick-add (grams ethanol) for the selected day. */
+  /** Batch 2.5 — alcohol quick-add (grams ethanol) for the selected day.
+   *  Same persist-error rollback hardening as addCaffeineMg above
+   *  (2026-04-26 round 3). */
   const addAlcoholG = useCallback(
     async (grams: number, preset: string | null = null) => {
       if (!userId) return;
@@ -1936,10 +1989,23 @@ export default function TrackerScreen() {
         return next;
       });
       if (persisted) {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({ extra_alcohol_g_by_day: persisted })
           .eq("id", userId);
+        if (error) {
+          setExtraAlcoholGByDay((prev) => {
+            const reverted = { ...prev };
+            const current = reverted[dayKey] ?? 0;
+            const after = Math.max(0, current - add);
+            if (after === 0) delete reverted[dayKey];
+            else reverted[dayKey] = after;
+            return reverted;
+          });
+          console.error("[addAlcoholG] persist failed:", error.message, error);
+          Alert.alert("Couldn't save alcohol", error.message ?? "Try again.");
+          return;
+        }
       }
       track(AnalyticsEvents.stimulant_logged, {
         type: "alcohol",
@@ -2336,11 +2402,23 @@ export default function TrackerScreen() {
     void loadJournal();
   }, [selectedDate, userId, loadJournal]);
 
-  // Reload journal + targets every time this tab comes into focus
+  // Reload journal + targets every time this tab comes into focus.
+  //
+  // Parity spec 2026-04-27 (mobile target edits) §5.5 — also read +
+  // clear the `suppr.profile.targets.dirty` AsyncStorage flag set by
+  // `app/profile.tsx` on a successful target save. The current per-
+  // focus `loadProfileTargets` already covers this, so the flag clear
+  // is forward-defensive against future short-circuiting; it also
+  // gives us a single source of truth for "the user just edited
+  // targets". Read failures are non-fatal — `loadProfileTargets` runs
+  // unconditionally regardless.
   useFocusEffect(
     useCallback(() => {
       void loadJournal();
       void loadProfileTargets();
+      AsyncStorage.removeItem(PROFILE_TARGETS_DIRTY_KEY).catch(() => {
+        /* non-fatal — targets already re-read above */
+      });
     }, [loadJournal, loadProfileTargets]),
   );
 
@@ -2770,17 +2848,42 @@ export default function TrackerScreen() {
         );
         return;
       }
+
+      // P1-12 (2026-04-25): optimistic insert into byDay so the journal
+      // updates instantly. On server error, roll back the optimistic
+      // entry and surface the error. Same shape as
+      // `insertClonedRowsIntoDay` (the existing copy/duplicate path).
+      const optimisticMeal: JournalMeal = {
+        id: entryId,
+        name: pm.name ?? pm.recipe_title ?? "",
+        recipeTitle: pm.recipe_title ?? pm.name ?? "",
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: Math.round((pm.calories ?? 0) * mult),
+        protein: Math.round((pm.protein ?? 0) * mult * 10) / 10,
+        carbs: Math.round((pm.carbs ?? 0) * mult * 10) / 10,
+        fat: Math.round((pm.fat ?? 0) * mult * 10) / 10,
+        fiberG: microsRes.fiberG ?? undefined,
+        waterMl: undefined,
+        micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : undefined,
+        portionMultiplier: mult,
+        source: "Meal plan",
+      } as JournalMeal;
+      setByDay((prev) => ({
+        ...prev,
+        [dk]: [...(prev[dk] ?? []), optimisticMeal],
+      }));
+
       const { error } = await supabase.from("nutrition_entries").insert({
         id: entryId,
         user_id: userId,
         date_key: dk,
         name: pm.name ?? pm.recipe_title ?? "",
         recipe_title: pm.recipe_title ?? pm.name ?? "",
-        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-        calories: Math.round((pm.calories ?? 0) * mult),
-        protein: Math.round((pm.protein ?? 0) * mult * 10) / 10,
-        carbs: Math.round((pm.carbs ?? 0) * mult * 10) / 10,
-        fat: Math.round((pm.fat ?? 0) * mult * 10) / 10,
+        time_label: optimisticMeal.time,
+        calories: optimisticMeal.calories,
+        protein: optimisticMeal.protein,
+        carbs: optimisticMeal.carbs,
+        fat: optimisticMeal.fat,
         fiber_g: microsRes.fiberG,
         water_ml: null,
         nutrition_micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : {},
@@ -2788,8 +2891,16 @@ export default function TrackerScreen() {
         source: "Meal plan",
       });
       if (error) {
+        // Roll back the optimistic add and tell the user.
+        setByDay((prev) => ({
+          ...prev,
+          [dk]: (prev[dk] ?? []).filter((m) => m.id !== entryId),
+        }));
         Alert.alert("Log failed", error.message);
       } else {
+        // Reconcile against the canonical row (covers any server-side
+        // computed columns; safe no-op on success). Cheaper than the
+        // pre-fix `loadJournal()` because byDay is already up to date.
         void loadJournal();
         // F-2 — snapshot today's target on first meal-plan log.
         void snapshotDailyTargetIfMissing(supabase, userId);
@@ -2945,6 +3056,28 @@ export default function TrackerScreen() {
           />
         ) : (
           <>
+            {/* B4 Phase 3a (2026-04-27) — Eat-again banner repositioned
+                ABOVE the hero. Was rendered between Quick add and Meals
+                (around line 3182 in the previous layout). The
+                `!(remaining > 0)` gate is preserved so the banner only
+                surfaces when the day's budget is met or exceeded —
+                that's the existing pragmatic timing rule and we keep
+                it; only the position changes. Spec:
+                docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
+            {isToday &&
+              eatAgainSuggestion &&
+              !eatAgainDismissedForToday &&
+              !(remaining > 0) && (
+                <TodayEatAgainBanner
+                  suggestion={eatAgainSuggestion}
+                  slot={currentSlotFromTime}
+                  textColor={colors.text}
+                  textSecondaryColor={colors.textSecondary}
+                  onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
+                  onDismiss={dismissEatAgain}
+                />
+              )}
+
             {/* Today hero — ring / bar / number variant, user-pickable
                 via the grid-icon affordance in the card's top-right.
                 Prototype port (2026-04-20 Claude Design drop). */}
@@ -2990,13 +3123,20 @@ export default function TrackerScreen() {
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
               mutedColor={colors.border}
+              netCarbsLensEnabled={netCarbsLensEnabled}
             />
 
-            {/* All nutrients detail link */}
+            {/* All nutrients detail link.
+                2026-04-26 polish (round 2): pre-fix this read "View all
+                nutrients (9)" where 9 was the *available* count, but the
+                user only configures 4 by default. Read as "9 are
+                configured". Dropped the parenthesised count — the link
+                surfaces the modal where the full list lives, no need to
+                pre-announce a number. */}
             {dayNutrientDetailRowsWithoutMacroDupes.length > 0 ? (
               <Pressable onPress={() => setNutrientsModalOpen(true)} style={{ marginBottom: 12, paddingVertical: 4 }}>
                 <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary, textAlign: "center" }}>
-                  View all nutrients ({dayNutrientDetailRowsWithoutMacroDupes.length})
+                  View all nutrients
                 </Text>
               </Pressable>
             ) : null}
@@ -3004,18 +3144,39 @@ export default function TrackerScreen() {
             {/* 4 Quick-log chips — prototype style.
                 Batch 5.13 — Voice and Photo are Pro features; free + base
                 tiers see a lock icon and the Pro paywall on tap. Mirrors
-                the web quick-log strip ordering. */}
-            <TodayQuickLogStrip
-              userTier={userTier}
-              onOpenSearch={() => setSearchOpen(true)}
-              onOpenVoice={handleOpenVoiceLog}
-              onOpenPhoto={handleOpenPhotoLog}
-              onOpenBarcode={() => setBarcodeOpen(true)}
-              cardColor={colors.card}
-              cardBorderColor={colors.cardBorder}
-              textSecondaryColor={colors.textSecondary}
-              textTertiaryColor={colors.textTertiary}
-            />
+                the web quick-log strip ordering.
+
+                2026-04-26 polish (round 2 follow-through): the strip and
+                the FAB are both logging-entry affordances. Tester flagged
+                the duplication. Resolution: keep the strip as a
+                discoverable affordance for the empty Today state (new
+                users + start-of-day, when the visual cue needs to be
+                obvious), and let the FAB be the single entry once the
+                user has any logs for the day. Reduces clutter post-log
+                without sacrificing discoverability pre-log. The FAB
+                opens the comprehensive Search-first sheet (Previous /
+                Scan / Photo / Voice + Quick Add footer) so no logging
+                option is ever lost. */}
+            {/* B4 Phase 3c (2026-04-27): gated behind PostHog flag
+                `today_phase_3_quickadd_v2`. When the flag is on, the
+                strip is suppressed unconditionally and the FAB is the
+                sole primary entry point. When the flag is off (default
+                pre-launch), retain the existing D86 empty-day-only
+                gate that has shipped since 2026-04-26. Spec:
+                docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
+            {!isFeatureEnabled("today_phase_3_quickadd_v2") && mealsToday.length === 0 ? (
+              <TodayQuickLogStrip
+                userTier={userTier}
+                onOpenSearch={() => setSearchOpen(true)}
+                onOpenVoice={handleOpenVoiceLog}
+                onOpenPhoto={handleOpenPhotoLog}
+                onOpenBarcode={() => setBarcodeOpen(true)}
+                cardColor={colors.card}
+                cardBorderColor={colors.cardBorder}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+              />
+            ) : null}
           </>
         )}
 
@@ -3055,20 +3216,11 @@ export default function TrackerScreen() {
             already met) so we never have two aspirational prompts on
             screen at the same time. The Quick Add accordion stays
             collapsed by default so it doesn't add weight. */}
-        {viewMode === "day" &&
-          isToday &&
-          eatAgainSuggestion &&
-          !eatAgainDismissedForToday &&
-          !(remaining > 0) && (
-            <TodayEatAgainBanner
-              suggestion={eatAgainSuggestion}
-              slot={currentSlotFromTime}
-              textColor={colors.text}
-              textSecondaryColor={colors.textSecondary}
-              onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
-              onDismiss={dismissEatAgain}
-            />
-          )}
+        {/* B4 Phase 3a (2026-04-27): eat-again block moved to top-of-feed,
+            above the hero. Original location was here, between Quick
+            add and Meals; the prior comment described balancing eat-again
+            vs deficit insight via the `!(remaining > 0)` gate, which we
+            kept. Web parallel ships in NutritionTracker.tsx. */}
 
         {/* Audit M4 (2026-04-18) — Quick add CTA above Meals.
             Default collapsed on first run; user's last open/closed choice

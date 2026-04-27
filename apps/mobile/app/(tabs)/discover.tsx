@@ -18,7 +18,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Search, Utensils, Flame, Beef, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
+import { Search, Utensils, Flame, Beef, Wheat, Droplets, Leaf, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
@@ -27,8 +27,12 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
+import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
 
-const FILTERS = ["For You", "Popular", "Quick", "High Protein", "Low Carb"];
+// B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
+// to recipes whose creator_id is in the set the user follows. Empty
+// when the user follows nobody yet — copy points them at the next step.
+const FILTERS = ["For You", "Following", "Popular", "Quick", "High Protein", "Low Carb"];
 
 /* ── Icon Box (local helper matching prototype) ── */
 function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
@@ -70,6 +74,44 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
+
+  // B5 Phase 2c (2026-04-27) — set of creator_ids the current user
+  // follows. Used by the "Following" filter pill to hide recipes that
+  // aren't from a followed creator. Refreshes whenever the user signs
+  // in / out, and on every tab focus so a follow performed on a recipe
+  // detail screen (which doesn't unmount Discover) is reflected the
+  // moment the user returns to the Discover tab.
+  //
+  // Journey-architect 2026-04-27 Top Broken Journey #4 — pre-fix this
+  // was `useEffect([userId])` which ran once per mount; following a
+  // creator from the recipe detail screen left the Following filter
+  // empty until app restart. Pinned by `discoverFollowsFocusRefresh.test.ts`.
+  const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(new Set());
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) {
+        setFollowedCreatorIds(new Set());
+        return;
+      }
+      let cancelled = false;
+      (async () => {
+        const { data } = await supabase
+          .from("follows")
+          .select("creator_id")
+          .eq("user_id", userId);
+        if (cancelled || !Array.isArray(data)) return;
+        const ids = new Set<string>();
+        for (const row of data) {
+          const id = (row as { creator_id?: string | null }).creator_id;
+          if (typeof id === "string") ids.add(id);
+        }
+        setFollowedCreatorIds(ids);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [userId]),
+  );
 
   // 2026-04-20 prototype port — per-card fit-percent pill needs the
   // user's daily macro targets. We pull once per mount; failure or
@@ -168,10 +210,33 @@ export default function DiscoverScreen() {
   );
 
   const filtered = recipes.filter((r) => {
-    // Search filter
-    if (search.trim() && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+    // Search filter — tokenized AND match across title + description +
+    // creator + source. Pre-fix this was `title.includes(search)`, which
+    // required the exact substring; "wasabi katsu curry" failed when the
+    // title was "Katsu Curry by Wasabi" (tokens not contiguous).
+    if (
+      search.trim() &&
+      !recipeSearchMatch(
+        {
+          title: r.title,
+          description: (r as { description?: string | null }).description ?? null,
+          creatorName: r.creatorName ?? null,
+          source: r.source ?? null,
+        },
+        search,
+      )
+    ) {
+      return false;
+    }
     // Pill filter
     if (filter === "For You") return true;
+    // B5 Phase 2c (2026-04-27) — Following filters to recipes whose
+    // creator_id is in the user's follow set. Recipes without a
+    // curated creator_id (imports, user-created) never match this
+    // filter, which is correct — Following is creator-scoped.
+    if (filter === "Following") {
+      return r.creatorId != null && followedCreatorIds.has(r.creatorId);
+    }
     // Popular — real filter (was `|| true`, which silently disabled
     // the gate; ui-critic flagged 2026-04-20).
     if (filter === "Popular") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
@@ -269,10 +334,40 @@ export default function DiscoverScreen() {
             >
               {decodeEntities(item.title)}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
-              {item.creatorName || item.source || ""}
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+            {/* B5-2a-followup (2026-04-27) — when the recipe has a curated
+                creator_id, the byline becomes a tappable deeplink to the
+                creator profile page. Native Pressable wraps the same
+                Text so the visual treatment is unchanged; non-curated
+                rows render as plain Text (no creatorId → no link). */}
+            {item.creatorId ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  router.push(`/creator/${item.creatorId}`);
+                }}
+                hitSlop={6}
+                style={{ marginTop: 4 }}
+              >
+                <Text
+                  style={{ fontSize: 12, color: colors.textSecondary, textDecorationLine: "underline" }}
+                  numberOfLines={1}
+                >
+                  {item.creatorName || item.source || ""}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
+                {item.creatorName || item.source || ""}
+              </Text>
+            )}
+            {/* Polish (2026-04-25 visual-qa): pre-fix, only kcal and
+                protein had icons — carbs and fat were tacked onto the
+                protein row as plain text ("Xg P · Yg C · Zg F"). Tester
+                feedback: "on the discover page protein has an icon but
+                none of the other macro nutrients do". Each macro now
+                gets its own icon + value pair, matching the prototype's
+                visual treatment. Fibre joins when the recipe carries it. */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Flame size={11} color={MacroColors.calories} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
@@ -282,9 +377,29 @@ export default function DiscoverScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Beef size={11} color={MacroColors.protein} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein}g P · {carbs}g C · {fat}g F
+                  {protein}g
                 </Text>
               </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Wheat size={11} color={MacroColors.carbs} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {carbs}g
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Droplets size={11} color={MacroColors.fat} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {fat}g
+                </Text>
+              </View>
+              {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Leaf size={11} color={Accent.success} />
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                    {Math.round((item.fiberG ?? 0) * 10) / 10}g
+                  </Text>
+                </View>
+              ) : null}
               {item.cookTime ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Clock size={11} color={colors.textTertiary} />

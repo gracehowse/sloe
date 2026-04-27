@@ -489,13 +489,14 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - PARITY: web `QuickAddPanel` shows the same four tabs inline above the Meals section on Today. Same prop contract (`byDay`, `activeSlot`, `supabase`, `userId`, `onLog`, `onLogSavedMeal`, `onOpenSaveCombo`, `savedMealsRefreshToken`, `defaultTab`), same tab order, same empty-state copy, same accessibility labels. **Divergent behaviour is a regression, not a style choice** (see `docs/product/web-mobile-parity-scope.md`).
 
 ### 7.14b Eat again card
-- EXP: on Today (only when `isToday` is true), if `computeEatAgainForSlot(byDay, currentSlotFromTime, now)` returns a row, a banner appears above the meal slots. Header "EAT AGAIN", body shows title + `N kcal · Pg Cg Fg · into {slot}`.
+- EXP: on Today (only when `isToday` is true), if `computeEatAgainForSlot(byDay, currentSlotFromTime, now)` returns a row, a banner appears **above the calorie hero** (between the date header and the hero ring). Header "EAT AGAIN", body shows title + `N kcal · Pg Cg Fg · into {slot}`. (B4 Phase 3a, 2026-04-27 — `docs/specs/2026-04-27-b4-today-screen-phase3.md`. Pre-fix the banner sat below streak/fasting/steps cards; the repositioning fronts the highest-value tap when the day's budget is met.)
 - EXP: `LOG` button logs the suggestion into the slot matching the current clock time (Breakfast < 10h, Lunch < 14h, Snacks < 17h, else Dinner).
 - EXP: `×` dismiss writes today's date-key to AsyncStorage `suppr-eat-again-dismissed`; banner stays hidden until the next local day.
-- NEG: no prior days with a matching slot → banner hidden.
+- NEG: no prior days with a matching slot → banner hidden; no zero-height placeholder.
+- NEG: budget remaining > 0 → banner hidden (existing pragmatic timing rule — eat-again is a "you've still room for X" surface).
 - NEG: only today has that slot → banner hidden (today is explicitly excluded so "eat again" doesn't suggest the meal the user just logged).
 - EDGE: viewing a past or future day (`isToday=false`) → banner hidden.
-- PARITY: web shows the same banner at the top of the Day view, dismissed state persisted in `localStorage` under the same key.
+- PARITY: web shows the same banner at the top of the Day view (`src/app/components/NutritionTracker.tsx` between `TodayDateHeader` and `TodayHeroStats`), dismissed state persisted in `localStorage` under the same key.
 
 ### 7.14d Usual meals (saved bundles — Batch 2.6 + Ship M1 copy)
 Components: web `suppr/SaveMealDialog`, `suppr/SavedMealsTab`, `suppr/QuickAddPanel`; mobile `SaveMealSheet.tsx` + `QuickAddPanel.tsx` (first-class component as of audit H1, 2026-04-18 — previously inline in `app/(tabs)/index.tsx`). Shared helpers: `src/lib/nutrition/savedMeals.ts`, `savedMealsLogic.ts`.
@@ -735,12 +736,14 @@ Component: `apps/mobile/components/HydrationStimulantsCard.tsx`. Rendered on the
 - EDGE: long query → "No results for …".
 
 ### 8.3 Filter pills
-- For You / Popular / Quick / High Protein / Low Carb (single-select).
+- For You / Following / Popular / Quick / High Protein / Low Carb (single-select).
 - FLAG **theatrical**: Popular currently uses `(r.saves ?? 0) >= 50 || true` → always true. Either implement or remove.
+- Following: filters to recipes whose `creator_id` is in the user's follow set. Tab focus refreshes the follow set via `useFocusEffect` so a follow performed from a recipe-detail screen is reflected the moment the user returns to Discover (journey-architect 2026-04-27 Top Broken Journey #4 — pre-fix the follow set was loaded once on mount via `useEffect([userId])` and stayed stale until app restart).
 - Quick: cookTimeMin ≤ 20.
 - High Protein: protein ≥ 25g.
 - Low Carb: carbs ≤ 30g.
 - EDGE: search + filter both applied.
+- EDGE: signed-out user → empty follow set; Following filter renders the empty state.
 
 ### 8.4 Import CTA → `/import-shared`.
 
@@ -1192,6 +1195,14 @@ Tabs: Ingredients / Steps / Nutrition. Plus save heart, share, cook mode, log to
 ### 18.6 UAT: 17pt step text readable from arm's length; verify XXL.
 - FLAG: Exit has no confirmation; consider for accidental taps.
 
+### 18.7 Done-state "Log this meal" CTA (journey-architect 2026-04-27)
+- EXP: tapping Next on the final step advances to the Done state. The Done state renders, in order: 🎉 emoji → "Enjoy your meal!" → recipe title → primary "Log this meal" button → ghost "Skip — back to recipe" link.
+- EXP: tap "Log this meal" → `router.replace` to `/recipe/<id>?autoLog=1`. Recipe detail screen mounts and the existing `autoLog=1` handler at `recipe/[id].tsx:186` writes the meal to today's journal automatically.
+- EXP: PostHog event `cook_mode_log_tapped` fires with `{ recipeId }` payload before the navigation.
+- EXP: tap "Skip — back to recipe" → `router.back()` returns to recipe detail with no journal write.
+- NEG: cook mode opened without a `recipeId` query param (defensive — current Discover → recipe → cook chain always supplies one) → "Log this meal" falls through to `router.back()` rather than crashing.
+- PARITY: web `CookMode.tsx` done state has the same "Log this meal" / "Logged" two-state CTA; mobile mirrors the entry CTA but does not show a post-log "View in tracker" follow-up because mobile re-enters the recipe detail screen which already shows the new journal row.
+
 ---
 
 ## 19. Create recipe — `app/create-recipe.tsx`
@@ -1376,12 +1387,25 @@ Metric in {calories, protein, streak}.
 ### 30.1 Fields: display name, calories/protein/carbs/fat/fiber/water (decimal-pad), dietary preference chips multi-select.
 
 ### 30.2 Save: upsert.
-- NEG calories 0 → fallback to default or error.
-- NEG fail → Alert.
+- EXP calories > 0 + every numeric field finite → Save enabled. Upsert writes target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, dietary, target_calories_set_at (ISO string now), target_calories_source = "user".
+- NEG calories 0 or empty → `canSave` false → Save button visually disabled (opacity 0.5) and `onPress` returns early. No upsert is sent. (parity spec 2026-04-27 P0-1)
+- NEG any other field empty / non-numeric → `canSave` false; Save disabled. (parity spec 2026-04-27 P1-1)
+- NEG fail → Alert "Couldn't save. Changes are kept locally."
+- EXP success → Alert "Saved. Your targets have been updated."; AsyncStorage key `suppr.profile.targets.dirty` set to `"1"`. The Today tab's `useFocusEffect` reads + clears the flag and re-runs `loadProfileTargets`, so the calorie ring reflects the new target on next tab focus without app restart. (parity spec 2026-04-27 P0-2)
 
-### 30.3 Recalculate from stats — re-runs `resolveTargets` from height/weight/activity; confirms overwrite.
+### 30.3 Cancel button (parity spec 2026-04-27 P1-2)
+- EXP Cancel sits next to Save. Tap reverts every field (display name, all six target fields, dietary chips) to the values last loaded from `profiles` (or last saved). No Supabase round-trip.
+- EXP Cancel is non-destructive — pressing it never writes to Supabase, never clears the dirty flag.
+- EDGE Cancel before any load completes → no-op (snapshot ref is null until `loadProfile` succeeds).
 
-### 30.4 UAT: macro fields show calorie equivalence (e.g. "Protein: 150g = 600 kcal"). Verify presence.
+### 30.4 Provenance stamp on save (parity spec 2026-04-27 §5.3)
+- EXP every successful save stamps `target_calories_source = "user"` and `target_calories_set_at = new Date().toISOString()` regardless of which field the user changed (calorie or macro).
+- EXP the Maintenance Recalibrate Digest CTA on Progress is suppressed for 14 days after any user-source save (per `progress.md:251-253`).
+- NEG the legacy `if (nextCalories != null)` gate is removed; tests pin its absence (`journeyFixes20260427.test.ts`).
+
+### 30.5 Recalculate from stats — re-runs `resolveTargets` from height/weight/activity; confirms overwrite.
+
+### 30.6 UAT: macro fields show calorie equivalence (e.g. "Protein: 150g = 600 kcal"). Verify presence.
 
 ---
 
@@ -1392,7 +1416,9 @@ Metric in {calories, protein, streak}.
 
 ### 31.2 Standard units always available: g / oz / tbsp / tsp / cup / ml.
 
-### 31.3 Save all writes verified ingredients back; recomputes recipe macros. NEG net fail → Alert.
+### 31.3 Save all writes verified ingredients back; recomputes recipe macros.
+- EXP success → haptic notification, `router.replace(`/recipe/${recipeId}`)` returns the user to recipe detail so they can immediately log without manually backing out. (journey-architect 2026-04-27 Top Broken Journey #3.)
+- NEG net fail → `Alert.alert("Save failed", result.error)`; user stays on the verify screen with edits preserved so they can retry.
 
 ### 31.4 UAT: low-confidence flagged amber until resolved.
 

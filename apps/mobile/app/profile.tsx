@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -25,6 +26,7 @@ import {
   normaliseDietaryFromProfile,
   type DietaryPreferenceId,
 } from "../../../src/constants/dietaryPreferences";
+import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -44,6 +46,38 @@ export default function ProfileScreen() {
   const [fiber, setFiber] = useState(String(NUTRITION_DEFAULTS.fiber));
   const [water, setWater] = useState(String(NUTRITION_DEFAULTS.water));
   const [dietary, setDietary] = useState<DietaryPreferenceId[]>([]);
+  // P1-2 (parity spec 2026-04-27) — snapshot the last-loaded values so
+  // the Cancel button can revert without a Supabase round-trip. Updated
+  // every time `loadProfile` fills the form. Web parity:
+  // `Profile.tsx` uses `displayTargets` as the cancel anchor.
+  const loadedSnapshotRef = useRef<{
+    displayName: string;
+    calories: string;
+    protein: string;
+    carbs: string;
+    fat: string;
+    fiber: string;
+    water: string;
+    dietary: DietaryPreferenceId[];
+  } | null>(null);
+
+  // P1-1 + 5.2 (parity spec 2026-04-27) — Save guard mirrors web
+  // `Profile.tsx:257-267` exactly: every numeric field must parse to a
+  // finite number and `calories > 0`. Save button is disabled until the
+  // guard passes. Pre-fix, mobile accepted any string including `0` and
+  // empty (silently writing `null` to `target_calories`).
+  const canSave = useMemo(() => {
+    const c = Number(calories);
+    return (
+      Number.isFinite(c) &&
+      c > 0 &&
+      Number.isFinite(Number(protein)) &&
+      Number.isFinite(Number(carbs)) &&
+      Number.isFinite(Number(fat)) &&
+      Number.isFinite(Number(fiber)) &&
+      Number.isFinite(Number(water))
+    );
+  }, [calories, protein, carbs, fat, fiber, water]);
 
   const toggleDietary = useCallback((id: DietaryPreferenceId) => {
     setDietary((prev) =>
@@ -107,14 +141,29 @@ export default function ProfileScreen() {
     inputGrid: { flexDirection: "row", gap: Spacing.md },
     inputHalf: { flex: 1, gap: Spacing.xs },
 
+    saveRow: {
+      flexDirection: "row",
+      gap: Spacing.md,
+      marginTop: Spacing.sm,
+    },
     saveBtn: {
+      flex: 1,
       backgroundColor: Accent.primary,
       borderRadius: Radius.md,
       paddingVertical: 16,
       alignItems: "center",
-      marginTop: Spacing.sm,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    cancelBtn: {
+      flex: 1,
+      backgroundColor: "transparent",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    cancelBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },
 
     dietaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     dietaryChip: {
@@ -157,7 +206,8 @@ export default function ProfileScreen() {
       .eq("id", userId)
       .maybeSingle();
     if (data) {
-      setDisplayName(data.display_name ?? "");
+      const dn = data.display_name ?? "";
+      setDisplayName(dn);
       const d = data as Record<string, unknown>;
       const resolved = resolveTargets(
         {
@@ -178,14 +228,33 @@ export default function ProfileScreen() {
           plan_pace: typeof d.plan_pace === "string" ? d.plan_pace : null,
         },
       );
-      setCalories(String(resolved.calories));
-      setProtein(String(resolved.protein));
-      setCarbs(String(resolved.carbs));
-      setFat(String(resolved.fat));
-      setFiber(String(resolved.fiber));
+      const cal = String(resolved.calories);
+      const pro = String(resolved.protein);
+      const car = String(resolved.carbs);
+      const fa = String(resolved.fat);
+      const fi = String(resolved.fiber);
+      setCalories(cal);
+      setProtein(pro);
+      setCarbs(car);
+      setFat(fa);
+      setFiber(fi);
       const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
-      setWater(String(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water));
-      if (data.dietary) setDietary(normaliseDietaryFromProfile(data.dietary));
+      const waterStr = String(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
+      setWater(waterStr);
+      const diet = data.dietary ? normaliseDietaryFromProfile(data.dietary) : [];
+      if (data.dietary) setDietary(diet);
+      // Snapshot for Cancel — copy primitives + a fresh array clone so
+      // that subsequent toggles don't mutate the snapshot.
+      loadedSnapshotRef.current = {
+        displayName: dn,
+        calories: cal,
+        protein: pro,
+        carbs: car,
+        fat: fa,
+        fiber: fi,
+        water: waterStr,
+        dietary: [...diet],
+      };
     }
     setLoading(false);
   }, [userId]);
@@ -199,35 +268,91 @@ export default function ProfileScreen() {
 
   const save = async () => {
     if (!userId) return;
+    // P1-1 (parity spec 2026-04-27) — `canSave` is the integrity gate.
+    // The Save button is disabled while `!canSave`, but defend against
+    // the keyboard "return" path or programmatic invocation by checking
+    // again here.
+    if (!canSave) return;
     setSaving(true);
-    const nextCalories = Number(calories) || null;
     const profileData: Record<string, unknown> = {
       id: userId,
       display_name: displayName.trim() || null,
-      target_calories: nextCalories,
-      target_protein: Number(protein) || null,
-      target_carbs: Number(carbs) || null,
-      target_fat: Number(fat) || null,
-      target_fiber_g: Number(fiber) || null,
-      target_water_ml: Number(water) || null,
+      target_calories: Number(calories),
+      target_protein: Number(protein),
+      target_carbs: Number(carbs),
+      target_fat: Number(fat),
+      target_fiber_g: Number(fiber),
+      target_water_ml: Number(water),
       dietary: dietary.length > 0 ? dietary : null,
+      // A2 provenance (parity spec 2026-04-27 §5.3) — stamp `user` source
+      // unconditionally on every successful save. Pre-fix, this was
+      // gated on `nextCalories != null` (`Number(calories) || null`),
+      // which silently dropped the stamp when a user typed `0` or
+      // cleared the field — leaving `source` at the prior value
+      // (`onboarding`/`recompute`) and breaking the Maintenance
+      // Recalibrate 14-day suppression contract. The `canSave` guard
+      // above already guarantees `calories > 0`, so the stamp is
+      // honest. (migration 20260427110000)
+      target_calories_set_at: new Date().toISOString(),
+      target_calories_source: "user",
     };
-    // A2 provenance — only stamp when a real calorie value is written, else
-    // we'd be lying that the user "set" a null. (migration 20260427110000)
-    if (nextCalories != null) {
-      profileData.target_calories_set_at = new Date().toISOString();
-      profileData.target_calories_source = "user";
-    }
     // Use upsert so it works for both new and existing profiles
     const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });
-    setSaving(false);
     if (error) {
+      setSaving(false);
       console.error("[Profile] save error:", JSON.stringify(error));
       Alert.alert("Error", "Couldn't save. Changes are kept locally.");
-    } else {
-      Alert.alert("Saved", "Your targets have been updated.");
+      return;
     }
+    // P0-2 (parity spec 2026-04-27 §5.5) — write a dirty flag so the
+    // Today tab's `useFocusEffect` can re-read targets immediately on
+    // next focus. Mobile has no `AppDataContext` setter equivalent to
+    // web's `setNutritionTargets`; the AsyncStorage flag is the
+    // sanctioned fallback (option b in the spec). Today's existing
+    // per-focus `loadProfileTargets` already covers this; the flag is
+    // forward-defensive against future short-circuiting and gives us a
+    // single source of truth for "the user just edited targets". A
+    // write failure here is non-fatal — the next Today focus will
+    // still re-read targets via the unconditional `loadProfileTargets`
+    // call.
+    try {
+      await AsyncStorage.setItem(PROFILE_TARGETS_DIRTY_KEY, "1");
+    } catch {
+      /* non-fatal — Today re-reads on focus regardless */
+    }
+    // Refresh the snapshot so a subsequent Cancel reverts to the
+    // freshly-saved values, not the pre-edit baseline.
+    loadedSnapshotRef.current = {
+      displayName,
+      calories,
+      protein,
+      carbs,
+      fat,
+      fiber,
+      water,
+      dietary: [...dietary],
+    };
+    setSaving(false);
+    Alert.alert("Saved", "Your targets have been updated.");
   };
+
+  // P1-2 (parity spec 2026-04-27) — Cancel reverts every state value to
+  // the last-loaded (or last-saved) snapshot. No Supabase round-trip;
+  // the snapshot ref is updated on `loadProfile` and on successful
+  // save. Web parity: `Profile.tsx` Cancel button restores
+  // `manualTargets` to `displayTargets` and resets `activityAdjustPref`.
+  const cancel = useCallback(() => {
+    const snap = loadedSnapshotRef.current;
+    if (!snap) return;
+    setDisplayName(snap.displayName);
+    setCalories(snap.calories);
+    setProtein(snap.protein);
+    setCarbs(snap.carbs);
+    setFat(snap.fat);
+    setFiber(snap.fiber);
+    setWater(snap.water);
+    setDietary([...snap.dietary]);
+  }, []);
 
   if (loading) {
     return (
@@ -307,9 +432,34 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Pressable style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-            <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Save Targets"}</Text>
-          </Pressable>
+          {/* P1-1 + P1-2 (parity spec 2026-04-27) — Save is disabled
+              while `!canSave` (mirrors web `Profile.tsx:257`); Cancel
+              reverts every field to the last-loaded snapshot so the
+              user has a one-tap undo. */}
+          <View style={styles.saveRow}>
+            <Pressable
+              style={styles.cancelBtn}
+              onPress={cancel}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel and revert target edits"
+              disabled={saving}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.saveBtn,
+                (!canSave || saving) && { opacity: 0.5 },
+              ]}
+              onPress={save}
+              disabled={!canSave || saving}
+              accessibilityRole="button"
+              accessibilityLabel="Save target edits"
+              accessibilityState={{ disabled: !canSave || saving }}
+            >
+              <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Save Targets"}</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Dietary Preferences */}
