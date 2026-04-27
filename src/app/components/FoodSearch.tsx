@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
+import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
+import { matchGenericFood } from "@/lib/nutrition/genericFoods";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   isBareGenericNounRow,
@@ -90,7 +92,10 @@ type SearchResult = {
    * TestFlight `APo0qS9vcFvmBJEJJ_-61YA` (2026-04-19).
    */
   primaryServing?: PrimaryServing | null;
-  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+  /** F-73 (2026-04-27): "GenericBeverage" / "GenericFood" rows are
+   *  seeded in-memory from `src/lib/nutrition/genericBeverages.ts` /
+   *  `genericFoods.ts` and need no on-tap fetch. */
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "GenericBeverage" | "GenericFood";
   _fdcId?: number;
   _offCode?: string;
   /** Edamam food identifier (string, not numeric). */
@@ -480,6 +485,85 @@ function customFoodToSearchResult(food: CustomFood): SearchResult {
   };
 }
 
+/**
+ * F-73 (2026-04-27, web parity follow-up) — convert a generic-beverage /
+ * generic-food alias hit into a SearchResult. Web mirror of the mobile
+ * `genericBeverageToUnifiedResult` / `genericFoodToUnifiedResult`
+ * helpers in `apps/mobile/lib/verifyRecipe.ts`. Returns `null` when no
+ * match — keeps the call site one-liner-friendly.
+ *
+ * The row is `verified: true` so the trust-weighted ranker treats it
+ * like a USDA Foundation row (high precedence). It's also injected
+ * into `mergeAndDedup` BEFORE externals so the user sees it first
+ * regardless of how USDA / OFF / Edamam scored their own hits.
+ */
+function buildGenericMatchRow(query: string): SearchResult | null {
+  const q = query.trim();
+  if (!q) return null;
+  const beverage = matchGenericBeverage(q);
+  if (beverage) {
+    const servingG = beverage.servingMl; // 1ml ≈ 1g for our beverages
+    return {
+      key: `generic-beverage:${beverage.id}`,
+      name: beverage.name,
+      subtitle: beverage.subtitle,
+      _source: "GenericBeverage",
+      verified: true,
+      macrosPer100g: {
+        calories: beverage.per100ml.calories,
+        protein: beverage.per100ml.protein,
+        carbs: beverage.per100ml.carbs,
+        fat: beverage.per100ml.fat,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+        caffeineMgPer100g: beverage.caffeineMgPer100ml,
+        alcoholGPer100g: beverage.alcoholGPer100ml ?? 0,
+      },
+      calsPer100g: beverage.per100ml.calories,
+      primaryServing: {
+        label: `${beverage.servingMl} ml`,
+        grams: servingG,
+        kcal: Math.round((beverage.per100ml.calories * servingG) / 100),
+        protein: Math.round((beverage.per100ml.protein * servingG) / 100 * 10) / 10,
+        carbs: Math.round((beverage.per100ml.carbs * servingG) / 100 * 10) / 10,
+        fat: Math.round((beverage.per100ml.fat * servingG) / 100 * 10) / 10,
+      },
+    };
+  }
+  const food = matchGenericFood(q);
+  if (food) {
+    return {
+      key: `generic-food:${food.id}`,
+      name: food.name,
+      subtitle: food.subtitle,
+      _source: "GenericFood",
+      verified: true,
+      macrosPer100g: {
+        calories: food.per100g.calories,
+        protein: food.per100g.protein,
+        carbs: food.per100g.carbs,
+        fat: food.per100g.fat,
+        fiberG: food.per100g.fiberG,
+        sugarG: food.per100g.sugarG,
+        sodiumMg: food.per100g.sodiumMg,
+        caffeineMgPer100g: 0,
+        alcoholGPer100g: 0,
+      },
+      calsPer100g: food.per100g.calories,
+      primaryServing: {
+        label: food.servingLabel,
+        grams: food.servingG,
+        kcal: Math.round((food.per100g.calories * food.servingG) / 100),
+        protein: Math.round((food.per100g.protein * food.servingG) / 100 * 10) / 10,
+        carbs: Math.round((food.per100g.carbs * food.servingG) / 100 * 10) / 10,
+        fat: Math.round((food.per100g.fat * food.servingG) / 100 * 10) / 10,
+      },
+    };
+  }
+  return null;
+}
+
 export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initialAmount, initialUnit, originalDescription, macroTargets, macroConsumed, supabase, userId }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -578,7 +662,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
           customPromise,
         ]).then(([usda, off, edamam, custom]) => {
           const rankQ = effectiveFoodSearchQuery(initialQuery);
-          const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
+          const generic = buildGenericMatchRow(initialQuery);
+          const merged = mergeAndDedup(rankQ, usda, off, edamam, custom, 25, generic ? [generic] : []);
           setResults(merged);
           setLoading(false);
           hasMoreRef.current = usda.length + off.length + edamam.length > 0;
@@ -616,7 +701,8 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
         searchEdamam(q, 1),
         customPromise,
       ]);
-      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom);
+      const generic = buildGenericMatchRow(q);
+      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom, 25, generic ? [generic] : []);
       setResults(merged);
       setLoading(false);
       hasMoreRef.current = usda.length + off.length + edamam.length > 0;
@@ -631,6 +717,14 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     edamam: SearchResult[] = [],
     customs: CustomFood[] = [],
     limit: number = 25,
+    /**
+     * F-73 (2026-04-27): seeded generic-beverage / generic-food rows
+     * injected BEFORE externals so "cortado" / "apple" / "chicken
+     * breast" land at the top regardless of how USDA / OFF / Edamam
+     * scored their own hits. Custom foods still outrank generics —
+     * a user's saved "My Cortado" wins over the seeded one.
+     */
+    generics: SearchResult[] = [],
   ): SearchResult[] {
     // Custom foods always surface first, ranked by the same relevance
     // scorer so tapping a search also ordered by name match — never by
@@ -671,12 +765,17 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
       });
     const seen = new Set<string>();
     const deduped: SearchResult[] = [];
-    for (const r of [...customResults, ...external]) {
+    for (const r of [...customResults, ...generics, ...external]) {
       // Don't collapse custom rows into USDA/OFF/Edamam rows even when names
-      // collide — the user explicitly saved the custom version.
+      // collide — the user explicitly saved the custom version. Same for
+      // GenericBeverage / GenericFood rows: the seeded row carries our
+      // curated macros + portion, so we keep it even if a USDA Branded
+      // row of the same name shows up below.
       const norm = r._source === "CUSTOM"
         ? `custom:${r._custom?.id ?? r.key}`
-        : r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        : r._source === "GenericBeverage" || r._source === "GenericFood"
+          ? `generic:${r.key}`
+          : r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
       if (seen.has(norm)) continue;
       seen.add(norm);
       deduped.push(r);
@@ -785,6 +884,31 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
     if (item._source === "CUSTOM" && item._custom) {
       setLoadingKey(null);
       openCustomFoodPreview(item._custom);
+      return;
+    }
+    // F-73 (2026-04-27, follow-up) — Generic beverage / food rows ship
+    // with macros + primaryServing in-row, so no fetch is required.
+    // Project the source to "USDA" at the preview boundary because the
+    // macros came from USDA Foundation / SR Legacy averages, and that
+    // keeps downstream attribution ("USDA FoodData Central") honest.
+    // Without this branch the tap was a no-op (Grace, 2026-04-27).
+    if (
+      (item._source === "GenericBeverage" || item._source === "GenericFood") &&
+      item.macrosPer100g
+    ) {
+      setLoadingKey(null);
+      const portions = buildPortions([], item.primaryServing);
+      const { portion, quantity } = item.primaryServing
+        ? { portion: portions[0], quantity: 1 }
+        : resolveInitialPortion(portions, initialAmount, initialUnit);
+      setPreview({
+        name: item.name,
+        source: "USDA",
+        macrosPer100g: item.macrosPer100g,
+        portions,
+        chosenPortion: portion,
+        quantity,
+      });
       return;
     }
     if (item._source === "USDA" && item._fdcId) {

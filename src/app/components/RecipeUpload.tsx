@@ -22,6 +22,7 @@ import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
+import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
@@ -631,7 +632,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     const id = searchParams.get("editRecipe");
     if (!id) return;
     void loadRecipeForEdit(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [searchParams]);
 
   const addIngredient = () => {
@@ -901,8 +902,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       toast.error("Confirm you created this recipe and have the right to share it before publishing.");
       return;
     }
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
+    // Polish (2026-04-25): if the user (or an importer) supplied an ALL-CAPS
+    // title, store as Title Case. Mixed-case inputs pass through untouched.
+    const trimmedTitle = normalizeRecipeTitle(title.trim());
+    if (!trimmedTitle || trimmedTitle === "Untitled recipe") {
       toast.error("Add a recipe title first.");
       return;
     }

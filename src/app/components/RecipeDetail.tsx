@@ -12,6 +12,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { CookMode } from "./CookMode.tsx";
+import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { ConfidenceDot } from "./suppr/confidence-dot";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
@@ -41,6 +42,8 @@ import {
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
+import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
+import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
@@ -139,6 +142,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     addNotification,
     notificationPrefs,
     nutritionTargets,
+    netCarbsLensEnabled,
   } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
@@ -596,11 +600,15 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         fat: displayRecipe.fat,
       };
   const viewScale = servings / Math.max(1, baseServings);
+  // Polish (2026-04-25) — formatMacroValue centralises per-macro rounding so
+  // protein/carbs/fat get 1-decimal precision (no more "105.80000000000001g")
+  // while calories stay integer. Single source of truth lives at
+  // src/lib/nutrition/formatMacro.ts.
   const scaledMacros = {
-    calories: Math.round(perServingBase.calories * viewScale),
-    protein: Math.round(perServingBase.protein * viewScale),
-    carbs: Math.round(perServingBase.carbs * viewScale),
-    fat: Math.round(perServingBase.fat * viewScale),
+    calories: formatMacroValue(perServingBase.calories * viewScale, "calories"),
+    protein: formatMacroValue(perServingBase.protein * viewScale, "protein"),
+    carbs: formatMacroValue(perServingBase.carbs * viewScale, "carbs"),
+    fat: formatMacroValue(perServingBase.fat * viewScale, "fat"),
   };
 
   // Scaled micronutrients — from ingredient sum or recipe-level fallback
@@ -1061,8 +1069,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           );
         })()}
 
-        {!isCatalogRecipe && dbDescription && (
-          <p className="text-muted-foreground leading-relaxed">{dbDescription}</p>
+        {!isCatalogRecipe && dbDescription && sanitizeRecipeDescription(dbDescription) && (
+          <p className="text-muted-foreground leading-relaxed">
+            {sanitizeRecipeDescription(dbDescription)}
+          </p>
         )}
 
         {/*
@@ -1278,9 +1288,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 unit: "g",
               },
               carbs: {
-                label: "Carbs",
-                cur: scaledMacros.carbs,
-                tgt: nutritionTargets.carbs,
+                // P3-30 (2026-04-25): apply net-carbs lens. Refuses
+                // "Net carbs" label when fibre is unknown.
+                label: carbsLabel(scaledMicros.fiberG, netCarbsLensEnabled),
+                cur: netCarbsForRow(scaledMacros.carbs, scaledMicros.fiberG, netCarbsLensEnabled),
+                tgt: netCarbsForRow(nutritionTargets.carbs, nutritionTargets.fiber, netCarbsLensEnabled),
                 color: "var(--macro-carbs)",
                 unit: "g",
               },
@@ -1315,12 +1327,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             };
             const m = macroMap[macro];
             if (!m) return null;
-            const displayAmount =
-              macro === "sugar" || macro === "fiber"
-                ? Math.round(m.cur * 10) / 10
-                : macro === "sodium"
-                  ? Math.round(m.cur)
-                  : Math.round(m.cur);
+            // Polish (2026-04-25) — route per-macro rounding through the
+            // shared helper. protein/carbs/fat now keep 1-decimal precision
+            // (no more "105.80000000000001g"), calories+sodium stay integer.
+            const displayAmount = formatMacroValue(m.cur, macro);
             return (
               <div
                 key={macro}
@@ -1514,7 +1524,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               {[
                 { label: "Calories", value: `${Math.round(scaledMacros.calories)}`, unit: "kcal" },
                 { label: "Protein", value: `${Math.round(scaledMacros.protein)}`, unit: "g" },
-                { label: "Carbs", value: `${Math.round(scaledMacros.carbs)}`, unit: "g" },
+                {
+                  // P3-30: net-carbs lens for the macro chip strip too.
+                  label: carbsLabel(scaledMicros.fiberG, netCarbsLensEnabled),
+                  value: `${Math.round(netCarbsForRow(scaledMacros.carbs, scaledMicros.fiberG, netCarbsLensEnabled))}`,
+                  unit: "g",
+                },
                 { label: "Fat", value: `${Math.round(scaledMacros.fat)}`, unit: "g" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-card border border-border rounded-xl p-3 text-center">

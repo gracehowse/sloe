@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -20,6 +21,12 @@ type Props = {
   strokeWidth?: number;
   trackColor: string;
   labelColor: string;
+  /**
+   * 2026-04-25: which macro this ring represents — drives display rounding
+   * via formatMacro (calories integer, protein/carbs/fat 1 decimal). Defaults
+   * to "protein" since rings are commonly used for protein/carbs/fat.
+   */
+  macro?: string;
 };
 
 export default function MacroRingSmall({
@@ -32,6 +39,7 @@ export default function MacroRingSmall({
   strokeWidth = 5,
   trackColor,
   labelColor,
+  macro = "protein",
 }: Props) {
   const r = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * r;
@@ -85,7 +93,7 @@ export default function MacroRingSmall({
           />
         </Svg>
         <Text style={{ color, fontSize: 11, fontWeight: "700" }}>
-          {Math.round(value)}
+          {formatMacro(value, macro)}
           {unit}
         </Text>
       </View>

@@ -30,7 +30,61 @@ import {
   mealPlanPortionSpreadPenalty,
 } from "./coerceRecipeMacrosForPlanning";
 
-export type SimpleRecipe = {
+/**
+ * P0-5 (2026-04-25): hard cap on the inner-day sampler. Pre-fix this was an
+ * inline `20_000` literal at `findBestMealSet`, producing 6–11 second JS
+ * thread freezes on iPhone 12 / equivalent at pool ≥ 30 recipes × 4 slots.
+ * Cap dropped to 2_000 — the existing best-fit pre-sort + 60% top-half bias
+ * inside the loop preserve plan variety at the lower count.
+ *
+ * Exported so tests can pin the value and parity tooling can compare web ↔
+ * mobile sampler effort.
+ */
+export const MEAL_PLAN_SAMPLER_CAP = 2_000;
+
+/**
+ * P1-9 (2026-04-25): web ↔ mobile parity. Pre-fix the algorithm shipped
+ * twice with divergent constants — mobile penalised recency at +100,
+ * web at +40; mobile reset the recency window every 5 days, web every
+ * 3; mobile passed `calorieBandPct: 5` at the planner call site, web
+ * defaulted to 12. Same user, same recipes, same targets → different
+ * plan. CLAUDE.md non-negotiable violation ("web and mobile must stay
+ * in sync at all times").
+ *
+ * Both algorithms now import these constants. The values adopt mobile's
+ * stricter behaviour: stronger recency penalty for variety, longer
+ * reset window so the first half of a 7-day plan stays unique, tighter
+ * macro bands so the planner pushes harder against drift.
+ *
+ * Pinned by `tests/unit/mealPlanWebMobileParity.test.ts` — that test
+ * runs the same fixture pool through both algorithms with the same
+ * seed and asserts the resulting day plans match. Reintroducing a
+ * divergence (different constant in either file, or a hardcoded value
+ * at a call site that bypasses the import) fails the test.
+ */
+export const MEAL_PLAN_RECENCY_PENALTY = 100;
+export const MEAL_PLAN_RECENCY_RESET_DAYS = 5;
+
+/** Shared default macro tolerance bands for the planner UI on both
+ *  platforms. Was 12/18 on web, hardcoded 5/15 on mobile pre P1-9.
+ *  Adopted mobile's stricter values since Suppr's pitch is precision. */
+export const DEFAULT_PLANNER_BANDS = {
+  calorieBandPct: 5,
+  carbFatBandPct: 15,
+} as const;
+
+/**
+ * P2-28 (2026-04-25): minimum recipe shape the generic sampler operates
+ * on. Both mobile (`SimpleRecipe`) and web (`RecipeCard`) include all
+ * these fields; the generic `findBestMealSet<R>` takes any `R extends
+ * MealPlanRecipe` plus a `slotFitPredicate(recipe, slot)` callback so
+ * the algorithm doesn't need to know about platform-specific
+ * slot-tag fields (`mealType` on SimpleRecipe vs `mealSlots` on
+ * RecipeCard). Closes the structural duplication between
+ * `findBestMealSet` here and `findBestSmartMealSet` in
+ * `src/lib/planning/generateMealPlan.ts`.
+ */
+export type MealPlanRecipe = {
   id: string;
   title: string;
   calories: number;
@@ -38,6 +92,9 @@ export type SimpleRecipe = {
   carbs: number;
   fat: number;
   fiberG?: number;
+};
+
+export type SimpleRecipe = MealPlanRecipe & {
   /** Slot tags from DB/UI; readonly tuples (e.g. mobile `PlannerMealSlot[]`) are accepted. */
   mealType?: string | readonly string[] | string[] | null;
 };
@@ -67,6 +124,15 @@ export type PlanMeal = {
   fiberG?: number;
   portionMultiplier?: number;
   isPlaceholder?: boolean;
+  /**
+   * P1-19 (2026-04-25): true when the recipe's macros were synthesized
+   * by `coerceMacrosWhenCaloriesButNoGrams` (kcal known, P/C/F unknown
+   * → neutral 28/42/30 split). The journal-write paths refuse rows with
+   * this flag (see `nutrition-approximation-policy.md` §A1); the
+   * planner UI surfaces an "Estimated · verify" chip on the row so the
+   * user sees the planner is showing a neutral split, not real data.
+   */
+  macrosAreEstimated?: boolean;
 };
 
 export type DayPlan = {
@@ -97,10 +163,29 @@ export const ALL_MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as cons
  * exclusion in `generateMealPlan.ts` (which removes the worst
  * offenders — recipes with no nutritional signal).
  */
+/**
+ * Polish (2026-04-25 visual-qa) — tightened from {0.2, 2.5, 0.1} to {0.5, 2.0, 0.5}.
+ * Tester feedback: "the portioning is still weird — why is one meal 0.5 when
+ * another is 1.2 — it would make sense to where possible always do 1 x portion
+ * and only where necessary and makes sense reduce the portion. also weird
+ * number of decimals."
+ *
+ * The previous wide range gave the optimizer 23 legal multipliers per slot
+ * (0.2, 0.3, …, 2.5), which let it reach for fractions like 0.3× and 1.2×
+ * that read as nonsense to humans. The new clamp gives 4: {0.5, 1, 1.5, 2}.
+ *
+ * Behavioural impact: the joint sampler defaults to 1× per slot (line 627
+ * of findBestMealSetGeneric), and `mealPlanDeviationFromOnePenalty` (×18)
+ * already penalises drift; with only 4 legal positions and 18× pressure to
+ * stay at 1×, the optimizer now lands on whole portions in the common case
+ * and only reaches for 0.5× / 1.5× / 2× when calorie / protein bands genuinely
+ * demand it. snapMultipliersTowardOneWhileFeasible continues to do its work
+ * post-fit. Pinned by tests/unit/mealPlanWebMobileParity.test.ts.
+ */
 export const PORTION_MULTIPLIER_CLAMP = {
-  min: 0.2,
-  max: 2.5,
-  step: 0.1,
+  min: 0.5,
+  max: 2.0,
+  step: 0.5,
 } as const;
 
 /** Step-round + clamp to `PORTION_MULTIPLIER_CLAMP`. */
@@ -112,7 +197,8 @@ export function clampPlannerMultiplier(raw: number): number {
   return Math.min(max, Math.max(min, stepped));
 }
 
-function mulberry32(seed: number): () => number {
+/** P2-28: exported so the web wrapper can drop its duplicate copy. */
+export function mulberry32(seed: number): () => number {
   return () => {
     let t = (seed += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -138,14 +224,36 @@ function recipeFitsSlot(recipe: SimpleRecipe, slot: string): boolean {
 
 type Macros = { calories: number; protein: number; carbs: number; fat: number; fiberG?: number };
 
-function scaleMacros(r: Macros, mult: number): Macros {
+/** P2-28: exported so the web wrapper can drop its duplicate copy. */
+export function scaleMacros(r: Macros, mult: number): Macros {
+  // P1-9 (2026-04-25): 1-decimal protein/carbs/fat for parity with the
+  // web algorithm (was integer rounding). The kcal value stays integer.
   return {
     calories: Math.round(r.calories * mult),
-    protein: Math.round(r.protein * mult),
-    carbs: Math.round(r.carbs * mult),
-    fat: Math.round(r.fat * mult),
+    protein: Math.round(r.protein * mult * 10) / 10,
+    carbs: Math.round(r.carbs * mult * 10) / 10,
+    fat: Math.round(r.fat * mult * 10) / 10,
     fiberG: r.fiberG != null ? Math.round(r.fiberG * mult * 10) / 10 : undefined,
   };
+}
+
+/**
+ * P2-28: exported scoring function so the web wrapper drops its
+ * duplicate copy. Previously web used a flat `×2` calorie out-of-band
+ * penalty + a soft `+80` per duplicate; mobile (this canonical) uses
+ * an asymmetric `×3` over / `×1.5` under penalty + a hard reject on
+ * within-day duplicates. Adopted mobile's behaviour for both
+ * platforms — better aligned with Suppr's "precision over breadth"
+ * positioning (over-target is worse for cutting users; in-day
+ * duplicates are a guarantee, not a soft preference).
+ */
+export function scoreMealSetCanonical(
+  meals: Macros[],
+  targets: PlannerTargets,
+  recipeIds: string[],
+  recentIds: Set<string>,
+): number {
+  return scoreMealSet(meals, targets, recipeIds, recentIds);
 }
 
 function scoreMealSet(
@@ -201,9 +309,10 @@ function scoreMealSet(
   const uniq = new Set(recipeIds);
   if (uniq.size < recipeIds.length) return Infinity;
 
-  // Recency penalty — strongly discourage recipes from previous days
+  // Recency penalty — strongly discourage recipes from previous days.
+  // P1-9: shared constant for web ↔ mobile parity.
   for (const id of recipeIds) {
-    if (recentIds.has(id)) e += 100;
+    if (recentIds.has(id)) e += MEAL_PLAN_RECENCY_PENALTY;
   }
 
   return e;
@@ -217,7 +326,8 @@ const SLOT_WEIGHTS: Record<string, number> = {
   snacks: 0.1,
 };
 
-function slotCalorieTargets(slots: string[], targets: PlannerTargets): number[] {
+/** P2-28: exported so the web wrapper can reuse the slot weighting. */
+export function slotCalorieTargets(slots: string[], targets: PlannerTargets): number[] {
   const totalWeight = slots.reduce((a, s) => a + (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25), 0);
   return slots.map((s) => {
     const w = (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25) / totalWeight;
@@ -477,51 +587,67 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
   return { multipliers: mults, residualProteinGap };
 }
 
-function findBestMealSet(
-  pool: SimpleRecipe[],
+// P2-28 (2026-04-25): the closed-over `findBestMealSet` for SimpleRecipe
+// is gone. Mobile + web both run through `findBestMealSetGeneric` above
+// with their respective slotFitPredicate. The dedup makes future scoring
+// changes a one-file edit instead of a two-file lockstep.
+
+/**
+ * P2-28 (2026-04-25): generic version of `findBestMealSet` that any
+ * `R extends MealPlanRecipe` can flow through. The slot-fit predicate
+ * is a parameter so the algorithm doesn't need to know about
+ * platform-specific tag fields (`mealType` on SimpleRecipe vs
+ * `mealSlots` on RecipeCard). Both web and mobile call this; the
+ * older `findBestMealSet` (closed over `SimpleRecipe`) stays around as
+ * the inline mobile path.
+ */
+export function findBestMealSetGeneric<R extends MealPlanRecipe>(
+  pool: R[],
   slots: string[],
   targets: PlannerTargets,
   recentIds: Set<string>,
   rand: () => number,
-): { recipes: SimpleRecipe[]; multipliers: number[]; residualProteinGap: number } | null {
+  slotFitPredicate: (recipe: R, slot: string) => boolean,
+): { recipes: R[]; multipliers: number[]; residualProteinGap: number } | null {
   if (pool.length === 0) return null;
 
-  const perSlot = slots.map((slot) => pool.filter((r) => recipeFitsSlot(r, slot)));
+  const perSlot = slots.map((slot) => pool.filter((r) => slotFitPredicate(r, slot)));
   if (perSlot.some((p) => p.length === 0)) return null;
 
   const slotCalTargets = slotCalorieTargets(slots, targets);
 
   let best:
-    | { recipes: SimpleRecipe[]; multipliers: number[]; score: number; residualProteinGap: number }
+    | { recipes: R[]; multipliers: number[]; score: number; residualProteinGap: number }
     | null = null;
 
-  const samples = Math.min(20_000, perSlot.reduce((a, p) => a * p.length, 1));
+  const samples = Math.min(MEAL_PLAN_SAMPLER_CAP, perSlot.reduce((a, p) => a * p.length, 1));
 
-  // Pre-sort each slot's pool by closeness to slot target (best-fit first)
-  const sortedPerSlot = perSlot.map((pool, j) =>
-    [...pool].sort((a, b) => Math.abs(a.calories - slotCalTargets[j]) - Math.abs(b.calories - slotCalTargets[j])),
+  // Pre-sort each slot's pool by closeness to slot target (best-fit first).
+  const sortedPerSlot = perSlot.map((slotPool, j) =>
+    [...slotPool].sort(
+      (a, b) =>
+        Math.abs(a.calories - slotCalTargets[j]!) -
+        Math.abs(b.calories - slotCalTargets[j]!),
+    ),
   );
 
   for (let i = 0; i < samples; i++) {
-    // Bias toward better-fitting recipes: 60% chance of picking from top half
+    // Bias toward better-fitting recipes: 60% chance of picking from top half.
     const picks = sortedPerSlot.map((p) => {
       const useTop = rand() < 0.6;
       const half = Math.max(1, Math.floor(p.length / 2));
-      const pool = useTop ? p.slice(0, half) : p;
-      return pool[Math.floor(rand() * pool.length)]!;
+      const slotPool = useTop ? p.slice(0, half) : p;
+      return slotPool[Math.floor(rand() * slotPool.length)]!;
     });
     const ids = picks.map((r) => r.id);
 
-    // Start at 1.0× per slot so the joint fitter only moves levers when
-    // bands require it; avoids seeding arbitrary 0.8×/1.2× spreads when
-    // full portions already land near targets (F-73, 2026-04-24).
+    // Seed at 1.0× per slot; the joint fitter only moves levers when the
+    // bands require it (F-73 + P1-9).
     const initial = picks.map(() => 1);
-
-    // F-15 — joint macro-fit scaler.
     const fit = fitDayToTargets({ recipes: picks, multipliers: initial, targets });
     const multipliers = fit.multipliers;
 
-    const scaledMeals = picks.map((r, j) => scaleMacros(r, multipliers[j]));
+    const scaledMeals = picks.map((r, j) => scaleMacros(r, multipliers[j]!));
     const s =
       scoreMealSet(scaledMeals, targets, ids, recentIds) +
       mealPlanPortionSpreadPenalty(multipliers) +
@@ -538,6 +664,50 @@ function findBestMealSet(
   }
 
   return best;
+}
+
+/**
+ * P2-28: generic fallback path. When no slot has any matching recipe,
+ * the joint sampler returns null; this picks one recipe per slot that
+ * has ≥1 fit (allowing partial days).
+ */
+export function buildIndependentSlotDayGeneric<R extends MealPlanRecipe>(
+  pool: R[],
+  slots: string[],
+  targets: PlannerTargets,
+  rand: () => number,
+  slotFitPredicate: (recipe: R, slot: string) => boolean,
+): {
+  picks: { pick: R; name: string; slotIndex: number }[];
+  multipliers: number[];
+  pickedIds: string[];
+  residualProteinGap: number;
+} {
+  const picks: { pick: R; name: string; slotIndex: number }[] = [];
+  const pickedIds: string[] = [];
+  for (let j = 0; j < slots.length; j++) {
+    const name = slots[j]!;
+    const fits = pool.filter((r) => slotFitPredicate(r, name));
+    if (fits.length === 0) continue;
+    const pick = fits[Math.floor(rand() * fits.length)]!;
+    pickedIds.push(pick.id);
+    picks.push({ pick, name, slotIndex: j });
+  }
+  if (picks.length === 0) {
+    return { picks, multipliers: [], pickedIds, residualProteinGap: 0 };
+  }
+  const initial = picks.map(() => 1);
+  const fit = fitDayToTargets({
+    recipes: picks.map((p) => p.pick),
+    multipliers: initial,
+    targets,
+  });
+  return {
+    picks,
+    multipliers: fit.multipliers,
+    pickedIds,
+    residualProteinGap: fit.residualProteinGap,
+  };
 }
 
 function buildIndependentSlotDay(
@@ -580,6 +750,8 @@ function buildIndependentSlotDay(
       carbs: scaled.carbs,
       fat: scaled.fat,
       fiberG: scaled.fiberG,
+      // P1-19: thread coercion flag from the independent-slot fallback path too.
+      ...((pick as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
     };
   });
   return { meals, pickedIds, residualProteinGap: fit.residualProteinGap };
@@ -613,13 +785,16 @@ export function generateSmartPlan(input: {
   const plans: DayPlan[] = [];
 
   for (let d = 1; d <= daysCount; d++) {
-    // Clear recency every 5 days to allow repeats in longer plans
-    if (d > 1 && (d - 1) % 5 === 0) recentIds.clear();
+    // Clear recency on the configured cadence (P1-9 shared constant).
+    if (d > 1 && (d - 1) % MEAL_PLAN_RECENCY_RESET_DAYS === 0) recentIds.clear();
 
     // Unique seed per day
     const rand = mulberry32(baseSeed + d * 7919 + pool.length * 31);
 
-    const joint = findBestMealSet(pool, slots, targets, recentIds, rand);
+    // P2-28 (2026-04-25): mobile + web both run through the exported
+    // generic `findBestMealSetGeneric`. The closed-over `findBestMealSet`
+    // is now a thin wrapper, kept for any direct in-file callers.
+    const joint = findBestMealSetGeneric(pool, slots, targets, recentIds, rand, recipeFitsSlot);
     let meals: PlanMeal[];
     let residualProteinGap = 0;
     if (joint) {
@@ -634,6 +809,9 @@ export function generateSmartPlan(input: {
           recipeId: r.id,
           ...scaled,
           fiberG: scaled.fiberG,
+          // P1-19: thread the coercion flag from the pool through to the
+          // rendered row so the planner UI can surface "Estimated · verify".
+          ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
           // portionMultiplier is intentionally NOT set here: the fit
           // multiplier is already baked into `calories`. Setting it would
           // cause dayPlanTotalsFromMeals to double-apply the scale.
@@ -641,11 +819,28 @@ export function generateSmartPlan(input: {
       });
       residualProteinGap = joint.residualProteinGap;
     } else {
-      const { meals: indMeals, pickedIds, residualProteinGap: indGap } =
-        buildIndependentSlotDay(pool, slots, targets, rand);
-      meals = indMeals;
-      residualProteinGap = indGap;
-      for (const id of pickedIds) recentIds.add(id);
+      // Polish (2026-04-25 visual-qa): re-sample the independent fallback
+      // up to 3 times with offset RNG seeds and keep the closest-to-target
+      // candidate. Tester feedback was that small-pool plans drifted
+      // wildly (1,181 kcal vs 1,800 kcal target) because the first
+      // independent build was always accepted regardless of fit. Bounded
+      // 4-candidate cost; dramatically tightens the calorie envelope.
+      let bestIndependent = buildIndependentSlotDay(pool, slots, targets, rand);
+      const sumCals = (m: typeof bestIndependent.meals) =>
+        m.reduce((a, x) => a + (x.calories ?? 0), 0);
+      let bestDrift = Math.abs(sumCals(bestIndependent.meals) - targets.calories);
+      for (let retry = 1; retry <= 3; retry++) {
+        const retryRand = mulberry32(baseSeed + d * 7919 + retry * 13337 + pool.length * 31);
+        const candidate = buildIndependentSlotDay(pool, slots, targets, retryRand);
+        const candidateDrift = Math.abs(sumCals(candidate.meals) - targets.calories);
+        if (candidateDrift < bestDrift) {
+          bestIndependent = candidate;
+          bestDrift = candidateDrift;
+        }
+      }
+      meals = bestIndependent.meals;
+      residualProteinGap = bestIndependent.residualProteinGap;
+      for (const id of bestIndependent.pickedIds) recentIds.add(id);
     }
 
     // Reject exact duplicate day combinations — retry with a different seed
@@ -654,7 +849,7 @@ export function generateSmartPlan(input: {
       // Try up to 3 retries with offset seeds
       for (let retry = 1; retry <= 3; retry++) {
         const retryRand = mulberry32(baseSeed + d * 7919 + retry * 13337);
-        const retryJoint = findBestMealSet(pool, slots, targets, recentIds, retryRand);
+        const retryJoint = findBestMealSetGeneric(pool, slots, targets, recentIds, retryRand, recipeFitsSlot);
         if (retryJoint) {
           const retryCombo = retryJoint.recipes.map((r) => r.id).sort().join("|");
           if (!usedCombinations.has(retryCombo)) {

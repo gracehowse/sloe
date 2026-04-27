@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Beef, Wheat, Droplets, Leaf, Flame, Clock } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -375,14 +376,44 @@ export default function LibraryScreen() {
             {item.creatorName ? (
               <Text style={styles.cardSource} numberOfLines={1}>{item.creatorName}</Text>
             ) : null}
-            <View style={styles.metaRow}>
-              <Text style={[styles.metaChunk, { color: MacroColors.calories, fontWeight: "700" }]}>
-                {Math.round(item.calories)} kcal
-              </Text>
-              <Text style={[styles.metaChunk, { color: MacroColors.protein, fontWeight: "700" }]}>
-                {Math.round(item.protein)} P
-              </Text>
-              {totalTime ? <Text style={styles.metaChunk}>{totalTime}</Text> : null}
+            {/* 2026-04-26 polish (round 3): bring Library cards to
+                Discover-card parity. Pre-fix this row showed only
+                "kcal · P" — Discover shows kcal + protein + carbs +
+                fat + (fibre when present) each with its own coloured
+                icon. Tester: "library tiles look different to
+                discovery screen tiles - they only show P not the
+                full macros with icons etc". */}
+            <View style={[styles.metaRow, { flexWrap: "wrap", gap: 10 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Flame size={11} color={MacroColors.calories} />
+                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.calories)} kcal</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Beef size={11} color={MacroColors.protein} />
+                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.protein)}g</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Wheat size={11} color={MacroColors.carbs} />
+                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.carbs)}g</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Droplets size={11} color={MacroColors.fat} />
+                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.fat)}g</Text>
+              </View>
+              {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Leaf size={11} color={MacroColors.fiber} />
+                  <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>
+                    {Math.round((item.fiberG ?? 0) * 10) / 10}g
+                  </Text>
+                </View>
+              ) : null}
+              {totalTime ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Clock size={11} color={Accent.primary} />
+                  <Text style={styles.metaChunk}>{totalTime}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </Pressable>

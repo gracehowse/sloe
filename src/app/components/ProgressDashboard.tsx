@@ -585,7 +585,7 @@ function ProgressDashboardContent() {
         if (!cancelled) setHostSavedMealsForRecap(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("ProgressDashboard listSavedMeals (recap) failed", err);
       });
     return () => {

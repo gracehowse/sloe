@@ -36,31 +36,17 @@ export function isFeatureEnabled(flag: string): boolean {
   }
 }
 
-/** Convenience wrapper for the `onboarding_v2` flag. Centralised so
- *  every callsite agrees on the flag key and there's a single place
- *  to flip it for a forced rollout (e.g. add an env var override
- *  later if needed). */
-export function isOnboardingV2Enabled(): boolean {
-  return isFeatureEnabled("onboarding_v2");
-}
-
-/** Subscribe to flag-load events. The callback fires:
- *   - immediately if flags are already loaded
- *   - again whenever PostHog refreshes flags (e.g. after `identify`)
- *  Returns an unsubscribe function suitable for `useEffect` cleanup.
+/**
+ * 2026-04-27: removed the web `isOnboardingV2Enabled` + `subscribeToFlags`
+ * helpers — the only consumer was `app/onboarding/legacy-form.tsx` which
+ * was deleted as part of the onboarding-v2 100%-rollout cleanup
+ * (docs/decisions/2026-04-27-delete-legacy-onboarding.md). The web
+ * /onboarding route now redirects unconditionally to /onboarding/v2.
  *
- *  Necessary because flag values aren't synchronously available on
- *  mount — they arrive after a `/decide/` round-trip. The redirect
- *  in `app/onboarding/page.tsx` would otherwise miss the first flag
- *  load and silently strand users on the legacy flow. */
-export function subscribeToFlags(callback: () => void): () => void {
-  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return () => {};
-  try {
-    return posthog.onFeatureFlags(callback);
-  } catch {
-    return () => {};
-  }
-}
+ * Mobile keeps its own copies in apps/mobile/lib/analytics.ts because
+ * the mobile onboarding-v2 ramp is on a separate track (still gated).
+ * Restore here if the web flag-gating ever needs to come back.
+ */
 
 function maybeMarkFirstLog(): void {
   if (typeof window === "undefined") return;

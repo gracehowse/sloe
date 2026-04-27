@@ -61,10 +61,16 @@ export const MIN_MATCH_CONFIDENCE = 0.42;
 export const MIN_OFF_CONFIDENCE = 0.52;
 
 /**
- * Recipe verify UI: lines below this show "needs review" until the user confirms or picks a food.
- * Above {@link MIN_MATCH_CONFIDENCE} so borderline auto-matches stay visually flagged.
+ * Recipe verify UI: lines below this show "needs review" until the user
+ * confirms or picks a food. Above {@link MIN_MATCH_CONFIDENCE} so
+ * borderline auto-matches stay visually flagged.
+ *
+ * P1-8 (2026-04-25): canonical home is now
+ * `verifyConfidencePolicy.ts`; re-exported here so existing consumers
+ * don't need to switch imports. Same module also exports the
+ * recipe-level mean + min nudge thresholds, all unified at 0.50.
  */
-export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
+export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "./verifyConfidencePolicy";
 
 const ATWATER_MIN_RATIO = 0.62;
 const ATWATER_MAX_RATIO = 1.38;
@@ -703,6 +709,26 @@ export async function verifyIngredients(opts: {
             if (food && servingNode) {
               const serving = pickBestServing(servingNode);
               const perServing = normalizeServingToMacros(serving);
+              // Polish (2026-04-25) — FatSecret occasionally exposes
+              // placeholder rows with calories=0 and all macros=0 (e.g. a
+              // brand-stub for "olive oil" that has not been populated).
+              // scaledMacrosPlausible() lets the all-zero scaled result
+              // through (the rule is intentional for tiny rounded-down
+              // portions), so the fix is upstream: skip the candidate
+              // entirely when the SOURCE serving has no macros at all.
+              // This forced the "olive oil at 98% confidence → 0 kcal"
+              // bug. Falls through to next source / local estimator.
+              const sourceIsAllZero =
+                (!Number.isFinite(perServing.calories) || perServing.calories <= 0) &&
+                (!Number.isFinite(perServing.protein) || perServing.protein <= 0) &&
+                (!Number.isFinite(perServing.carbs) || perServing.carbs <= 0) &&
+                (!Number.isFinite(perServing.fat) || perServing.fat <= 0);
+              if (sourceIsAllZero) {
+                console.warn(
+                  `[verifyIngredients] FatSecret returned a zero-macro serving for "${query}" → ${best.food_name} (food_id=${best.food_id}). Skipping candidate; falling through to next source.`,
+                );
+                // fall through past the FatSecret block to USDA-other / OFF / estimator
+              } else {
               const servingG = servingMassGrams(serving) ?? 100;
               const perGram = {
                 calories: perServing.calories / servingG,
@@ -732,6 +758,7 @@ export async function verifyIngredients(opts: {
                   macros: fsMacros,
                 };
               }
+              } // closes else { (sourceIsAllZero guard, 2026-04-25)
             }
           }
         }

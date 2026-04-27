@@ -22,7 +22,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "pro_required", message: "Image import is a Pro feature." }, { status: 403 });
   }
 
-  const limited = await rateLimit({ keyPrefix: "recipe_import_image", limit: 15, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping; renamed prefix for parity.
+  const limited = await rateLimit({ keyPrefix: "api:recipe-import-image", userId, limit: 15, windowMs: 60_000 });
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },

@@ -46,8 +46,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // P0-6 (2026-04-25): scope per-user via the new `userId` field
+  // (parity with photo-log).
   const limited = await rateLimit({
-    keyPrefix: `voice_log_${userId}`,
+    keyPrefix: "api:voice-log",
+    userId,
     limit: 100,
     windowMs: 24 * 60 * 60_000,
   });

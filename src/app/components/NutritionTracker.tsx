@@ -11,7 +11,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import {
   computeLoggingStreak,
@@ -237,6 +237,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     notificationPrefs,
     profileDisplayName,
     authEmail,
+    netCarbsLensEnabled,
   } = useAppData();
   // Suppress unused warning for caffeine-by-day (currently shown only via
   // today's number; weekly caffeine view is a separate roadmap item).
@@ -600,7 +601,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         if (!cancelled) setHostSavedMeals(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("NutritionTracker listSavedMeals failed", err);
       });
     return () => {
@@ -849,7 +850,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       });
       if (authedUserId) {
         void incrementLogCount(supabase, authedUserId, meal.id).catch((err) => {
-          // eslint-disable-next-line no-console
+           
           console.warn("NutritionTracker slot-header usual-meal log bump failed", err);
         });
       }
@@ -888,7 +889,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         setSavedMealsRefreshToken((n) => n + 1);
       } catch (err) {
         toast.error("Couldn't save that meal. Try again.");
-        // eslint-disable-next-line no-console
+         
         console.error("NutritionTracker saved-meal create failed", err);
       }
     },
@@ -1577,6 +1578,22 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
       {viewMode === "day" && (
       <>
+      {/* B4 Phase 3a (2026-04-27) — Eat-again banner moved to top-of-feed,
+          immediately under the date header / fasting pill, ABOVE the
+          hero. Original position was between Quick add and Meals (kept
+          mobile parity at the time). The reposition reflects the user
+          tap-economy signal: eat-again is the fastest path to a logged
+          meal — surfacing it pre-hero shaves a scroll. Spec:
+          docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
+      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
+        <TodayEatAgainBanner
+          suggestion={eatAgainSuggestion}
+          slot={currentSlotFromTime}
+          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
+          onDismiss={dismissEatAgain}
+        />
+      )}
+
       {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
           Desktop (>= 768px) renders stats beside the ring; mobile-web
           shows just the ring. Canonical copy + deficit/surplus detail
@@ -1618,6 +1635,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         waterTargetMl={targets.waterMl}
         formatWaterLine={formatWaterLine}
         onAddWaterMl={addWaterMlForSelectedDay}
+        netCarbsLensEnabled={netCarbsLensEnabled}
       />
 
       {dayNutrientDetailRows.length > 0 ? (
@@ -1639,14 +1657,22 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
       {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
           Snap are gated; free-tier users see a lock icon and tapping
-          opens the factual Pro paywall (Batch 5.13). */}
-      <TodayQuickLogStrip
-        userTier={userTier}
-        onOpenSearch={() => setFoodSearchOpen(true)}
-        onOpenVoiceLog={handleVoiceLog}
-        onOpenPhotoLog={handlePhotoLogClick}
-        onOpenBarcode={() => setBarcodeOpen(true)}
-      />
+          opens the factual Pro paywall (Batch 5.13).
+          B4 Phase 3c (2026-04-27): gated behind PostHog flag
+          `today_phase_3_quickadd_v2`. When the flag is on, the strip
+          is suppressed and the FAB becomes the sole primary entry
+          point — matches the spec at
+          docs/specs/2026-04-27-b4-today-screen-phase3.md and is
+          revertable in 1 PostHog click without a deploy. */}
+      {!isFeatureEnabled("today_phase_3_quickadd_v2") && (
+        <TodayQuickLogStrip
+          userTier={userTier}
+          onOpenSearch={() => setFoodSearchOpen(true)}
+          onOpenVoiceLog={handleVoiceLog}
+          onOpenPhotoLog={handlePhotoLogClick}
+          onOpenBarcode={() => setBarcodeOpen(true)}
+        />
+      )}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak
@@ -1663,19 +1689,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           present on Today via the Net tile (`TodayHeroStats`) and the
           Activity Bonus card. */}
 
-      {/* Eat again — moved here (was above the hero ring) to match
-          mobile placement (`TodayEatAgainBanner`,
-          `apps/mobile/app/(tabs)/index.tsx` 2820): right above the
-          quick add CTA + meals section, where the suggested meal
-          will be inserted. */}
-      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
-        <TodayEatAgainBanner
-          suggestion={eatAgainSuggestion}
-          slot={currentSlotFromTime}
-          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-          onDismiss={dismissEatAgain}
-        />
-      )}
+      {/* B4 Phase 3a (2026-04-27): eat-again block moved to top-of-feed,
+          above the hero. The previous position (right above Quick add)
+          dates from a 2026-04-18 audit M4 where it was matched to mobile.
+          Mobile reposition ships in the same change set. */}
 
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual

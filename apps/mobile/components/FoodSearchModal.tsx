@@ -110,11 +110,13 @@ export type SelectedFood = {
 
 type SupabaseLike = { from: (table: string) => unknown };
 
-/** Local superset of UnifiedSearchResult that allows a CUSTOM source.
- *  We don't widen the shared type because verifyRecipe.ts lives under
- *  src/lib and other call sites assume only USDA/OFF results. */
+/** Local superset of UnifiedSearchResult that allows a CUSTOM source +
+ *  the F-73 generic match sources (GenericBeverage / GenericFood). The
+ *  generics ship with macros + primaryServing in-row so the on-tap
+ *  branch in `onPickResult` projects them to "USDA" at the preview
+ *  boundary without an extra fetch. */
 type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
-  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "GenericBeverage" | "GenericFood";
   _custom?: CustomFood;
 };
 
@@ -498,6 +500,33 @@ export default function FoodSearchModal({
   const onPickResult = useCallback(
     async (item: SearchRow) => {
       setLoadingKey(item.key);
+
+      // F-73 (2026-04-27, follow-up) — Generic beverage / food rows ship
+      // with macros + primaryServing in-row, so no fetch is required.
+      // Project the source to "USDA" at the preview boundary because the
+      // macros came from USDA Foundation / SR Legacy averages, and that
+      // keeps downstream attribution ("USDA FoodData Central") honest.
+      // Without this branch the tap was a no-op (Grace, 2026-04-27).
+      if (
+        (item._source === "GenericBeverage" || item._source === "GenericFood") &&
+        item.macrosPer100g
+      ) {
+        setLoadingKey(null);
+        const allPortions = buildPortionList([], item.primaryServing);
+        const { portion, quantity } = item.primaryServing
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "USDA",
+          macrosPer100g: item.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+        });
+        return;
+      }
 
       if (item._source === "USDA" && item._fdcId) {
         const result = await getFoodMacros(item._fdcId);

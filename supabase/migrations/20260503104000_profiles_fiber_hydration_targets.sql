@@ -1,0 +1,25 @@
+-- 20260503104000_profiles_fiber_hydration_targets.sql
+--
+-- TOMBSTONE — supersedes itself.
+--
+-- Original intent (B1, 2026-04-27): add target_fiber_g + target_hydration_ml
+-- columns to public.profiles for the weekly fibre/hydration adherence rollups.
+--
+-- After auditing the live schema we discovered both columns ALREADY EXIST
+-- under different names:
+--   * `target_fiber_g`     was added 2026-04-12 (20260412100000_onboarding_profile_fields.sql)
+--                          with DEFAULT 25.
+--   * `target_water_ml`    is the canonical hydration-target column (referenced
+--                          by Profile.tsx upserts; mobile (tabs)/index.tsx
+--                          + onboarding writes; persists via the F-13 hydration
+--                          chip flow).
+--
+-- The B1 recap code therefore reads from those existing columns directly. No
+-- ALTER TABLE is needed. This file stays as a tombstone so:
+--   1. file-timestamp ordering of subsequent 2026-05-03 migrations is preserved;
+--   2. anyone investigating "where did the new columns go?" finds the answer
+--      in git blame instead of having to reconstruct the audit trail.
+--
+-- Safe to leave applied OR unapplied — it is a pure no-op SELECT.
+
+SELECT 1 WHERE FALSE;

@@ -68,7 +68,9 @@ import {
 } from "@/lib/nutrition/weeklyDigestSuggestion";
 import {
   entriesToByDay,
+  entriesToFiberByDay,
   parseFreezeLedger,
+  parseHydrationByDay,
   parseWeightKgByDay,
   previousWeekDescriptor,
   type NutritionEntryRow,
@@ -121,6 +123,15 @@ type ProfileRow = {
   target_protein?: number | null;
   target_carbs?: number | null;
   target_fat?: number | null;
+  /** B1 (2026-04-27) — fibre + hydration adherence inputs. Null means
+   *  no target on file; the recap suppresses the corresponding line.
+   *  `target_water_ml` is the canonical hydration column — see the
+   *  tombstone in 20260503104000_profiles_fiber_hydration_targets.sql
+   *  for the audit trail. */
+  target_fiber_g?: number | null;
+  target_water_ml?: number | null;
+  /** B1 — JSONB { "YYYY-MM-DD": ml } from F-13 hydration chip persists. */
+  extra_water_by_day?: unknown;
   streak_freeze_budget_max?: number | null;
   streak_freezes_earned_at?: unknown;
   streak_freezes_used_history?: unknown;
@@ -155,6 +166,14 @@ const PROFILE_SELECT_COLUMNS = [
   "target_protein",
   "target_carbs",
   "target_fat",
+  // B1 (2026-04-27) — fibre + hydration columns. Both already live in
+  // production: `target_fiber_g` since 2026-04-12 (default 25);
+  // `target_water_ml` is the canonical hydration target column. The
+  // 20260503104000 migration was retired to a tombstone after audit;
+  // no ALTER TABLE was needed.
+  "target_fiber_g",
+  "target_water_ml",
+  "extra_water_by_day",
   "streak_freeze_budget_max",
   "streak_freezes_earned_at",
   "streak_freezes_used_history",
@@ -290,7 +309,7 @@ export async function POST(req: Request) {
   const eligibleUserIds = eligible.map((r) => r.id);
   const { data: entryRows, error: entriesErr } = await supabase
     .from("nutrition_entries")
-    .select("user_id, date_key, name, recipe_title, calories, protein, carbs, fat")
+    .select("user_id, date_key, name, recipe_title, calories, protein, carbs, fat, fiber_g")
     .in("user_id", eligibleUserIds)
     .gte("date_key", widestStartKey)
     .lte("date_key", widestEndKey);
@@ -372,6 +391,13 @@ export async function POST(req: Request) {
         protein: numOr(row.target_protein, TARGET_FALLBACK.protein),
         carbs: numOr(row.target_carbs, TARGET_FALLBACK.carbs),
         fat: numOr(row.target_fat, TARGET_FALLBACK.fat),
+        // B1 (2026-04-27) — fibre + hydration. 0 means "not on file";
+        // builder + formatter both interpret 0 as suppression rather
+        // than rendering "0%". Hydration plumbs from `target_water_ml`
+        // (existing column) into the in-memory `targets.hydrationMl`
+        // shape — semantic clarity in code, no schema duplication.
+        fiber: numOr(row.target_fiber_g, 0),
+        hydrationMl: numOr(row.target_water_ml, 0),
       };
 
       const userRows = rowsByUser.get(row.id) ?? [];
@@ -413,10 +439,20 @@ export async function POST(req: Request) {
           weightDeltaKg: null,
           weightFirstKg: null,
           weightLastKg: null,
+          // B1 (2026-04-27) — zero-entry users get suppressed
+          // fibre/hydration lines for free; rollup math runs on the
+          // full builder path below for active users.
+          avgFiberG: 0,
+          fiberAdherencePct: 0,
+          avgHydrationMl: 0,
+          hydrationDaysOnTarget: 0,
         });
       } else {
         const byDay = entriesToByDay(userRows, row.id, descriptor.keys);
         const weightKgByDay = parseWeightKgByDay(row.weight_kg_by_day);
+        // B1 (2026-04-27) — fibre + hydration adherence inputs.
+        const fiberByDay = entriesToFiberByDay(userRows, row.id, descriptor.keys);
+        const hydrationByDay = parseHydrationByDay(row.extra_water_by_day);
 
         const recap = buildWeeklyRecap({
           byDay,
@@ -425,6 +461,8 @@ export async function POST(req: Request) {
           weekStartDay: wsd,
           ledger,
           budgetMax,
+          fiberByDay,
+          hydrationByDay,
           now: nowDate,
         });
 

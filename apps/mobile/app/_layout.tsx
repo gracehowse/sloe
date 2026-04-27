@@ -323,6 +323,16 @@ const STACK_HEADER_HIDDEN = new Set([
   // bar rendered on top, leaving the user with two stacked back
   // affordances 80pt apart.
   "household-settings",
+  // 2026-04-26 polish (round 2): Targets has its own in-screen
+  // top bar with `< Back` chevron + "Targets" title + "Edit" pill.
+  // Without this entry the auto-stack header rendered another
+  // "Targets" title above it — exactly the duplicate-back-affordance
+  // issue household-settings already documents.
+  "targets",
+  // Same shape: Burn Detail had an auto-stack "Burn Detail" header
+  // AND an in-card "Activity Bonus" sub-header with another back
+  // chevron — duplicate back affordances.
+  "burn-detail",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */

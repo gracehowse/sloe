@@ -45,3 +45,28 @@ Planning note (not shipped): [`docs/planning/region-food-data-uk-au.md`](docs/pl
 ## `PARITY_AUDIT.md`
 
 [`PARITY_AUDIT.md`](PARITY_AUDIT.md) is a **dated narrative snapshot** of web vs mobile features. **Normative** parity rules and process live in [`docs/product/web-mobile-parity-scope.md`](docs/product/web-mobile-parity-scope.md).
+
+## Web app structure: `app/` vs `src/app/`
+
+Suppr's Next.js 15 web app uses two parallel top-level directories. **This is intentional, not a half-finished refactor**:
+
+- **`app/`** — Next.js App Router routes only. Page files (`page.tsx`), layouts, route handlers (`route.ts`), `error.tsx`, `not-found.tsx`. Anything Next's file-system router consumes lives here. Don't put non-route components here.
+- **`src/app/components/`** — All React components (UI primitives in `src/app/components/ui/`, product components in `src/app/components/suppr/`, screen-level components like `MealPlanner.tsx`, `NutritionTracker.tsx`, `RecipeDetail.tsx`). Routes import from here via the `@/*` path alias mapped to `src/*` in `tsconfig.json`.
+- **`src/lib/`** — Non-component logic shared by both web and mobile (mobile imports via relative `../../../src/lib/...`). Nutrition, planning, server helpers, types.
+- **`src/types/`** — TypeScript shapes shared by web and mobile.
+- **`src/context/`** — React contexts (web only — mobile has its own at `apps/mobile/context/`).
+
+**Why split?** History: an early Next.js scaffold put routes at the project root, components under `src/`. Migrating now would touch every import path in the project for negligible benefit. Routes-vs-components is genuinely a different concern; the `@/*` alias makes the mental model "routes pull from `@/components/*`" without per-file relative-path noise.
+
+**When you add a new file:**
+- New page or API route → `app/...`
+- New React component → `src/app/components/...`
+- New shared logic → `src/lib/...`
+- New shared type → `src/types/...`
+
+**Never:**
+- Put a non-route component under `app/` (would shadow Next's router conventions).
+- Import directly from a route file into a component (route files are leaves; the data flow is route → context → component).
+- Reach across to `apps/mobile/...` from the web tree (mobile is a downstream consumer of `src/lib/*` only).
+
+ESLint will not catch most of these by itself; the convention is enforced at PR review. If a future maintainer wants to consolidate, that's tracked as **P2-21** in the [Opus 4.7 codebase review](docs/audits/2026-04-25-opus47-codebase-review.md) — explicit decision in [`docs/decisions/2026-04-25-app-src-app-split.md`](docs/decisions/2026-04-25-app-src-app-split.md).

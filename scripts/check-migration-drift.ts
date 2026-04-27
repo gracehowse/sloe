@@ -91,6 +91,53 @@ function readLocalMigrations(dir: string): LocalMigration[] {
 }
 
 /**
+ * P1-11 (2026-04-25): static checks that don't need Supabase auth so they
+ * can run in GitHub Actions without a linked-project credential. Catches
+ * the most common foot-guns:
+ *   - Filenames that don't match `<14-digit>_<name>.sql`.
+ *   - Duplicate timestamps (two files starting with the same 14-digit
+ *     prefix; would race at apply time).
+ *   - Duplicate migration names (would silently shadow earlier migrations
+ *     in `schema_migrations`).
+ *
+ * Returns an array of human-readable error strings; empty array means
+ * the local set is internally consistent.
+ */
+function staticValidationErrors(dir: string): string[] {
+  const errors: string[] = [];
+  if (!existsSync(dir)) {
+    errors.push(`Migrations directory not found: ${dir}`);
+    return errors;
+  }
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+  const seenVersion = new Map<string, string>();
+  const seenName = new Map<string, string>();
+  for (const f of files) {
+    const m = f.match(/^(\d{14})_(.+)\.sql$/);
+    if (!m) {
+      errors.push(`Malformed migration filename: ${f} (expected <14-digit timestamp>_<name>.sql)`);
+      continue;
+    }
+    const [, version, name] = m;
+    const priorVersion = seenVersion.get(version);
+    if (priorVersion) {
+      errors.push(`Duplicate timestamp ${version}: ${priorVersion} and ${f}`);
+    } else {
+      seenVersion.set(version, f);
+    }
+    const priorName = seenName.get(name);
+    if (priorName) {
+      errors.push(`Duplicate migration name '${name}': ${priorName} and ${f}`);
+    } else {
+      seenName.set(name, f);
+    }
+  }
+  return errors;
+}
+
+/**
  * Calls `supabase db query --linked` to retrieve `(version, name)` from `supabase_migrations.schema_migrations`.
  * Uses the existing Supabase CLI link — does NOT require service role or DB URL in env, just CLI auth.
  */
@@ -231,13 +278,38 @@ function printReport(r: DriftReport, opts: { json: boolean }): void {
   console.log("");
 }
 
+function parseMigrationsDirArg(argv: string[]): string | null {
+  const idx = argv.indexOf("--migrations-dir");
+  if (idx === -1 || idx === argv.length - 1) return null;
+  return argv[idx + 1] ?? null;
+}
+
 function main(): void {
   loadEnvLocal();
-  const args = new Set(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = new Set(argv);
   const strict = args.has("--strict");
   const json = args.has("--json");
+  const staticOnly = args.has("--static");
 
-  const migrationsDir = path.join(process.cwd(), "supabase", "migrations");
+  const migrationsDir =
+    parseMigrationsDirArg(argv) ?? path.join(process.cwd(), "supabase", "migrations");
+
+  // P1-11 (2026-04-25): static-only mode for CI. Doesn't need Supabase
+  // CLI auth — runs filename-format + duplicate-detection checks against
+  // local files. Useful as a PR gate; the remote drift comparison stays
+  // a local / scheduled task that needs a linked Supabase project.
+  if (staticOnly) {
+    const errors = staticValidationErrors(migrationsDir);
+    if (errors.length === 0) {
+      console.log(`[check:migrations --static] ${readLocalMigrations(migrationsDir).length} migration files — all well-formed and unique.`);
+      process.exit(0);
+    }
+    console.error("[check:migrations --static] Migration set has structural problems:");
+    for (const e of errors) console.error(`  - ${e}`);
+    process.exit(1);
+  }
+
   const local = readLocalMigrations(migrationsDir);
   const remote = fetchRemoteMigrations();
   const report = buildReport(local, remote);

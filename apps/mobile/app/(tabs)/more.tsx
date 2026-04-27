@@ -789,12 +789,20 @@ export default function ProfileScreen() {
       {/* App */}
       <SectionHeading title="App" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+        {/* 2026-04-26 polish (round 3): tester flagged that tapping
+            "Appearance" lands on a screen titled "Settings" with much
+            more than appearance (theme + activity level + journal
+            display + body composition + plan + promo + account + sign
+            out). Two fixes: (a) rename the row label to "Settings" to
+            match the destination, (b) widen the sub copy so the user
+            knows what they'll find there. The legacy Settings page
+            consolidation is its own follow-up. */}
         <SettingsRow
           isFirst
           icon={Palette}
           iconColor={t.accent}
-          label="Appearance"
-          sub="Theme and display"
+          label="Settings"
+          sub="Theme, password, plan, activity level, journal"
           onPress={() => router.push("/(tabs)/settings" as any)}
         />
         {/* G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) —
@@ -1032,9 +1040,24 @@ export default function ProfileScreen() {
                   ],
                 );
               }}
-              style={{ paddingVertical: 14, alignItems: "center" }}
+              // 2026-04-26 polish (round 2): give the most-destructive
+              // action a ghost-button treatment (subtle red border + lower
+              // opacity) so the visual escalation reads as
+              // primary → outline → ghost rather than primary → outline →
+              // unstyled-text. The hierarchy still says "this is the most
+              // dangerous action — least prominent button" but no longer
+              // looks like missing styling.
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+                marginBottom: Spacing.sm,
+                borderWidth: 1,
+                borderColor: t.red + "20",
+                borderRadius: Radius.md,
+                opacity: 0.85,
+              }}
             >
-              <Text style={{ color: t.red, fontWeight: "800", fontSize: 15 }}>Delete my account permanently</Text>
+              <Text style={{ color: t.red, fontWeight: "700", fontSize: 14 }}>Delete my account permanently</Text>
               <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2, textAlign: "center", paddingHorizontal: 12 }}>
                 Removes your account, all data, and signs you out
               </Text>

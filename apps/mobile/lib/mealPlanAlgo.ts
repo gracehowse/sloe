@@ -1,6 +1,10 @@
 export {
   generateSmartPlan,
   ALL_MEAL_SLOTS,
+  DEFAULT_PLANNER_BANDS,
+  MEAL_PLAN_RECENCY_PENALTY,
+  MEAL_PLAN_RECENCY_RESET_DAYS,
+  MEAL_PLAN_SAMPLER_CAP,
   PORTION_MULTIPLIER_CLAMP,
   type SimpleRecipe,
   type PlannerTargets,

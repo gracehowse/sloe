@@ -23,6 +23,7 @@ import {
   saveVerifiedIngredients,
   scaleMacros,
   totalGramsForVerifyScale,
+  totalGramsForVerifyScaleDetailed,
   parseIngredientForSearch,
   sourceLabel,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
@@ -791,9 +792,39 @@ export default function VerifyScreen() {
                     <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                       {ing.chosenPortion?.label ?? ing.unit ?? "g"}
                     </Text>
-                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>
-                      = {Math.round(totalGramsForVerifyScale(ing, ing.amount ?? 0) * 10) / 10} g
-                    </Text>
+                    {(() => {
+                      // P0-2 (2026-04-25): density-aware gram resolution. Surface a
+                      // "needs density" hint when ml refused (no resolved density),
+                      // rather than rendering "= 0 g" silently.
+                      // Polish D.8 (2026-04-25): the hint is now tappable —
+                      // tapping it switches the portion to the standard "g"
+                      // unit so the user doesn't have to manually scroll for
+                      // it in the portion picker.
+                      const detail = totalGramsForVerifyScaleDetailed(ing, ing.amount ?? 0);
+                      if (detail.densityRefused) {
+                        return (
+                          <Pressable
+                            onPress={() => {
+                              const gPortion: FoodPortion = { label: "g", gramWeight: 1, amount: 1 };
+                              onPortionChange(i, gPortion);
+                              void Haptics.selectionAsync();
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Needs density — tap to switch to grams and scale this ingredient"
+                            hitSlop={6}
+                          >
+                            <Text style={{ fontSize: 11, color: Accent.warning, textDecorationLine: "underline" }}>
+                              needs density — tap to switch to g
+                            </Text>
+                          </Pressable>
+                        );
+                      }
+                      return (
+                        <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                          = {Math.round(detail.grams * 10) / 10} g
+                        </Text>
+                      );
+                    })()}
                   </View>
 
                   {/* Search / Scan */}

@@ -103,6 +103,12 @@ export const AnalyticsEvents = {
   recipe_timer_completed: "recipe_timer_completed",
   /** Cook mode opened — drives wake-lock usage measurement (Batch 3.8). */
   cook_mode_opened: "cook_mode_opened",
+  /** P2-24 (2026-04-25): user tapped "Log this meal" from the cook-mode
+   *  done state on mobile. Pairs with `food_logged` after the recipe
+   *  page's autoLog flow runs (the recipe page owns the journal write
+   *  for parity with the explicit "Add to today" button on the same
+   *  page). Payload: `{ recipeId }`. */
+  cook_mode_log_tapped: "cook_mode_log_tapped",
   /** User created a new custom food row (Batch 3.9). Payload: `{ hasBrand, servingCount }`. */
   custom_food_created: "custom_food_created",
   /** User edited an existing custom food row (Batch 3.9). */

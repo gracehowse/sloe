@@ -10,7 +10,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const rl = await rateLimit({ keyPrefix: "api:usda-search", limit: 60, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping (parity with /api/usda/food).
+  const rl = await rateLimit({ keyPrefix: "api:usda-search", userId, limit: 60, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },

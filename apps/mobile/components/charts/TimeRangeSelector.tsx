@@ -2,9 +2,17 @@ import { Pressable, ScrollView, Text } from "react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 
+/**
+ * 2026-04-26 polish (round 2): trimmed to 4 visible ranges. Pre-fix this
+ * exposed 7 pills (1W / 1M / 3M / 6M / 9M / 12M / All) which read as
+ * cluttered on small screens — industry norm for a health-tracker range
+ * picker is 4-5 (MFP, Apple Health, Strava). The TimeRange union keeps the
+ * legacy values so any persisted user preference (e.g. range="6M" stored
+ * before this change) still maps to a known time window via daysForRange.
+ */
 export type TimeRange = "1W" | "1M" | "3M" | "6M" | "9M" | "12M" | "All";
 
-const RANGES: TimeRange[] = ["1W", "1M", "3M", "6M", "9M", "12M", "All"];
+const RANGES: TimeRange[] = ["1M", "3M", "12M", "All"];
 
 type Props = {
   selected: TimeRange;

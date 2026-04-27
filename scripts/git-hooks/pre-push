@@ -1,0 +1,74 @@
+#!/bin/sh
+# Polish B (2026-04-25 follow-up) — fast pre-push gate.
+#
+# Catches the most common foot-guns before a push hits GitHub Actions:
+#   - Malformed migration filenames or duplicate timestamps.
+#   - TypeScript compile errors.
+#   - ESLint errors (warnings under the existing 500-warning ratchet
+#     are still allowed; only hard errors fail the gate).
+#
+# Skips the slow steps (full test suite, mobile Maestro, web Playwright)
+# — those run in CI. Goal is sub-15-second feedback so the gate doesn't
+# discourage frequent pushes.
+#
+# Bypass with `git push --no-verify` if you need to (e.g. urgent rollback).
+#
+# Enable on this clone:
+#   git config core.hooksPath scripts/git-hooks
+#
+# Sister hook: scripts/git-hooks/prepare-commit-msg (strips
+# tool-injected commit footers).
+
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+echo "[pre-push] Suppr fast gate — typecheck + lint + migration static check"
+echo "[pre-push] (full tests run in CI; bypass this hook with --no-verify if needed)"
+echo
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "[pre-push] WARN: node not on PATH; skipping checks. Run npm run ci before pushing." >&2
+  exit 0
+fi
+
+# 1. Migration static check — catches malformed names, duplicate timestamps,
+#    duplicate migration names. ~50ms.
+echo "[pre-push] (1/3) migration filenames + duplicates"
+if ! npm run --silent check:migrations:static; then
+  echo
+  echo "[pre-push] FAIL: migration static check. Fix above, then re-push." >&2
+  echo "[pre-push] To bypass (NOT recommended): git push --no-verify" >&2
+  exit 1
+fi
+
+# 2. Typecheck — catches type errors before CI.
+#    Slowest of the three; ~10–20s on a warm cache.
+echo "[pre-push] (2/3) typecheck (web + mobile)"
+if ! npm run --silent typecheck; then
+  echo
+  echo "[pre-push] FAIL: web typecheck. Fix above, then re-push." >&2
+  echo "[pre-push] To bypass (NOT recommended): git push --no-verify" >&2
+  exit 1
+fi
+if ! npm run --silent mobile:typecheck; then
+  echo
+  echo "[pre-push] FAIL: mobile typecheck. Fix above, then re-push." >&2
+  echo "[pre-push] To bypass (NOT recommended): git push --no-verify" >&2
+  exit 1
+fi
+
+# 3. Lint — only fails on hard errors; warnings under the 500-warning
+#    ratchet (configured in package.json) are still tolerated.
+echo "[pre-push] (3/3) lint (errors only — warnings allowed under ratchet)"
+if ! npm run --silent lint; then
+  echo
+  echo "[pre-push] FAIL: lint errors. Fix above, then re-push." >&2
+  echo "[pre-push] To bypass (NOT recommended): git push --no-verify" >&2
+  exit 1
+fi
+
+echo
+echo "[pre-push] OK — pushing."
+exit 0

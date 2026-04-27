@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const rl = await rateLimit({ keyPrefix: "api:analyze-recipe", limit: 5, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping.
+  const rl = await rateLimit({ keyPrefix: "api:analyze-recipe", userId, limit: 5, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many analysis requests. Try again shortly." },

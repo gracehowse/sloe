@@ -60,6 +60,21 @@ export type RateLimitOptions = {
   keyPrefix: string;
   limit: number;
   windowMs: number;
+  /**
+   * P0-6 (2026-04-25): per-user scoping. When provided, the bucket key
+   * composes as `${keyPrefix}:user:${userId}:${ip}`; when omitted, the
+   * bucket is `${keyPrefix}:anon:${ip}` (back-compat with the previous
+   * IP-only behaviour for unauthenticated endpoints).
+   *
+   * Use cases:
+   *   - Authenticated routes: pass the result of `getUserIdFromRequest(req)`
+   *     so an IP-rotating attacker can't drain the bucket on behalf of a
+   *     logged-in user, AND a single shared IP (corporate NAT) doesn't
+   *     starve legitimate users on the same network.
+   *   - Public / unauthenticated routes: omit (or pass null) — IP-only
+   *     scoping is the correct default for genuinely anonymous traffic.
+   */
+  userId?: string | null;
 };
 
 export type RateLimitResult =
@@ -102,17 +117,41 @@ async function rateLimitUpstash(key: string, ip: string, limiter: Ratelimit): Pr
 }
 
 /**
- * IP-based rate limit. Uses Upstash Redis when `UPSTASH_REDIS_REST_URL` and
- * `UPSTASH_REDIS_REST_TOKEN` are set; otherwise falls back to in-memory buckets
- * (best for local dev only).
+ * Composable rate limit. Uses Upstash Redis when
+ * `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set;
+ * otherwise falls back to in-memory buckets (dev-only).
+ *
+ * Bucket key composition (P0-6, 2026-04-25):
+ *   - With `opts.userId` set: `${keyPrefix}:user:${userId}:${ip}`.
+ *   - Without:                `${keyPrefix}:anon:${ip}`.
+ *
+ * Per-user scoping closes the cross-user starvation hole the original
+ * IP-only key had (a single attacker IP could exhaust the bucket on
+ * behalf of every logged-in user behind the same NAT, and an
+ * IP-rotating attacker could bypass the cap entirely while still
+ * targeting a specific user). Authenticated callers should pass
+ * `userId`; truly anonymous endpoints should omit it.
  */
 export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult> {
   const h = await headers();
   const ip = getIpFromHeaders(h) ?? "no-ip";
-  const key = `${opts.keyPrefix}:${ip}`;
+  const userPart = opts.userId ? `user:${opts.userId}` : "anon";
+  const key = `${opts.keyPrefix}:${userPart}:${ip}`;
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {
     return rateLimitUpstash(key, ip, upstash);
   }
   return rateLimitMemory(opts, key, ip);
+}
+
+/** Test-only helper that builds the bucket key without hitting any
+ *  store. Used by `rateLimitKeyComposition.test.ts` to pin the exact
+ *  key shape so a future regression (e.g. dropping the user prefix,
+ *  flattening the namespace) fails at PR time. */
+export function _composeRateLimitKeyForTest(
+  opts: { keyPrefix: string; userId?: string | null },
+  ip: string,
+): string {
+  const userPart = opts.userId ? `user:${opts.userId}` : "anon";
+  return `${opts.keyPrefix}:${userPart}:${ip}`;
 }

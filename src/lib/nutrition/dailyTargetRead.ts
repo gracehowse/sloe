@@ -26,7 +26,7 @@ export type DailyTarget = {
   maintenanceTdee: number | null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type DailyTargetReadClient = any;
 
 /**
@@ -60,7 +60,7 @@ export async function getDailyTargets(
     // Missing table (migration not applied yet) → log once and let
     // every key stay null. Every UI call site has a current-target
     // fallback chip so this renders gracefully.
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "[dailyTargetRead] select failed (probably migration pending) — using fallback targets",
       error.message ?? "",

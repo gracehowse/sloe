@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { classifyMealType } from "./classifyMealType";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 import { normaliseSource } from "../../../src/lib/recipes/persistSourceAttribution";
+import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -84,7 +85,14 @@ export async function saveImportedRecipe(
   userId: string,
   recipe: ApiImportedRecipe,
 ): Promise<{ recipeId: string } | { error: string }> {
-  const title = (recipe.title ?? "Imported recipe").trim() || "Imported recipe";
+  // Polish (2026-04-25): title-case ALL-CAPS imported titles. Many publisher
+  // sites store schema.org `name` in ALL CAPS for visual emphasis; raw
+  // pass-through made the whole app read like spam. Helper preserves any
+  // author-chosen mixed case ("Banh Mi" stays as-is).
+  const title =
+    normalizeRecipeTitle(recipe.title) === "Untitled recipe"
+      ? "Imported recipe"
+      : normalizeRecipeTitle(recipe.title);
   const instructions = normalizeInstructions(recipe.instructions);
   const ingredients = normalizeIngredients(recipe.ingredients);
   const servings =
@@ -108,6 +116,31 @@ export async function saveImportedRecipe(
     url: recipe.sourceUrl ?? (recipe as { source_url?: string | null }).source_url ?? null,
     name: recipe.sourceName ?? (recipe as { source_name?: string | null }).source_name ?? null,
   });
+
+  /**
+   * 2026-04-26 polish: import-idempotency guard. Tester feedback showed the
+   * Library rendering the same recipe twice with different macros — root
+   * cause was the same source URL (or same title) being imported by the
+   * user multiple times, producing two distinct rows. Now: when the same
+   * user already has a recipe with this `source_url`, return its existing
+   * id instead of inserting a duplicate row. Skipped when source_url is
+   * null (manual create / paste-only flow — no canonical key).
+   */
+  if (sourceUrl) {
+    const { data: existing } = await supabase
+      .from("recipes")
+      .select("id")
+      .eq("author_id", userId)
+      .eq("source_url", sourceUrl)
+      .limit(1)
+      .maybeSingle();
+    if (existing && (existing as { id?: string }).id) {
+      const existingId = (existing as { id: string }).id;
+      // Idempotent: surface success so the caller's "Saved to library"
+      // toast still fires; user-facing UX is identical to a fresh import.
+      return { recipeId: existingId };
+    }
+  }
 
   const { data: row, error: insErr } = await supabase
     .from("recipes")

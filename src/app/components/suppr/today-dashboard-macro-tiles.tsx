@@ -11,6 +11,8 @@ import {
   Wheat,
   type LucideIcon,
 } from "lucide-react";
+import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
+import { formatMacro } from "../../../lib/nutrition/formatMacro";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -42,6 +44,12 @@ export interface TodayDashboardMacroTilesProps {
   waterTargetMl: number;
   formatWaterLine: (ml: number) => string;
   onAddWaterMl: (ml: number) => void;
+  /** P3-30 (2026-04-25): when true, the carbs tile shows "Net carbs"
+   *  with the value computed via `netCarbsForRow(carbs, fibre, true)`
+   *  (carbs - fibre, floored at 0). Default false preserves the
+   *  current "Carbs" display. The lens silently falls back to "Carbs"
+   *  when fibre is not tracked. */
+  netCarbsLensEnabled?: boolean;
 }
 
 type TileMeta = {
@@ -90,7 +98,7 @@ function buildMacroTile(
     return {
       label: "Protein",
       Icon: Beef,
-      valueText: `${Math.round(cur)}`,
+      valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
@@ -98,14 +106,21 @@ function buildMacroTile(
     };
   }
   if (macroKey === "carbs") {
-    const cur = carbsCurrent;
-    const tgt = carbsTarget;
+    // P3-30 (2026-04-25): apply the net-carbs lens when the user has
+    // opted in AND fibre is tracked. The helpers refuse the "Net
+    // carbs" label when fibre is unknown — prevents a misleading
+    // headline when the underlying data can't support the math.
+    const lensOn = Boolean(props.netCarbsLensEnabled);
+    const curRaw = carbsCurrent;
+    const tgtRaw = carbsTarget;
+    const cur = netCarbsForRow(curRaw, fiberCurrent, lensOn);
+    const tgt = netCarbsForRow(tgtRaw, fiberTarget, lensOn);
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
-      label: "Carbs",
+      label: carbsLabel(fiberCurrent, lensOn),
       Icon: Wheat,
-      valueText: `${Math.round(cur)}`,
-      targetText: `/ ${tgt} g`,
+      valueText: formatMacro(cur, "carbs"),
+      targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
       fillVar: "var(--macro-carbs)",
@@ -118,7 +133,7 @@ function buildMacroTile(
     return {
       label: "Fat",
       Icon: Droplets,
-      valueText: `${Math.round(cur)}`,
+      valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
@@ -132,7 +147,7 @@ function buildMacroTile(
     return {
       label: "Fiber",
       Icon: Leaf,
-      valueText: `${Math.round(cur * 10) / 10}`,
+      valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
@@ -146,7 +161,7 @@ function buildMacroTile(
     return {
       label: "Sugar",
       Icon: Candy,
-      valueText: `${Math.round(cur * 10) / 10}`,
+      valueText: formatMacro(cur, "sugar"),
       targetText: `/ ${tgt} g`,
       pct,
       caption: `ref ${tgt} g`,
@@ -160,7 +175,7 @@ function buildMacroTile(
     return {
       label: "Sodium",
       Icon: Gauge,
-      valueText: `${Math.round(cur)}`,
+      valueText: formatMacro(cur, "sodium"),
       targetText: `/ ${tgt} mg`,
       pct,
       caption: `ref ${tgt} mg`,

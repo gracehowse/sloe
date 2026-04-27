@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Flame, Compass, CalendarDays, TrendingUp, CircleUser } from 'lucide-react-native';
+import { Flame, Compass, BookOpen, CalendarDays, TrendingUp, CircleUser } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Accent } from '@/constants/theme';
@@ -70,7 +70,29 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
-      {/* Tab order matches prototype: Today → Discover → Plan → Progress → Profile */}
+      {/*
+        2026-04-26: Library promoted to a primary tab. Tester feedback:
+        "the library (ie recipes the user has saved themselves) are
+        harder to access than the main discovery dashboard which is
+        random recipes. your own library should be prominent." Order:
+        Today → Discover → Library → Plan → Progress → More.
+
+        2026-04-26 (round 3) — tester asked if 6 tabs is too many.
+        Evaluated and kept at 6. Each tab earns its slot:
+          - Today: critical daily habit, multi-time-per-day usage.
+          - Discover: recipe-browse (new content discovery).
+          - Library: user's own collection (recipe-organise).
+          - Plan: weekly meal-plan orchestrator.
+          - Progress: weight trends, journey, body fat, maintenance —
+            none of these surface anywhere else.
+          - More: settings + account + everything else.
+
+        Considered demoting Progress into More to land at 5 tabs but
+        rejected: weight + body composition + adaptive maintenance are
+        meaningful destinations that deserve top-level access. MFP,
+        Lose It, Yazio all run 5-6 tabs. Tab labels are tight at 9pt
+        but readable; bottom-bar height + insets handle smaller phones.
+      */}
       <Tabs.Screen
         name="index"
         options={{
@@ -83,6 +105,13 @@ export default function TabLayout() {
         options={{
           title: 'Discover',
           tabBarIcon: ({ color }) => <Compass size={22} color={color} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: 'Library',
+          tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={2} />,
         }}
       />
       <Tabs.Screen
@@ -107,7 +136,6 @@ export default function TabLayout() {
         }}
       />
       {/* Hidden tabs — accessed via navigation, not tab bar */}
-      <Tabs.Screen name="library" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />

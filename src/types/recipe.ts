@@ -158,6 +158,14 @@ export interface DayPlanMeal {
   leftoverOf?: string;
   /** Batch 3.10 — visual-only companion to `leftoverOf`. Set together. */
   isLeftover?: boolean;
+  /**
+   * P1-19 (2026-04-25): true when the recipe's macros were synthesized
+   * by `coerceMacrosWhenCaloriesButNoGrams` (kcal known, P/C/F unknown
+   * → neutral 28/42/30 split). The journal-write paths refuse rows with
+   * this flag (see `nutrition-approximation-policy.md` §A1); the
+   * planner UI surfaces an "Estimated · verify" chip on the row.
+   */
+  macrosAreEstimated?: boolean;
 }
 
 export interface DayPlan {

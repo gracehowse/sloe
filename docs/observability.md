@@ -2,6 +2,15 @@
 
 Suppr uses **PostHog** for product analytics (client) and **Sentry** for error aggregation. The Next.js app is **already wired** for Sentry via `@sentry/nextjs` (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `next.config.ts`, `src/instrumentation.ts`). Remaining work is mostly **environment variables and dashboards**, not installing packages.
 
+## Mobile (P1-13, 2026-04-25)
+
+The mobile app is wired for both Sentry and PostHog at parity with web:
+
+- **Sentry:** `@sentry/react-native@7.2.0`. Helper at `apps/mobile/lib/errorTracking.ts` exposes `initErrorTracking`, `captureException`, `setUser`, `clearUser`. Init runs at app boot (`apps/mobile/app/_layout.tsx:38`).
+- **PostHog:** `posthog-react-native`. Helper at `apps/mobile/lib/analytics.ts` exposes `track`, `identify`, `reset`, `isFeatureEnabled`, `subscribeToFlags`. Track helper integrates with the shared `AnalyticsEventName` type from `src/lib/analytics/events.ts` so web ↔ mobile stay name-consistent.
+- **User context** is now stamped automatically: `apps/mobile/context/auth.tsx::syncObservabilityUser` calls `sentrySetUser(uid)` + `posthogIdentify(uid)` whenever the Supabase session has a userId, and `sentryClearUser()` + `posthogReset()` on sign-out. Hooked into the initial `getSession`, the `onAuthStateChange` listener, and the E2E auto-sign-in path. Crashes carry a user id from the first frame; PostHog funnels stop being anonymous.
+- **Critical events fired on mobile:** `food_logged` (10+ sites in tracker + barcode), `meal_plan_generated` (planner.tsx:1202), `paywall_viewed` + `paywall_dismissed` (paywall.tsx:285/375/475), `onboarding_completed` (onboarding.tsx — both `skip` path and `saveAndFinish` path, with `path: "skip" | "full"` discriminator for funnel splitting; mirrors web `web-flow.tsx`).
+
 ## PostHog (product)
 
 - **Env:** `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` (see [`docs/environment.md`](environment.md)).

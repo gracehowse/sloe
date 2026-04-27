@@ -30,7 +30,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const rl = await rateLimit({ keyPrefix: "api:edamam-search", limit: 30, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping.
+  const rl = await rateLimit({ keyPrefix: "api:edamam-search", userId, limit: 30, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },

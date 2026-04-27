@@ -1,12 +1,13 @@
 import { dayPlanTotalsFromMeals } from "../nutrition/portionMultiplier";
+import { coerceMacrosWhenCaloriesButNoGrams } from "../nutrition/coerceRecipeMacrosForPlanning";
 import {
-  coerceMacrosWhenCaloriesButNoGrams,
-  mealPlanPortionSpreadPenalty,
-} from "../nutrition/coerceRecipeMacrosForPlanning";
-import {
-  PORTION_MULTIPLIER_CLAMP,
+  DEFAULT_PLANNER_BANDS as SHARED_DEFAULT_PLANNER_BANDS,
+  MEAL_PLAN_RECENCY_RESET_DAYS,
+  buildIndependentSlotDayGeneric,
+  findBestMealSetGeneric,
   fitDayToTargets,
-  mealPlanDeviationFromOnePenalty,
+  mulberry32,
+  scaleMacros,
 } from "../nutrition/mealPlanAlgo";
 import type {
   DayPlan,
@@ -16,8 +17,44 @@ import type {
 } from "../../types/recipe";
 import { PLANNER_MEAL_SLOT_LABELS } from "../../types/recipe";
 
-// F-15 re-export so the planner UI can pull the single shared clamp from
-// either of the two entry modules (web callers already import from here).
+/**
+ * P2-28 (2026-04-25): full meal-plan algorithm deduplication.
+ *
+ * Pre-fix this file shipped its own `mulberry32`, `scaleMacros`,
+ * `scoreMealSet`, `findBestSmartMealSet`, and `buildIndependentSlotDay`
+ * — ~700 lines of mostly-identical-but-subtly-divergent algorithm
+ * code that mirrored `mealPlanAlgo.ts` with platform-typed wrappers.
+ * The two algorithms drifted in three observable ways (recency penalty
+ * 100/40, reset window 5d/3d, calorie band 5/12) which P1-9 closed at
+ * the constant level — but the algorithm bodies still shipped twice
+ * with subtler structural differences (mobile pre-sorted by slot
+ * calorie target + 60% top-half bias; web picked uniformly random.
+ * Mobile hard-rejected within-day duplicates; web soft-penalised at
+ * +80. Mobile's calorie out-of-band penalty was asymmetric (×3 over,
+ * ×1.5 under); web was flat ×2).
+ *
+ * P2-28 deletes the duplicate body. Both web and mobile now run the
+ * same `findBestMealSetGeneric<R extends MealPlanRecipe>` from
+ * `mealPlanAlgo.ts`; the only platform-specific code left in this file
+ * is the `RecipeCard`-shaped slot-fit predicate and the
+ * pool-construction filter (the "exclude zero-macro recipes" guard
+ * from P1-23). All scoring, scaling, and sampling logic lives in one
+ * file. Future scoring changes are now a one-file edit instead of a
+ * two-file lockstep.
+ *
+ * Behavioural change for web users vs the previous (drifted) shape:
+ * mobile's stricter scoring is canonical (asymmetric calorie penalty,
+ * hard-reject duplicates, slot-target pre-sort + 60% top-half bias).
+ * Better aligned with Suppr's "precision over breadth" positioning;
+ * over-target is penalised harder for cutting users; in-day duplicates
+ * are a guarantee, not a soft preference.
+ *
+ * Pinned by `tests/unit/mealPlanWebMobileParity.test.ts` —
+ * tightened from "same constants" to behavioural assertions in the
+ * same PR.
+ */
+
+// F-15 re-export so the planner UI can pull the single shared clamp.
 export { PORTION_MULTIPLIER_CLAMP } from "../nutrition/mealPlanAlgo";
 
 /** Daily macro targets + optional tolerance bands for the optimizer. */
@@ -32,10 +69,11 @@ export interface PlannerTargets {
   carbFatBandPct: number;
 }
 
-export const DEFAULT_PLANNER_BANDS = {
-  calorieBandPct: 12,
-  carbFatBandPct: 18,
-} as const;
+/**
+ * P1-9 (2026-04-25): re-exported from `mealPlanAlgo.ts` so web + mobile
+ * share a single source of truth.
+ */
+export const DEFAULT_PLANNER_BANDS = SHARED_DEFAULT_PLANNER_BANDS;
 
 /** Meal slot labels (order matters for display). */
 export const PLAN_MEAL_SLOTS = PLANNER_MEAL_SLOT_LABELS;
@@ -71,186 +109,13 @@ export function recipeFitsMealSlot(recipe: RecipeCard, slot: PlannerMealSlot): b
   return slots.includes(slot);
 }
 
-// ---------------------------------------------------------------------------
-// Unified smart meal planning algorithm.
-// Shared by both web and mobile. Features:
-// - Configurable slots (can exclude any meal slot)
-// - Slot-weighted calorie targets (used for recipe sort bias on mobile)
-// - Joint portion scaling (0.2×–2.5×) with 1.0×-first + snap toward 1× (F-73)
-// - Strong recency penalty for day variety
-// - Per-day unique seed for reproducible randomness
-// ---------------------------------------------------------------------------
-
-type Macros = { calories: number; protein: number; carbs: number; fat: number };
-
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function mulberry32(seed: number): () => number {
-  return () => {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function scaleMacros(r: Macros, mult: number): Macros {
-  return {
-    calories: Math.round(r.calories * mult),
-    protein: Math.round(r.protein * mult * 10) / 10,
-    carbs: Math.round(r.carbs * mult * 10) / 10,
-    fat: Math.round(r.fat * mult * 10) / 10,
-  };
-}
-
-function scoreMealSet(
-  meals: Macros[],
-  targets: PlannerTargets,
-  recipeIds: string[],
-  recentIds: Set<string>,
-): number {
-  const sum = meals.reduce(
-    (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-
-  let e = 0;
-
-  // Calorie scoring
-  const calDiff = sum.calories - targets.calories;
-  const calBand = targets.calories * (targets.calorieBandPct / 100);
-  if (Math.abs(calDiff) <= calBand) {
-    e += Math.abs(calDiff) * 0.05;
-  } else {
-    e += Math.abs(calDiff) * 2;
-  }
-
-  // Protein — highest priority
-  const proDiff = sum.protein - targets.protein;
-  if (Math.abs(proDiff) <= targets.protein * 0.15) {
-    e += Math.abs(proDiff) * 0.1;
-  } else {
-    e += Math.abs(proDiff) * 4;
-  }
-
-  // Carbs + fat
-  for (const [diff, target] of [[sum.carbs - targets.carbs, targets.carbs], [sum.fat - targets.fat, targets.fat]] as const) {
-    if (Math.abs(diff) <= target * 0.2) {
-      e += Math.abs(diff) * 0.05;
-    } else {
-      e += Math.abs(diff) * 0.8;
-    }
-  }
-
-  // Duplicate penalty
-  const uniq = new Set(recipeIds);
-  if (uniq.size < recipeIds.length) e += (recipeIds.length - uniq.size) * 80;
-
-  // Recency penalty — strongly discourage recipes from previous days
-  for (const id of recipeIds) {
-    if (recentIds.has(id)) e += 40;
-  }
-
-  return e;
-}
-
-/** Only recipes tagged for the slot (or untagged). Never fills a slot from unrelated recipes. */
-function findBestSmartMealSet(
-  pool: RecipeCard[],
-  slots: string[],
-  targets: PlannerTargets,
-  recentIds: Set<string>,
-  rand: () => number,
-): { recipes: RecipeCard[]; multipliers: number[]; residualProteinGap: number } | null {
-  if (pool.length === 0) return null;
-
-  const perSlot = slots.map((slot) =>
-    pool.filter((r) => recipeFitsMealSlot(r, slot as PlannerMealSlot)),
-  );
-  if (perSlot.some((p) => p.length === 0)) return null;
-
-  let best:
-    | { recipes: RecipeCard[]; multipliers: number[]; score: number; residualProteinGap: number }
-    | null = null;
-  const samples = Math.min(20_000, perSlot.reduce((a, p) => a * p.length, 1));
-
-  for (let i = 0; i < samples; i++) {
-    const picks = perSlot.map((p) => p[Math.floor(rand() * p.length)]!);
-    const ids = picks.map((r) => r.id);
-
-    // Seed at 1.0× per slot; joint fit only moves levers when bands need it
-    // (parity with mobile `generateSmartPlan` / `mealPlanAlgo`, F-73).
-    const initial = picks.map(() => 1);
-    const fit = fitDayToTargets({ recipes: picks, multipliers: initial, targets });
-    const multipliers = fit.multipliers;
-
-    const scaledMeals = picks.map((r, j) => scaleMacros(r, multipliers[j]));
-    const s =
-      scoreMealSet(scaledMeals, targets, ids, recentIds) +
-      mealPlanPortionSpreadPenalty(multipliers) +
-      mealPlanDeviationFromOnePenalty(multipliers);
-
-    if (!best || s < best.score) {
-      best = {
-        recipes: picks,
-        multipliers,
-        score: s,
-        residualProteinGap: fit.residualProteinGap,
-      };
-    }
-  }
-
-  return best;
-}
-
-/** One pick per slot that has ≥1 matching recipe; skips slots with no matches (partial day). */
-function buildIndependentSlotDay(
-  pool: RecipeCard[],
-  slots: string[],
-  targets: PlannerTargets,
-  rand: () => number,
-): { meals: DayPlanMeal[]; pickedIds: string[]; residualProteinGap: number } {
-  const picks: { pick: RecipeCard; name: string; slotIndex: number }[] = [];
-  const pickedIds: string[] = [];
-  for (let j = 0; j < slots.length; j++) {
-    const name = slots[j]!;
-    const fits = pool.filter((r) => recipeFitsMealSlot(r, name as PlannerMealSlot));
-    if (fits.length === 0) continue;
-    const pick = fits[Math.floor(rand() * fits.length)]!;
-    pickedIds.push(pick.id);
-    picks.push({ pick, name, slotIndex: j });
-  }
-  if (picks.length === 0) {
-    return { meals: [], pickedIds, residualProteinGap: 0 };
-  }
-  const initial = picks.map(() => 1);
-  const fit = fitDayToTargets({
-    recipes: picks.map((p) => p.pick),
-    multipliers: initial,
-    targets,
-  });
-  const meals: DayPlanMeal[] = picks.map(({ pick, name }, j) => {
-    const mult = fit.multipliers[j]!;
-    const scaled = scaleMacros(pick, mult);
-    return {
-      name,
-      recipeTitle: pick.title,
-      calories: scaled.calories,
-      protein: scaled.protein,
-      carbs: scaled.carbs,
-      fat: scaled.fat,
-      // portionMultiplier not set: fit mult is baked into calories already
-    };
-  });
-  return { meals, pickedIds, residualProteinGap: fit.residualProteinGap };
-}
-
 /**
- * Generate a macro-aware meal plan from saved recipes.
- * Uses slot-weighted calorie targets and portion scaling (0.5x–2x).
- * Shared by web and mobile.
+ * Generate a macro-aware meal plan from saved recipes. Web wrapper
+ * around `findBestMealSetGeneric<RecipeCard>` from `mealPlanAlgo.ts`.
  */
 export function generatePlanFromLibrary(input: {
   savedRecipes: RecipeCard[];
@@ -273,13 +138,10 @@ export function generatePlanFromLibrary(input: {
         fiberG: r.fiberG,
       }),
     }))
-    // P1-23 (TestFlight `AGSeM-FnnYbZy6FJveUKBoc`,
-    // `APO0Nk_bre7hVGh9ORM7bGw`, 2026-04-22+): exclude recipes that
-    // still have 0 calories AND 0 macros after the planning coercion
-    // helper above. The joint-fit scaler can produce nonsense
-    // multipliers when handed a recipe with no nutritional signal
-    // (it tries to absorb the day's macro gap by scaling something
-    // with no macros) — keep them out of the pool entirely.
+    // P1-23 — exclude recipes that still have 0 calories AND 0 macros
+    // after the planning coercion helper above. The joint-fit scaler
+    // can produce nonsense multipliers when handed a recipe with no
+    // nutritional signal.
     .filter(
       (r) =>
         (Number.isFinite(r.calories) && r.calories > 0) ||
@@ -291,14 +153,22 @@ export function generatePlanFromLibrary(input: {
   const slots = input.slots ?? PLAN_MEAL_SLOTS.slice();
   const baseSeed = input.seed ?? Date.now();
 
+  // P2-28: slot-fit adapter — generic takes `slot: string`; web's
+  // `recipeFitsMealSlot` was typed against `PlannerMealSlot`. Cast
+  // here so the algorithm doesn't need to know about the typed
+  // enum.
+  const slotFitPredicate = (recipe: RecipeCard, slot: string) =>
+    recipeFitsMealSlot(recipe, slot as PlannerMealSlot);
+
   const recentIds = new Set<string>();
   const plans: DayPlan[] = [];
 
   for (let d = 1; d <= daysCount; d++) {
-    if (d > 1 && (d - 1) % 3 === 0) recentIds.clear();
+    // P1-9: shared 5-day reset.
+    if (d > 1 && (d - 1) % MEAL_PLAN_RECENCY_RESET_DAYS === 0) recentIds.clear();
 
     const rand = mulberry32(baseSeed + d * 7919 + pool.length * 31);
-    const joint = findBestSmartMealSet(pool, slots, targets, recentIds, rand);
+    const joint = findBestMealSetGeneric(pool, slots, targets, recentIds, rand, slotFitPredicate);
     let meals: DayPlanMeal[];
     let residualProteinGap = 0;
     if (joint) {
@@ -310,17 +180,73 @@ export function generatePlanFromLibrary(input: {
         return {
           name,
           recipeTitle: r.title,
-          ...scaled,
-          // portionMultiplier not set: fit mult is baked into calories already
+          recipeId: r.id,
+          calories: scaled.calories,
+          protein: scaled.protein,
+          carbs: scaled.carbs,
+          fat: scaled.fat,
+          // P1-19: thread coercion flag through to the planner row chip.
+          ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+          // portionMultiplier not set: fit mult is baked into calories already.
         };
       });
       residualProteinGap = joint.residualProteinGap;
     } else {
-      const { meals: indMeals, pickedIds, residualProteinGap: indGap } =
-        buildIndependentSlotDay(pool, slots, targets, rand);
-      meals = indMeals;
-      residualProteinGap = indGap;
-      for (const id of pickedIds) recentIds.add(id);
+      // Polish (2026-04-25 visual-qa): independent fallback gets a
+      // re-sample loop. Tester feedback: "when meal plans are generated,
+      // they are way out from calorie and macronutrient goals". When the
+      // joint sampler can't satisfy bands, the fallback used to accept
+      // the very first independent build no matter how badly it drifted
+      // (often >25% off the calorie target). Now we sample up to 4
+      // candidates with offset RNG seeds and keep the one closest to
+      // calorie target — small, bounded cost, dramatically better fit
+      // on small pools where the joint sampler gives up.
+      const FALLBACK_RETRIES = 3; // primary build + 3 retries = 4 candidates
+      let bestFallback = buildIndependentSlotDayGeneric(
+        pool,
+        slots,
+        targets,
+        rand,
+        slotFitPredicate,
+      );
+      const calOf = (f: typeof bestFallback) =>
+        f.picks.reduce(
+          (a, { pick }, j) => a + scaleMacros(pick, f.multipliers[j]!).calories,
+          0,
+        );
+      let bestDrift = Math.abs(calOf(bestFallback) - targets.calories);
+      for (let retry = 1; retry <= FALLBACK_RETRIES; retry++) {
+        const retryRand = mulberry32(baseSeed + d * 7919 + retry * 13337 + pool.length * 31);
+        const candidate = buildIndependentSlotDayGeneric(
+          pool,
+          slots,
+          targets,
+          retryRand,
+          slotFitPredicate,
+        );
+        const candidateDrift = Math.abs(calOf(candidate) - targets.calories);
+        if (candidateDrift < bestDrift) {
+          bestFallback = candidate;
+          bestDrift = candidateDrift;
+        }
+      }
+      const fallback = bestFallback;
+      residualProteinGap = fallback.residualProteinGap;
+      meals = fallback.picks.map(({ pick, name }, j) => {
+        const mult = fallback.multipliers[j]!;
+        const scaled = scaleMacros(pick, mult);
+        return {
+          name,
+          recipeTitle: pick.title,
+          recipeId: pick.id,
+          calories: scaled.calories,
+          protein: scaled.protein,
+          carbs: scaled.carbs,
+          fat: scaled.fat,
+          ...((pick as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+        };
+      });
+      for (const id of fallback.pickedIds) recentIds.add(id);
     }
 
     const totals = dayPlanTotalsFromMeals(meals);
@@ -334,3 +260,7 @@ export function generatePlanFromLibrary(input: {
 
   return plans;
 }
+
+// fitDayToTargets is exported by mealPlanAlgo.ts; re-exported here for
+// any web-side caller that imported it through this file historically.
+export { fitDayToTargets };

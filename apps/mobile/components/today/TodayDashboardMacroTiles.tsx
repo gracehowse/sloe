@@ -12,6 +12,8 @@ import {
 } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
+import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -41,6 +43,10 @@ export interface TodayDashboardMacroTilesProps {
   textSecondaryColor: string;
   textTertiaryColor: string;
   mutedColor: string;
+  /** P3-30 (2026-04-25): when true, the carbs tile shows "Net carbs"
+   *  with the value computed via `netCarbsForRow(carbs, fibre, true)`.
+   *  Helpers refuse the "Net carbs" label when fibre is unknown. */
+  netCarbsLensEnabled?: boolean;
 }
 
 type MacroDef = {
@@ -71,6 +77,7 @@ export function TodayDashboardMacroTiles({
   textSecondaryColor,
   textTertiaryColor,
   mutedColor,
+  netCarbsLensEnabled,
 }: TodayDashboardMacroTilesProps) {
   const microSum = mealsToday.reduce(
     (a, m) => ({
@@ -85,7 +92,17 @@ export function TodayDashboardMacroTiles({
   // macros (sugar/sodium/water) pick sensible lucide neighbours.
   const macroMap: Record<string, MacroDef> = {
     protein: { label: "Protein", current: totals.protein, target: targets.protein, color: MacroColors.protein, unit: "g", Icon: Beef },
-    carbs: { label: "Carbs", current: totals.carbs, target: targets.carbs, color: MacroColors.carbs, unit: "g", Icon: Wheat },
+    carbs: {
+      // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
+      // carbs" when fibre is unknown so a misleading headline never
+      // ships.
+      label: carbsLabel(totals.fiber, Boolean(netCarbsLensEnabled)),
+      current: netCarbsForRow(totals.carbs, totals.fiber, Boolean(netCarbsLensEnabled)),
+      target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
+      color: MacroColors.carbs,
+      unit: "g",
+      Icon: Wheat,
+    },
     fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
     fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
@@ -101,7 +118,10 @@ export function TodayDashboardMacroTiles({
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
-        const value = macro === "fiber" || macro === "sugar" ? Math.round(def.current * 10) / 10 : Math.round(def.current);
+        // Polish (2026-04-25) — formatMacro centralises per-macro rounding.
+        // protein/carbs/fat now keep 1 decimal (no more "105.80000000000001g"),
+        // calories+sodium stay integer. Trailing ".0" trimmed for readability.
+        const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
         const remain = def.target - def.current;
         const overBy = Math.round(Math.abs(remain));

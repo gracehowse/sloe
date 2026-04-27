@@ -35,7 +35,7 @@ import { dateKeyFromDate } from "./trackerStats";
  * `SupabaseClient<Database>` and mobile `@/lib/supabase` export satisfy
  * it without a `as any`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type DailyTargetSnapshotClient = any;
 
 /**
@@ -71,7 +71,7 @@ export async function snapshotDailyTargetIfMissing(
     .maybeSingle();
 
   if (profileErr) {
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "[dailyTargetSnapshot] profile read failed — skipping",
       profileErr.message ?? "",
@@ -114,7 +114,7 @@ export async function snapshotDailyTargetIfMissing(
     // Missing table (migration not applied yet) or transient network
     // error — we don't block the user. Keep a single low-noise warn
     // so it shows up in Sentry without flooding during rollout.
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "[dailyTargetSnapshot] insert failed (probably migration pending) — skipping",
       insertErr.message ?? "",

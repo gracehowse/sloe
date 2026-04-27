@@ -86,7 +86,8 @@ export async function POST(req: Request) {
   const serviceErr = misconfiguredServiceRoleResponse();
   if (serviceErr) return serviceErr;
 
-  const rl = await rateLimit({ keyPrefix: "api:user-foods-submit", limit: 20, windowMs: 3600_000 });
+  // P0-6 (2026-04-25): per-user scoping.
+  const rl = await rateLimit({ keyPrefix: "api:user-foods-submit", userId, limit: 20, windowMs: 3600_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many submissions. Try again later." },

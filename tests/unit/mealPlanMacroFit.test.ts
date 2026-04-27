@@ -33,14 +33,19 @@ function macro(calories: number, protein: number, carbs: number, fat: number) {
 }
 
 describe("PORTION_MULTIPLIER_CLAMP", () => {
-  it("matches mobile's wider clamp (0.2..2.5, 0.1 step)", () => {
-    expect(PORTION_MULTIPLIER_CLAMP).toEqual({ min: 0.2, max: 2.5, step: 0.1 });
+  // 2026-04-25 polish — tightened from {0.2, 2.5, 0.1} (23 legal positions) to
+  // {0.5, 2.0, 0.5} (4 legal positions: 0.5, 1, 1.5, 2). Tester feedback was
+  // that fractions like 0.3× and 1.2× felt arbitrary; whole/half portions
+  // read as sensible. The optimizer's mealPlanDeviationFromOnePenalty (×18)
+  // continues to bias toward 1× whenever bands allow.
+  it("uses the sensible-portions clamp (0.5..2.0, 0.5 step)", () => {
+    expect(PORTION_MULTIPLIER_CLAMP).toEqual({ min: 0.5, max: 2.0, step: 0.5 });
   });
 
-  it("clampPlannerMultiplier rounds to step and clamps to min/max", () => {
+  it("clampPlannerMultiplier snaps to whole/half steps and clamps to min/max", () => {
     expect(clampPlannerMultiplier(1)).toBe(1);
-    expect(clampPlannerMultiplier(1.23)).toBeCloseTo(1.2, 6);
-    expect(clampPlannerMultiplier(1.27)).toBeCloseTo(1.3, 6);
+    expect(clampPlannerMultiplier(1.2)).toBeCloseTo(1.0, 6);
+    expect(clampPlannerMultiplier(1.4)).toBeCloseTo(1.5, 6);
     expect(clampPlannerMultiplier(0.01)).toBe(PORTION_MULTIPLIER_CLAMP.min);
     expect(clampPlannerMultiplier(10)).toBe(PORTION_MULTIPLIER_CLAMP.max);
     expect(clampPlannerMultiplier(Number.NaN)).toBe(1);

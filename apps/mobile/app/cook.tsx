@@ -312,8 +312,29 @@ export default function CookModeScreen() {
           <Text style={styles.doneIcon}>🎉</Text>
           <Text style={styles.doneTitle}>Enjoy your meal!</Text>
           <Text style={styles.doneSubtext}>{title}</Text>
-          <Pressable style={styles.doneBtn} onPress={() => router.back()}>
-            <Text style={styles.doneBtnText}>Done</Text>
+          {/* P2-24 (2026-04-25): Log this meal — closes the loop from cook
+              back to the journal. Replace the route with the recipe detail
+              + an `autoLog=1` query param; the recipe page already owns
+              the journal-write logic with the coercion guard (P0-3) so we
+              don't fork the write path. */}
+          <Pressable
+            style={styles.doneBtn}
+            onPress={() => {
+              if (recipeId) {
+                track(AnalyticsEvents.cook_mode_log_tapped, { recipeId });
+                router.replace(`/recipe/${recipeId}?autoLog=1` as never);
+              } else {
+                router.back();
+              }
+            }}
+          >
+            <Text style={styles.doneBtnText}>Log this meal</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.doneBtn, { backgroundColor: "transparent", marginTop: Spacing.sm }]}
+            onPress={() => router.back()}
+          >
+            <Text style={[styles.doneBtnText, { color: colors.textSecondary }]}>Skip — back to recipe</Text>
           </Pressable>
         </View>
       )}

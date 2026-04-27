@@ -66,6 +66,27 @@ if (!has(upstashUrl) || !has(upstashToken)) {
   );
 }
 
+// 2026-04-26 — VAPID keypair for web push (weekly recap delivery to web).
+// Without these the /api/push/weekly-recap route returns early without
+// dispatching any pushes; web subscribers never receive the Sunday recap.
+// Generate with `node scripts/generate-vapid-keys.mjs`.
+const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+const vapidSubject = process.env.VAPID_SUBJECT;
+const vapidConfigured = has(vapidPublic) && has(vapidPrivate) && has(vapidSubject);
+line(
+  vapidConfigured,
+  "Web push (VAPID keypair)",
+  vapidConfigured
+    ? "configured (NEXT_PUBLIC_VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY + VAPID_SUBJECT)"
+    : "missing — weekly-recap web pushes will silently no-op",
+);
+if (!vapidConfigured) {
+  console.log(
+    "[--] Web push: run `node scripts/generate-vapid-keys.mjs` then paste the 3 env vars into Vercel + .env.local.",
+  );
+}
+
 console.log("");
 console.log("Stripe Dashboard: create endpoint POST /api/stripe/webhook with events:");
 console.log("  checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted");

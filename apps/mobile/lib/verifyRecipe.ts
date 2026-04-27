@@ -8,6 +8,8 @@ import {
 } from "../../../src/lib/openFoodFacts/offServingPortions";
 import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
 import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
+import { matchGenericBeverage } from "../../../src/lib/nutrition/genericBeverages";
+import { matchGenericFood } from "../../../src/lib/nutrition/genericFoods";
 import {
   pickEdamamPrimaryServing,
   pickUsdaBrandedPrimaryServing,
@@ -21,7 +23,11 @@ import {
   recomputeRecipeTotals,
   type IngredientOverride,
 } from "../../../src/lib/nutrition/ingredientOverrides";
-import { totalGramsForVerifyScale as totalGramsForVerifyScaleImpl } from "../../../src/lib/nutrition/totalGramsForVerifyScale";
+import {
+  totalGramsForVerifyScale as totalGramsForVerifyScaleImpl,
+  totalGramsForVerifyScaleDetailed as totalGramsForVerifyScaleDetailedImpl,
+  type VerifyScaleResult,
+} from "../../../src/lib/nutrition/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
 import { isPlausibleMacrosPer100g } from "../../../src/lib/nutrition/macroPlausibility";
 import {
@@ -31,8 +37,13 @@ import {
 import { parseOffMicrosPer100g } from "../../../src/lib/openFoodFacts/parseOffMicros";
 import { stripSectionPrefix } from "../../../src/lib/recipe-import/extractSocialRecipe";
 
-/** Keep in sync with `RECIPE_INGREDIENT_REVIEW_CONFIDENCE` in `src/lib/nutrition/verifyIngredients.ts`. */
-export const RECIPE_INGREDIENT_REVIEW_CONFIDENCE = 0.5;
+/**
+ * P1-8 (2026-04-25): re-export the canonical threshold from
+ * `verifyConfidencePolicy.ts` (single source of truth) instead of
+ * maintaining a hand-synced duplicate. Same value as before (0.50);
+ * the import path is now stable across web + mobile.
+ */
+export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "../../../src/lib/nutrition/verifyConfidencePolicy";
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
 // vs search-oriented helpers here — see `docs/product/web-mobile-parity-scope.md`
@@ -582,8 +593,11 @@ export type UnifiedSearchResult = {
    * `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
    */
   primaryServing?: PrimaryServing | null;
-  /** Internal: source type for fetching full data on tap */
-  _source: "USDA" | "OFF" | "Edamam";
+  /** Internal: source type for fetching full data on tap.
+   *  F-73 (2026-04-27): "GenericBeverage" + "GenericFood" rows are seeded
+   *  in-memory from `src/lib/nutrition/genericBeverages.ts` /
+   *  `genericFoods.ts` and need no on-tap fetch. */
+  _source: "USDA" | "OFF" | "Edamam" | "GenericBeverage" | "GenericFood";
   _fdcId?: number;
   _offCode?: string;
   /** Edamam food identifier — stable string, not numeric. */
@@ -694,6 +708,22 @@ export async function searchFoods(
   if (!qRank.trim()) return [];
   const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
   const limit = opts?.limit && opts.limit > 0 ? Math.floor(opts.limit) : 24;
+
+  // F-73 (2026-04-27) — generic-beverages preempt USDA Branded for known
+  // coffee-drink queries ("cortado" returning Spanish cheese was the
+  // canonical bug). Match runs against an alias list; when it lands the
+  // entry is prepended to the merged results so the user sees the right
+  // row first. Other sources still load and surface below.
+  //
+  // Same-day extension: generic-foods table covers fruit/veg/grain/
+  // protein/dairy queries that hit the parallel USDA-Branded-noise
+  // class (e.g. "apple" → branded "Apple Cinnamon Bagel"). Beverages
+  // match first because of how query-overlap shakes out (e.g. typing
+  // "milk" matches a beverage; nothing in the food table aliases on
+  // bare "milk"); guard not strictly needed but keeps order stable.
+  const genericBeverage = matchGenericBeverage(t);
+  const genericFood = genericBeverage ? null : matchGenericFood(t);
+
   const usdaP = searchUsda(t, { page });
   const offP = searchOpenFoodFacts(t, { page });
   const edamamP = searchEdamam(t, { page });
@@ -701,6 +731,16 @@ export async function searchFoods(
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
   let eda: EdamamSearchResult[] = [];
+
+  // F-73: when a generic match landed, surface it synchronously (no
+  // async wait) so the user sees the right answer instantly. Other
+  // sources still load and append below.
+  const genericRows: UnifiedSearchResult[] = genericBeverage
+    ? [genericBeverageToUnifiedResult(genericBeverage)]
+    : genericFood
+      ? [genericFoodToUnifiedResult(genericFood)]
+      : [];
+  if (genericRows.length > 0 && onPartial) onPartial(genericRows);
 
   if (onPartial) {
     // Stream: deliver whichever source responds first, then keep appending
@@ -719,13 +759,90 @@ export async function searchFoods(
       pending.delete(
         done === "usda" ? usdaLabelled : done === "off" ? offLabelled : edaLabelled,
       );
-      onPartial(mergeResults(qRank, usda, off, eda, limit));
+      onPartial([...genericRows, ...mergeResults(qRank, usda, off, eda, limit - genericRows.length)]);
     }
   } else {
     [usda, off, eda] = await Promise.all([usdaP, offP, edamamP]);
   }
 
-  return mergeResults(qRank, usda, off, eda, limit);
+  return [...genericRows, ...mergeResults(qRank, usda, off, eda, limit - genericRows.length)];
+}
+
+/**
+ * F-73 (2026-04-27) — convert a GenericBeverage entry to a
+ * UnifiedSearchResult so it slots into the search results list. The
+ * `key` is `generic-beverage:{id}` so commit paths can recognise the
+ * source if they need to (currently they don't — the macros + caffeine
+ * are read directly).
+ */
+function genericBeverageToUnifiedResult(b: import("../../../src/lib/nutrition/genericBeverages").GenericBeverage): UnifiedSearchResult {
+  return {
+    key: `generic-beverage:${b.id}`,
+    name: b.name,
+    subtitle: b.subtitle,
+    _source: "GenericBeverage",
+    macrosPer100g: {
+      calories: b.per100ml.calories,
+      protein: b.per100ml.protein,
+      carbs: b.per100ml.carbs,
+      fat: b.per100ml.fat,
+      fiberG: 0,
+      sugarG: 0,
+      sodiumMg: 0,
+      // F-74 alcohol auto-track reads `alcoholGPer100g`; treat ml as g
+      // for liquids (1g/ml is close enough across coffee/tea/wine/beer
+      // — the tracker rounds to 0.1g anyway).
+      caffeineMgPer100g: b.caffeineMgPer100ml,
+      alcoholGPer100g: b.alcoholGPer100ml ?? 0,
+    },
+    calsPer100g: b.per100ml.calories,
+    verified: true,
+    primaryServing: {
+      label: `${b.servingMl} ml`,
+      grams: b.servingMl,
+      kcal: Math.round((b.per100ml.calories * b.servingMl) / 100),
+      protein: Math.round((b.per100ml.protein * b.servingMl) / 100 * 10) / 10,
+      carbs: Math.round((b.per100ml.carbs * b.servingMl) / 100 * 10) / 10,
+      fat: Math.round((b.per100ml.fat * b.servingMl) / 100 * 10) / 10,
+    },
+  };
+}
+
+/**
+ * F-73 follow-up (2026-04-27) — convert a GenericFood entry to a
+ * UnifiedSearchResult. Same shape as the beverage helper but solid-food
+ * sized: per-100g macros land directly (no ml→g coercion), and the
+ * primary serving carries the curated `servingLabel` (e.g.
+ * "1 medium (182g)" for an apple).
+ */
+function genericFoodToUnifiedResult(f: import("../../../src/lib/nutrition/genericFoods").GenericFood): UnifiedSearchResult {
+  return {
+    key: `generic-food:${f.id}`,
+    name: f.name,
+    subtitle: f.subtitle,
+    _source: "GenericFood",
+    macrosPer100g: {
+      calories: f.per100g.calories,
+      protein: f.per100g.protein,
+      carbs: f.per100g.carbs,
+      fat: f.per100g.fat,
+      fiberG: f.per100g.fiberG,
+      sugarG: f.per100g.sugarG,
+      sodiumMg: f.per100g.sodiumMg,
+      caffeineMgPer100g: 0,
+      alcoholGPer100g: 0,
+    },
+    calsPer100g: f.per100g.calories,
+    verified: true,
+    primaryServing: {
+      label: f.servingLabel,
+      grams: f.servingG,
+      kcal: Math.round((f.per100g.calories * f.servingG) / 100),
+      protein: Math.round((f.per100g.protein * f.servingG) / 100 * 10) / 10,
+      carbs: Math.round((f.per100g.carbs * f.servingG) / 100 * 10) / 10,
+      fat: Math.round((f.per100g.fat * f.servingG) / 100 * 10) / 10,
+    },
+  };
 }
 
 /** Convert ALL CAPS or all-lowercase to Title Case */
@@ -1118,6 +1235,18 @@ export async function submitFoodCorrection(opts: {
 
 export function totalGramsForVerifyScale(ing: VerifiableIngredient, amountNum: number): number {
   return totalGramsForVerifyScaleImpl(ing, amountNum);
+}
+
+/**
+ * P0-2 (2026-04-25): density-aware variant returning grams + a flag when
+ * unit is `ml` and no density resolved. Surface the flag in UI as a
+ * "needs density — switch to g/oz" hint.
+ */
+export function totalGramsForVerifyScaleDetailed(
+  ing: VerifiableIngredient,
+  amountNum: number,
+): VerifyScaleResult {
+  return totalGramsForVerifyScaleDetailedImpl(ing, amountNum);
 }
 
 /** Scale per-100g macros to a given gram weight. */

@@ -39,7 +39,13 @@ import {
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
-import { generateSmartPlan, ALL_MEAL_SLOTS, PORTION_MULTIPLIER_CLAMP, type PlannerTargets } from "@/lib/mealPlanAlgo";
+import {
+  generateSmartPlan,
+  ALL_MEAL_SLOTS,
+  DEFAULT_PLANNER_BANDS,
+  PORTION_MULTIPLIER_CLAMP,
+  type PlannerTargets,
+} from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
 import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
 import {
@@ -191,12 +197,29 @@ type DayPlan = {
 
 type PlanRecipeRef = { id: string; title: string; calories: number };
 
+/**
+ * 2026-04-26 polish (round 2): snap displayed portion multipliers to the
+ * canonical {0.5, 1, 1.5, 2} set so legacy plans (generated before the
+ * 2026-04-25 clamp tightening) don't render as "0.3×" or "1.8×". The
+ * underlying multiplier on `meal.portionMultiplier` and `meal.calories`
+ * is unchanged — only the *displayed* chip label is rounded, so day
+ * totals stay accurate. New plans produced post-clamp are already snapped
+ * by the algorithm, so this is a render-only safety net for prod data.
+ */
+function snapDisplayMultiplier(raw: number): number {
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  // Round to nearest 0.5, clamp to [0.5, 2].
+  const stepped = Math.round(raw * 2) / 2;
+  return Math.min(2, Math.max(0.5, stepped));
+}
+
 /** Portion vs library recipe card — used for "(2.5x)" label and `/recipe?id&portion=` when multiplier isn't stored. */
 function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMult: number; label: string } {
   const pm = meal.portionMultiplier;
   if (typeof pm === "number" && Number.isFinite(pm) && Math.abs(pm - 1) > 0.001) {
-    const label = Number.isInteger(pm) ? String(pm) : String(Math.round(pm * 100) / 100);
-    return { displayMult: pm, label };
+    const snapped = snapDisplayMultiplier(pm);
+    const label = Number.isInteger(snapped) ? String(snapped) : String(snapped);
+    return { displayMult: snapped, label };
   }
   const ref =
     (meal.recipeId ? pool.find((r) => r.id === meal.recipeId) : undefined) ??
@@ -209,9 +232,9 @@ function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMu
   if (!Number.isFinite(ratio) || Math.abs(ratio - 1) < 0.02) {
     return { displayMult: 1, label: "1" };
   }
-  const rounded = Math.round(ratio * 100) / 100;
-  const label = Number.isInteger(rounded) ? String(rounded) : String(rounded);
-  return { displayMult: Math.max(0.25, Math.min(8, ratio)), label };
+  const snapped = snapDisplayMultiplier(ratio);
+  const label = Number.isInteger(snapped) ? String(snapped) : String(snapped);
+  return { displayMult: snapped, label };
 }
 
 export default function PlannerScreen() {
@@ -1122,8 +1145,10 @@ export default function PlannerScreen() {
         protein: resolved.protein,
         carbs: resolved.carbs,
         fat: resolved.fat,
-        calorieBandPct: 5,
-        carbFatBandPct: 15,
+        // P1-9 (2026-04-25): import shared defaults so web + mobile
+        // can't drift on macro tolerance bands.
+        calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
+        carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
       };
       if (__DEV__) console.log("[planner] targets:", targets);
 
@@ -2172,6 +2197,38 @@ export default function PlannerScreen() {
                         )
                       : "— kcal · P —g · C —g · F —g"}
                   </Text>
+                  {planMealHasRecipe(meal) &&
+                  (meal as { macrosAreEstimated?: boolean }).macrosAreEstimated ? (
+                    // P1-19 (2026-04-25): the recipe's calories don't agree
+                    // with its gram macros; the planner is showing a neutral
+                    // 28/42/30 split, not real data. Chip routes the user
+                    // to verify. Journal-write paths refuse this row
+                    // (P0-3 nutrition_entries guard); chip is the visual
+                    // counterpart.
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        alignSelf: "flex-start",
+                        marginTop: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 999,
+                        backgroundColor: Accent.warning + "1F",
+                      }}
+                      accessibilityLabel="Estimated macros — open the recipe to verify"
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: Accent.warning,
+                        }}
+                      >
+                        Estimated · verify
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
                 {/* Swap shortcut — prototype-port (2026-04-20). 30×30
                     square button that opens the same swap alert the

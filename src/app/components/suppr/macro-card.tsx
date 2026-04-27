@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "../ui/utils";
 import { IconBox } from "../ui/icon-box";
 import { Icons, type IconName } from "../ui/icons";
+import { formatMacro } from "../../../lib/nutrition/formatMacro";
 
 /**
  * MacroCard — colour-coded macro nutrient display.
@@ -61,7 +62,7 @@ function MacroCard({
       >
         <Icon className="size-3.5" style={{ color: barColor }} />
         <span className="tabular-nums text-sm font-semibold">
-          {Math.round(value)}
+          {formatMacro(value, macro)}
         </span>
         <span className="text-xs text-muted-foreground">{displayUnit}</span>
       </div>
@@ -87,7 +88,7 @@ function MacroCard({
       </div>
 
       <div className="tabular-nums text-base font-bold text-foreground leading-none mb-1">
-        {Math.round(value)}{displayUnit}
+        {formatMacro(value, macro)}{displayUnit}
       </div>
 
       {target && (

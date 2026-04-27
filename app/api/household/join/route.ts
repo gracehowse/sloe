@@ -14,21 +14,32 @@ export async function POST(req: Request) {
   const originErr = assertOrigin(req);
   if (originErr) return originErr;
 
+  // P0-6 (2026-04-25): authenticate before rate-limit so the bucket can
+  // be scoped per-user. Pre-fix the bucket was `household_join:<ip>` —
+  // a single shared NAT could lock out every legitimate joiner behind
+  // that IP, and an IP-rotating attacker could bypass the 5/min cap
+  // entirely while still targeting one specific user. Now keyed
+  // `api:household-join:user:<uid>:<ip>`.
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   // Privacy audit M1 (2026-04-18): invite codes are 12-hex (~48 bits), so
   // brute-force is impractical, but stuffing wasn't blocked. Cap to 5
-  // attempts per minute per IP to make automated guessing pointless and
-  // keep the failure surface small for honest users who mistype once.
-  const limited = await rateLimit({ keyPrefix: "household_join", limit: 5, windowMs: 60_000 });
+  // attempts per minute per (user, IP) tuple — automated guessing is
+  // pointless and honest users who mistype once still have headroom.
+  const limited = await rateLimit({
+    keyPrefix: "api:household-join",
+    userId,
+    limit: 5,
+    windowMs: 60_000,
+  });
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many attempts. Try again in a minute." },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
-  }
-
-  const userId = await getUserIdFromRequest(req);
-  if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
   const serviceErr = misconfiguredServiceRoleResponse();

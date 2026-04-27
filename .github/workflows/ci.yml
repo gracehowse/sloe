@@ -30,6 +30,12 @@ jobs:
         run: npm ci
       - name: Production env checklist
         run: npm run verify:production-env
+      - name: Migration filename + duplicate check (static, no Supabase auth)
+        # P1-11 (2026-04-25): catches malformed `<14-digit>_<name>.sql`
+        # filenames and duplicate timestamps / names before they get
+        # applied. The full drift comparison (vs the linked project)
+        # stays a local / scheduled task — needs Supabase CLI auth.
+        run: npm run check:migrations:static
       - name: Typecheck
         run: npm run typecheck
       - name: ESLint (web + shared tests)

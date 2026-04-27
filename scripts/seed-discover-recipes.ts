@@ -5,9 +5,14 @@
  * public.recipes as published+verified seed rows under SEED_AUTHOR_ID.
  *
  * These rows hotlink publisher CDN images and store recipe text that is not
- * licensed for redistribution. Every row is tagged with description prefix
- * "[TEMP SEED]" AND source_url — either of which is sufficient for cleanup via
- * scripts/delete-seeded-recipes.ts. MUST be purged before any external launch.
+ * licensed for redistribution. Every row is tagged with `source_url` (matched
+ * to scripts/seed-recipe-urls.txt) which is what scripts/delete-seeded-recipes.ts
+ * uses for cleanup. MUST be purged before any external launch.
+ *
+ * 2026-04-25 polish: dropped the legacy "[TEMP SEED] " description prefix.
+ * It was only a secondary cleanup tag (source_url is canonical) and the prefix
+ * was leaking into the user-visible Recipe Detail screens. Render sites now
+ * also strip the legacy prefix defensively in case any prod row still carries it.
  *
  * Usage: npx tsx scripts/seed-discover-recipes.ts [--dry-run]
  */
@@ -17,7 +22,6 @@ import { parseRecipeFromHtml, siteNameFromUrl } from "../src/lib/recipe-import/p
 import { allocateIngredientMacrosFromLines } from "../src/lib/nutrition/allocateIngredientMacrosFromLines";
 
 const SEED_AUTHOR_ID = "e9f85055-876b-4bde-9267-476567b16884";
-const SEED_DESCRIPTION_PREFIX = "[TEMP SEED] ";
 const USER_AGENT = "SupprBot/1.0 (+https://suppr-club.com/bot)";
 
 function loadEnvLocal(): void {
@@ -141,8 +145,7 @@ async function main() {
     const sn = parsed.siteNutrition;
     const mealType = classifySimpleMealType(parsed.title);
     const description =
-      SEED_DESCRIPTION_PREFIX +
-      (parsed.description ?? `Seeded from ${siteNameFromUrl(url)} for Discover testing.`);
+      parsed.description ?? `Seeded from ${siteNameFromUrl(url)} for Discover testing.`;
 
     // author_id intentionally null: the notify_followers_on_recipe_publish trigger
     // references public.author_follows which is missing from the live DB (migration

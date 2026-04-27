@@ -2,9 +2,111 @@
 
 This document extends the MVP hardening work with **nutrition depth**, **activity-adjusted targets**, and **social discovery**. It is the north-star for prioritization; implementation order should follow dependencies below.
 
-**Last reviewed:** 2026-04-23. This is a living doc — update phases as beta feedback arrives.
+**Last reviewed:** 2026-04-25 (P0 batch close — Opus 4.7 codebase review).
 
 **Supabase (2026-04-18):** migration drift on the linked prod project is **reconciled** through **`20260421180000`** (`supabase db push --linked`). Process and replay notes: [`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md).
+
+---
+
+## P0 launch-readiness status (Opus 4.7 review, 2026-04-25)
+
+| # | Item | Status |
+|---|------|--------|
+| P0-1 | Apply schema-drift repair migration `20260503101000` | **Applied on linked prod** (was already present pre-push 2026-04-25; `supabase migration list --linked` confirms remote parity) |
+| P0-2 | Density-aware `totalGramsForVerifyScale` — close ml=g bug | **Shipped** — 13/13 tests green; mobile verify screen renders "needs density" hint |
+| P0-3 | Enforce `wouldCoerceMacros` at every `nutrition_entries` write | **Shipped** — recipe-detail mobile guarded; meta-test pins inventory of 5 sites; planner paths were already guarded |
+| P0-4 | `profiles` lockdown forward-compat for unborn billing columns | **Applied on linked prod 2026-04-25** via `supabase db push --linked` — original audit was a phantom finding (columns don't exist); runtime + static safety net active |
+| P0-5 | `generateSmartPlan` UI thread + sampler reduction | **Shipped** — sampler 20 000 → 2 000 via shared `MEAL_PLAN_SAMPLER_CAP` constant; `InteractionManager.runAfterInteractions` already in place since T14 |
+| P0-6 | Rate-limit per-user scoping (16 endpoints) | **Shipped** — `RateLimitOptions.userId` field; key shape `${prefix}:user:${uid}:${ip}`; meta-test fails CI on regressions |
+| P0-7 | RevenueCat webhook ops runbook | **Runbook shipped** at `docs/operations/revenuecat-webhook-runbook.md`; ops actions remain for Grace (RC dashboard + Vercel env + redeploy) |
+
+**Test surface:** 198 unit tests green across the touched surface.
+
+**Migrations applied on linked prod (2026-04-25 push session):**
+1. `20260503101000_schema_drift_repair.sql` (P0-1) — was already on remote pre-push; `supabase migration list --linked` shows remote parity. ✅
+2. `20260503102000_profiles_lockdown_forward_compat.sql` (P0-4) — applied during this push. ✅
+
+Local + remote now match through `20260503102000`. Harmless warning during push: `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` unset (only needed for Apple Sign-In on web, which is not a launch path).
+
+**Ops actions remaining for Grace:**
+- RevenueCat webhook setup per [`docs/operations/revenuecat-webhook-runbook.md`](operations/revenuecat-webhook-runbook.md) (P0-7 — ~10 minutes).
+
+P1 (11 items) and P2 (9 items + new P1-19 chip) remain. Beginning P1 batch next.
+
+## P1 launch-readiness status (Opus 4.7 review, 2026-04-25)
+
+| # | Item | Status |
+|---|------|--------|
+| P1-8 | Unify ingredient confidence thresholds | **Shipped** — per-line + mean unified at 0.50; 7/7 tests green; mobile duplicate removed |
+| P1-9 | Unify meal-plan algorithm web ↔ mobile | **Shipped** — 4 divergent constants now shared (recency penalty, reset window, both bands); 60/60 tests green; full deduplication tracked as P2-28 |
+| P1-10 | Bump web `@supabase/supabase-js` 2.56.0 → 2.102.1 | **Shipped** — 134/134 Supabase-touching tests green |
+| P1-11 | CI gates — Playwright e2e + check:migrations | **Shipped** — Playwright e2e was already wired; new `--static` migration check + `--migrations-dir` flag + 5/5 tests + new CI step |
+| P1-12 | Optimistic mobile journal writes | **Shipped** — `logPlannedMealWithPortion` now optimistic + rollback; persistent offline queue → P2-29 |
+| P1-13 | Mobile Sentry + PostHog event coverage | **Shipped** — `onboarding_completed` now fires from mobile (skip + full paths); `syncObservabilityUser` stamps Sentry + PostHog identity on every auth state change |
+| P1-14 | RevenueCat live-replay test in `prelaunch:checklist` | **Shipped** — `scripts/test-revenuecat-replay.mjs` posts twice and asserts `skipped_duplicate`; gracefully skips when env unset |
+| P1-15 | Resolve incorporation + finalize legal pages | **Runbook + lint shipped** — 5 placeholders inventoried (3 privacy + 2 terms; audit said 3, missed 2); legal-finalization-runbook details 10-step sequence |
+| P1-16 | Launch checklist + App Store listing doc | **Shipped** — `docs/launch/checklist.md` (3 phases, 31 rows) + `docs/launch/app-store-listing.md` (full scaffold) |
+| P1-17 | Backfill 5 missing decision docs | **Shipped** — RC webhook arch, meal_plans schema, allergen populate, weight_surface_mode enum, onboarding v2 mobile arch |
+| P1-18 | FatSecret licence page sweep | **No-op (already shipped 2026-04-25 in commit `072cb31`)** — licence page line 39 already reads "Basic developer tier — non-caching"; audit was stale |
+| P1-19 | Planner-row "estimated · verify" chip | **Deferred to P2** (created during P0-3) — JSON guards for journal writes are sufficient; chip is visual-honesty enhancement |
+
+**Test surface:** 239 unit tests green across the touched surface.
+
+**Decision docs (Notion mirrored):** P1-8 to P1-18 each have a decision doc in `docs/decisions/` dated 2026-04-25.
+
+**New P2 items added during P1 execution:**
+- P1-19 — Planner-row "estimated · verify" chip on coerced rows (deferred from P0-3)
+- P2-28 — Full meal-plan algorithm deduplication (one shared findBestMealSet)
+- P2-29 — Persistent offline write queue (mobile journal)
+
+P2 (12 items now) is post-launch v1.1 hygiene.
+
+## P2 launch-readiness status (Opus 4.7 review, 2026-04-25)
+
+| # | Item | Status |
+|---|------|--------|
+| P1-19 | Planner-row "estimated · verify" chip | **Shipped** — flag threaded through both algorithms; chip rendered on both platforms |
+| P2-19 | Mobile Tracker monolith refactor | **Deferred to v1.1** — structured 4-phase plan in decision doc |
+| P2-20 | verifyRecipe.ts decomposition | **Deferred to v1.1** — structured 5-step plan |
+| P2-21 | `app/` vs `src/app/` decision | **Documented** — CONTRIBUTING.md update; convention enforced at PR review |
+| P2-22 | Mobile library kind filter | **No-op (audit stale)** — already shipped in Pass 6 / 2026-04-18 |
+| P2-23 | Mobile named-slot switcher | **No-op (audit stale)** — already shipped (lines 244–259 + 1350–1395) |
+| P2-24 | Cook mode → log-this-meal | **Shipped** — autoLog query param + useRef fire-once on recipe page |
+| P2-25 | Social/screenshot recipe import | **No-op (audit stale)** — both URL + image OCR + iOS share-extension already shipped |
+| P2-26 | Net-carbs lens | **Foundation shipped, display rollout → P3-30** — migration + helper + 8/8 tests; UI rollout would create UX trap if shipped without all surfaces |
+| P2-27 | Apple Watch + widget | **Foundation already shipped, native target → P3-31** — widgetSnapshot.ts canonical schema in place; Xcode work deferred |
+| P2-28 | Full meal-plan algorithm dedup | **Deferred to v1.1** — P1-9 closed user-visible drift; structural dedup via generic `findBestMealSet<R>` is the v1.1 PR |
+| P2-29 | Persistent offline write queue | **Deferred to v1.1** — P1-12 closed 80% via optimistic+rollback; persistent queue is coordinated web+mobile feature |
+
+**Test surface:** 251 unit tests green across the touched surface.
+
+**Audit corrections (P2 batch):** Five items the audit flagged as gaps were already shipped (P2-22, P2-23, P2-25 fully; P2-27 foundation; P1-19 has all the data but UI was the missing piece). Pattern continues from P0/P1: the audit verifier missed existing implementations because the keywords didn't match.
+
+**Decision docs (Notion mirrored):** P1-19, P2-19, P2-20, P2-21, P2-22, P2-23, P2-24, P2-25, P2-26, P2-27, P2-28, P2-29 each have a decision doc in `docs/decisions/` dated 2026-04-25.
+
+**New v1.1 follow-up tasks (P3 backlog):**
+- P3-30 — Net-carbs lens display rollout (Settings + Tracker + Recipe Detail).
+- P3-31 — Apple Watch complication + iOS widget Swift extension.
+
+## 2026-04-26 visual-QA polish round
+
+Tester feedback (with screenshots) flagged 9 distinct issues observed on live mobile + web. All landed in a single polish round, decision doc at `docs/decisions/2026-04-26-visual-qa-polish-round.md`. None of P0/P1/P2 was reopened.
+
+| # | Item | Status |
+|---|------|--------|
+| Polish-1 | `[TEMP SEED]` description leak | **Shipped** — source-side strip + render-time `sanitizeRecipeDescription` (5 tests) |
+| Polish-2 | Floating-point macro display ("105.80000000000001g") | **Shipped** — shared `formatMacro` helper, 5 render sites (8 tests) |
+| Polish-3 | Discover macro icon parity (carbs/fat/fibre) | **Shipped** — icon-per-macro on web + mobile Discover; fibre joins when present |
+| Polish-4 | ALL-CAPS imported recipe titles | **Shipped** — shared `normalizeRecipeTitle` at 3 save sites (6 tests) |
+| Polish-5 | Recipe Detail spacing (calories ↔ macros gap) | **Shipped** — dropped redundant overline + tightened margin |
+| Polish-6 | Search tokenization ("wasabi katsu curry" returned nothing) | **Shipped** — shared `recipeSearchMatch` token-AND helper, web + mobile Discover (7 tests) |
+| Polish-7 | Zero-cal serving accepted at high confidence | **Shipped** — `sourceIsAllZero` guard in FatSecret path (`verifyIngredients.ts`) |
+| Polish-8 | Meal plan portion clamp + low-fit fallback | **Shipped** — clamp tightened {0.5, 2.0, 0.5}; 4-candidate fallback re-sample on both web + mobile |
+| Polish-9 | Short micronutrient list | **Deferred — FatSecret upgrade** (Grace owns; sibling decision doc) |
+
+**Test surface (delta):** 31 new tests across 5 new test files; 2 existing tests updated (`mealPlanMacroFit.test.ts`, `discoverThreeSectionLayout.test.ts`); web `tsc --noEmit` clean; mobile `tsc --noEmit` clean.
+
+**Vendor decision:** FatSecret tier upgrade chosen over OFF-search shadow path. See `docs/decisions/2026-04-26-fatsecret-upgrade.md`. Engineering work is no-op until tier flips; storage + renderer already accept the wider 32-nutrient panel.
 
 ---
 

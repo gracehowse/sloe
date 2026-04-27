@@ -15,6 +15,11 @@ export { ConfidenceDot, type ConfidenceLevel } from "./confidence-dot";
 // FitBadge removed — build 10 F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`,
 // 2026-04-19). See resolved.md.
 export { SourceBadge, type SourcePlatform } from "./source-badge";
+export {
+  SponsoredDisclosure,
+  type SponsoredDisclosureProps,
+  type DisclosureKind,
+} from "./sponsored-disclosure";
 export { QuickAddPanel, type QuickAddPanelProps } from "./quick-add-panel";
 export { CopyMealDialog } from "./copy-meal-dialog";
 export { DuplicateDayDialog } from "./duplicate-day-dialog";

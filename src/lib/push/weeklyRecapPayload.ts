@@ -41,6 +41,10 @@ export type NutritionEntryRow = {
   protein: number | null;
   carbs: number | null;
   fat: number | null;
+  /** B1 (2026-04-27) — fibre per meal in grams. Optional: nutrition_entries
+   *  has had this column since F-79; older rows or non-OFF sources may
+   *  carry null. Treated as 0 when null/non-finite. */
+  fiber_g?: number | null;
 };
 
 /**
@@ -183,6 +187,48 @@ export function parseWeightKgByDay(raw: unknown): Record<string, number> {
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const n = typeof v === "number" ? v : Number(v);
     if (Number.isFinite(n)) out[k] = n;
+  }
+  return out;
+}
+
+/**
+ * B1 (2026-04-27) — sum nutrition_entries.fiber_g per date_key for a
+ * single user, within the supplied window. Mirrors `entriesToByDay`'s
+ * filter rules (user_id match + window-key allowlist + null tolerance).
+ *
+ * Returns a map `{ "YYYY-MM-DD": grams }`. Days with no fibre entries
+ * are simply absent — `buildWeeklyRecap` treats `undefined` as 0 when
+ * computing `avgFiberG`.
+ */
+export function entriesToFiberByDay(
+  rows: ReadonlyArray<NutritionEntryRow>,
+  userId: string | null,
+  windowKeys: readonly string[],
+): Record<string, number> {
+  const allowed = new Set(windowKeys);
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    if (userId !== null && row.user_id !== userId) continue;
+    if (!row.date_key || !allowed.has(row.date_key)) continue;
+    const g = Number(row.fiber_g);
+    if (!Number.isFinite(g) || g <= 0) continue;
+    out[row.date_key] = (out[row.date_key] ?? 0) + g;
+  }
+  return out;
+}
+
+/**
+ * B1 — parse profiles.extra_water_by_day JSONB into the
+ * `Record<string, number>` shape `buildWeeklyRecap` consumes for
+ * hydration adherence. Same tolerance posture as `parseWeightKgByDay`:
+ * null / non-object / corrupted → empty map.
+ */
+export function parseHydrationByDay(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n) && n > 0) out[k] = n;
   }
   return out;
 }

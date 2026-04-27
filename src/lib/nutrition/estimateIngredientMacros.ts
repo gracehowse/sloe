@@ -216,6 +216,20 @@ const RAW_STAPLE_KEYS = new Set([
   "egg", "tofu",
 ]);
 
+/**
+ * Resolve g-per-ml density for an ingredient name via the STAPLES table.
+ * Returns undefined when the name has no matched staple density (the default
+ * staple intentionally has no density — refusing rather than guessing 1.0
+ * is the policy in `docs/product/nutrition-approximation-policy.md` §A2).
+ *
+ * Used by `totalGramsForVerifyScale` and any other surface that needs to
+ * convert an ml amount to grams.
+ */
+export function densityForName(name: string): number | undefined {
+  const { staple } = stapleForName(name);
+  return staple.gPerMl;
+}
+
 function stapleForName(name: string): { staple: Staple; isDefault: boolean; matchedKey: string } {
   const n = name.toLowerCase().trim();
   if (!n) return { staple: STAPLES.default, isDefault: true, matchedKey: "default" };

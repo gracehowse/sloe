@@ -35,7 +35,8 @@ export async function POST(req: Request) {
   const serviceErr = misconfiguredServiceRoleResponse();
   if (serviceErr) return serviceErr;
 
-  const rl = await rateLimit({ keyPrefix: "api:household-meals", limit: 30, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping.
+  const rl = await rateLimit({ keyPrefix: "api:household-meals", userId, limit: 30, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited" },

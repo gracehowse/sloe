@@ -40,6 +40,7 @@ import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import MealTypePicker from "@/components/MealTypePicker";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
+import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
 import { parseIngredientLine } from "../../../src/lib/recipe-ingredients/parseIngredientLine";
 import { parseRawIngredients } from "../../../src/lib/recipe-ingredients/parseRawIngredients";
 import { splitPastedIngredientLines } from "../../../src/lib/recipe-ingredients/splitPastedIngredientLines";
@@ -516,7 +517,9 @@ export default function CreateRecipeScreen() {
         .from("recipes")
         .insert({
           author_id: userId,
-          title: title.trim(),
+          // Polish (2026-04-25): if the user typed in ALL CAPS by accident,
+          // store as Title Case. Mixed-case inputs pass through untouched.
+          title: normalizeRecipeTitle(title.trim()),
           description: description.trim() || null,
           instructions: normaliseInstructions(instructions) || null,
           servings: srv,
@@ -623,9 +626,12 @@ export default function CreateRecipeScreen() {
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
+    // 2026-04-26 polish: was Accent.success (green) — every other primary
+    // submit action in the app uses Accent.primary (purple/blue). The green
+    // save was a visual orphan; aligning to the canonical primary colour.
     saveBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, backgroundColor: Accent.success,
+      gap: Spacing.sm, backgroundColor: Accent.primary,
       borderRadius: Radius.md, paddingVertical: 16,
     },
     saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
@@ -682,11 +688,17 @@ export default function CreateRecipeScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* 2026-04-26 polish: pre-fix this strip carried "Cancel" (Title case)
+          AND "CREATE" (uppercase) AND a bottom "Save Recipe" button — three
+          competing affordances. Two were duplicates of the same submit
+          action. Now: Cancel left, screen title centered, no top-right
+          submit. The bottom-of-form Save Recipe button is the single
+          submit affordance, matching every other form in the app. */}
       <View style={styles.topBar}>
         <Pressable onPress={goBackOrCancel} hitSlop={12}>
           <Text style={styles.backText}>Cancel</Text>
         </Pressable>
-        <Text style={styles.topTitle}>CREATE</Text>
+        <Text style={styles.topTitle}>New recipe</Text>
         <View style={{ width: 50 }} />
       </View>
 

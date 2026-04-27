@@ -28,7 +28,7 @@ function makeSupabase(initial: Row, opts?: {
   writeError?: { message?: string } | null;
   trackCalls?: (update: Record<string, unknown>) => void;
 }) {
-  let row = { ...initial };
+  const row = { ...initial };
   return {
     state: () => row,
     client: {

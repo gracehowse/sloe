@@ -33,22 +33,27 @@ No third path. If you are about to add a new approximation and it isn't listed, 
   - Meal-plan fitter input (sampler uses coerced values for scoring; neutral split keeps the optimiser coherent).
   - Planner row display on mobile (prevents the "calories with 0g macros" confusion).
 - **Refused surfaces (journal writes):**
-  - `nutrition_entries` inserts: mobile `logPlannedMealWithPortion` and web `onLogPlanMeal` both call `fetchPlannedMealMicros` first and check `macrosAreCoerced`. When true, the log is refused and the user is prompted to Verify the recipe.
+  - `nutrition_entries` inserts from the planner: mobile `logPlannedMealWithPortion` (`apps/mobile/app/(tabs)/index.tsx`) and web `onLogPlanMeal` (`src/app/components/NutritionTracker.tsx`) both call `fetchPlannedMealMicros` first and check `macrosAreCoerced`. When true, the log is refused and the user is prompted to Verify the recipe.
+  - `nutrition_entries` inserts from recipe-detail "Add to Today" (mobile, P0-3 2026-04-25): `addRecipeToTodayJournal` in `apps/mobile/app/recipe/[id].tsx` calls `wouldCoerceMacros(scaledForLog)` against the in-memory ingredient sum and refuses to insert when the gram columns don't explain the stated calories. Routes the user to `/recipe/verify?id=<id>`. (Web has no equivalent direct-log CTA on the recipe page; web users reach the journal through the planner path which is already guarded.)
+- **Allow-listed surfaces (no coercion possible by provenance):**
+  - HealthKit sync (`apps/mobile/lib/healthSync.ts`) — Apple-Health-sourced macros, never run through Suppr's coercion path.
+  - Barcode log (`apps/mobile/app/(tabs)/barcode.tsx`) — explicit kcal + P/C/F resolved by the barcode → OFF/USDA pipeline, gated through `macroPlausibility` (F-77).
+  - Copy-meal / duplicate-day bulk inserts (`apps/mobile/app/(tabs)/index.tsx`, `src/context/appData/useNutritionJournalState.ts`) — rows clone existing `nutrition_entries` data that was already validated when first inserted.
 - **Detection helper for write-path guards:** [`wouldCoerceMacros`](../../src/lib/nutrition/coerceRecipeMacrosForPlanning.ts) — cheap boolean, takes only the raw recipe macros.
-- **Follow-up:** the planner display should eventually show a "macros estimated — verify for accuracy" chip on coerced rows. Tracked separately; today those rows just show the coerced numbers without a visual flag.
+- **Follow-up (P1):** the planner display should show a "Estimated · verify" chip on coerced rows so users can see the planner is showing a neutral split before deciding to log. Today the journal-write refusal catches the bad path; the chip is a visual-honesty enhancement. Tracked as P1 in the launch roadmap.
 
-### A2 — ml-to-g density assumption (`totalGramsForVerifyScale`)
+### A2 — ml-to-g density resolution (`totalGramsForVerifyScale`)
 
 - **File:** [`src/lib/nutrition/totalGramsForVerifyScale.ts`](../../src/lib/nutrition/totalGramsForVerifyScale.ts)
-- **Fires when:** a recipe ingredient is entered with unit `ml` and no `chosenPortion` provides a resolved `gramWeight`.
-- **Output today:** `ml === g` — treats the ml amount as grams for per-100g scaling.
-- **Known error:** water-only correct. For common liquids:
-  - Olive oil ≈ 0.92 g/ml → **-9%** on kcal.
-  - Whole milk ≈ 1.03 g/ml → **+3%**.
-  - Honey ≈ 1.42 g/ml → **+42%**.
-  - 40% ABV spirits ≈ 0.95 g/ml → **-5%**.
-- **Status:** **KNOWN INCORRECT.** Scheduled for fix via density lookup on the matched food. Pinned by a deliberately-failing test (`tests/unit/totalGramsForVerifyScale.test.ts` "T-density: 100 ml of an ingredient without a resolved density must not be reported as 100 g"). Red until density ships.
-- **Workaround for callers:** pass a `chosenPortion` with a pre-resolved `gramWeight` when possible (e.g. when the food match supplies a density).
+- **Fires when:** a recipe ingredient is entered with unit `ml`.
+- **Output today (post P0-2, 2026-04-25):** density-aware. Resolution priority:
+  1. `chosenPortion.gramWeight` when present and not the trivial `{label:"ml", gramWeight:1}` placeholder.
+  2. `options.gPerMl` when supplied by the caller.
+  3. `densityForName(ing.name)` via the STAPLES table in `estimateIngredientMacros.ts` (olive oil 0.92, honey 1.42, water 1.0, etc.).
+  4. **Refused** — function returns 0 with `densityRefused: true` (use `totalGramsForVerifyScaleDetailed` for the flag). Caller surfaces a "needs density — switch to g/oz" hint.
+- **Known error:** zero for the staples covered by the STAPLES table. For ingredients NOT in STAPLES with unit `ml`, the function refuses rather than guessing (per CLAUDE.md "if nutrition is uncertain, do not guess"). Add the ingredient to STAPLES (with sign-off) or the user picks a g/oz portion.
+- **Status:** **FIXED.** Tests in `tests/unit/totalGramsForVerifyScale.test.ts` cover priority order, name lookup, options override, trivial-placeholder routing, and refusal. The previously deliberate `it.fails(...)` markers are now plain `it(...)` and pass.
+- **Workaround when STAPLES misses a food:** add the ingredient to STAPLES with its `gPerMl` density (USDA / CIBSE / standard sources), or pass `options.gPerMl` from the caller, or have the user pick the g portion in verify.tsx. Mobile verify screen renders the "needs density — switch to g/oz" hint inline.
 
 ### A3 — Size-fallback ordering in `measureToGrams`
 

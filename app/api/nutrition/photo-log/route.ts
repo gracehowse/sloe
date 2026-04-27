@@ -51,8 +51,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // P0-6 (2026-04-25): scope per-user via the new `userId` field rather
+  // than embedding it in the prefix. Bucket key is now
+  // `api:photo-log:user:<uid>:<ip>` — drains independently for each
+  // (user, IP) tuple, closing both the IP-rotation bypass and the
+  // shared-NAT starvation case.
   const limited = await rateLimit({
-    keyPrefix: `photo_log_${userId}`,
+    keyPrefix: "api:photo-log",
+    userId,
     limit: 100,
     windowMs: 24 * 60 * 60_000,
   });

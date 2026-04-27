@@ -48,7 +48,7 @@
  *     a stimulant-bearing food self-heals the map.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type SupabaseLike = any;
 
 export type StimulantDelta = {

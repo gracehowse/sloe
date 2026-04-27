@@ -44,6 +44,8 @@ import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
+import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";
+import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { allocateIngredientMacrosFromLines } from "../../../../src/lib/nutrition/allocateIngredientMacrosFromLines";
 import {
@@ -58,6 +60,8 @@ import {
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
+import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -179,7 +183,7 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
 }
 
 export default function RecipeDetailScreen() {
-  const { id, portion } = useLocalSearchParams<{ id: string; portion?: string }>();
+  const { id, portion, autoLog } = useLocalSearchParams<{ id: string; portion?: string; autoLog?: string }>();
   const portionMultiplier = portion ? parseFloat(String(portion)) : 1;
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/discover");
@@ -193,6 +197,24 @@ export default function RecipeDetailScreen() {
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
+  // P3-30 (2026-04-25): net-carbs lens flag for swapping the carbs row label.
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("net_carbs_lens_enabled")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
+    })().catch(() => { /* preserve default */ });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [reverifying, setReverifying] = useState(false);
   /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
@@ -866,6 +888,36 @@ export default function RecipeDetailScreen() {
 
   const addRecipeToTodayJournal = useCallback(async () => {
     if (!userId || !recipe) return;
+
+    // P0-3 (2026-04-25): refuse to log fabricated macros. If the in-memory
+    // ingredient sum has stated calories that the gram columns don't
+    // explain (kcalFromGrams < MACRO_COERCION_THRESHOLD × calories), the
+    // planner-display coerce helper would synthesize a neutral 28/42/30
+    // P/C/F split — that is NOT real nutrition and must never reach
+    // `nutrition_entries`. Route the user to Verify the recipe first.
+    // Mirror of `logPlannedMealWithPortion` guard in (tabs)/index.tsx.
+    if (
+      wouldCoerceMacros({
+        calories: scaledForLog.calories,
+        protein: scaledForLog.protein,
+        carbs: scaledForLog.carbs,
+        fat: scaledForLog.fat,
+      })
+    ) {
+      Alert.alert(
+        "Verify this recipe first",
+        "We don't have full macros for this recipe yet — calories are recorded but protein, carbs, and fat haven't been resolved. Open the recipe verifier to lock these in before logging it to your journal.",
+        [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Verify",
+            onPress: () => router.push(`/recipe/verify?id=${recipe.id}` as any),
+          },
+        ],
+      );
+      return;
+    }
+
     setLoggingJournal(true);
     try {
       const dk = dateKeyFromDate(new Date());
@@ -904,6 +956,23 @@ export default function RecipeDetailScreen() {
       setLoggingJournal(false);
     }
   }, [userId, recipe, scaledForLog, logPortion, router]);
+
+  // P2-24 (2026-04-25): when navigated here from cook mode's "Log this
+  // meal" CTA (`?autoLog=1`), trigger the journal write once on mount.
+  // The same `addRecipeToTodayJournal` helper handles the coercion guard
+  // (P0-3) and the user-facing alert; the cook-mode flow gets the same
+  // behaviour as the explicit "Add to today" button without forking the
+  // write path. Guard against re-firing on subsequent re-renders or if
+  // the user navigates back to this screen with the param still in the
+  // URL — fire once per recipe-id load.
+  const autoLogFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoLog !== "1") return;
+    if (!recipe || !userId) return;
+    if (autoLogFiredRef.current === recipe.id) return;
+    autoLogFiredRef.current = recipe.id;
+    void addRecipeToTodayJournal();
+  }, [autoLog, recipe, userId, addRecipeToTodayJournal]);
 
   // Clean up video thumbnail URLs (YouTube thumbnails have baked-in play buttons)
   const heroImageUrl = useMemo(() => {
@@ -1239,16 +1308,17 @@ export default function RecipeDetailScreen() {
         {/* Hero image — now sits below the top bar (no overlap). */}
         <Image source={{ uri: heroImageUrl }} style={styles.hero} />
 
-        {/* Tag pills directly under hero. Neutral pills + trailing
-            primary-tinted fit-percent pill (parity with Discover). */}
+        {/* 2026-04-26 polish: pre-fix this row rendered the lowercase
+            meal-type pill ("lunch") AND a primary-tinted fit-percent pill
+            ("85%"). The meal-type duplicated the proper-case "Lunch" pill
+            below the title (same data, two pills) and the bare percentage
+            had no label so users couldn't tell what 85% referred to. Now:
+            no meal-type pill here (the proper-case one below the title is
+            canonical), and the fit-percent pill is labelled "match" so
+            its meaning is self-evident. */}
         <View style={styles.tagRow}>
-          {pillTags.map((t) => (
-            <View key={t} style={styles.tagPill}>
-              <Text style={styles.tagPillText}>{t}</Text>
-            </View>
-          ))}
           <View style={[styles.tagPill, styles.tagPillPrimary]}>
-            <Text style={[styles.tagPillText, styles.tagPillTextPrimary]}>{fitPercent}%</Text>
+            <Text style={[styles.tagPillText, styles.tagPillTextPrimary]}>{fitPercent}% match</Text>
           </View>
         </View>
 
@@ -1343,7 +1413,13 @@ export default function RecipeDetailScreen() {
                   alignItems: "baseline",
                   justifyContent: "center",
                   gap: 6,
-                  marginBottom: Spacing.md,
+                  // Polish (2026-04-25 visual-qa): tighten the gap between
+                  // the calories hero and the macro tiles. Pre-fix margin
+                  // was Spacing.md (12) plus a redundant "Macros" overline
+                  // label below — visually read as a 30+px void. The
+                  // overline is gone (tiles self-label) and margin drops
+                  // to Spacing.sm.
+                  marginBottom: Spacing.sm,
                   paddingVertical: Spacing.sm,
                   paddingHorizontal: Spacing.lg,
                   borderRadius: Radius.lg,
@@ -1380,9 +1456,11 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.6, marginBottom: Spacing.sm }}>
-            Macros
-          </Text>
+          {/* Polish (2026-04-25 visual-qa): the redundant "MACROS" overline
+              was visually dead weight — every tile below already self-labels
+              with a coloured chip + label. Removing it tightens the gap
+              between the calories hero and the macro tiles, which testers
+              flagged as "big gaps between cals and macros". */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.lg }}>
             {recipeMacrosToShow.map((macro) => {
               const fiberG = macros.fiber_g ?? 0;
@@ -1393,20 +1471,32 @@ export default function RecipeDetailScreen() {
                 { label: string; cur: number; tgt: number; color: string; unit: string }
               > = {
                 protein: { label: "Protein", cur: macros.protein, tgt: userTargets.protein, color: MacroColors.protein, unit: "g" },
-                carbs: { label: "Carbs", cur: macros.carbs, tgt: userTargets.carbs, color: MacroColors.carbs, unit: "g" },
+                // P3-30 (2026-04-25): apply net-carbs lens. Helpers
+                // refuse the "Net carbs" label when fibre is unknown.
+                carbs: {
+                  label: carbsLabel(fiberG, netCarbsLensEnabled),
+                  cur: netCarbsForRow(macros.carbs, fiberG, netCarbsLensEnabled),
+                  tgt: netCarbsForRow(userTargets.carbs, userTargets.fiber, netCarbsLensEnabled),
+                  color: MacroColors.carbs,
+                  unit: "g",
+                },
                 fat: { label: "Fat", cur: macros.fat, tgt: userTargets.fat, color: MacroColors.fat, unit: "g" },
-                fiber: { label: "Fiber", cur: fiberG, tgt: userTargets.fiber, color: Accent.success, unit: "g" },
+                // 2026-04-26 polish (round 2): use the canonical
+                // `MacroColors.fiber` token (resolves to Accent.success but
+                // routing through the shared token means a future fiber
+                // colour change ripples consistently). The other macros
+                // here already use MacroColors; fiber was the lone Accent
+                // direct reference.
+                fiber: { label: "Fiber", cur: fiberG, tgt: userTargets.fiber, color: MacroColors.fiber, unit: "g" },
                 sugar: { label: "Sugar", cur: sugarG, tgt: REF_SUGAR_G, color: MacroColors.sugar, unit: "g" },
                 sodium: { label: "Sodium", cur: sodiumMg, tgt: REF_SODIUM_MG, color: MacroColors.sodium, unit: "mg" },
               };
               const m = macroMap[macro];
               if (!m) return null;
-              const displayAmount =
-                macro === "sugar" || macro === "fiber"
-                  ? Math.round(m.cur * 10) / 10
-                  : macro === "sodium"
-                    ? Math.round(m.cur)
-                    : Math.round(m.cur);
+              // Polish (2026-04-25): protein/carbs/fat now keep 1-decimal
+              // precision via formatMacroValue (no more "C 105.80000000000001g"
+              // float leakage). calories+sodium stay integer.
+              const displayAmount = formatMacroValue(m.cur, macro);
               return (
                 <View
                   key={macro}
@@ -1450,11 +1540,18 @@ export default function RecipeDetailScreen() {
 
 
           {/* Description */}
-          {recipe.description && (
-            <View style={styles.card}>
-              <Text style={styles.descText}>{decodeEntities(recipe.description)}</Text>
-            </View>
-          )}
+          {(() => {
+            // Polish (2026-04-25): the legacy "[TEMP SEED] " seeder prefix
+            // shipped to prod on a few rows; sanitizeRecipeDescription strips
+            // it defensively. Empty after strip → don't render the card.
+            const cleanDescription = sanitizeRecipeDescription(recipe.description);
+            if (!cleanDescription) return null;
+            return (
+              <View style={styles.card}>
+                <Text style={styles.descText}>{decodeEntities(cleanDescription)}</Text>
+              </View>
+            );
+          })()}
 
           {/*
             T12 (2026-04-24) — regulated-allergen callout on every
@@ -1634,7 +1731,16 @@ export default function RecipeDetailScreen() {
                           </Text>
                         ) : null}
                         {confPct != null && (
-                          <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>{confPct}%</Text>
+                          <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>
+                            {/* 2026-04-26 polish (round 2): pre-fix the
+                                row showed bare "35%" / "98%" with no
+                                indication of what the percentage meant.
+                                Tapping opens a full explanation but the
+                                inline label is the at-a-glance signal.
+                                Verified ≥75% / Partial 50–74% / Estimated
+                                <50%. */}
+                            {confPct}% · {confLabel}
+                          </Text>
                         )}
                       </View>
                       {/* F-85 (2026-04-25) — per-ingredient macro split bar
@@ -1668,25 +1774,27 @@ export default function RecipeDetailScreen() {
           {/* Nutrition Tab */}
           {activeTab === "nutrition" && (
             <View>
-              {/* 2x2 Grid */}
+              {/* 2x2 Grid (polish 2026-04-25 — formatMacroValue centralises
+                  rounding so protein/carbs/fat keep 1-decimal precision and
+                  calories stays integer). */}
               <View style={styles.nutritionGrid}>
                 <View style={styles.nutritionGridRow}>
                   <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: Accent.primary }]}>{Math.round(macros.calories)}</Text>
+                    <Text style={[styles.nutritionValue, { color: Accent.primary }]}>{formatMacroValue(macros.calories, "calories")}</Text>
                     <Text style={styles.nutritionLabel}>Calories</Text>
                   </View>
                   <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.protein }]}>{Math.round(macros.protein)}</Text>
+                    <Text style={[styles.nutritionValue, { color: MacroColors.protein }]}>{formatMacroValue(macros.protein, "protein")}</Text>
                     <Text style={styles.nutritionLabel}>Protein (g)</Text>
                   </View>
                 </View>
                 <View style={styles.nutritionGridRow}>
                   <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.carbs }]}>{Math.round(macros.carbs)}</Text>
+                    <Text style={[styles.nutritionValue, { color: MacroColors.carbs }]}>{formatMacroValue(macros.carbs, "carbs")}</Text>
                     <Text style={styles.nutritionLabel}>Carbs (g)</Text>
                   </View>
                   <View style={styles.nutritionCard}>
-                    <Text style={[styles.nutritionValue, { color: MacroColors.fat }]}>{Math.round(macros.fat)}</Text>
+                    <Text style={[styles.nutritionValue, { color: MacroColors.fat }]}>{formatMacroValue(macros.fat, "fat")}</Text>
                     <Text style={styles.nutritionLabel}>Fat (g)</Text>
                   </View>
                 </View>
@@ -1752,7 +1860,13 @@ export default function RecipeDetailScreen() {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
-                {([0.5, 0.75, 1, 1.5, 2] as const).map((p) => {
+                {/* 2026-04-26 polish: dropped the asymmetric 0.75× preset.
+                    The planner clamp is now {0.5, 1, 1.5, 2}; matching the
+                    log presets to the same set keeps "1× by default, half
+                    when smaller / 1.5×–2× when larger" as the only mental
+                    model the user has to learn. The +/– stepper still
+                    allows finer increments for users who really need them. */}
+                {([0.5, 1, 1.5, 2] as const).map((p) => {
                   const active = Math.abs(logPortion - p) < 1e-6;
                   return (
                     <Pressable

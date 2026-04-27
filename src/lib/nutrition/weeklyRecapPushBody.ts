@@ -87,7 +87,12 @@ export type PushBodyVariant =
   | "zero_days"
   | "calories_only"
   | "with_weight"
-  | "with_suggestion";
+  | "with_suggestion"
+  // B1 (2026-04-27) — fibre / hydration adherence tail variant. Fires
+  // when neither a digest suggestion fired AND at least one of fibre /
+  // hydration targets is set + on-target. Mutually exclusive with
+  // `with_suggestion` (suggestion is the priority hook).
+  | "with_adherence";
 
 /**
  * APNs body-line truncation threshold on standard iPhone lock-screen
@@ -156,11 +161,49 @@ export function formatWeeklyRecapPushBody(
   // No suggestion — fall through to the original variant logic. We
   // re-derive the variant tag from the recap shape (instead of
   // re-running the formatter) so behaviour is byte-identical to the
-  // pre-T4 path.
-  if (recap.weightDeltaKg === null) {
-    return { body: recapSentence, variant: "calories_only" };
+  // pre-T4 path. B1 (2026-04-27): if fibre / hydration targets are set
+  // AND the resulting sentence fits within PUSH_BODY_MAX_CHARS, append
+  // an adherence tail. Variant flips to `with_adherence` for analytics
+  // attribution; otherwise we fall back to calories_only / with_weight
+  // unchanged. Skipped entirely when a digest suggestion is also
+  // present — the suggestion branch is the priority hook and we don't
+  // want to compete with it for the lock-screen line.
+  const baseVariant: PushBodyVariant =
+    recap.weightDeltaKg === null ? "calories_only" : "with_weight";
+  const tail = formatAdherenceTail(recap);
+  if (tail.length > 0) {
+    const withTail = recapSentence + tail;
+    if (withTail.length <= PUSH_BODY_MAX_CHARS) {
+      return { body: withTail, variant: "with_adherence" };
+    }
   }
-  return { body: recapSentence, variant: "with_weight" };
+  return { body: recapSentence, variant: baseVariant };
+}
+
+/**
+ * B1 (2026-04-27) — build the optional fibre / hydration adherence
+ * tail. Empty string when both targets are unset (the recap reports
+ * 0 / 0 in that case — see `buildWeeklyRecap`'s suppression rule).
+ *
+ * Format examples (the leading `" · "` is included so callers can
+ * concatenate without re-checking emptiness):
+ *   - Both:   " · Fibre 78% · Hydration 4/7 days"
+ *   - Fibre:  " · Fibre 78%"
+ *   - Hydration: " · Hydration 4/7 days"
+ *   - Neither: ""
+ *
+ * The hydration ratio is N/7 because the count is across the full
+ * week regardless of meal-logging days (parallel to the formatter's
+ * existing weight-line "this week" framing).
+ */
+function formatAdherenceTail(recap: WeeklyRecap): string {
+  const showFiber = recap.fiberAdherencePct > 0;
+  const showHydration = recap.hydrationDaysOnTarget > 0;
+  if (!showFiber && !showHydration) return "";
+  const parts: string[] = [];
+  if (showFiber) parts.push(`Fibre ${recap.fiberAdherencePct}%`);
+  if (showHydration) parts.push(`Hydration ${recap.hydrationDaysOnTarget}/7 days`);
+  return ` · ${parts.join(" · ")}`;
 }
 
 /**

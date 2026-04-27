@@ -400,6 +400,12 @@ export default function OnboardingScreen() {
         target_fiber_g: defaultMacros.fiber,
         onboarding_completed: true,
       }, { onConflict: "id" });
+      // P1-13 (2026-04-25): mirror the web web-flow.tsx event for funnel
+      // parity. Skip-path is its own outcome — distinguish it on the
+      // payload so funnels can split skip vs full-completion.
+      try {
+        track(AnalyticsEvents.onboarding_completed, { path: "skip" });
+      } catch { /* noop — analytics must never block UX */ }
     }
     router.replace("/paywall?from=onboarding");
   }, [router, userId]);
@@ -447,6 +453,18 @@ export default function OnboardingScreen() {
     }
     setSaving(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // P1-13 (2026-04-25): mirror the web web-flow.tsx event for funnel
+    // parity. Full-completion path is the headline number we measure
+    // activation against; mark `path: "full"` so it splits cleanly from
+    // the skip path in PostHog cohorts.
+    try {
+      track(AnalyticsEvents.onboarding_completed, {
+        path: "full",
+        goal_type: data.goalType,
+        plan_pace: data.planPace,
+        nutrition_strategy: data.strategy,
+      });
+    } catch { /* noop — analytics must never block UX */ }
     router.replace("/paywall?from=onboarding");
   }, [userId, data, age, heightCm, weightKg, goalWeightKg, budget, macros, router]);
 

@@ -11,7 +11,7 @@ if (
   typeof HTMLCanvasElement !== "undefined" &&
   typeof HTMLCanvasElement.prototype.getContext === "function"
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   HTMLCanvasElement.prototype.getContext = (() => null) as any;
 }
 

@@ -1722,7 +1722,11 @@ export default function ProgressScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 0.6, color: t.dim, textTransform: "uppercase" }}>WEIGHT</Text>
+              {/* 2026-04-26 polish (round 2): per docs/ux/design-tokens.md
+                  card / section headers are Sentence Case (matches "Daily
+                  Calories" + "Macro Adherence" further down the same screen).
+                  WEIGHT was the lone UPPERCASE outlier on this surface. */}
+              <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
               {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
                 <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>

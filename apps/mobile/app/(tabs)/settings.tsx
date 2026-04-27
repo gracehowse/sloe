@@ -86,6 +86,9 @@ export default function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("free");
   const [activityAdjust, setActivityAdjust] = useState(false);
+  // P3-30 (2026-04-25): net-carbs lens opt-in. Source of truth:
+  // `profiles.net_carbs_lens_enabled` (migration 20260503103000).
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   // T13 (2026-04-24) — weight surface opt-out (DI-P0-03).
   const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
   const {
@@ -190,7 +193,7 @@ export default function SettingsScreen() {
     (async () => {
       const { data, error: qErr } = await supabase
         .from("profiles")
-        .select("notification_prefs, prefer_activity_adjusted_calories, weight_surface_mode")
+        .select("notification_prefs, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
@@ -205,6 +208,7 @@ export default function SettingsScreen() {
         }
         setActivityAdjust(Boolean((data as any)?.prefer_activity_adjusted_calories));
         setWeightSurfaceMode(coerceWeightSurfaceMode((data as any)?.weight_surface_mode));
+        setNetCarbsLensEnabled(Boolean((data as any)?.net_carbs_lens_enabled));
       }
       setLoading(false);
     })();
@@ -603,6 +607,30 @@ export default function SettingsScreen() {
                     setActivityAdjust(v);
                     if (userId) {
                       await supabase.from("profiles").update({ prefer_activity_adjusted_calories: v }).eq("id", userId);
+                    }
+                  }}
+                  trackColor={{ true: Accent.primary }}
+                />
+              </View>
+              {/* P3-30 (2026-04-25): net-carbs lens toggle. Mirrors the
+                  web Settings toggle in src/app/components/Settings.tsx.
+                  Tracker carbs tile + Recipe Detail nutrition row swap
+                  "Carbs" → "Net carbs" via the shared
+                  src/lib/nutrition/netCarbs.ts helper. */}
+              <View style={[styles.row, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowLabel}>Show net carbs</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
+                    Display “Net carbs” (carbs − fibre) on the Tracker and recipe pages. Useful for keto / low-carb tracking.
+                  </Text>
+                </View>
+                <Switch
+                  testID="settings-net-carbs-lens-toggle"
+                  value={netCarbsLensEnabled}
+                  onValueChange={async (v) => {
+                    setNetCarbsLensEnabled(v);
+                    if (userId) {
+                      await supabase.from("profiles").update({ net_carbs_lens_enabled: v } as never).eq("id", userId);
                     }
                   }}
                   trackColor={{ true: Accent.primary }}

@@ -256,11 +256,15 @@ export default function ShoppingListScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
+    // 2026-04-26 polish (round 2): match the canonical top-level screen
+    // title — large, bold, foreground-coloured, normal letter-spacing. The
+    // previous treatment (uppercase blue with 3px tracking) made Shopping
+    // list look like a different app from the rest of the tabs.
     headerTitle: {
       fontSize: 22,
       fontWeight: "800",
-      color: Accent.primary,
-      letterSpacing: 3,
+      color: colors.text,
+      letterSpacing: -0.4,
     },
 
     card: {
@@ -347,7 +351,10 @@ export default function ShoppingListScreen() {
           <Pressable onPress={goBack} hitSlop={12}>
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>SHOPPING LIST</Text>
+          {/* 2026-04-26 polish (round 2): every other top-level screen
+              title is Sentence Case (Discover / Library / Plan / Progress
+              / More); SHOPPING LIST was the lone uppercase outlier. */}
+          <Text style={styles.headerTitle}>Shopping list</Text>
           {items.length > 0 ? (
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
               <Pressable hitSlop={12} onPress={exportList}>

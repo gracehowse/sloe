@@ -336,6 +336,30 @@ export const MealPlanner = memo(function MealPlanner({
                       >
                         {isPlaceholder ? "— kcal · — P" : `${kcal} kcal · ${prot} P`}
                       </p>
+                      {!isPlaceholder &&
+                        (meal as { macrosAreEstimated?: boolean }).macrosAreEstimated && (
+                          // P1-19 (2026-04-25): the recipe has stated calories
+                          // but P/C/F that don't explain them; the planner is
+                          // showing a neutral 28/42/30 split, not real data.
+                          // Chip routes the user to the recipe verifier.
+                          <span
+                            className="inline-flex items-center"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: "var(--accent-warning, #b8860b)",
+                              backgroundColor: "var(--accent-warning-bg, rgba(232, 160, 32, 0.12))",
+                              borderRadius: 999,
+                              padding: "2px 8px",
+                              marginTop: 6,
+                              gap: 4,
+                            }}
+                            title="Macros are an estimated split — open the recipe and tap Verify to lock real values."
+                            aria-label="Estimated macros — open the recipe to verify"
+                          >
+                            Estimated · verify
+                          </span>
+                        )}
                     </button>
                     <button
                       type="button"

@@ -20,19 +20,28 @@ function appOrigin(): string {
 }
 
 export async function POST(req: Request) {
-  const limited = await rateLimit({ keyPrefix: "stripe_checkout", limit: 10, windowMs: 60_000 });
-  if (!limited.ok) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
-      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
-    );
-  }
-
+  // P0-6 (2026-04-25): authenticate first so the rate-limit bucket can be
+  // scoped per-user. Pre-fix the bucket was IP-only with the auth check
+  // running after — a shared NAT could starve all paying users on it,
+  // and an attacker rotating IPs could bypass the cap entirely.
   const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
   if (!userId) {
     return NextResponse.json(
       { ok: false, error: "unauthorized", message: "Sign in again, then retry checkout." },
       { status: 401 },
+    );
+  }
+
+  const limited = await rateLimit({
+    keyPrefix: "api:stripe-checkout",
+    userId,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
   }
 

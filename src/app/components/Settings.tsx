@@ -91,6 +91,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     setNotificationPrefs,
     preferActivityAdjustedCalories,
     setPreferActivityAdjustedCalories,
+    netCarbsLensEnabled,
+    setNetCarbsLensEnabled,
     targetCaffeineMg,
     setTargetCaffeineMg,
     targetAlcoholGWeekly,
@@ -660,6 +662,37 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   void savePref({ prefer_activity_adjusted_calories: v });
                 }}
                 className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
+              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
+            </label>
+          </div>
+
+          {/* P3-30 (2026-04-25): Net-carbs lens toggle. Backed by
+              `profiles.net_carbs_lens_enabled`. Surfaces that show
+              carbs (Tracker macro tile, Recipe Detail nutrition row)
+              swap "Carbs" → "Net carbs" with the value computed via
+              `netCarbsForRow(carbs, fibre, true)`. Helpers refuse the
+              "Net carbs" label when fibre is unknown so the user
+              never sees a misleading headline. */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 mr-4">
+              <label className="block text-sm font-medium text-foreground">Show net carbs</label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Display "Net carbs" (carbs &minus; fibre) on the Tracker and recipe pages. Useful for keto / low-carb tracking.
+              </p>
+            </div>
+            <label className="relative cursor-pointer">
+              <input
+                type="checkbox"
+                checked={netCarbsLensEnabled}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setNetCarbsLensEnabled(v);
+                  void savePref({ net_carbs_lens_enabled: v });
+                }}
+                className="sr-only peer"
+                data-testid="settings-net-carbs-lens-toggle"
               />
               <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>

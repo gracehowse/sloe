@@ -154,8 +154,13 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(WEB_SRC).toMatch(/Eating out/);
     });
 
-    it("mobile still filters by search text", () => {
-      expect(MOBILE_SRC).toMatch(/search\.toLowerCase\(\)/);
+    it("mobile still filters by search text (now via shared tokenized matcher)", () => {
+      // Polish (2026-04-25) — pre-fix this checked for `search.toLowerCase()`,
+      // the substring approach. Bug: "wasabi katsu curry" failed when the
+      // title was "Katsu Curry by Wasabi" because tokens weren't contiguous.
+      // Now both web and mobile route through `recipeSearchMatch` for
+      // proper per-token AND matching across title + description + creator.
+      expect(MOBILE_SRC).toMatch(/recipeSearchMatch/);
     });
 
     it("mobile still keeps the Eating-out row (debounced restaurant search)", () => {

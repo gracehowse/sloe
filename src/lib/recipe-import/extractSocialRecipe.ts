@@ -396,6 +396,18 @@ export function sanitiseImportedTitle(raw: unknown): string | null {
   s = s.replace(/\s+/g, " ");
   // Strip trailing tails: hashtag runs, "Follow @x", URL tails.
   s = s.replace(/(\s*(#[\w-]+|@[\w.]+|https?:\/\/\S+))+\s*$/g, "").trim();
+  // F-76 (2026-04-26): also strip leading "For [phrase]:" section
+  // headings — same pattern stripSectionPrefix handles for ingredient
+  // rows. The LLM sometimes returns titles like "For the creamy
+  // cucumber salad: 1 tbsp miso" when it picks the first line of a
+  // structured caption. Strip the "For X:" prefix; if the remainder
+  // is empty (the entire title was a section header) the caller
+  // falls back to "Imported recipe".
+  s = stripSectionPrefix(s);
+  // F-76 — also strip leading "Recipe:" / "Recipe name:" lead-in
+  // labels that appear on some publisher templates ("Recipe: Banana
+  // bread" → "Banana bread").
+  s = s.replace(/^\s*(?:recipe|recipe name|title|dish|name)\s*[:\-]\s*/i, "").trim();
   // If first sentence exists and fits, prefer it.
   const firstSentence = s.split(/(?<=[.!?])\s+/)[0]?.trim();
   if (firstSentence && firstSentence.length <= IMPORTED_TITLE_MAX_CHARS) s = firstSentence;

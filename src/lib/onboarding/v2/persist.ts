@@ -119,7 +119,7 @@ export function mapV2GoalToLegacy(goal: V2Goal): ProductionGoal {
 /** Minimal Supabase client shape — same loose typing as
  *  `dailyTargetSnapshot.ts` so this helper works for both web
  *  (`browserClient`) and mobile (`@/lib/supabase`) without `as any`. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type PersistSupabaseClient = any;
 
 export interface PersistResult {
@@ -241,12 +241,12 @@ export async function persistOnboardingV2(
       .upsert(row, { onConflict: "id" });
     if (error) {
       upsertError = error.message ?? "profiles upsert failed";
-      // eslint-disable-next-line no-console
+       
       console.warn("[onboarding-v2] profiles upsert failed:", upsertError);
     }
   } catch (e) {
     upsertError = e instanceof Error ? e.message : String(e);
-    // eslint-disable-next-line no-console
+     
     console.warn("[onboarding-v2] profiles upsert threw:", upsertError);
   }
 

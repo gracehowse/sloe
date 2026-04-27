@@ -11,6 +11,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
+import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
@@ -364,8 +365,22 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       if (feedScope === "following" && !matchesFollowing(recipe)) return false;
       if (!inCollection(recipe)) return false;
       if (q) {
-        const hay = `${recipe.title} ${recipe.creatorName}`.toLowerCase();
-        if (!hay.includes(q)) {
+        // Polish (2026-04-25): tokenized AND match — pre-fix the
+        // substring approach failed for "wasabi katsu curry" when the
+        // title was "Katsu Curry · Wasabi" because the tokens weren't
+        // contiguous. recipeSearchMatch splits the query into tokens
+        // and requires each one to appear somewhere across title +
+        // description + creator.
+        if (
+          !recipeSearchMatch(
+            {
+              title: recipe.title,
+              creatorName: recipe.creatorName ?? null,
+              source: recipe.sourcePlatform ?? null,
+            },
+            q,
+          )
+        ) {
           return false;
         }
       }
@@ -574,6 +589,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             {recipes.map((recipe) => {
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
+              const carbs = Math.round(recipe.carbs);
+              const fat = Math.round(recipe.fat);
+              const fiber = Number.isFinite(recipe.fiberG) ? Math.round((recipe.fiberG ?? 0) * 10) / 10 : 0;
               const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
               return (
                 <button
@@ -625,6 +643,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     <p className="text-[11px] text-muted-foreground mt-1 truncate">
                       {recipe.creatorName || ""}
                     </p>
+                    {/* Polish (2026-04-25 visual-qa): pre-fix only kcal +
+                        protein had icons. Tester feedback: "on the discover
+                        page protein has an icon but none of the other macro
+                        nutrients do. also fibre is not shown - same rule
+                        should apply it should show whats configured in
+                        settings eg fibre etc". Now each macro gets its own
+                        icon + value pair; fibre joins when the recipe carries
+                        a non-zero value. */}
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
                       <span className="inline-flex items-center gap-1">
                         <Icons.calories
@@ -638,8 +664,31 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           className="w-[11px] h-[11px]"
                           style={{ color: "var(--macro-protein)" }}
                         />
-                        {protein} P
+                        {protein}g
                       </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.carbs
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-carbs)" }}
+                        />
+                        {carbs}g
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icons.fat
+                          className="w-[11px] h-[11px]"
+                          style={{ color: "var(--macro-fat)" }}
+                        />
+                        {fat}g
+                      </span>
+                      {fiber > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.fiber
+                            className="w-[11px] h-[11px]"
+                            style={{ color: "var(--success)" }}
+                          />
+                          {fiber}g
+                        </span>
+                      ) : null}
                       {cookTime ? (
                         <span className="inline-flex items-center gap-1">
                           <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
@@ -714,15 +763,32 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       <p className="text-[12px] text-muted-foreground mt-1 truncate">
                         {recipe.creatorName || ""}
                       </p>
-                      <div className="flex flex-wrap gap-3 mt-2.5">
+                      {/* Polish (2026-04-25 visual-qa): mobile-web hero now
+                          renders one icon per macro (matches desktop grid
+                          and mobile native). Fibre joins when present. */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5">
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
                           <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
                           {kcal} kcal
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
                           <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
-                          {protein}g P · {carbs}g C · {fat}g F
+                          {protein}g
                         </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                          <Icons.carbs className="w-[11px] h-[11px]" style={{ color: "var(--macro-carbs)" }} />
+                          {carbs}g
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                          <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} />
+                          {fat}g
+                        </span>
+                        {Number.isFinite(recipe.fiberG) && (recipe.fiberG ?? 0) > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+                            <Icons.fiber className="w-[11px] h-[11px]" style={{ color: "var(--success)" }} />
+                            {Math.round((recipe.fiberG ?? 0) * 10) / 10}g
+                          </span>
+                        ) : null}
                         {recipe.cookTime ? (
                           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                             <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />

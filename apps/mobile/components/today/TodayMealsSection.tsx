@@ -457,7 +457,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
-                    Make this your usual {slot.toLowerCase()}.
+                    {/* 2026-04-26 polish (round 2): match the rendered
+                        meal-slot pill casing — slot is already Title-cased
+                        in PLANNER_MEAL_SLOT_LABELS. Drop the toLowerCase. */}
+                    Make this your usual {slot}.
                   </Text>
                   <Text style={{ fontSize: 11, color: textTertiaryColor, marginTop: 2 }}>
                     One tap to re-log it tomorrow.

@@ -12,7 +12,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const rl = await rateLimit({ keyPrefix: "api:usda-food", limit: 60, windowMs: 60_000 });
+  // P0-6 (2026-04-25): per-user scoping closes the shared-NAT starvation
+  // case and IP-rotation bypass for this authenticated route.
+  const rl = await rateLimit({ keyPrefix: "api:usda-food", userId, limit: 60, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },

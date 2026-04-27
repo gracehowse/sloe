@@ -88,6 +88,23 @@ export type WeeklyRecap = {
    */
   weightFirstKg: number | null;
   weightLastKg: number | null;
+  /**
+   * B1 (2026-04-27) — fibre + hydration adherence rollups, parallel to
+   * the existing protein adherence percentage. All four fields default
+   * to `0` when the user hasn't set the corresponding target — the
+   * push-body formatter + Progress sub-card use that as the "suppress
+   * the line" signal rather than rendering "0%". Spec:
+   * docs/specs/2026-04-27-b1-weekly-fiber-hydration-rollups.md.
+   */
+  /** Average daily fibre (g) over days-with-food. */
+  avgFiberG: number;
+  /** `avgFiberG / targets.fiber * 100`, rounded. `0` when no target. */
+  fiberAdherencePct: number;
+  /** Average daily hydration (ml) across all 7 days (not gated on logged
+   *  meals — hydration days don't require meal entries). */
+  avgHydrationMl: number;
+  /** Days where logged hydration ≥ 90% of target. `0` when no target. */
+  hydrationDaysOnTarget: number;
 };
 
 /**
@@ -99,10 +116,29 @@ export type WeeklyRecap = {
 export function buildWeeklyRecap<M extends MealMacros>(params: {
   byDay: ByDayOf<M>;
   weightKgByDay: Record<string, number>;
-  targets: { calories: number; protein: number; carbs: number; fat: number };
+  targets: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    /** B1 (2026-04-27) — daily fibre target in g. Optional. 0 / undefined →
+     *  fibre adherence reported as 0 and the recap UI suppresses the line. */
+    fiber?: number;
+    /** B1 — daily hydration target in ml. Optional. 0 / undefined →
+     *  hydration adherence reported as 0 and the recap UI suppresses the line. */
+    hydrationMl?: number;
+  };
   weekStartDay: "monday" | "sunday";
   ledger: FreezeLedger;
   budgetMax: number;
+  /** B1 — per-day fibre sums (g). Caller pre-aggregates from
+   *  nutrition_entries so we don't have to widen MealMacros. Keys are
+   *  `YYYY-MM-DD` matching `byDay`. Missing days treated as 0. */
+  fiberByDay?: Record<string, number>;
+  /** B1 — per-day hydration sums (ml) from profiles.extra_water_by_day.
+   *  Missing days treated as 0 (hydration is intentionally rolled
+   *  across all 7 days, not just days with logged meals). */
+  hydrationByDay?: Record<string, number>;
   now?: Date;
 }): WeeklyRecap {
   const now = params.now ?? new Date();
@@ -167,6 +203,45 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
   );
   const freezesAvailable = availableFreezes(params.ledger, params.budgetMax);
 
+  // B1 (2026-04-27) — fibre + hydration adherence rollups.
+  // Fibre: average over days-with-food, mirroring the protein rule so
+  // a 3-days-logged user isn't punished for having 4 zero days. Target 0
+  // / unset → 0 and the recap UI / push body suppress the line.
+  const weekKeysList = bundle.days.map((d) => d.key);
+  const fiberByDay = params.fiberByDay ?? {};
+  const fiberSum = weekKeysList.reduce(
+    (s, k) => s + (Number.isFinite(fiberByDay[k]) ? fiberByDay[k] : 0),
+    0,
+  );
+  const fiberDaysLogged =
+    weekKeysList.filter((k) => (fiberByDay[k] ?? 0) > 0).length;
+  const avgFiberG =
+    fiberDaysLogged > 0 ? Math.round((fiberSum / fiberDaysLogged) * 10) / 10 : 0;
+  const fiberTarget = params.targets.fiber ?? 0;
+  const fiberAdherencePct =
+    fiberTarget > 0 ? Math.round((avgFiberG / fiberTarget) * 100) : 0;
+
+  // Hydration: rolled across ALL 7 days (not just days-with-food). The
+  // user might log only 3 days of meals but still drink water on the
+  // other 4 — the average is the honest signal.
+  // Days-on-target counts a day when hydrationByDay[k] ≥ 90% of target.
+  const hydrationByDay = params.hydrationByDay ?? {};
+  const hydrationSum = weekKeysList.reduce(
+    (s, k) => s + (Number.isFinite(hydrationByDay[k]) ? hydrationByDay[k] : 0),
+    0,
+  );
+  const avgHydrationMl =
+    weekKeysList.length > 0
+      ? Math.round(hydrationSum / weekKeysList.length)
+      : 0;
+  const hydrationTarget = params.targets.hydrationMl ?? 0;
+  const hydrationDaysOnTarget =
+    hydrationTarget > 0
+      ? weekKeysList.filter(
+          (k) => (hydrationByDay[k] ?? 0) >= 0.9 * hydrationTarget,
+        ).length
+      : 0;
+
   return {
     weekKey: weekKeyFor(previousWeekAnchor, params.weekStartDay),
     weekLabel: formatWeekLabel(firstKey, lastKey),
@@ -180,6 +255,10 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
     weightDeltaKg,
     weightFirstKg,
     weightLastKg,
+    avgFiberG,
+    fiberAdherencePct,
+    avgHydrationMl,
+    hydrationDaysOnTarget,
   };
 }
 

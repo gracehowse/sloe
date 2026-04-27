@@ -6,6 +6,7 @@ import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
 import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
+import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
 
 // F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
 // a single shared Unsplash salad, so every placeholder recipe looked identical
@@ -42,7 +43,7 @@ export function useDiscoverRecipes() {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min",
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -68,7 +69,11 @@ export function useDiscoverRecipes() {
         const cookOk = Number.isFinite(cookM) && cookM > 0;
         return {
           id: r.id,
-          title: r.title ?? "Untitled",
+          // 2026-04-26 polish: legacy rows can carry ALL-CAPS titles
+          // (publisher schema.org name fields). normalizeRecipeTitle is
+          // a no-op for any title that already contains lowercase, so
+          // mixed-case authored titles pass through untouched.
+          title: normalizeRecipeTitle(r.title),
           image: r.image_url ?? pickDefaultImage(r.id),
           creatorName: r.source_name ?? "Community",
           creatorImage: DEFAULT_AVATAR,
@@ -83,6 +88,10 @@ export function useDiscoverRecipes() {
           saves: 0,
           isSaved: false,
           authorId: r.author_id,
+          // B5-2a-followup (2026-04-27) — surface creator_id so discover
+          // bylines can deeplink to /creator/[id]. Null for imports + user
+          // creations (only curated `creators` table rows have an id).
+          creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           feedSource: "community" as const,
@@ -287,7 +296,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
       supabase
         .from("recipes")
         .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
         )
         .eq("author_id", userId)
         .order("created_at", { ascending: false }),
@@ -316,7 +325,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
       const { data: extraRows, error: recErr } = await supabase
         .from("recipes")
         .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
         )
         .in("id", extraIds);
       if (!recErr && Array.isArray(extraRows)) {
@@ -354,7 +363,9 @@ export function useSavedLibraryRecipes(userId: string | null) {
         const cookOk = Number.isFinite(cookM) && cookM > 0;
         const card: RecipeCard = {
           id: r.id,
-          title: r.title ?? "Untitled",
+          // 2026-04-26 polish: render-time normalisation for legacy
+          // ALL-CAPS rows. See useDiscoverRecipes() above for rationale.
+          title: normalizeRecipeTitle(r.title),
           image: r.image_url ?? pickDefaultImage(r.id),
           creatorName,
           creatorImage,
@@ -372,6 +383,10 @@ export function useSavedLibraryRecipes(userId: string | null) {
           // lying about state.
           isSaved: saveIdSet.has(r.id),
           authorId: r.author_id,
+          // B5-2a-followup (2026-04-27) — surface creator_id so discover
+          // bylines can deeplink to /creator/[id]. Null for imports + user
+          // creations (only curated `creators` table rows have an id).
+          creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           prepTimeMin: prepOk ? Math.round(prepM) : null,

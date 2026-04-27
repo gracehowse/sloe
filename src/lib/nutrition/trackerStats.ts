@@ -26,7 +26,7 @@ export function computeLoggingStreak(
   now: Date = new Date(),
 ): number {
   let streak = 0;
-  let d = new Date(now);
+  const d = new Date(now);
   const todayKey = dateKeyFromDate(d);
   const todayMeals = nutritionByDay[todayKey] ?? [];
   if (todayMeals.length === 0) {

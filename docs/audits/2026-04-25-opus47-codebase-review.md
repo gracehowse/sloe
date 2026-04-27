@@ -37,7 +37,7 @@ The git log shows aggressive blocker closure. Spot-checking the actual code:
 | **T12** allergen surfacing v0 | `5fdccd3` + `recipes_allergens` migration | **Shipped.** Closes DI-P0-01. |
 | **T13** weight surface mode | `6fec8ac` + `profiles_weight_surface_mode` migration | **Shipped.** Closes DI-P0-03. Three-value enum (show / hide / trends_only) honoured by Digest + Progress on both platforms. |
 | **T15** atomic save_meal_plan RPC | `8a285aa` + `save_meal_plan_rpc` migration | **Shipped.** Replaces 15-RTT chain with one RPC. |
-| **T19** FatSecret Basic-tier compliance | `072cb31` + `fatsecret_basic_tier_zeroing` migration | **Shipped at code level.** `fatsecretCacheGuard.ts` scrubs at ingest; data cleanup migration is staged but **not yet applied** (see §1.1). Licence page text still claims commercial licence — needs sweep. |
+| **T19** FatSecret Basic-tier compliance | `072cb31` + `fatsecret_basic_tier_zeroing` migration | **Fully shipped.** `fatsecretCacheGuard.ts` scrubs at ingest; cleanup migration `20260503100900` applied to linked prod 2026-04-25. Licence page line 39 already reads "Basic developer tier — non-caching" since commit `072cb31` — the audit's claim that it still says "commercial licence" was stale. (P1-18 confirmed 2026-04-25.) |
 | **T20** household write-path hardening | `b42ae43` + `household_write_path_hardening` migration | **Shipped.** UPDATE WITH CHECK on `household_meals`; RPC checks `disbanded_at IS NULL` and `invite_code_expires_at > now()`. |
 | **T21** web_push_subscriptions atomic claim | `e1eb672` + `claim_web_push_subscription` migration | **Shipped.** SECURITY DEFINER RPC atomically deletes stale endpoint and inserts for caller. |
 | **T22** paywall dark-pattern audit | `b40662d` | **Shipped.** Mobile + web both emit `paywall_dismissed`; mobile `paywall_viewed` deduped by tier within mount; documented in `docs/decisions/2026-04-25-paywall-dark-pattern-audit.md`. PASS for App Store on items A–D, F–H. |
@@ -89,12 +89,12 @@ The web client and mobile client both type-check against `database.types.ts` whi
 **Impact:** A planner row with synthesized macros can be logged directly to `nutrition_entries` on either platform. The user's daily totals include fabricated protein/carb/fat. This is the exact non-negotiable violation the 2026-04-24 verdict centred on; the fix shipped half-way.
 **Fix:** Add a guard at every `nutrition_entries` insert (web + mobile) that calls `wouldCoerceMacros(input)` and either rejects (preferred for the journal) or persists a flag on the row so the UI can render "estimated" with a confidence chip. Effort: 1 day with parity tests.
 
-### 2.3 `profiles` column-level lockdown is incomplete
+### 2.3 `profiles` column-level lockdown — phantom gap
 
 **File:** `supabase/migrations/20260503100000_profiles_tier_column_lockdown.sql`. Trigger guards `user_tier` (line 66) and `stripe_customer_id` (line 75).
-**Gap:** `subscription_status`, `trial_started_at`, `trial_ends_at`, `trial_days_given` remain client-writable via `profiles_update_own`.
-**Impact:** Any authenticated user can give themselves a never-ending trial by writing `trial_ends_at = '2099-12-31'`. RevenueCat / Stripe webhook reconciliation will eventually overwrite, but the damage window is real, especially if the user pairs it with `subscription_status = 'trialing'`. The security review for App Store submission will flag this.
-**Fix:** Extend the trigger to cover the four trial columns (and `subscription_status`). Effort: ~1 hour SQL + test.
+**Original audit claim (incorrect):** `subscription_status`, `trial_started_at`, `trial_ends_at`, `trial_days_given` remain client-writable.
+**Correction (P0-4 verification, 2026-04-25):** these columns **do not exist** anywhere in the schema or in the Stripe / RevenueCat webhook write paths. `grep -rn "subscription_status\|trial_started_at\|trial_ends_at\|trial_days_given"` over `supabase/`, `src/`, and `apps/mobile/` returns zero matches. The 2026-04-24 verdict listed them aspirationally as "should be locked down when added"; this audit and the verification agent both read them as already present. The current trigger correctly covers every billing-sensitive column that exists today.
+**P0-4 deliverable:** forward-compat documentation migration (`supabase/migrations/20260503102000_profiles_lockdown_forward_compat.sql`) that re-states the trigger function with an explicit `forward_banned text[]` array containing the seven future column names (`subscription_status`, `trial_*`, `billing_*`, `paid_through_*`). The trigger raises 42501 on any client-side mutation of those names if they are added later without an explicit guard branch — runtime belt-and-braces. Plus a static test (`tests/unit/profilesLockdownInventory.test.ts`) that scans every migration that touches `public.profiles` for billing-pattern column adds and asserts each is either explicitly guarded or in the forward-banned list.
 
 ### 2.4 `generateSmartPlan` still freezes the UI thread
 

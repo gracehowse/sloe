@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -47,24 +47,47 @@ export default function BurnDetailScreen() {
     maintenanceKcal: number;
     workouts: Array<{ type: string; minutes: number; calories: number; source: string }>;
   } | null>(null);
+  // 2026-04-26 polish (round 2): pre-fix the screen rendered a static
+  // "Loading..." text with no spinner and no terminal state — if userId
+  // was null or the profile select returned an empty row, the screen
+  // stayed stuck on "Loading..." indefinitely. Track explicit loading +
+  // error states so the empty-state surfaces instead of an infinite spinner.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      // No user yet — surface a transient empty state, not an infinite
+      // loading spinner. Auth will hydrate and the effect re-fires.
+      setLoadError("Sign in to see your activity bonus.");
+      return;
+    }
     let cancelled = false;
+    setLoadError(null);
     (async () => {
       // Ensure HealthKit data is synced to Supabase before reading
       if (isHealthSyncAvailable()) {
         try { await syncHealthDataThrottled(userId); } catch { /* ignore */ }
       }
       if (cancelled) return;
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select(
           "activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
         )
         .eq("id", userId)
         .maybeSingle();
-      if (cancelled || !profile) return;
+      if (cancelled) return;
+      if (profileErr) {
+        setLoadError("Could not load activity data. Pull to retry.");
+        return;
+      }
+      if (!profile) {
+        // Profile exists in auth.users but not in public.profiles — usually
+        // means onboarding wasn't completed. Surface the empty state instead
+        // of an infinite spinner.
+        setLoadError("No profile found. Complete onboarding to see your activity bonus.");
+        return;
+      }
       const p = profile as any;
       const targetCal = Number(p.target_calories) || 0;
       const ageYears = profileAgeYears({ dob: p.dob, age: p.age });
@@ -132,9 +155,17 @@ export default function BurnDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + 40 }}>
-        {!data ? (
-          <View style={{ alignItems: "center", paddingVertical: 40 }}>
-            <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading...</Text>
+        {!data && loadError ? (
+          <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
+            <Ionicons name="alert-circle-outline" size={28} color={colors.textTertiary} />
+            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
+              {loadError}
+            </Text>
+          </View>
+        ) : !data ? (
+          <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
+            <ActivityIndicator size="small" color={Accent.primary} />
+            <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading…</Text>
           </View>
         ) : (
           <>

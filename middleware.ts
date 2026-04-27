@@ -29,12 +29,18 @@ const PUBLIC_ROUTES = new Set([
 
 /** Dev-only preview routes. Reachable without auth in development so
  *  Grace + reviewers can interact with in-flight redesign work
- *  (Phase 1 primitives at `/dev/primitives`, Phase 2 onboarding at
- *  `/onboarding/v2`). The page components themselves still call
- *  `notFound()` when `NODE_ENV === "production"`, so even if these
- *  paths slip into the production middleware allowlist by accident
- *  the user gets a 404, not the page. */
-const DEV_PREVIEW_PREFIXES = ["/dev/", "/onboarding/v2"];
+ *  (Phase 1 primitives at `/dev/primitives`). The page components
+ *  themselves still call `notFound()` when `NODE_ENV === "production"`,
+ *  so even if these paths slip into the production middleware allowlist
+ *  by accident the user gets a 404, not the page.
+ *
+ *  2026-04-27: removed the `/onboarding/v2` entry — onboarding-v2 is
+ *  now the canonical sign-up entry point and already lives in
+ *  PUBLIC_ROUTES (line 27). The dev-preview entry was a leftover from
+ *  the testflight ramp window and added a second authority gating the
+ *  same path. Public-route allowlist is now the single source of truth.
+ */
+const DEV_PREVIEW_PREFIXES = ["/dev/"];
 function isDevPreview(pathname: string): boolean {
   if (process.env.NODE_ENV === "production") return false;
   return DEV_PREVIEW_PREFIXES.some(

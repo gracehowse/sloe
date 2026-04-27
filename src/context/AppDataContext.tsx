@@ -53,6 +53,7 @@ import {
 import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
+import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
 import {
   looksLikeMissingTableError,
   syncDisabledBecauseSchemaMessage,
@@ -132,6 +133,13 @@ interface AppDataContextValue {
   setNutritionTargets: Dispatch<SetStateAction<MacroTargets>>;
   preferActivityAdjustedCalories: boolean;
   setPreferActivityAdjustedCalories: Dispatch<SetStateAction<boolean>>;
+  /** P2-26 / P3-30 (2026-04-25): when true, the user has opted into the
+   *  net-carbs lens via Settings → Goals & Targets. Surfaces that
+   *  display carbs (Tracker macro tile, Recipe Detail nutrition row)
+   *  swap "Carbs" → "Net carbs" and the value subtracts fibre.
+   *  Source of truth: `profiles.net_carbs_lens_enabled`. */
+  netCarbsLensEnabled: boolean;
+  setNetCarbsLensEnabled: Dispatch<SetStateAction<boolean>>;
   /** Default activity burn (kcal) for days without a per-day value in `activityBurnByDay`. */
   activityBurnKcal: number;
   setActivityBurnKcal: Dispatch<SetStateAction<number>>;
@@ -312,6 +320,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
   const [nutritionTargets, setNutritionTargets] = useState(initial.nutritionTargets);
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
+  // P3-30 (2026-04-25): net-carbs lens opt-in. Default false to preserve
+  // current behaviour for users who haven't opted in.
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [activityBurnKcal, setActivityBurnKcal] = useState(() => initial.activityBurnKcal ?? 0);
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>(
     () => initial.activityBurnByDay ?? {},
@@ -449,7 +460,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode",
+          "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -472,6 +483,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setProfileMeasurementSystem(ms);
       setProfileWeightSurfaceMode(coerceWeightSurfaceMode(data?.weight_surface_mode));
       setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
+      // P3-30: lens defaults to false when the column hasn't been
+      // populated yet (forward-only safe).
+      setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
       const hasTargets = Boolean(
         data?.target_calories &&
           data?.target_protein &&
@@ -509,7 +523,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode",
+        "display_name, user_tier, measurement_system, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -521,6 +535,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setProfileMeasurementSystem(ms);
     setProfileWeightSurfaceMode(coerceWeightSurfaceMode(data?.weight_surface_mode));
     setPreferActivityAdjustedCalories(Boolean(data?.prefer_activity_adjusted_calories));
+    setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
     const hasTargets = Boolean(
       data?.target_calories &&
         data?.target_protein &&
@@ -721,7 +736,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         creatorImage:
           (row?.author?.avatar_url as string | null) ??
           NEUTRAL_AVATAR_DATA_URI,
-        title: (row.title as string) ?? "Untitled",
+        // 2026-04-26 polish: render-time normalisation for legacy
+        // ALL-CAPS rows (publisher schema.org name fields). The helper is
+        // a no-op for any title that already contains lowercase, so
+        // mixed-case authored titles pass through untouched.
+        title: normalizeRecipeTitle(row.title as string | null | undefined),
         image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
@@ -785,7 +804,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         creatorName: importAttribution || profileDisplayName || "You",
         creatorImage:
           NEUTRAL_AVATAR_DATA_URI,
-        title: (row.title as string) ?? "Untitled",
+        // 2026-04-26 polish: render-time normalisation for legacy
+        // ALL-CAPS rows (publisher schema.org name fields). The helper is
+        // a no-op for any title that already contains lowercase, so
+        // mixed-case authored titles pass through untouched.
+        title: normalizeRecipeTitle(row.title as string | null | undefined),
         image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
@@ -1794,6 +1817,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setNutritionTargets,
       preferActivityAdjustedCalories,
       setPreferActivityAdjustedCalories,
+      netCarbsLensEnabled,
+      setNetCarbsLensEnabled,
       activityBurnKcal,
       setActivityBurnKcal,
       activityBurnForSelectedDay,
@@ -1878,6 +1903,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setNutritionTargets,
       preferActivityAdjustedCalories,
       setPreferActivityAdjustedCalories,
+      netCarbsLensEnabled,
+      setNetCarbsLensEnabled,
       activityBurnKcal,
       setActivityBurnKcal,
       activityBurnForSelectedDay,

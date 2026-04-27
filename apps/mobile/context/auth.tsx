@@ -3,6 +3,34 @@ import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { syncProfileTimezone } from "../../../src/lib/profile/tzSync";
+import { setUser as sentrySetUser, clearUser as sentryClearUser } from "@/lib/errorTracking";
+import { identify as posthogIdentify, reset as posthogReset } from "@/lib/analytics";
+
+/**
+ * P1-13 (2026-04-25): keep Sentry + PostHog user context in sync with
+ * the Supabase session. Without this, crashes lack a user id (harder
+ * to triage per-user issues) and PostHog funnels stay anonymous until
+ * an event manually identifies. Idempotent — safe to call on every
+ * auth state change.
+ */
+function syncObservabilityUser(session: Session | null): void {
+  const uid = session?.user?.id;
+  if (uid) {
+    try {
+      sentrySetUser(uid);
+    } catch { /* swallow — observability must never break auth */ }
+    try {
+      posthogIdentify(uid);
+    } catch { /* swallow */ }
+  } else {
+    try {
+      sentryClearUser();
+    } catch { /* swallow */ }
+    try {
+      posthogReset();
+    } catch { /* swallow */ }
+  }
+}
 
 type AuthState = {
   session: Session | null;
@@ -44,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearTimeout(timeout);
           setSession(signIn.session ?? null);
           setLoading(false);
+          // P1-13: also stamp identity on the E2E auto-sign-in path so
+          // Maestro / Detox runs surface a consistent user id in any
+          // observability noise they generate.
+          syncObservabilityUser(signIn.session ?? null);
         }
         return;
       }
@@ -51,6 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeout);
       setSession(data.session);
       setLoading(false);
+      // P1-13: stamp Sentry + PostHog with the user id so crashes and
+      // funnels carry context from the first frame.
+      syncObservabilityUser(data.session);
       // Write IANA tz into profiles so the weekly recap push fires at
       // the user's local 18:00 (T12, 2026-04-20). Fire-and-forget.
       if (data.session?.user?.id) {
@@ -66,6 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes (sign in, sign out, token refresh)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      // P1-13: keep observability identity in sync with auth state.
+      // Covers SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED.
+      syncObservabilityUser(s);
       if (s?.user?.id) {
         void syncProfileTimezone(supabase, s.user.id);
       }

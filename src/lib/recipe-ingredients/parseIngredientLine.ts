@@ -60,7 +60,7 @@ const UNIT_PREFIXES: { re: RegExp; unit: string }[] = [
 ];
 
 function normalizeLeadingFractions(s: string): string {
-  let t = s.trim().replace(/\s+/g, " ");
+  const t = s.trim().replace(/\s+/g, " ");
   for (const [u, v] of Object.entries(UNICODE_FRAC)) {
     if (t.startsWith(`${u} `) || t === u) {
       return `${v}${t.length > u.length ? " " + t.slice(u.length).trim() : ""}`;
