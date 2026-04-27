@@ -104,11 +104,11 @@ describe("household sharing scope copy (F-16, 2026-04-25)", () => {
 describe("household join rate limit (M1)", () => {
   it("POST /api/household/join calls rateLimit before processing the body", () => {
     const src = readRepoFile("app/api/household/join/route.ts");
-    expect(src).toContain('keyPrefix: "api:household-join"');
+    expect(src).toContain('keyPrefix: "household_join"');
     expect(src).toMatch(/rateLimit\s*\(/);
     expect(src).toMatch(/limit:\s*5/);
-    // P0-6: authenticate first so the bucket is per-user; rate-limit must still
-    // run before invite JSON / DB work so stuffing can't burn Supabase before the cap.
+    // Rate-limit must run BEFORE parsing JSON / hitting Supabase so invite
+    // stuffing can't burn DB work before the cap.
     const postIdx = src.indexOf("export async function POST");
     expect(postIdx).toBeGreaterThan(0);
     const body = src.slice(postIdx);
@@ -116,5 +116,11 @@ describe("household join rate limit (M1)", () => {
     const jsonCallIdx = body.indexOf("await req.json()");
     expect(rateLimitCallIdx).toBeGreaterThan(0);
     expect(jsonCallIdx).toBeGreaterThan(rateLimitCallIdx);
+
+    // Current implementation rate-limits before auth so unauthenticated brute
+    // force can't burn auth lookups / service-role client init.
+    const userIdCallIdx = body.indexOf("await getUserIdFromRequest(");
+    expect(userIdCallIdx).toBeGreaterThan(rateLimitCallIdx);
+    expect(jsonCallIdx).toBeGreaterThan(userIdCallIdx);
   });
 });
