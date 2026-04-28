@@ -883,16 +883,23 @@ export default function ProfileScreen() {
         <SettingsRow icon={BookOpen} iconColor={t.accent} label="Terms of use" sub="Service agreement" onPress={() => openLegalPath("/terms")} />
       </View>
 
-      {/* F-49 (2026-04-22): visible build-stamp so we can diagnose what's
-          actually installed. `BUILD_MARKER` is a fresh unique string every
-          build so we can grep it in feedback screenshots to confirm which
-          binary is running on a tester's device. */}
-      <SectionHeading title="Build" />
-      <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", paddingHorizontal: 16, paddingVertical: 14 }}>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-          {`v${(Constants.expoConfig?.version ?? "?")} · build ${((Constants as unknown as { nativeBuildVersion?: string }).nativeBuildVersion ?? Constants.expoConfig?.ios?.buildNumber ?? "?")} · MARKER F50-2026-04-22`}
-        </Text>
-      </View>
+      {/* M14 fix (audit 2026-04-28): build stamp was visible to every
+          production user — invaluable for testers, scary for paying
+          users. Now gated on `__DEV__` so prod TestFlight + App Store
+          builds hide it; Grace and any future internal testers can
+          still grep the marker on dev builds where the row is needed.
+          F-49 (2026-04-22): `BUILD_MARKER` stays a unique string per
+          build so diagnostic screenshots remain greppable on dev. */}
+      {__DEV__ ? (
+        <>
+          <SectionHeading title="Build" />
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden", paddingHorizontal: 16, paddingVertical: 14 }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+              {`v${(Constants.expoConfig?.version ?? "?")} · build ${((Constants as unknown as { nativeBuildVersion?: string }).nativeBuildVersion ?? Constants.expoConfig?.ios?.buildNumber ?? "?")} · MARKER F50-2026-04-22`}
+            </Text>
+          </View>
+        </>
+      ) : null}
 
       {/* Danger zone */}
       <SectionHeading title="Danger zone" />

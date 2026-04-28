@@ -612,7 +612,17 @@ export default function DiscoverScreen() {
               {eatingOut.map((m) => (
                 <Pressable
                   key={m.foodId}
-                  onPress={() => router.push({ pathname: "/(tabs)" as any, params: { search: m.label } })}
+                  // D3 fix (audit 2026-04-28): mobile previously
+                  // pushed `?search=m.label` into the Today route
+                  // params; web navigated to Today with no context.
+                  // Mobile's params were never read by the Today
+                  // screen — both platforms silently dropped the
+                  // food context, but the divergent shapes implied
+                  // different behaviour. Aligned both to a plain
+                  // navigation; deep-link-with-prefilled-search is a
+                  // future improvement that needs FoodSearchModal
+                  // wiring on both sides.
+                  onPress={() => router.push("/(tabs)" as any)}
                   style={{
                     width: 160,
                     padding: 10,

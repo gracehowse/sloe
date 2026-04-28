@@ -1740,7 +1740,7 @@ export default function PlannerScreen() {
                         style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
                         onPress={() => {
                           if (locked) {
-                            Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available on Base and above.", [
+                            Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
                               { text: "Continue for free", style: "cancel" },
                               { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
                             ]);
@@ -1876,7 +1876,7 @@ export default function PlannerScreen() {
                     style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
-                        Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available on Base and above.", [
+                        Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
                           { text: "Continue for free", style: "cancel" },
                           { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
                         ]);
