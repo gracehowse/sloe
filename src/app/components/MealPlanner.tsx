@@ -1,5 +1,15 @@
 import { memo, useMemo, useState } from "react";
-import { RefreshCw, ShoppingCart, X } from "lucide-react";
+import {
+  Coffee,
+  Cookie,
+  Lock,
+  RefreshCw,
+  ShoppingCart,
+  Sun,
+  UtensilsCrossed,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMultiplier.ts";
@@ -25,7 +35,23 @@ interface MealPlannerProps {
   onCookRecipe?: (recipeId: string, portionMultiplier?: number) => void;
 }
 
-type SwapTarget = { day: number; slot: "breakfast" | "lunch" | "dinner"; mealIndex: number };
+/** F2-A (audit 2026-04-28) — slot iteration includes Snacks on web,
+ *  matching the mobile canonical set (`apps/mobile/app/(tabs)/planner.tsx`
+ *  `ALL_MEAL_SLOTS`). The web grid renders all four slots when the
+ *  generated plan carries them. */
+type SlotKey = "breakfast" | "lunch" | "dinner" | "snacks";
+const SLOTS: readonly SlotKey[] = ["breakfast", "lunch", "dinner", "snacks"] as const;
+
+/** Slot icons — lucide-react parity with the mobile lucide-react-native
+ *  set so the visual treatment lines up across platforms. */
+const SLOT_ICONS: Record<SlotKey, LucideIcon> = {
+  breakfast: Coffee,
+  lunch: Sun,
+  dinner: UtensilsCrossed,
+  snacks: Cookie,
+};
+
+type SwapTarget = { day: number; slot: SlotKey; mealIndex: number };
 
 /**
  * Web Meal Planner — prototype rewrite (2026-04-20).
@@ -64,8 +90,8 @@ type SwapTarget = { day: number; slot: "breakfast" | "lunch" | "dinner"; mealInd
  *    to the catalog the design surfaces in its swap list).
  */
 export const MealPlanner = memo(function MealPlanner({
-  userTier: _userTier,
-  onUpgrade: _onUpgrade,
+  userTier,
+  onUpgrade,
   onNavigate,
   onOpenRecipe,
   onCookRecipe: _onCookRecipe,
@@ -82,6 +108,15 @@ export const MealPlanner = memo(function MealPlanner({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [swapFor, setSwapFor] = useState<SwapTarget | null>(null);
+  // F2-B (audit 2026-04-28) — day-count picker. Mobile parity:
+  // `apps/mobile/app/(tabs)/planner.tsx` exposes 1 / 3 / 7 day options.
+  // Default to 7 so the existing 7-column grid layout stays the
+  // primary surface; a Free user is gated at 1 (F2-C below).
+  const [planDays, setPlanDays] = useState<1 | 3 | 7>(7);
+  // F2-C (audit 2026-04-28) — Free-tier lock on day-count picker
+  // (closes F5: "free-tier 7-day plan lock divergence"). Mobile
+  // gates `d > 1` for Free; web now matches.
+  const isFree = userTier === "free";
 
   const targetCalories = nutritionTargets.calories;
 
@@ -105,7 +140,13 @@ export const MealPlanner = memo(function MealPlanner({
   const handleRegenerate = async () => {
     setIsGenerating(true);
     try {
-      await generateMealPlan();
+      // F2-B (2026-04-28): pass through the chosen plan length. The
+      // shared `generateMealPlan({ days })` API at `AppDataContext.tsx`
+      // already accepts the option; pre-fix the call was a no-arg
+      // invocation that defaulted to 1 day, which was the F2 root
+      // cause for "web Planner is ~30% of mobile's surface".
+      const days = isFree ? 1 : planDays;
+      await generateMealPlan({ days });
       await generateShoppingListFromPlan();
       toast.success("Plan regenerated");
     } catch {
@@ -113,6 +154,17 @@ export const MealPlanner = memo(function MealPlanner({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  /** F2-C (2026-04-28) — clicking a Pro-locked day-count chip routes
+   *  the user to the upgrade paywall instead of silently no-op'ing.
+   *  Mirrors the mobile Alert at `planner.tsx:1742-1751`. */
+  const handleDayCountSelect = (next: 1 | 3 | 7) => {
+    if (isFree && next > 1) {
+      onUpgrade?.();
+      return;
+    }
+    setPlanDays(next);
   };
 
   const handleShoppingList = () => {
@@ -169,20 +221,46 @@ export const MealPlanner = memo(function MealPlanner({
   // Build the swap-picker pool — filter to recipes that fit the target
   // slot when possible, falling back to the full pool if nothing
   // matches (parity with the prior swap flow).
+  // F2-A (2026-04-28): the lookup-key is capitalised ("Breakfast")
+  // because `PlannerMealSlot` is the capitalised enum from
+  // `src/types/recipe.ts`. The pre-fix cast was incorrectly using
+  // the lowercase web key directly, which made the slot filter a
+  // no-op (no recipe ever matched), and the pool always fell
+  // through to the un-filtered everything-list branch.
   const swapPool = useMemo(() => {
     if (!swapFor) return [];
     const pool = [...discoverRecipes, ...savedRecipesForLibrary];
-    const slot = swapFor.slot as PlannerMealSlot;
+    const slotMap: Record<SlotKey, PlannerMealSlot> = {
+      breakfast: "Breakfast",
+      lunch: "Lunch",
+      dinner: "Dinner",
+      snacks: "Snacks",
+    };
+    const slot = slotMap[swapFor.slot];
     const fits = pool.filter((r) => recipeFitsMealSlot(r, slot));
     return fits.length > 0 ? fits : pool;
   }, [swapFor, discoverRecipes, savedRecipesForLibrary]);
 
   const plan = mealPlan ?? [];
-  // Prototype shows 7 day cards always — pad when plan is shorter so the
-  // grid never collapses to a single column with stray data.
-  const days: DayPlan[] = Array.from({ length: 7 }, (_, i) => {
+  // F2-B (2026-04-28): the rendered grid follows the actual plan
+  // length now that day-count is user-selectable (1 / 3 / 7). Pre-
+  // fix the grid was hardcoded to 7 columns regardless of how many
+  // days the sampler produced. Empty plans still render the full
+  // 7-column placeholder grid so the regenerate target is visible
+  // before the user has any plan data.
+  const renderDayCount = plan.length > 0 ? plan.length : 7;
+  const days: DayPlan[] = Array.from({ length: renderDayCount }, (_, i) => {
     return plan[i] ?? ({ day: i + 1, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } } as DayPlan);
   });
+  // Tailwind `grid-cols-N` arbitrary values: pin the grid columns to
+  // match the actual day count up to 7 so a 3-day plan renders 3
+  // columns rather than 7 with 4 empty placeholders.
+  const gridColsClass =
+    renderDayCount <= 1
+      ? "md:grid-cols-1"
+      : renderDayCount <= 3
+        ? "md:grid-cols-3"
+        : "md:grid-cols-7";
 
   return (
     <div className="max-w-6xl mx-auto px-pm-5 py-pm-5">
@@ -200,27 +278,66 @@ export const MealPlanner = memo(function MealPlanner({
         {subtitle}
       </p>
 
+      {/* F2-B (2026-04-28): day-count picker. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1734-1757`. F2-C: Free
+          tier sees a lock glyph on 3-day and 7-day chips and tapping
+          routes to upgrade. */}
+      <div
+        data-testid="planner-day-count-row"
+        className="flex items-center gap-2 mb-4"
+        role="radiogroup"
+        aria-label="Plan length"
+      >
+        <span className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground mr-1">
+          Plan length
+        </span>
+        {([1, 3, 7] as const).map((d) => {
+          const locked = isFree && d > 1;
+          const active = planDays === d;
+          return (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => handleDayCountSelect(d)}
+              data-testid={`planner-day-count-${d}`}
+              className={[
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-foreground hover:bg-muted/60",
+                locked ? "opacity-60" : "",
+              ].join(" ")}
+            >
+              {d} {d === 1 ? "day" : "days"}
+              {locked ? <Lock size={11} aria-label="Pro" /> : null}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         data-testid="planner-desktop-kanban"
-        className="grid grid-cols-1 md:grid-cols-7"
+        className={`grid grid-cols-1 ${gridColsClass}`}
         style={{ gap: 12 }}
       >
         {days.map((dp, di) => {
           const dayDate = planCalendarDateForIndex(di);
           const dayLabel = shortWeekdayLabel(dayDate);
           const isTodayCol = isSameCalendarDay(dayDate, new Date());
+          // F2-A (2026-04-28): bySlot now indexes all four canonical
+          // slots (Breakfast / Lunch / Dinner / Snacks) so the grid
+          // renders Snacks when the generated plan carries it. Pre-
+          // fix the web grid silently dropped any snack rows the
+          // sampler produced.
           const bySlot = new Map<
-            "breakfast" | "lunch" | "dinner",
+            SlotKey,
             { mealIndex: number; meal: DayPlan["meals"][number] } | null
           >();
-          bySlot.set("breakfast", null);
-          bySlot.set("lunch", null);
-          bySlot.set("dinner", null);
+          for (const s of SLOTS) bySlot.set(s, null);
           dp.meals.forEach((m, i) => {
-            const key = String(m.name ?? "").toLowerCase() as
-              | "breakfast"
-              | "lunch"
-              | "dinner";
+            const key = String(m.name ?? "").toLowerCase() as SlotKey;
             if (bySlot.has(key) && bySlot.get(key) == null) {
               bySlot.set(key, { mealIndex: i, meal: m });
             }
@@ -254,7 +371,8 @@ export const MealPlanner = memo(function MealPlanner({
                   </span>
                 ) : null}
               </div>
-              {(["breakfast", "lunch", "dinner"] as const).map((slot) => {
+              {SLOTS.map((slot) => {
+                const SlotIcon = SLOT_ICONS[slot];
                 const entry = bySlot.get(slot);
                 if (!entry) {
                   return (
@@ -264,7 +382,7 @@ export const MealPlanner = memo(function MealPlanner({
                       style={{ padding: 10 }}
                     >
                       <p
-                        className="text-muted-foreground uppercase"
+                        className="text-muted-foreground uppercase inline-flex items-center gap-1.5"
                         style={{
                           fontSize: 10,
                           fontWeight: 600,
@@ -272,6 +390,7 @@ export const MealPlanner = memo(function MealPlanner({
                           marginBottom: 4,
                         }}
                       >
+                        <SlotIcon size={11} aria-hidden />
                         {slot}
                       </p>
                       <p className="text-muted-foreground" style={{ fontSize: 12 }}>

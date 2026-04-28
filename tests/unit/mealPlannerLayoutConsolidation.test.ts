@@ -38,11 +38,14 @@ describe("MealPlanner prototype rewrite (2026-04-21)", () => {
     expect(SRC).toMatch(/hits targets \$\{summary\.hits\} of \$\{summary\.total\}/);
   });
 
-  it("renders the 7-column day grid and breakfast/lunch/dinner slots only", () => {
+  it("renders the 7-column day grid + all four canonical slots (Breakfast / Lunch / Dinner / Snacks)", () => {
+    // F2-A (audit 2026-04-28): Snacks slot was added on web for
+    // mobile parity. Pre-fix the prototype-rewrite test asserted
+    // snacks were NOT rendered on the grid; that posture is now
+    // wrong because the sampler can produce snack rows on Pro,
+    // and silently dropping them was a cross-platform divergence.
     expect(SRC).toMatch(/md:grid-cols-7/);
-    expect(SRC).toMatch(/\["breakfast", "lunch", "dinner"\]/);
-    // Snacks explicitly NOT present in the grid slot list.
-    expect(SRC).not.toMatch(/"breakfast", "lunch", "dinner", "snacks"/);
+    expect(SRC).toMatch(/\["breakfast", "lunch", "dinner", "snacks"\]/);
   });
 
   it("has a swap button per slot and a Today pill for today's column", () => {
