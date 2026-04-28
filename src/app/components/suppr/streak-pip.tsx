@@ -37,7 +37,7 @@ export function StreakPip({ days, ariaLabel, className }: StreakPipProps) {
   const label =
     safeDays === 0
       ? "Start your streak"
-      : `${safeDays} day${safeDays === 1 ? "" : "s"}`;
+      : `${safeDays}-day streak`;
 
   return (
     <span

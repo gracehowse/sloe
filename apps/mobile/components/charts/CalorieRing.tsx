@@ -139,8 +139,13 @@ export default function CalorieRing({
 
   const progress = useSharedValue(0);
 
+  // Tween from the current ring position to the new pct (do NOT snap to
+  // zero first — that produced a jarring "drain then refill" on every
+  // log because the prior snapshot was discarded). Reanimated 3
+  // continues the existing animation when withTiming is called on an
+  // already-animating shared value, which is the desired behaviour for
+  // a ring that updates as the user logs through the day.
   useEffect(() => {
-    progress.value = 0;
     progress.value = withTiming(pct, {
       duration: 800,
       easing: Easing.out(Easing.cubic),

@@ -50,9 +50,9 @@ export function TodayHeroRing({
         onToggle={onToggleExpanded}
         displayMode={displayMode}
       />
-      <p className="text-xs text-muted-foreground mt-3">
-        {expanded ? "Click the ring to hide macros" : "Click the ring to show macros"}
-      </p>
+      {/* Helper caption removed for mobile-web parity (2026-04-28) — mobile
+          dropped this string at F-47 because "Click" is the wrong verb on a
+          touch screen and the ring's affordance is already self-evident. */}
       {/* Mode toggle — prototype port (2026-04-20, mobile parity):
           subtle tint instead of a heavy primary fill so the control
           matches the ring's understated look (see ui-critic note on

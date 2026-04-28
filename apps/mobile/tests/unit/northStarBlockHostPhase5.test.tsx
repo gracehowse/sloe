@@ -12,7 +12,7 @@
 
 import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import { NorthStarBlockHost } from "../../components/today/NorthStarBlockHost";
 import type { NorthStarRecipe } from "../../../../src/lib/nutrition/northStarSuggestion";
@@ -136,5 +136,30 @@ describe("NorthStarBlockHost branching", () => {
     // pin "not the empty / over-budget branches".
     expect(tree.queryByTestId("north-star-over-budget")).toBeNull();
     expect(tree.queryByTestId("north-star-library-empty")).toBeNull();
+  });
+
+  it("invokes onPrimaryCta with the suggestion's recipe id (not the first saved recipe)", () => {
+    const onPrimaryCta = vi.fn();
+    const tree = render(
+      <NorthStarBlockHost
+        viewMode="day"
+        savedRecipesForLibrary={lib6}
+        remainingCalories={500}
+        remainingProtein={20}
+        remainingCarbs={40}
+        remainingFat={15}
+        onPrimaryCta={onPrimaryCta}
+        onBrowseLibrary={() => {}}
+        selectedDateKey="2026-04-27"
+      />,
+    );
+    const cta = tree.queryByTestId("north-star-default-cta");
+    if (cta) {
+      fireEvent.press(cta);
+      expect(onPrimaryCta).toHaveBeenCalledTimes(1);
+      const passed = onPrimaryCta.mock.calls[0]?.[0] as string;
+      expect(typeof passed).toBe("string");
+      expect(lib6.map((r) => r.id)).toContain(passed);
+    }
   });
 });

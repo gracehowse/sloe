@@ -162,12 +162,18 @@ export interface LogSheetProps {
     /** Slot for the mic button — caller wires recording state. */
     micSlot?: React.ReactNode;
     state?: LogSheetTabState;
+    /** Fired when the default mic button is clicked. The host should
+     *  close the LogSheet and open the dedicated VoiceLogDialog. */
+    onStart?: () => void;
   };
   /** Photo-log state. */
   photo?: {
     /** Slot for the shutter / preview. */
     shutterSlot?: React.ReactNode;
     state?: LogSheetTabState;
+    /** Fired when the default capture button is clicked. The host
+     *  should close the LogSheet and open the dedicated PhotoLogDialog. */
+    onCapture?: () => void;
   };
   /** Whether to render the desktop-modal layout instead of the mobile
    *  drawer. When undefined, falls back to a CSS media query. */
@@ -776,9 +782,10 @@ function SavedTab({ meals, onPick, state }: SavedTabProps) {
 interface VoiceTabProps {
   micSlot?: React.ReactNode;
   state?: LogSheetTabState;
+  onStart?: () => void;
 }
 
-function VoiceTab({ micSlot, state }: VoiceTabProps) {
+function VoiceTab({ micSlot, state, onStart }: VoiceTabProps) {
   if (state?.permissionDenied) {
     return (
       <div className="rounded-lg border border-dashed py-8 text-center">
@@ -799,6 +806,7 @@ function VoiceTab({ micSlot, state }: VoiceTabProps) {
         <button
           type="button"
           aria-label="Tap to start recording"
+          onClick={onStart}
           className={cn(
             "h-22 w-22 grid place-items-center rounded-full bg-primary text-primary-foreground",
             "shadow-[0_4px_16px_rgba(76,108,224,0.4)]",
@@ -818,9 +826,10 @@ function VoiceTab({ micSlot, state }: VoiceTabProps) {
 interface PhotoTabProps {
   shutterSlot?: React.ReactNode;
   state?: LogSheetTabState;
+  onCapture?: () => void;
 }
 
-function PhotoTab({ shutterSlot, state }: PhotoTabProps) {
+function PhotoTab({ shutterSlot, state, onCapture }: PhotoTabProps) {
   if (state?.permissionDenied) {
     return (
       <div className="rounded-lg border border-dashed py-8 text-center">
@@ -850,6 +859,7 @@ function PhotoTab({ shutterSlot, state }: PhotoTabProps) {
       <button
         type="button"
         aria-label="Capture photo"
+        onClick={onCapture}
         className="grid h-16 w-16 place-items-center rounded-full border-4 border-primary bg-primary"
       >
         <span className="h-12 w-12 rounded-full bg-primary-foreground" aria-hidden />

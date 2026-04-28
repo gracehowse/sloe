@@ -18,12 +18,13 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { StreakPip } from "../../components/today/StreakPip";
 import { LogFab } from "../../components/today/LogFab";
+
+const noop = () => {};
 
 vi.mock("expo-haptics", () => ({
   impactAsync: vi.fn(async () => undefined),
@@ -75,32 +76,20 @@ describe("StreakPip", () => {
 
 describe("LogFab", () => {
   it("renders by default with the canonical accessibility label", () => {
-    const { getByLabelText } = render(<LogFab />);
+    const { getByLabelText } = render(<LogFab onPress={noop} />);
     expect(getByLabelText("Log a meal")).toBeTruthy();
   });
 
   it("returns null when visible=false", () => {
-    const { queryByLabelText } = render(<LogFab visible={false} />);
+    const { queryByLabelText } = render(<LogFab visible={false} onPress={noop} />);
     expect(queryByLabelText("Log a meal")).toBeNull();
   });
 
-  it("calls the supplied onPress instead of surfacing the placeholder alert", () => {
+  it("calls the supplied onPress on press (Phase 3 placeholder alert was removed 2026-04-28)", () => {
     const onPress = vi.fn();
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(() => {});
     const { getByLabelText } = render(<LogFab onPress={onPress} />);
     fireEvent.press(getByLabelText("Log a meal"));
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(alertSpy).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
-  });
-
-  it("falls back to the 'Coming in Phase 3' alert when no onPress is provided", () => {
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(() => {});
-    const { getByLabelText } = render(<LogFab />);
-    fireEvent.press(getByLabelText("Log a meal"));
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy.mock.calls[0]?.[0]).toBe("Coming in Phase 3");
-    alertSpy.mockRestore();
   });
 
   it("respects custom bottom / right placement props", () => {
@@ -108,7 +97,7 @@ describe("LogFab", () => {
     // absolute-positioned View. Walk up the parent chain to find a
     // node whose style carries `position: 'absolute'` (the LogFab
     // wrapper) and assert the bottom / right values match.
-    const { getByLabelText } = render(<LogFab bottom={140} right={24} />);
+    const { getByLabelText } = render(<LogFab onPress={noop} bottom={140} right={24} />);
     const button = getByLabelText("Log a meal");
     let node: { parent: typeof button | null; props: { style?: unknown } } | null = button.parent;
     let positionStyle: Record<string, unknown> | null = null;

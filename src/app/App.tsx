@@ -302,7 +302,7 @@ export default function App() {
                       : "text-muted-foreground"
                   }`}
                 >
-                  Shop
+                  Shopping
                   {shoppingUncheckedCount > 0 ? (
                     <span className="absolute -top-0.5 right-2 min-w-[1rem] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-4 text-center">
                       {shoppingUncheckedCount > 99 ? "99+" : shoppingUncheckedCount}

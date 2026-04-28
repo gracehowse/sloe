@@ -61,7 +61,10 @@ export interface NorthStarBlockHostProps {
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
-  onPrimaryCta: () => void;
+  /** Called when the user taps the primary CTA on the suggestion card.
+   *  Receives the suggestion's recipe id so the parent can route
+   *  directly to that recipe (or open the log sheet, on web). */
+  onPrimaryCta: (recipeId: string) => void;
   onBrowseLibrary: () => void;
   /** Date scope for the skip ledger. Should match the host screen's
    *  selectedDateKey so the set resets daily. */
@@ -148,7 +151,7 @@ export function NorthStarBlockHost({
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
       }}
-      onPrimaryCta={onPrimaryCta}
+      onPrimaryCta={() => onPrimaryCta(suggestion.recipe.id)}
       onSkip={() => handleSkip(suggestion.recipe.id)}
     />
   );

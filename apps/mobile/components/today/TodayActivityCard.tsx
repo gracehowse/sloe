@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Flame, Footprints } from "lucide-react-native";
 import { Accent, Spacing } from "@/constants/theme";
 
 /**
@@ -42,7 +42,7 @@ export function TodayActivityCard({
       <View style={{ gap: Spacing.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="footsteps-outline" size={18} color={textSecondaryColor} />
+            <Footprints size={18} color={textSecondaryColor} strokeWidth={2.25} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Steps</Text>
           </View>
           <Text style={{ fontSize: 16, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>
@@ -71,7 +71,7 @@ export function TodayActivityCard({
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="flame-outline" size={18} color={Accent.warning} />
+            <Flame size={18} color={Accent.warning} strokeWidth={2.25} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Active energy</Text>
           </View>
           <Text style={{ fontSize: 16, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>

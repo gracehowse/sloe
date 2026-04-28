@@ -148,10 +148,16 @@ export interface LogSheetProps {
   voice?: {
     micSlot?: React.ReactNode;
     state?: LogSheetTabState;
+    /** Fired when the default mic button is tapped. The host should
+     *  close the LogSheet and open the dedicated VoiceLogSheet. */
+    onStart?: () => void;
   };
   photo?: {
     shutterSlot?: React.ReactNode;
     state?: LogSheetTabState;
+    /** Fired when the default capture button is tapped. The host
+     *  should close the LogSheet and open the dedicated PhotoLogSheet. */
+    onCapture?: () => void;
   };
 }
 
@@ -817,7 +823,7 @@ function SavedTab({
 
 /* -------------------------- Voice tab -------------------------- */
 
-function VoiceTab({ micSlot, state }: NonNullable<LogSheetProps["voice"]>) {
+function VoiceTab({ micSlot, state, onStart }: NonNullable<LogSheetProps["voice"]>) {
   const colors = useThemeColors();
 
   if (state?.permissionDenied) {
@@ -856,6 +862,7 @@ function VoiceTab({ micSlot, state }: NonNullable<LogSheetProps["voice"]>) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Tap to start recording"
+          onPress={onStart}
           style={{
             width: 88,
             height: 88,
@@ -877,7 +884,7 @@ function VoiceTab({ micSlot, state }: NonNullable<LogSheetProps["voice"]>) {
 
 /* -------------------------- Photo tab -------------------------- */
 
-function PhotoTab({ shutterSlot, state }: NonNullable<LogSheetProps["photo"]>) {
+function PhotoTab({ shutterSlot, state, onCapture }: NonNullable<LogSheetProps["photo"]>) {
   const colors = useThemeColors();
 
   if (state?.permissionDenied) {
@@ -935,6 +942,7 @@ function PhotoTab({ shutterSlot, state }: NonNullable<LogSheetProps["photo"]>) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Capture photo"
+        onPress={onCapture}
         style={{
           width: 64,
           height: 64,

@@ -138,7 +138,9 @@ describe("resolveSeedsToRecipeIds — error + empty", () => {
     });
     const supabase = {
       from: () => ({
-        select: () => ({ or: errorOr }),
+        select: () => ({
+          eq: () => ({ or: errorOr }),
+        }),
       }),
     };
     const picks = [

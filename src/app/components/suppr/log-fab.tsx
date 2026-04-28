@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Plus } from "lucide-react";
 
 /**
@@ -14,44 +13,26 @@ import { Plus } from "lucide-react";
  *   "Persistent Log FAB on Today. One sheet with tabs:
  *    search / barcode / recent / saved / voice / photo."
  *
- * Phase 2 ships placement and existence only. The tap action is a
- * no-op (or whatever the caller passes) — Phase 3 wires this to the
- * canonical `<LogSheet>`.
+ * Wired by `NutritionTracker.tsx` to open the canonical `<LogSheet>`.
+ * `onPress` is required in practice — there is no fallback behaviour.
  *
  * Tap, scale, focus per §1.1 of the production design spec.
  */
 export interface LogFabProps {
   visible?: boolean;
-  onPress?: () => void;
+  onPress: () => void;
   /** When `true`, the FAB renders on every viewport. Defaults to
    *  mobile-web only (`md:hidden`). */
   showOnDesktop?: boolean;
 }
 
 export function LogFab({ visible = true, onPress, showOnDesktop = false }: LogFabProps) {
-  // Hooks must be called unconditionally — declare the callback before
-  // the early return so re-rendering with `visible` toggling doesn't
-  // change hook order.
-  const handlePress = React.useCallback(() => {
-    if (onPress) {
-      onPress();
-      return;
-    }
-    // Phase 2 placeholder — same alert text shape as the mobile
-    // primitive for parity. Web has no native Alert API so we use
-    // window.alert (this is a Phase 2 stand-in only; Phase 3 swaps
-    // in the unified <LogSheet> behind the FAB).
-    if (typeof window !== "undefined") {
-      window.alert("Coming in Phase 3 — the unified log sheet ships in the next phase. For now, use the search / barcode / planner affordances above.");
-    }
-  }, [onPress]);
-
   if (!visible) return null;
 
   return (
     <button
       type="button"
-      onClick={handlePress}
+      onClick={onPress}
       aria-label="Log a meal"
       title="Log a meal"
       className={[

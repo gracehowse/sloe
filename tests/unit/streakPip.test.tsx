@@ -21,14 +21,14 @@ describe("StreakPip (web)", () => {
     expect(screen.getByText("Start your streak")).toBeDefined();
   });
 
-  it("renders '1 day' (singular) at one day", () => {
+  it("renders '1-day streak' at one day", () => {
     render(<StreakPip days={1} />);
-    expect(screen.getByText("1 day")).toBeDefined();
+    expect(screen.getByText("1-day streak")).toBeDefined();
   });
 
-  it("renders 'N days' (plural) at two or more days", () => {
+  it("renders 'N-day streak' at two or more days (mobile parity)", () => {
     render(<StreakPip days={5} />);
-    expect(screen.getByText("5 days")).toBeDefined();
+    expect(screen.getByText("5-day streak")).toBeDefined();
   });
 
   it("clamps non-finite or negative inputs to 0 (defensive)", () => {

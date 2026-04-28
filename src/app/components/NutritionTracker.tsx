@@ -282,7 +282,10 @@ function NorthStarBlockHost({
   remainingProtein: number;
   remainingCarbs: number;
   remainingFat: number;
-  onPrimaryCta: () => void;
+  /** Called when the user taps the primary CTA on the suggestion card.
+   *  Receives the suggestion's recipe id so the parent can route
+   *  directly (mobile) or open the log sheet (web — arg ignored). */
+  onPrimaryCta: (recipeId: string) => void;
   onBrowseLibrary: () => void;
   /** Date scope for the skip ledger (Phase 4 / B3.Y). */
   selectedDateKey: string;
@@ -355,7 +358,7 @@ function NorthStarBlockHost({
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
       }}
-      onPrimaryCta={onPrimaryCta}
+      onPrimaryCta={() => onPrimaryCta(suggestion.recipe.id)}
       onSkip={() => handleSkip(suggestion.recipe.id)}
     />
   );
@@ -1842,7 +1845,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         remainingProtein={Math.max(0, targets.protein - totals.protein)}
         remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
         remainingFat={Math.max(0, targets.fat - totals.fat)}
-        onPrimaryCta={() => setLogSheetOpen(true)}
+        onPrimaryCta={(_recipeId) => {
+          // Web routes the CTA into the unified LogSheet rather than
+          // opening the recipe directly — the user confirms the
+          // suggestion via search. _recipeId is unused here but the
+          // host contract requires the arg for cross-platform parity
+          // with mobile (which routes to /recipe/{id}).
+          setLogSheetOpen(true);
+        }}
         onBrowseLibrary={() => {
           // The web Today is one route; "browse" is a no-op stub here
           // (the user tab-clicks Recipes themselves). Logging surface
@@ -2558,8 +2568,23 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
         recent={{ entries: [], onPick: () => {} }}
         saved={{ meals: [], onPick: () => {} }}
-        voice={{ state: {} }}
-        photo={{ state: {} }}
+        voice={{
+          state: {},
+          onStart: () => {
+            // Close the unified LogSheet and route to the dedicated
+            // voice flow (mirrors mobile, 2026-04-28). The decoy mic
+            // button before this fix had no click handler.
+            setLogSheetOpen(false);
+            setVoiceLogOpen(true);
+          },
+        }}
+        photo={{
+          state: {},
+          onCapture: () => {
+            setLogSheetOpen(false);
+            setPhotoLogOpen(true);
+          },
+        }}
       />
     </div>
   );

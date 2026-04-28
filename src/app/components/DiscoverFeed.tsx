@@ -490,20 +490,34 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {/* Filter pills — horizontal scrollable */}
         <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">
           <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {["For You", "Popular", "Quick", "High Protein", "Low Carb"].map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setQuickFilter(label)}
-                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                  quickFilter === label
-                    ? "border-2 border-primary bg-primary/15 text-primary"
-                    : "border border-border bg-card text-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            {["For You", "Following", "Popular", "Quick", "High Protein", "Low Carb"].map((label) => {
+              const isFollowingPill = label === "Following";
+              const isActive = isFollowingPill
+                ? feedScope === "following"
+                : feedScope === "forYou" && quickFilter === label;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    if (isFollowingPill) {
+                      setFeedScope("following");
+                      setQuickFilter("For You");
+                    } else {
+                      setFeedScope("forYou");
+                      setQuickFilter(label);
+                    }
+                  }}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "border-2 border-primary bg-primary/15 text-primary"
+                      : "border border-border bg-card text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

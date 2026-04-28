@@ -3200,13 +3200,11 @@ export default function TrackerScreen() {
               remainingProtein={remainingProtein}
               remainingCarbs={remainingCarbs}
               remainingFat={remainingFat}
-              onPrimaryCta={() => {
-                // Tapping the CTA opens the suggested recipe's detail
-                // page; user can then "Log this meal" from there.
-                // Centralising the open-recipe action here keeps the
-                // host free of router knowledge.
-                const first = savedRecipesForLibrary[0];
-                if (first) router.push(`/recipe/${first.id}`);
+              onPrimaryCta={(recipeId) => {
+                // The host now passes the suggestion's recipe id so we
+                // route to the correct recipe rather than the first
+                // saved one (regression fix 2026-04-28).
+                router.push(`/recipe/${recipeId}`);
               }}
               onBrowseLibrary={() => router.push("/(tabs)/library")}
               selectedDateKey={dayKey}
@@ -3663,8 +3661,22 @@ export default function TrackerScreen() {
             setAddOpen(true);
           },
         }}
-        voice={{}}
-        photo={{}}
+        voice={{
+          onStart: () => {
+            // Close the unified LogSheet and route to the dedicated
+            // voice flow (where the real transcription + macro-match
+            // pipeline lives). Mirrors the search/recent/saved
+            // tab-router pattern above.
+            setFabSheetOpen(false);
+            setVoiceLogOpen(true);
+          },
+        }}
+        photo={{
+          onCapture: () => {
+            setFabSheetOpen(false);
+            setPhotoLogOpen(true);
+          },
+        }}
       />
 
       {targetCelebration && (
