@@ -40,6 +40,29 @@ export default [
       "react/no-unescaped-entities": "off",
       "prefer-const": "warn",
       "@typescript-eslint/prefer-as-const": "warn",
+      // Suppr design-system enforcement (Next-10 #6 from
+      // docs/ux/teardown-2026-04-28-daily-loop.md, 2026-04-28). Web
+      // is Lucide via `lucide-react`. The React Native variant
+      // `lucide-react-native` should never appear in web source —
+      // an agent occasionally reaches for the wrong import path
+      // because both packages have the same icon names. Hard error
+      // here because zero existing violations means a hard fail
+      // catches drift the moment it lands. The mobile counterpart
+      // (forbid `@expo/vector-icons`) lives in
+      // `apps/mobile/eslint.config.js` as a `warn` since ~64
+      // legacy Ionicons usages migrate opportunistically.
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "lucide-react-native",
+              message:
+                "Web uses lucide-react. The React Native variant is for apps/mobile only. Both packages have the same icon names so the autocomplete trap is real — double-check the import path.",
+            },
+          ],
+        },
+      ],
     },
   },
 ];

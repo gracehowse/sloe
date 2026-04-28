@@ -224,7 +224,48 @@ and only sync to React state on gesture end.
 4. **No raw spacing pixels.** Use `Spacing.*` tokens.
 5. **Every screen must support dark mode** via `useThemeColors()`. No static `StyleSheet.create` with light-only colours.
 6. **`tabular-nums`** on every changing number: `fontVariant: ["tabular-nums"]`.
-7. **Ionicons outline** for icons in cards and navigation. **Filled** only for active tab bar state.
+7. **Lucide on both platforms** (`lucide-react` web, `lucide-react-native` mobile). Decided 2026-04-28 (`docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #4). **Outline variants** for icons in cards and navigation; **filled** only for active tab bar state. Existing `@expo/vector-icons` Ionicons usages migrate opportunistically; new code uses Lucide.
+
+## Lint enforcement (Next-10 #6, 2026-04-28)
+
+The implementation rules above are partially enforced at lint time — a preventive measure so future agent sweeps can't silently re-introduce drift. The rule set lives in:
+
+- **Mobile:** `apps/mobile/eslint.config.js`
+- **Web:** `eslint.config.mjs`
+
+### What's enforced today
+
+**Mobile, scoped to the Today component tree** (`app/(tabs)/index.tsx`, `components/today/**`, `components/charts/CalorieRing.tsx`) — `no-restricted-syntax` flags raw numeric/string literals on:
+
+| Style property | Token to use | Why |
+|---|---|---|
+| `fontSize` | `Type.headline / Type.body / Type.label / ...` from `@/constants/theme` | Typography scale defined in `theme.ts:209-226`. |
+| `fontWeight` | `FontWeight.regular / medium / semibold / bold / heavy` | Five semantic weights — never raw `"700"` literals. |
+| `padding*` | `Spacing.xs / sm / md / lg / xl / xxl / xxxl` | 4px grid; never raw pixel values. |
+| `margin*` | Same as padding. | Same. |
+| `borderRadius` | `Radius.sm / md / lg / xl / full` | Cards always `Radius.lg`. |
+| `gap` | `Spacing.*` | Gap is a spacing concern. |
+
+Severity: **`warn`**. The today/ tree carries a baseline of legacy literals (~456 as of 2026-04-28) — those migrate opportunistically as files are touched. New code lights up the lint output. Expanding the scope to `components/**` and `app/**` is a follow-up once the today/ tree is clean.
+
+**Mobile, all files** — `no-restricted-imports` flags `@expo/vector-icons` Ionicons imports as **`warn`**. Lucide is canonical (Top-5 #4 decision); ~64 legacy Ionicons usages migrate opportunistically.
+
+**Web, all files** — `no-restricted-imports` flags `lucide-react-native` imports as **`error`** (zero existing violations; the React Native variant has no business being in web source).
+
+### What's NOT enforced
+
+- Hardcoded hex colors in component files. Rule #1 in the implementation list above is convention-only — there's no AST selector that catches hex literals reliably without false positives. The token system + `useThemeColors()` covers the common path; visual review catches the rest.
+- `tabular-nums` on numerical Text. Rule-by-convention.
+- Tailwind arbitrary values (`p-[14px]`, `text-[15px]`) on web. Possible future addition; the today/ web tree is too clean to make this urgent.
+
+### Baseline (2026-04-28)
+
+| Surface | Errors | Warnings | Notes |
+|---|---|---|---|
+| Web (`npm run lint`) | 0 | 89 | Below `--max-warnings 500` cap. |
+| Mobile (`npm run mobile:lint`) | 0 | 693 | `expo lint` has no `--max-warnings`; warnings inform, don't block. |
+
+If your sweep PUSHES THE MOBILE COUNT UP, you've added a new violation — review before merging. If your sweep brings the count DOWN, you've migrated legacy literals — celebrate quietly.
 
 ## Audit checklist
 
@@ -239,3 +280,4 @@ Before shipping a new screen or significant UI change:
 - [ ] Empty states use the shared pattern (icon + heading + description)
 - [ ] Over-budget states use amber, not red
 - [ ] No motivational/guilt language in copy
+- [ ] `npm run lint` (web) and `npm run mobile:lint` warning counts not increased

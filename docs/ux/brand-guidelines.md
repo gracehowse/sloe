@@ -253,7 +253,7 @@ Do not use `fontWeight: "900"`. Maximum weight in the product UI is 800.
 
 ### Imagery & Iconography
 
-- **Icons:** Lucide (web), Ionicons (mobile). Prefer outline variants for navigation and in-card icons, filled for active/selected tab states.
+- **Icons:** **Lucide on both platforms** (`lucide-react` web, `lucide-react-native` mobile). Decided 2026-04-28 — the prior "Lucide web / Ionicons mobile" rule disagreed with the code (~31 mobile files used Lucide including the tab bar nav and meal slot icons; ~64 used Ionicons; agents kept "fixing" the same Sparkles import in different directions). Lucide has the sharper vocabulary for nutrition concepts (Flame, Footprints, ChefHat, Beef, Wheat, etc.) and aligns mobile with web. Prefer outline variants for navigation and in-card icons; filled for active/selected tab states. Existing Ionicons usages migrate opportunistically — no rush, but new code uses Lucide. Reference: `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #4.
 - **No stock photography** in the product UI. Recipe images come from imported sources.
 - **No illustrations or mascots.** The product's visual identity comes from its typography, spacing, and colour — not decorative elements.
 - **Empty states:** Use an `IconBox` with a themed icon — never use emoji as illustration (no shopping cart emoji, no sparkle emoji). Match the quality of the Progress empty state everywhere.
