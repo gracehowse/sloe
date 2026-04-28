@@ -1,0 +1,90 @@
+"use client";
+
+/**
+ * ProgressHeadline — story-led hero for the Progress surface.
+ *
+ * Production design spec — 2026-04-27 Surface E "Progress hero
+ * (story-led)". Authority: D-2026-04-27-17 (Progress is a story not
+ * a stat-card dashboard) + D-2026-04-27-12 (adaptive TDEE always-on,
+ * confidence is metadata).
+ *
+ * Layout:
+ *   - Eyebrow `Type.label` primary "THIS WEEK".
+ *   - Headline `Type.headline` 17pt 700 — engine-generated commentary.
+ *   - Body body-tier 12pt text-secondary — engine commentary explainer
+ *     with bolded `tabular-nums` numerals inline.
+ *   - <ConfidenceChip> inline at the end of the body.
+ *
+ * Voice + numbers come from `progressCommentary.ts`. This component
+ * is presentation only — it accepts the fully-resolved
+ * `ProgressCommentaryResult` and renders the story.
+ *
+ * Mirror: `apps/mobile/components/today/ProgressHeadline.tsx`.
+ */
+
+import * as React from "react";
+import { ConfidenceChip } from "../ui/confidence-chip";
+import {
+  splitBodyIntoSegments,
+  type ProgressCommentaryResult,
+} from "../../../lib/nutrition/progressCommentary";
+
+export interface ProgressHeadlineProps {
+  commentary: ProgressCommentaryResult;
+  className?: string;
+}
+
+export function ProgressHeadline({
+  commentary,
+  className,
+}: ProgressHeadlineProps) {
+  const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
+
+  return (
+    <section
+      data-slot="progress-headline"
+      data-regime={commentary.regime}
+      className={[
+        "rounded-2xl border border-border bg-card p-5",
+        // Card elevation — uses Phase 1's --elev-card token. Falls back to
+        // the existing shadow if the token isn't present yet.
+        "shadow-[var(--elev-card,0_1px_2px_rgba(0,0,0,0.04))]",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="This week"
+    >
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+        THIS WEEK
+      </p>
+      <h2
+        className="mt-1.5 text-[18px] font-bold leading-snug tracking-[-0.01em] text-foreground"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {commentary.headline}
+      </h2>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        {segments.map((seg, i) =>
+          seg.highlight ? (
+            <strong
+              key={i}
+              className="font-semibold text-foreground"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {seg.text}
+            </strong>
+          ) : (
+            <React.Fragment key={i}>{seg.text}</React.Fragment>
+          ),
+        )}{" "}
+        <ConfidenceChip
+          level={commentary.confidence}
+          className="ml-1 align-middle"
+        />
+      </p>
+    </section>
+  );
+}
+
+export default ProgressHeadline;

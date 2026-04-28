@@ -13,6 +13,9 @@ import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
+import { TrustChip } from "./ui/trust-chip";
+import { recipeLevelTrust } from "../../lib/nutrition/recipeTrust.ts";
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
 const HEARTS_KEY = "suppr-feed-hearts-v1";
@@ -695,6 +698,16 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           {cookTime}
                         </span>
                       ) : null}
+                    </div>
+                    {/* Phase 4 / B3.X — recipe-level TrustChip on the
+                        Discover desktop grid (D-2026-04-27-16). */}
+                    <div className="mt-2">
+                      <TrustChip
+                        variant={recipeLevelTrust({
+                          source: recipe.isVerified ? "USDA" : null,
+                          isVerified: recipe.isVerified,
+                        })}
+                      />
                     </div>
                   </div>
                 </button>

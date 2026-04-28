@@ -23,9 +23,10 @@ Authority: `docs/decisions/2026-04-27-strategic-direction.md` (17 binding decisi
 | Phase 3 | B2.1 — Canonical Log FAB → unified `<LogSheet>` | **Shipped** (2026-04-27) | Web + mobile primitive with 6 sub-tabs; barcode 0-kcal manual entry closes Top Broken Journey #5; legacy TodayFabSheet migration done |
 | Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Shipped** (2026-04-27) | `northStarSuggestion` scorer + 4-kind block (default / library-empty / over-budget / no-fit); time-of-day CTA branching; mobile swipe-to-skip + reduce-motion fallback |
 | Phase 3 | B2.3 — Onboarding produces first plan | **Partially shipped** (2026-04-27) | Selection state machine + threshold parity with north-star library minimum live; recipe-grid presentation + auto-plan-from-seed persist deferred (schema review per CLAUDE.md MCP rule) |
-| Phase 3 | B2.4 — Trust posture sweep on every macro row | **Shipped** (2026-04-27) | `mapMealSourceToDot` + `<SourceDot size={6}>` wired into web + mobile meal rows; `<TrustChip>` available for detail surfaces; LogSheet renders SourceDot on every result row |
-| Phase 4 | B3.1 — Adaptive TDEE Progress headline | **Open** | Sits in You tab now (B1.1 prerequisite landed) |
-| Phase 4 | B3.2 — Coeliac/gluten depth | **Open** | Depends on B2.4 chip carrier |
+| Phase 3 | B2.4 — Trust posture sweep on every macro row | **Shipped** (2026-04-27) | Phase 3 wired SourceDot on diary rows + LogSheet result rows. Phase 4 widened to recipe detail hero, recipe ingredient rows, Library cards, Discover cards (web + mobile). Helper: `recipeTrust.ts` (`mapToTrustVariant` / `aggregateRecipeTrust` / `recipeLevelTrust`). |
+| Phase 4 | B3.1 — Adaptive TDEE Progress headline | **Shipped** (2026-04-27) | `progressCommentary.ts` shared lib (3 regimes: adjustment / calibrating / steady) + `<ProgressHeadline>` web + mobile primitives. Renders inline `<ConfidenceChip>` per D-2026-04-27-12. Hosted in `ProgressDashboard.tsx` (web) + `(tabs)/progress.tsx` (mobile). Tests: 16 commentary + 5 web headline + 4 mobile headline. |
+| Phase 4 | B3.Y — LogSheet desktop modal mode + TodayFabSheet stub deletion + NorthStar skip-set host | **Shipped** (2026-04-27) | `useIsDesktop` hook (≥1024px); `<LogSheet desktop={isDesktop}>` wired via `NutritionTracker`; legacy `TodayFabSheet.tsx` deleted; web `NorthStarBlockHost` keeps a localStorage-keyed per-day skip Set. |
+| Phase 4 | B3.2 — Coeliac/gluten depth | **Open** | Depends on B2.4 chip carrier (now extended to detail surfaces) |
 | Phase 4 | B3.3 — TestFlight expansion (open beyond N=1) | **Open** | Gated on demo moment shipping (B2.1–2.4) |
 
 Detailed journey: [`docs/journeys/tab-collapse-2026-04-27.md`](journeys/tab-collapse-2026-04-27.md).

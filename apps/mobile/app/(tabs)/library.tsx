@@ -40,6 +40,9 @@ import {
   type LibraryFilterPillId,
 } from "../../../../src/lib/recipes/libraryFilters";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
+// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
+import { TrustChip } from "@/components/ui/TrustChip";
+import { recipeLevelTrust } from "@/lib/recipeTrust";
 
 type SortKey = "recent" | "calories" | "protein";
 
@@ -426,6 +429,17 @@ export default function LibraryScreen() {
                   <Text style={styles.metaChunk}>{totalTime}</Text>
                 </View>
               ) : null}
+            </View>
+            {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) —
+                recipe-level TrustChip on Library cards. Mobile mirror
+                of the web Library grid sweep. */}
+            <View style={{ marginTop: 8, flexDirection: "row" }}>
+              <TrustChip
+                variant={recipeLevelTrust({
+                  source: item.isVerified ? "USDA" : null,
+                  isVerified: item.isVerified,
+                })}
+              />
             </View>
           </View>
         </Pressable>

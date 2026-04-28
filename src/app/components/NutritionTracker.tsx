@@ -51,6 +51,8 @@ import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { StreakPip } from "./suppr/streak-pip";
 import { LogFab } from "./suppr/log-fab";
 import { LogSheet } from "./suppr/log-sheet";
+// Phase 4 / B3.Y — desktop modal mode for the LogSheet.
+import { useIsDesktop } from "./ui/use-mobile";
 import { NorthStarBlock } from "./suppr/north-star-block";
 import {
   pickNorthStarSuggestion,
@@ -228,6 +230,41 @@ function pushRecentFood(name: string) {
  * everything testable is in `northStarSuggestion.ts` and the
  * presentational `<NorthStarBlock>`.
  */
+/**
+ * Phase 4 / B3.Y (2026-04-27) — per-day skipped-recipe set.
+ *
+ * Backed by localStorage so a swipe-to-skip survives a page reload.
+ * Scoped by `selectedDateKey` so the set resets daily — yesterday's
+ * skips don't shadow today's library.
+ */
+const NORTH_STAR_SKIP_KEY_PREFIX = "suppr.northstar.skipped.";
+
+function readNorthStarSkippedSet(dateKey: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(NORTH_STAR_SKIP_KEY_PREFIX + dateKey);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((s): s is string => typeof s === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeNorthStarSkippedSet(dateKey: string, set: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      NORTH_STAR_SKIP_KEY_PREFIX + dateKey,
+      JSON.stringify(Array.from(set)),
+    );
+  } catch {
+    // Quota / disabled storage — silent failure is fine; the skip
+    // simply doesn't persist past the in-memory state.
+  }
+}
+
 function NorthStarBlockHost({
   viewMode,
   savedRecipesForLibrary,
@@ -237,6 +274,7 @@ function NorthStarBlockHost({
   remainingFat,
   onPrimaryCta,
   onBrowseLibrary,
+  selectedDateKey,
 }: {
   viewMode: string;
   savedRecipesForLibrary: NorthStarRecipe[];
@@ -246,7 +284,32 @@ function NorthStarBlockHost({
   remainingFat: number;
   onPrimaryCta: () => void;
   onBrowseLibrary: () => void;
+  /** Date scope for the skip ledger (Phase 4 / B3.Y). */
+  selectedDateKey: string;
 }) {
+  // Phase 4 / B3.Y — per-day skip ledger keyed by selected date.
+  const [skippedIds, setSkippedIds] = useState<Set<string>>(() =>
+    readNorthStarSkippedSet(selectedDateKey),
+  );
+
+  // Reset the in-memory set when the day changes (and rehydrate from
+  // localStorage so skips persist across reloads on the same day).
+  useEffect(() => {
+    setSkippedIds(readNorthStarSkippedSet(selectedDateKey));
+  }, [selectedDateKey]);
+
+  const handleSkip = useCallback(
+    (recipeId: string) => {
+      setSkippedIds((prev) => {
+        const next = new Set(prev);
+        next.add(recipeId);
+        writeNorthStarSkippedSet(selectedDateKey, next);
+        return next;
+      });
+    },
+    [selectedDateKey],
+  );
+
   if (viewMode !== "day") return null;
 
   // Over-budget — hide block, show calm caption.
@@ -270,6 +333,7 @@ function NorthStarBlockHost({
 
   const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {
     slot: slot ?? undefined,
+    excludeIds: skippedIds,
   });
 
   if (!suggestion) {
@@ -292,6 +356,7 @@ function NorthStarBlockHost({
         bandTight: suggestion.band === "tight",
       }}
       onPrimaryCta={onPrimaryCta}
+      onSkip={() => handleSkip(suggestion.recipe.id)}
     />
   );
 }
@@ -387,6 +452,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   // re-implementing them. Opening the sheet replaces the Phase 2
   // "Coming in Phase 3" alert path.
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  // Phase 4 / B3.Y — desktop (≥1024px) renders the LogSheet as a
+  // centred 480×640 modal per spec §Surface B; below that, the
+  // primitive falls back to the mobile bottom-sheet layout.
+  const isDesktop = useIsDesktop();
   const [barcodeValue, setBarcodeValue] = useState("");
   const [barcodeBusy, setBarcodeBusy] = useState(false);
   const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
@@ -1780,6 +1849,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           // is the LogSheet — opening it is a reasonable fallback.
           setLogSheetOpen(true);
         }}
+        selectedDateKey={selectedDateKey}
       />
 
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
@@ -2468,6 +2538,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       <LogSheet
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
+        // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px
+        // (D-2026-04-27-11: web is the long-form companion, daily
+        // logging is a phone activity; desktop should still feel
+        // first-class when used).
+        desktop={isDesktop}
         search={{
           query: "",
           onQueryChange: () => {},

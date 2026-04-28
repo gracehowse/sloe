@@ -28,6 +28,9 @@ import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
+// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
+import { TrustChip } from "@/components/ui/TrustChip";
+import { recipeLevelTrust } from "@/lib/recipeTrust";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 
 // B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
@@ -407,6 +410,16 @@ export default function DiscoverScreen() {
                   <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.cookTime}</Text>
                 </View>
               ) : null}
+            </View>
+            {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) —
+                recipe-level TrustChip on Discover hero cards. */}
+            <View style={{ marginTop: 8, flexDirection: "row" }}>
+              <TrustChip
+                variant={recipeLevelTrust({
+                  source: item.isVerified ? "USDA" : null,
+                  isVerified: item.isVerified,
+                })}
+              />
             </View>
           </View>
         </Pressable>

@@ -45,6 +45,14 @@ import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.t
 import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
 import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+// Phase 4 / B3.X (2026-04-27) — trust posture sweep. Authority:
+// D-2026-04-27-16. The recipe-level chip aggregates ingredient
+// trust into a single hero chip; per-row dots sit on the ingredient
+// list below.
+import { TrustChip } from "./ui/trust-chip";
+import { SourceDot } from "./ui/source-dot";
+import { aggregateRecipeTrust } from "../../lib/nutrition/recipeTrust.ts";
+import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -1037,7 +1045,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             primary-tinted fit-percent pill (parity with Discover).
             `mealSlots` is the RecipeCard-side source of the
             category strings that the prototype shows as "tags"
-            (prod has no separate `tags` column yet). */}
+            (prod has no separate `tags` column yet).
+
+            Phase 4 / B3.X (2026-04-27, D-2026-04-27-16): the
+            `<TrustChip>` is appended at the row end as the spec's
+            "TrustChip immediately under the title" — provenance is
+            visible without users having to dive into the ingredients
+            tab. Aggregated across rows so the recipe-level chip
+            reflects the worst-case ingredient (estimated wins). */}
         {(() => {
           const pillTags: readonly string[] = Array.isArray(recipe.mealSlots) ? recipe.mealSlots : [];
           const fit = computeRecipeFitPercent(
@@ -1049,6 +1064,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             },
             null,
           ).percent;
+          const trustVariant = aggregateRecipeTrust(
+            ingredients.map((ing) => ({
+              source: ing.source ?? null,
+              isVerified: ing.isVerified,
+            })),
+          );
           return (
             <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
               {pillTags.map((t) => (
@@ -1065,6 +1086,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               >
                 {fit}%
               </span>
+              <TrustChip variant={trustVariant} data-testid="recipe-detail-trust-chip" />
             </div>
           );
         })()}
@@ -1454,6 +1476,34 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                         <div style={{ width: `${(ingC / macroTotal) * 100}%`, backgroundColor: "var(--macro-carbs)" }} />
                         <div style={{ width: `${(ingF / macroTotal) * 100}%`, backgroundColor: "var(--macro-fat)" }} />
                       </div>
+                      {/* Phase 4 / B3.X — per-ingredient SourceDot.
+                          The ConfidenceDot above stays for the
+                          high/medium-confidence visual; the SourceDot
+                          here completes the trust posture (provenance
+                          colour at row right edge, spec §1.6). */}
+                      <SourceDot
+                        source={mapMealSourceToDot(ingredient.source)}
+                        size={6}
+                        className="shrink-0"
+                        data-testid={`recipe-ingredient-source-${index}`}
+                      />
+                      {/* Phase 4 / B3.X — explicit "Verify →" inline
+                          when the row is estimated. Sits above the
+                          existing Fix/Override hover affordances and
+                          is always visible for unverified rows so
+                          users don't have to discover it through
+                          hover (mobile parity). */}
+                      {dbIngredientIds[index] && !ingredient.isVerified ? (
+                        <button
+                          type="button"
+                          onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                          className="text-[11px] font-semibold text-primary hover:underline shrink-0"
+                          aria-label={`Verify ${ingredient.name}`}
+                          data-testid={`recipe-ingredient-verify-${index}`}
+                        >
+                          Verify →
+                        </button>
+                      ) : null}
                       {dbIngredientIds[index] && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button

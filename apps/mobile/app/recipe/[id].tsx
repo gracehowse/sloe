@@ -75,6 +75,11 @@ import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verif
 import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
 import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
+// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
+import { TrustChip } from "../../components/ui/TrustChip";
+import { SourceDot } from "../../components/ui/SourceDot";
+import { aggregateRecipeTrust } from "@/lib/recipeTrust";
+import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
 
@@ -1337,6 +1342,25 @@ export default function RecipeDetailScreen() {
         <View style={styles.body}>
           {/* Title + meta */}
           <Text style={styles.title}>{normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}</Text>
+          {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) — recipe
+              hero TrustChip immediately under the title. Variant
+              aggregates ingredient sources via the shared helper.
+              Mobile uses `confidence ≥ 0.7` as the verified
+              threshold (matches the existing ConfidenceDot
+              high/medium gating in apps/mobile/app/recipe/[id].tsx
+              and the canonical bucket in confidenceScoring.ts). */}
+          <View style={{ marginTop: 6, flexDirection: "row" }}>
+            <TrustChip
+              variant={aggregateRecipeTrust(
+                ingredients.map((ing) => ({
+                  source: ing.source ?? null,
+                  isVerified:
+                    typeof ing.confidence === "number" && ing.confidence >= 0.7,
+                })),
+              )}
+              testID="recipe-detail-trust-chip"
+            />
+          </View>
           {recipeByline.label ? (
             <Pressable
               onPress={() => {
@@ -1754,6 +1778,13 @@ export default function RecipeDetailScreen() {
                             {confPct}% · {confLabel}
                           </Text>
                         )}
+                        {/* Phase 4 / B3.X — SourceDot per ingredient row
+                            (D-2026-04-27-16). Sized 6pt to match the
+                            spec §1.6 row treatment. */}
+                        <SourceDot
+                          source={mapMealSourceToDot(ing.source ?? null)}
+                          size={6}
+                        />
                       </View>
                       {/* F-85 (2026-04-25) — per-ingredient macro split bar
                           removed. Per ui-critic: a user cooking pancakes

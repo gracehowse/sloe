@@ -87,6 +87,11 @@ import { formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolv
 import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
+// Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
+// Authority: D-2026-04-27-17 (Progress is a story not a stat-card
+// dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
+import { ProgressHeadline } from "@/components/today/ProgressHeadline";
+import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
@@ -897,6 +902,39 @@ export default function ProgressScreen() {
           the header and the range-picker pills for household users;
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
       <HouseholdBar />
+
+      {/* Phase 4 / B3.1 — Progress story headline (Surface E).
+          Engine-led commentary line replacing the stat-card dashboard
+          as the visual focus. The maintenance card / charts / stat
+          cards beneath remain (demoted) — this card is the lead.
+          Authority: D-2026-04-27-12 (always-on TDEE) +
+          D-2026-04-27-17 (Progress is a story).
+
+          See ProgressDashboard.tsx (web) for the deferred-data notes
+          on `prevWeekTdee` / `avgIntakeOnLossWeeksKcal`. */}
+      <View style={{ marginBottom: 14 }}>
+        <ProgressHeadline
+          commentary={generateProgressCommentary({
+            current:
+              adaptiveTdee != null && adaptiveConfidence != null
+                ? {
+                    tdee: adaptiveTdee,
+                    confidence:
+                      adaptiveConfidence === "high" ||
+                      adaptiveConfidence === "medium" ||
+                      adaptiveConfidence === "low"
+                        ? adaptiveConfidence
+                        : "low",
+                    loggingDays: Object.keys(byDay ?? {}).length,
+                    weighInCount: Object.keys(weightKgByDay ?? {}).length,
+                    avgDailyIntake: 0,
+                    smoothedWeightChangeKgPerDay: 0,
+                    windowDays: 28,
+                  }
+                : null,
+          })}
+        />
+      </View>
 
       {/* Range-picker segmented control — [7d, 30d, 90d, All]. Port
           of prototype `screens-mobile.jsx:581-591` (2026-04-21 D5):

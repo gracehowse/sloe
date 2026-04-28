@@ -10,6 +10,9 @@ import {
   type LibraryFilterPillId,
 } from "../../lib/recipes/libraryFilters.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
+import { TrustChip } from "./ui/trust-chip";
+import { recipeLevelTrust } from "../../lib/nutrition/recipeTrust.ts";
 
 interface LibraryProps {
   userTier: UserTier;
@@ -364,6 +367,19 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                         </span>
                       ) : null}
                     </div>
+                    {/* Phase 4 / B3.X — recipe-level TrustChip on Library
+                        cards (D-2026-04-27-16). The variant collapses to
+                        `usda` only when the recipe is fully verified
+                        against a structured source; otherwise we honour
+                        spec §1.6 by surfacing `estimated`. */}
+                    <div className="mt-2">
+                      <TrustChip
+                        variant={recipeLevelTrust({
+                          source: recipe.isVerified ? "USDA" : null,
+                          isVerified: recipe.isVerified,
+                        })}
+                      />
+                    </div>
                     {/* Preserved secondary actions — Go public / Create
                         your own version. Kept reachable on desktop
                         per the parity requirement; rendered as small
@@ -486,6 +502,17 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                     <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">P: {recipe.protein}g</span>
                     <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">C: {recipe.carbs}g</span>
                     <span className="px-2 py-1 bg-muted rounded text-foreground font-medium">F: {recipe.fat}g</span>
+                  </div>
+                  {/* Phase 4 / B3.X — recipe-level TrustChip
+                      (D-2026-04-27-16). Mobile-web parity with the
+                      desktop grid above. */}
+                  <div className="mt-3">
+                    <TrustChip
+                      variant={recipeLevelTrust({
+                        source: recipe.isVerified ? "USDA" : null,
+                        isVerified: recipe.isVerified,
+                      })}
+                    />
                   </div>
                 </div>
               </div>

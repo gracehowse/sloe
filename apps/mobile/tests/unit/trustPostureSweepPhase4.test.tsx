@@ -1,0 +1,85 @@
+/**
+ * trustPostureSweepPhase4 — mobile mirror of
+ * tests/unit/trustPostureSweepPhase4.test.tsx.
+ *
+ * Authority: D-2026-04-27-16.
+ *
+ * Source-pin tests on the touched mobile screens.
+ */
+
+import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+import {
+  mapToTrustVariant,
+  aggregateRecipeTrust,
+  recipeLevelTrust,
+} from "@/lib/recipeTrust";
+
+const MOBILE_ROOT = path.resolve(__dirname, "../..");
+
+function read(relPath: string): string {
+  return fs.readFileSync(path.resolve(MOBILE_ROOT, relPath), "utf8");
+}
+
+describe("recipeTrust mapper (mobile re-export) — table-driven", () => {
+  it("verified USDA → usda", () => {
+    expect(mapToTrustVariant({ source: "USDA", isVerified: true })).toBe("usda");
+  });
+  it("verified OFF → off-adjusted", () => {
+    expect(
+      mapToTrustVariant({ source: "Open Food Facts", isVerified: true }),
+    ).toBe("off-adjusted");
+  });
+  it("any AI row → estimated (worst-case wins)", () => {
+    expect(
+      aggregateRecipeTrust([
+        { source: "USDA", isVerified: true },
+        { source: "AI photo", isVerified: true },
+      ]),
+    ).toBe("estimated");
+  });
+  it("recipe-level shorthand passes through", () => {
+    expect(recipeLevelTrust({ source: "USDA", isVerified: true })).toBe("usda");
+    expect(recipeLevelTrust({ source: null, isVerified: false })).toBe(
+      "estimated",
+    );
+  });
+});
+
+describe("Phase 4 trust posture sweep — mobile source pins", () => {
+  it("recipe/[id].tsx imports TrustChip + SourceDot + helpers", () => {
+    const src = read("app/recipe/[id].tsx");
+    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
+    expect(src).toMatch(/import\s*\{\s*SourceDot\s*\}/);
+    expect(src).toMatch(/aggregateRecipeTrust/);
+    expect(src).toMatch(/mapMealSourceToDot/);
+  });
+
+  it("recipe/[id].tsx renders the hero TrustChip + per-ingredient SourceDot", () => {
+    const src = read("app/recipe/[id].tsx");
+    expect(src).toMatch(/testID="recipe-detail-trust-chip"/);
+    expect(src).toMatch(/<SourceDot[\s\S]+?size=\{6\}/);
+  });
+
+  it("(tabs)/library.tsx imports TrustChip + recipeLevelTrust", () => {
+    const src = read("app/(tabs)/library.tsx");
+    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
+    expect(src).toMatch(/recipeLevelTrust/);
+  });
+
+  it("(tabs)/discover.tsx imports TrustChip + recipeLevelTrust", () => {
+    const src = read("app/(tabs)/discover.tsx");
+    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
+    expect(src).toMatch(/recipeLevelTrust/);
+  });
+
+  it("legacy <TodayFabSheet> file is deleted — B3.Y cleanup", () => {
+    const filePath = path.resolve(
+      MOBILE_ROOT,
+      "components/today/TodayFabSheet.tsx",
+    );
+    expect(fs.existsSync(filePath)).toBe(false);
+  });
+});

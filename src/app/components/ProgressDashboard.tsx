@@ -66,6 +66,11 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // user is in a household. Hidden for solo users so the range-picker
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
+// Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
+// Authority: D-2026-04-27-17 (Progress is a story not a stat-card
+// dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
+import { ProgressHeadline } from "./suppr/progress-headline.tsx";
+import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -810,6 +815,48 @@ function ProgressDashboardContent() {
           under the header on Progress (mirrors mobile Plan/Progress
           + web Plan). Renders nothing for solo users. */}
       <HouseholdBar />
+
+      {/* Phase 4 / B3.1 — Progress story headline (Surface E).
+          Engine-led commentary line replacing the stat-card dashboard
+          as the visual focus. The maintenance card / charts / stat
+          cards beneath remain (demoted) — this card is the lead.
+          Authority: D-2026-04-27-12 (always-on TDEE) +
+          D-2026-04-27-17 (Progress is a story).
+
+          Note on prevWeekTdee: the weekly TDEE history isn't yet
+          persisted, so the commentary collapses to `steady` /
+          `calibrating` for now. When `progress_weekly_tdee_history`
+          (a future migration) lands, pass the prior-week value here
+          and the `adjustment` regime auto-engages.
+
+          Note on avgIntakeOnLossWeeksKcal: similarly deferred until
+          the weekly aggregate stream is in place. */}
+      {(() => {
+        const commentary = generateProgressCommentary({
+          current:
+            adaptiveTdee != null && adaptiveConfidence != null
+              ? {
+                  tdee: adaptiveTdee,
+                  confidence:
+                    adaptiveConfidence === "high" ||
+                    adaptiveConfidence === "medium" ||
+                    adaptiveConfidence === "low"
+                      ? adaptiveConfidence
+                      : "low",
+                  loggingDays: Object.keys(nutritionByDay ?? {}).length,
+                  weighInCount: Object.keys(weightKgByDay ?? {}).length,
+                  avgDailyIntake: 0,
+                  smoothedWeightChangeKgPerDay: 0,
+                  windowDays: 28,
+                }
+              : null,
+        });
+        return (
+          <div className="mb-4">
+            <ProgressHeadline commentary={commentary} />
+          </div>
+        );
+      })()}
 
       {/* RANGE-PICKER SEGMENTED CONTROL — [7d, 30d, 90d, All].
           2026-04-21 D5 port of prototype `screens-mobile.jsx:581-591`.
