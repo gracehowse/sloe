@@ -123,6 +123,12 @@ export interface LogSheetProps {
     results: LogSheetSearchResult[];
     onAdd: (result: LogSheetSearchResult) => void;
     state?: LogSheetTabState;
+    /** Fired when the user clicks the search input. The host should
+     *  close the LogSheet and open the dedicated FoodSearch modal so
+     *  the user lands in the real search experience. The input is
+     *  presentational only — typing into the LogSheet's search row
+     *  does not produce results (the real index lives in the modal). */
+    onOpen?: () => void;
   };
   /** Scan-barcode state. */
   barcode?: {
@@ -337,9 +343,16 @@ interface SearchTabProps {
   results: LogSheetSearchResult[];
   onAdd: (result: LogSheetSearchResult) => void;
   state?: LogSheetTabState;
+  onOpen?: () => void;
 }
 
-function SearchTab({ query, onQueryChange, results, onAdd, state }: SearchTabProps) {
+function SearchTab({ query, onQueryChange, results, onAdd, state, onOpen }: SearchTabProps) {
+  // When the host wires `onOpen`, the search input acts as a
+  // tap-to-open router: clicking it closes the LogSheet and opens
+  // the dedicated FoodSearch modal where real search happens.
+  // Read-only + click handler so the user can't type-and-wait —
+  // typing in the LogSheet input did nothing in earlier builds.
+  const isRouter = typeof onOpen === "function";
   return (
     <div data-slot="log-sheet-tab-search" className="flex flex-col gap-3">
       <label className="relative block">
@@ -355,10 +368,14 @@ function SearchTab({ query, onQueryChange, results, onAdd, state }: SearchTabPro
           inputMode="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
+          onFocus={isRouter ? onOpen : undefined}
+          onClick={isRouter ? onOpen : undefined}
+          readOnly={isRouter}
           placeholder="Search foods, brands, or recipes…"
           className={cn(
             "h-11 w-full rounded-lg bg-muted pl-9 pr-3 text-[14px]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            isRouter ? "cursor-pointer" : "",
           )}
         />
       </label>

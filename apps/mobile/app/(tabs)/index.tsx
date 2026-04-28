@@ -84,8 +84,11 @@ import {
 import { clampJournalDate } from "@/lib/journalNavigation";
 import {
   computeEatAgainForSlot,
+  computeRecentMeals,
+  foodHistoryKey,
   type FoodHistoryItem,
 } from "../../../../src/lib/nutrition/foodHistory";
+import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import { isMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
@@ -3636,6 +3639,12 @@ export default function TrackerScreen() {
             setFabSheetOpen(false);
             setSearchOpen(true);
           },
+          // P0-1 (2026-04-28) — tap routes to the real FoodSearch
+          // modal. The LogSheet's search input is presentational only.
+          onOpen: () => {
+            setFabSheetOpen(false);
+            setSearchOpen(true);
+          },
         }}
         barcode={{
           // Tapping into the barcode tab routes to the legacy barcode
@@ -3648,17 +3657,54 @@ export default function TrackerScreen() {
           // it after a barcode lookup returns no nutrition.
         }}
         recent={{
-          entries: [],
-          onPick: () => {
+          // P0-2b (2026-04-28) — hydrate from food-history. Recent is
+          // capped at 12 rows; bucket "today" / "week" splits by
+          // last-logged date so the LogSheet can render two groups.
+          entries: (() => {
+            const todayKey = dateKeyFromDate(new Date());
+            return computeRecentMeals(byDay, 12).map((item) => ({
+              id: foodHistoryKey(item.recipeTitle, item.calories),
+              title: item.recipeTitle,
+              kcal: Math.round(item.calories),
+              source: mapMealSourceToDot(item.source),
+              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                ? ("today" as const)
+                : ("week" as const),
+            }));
+          })(),
+          onPick: (picked) => {
             setFabSheetOpen(false);
-            setShowPrevious(true);
+            const recent = computeRecentMeals(byDay, 12);
+            const found = recent.find(
+              (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
+            );
+            if (!found) return;
+            logHistoryItemToSlot(found, currentSlotFromTime);
           },
         }}
         saved={{
-          meals: [],
-          onPick: () => {
+          // P0-2a (2026-04-28) — hydrate from the host's saved-meal
+          // list. Each SavedMeal becomes a LogSheetSavedMeal preview
+          // row; onPick closes the LogSheet and logs the meal into the
+          // current time-of-day slot via the shared
+          // logSavedMealFromPanel handler.
+          meals: hostSavedMeals.map((m) => ({
+            id: m.id,
+            title: m.name,
+            kcal: Math.round(
+              m.items.reduce(
+                (sum, item) => sum + item.calories * (item.portionMultiplier ?? 1),
+                0,
+              ),
+            ),
+            source: "manual" as const,
+          })),
+          onPick: (picked) => {
             setFabSheetOpen(false);
-            setAddOpen(true);
+            const meal = hostSavedMeals.find((m) => m.id === picked.id);
+            if (!meal) return;
+            const slot = meal.defaultMealSlot ?? currentSlotFromTime;
+            logSavedMealFromPanel(meal, slot);
           },
         }}
         voice={{

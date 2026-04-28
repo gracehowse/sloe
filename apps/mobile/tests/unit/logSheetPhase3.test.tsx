@@ -307,6 +307,45 @@ describe("LogSheet (mobile) — Voice / Photo permission denied", () => {
   });
 });
 
+describe("LogSheet (mobile) — Search tab router (P0-1, 2026-04-28)", () => {
+  it("when onOpen is provided, pressing the search row fires onOpen", () => {
+    const onOpen = vi.fn();
+    const { getAllByLabelText } = open({
+      search: {
+        query: "",
+        onQueryChange: () => {},
+        results: [],
+        onAdd: () => {},
+        onOpen,
+      },
+    });
+    // Two nodes carry the "Search foods" accessibility label: the
+    // outer Pressable wrapper (button) and the inner TextInput. The
+    // outer Pressable is the click target; press it to fire onOpen.
+    const matches = getAllByLabelText("Search foods");
+    expect(matches.length).toBeGreaterThan(0);
+    fireEvent.press(matches[0]!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("without onOpen, the search input is editable and onQueryChange fires", () => {
+    const onQueryChange = vi.fn();
+    const { getByPlaceholderText } = open({
+      search: {
+        query: "",
+        onQueryChange,
+        results: [],
+        onAdd: () => {},
+      },
+    });
+    fireEvent.changeText(
+      getByPlaceholderText("Search foods, brands, or recipes…"),
+      "salmon",
+    );
+    expect(onQueryChange).toHaveBeenCalledWith("salmon");
+  });
+});
+
 describe("LogSheet (mobile) — tab switching", () => {
   it("selecting a tab updates accessibilityState.selected", () => {
     const { getByLabelText } = open();

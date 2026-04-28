@@ -120,6 +120,12 @@ export interface LogSheetProps {
     results: LogSheetSearchResult[];
     onAdd: (result: LogSheetSearchResult) => void;
     state?: LogSheetTabState;
+    /** Fired when the user taps the search input. The host should
+     *  close the LogSheet and open the dedicated FoodSearchModal so
+     *  the user lands in the real search experience. The input is
+     *  presentational only — typing into the LogSheet's search row
+     *  does not produce results (the real index lives in the modal). */
+    onOpen?: () => void;
   };
   barcode?: {
     cameraSlot?: React.ReactNode;
@@ -323,28 +329,52 @@ function SearchTab({
   results,
   onAdd,
   state,
+  onOpen,
 }: NonNullable<LogSheetProps["search"]>) {
   const colors = useThemeColors();
 
+  // When the host wires `onOpen`, the search input acts as a
+  // tap-to-open router: tapping it closes the LogSheet and opens the
+  // dedicated FoodSearchModal where real search happens. The TextInput
+  // is rendered non-editable so the user can't type-and-wait — the
+  // tap fires immediately. When `onOpen` is omitted (legacy callers),
+  // the editable input + onAdd flow still works.
+  const isRouter = typeof onOpen === "function";
+  const inputContent = (
+    <View
+      style={[
+        styles.searchInputWrap,
+        { backgroundColor: colors.inputBg },
+      ]}
+      pointerEvents={isRouter ? "none" : "auto"}
+    >
+      <Search size={IconSize.base} color={colors.textSecondary} />
+      <TextInput
+        accessibilityLabel="Search foods"
+        placeholder="Search foods, brands, or recipes…"
+        placeholderTextColor={colors.textTertiary}
+        value={query}
+        onChangeText={onQueryChange}
+        editable={!isRouter}
+        returnKeyType="search"
+        style={{ flex: 1, color: colors.text, fontSize: 14 }}
+      />
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
-      <View
-        style={[
-          styles.searchInputWrap,
-          { backgroundColor: colors.inputBg },
-        ]}
-      >
-        <Search size={IconSize.base} color={colors.textSecondary} />
-        <TextInput
+      {isRouter ? (
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Search foods"
-          placeholder="Search foods, brands, or recipes…"
-          placeholderTextColor={colors.textTertiary}
-          value={query}
-          onChangeText={onQueryChange}
-          returnKeyType="search"
-          style={{ flex: 1, color: colors.text, fontSize: 14 }}
-        />
-      </View>
+          onPress={onOpen}
+        >
+          {inputContent}
+        </Pressable>
+      ) : (
+        inputContent
+      )}
 
       {state?.offline ? (
         <Text style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.sm }]}>

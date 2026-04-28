@@ -373,6 +373,35 @@ describe("LogSheet (web) — Photo tab", () => {
   });
 });
 
+describe("LogSheet (web) — Search tab router (P0-1, 2026-04-28)", () => {
+  it("when onOpen is provided, the search input is read-only and clicking fires onOpen", () => {
+    const onOpen = vi.fn();
+    const onQueryChange = vi.fn();
+    open({
+      search: { query: "", onQueryChange, results: [], onAdd: () => {}, onOpen },
+    });
+    const input = screen.getByPlaceholderText(
+      "Search foods, brands, or recipes…",
+    ) as HTMLInputElement;
+    expect(input.readOnly).toBe(true);
+    fireEvent.click(input);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("without onOpen, the search input remains editable and onQueryChange fires", () => {
+    const onQueryChange = vi.fn();
+    open({
+      search: { query: "", onQueryChange, results: [], onAdd: () => {} },
+    });
+    const input = screen.getByPlaceholderText(
+      "Search foods, brands, or recipes…",
+    ) as HTMLInputElement;
+    expect(input.readOnly).toBe(false);
+    fireEvent.change(input, { target: { value: "salmon" } });
+    expect(onQueryChange).toHaveBeenCalledWith("salmon");
+  });
+});
+
 describe("LogSheet (web) — tab switching", () => {
   it("switching tabs updates aria-selected and swaps content", () => {
     open({
