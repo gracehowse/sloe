@@ -20,7 +20,7 @@
  * Cross-platform: shared lib so web + mobile use identical variants.
  */
 
-import type { TrustChipVariant } from "../../app/components/ui/trust-chip";
+import type { TrustChipVariant } from "../types/trust";
 import { mapMealSourceToDot } from "./sourceMap";
 import {
   classifyIngredientGluten,

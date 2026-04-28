@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import type { SourceDotSource, SourceDotSize } from "../../../../src/lib/types/source";
 
 /**
  * Mobile `<SourceDot>` — production design spec §1.6 mirror of
@@ -11,14 +12,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * 8pt to its left.
  */
 
-export type SourceDotSource =
-  | "usda"
-  | "off"
-  | "fatsecret"
-  | "manual"
-  | "ai";
-
-export type SourceDotSize = 6 | 8 | 10;
+export type { SourceDotSource, SourceDotSize } from "../../../../src/lib/types/source";
 
 export interface SourceDotProps {
   source: SourceDotSource;

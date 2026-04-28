@@ -17,7 +17,7 @@
  * Cross-platform: shared lib so web + mobile use identical mapping.
  */
 
-import type { SourceDotSource } from "../../app/components/ui/source-dot";
+import type { SourceDotSource } from "../types/source";
 
 /**
  * Map a free-form journal source string to the SourceDot source key.

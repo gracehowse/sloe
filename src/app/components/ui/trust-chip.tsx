@@ -23,14 +23,9 @@
 import * as React from "react";
 import { Check, Sparkles } from "lucide-react";
 import { cn } from "./utils";
+import type { TrustChipVariant } from "../../../lib/types/trust";
 
-export type TrustChipVariant =
-  | "usda"
-  | "off-adjusted"
-  | "estimated"
-  | "manual"
-  | "gluten-high-conf"
-  | "gluten-uncertain";
+export type { TrustChipVariant } from "../../../lib/types/trust";
 
 export interface TrustChipProps extends React.ComponentProps<"span"> {
   variant: TrustChipVariant;

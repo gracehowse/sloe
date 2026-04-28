@@ -17,15 +17,9 @@
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "./utils";
+import type { SourceDotSource, SourceDotSize } from "../../../lib/types/source";
 
-export type SourceDotSource =
-  | "usda"
-  | "off"
-  | "fatsecret"
-  | "manual"
-  | "ai";
-
-export type SourceDotSize = 6 | 8 | 10;
+export type { SourceDotSource, SourceDotSize } from "../../../lib/types/source";
 
 export interface SourceDotProps extends React.ComponentProps<"span"> {
   source: SourceDotSource;
