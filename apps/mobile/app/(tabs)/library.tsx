@@ -289,6 +289,9 @@ export default function LibraryScreen() {
       bottom: 0,
       height: 0,
     },
+    // P3 dark-mode fix (2026-04-28): was hard-coded white pill that
+    // ignored the active scheme. Now uses `colors.card` so the
+    // bookmark sits in the same surface tier as other elevated chips.
     bookmarkDot: {
       position: "absolute",
       top: Spacing.sm,
@@ -296,7 +299,9 @@ export default function LibraryScreen() {
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: "rgba(255,255,255,0.92)",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -319,17 +324,12 @@ export default function LibraryScreen() {
       color: colors.textSecondary,
       fontVariant: ["tabular-nums"],
     },
-    removeBtn: {
-      position: "absolute",
-      top: Spacing.sm,
-      left: Spacing.sm,
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: "rgba(0,0,0,0.45)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    // P2-32 (2026-04-25): the visible remove-from-library trash icon
+    // was replaced by a long-press confirm flow on the card itself.
+    // The dead `removeBtn` style was removed in P3 dark-mode sweep
+    // (2026-04-28) — keeping the comment so a future contributor
+    // doesn't try to re-add the visible delete affordance without
+    // reading P2-32 first.
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
     emptyContainer: {
       paddingTop: 80,

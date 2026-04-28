@@ -1088,17 +1088,19 @@ export default function RecipeDetailScreen() {
     tagPillTextPrimary: { color: Accent.primary },
 
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
-    // Header buttons restyled 2026-04-20 to match the prototype's
-    // light circular icon buttons (was black 67%-opacity overlay).
-    // 1pt subtle dark border + deeper shadow keep them legible
-    // against pale hero photos (ui-critic 2026-04-20).
+    // Header buttons — circular icon buttons that sit over the hero
+    // image. P3 dark-mode fix (2026-04-28): the previous hard-coded
+    // `rgba(255,255,255,0.94)` left them as bright white pills on
+    // every dark-mode hero, the only light element on the screen.
+    // Now uses `colors.card` so the pill picks up the surface tier
+    // for the active scheme (white in light, dark surface in dark).
     headerBtn: {
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: "rgba(255,255,255,0.94)",
+      backgroundColor: colors.card,
       borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.08)",
+      borderColor: colors.cardBorder,
       justifyContent: "center",
       alignItems: "center",
       shadowColor: "#000",
