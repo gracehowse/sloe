@@ -6,15 +6,21 @@ import type { UserTier } from "../../types/recipe.ts";
 interface UpgradePromptProps {
   /** What the user tried to do. */
   feature: string;
-  /** Minimum tier required. */
+  /**
+   * Minimum tier required. PR-01 (audit 2026-04-28): the `"base"`
+   * variant is preserved on the type for backwards compat with
+   * existing call sites; the prompt always pitches Pro post-collapse.
+   */
   requiredTier: "base" | "pro";
   currentTier: UserTier;
   onUpgrade: () => void;
   onDismiss?: () => void;
 }
 
+// PR-01 (audit 2026-04-28): Base label folded into Pro for display.
+// The only paid tier is Pro.
 const TIER_LABELS: Record<string, string> = {
-  base: "Base",
+  base: "Pro",
   pro: "Pro",
 };
 
@@ -24,7 +30,10 @@ const TIER_LABELS: Record<string, string> = {
  */
 export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, onDismiss }: UpgradePromptProps) {
   if (currentTier === "pro") return null;
-  if (currentTier === "base" && requiredTier === "base") return null;
+  // PR-01 (audit 2026-04-28): legacy `currentTier === "base"` rows
+  // are treated as Free for gating — they have no active paid
+  // entitlement post-collapse. The prompt fires regardless of which
+  // legacy `requiredTier` value the caller passes.
 
   return (
     <div className="relative rounded-2xl border-2 border-primary/30 bg-primary/10 p-6 shadow-lg">
@@ -46,10 +55,8 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
             Upgrade to {TIER_LABELS[requiredTier]} to unlock
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            {feature} requires a {TIER_LABELS[requiredTier]} plan.
-            {currentTier === "free" && requiredTier === "base"
-              ? " Plan your full week and generate a ready-to-shop list."
-              : " Get access to creator tools, advanced imports, and deeper analytics."}
+            {feature} requires a Pro plan. Plan your full week, log
+            by photo or voice, and generate a ready-to-shop list.
           </p>
           <div className="flex items-center gap-3">
             <button

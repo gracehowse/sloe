@@ -60,7 +60,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const tier = body.tier === "pro" ? "pro" : body.tier === "base" ? "base" : null;
+  // PR-01 (audit 2026-04-28): `tier: "base"` requests are now
+  // rejected with 400 invalid_tier. Pro is the only sellable tier
+  // post-strategic-direction collapse. The Stripe webhook handler
+  // (`src/lib/stripe/webhookProcess.ts`) still recognises any
+  // pre-existing Base price IDs so legacy events don't crash.
+  const tier = body.tier === "pro" ? "pro" : null;
   if (!tier) {
     return NextResponse.json({ ok: false, error: "invalid_tier" }, { status: 400 });
   }
@@ -71,13 +76,7 @@ export async function POST(req: Request) {
   const period = body.period === "annual" ? "annual" : "monthly";
 
   const priceEnvVar =
-    tier === "pro"
-      ? period === "annual"
-        ? "STRIPE_PRICE_PRO_ANNUAL"
-        : "STRIPE_PRICE_PRO_MONTHLY"
-      : period === "annual"
-        ? "STRIPE_PRICE_BASE_ANNUAL"
-        : "STRIPE_PRICE_BASE_MONTHLY";
+    period === "annual" ? "STRIPE_PRICE_PRO_ANNUAL" : "STRIPE_PRICE_PRO_MONTHLY";
 
   const priceId = process.env[priceEnvVar]?.trim();
 

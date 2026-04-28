@@ -94,9 +94,12 @@ afterEach(() => {
 // --- Stripe Tax fields ------------------------------------------------------
 
 describe("POST /api/stripe/checkout — Stripe Tax wiring", () => {
-  it("passes automatic_tax + billing_address_collection for base monthly", async () => {
+  // PR-01 (audit 2026-04-28): Base tier was excised post-collapse;
+  // these cases now exercise the Pro path. The Pro pricing covers
+  // both monthly and annual SKUs.
+  it("passes automatic_tax + billing_address_collection for pro monthly", async () => {
     const POST = await loadRoute();
-    const res = await POST(makeReq({ tier: "base", period: "monthly" }));
+    const res = await POST(makeReq({ tier: "pro", period: "monthly" }));
     expect(res.status).toBe(200);
 
     expect(sessionsCreateMock).toHaveBeenCalledTimes(1);
@@ -123,7 +126,7 @@ describe("POST /api/stripe/checkout — Stripe Tax wiring", () => {
     // if customer_update is passed alongside a fresh-Customer checkout.
     // This route uses `client_reference_id` — Stripe mints a new Customer.
     const POST = await loadRoute();
-    await POST(makeReq({ tier: "base", period: "monthly" }));
+    await POST(makeReq({ tier: "pro", period: "monthly" }));
     const payload = sessionsCreateMock.mock.calls[0][0];
     expect(payload).not.toHaveProperty("customer_update");
     expect(payload).not.toHaveProperty("customer");
@@ -160,7 +163,7 @@ describe("POST /api/stripe/checkout — negative paths", () => {
   it("returns 401 when auth header is missing / invalid", async () => {
     getUserIdFromAuthHeaderMock.mockResolvedValueOnce(null);
     const POST = await loadRoute();
-    const res = await POST(makeReq({ tier: "base", period: "monthly" }));
+    const res = await POST(makeReq({ tier: "pro", period: "monthly" }));
     expect(res.status).toBe(401);
     expect(sessionsCreateMock).not.toHaveBeenCalled();
   });
@@ -190,7 +193,7 @@ describe("POST /api/stripe/checkout — STRIPE_TAX_ENABLED flag", () => {
     // The flag lets the code ship ahead of the dashboard flip.
     vi.stubEnv("STRIPE_TAX_ENABLED", "false");
     const POST = await loadRoute();
-    const res = await POST(makeReq({ tier: "base", period: "monthly" }));
+    const res = await POST(makeReq({ tier: "pro", period: "monthly" }));
     expect(res.status).toBe(200);
 
     const payload = sessionsCreateMock.mock.calls[0][0];
@@ -228,7 +231,7 @@ describe("POST /api/stripe/checkout — STRIPE_TAX_ENABLED flag", () => {
       sessionsCreateMock.mockClear();
       vi.stubEnv("STRIPE_TAX_ENABLED", v);
       const POST = await loadRoute();
-      await POST(makeReq({ tier: "base", period: "monthly" }));
+      await POST(makeReq({ tier: "pro", period: "monthly" }));
       const payload = sessionsCreateMock.mock.calls[0][0];
       expect(payload, `value=${v}`).not.toHaveProperty("automatic_tax");
     }

@@ -60,30 +60,26 @@ import { PRICING_TIERS, type PricingTier } from "../../../src/lib/landing/pricin
  * `PRICING_TIERS` (the leaf SSOT), so web and mobile can't drift.
  */
 
-function findTier(name: "Base" | "Pro"): PricingTier {
+function findTier(name: "Pro"): PricingTier {
   const tier = PRICING_TIERS.find((t) => t.name === name);
   if (!tier) throw new Error(`Missing ${name} tier in PRICING_TIERS`);
   return tier;
 }
 
 const PRO_TIER = findTier("Pro");
-const BASE_TIER = findTier("Base");
 
 /**
- * Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
- *
- * The Base tier is hidden from the rendered paywall. RevenueCat
- * offerings still carry the Base packages so existing subscribers
- * keep their entitlement; the Stripe + RevenueCat reconfig (deprecate
- * vs grandfather vs migrate) is a separate monetisation-architect
- * deliverable. Once that lands we delete the BASE_* constants below.
+ * PR-01 (audit 2026-04-28) — pricing collapses to Free + Pro per
+ * D-2026-04-27-05. The Base tier was removed from the SSOT in
+ * batch 19; this paywall now renders Pro-only. Internal `UserTier`
+ * enum keeps `"base"` for safety: any pre-existing RevenueCat
+ * entitlement on the Base SKU is treated by `resolvedTier` as a
+ * fallback Free state for this user, and the paywall pitches Pro
+ * normally.
  */
-const SHOW_BASE_TIER = false as const;
 
-const PRO_FEATURE_HEAD = PRO_TIER.featHead ?? "Everything in Base, plus";
+const PRO_FEATURE_HEAD = PRO_TIER.featHead ?? "Everything in Free, plus";
 const PRO_FEATURES = PRO_TIER.features;
-const BASE_FEATURE_HEAD = BASE_TIER.featHead ?? "Everything in Free, plus";
-const BASE_FEATURES = BASE_TIER.features;
 
 /** Fallback prices shown only when RC offerings failed to load. In
  *  normal operation the rendered price is always `priceString` from
@@ -91,8 +87,6 @@ const BASE_FEATURES = BASE_TIER.features;
 const FALLBACK_PRICES = {
   proMonthly: PRO_TIER.price,
   proAnnual: PRO_TIER.annualPrice ?? PRO_TIER.price,
-  baseMonthly: BASE_TIER.price,
-  baseAnnual: BASE_TIER.annualPrice ?? BASE_TIER.price,
 } as const;
 
 /** Render timing of the Day-7-trial-ends timeline — only shown when
@@ -224,18 +218,22 @@ export default function PaywallScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
-  const [purchasing, setPurchasing] = useState<null | "base" | "pro">(null);
+  // PR-01 (audit 2026-04-28): `purchasing` was `"base" | "pro" | null`
+  // before the Base TierCard was removed. Pro is the only tier left.
+  const [purchasing, setPurchasing] = useState<null | "pro">(null);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [restoring, setRestoring] = useState(false);
   const [offeringsReady, setOfferingsReady] = useState(false);
   const [earlyRedirected, setEarlyRedirected] = useState(false);
   const [billing, setBilling] = useState<BillingPeriod>("annual");
-  // Track which tier the user is actively looking at so we can re-fire
-  // `paywall_viewed` with the updated `tier` on focus change. Starts as
-  // "pro" (Pro is the hero card). analytics-engineer 2026-04-19 picked
-  // re-fire over a separate `paywall_tier_viewed` event to keep funnel
-  // F2 on a single event and use `tier` as a funnel-step property.
-  const [focusedTier, setFocusedTier] = useState<"pro" | "base">("pro");
+  // PR-01 (audit 2026-04-28): single Pro card, single focused tier.
+  // The state retains the type contract for the analytics emits but
+  // never mutates — focusedTier is always `"pro"` after the Base
+  // TierCard removal. Kept as state (rather than a const) so the
+  // analytics deduping logic that compares `tier !== focusedTier`
+  // continues to short-circuit cleanly.
+  const [focusedTier, setFocusedTier] = useState<"pro">("pro");
+  void setFocusedTier;
   // T22 (full-sweep 2026-04-24): dedup `paywall_viewed` by tier within
   // a single mount. The audit flagged that bouncing between tiers
   // re-fires the same `tier: "pro"` event on every return, inflating
@@ -322,26 +320,15 @@ export default function PaywallScreen() {
     }),
     [packages],
   );
-  const baseAnnual = useMemo(
-    () => packages.find((p) => {
-      const c = classifyPackage(p);
-      return c.tier === "base" && c.period === "annual";
-    }),
-    [packages],
-  );
-  const baseMonthly = useMemo(
-    () => packages.find((p) => {
-      const c = classifyPackage(p);
-      return c.tier === "base" && c.period === "monthly";
-    }),
-    [packages],
-  );
-
+  // PR-01 (audit 2026-04-28): Base packages are no longer resolved.
+  // Any Base RC offering still on disk is ignored at the render
+  // layer; legacy entitled users keep their access via `isProEntitled`
+  // / `resolvedTier` in `lib/purchases.ts`.
   const hasPro = Boolean(proAnnual || proMonthly);
-  const hasBase = Boolean(baseAnnual || baseMonthly);
-  const hasAnyMonthly = Boolean(proMonthly || baseMonthly);
-  const hasAnyAnnual = Boolean(proAnnual || baseAnnual);
+  const hasAnyMonthly = Boolean(proMonthly);
+  const hasAnyAnnual = Boolean(proAnnual);
   const showToggle = hasAnyMonthly && hasAnyAnnual;
+  void hasPro;
 
   // Lock billing period if only one frequency is provisioned.
   useEffect(() => {
@@ -353,12 +340,10 @@ export default function PaywallScreen() {
   }, [offeringsReady, showToggle, hasAnyAnnual, hasAnyMonthly, billing]);
 
   const currentProPkg = billing === "annual" ? proAnnual : proMonthly;
-  const currentBasePkg = billing === "annual" ? baseAnnual : baseMonthly;
 
   // Fallback strings used only when a specific package isn't resolved
   // — keeps the card readable during loading or partial provisioning.
   const fallbackProPrice = billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly;
-  const fallbackBasePrice = billing === "annual" ? FALLBACK_PRICES.baseAnnual : FALLBACK_PRICES.baseMonthly;
   const periodSuffix = billing === "annual" ? "/year" : "/month";
 
   const trialApplies = billing === "annual"; // 7-day trial only on Pro annual
@@ -366,33 +351,17 @@ export default function PaywallScreen() {
 
   // ─── Interaction handlers ───────────────────────────────────────
 
-  async function onSelectTier(tier: "base" | "pro") {
+  async function onSelectTier(tier: "pro") {
     if (purchasing) return;
     void Haptics.selectionAsync();
 
-    // Focus shift — re-fire `paywall_viewed` with updated `tier` so
-    // F2 can slice conversion by tier. Dedup: only re-fire when focus
-    // genuinely changed, not on every CTA tap. analytics-engineer
-    // 2026-04-19 preferred this over a separate `paywall_tier_viewed`.
-    // Note: expand shorthand `tier` → `tier: tier` so the parity
-    // regex in `tests/unit/analyticsEvents.test.ts` sees the key.
-    if (tier !== focusedTier) {
-      setFocusedTier(tier);
-      // T22 (2026-04-24): dedup by tier within a single mount — see
-      // viewedTiersRef declaration. Tier-focus shifts that revisit a
-      // tier already fired in this session are no-ops.
-      if (!viewedTiersRef.current.has(tier)) {
-        viewedTiersRef.current.add(tier);
-        track(AnalyticsEvents.paywall_viewed, {
-          from: paywallFrom,
-          tier: tier,
-          surface: "route",
-          platform: Platform.OS === "ios" ? "ios" : "android",
-        });
-      }
-    }
+    // PR-01 (audit 2026-04-28): only Pro is selectable. Focus-shift
+    // dedup logic from the prior two-tier era is now a no-op — Pro
+    // is the only viewedTier this mount can encounter.
+    void focusedTier;
+    void viewedTiersRef;
 
-    const pkg = tier === "pro" ? currentProPkg : currentBasePkg;
+    const pkg = currentProPkg;
     if (!pkg) {
       Alert.alert(
         "Not available",
@@ -993,33 +962,9 @@ export default function PaywallScreen() {
               />
             ) : null}
 
-            {SHOW_BASE_TIER && hasBase ? (
-              <TierCard
-                tier="base"
-                title="Base"
-                tag="The full meal-planning loop."
-                priceString={currentBasePkg?.product.priceString ?? fallbackBasePrice}
-                periodSuffix={periodSuffix}
-                showSavings={billing === "annual"}
-                referenceLine={
-                  billing === "annual"
-                    ? computeAnnualReferenceLine(
-                        baseAnnual?.product.priceString ?? FALLBACK_PRICES.baseAnnual,
-                        baseMonthly?.product.priceString ?? FALLBACK_PRICES.baseMonthly,
-                      )
-                    : null
-                }
-                featHead={BASE_FEATURE_HEAD}
-                features={BASE_FEATURES}
-                ctaLabel={`Subscribe — ${currentBasePkg?.product.priceString ?? fallbackBasePrice}${periodSuffix}`}
-                ctaColor={Accent.primary}
-                ctaDisabled={!currentBasePkg || purchasing !== null}
-                ctaLoading={purchasing === "base"}
-                onPress={() => void onSelectTier("base")}
-                colors={colors}
-                styles={styles}
-              />
-            ) : null}
+            {/* PR-01 (audit 2026-04-28): the Base TierCard block was
+                removed when the tier was excised from the SSOT. The
+                paywall now renders Pro as the single paid card. */}
           </>
         )}
 

@@ -391,9 +391,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     else toast.success("Password reset email sent — check your inbox.");
   }, [authEmail]);
 
+  // PR-01 (audit 2026-04-28): Base tier excised from user-facing
+  // surfaces. Internal `userTier === "base"` rows still exist as a
+  // safety branch for any legacy Stripe webhook events; they render
+  // as "Free" since the user has no active paid entitlement.
   const tierLabels: Record<string, { name: string; color: string }> = {
     free: { name: "Free", color: "bg-muted text-muted-foreground" },
-    base: { name: "Base", color: "bg-success/10 text-success" },
+    base: { name: "Free", color: "bg-muted text-muted-foreground" },
     pro: { name: "Pro", color: "bg-primary/10 text-primary" },
   };
   const currentTier = tierLabels[userTier] ?? tierLabels.free;

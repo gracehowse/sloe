@@ -325,7 +325,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   // mirror mobile's structure 1:1; `displayName`, `userTier`, and
   // `joinedAt` are the same sources the old inline block used.
   const avatarInitial = (displayName?.[0] ?? "P").toUpperCase();
-  const tierLabel = userTier === "pro" ? "Pro" : userTier === "base" ? "Base" : "Free";
+  // PR-01 (audit 2026-04-28): legacy `userTier === "base"` rows
+  // display as "Free" — the user has no active paid entitlement
+  // post-collapse.
+  const tierLabel = userTier === "pro" ? "Pro" : "Free";
   // Brand-gradient avatar (D7, 2026-04-21). Matches the mobile More tab
   // `GradientAvatar` exactly, using the sanctioned brand gradient from
   // `docs/ux/brand-guidelines.md`:
@@ -400,9 +403,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide ${
             userTier === "pro"
               ? "bg-primary/15 text-primary"
-              : userTier === "base"
-                ? "bg-success/15 text-success"
-                : "bg-muted text-muted-foreground"
+              : "bg-muted text-muted-foreground"
           }`}
         >
           {tierLabel}
