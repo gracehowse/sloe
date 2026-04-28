@@ -881,6 +881,11 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      // 2026-04-28 (teardown Top-5 #5): light haptic on every log so
+      // the action lands in the body, not just on the screen. Success
+      // notification (line ~1515) stays reserved for hitting the
+      // daily target.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // L6 G1 (2026-04-18) — mirror the web primitive: fire one
       // `food_logged { source: "saved_meal" }` per expanded item so
       // the funnel totals match web. `saved_meal_logged` is still
@@ -935,6 +940,8 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         track(AnalyticsEvents.usual_meal_log_tapped, {
           slot,
@@ -1212,6 +1219,8 @@ export default function TrackerScreen() {
         ...(item.source ? { source: item.source } : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
+      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
     [dayKey],
@@ -1874,6 +1883,8 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
+      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       track(AnalyticsEvents.food_logged, {
         source: aiItems[0]?.source === "voice" ? "voice" : "photo",
         count: newMeals.length,
@@ -2609,6 +2620,8 @@ export default function TrackerScreen() {
       ...prev,
       [dayKey]: [...(prev[dayKey] ?? []), meal],
     }));
+    // 2026-04-28 (teardown Top-5 #5): light haptic on log.
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTitle("");
     setKcal("");
     setProtein("");
@@ -2690,6 +2703,10 @@ export default function TrackerScreen() {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
+      // 2026-04-28 (teardown Top-5 #5): light haptic on log. Copy /
+      // duplicate paths share this primitive — both feel like a log
+      // to the user, so both fire the same body-feedback tap.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (!userId) return withIds.length;
       const dbRows = withIds.map((m) => ({
         id: m.id,
@@ -3630,34 +3647,35 @@ export default function TrackerScreen() {
         onPress={() => setFabSheetOpen(true)}
       />
 
-      {/* Phase 3 LogSheet — replaces TodayFabSheet. */}
+      {/* Search-first LogSheet (Next-10 #12, 2026-04-28). The 6-tab
+          strip is gone; search is the always-visible primary input
+          with right-edge icons (scan / voice / photo) routing to the
+          dedicated modals on tap. Recent + Saved render inline as
+          the default browse content via a 2-pill toggle below the
+          search row. The "Or add manually" footer routes to the
+          existing TodayAddFoodForm. */}
       <LogSheet
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
         search={{
-          query: "",
-          onQueryChange: () => {},
-          results: [],
-          onAdd: () => {
-            setFabSheetOpen(false);
-            setSearchOpen(true);
-          },
-          // P0-1 (2026-04-28) — tap routes to the real FoodSearch
-          // modal. The LogSheet's search input is presentational only.
+          // Tap the search row → close LogSheet, open FoodSearchModal.
+          // The LogSheet is router-only; the real search experience
+          // lives in the dedicated modal.
           onOpen: () => {
             setFabSheetOpen(false);
             setSearchOpen(true);
           },
         }}
         barcode={{
-          // Tapping into the barcode tab routes to the legacy barcode
-          // dialog so the user reaches the actual scanner. The
-          // LogSheet's in-tab camera viewport is presentation-only; a
-          // real-camera viewport requires the existing
-          // BarcodeScannerModal (which has the OFF/USDA matchers
-          // wired). The "0 kcal manual entry" inline path is
-          // surfaced when `manualEntry` is set — the parent passes
-          // it after a barcode lookup returns no nutrition.
+          // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
+          // The "0 kcal manual entry" inline path activates when
+          // `manualEntry` is set — host passes it after a barcode
+          // lookup returns no nutrition (replaces the LogSheet's
+          // default content with the manual-entry form).
+          onOpen: () => {
+            setFabSheetOpen(false);
+            setBarcodeOpen(true);
+          },
         }}
         recent={{
           // P0-2b (2026-04-28) — hydrate from food-history. Recent is
@@ -3713,18 +3731,38 @@ export default function TrackerScreen() {
         voice={{
           onStart: () => {
             // Close the unified LogSheet and route to the dedicated
-            // voice flow (where the real transcription + macro-match
-            // pipeline lives). Mirrors the search/recent/saved
-            // tab-router pattern above.
+            // voice flow. Free + base tier users see the AI paywall
+            // sheet via the AiPaywallSheet wired below; this onStart
+            // fires regardless and the host decides which sheet to
+            // open.
             setFabSheetOpen(false);
-            setVoiceLogOpen(true);
+            if (userTier === "pro") {
+              setVoiceLogOpen(true);
+            } else {
+              setAiPaywall({ open: true, feature: "voice_log" });
+            }
           },
+          // Pro-gated — surface the lock badge for free + base tiers
+          // so the user sees the gate before tapping.
+          locked: userTier !== "pro",
         }}
         photo={{
           onCapture: () => {
             setFabSheetOpen(false);
-            setPhotoLogOpen(true);
+            if (userTier === "pro") {
+              setPhotoLogOpen(true);
+            } else {
+              setAiPaywall({ open: true, feature: "photo_log" });
+            }
           },
+          locked: userTier !== "pro",
+        }}
+        onAddManually={() => {
+          // Footer "Or add manually" link → escape hatch into the
+          // manual quick-add form (TodayAddFoodForm). Host owns the
+          // form's open state; we just flip the flags.
+          setFabSheetOpen(false);
+          setAddOpen(true);
         }}
       />
 

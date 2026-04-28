@@ -14,6 +14,75 @@ import { RING_LABELS } from "../../../lib/copy/today";
  * the mobile CalorieRing component.
  */
 
+/**
+ * Tween a displayed integer from its previous value to `target` over
+ * `duration` ms with cubic-out easing. Mirrors the mobile
+ * `useAnimatedNumber` helper in `CalorieRing.tsx` so the centre
+ * number on Today's calorie ring counts up smoothly when the user
+ * logs a meal. Same curve and duration as the SVG ring sweep
+ * (`transition-[stroke-dashoffset] duration-700` + `--pm-ease`) so
+ * the number and the arc finish together.
+ *
+ * `snapOn` is a discriminator: when its value changes, the displayed
+ * number snaps to `target` instantly instead of tweening — used to
+ * suppress the count animation on a display-mode toggle (long-press
+ * / button press swaps between `remaining` and `consumed`, and
+ * counting across two different metrics would be confusing).
+ *
+ * Honours `prefers-reduced-motion` via the global CSS rule that
+ * collapses transition durations near-zero, but also short-circuits
+ * here when the user prefers reduced motion to avoid running a RAF
+ * loop at all.
+ */
+function useAnimatedNumber(
+  target: number,
+  options?: { snapOn?: unknown; duration?: number },
+): number {
+  const duration = options?.duration ?? 800;
+  const snapOn = options?.snapOn;
+  const [value, setValue] = React.useState(target);
+  const valueRef = React.useRef(target);
+  const lastSnapRef = React.useRef(snapOn);
+  React.useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  React.useEffect(() => {
+    if (snapOn !== lastSnapRef.current) {
+      lastSnapRef.current = snapOn;
+      setValue(target);
+      return;
+    }
+    if (valueRef.current === target) return;
+
+    // Reduced-motion users: snap, no count-up animation.
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setValue(target);
+      return;
+    }
+
+    const from = valueRef.current;
+    const start = Date.now();
+    let raf = 0;
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // cubic out
+      const next = Math.round(from + (target - from) * eased);
+      setValue(next);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setValue(target);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, snapOn]);
+
+  return value;
+}
+
 export type CalorieRingDisplayMode = "remaining" | "consumed";
 
 interface DailyRingProps extends React.ComponentProps<"div"> {
@@ -71,6 +140,13 @@ function DailyRing({
         : RING_LABELS.remaining;
   const centerValueColor = isOverBudget ? "var(--warning)" : undefined;
   const centerLabelColor = isOverBudget ? "var(--warning)" : undefined;
+
+  // Tween the displayed centre value over 800ms / cubic-out — same
+  // curve as the SVG ring sweep so the number and arc finish
+  // together. Snaps on display-mode toggle.
+  const animatedCenterValue = useAnimatedNumber(centerValue, {
+    snapOn: displayMode,
+  });
 
   const macroStroke = 5;
   const macroRadii = [radius - 13, radius - 24, radius - 35];
@@ -156,7 +232,9 @@ function DailyRing({
         })}
       </svg>
 
-      {/* Centre text */}
+      {/* Centre text — number tweens to `centerValue` via
+          `useAnimatedNumber`. Counts up smoothly when consumed
+          changes; snaps on displayMode toggle. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span
           className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
@@ -165,7 +243,7 @@ function DailyRing({
             color: centerValueColor,
           }}
         >
-          {centerValue}
+          {animatedCenterValue}
         </span>
         <span
           className="text-[11px] font-semibold mt-0.5 uppercase tracking-wider"
