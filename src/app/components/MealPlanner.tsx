@@ -568,6 +568,19 @@ export const MealPlanner = memo(function MealPlanner({
                 const portionLabel = formatPortionMultiplier(
                   (meal as { portionMultiplier?: number }).portionMultiplier,
                 );
+                // F2-J (2026-04-28): leftover badge. The leftover
+                // distribution pass at `src/lib/nutrition/leftoversPlanner.ts`
+                // tags downstream slots with `leftoverOf: recipeId` and
+                // `isLeftover: true` when a recipe yields multiple
+                // servings. Display-only badge so the user sees that
+                // a slot is a leftover portion rather than a fresh
+                // cook. Data already exists in the plan JSON; pre-fix
+                // the web grid silently rendered leftovers as if they
+                // were independent meals.
+                const isLeftover = Boolean(
+                  (meal as { isLeftover?: boolean }).isLeftover ||
+                    (meal as { leftoverOf?: string }).leftoverOf,
+                );
                 return (
                   <div
                     key={slot}
@@ -624,6 +637,22 @@ export const MealPlanner = memo(function MealPlanner({
                           </span>
                         ) : null}
                       </div>
+                      {isLeftover ? (
+                        <span
+                          className="inline-flex items-center rounded-full bg-success/15 text-success"
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: "1px 6px",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            marginBottom: 4,
+                          }}
+                          aria-label="Leftover portion"
+                        >
+                          Leftover
+                        </span>
+                      ) : null}
                       <p
                         className="text-muted-foreground tabular-nums"
                         style={{ fontSize: 10 }}
