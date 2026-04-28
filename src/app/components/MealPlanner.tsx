@@ -135,6 +135,7 @@ export const MealPlanner = memo(function MealPlanner({
     savedRecipesForLibrary,
     discoverRecipes,
     nutritionTargets,
+    addLoggedMeal,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -213,6 +214,37 @@ export const MealPlanner = memo(function MealPlanner({
       return;
     }
     setPlanDays(next);
+  };
+
+  /** F2-M (2026-04-28) — log a planned meal to today's tracker.
+   *  Mirrors the mobile flow at
+   *  `apps/mobile/app/(tabs)/planner.tsx:2406-2447`. The macros on
+   *  the planner row are already post-portion (per the F30 fix), so
+   *  we pass `portionMultiplier: undefined` to avoid double-applying
+   *  the scale — `LoggedMeal.portionMultiplier` is display-only and
+   *  must reflect already-scaled macros. */
+  const handleLogToday = (meal: DayPlan["meals"][number]) => {
+    if (isMealPlanPlaceholderLikeTitle(meal.recipeTitle, { isPlaceholder: meal.isPlaceholder })) {
+      return;
+    }
+    const slotName = String(meal.name ?? "").trim() || "Meal";
+    const cal = Math.max(0, Math.round(Number(meal.calories) || 0));
+    const protein = Math.max(0, Math.round(Number(meal.protein) || 0));
+    const carbs = Math.max(0, Math.round(Number(meal.carbs) || 0));
+    const fat = Math.max(0, Math.round(Number(meal.fat) || 0));
+    addLoggedMeal({
+      name: slotName,
+      recipeTitle: meal.recipeTitle,
+      time: slotName,
+      calories: cal,
+      protein,
+      carbs,
+      fat,
+      ...(typeof (meal as { fiberG?: number }).fiberG === "number"
+        ? { fiberG: (meal as { fiberG?: number }).fiberG }
+        : {}),
+    });
+    toast.success(`Logged ${slotName} to today`);
   };
 
   const handleShoppingList = () => {
@@ -702,6 +734,24 @@ export const MealPlanner = memo(function MealPlanner({
                     >
                       <RefreshCw size={11} />
                     </button>
+                    {/* F2-M (2026-04-28): "Log today" button on each
+                        meal row. Mobile parity at
+                        `apps/mobile/app/(tabs)/planner.tsx:2406-2447`.
+                        Mirrors mobile's text-link affordance — small
+                        and unobtrusive so it doesn't dominate the
+                        card. Disabled when the slot is empty / a
+                        placeholder. */}
+                    {!isPlaceholder ? (
+                      <button
+                        type="button"
+                        onClick={() => handleLogToday(meal)}
+                        className="text-primary hover:underline font-semibold mt-1.5 inline-flex items-center"
+                        style={{ fontSize: 11 }}
+                        data-testid={`planner-log-today-${dp.day}-${slot}`}
+                      >
+                        Log today
+                      </button>
+                    ) : null}
                   </div>
                 );
               })}
