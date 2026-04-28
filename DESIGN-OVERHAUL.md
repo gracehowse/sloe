@@ -566,7 +566,7 @@ _Last updated: 2026-04-13_
 | Item | Status | Notes |
 |---|---|---|
 | Theme tokens (`apps/mobile/constants/theme.ts`) | Done | Migrated from #7c3aed violet to #4c6ce0 blue primary. New `Accent` object aligned with web CSS vars. MacroColors match web `--macro-*` properties. |
-| Mobile feature screens | Pending | Mobile screens still use old Neon.* references in some places. Full screen-by-screen audit needed. |
+| Mobile feature screens | Done (2026-04-28) | Audit-confirmed zero `Neon.*` references in production code. The `Neon` legacy alias and `Brand.violet`/`Brand.pink` deprecated fields were deleted from `apps/mobile/constants/theme.ts` (Next-10 #15 from `docs/ux/teardown-2026-04-28-daily-loop.md`). |
 
 ### Stale files to remove
 
@@ -579,7 +579,7 @@ _Last updated: 2026-04-13_
 
 ### Remaining work
 
-1. **Mobile screen-by-screen migration** — Update each Expo screen to use `Accent.*` and `MacroColors.*` consistently (some still reference old `Neon.*` directly).
+1. ~~**Mobile screen-by-screen migration** — Update each Expo screen to use `Accent.*` and `MacroColors.*` consistently (some still reference old `Neon.*` directly).~~ ✅ Done 2026-04-28 — `Neon` alias deleted from `theme.ts` after audit confirmed zero callers.
 2. **RecipeCard type expansion** — `sourcePlatform` field added; populate it from Supabase recipe import metadata.
 3. **Phase 2 features** (social recipe import pipeline, AI extraction) — not yet started.
 4. **Phase 3 features** (recipe hero, ingredient macro bars, "I made this" bridge) — partially started via MacroCard/ConfidenceDot in RecipeDetail.

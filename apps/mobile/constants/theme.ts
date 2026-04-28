@@ -35,19 +35,15 @@ export const StimulantColors = {
   alcohol: '#f59e0b',
 };
 
-/** Legacy alias — use Accent instead for new code */
-export const Neon = {
-  pink: Accent.magenta,
-  purple: Accent.primaryLight,
-  violet: Accent.primary,
-  blue: Accent.primary,
-  cyan: Accent.cyan,
-  green: Accent.success,
-  yellow: Accent.warning,
-  orange: Accent.orange,
-  red: Accent.destructive,
-  magenta: Accent.magenta,
-};
+/**
+ * `Neon` legacy alias was deleted 2026-04-28 (Next-10 #15 from
+ * `docs/ux/teardown-2026-04-28-daily-loop.md`). It existed to make
+ * pre-overhaul violet-palette imports compile during the 2026
+ * design migration; by 2026-04-28 no production code referenced it
+ * (audit-confirmed zero `Neon.` callers). New code uses `Accent.*`
+ * directly. The `MacroColors` exports below already use `Accent.*`
+ * as their source of truth.
+ */
 
 /** Macro-specific colors — aligned with web --macro-* CSS custom properties */
 export const MacroColors = {
@@ -61,15 +57,19 @@ export const MacroColors = {
   water: Accent.cyan,
 };
 
-/** Brand */
+/**
+ * Brand tokens. The `violet` and `pink` deprecated aliases were
+ * deleted 2026-04-28 (Next-10 #15) — zero production code
+ * referenced them. Use `Brand.primary` (`#4c6ce0` blue) and
+ * `Brand.accent` (`#e04888` magenta) directly. The gradient is
+ * still exposed for marketing CTAs and hero sections only — never
+ * use it inside the product UI per
+ * `docs/ux/brand-guidelines.md` Section 9.
+ */
 export const Brand = {
   primary: Accent.primary,
   accent: Accent.magenta,
   gradient: [Accent.primary, Accent.magenta] as const,
-  /** @deprecated — use Brand.primary */
-  violet: Accent.primary,
-  /** @deprecated — use Brand.accent */
-  pink: Accent.magenta,
 };
 
 /**
