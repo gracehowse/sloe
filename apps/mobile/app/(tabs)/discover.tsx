@@ -91,25 +91,42 @@ export default function DiscoverScreen() {
   // creator from the recipe detail screen left the Following filter
   // empty until app restart. Pinned by `discoverFollowsFocusRefresh.test.ts`.
   const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(new Set());
+  const [followedAuthorIds, setFollowedAuthorIds] = useState<Set<string>>(new Set());
+  // D1 fix (audit 2026-04-28): mobile previously only loaded
+  // `follows.creator_id`. Web's Following filter also matches
+  // `author_follows.author_id`. Same UI on both platforms returned
+  // different result sets — silent data divergence. Mobile now loads
+  // both tables and matches on either ID, mirroring web `DiscoverFeed`.
   useFocusEffect(
     useCallback(() => {
       if (!userId) {
         setFollowedCreatorIds(new Set());
+        setFollowedAuthorIds(new Set());
         return;
       }
       let cancelled = false;
       (async () => {
-        const { data } = await supabase
-          .from("follows")
-          .select("creator_id")
-          .eq("user_id", userId);
-        if (cancelled || !Array.isArray(data)) return;
-        const ids = new Set<string>();
-        for (const row of data) {
-          const id = (row as { creator_id?: string | null }).creator_id;
-          if (typeof id === "string") ids.add(id);
+        const [cf, af] = await Promise.all([
+          supabase.from("follows").select("creator_id").eq("user_id", userId),
+          supabase.from("author_follows").select("author_id").eq("follower_id", userId),
+        ]);
+        if (cancelled) return;
+        const creators = new Set<string>();
+        if (Array.isArray(cf.data)) {
+          for (const row of cf.data) {
+            const id = (row as { creator_id?: string | null }).creator_id;
+            if (typeof id === "string") creators.add(id);
+          }
         }
-        setFollowedCreatorIds(ids);
+        const authors = new Set<string>();
+        if (Array.isArray(af.data)) {
+          for (const row of af.data) {
+            const id = (row as { author_id?: string | null }).author_id;
+            if (typeof id === "string") authors.add(id);
+          }
+        }
+        setFollowedCreatorIds(creators);
+        setFollowedAuthorIds(authors);
       })();
       return () => {
         cancelled = true;
@@ -239,7 +256,12 @@ export default function DiscoverScreen() {
     // curated creator_id (imports, user-created) never match this
     // filter, which is correct — Following is creator-scoped.
     if (filter === "Following") {
-      return r.creatorId != null && followedCreatorIds.has(r.creatorId);
+      // D1 (2026-04-28): mirror web — match creatorId OR authorId.
+      const cid = r.creatorId ?? null;
+      const aid = (r as { authorId?: string | null }).authorId ?? null;
+      if (cid && followedCreatorIds.has(cid)) return true;
+      if (aid && followedAuthorIds.has(aid)) return true;
+      return false;
     }
     // Popular — real filter (was `|| true`, which silently disabled
     // the gate; ui-critic flagged 2026-04-20).

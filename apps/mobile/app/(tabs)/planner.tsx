@@ -1084,6 +1084,125 @@ export default function PlannerScreen() {
     }
   }, [plan?.length]);
 
+  /**
+   * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
+   * given plan. Lifted out of the dead-code block below the action
+   * row so it can be called from (a) `generatePlan` after a fresh
+   * plan is set, and (b) the summary-card "Shopping list" button when
+   * the count is 0 (so a user who lands on an empty list with an
+   * active plan can rebuild without leaving the screen).
+   *
+   * Side-effects: deletes existing `shopping_items` for the user,
+   * then inserts in batches of 50. Returns `{ ok, count }` so the
+   * caller can decide whether to surface a toast.
+   */
+  const generateShoppingListFromPlan = useCallback(
+    async (
+      planForGeneration: DayPlan[],
+    ): Promise<{ ok: true; count: number } | { ok: false; error: string }> => {
+      if (!userId) return { ok: false, error: "Not signed in" };
+      const allRecipes = [...savedRecipes, ...discoverRecipes];
+      const recipeIds: string[] = [];
+      for (const dp of planForGeneration) {
+        for (const m of dp.meals) {
+          const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
+          if (rid && !recipeIds.includes(rid)) recipeIds.push(rid);
+        }
+      }
+      if (recipeIds.length === 0) return { ok: false, error: "No recipe ids in plan" };
+
+      const { data: ingredients, error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, recipe_id")
+        .in("recipe_id", recipeIds);
+      if (ingErr) return { ok: false, error: ingErr.message };
+      if (!ingredients || ingredients.length === 0) {
+        return { ok: false, error: "No ingredient data on these recipes" };
+      }
+
+      // Count recipe occurrences (skip leftover rows so a single batch
+      // cook isn't triple-bought).
+      const recipeCounts: Record<string, number> = {};
+      const recipeTitles: Record<string, string> = {};
+      for (const dp of planForGeneration) {
+        for (const m of dp.meals) {
+          if ((m as PlanMeal).leftoverOf) continue;
+          const rid = m.recipeId ?? allRecipes.find((r) => r.title === m.recipeTitle)?.id;
+          if (rid) {
+            recipeCounts[rid] = (recipeCounts[rid] ?? 0) + 1;
+            recipeTitles[rid] = m.recipeTitle;
+          }
+        }
+      }
+
+      const merged = new Map<
+        string,
+        { name: string; amount: number; unit: string; from: Set<string> }
+      >();
+      for (const ing of ingredients) {
+        const key = `${(ing.name ?? "").toLowerCase().trim()}|${(ing.unit ?? "").toLowerCase().trim()}`;
+        const multiplier = recipeCounts[ing.recipe_id] ?? 1;
+        const existing = merged.get(key);
+        if (existing) {
+          existing.amount += (ing.amount ?? 1) * multiplier;
+          existing.from.add(recipeTitles[ing.recipe_id] ?? "");
+        } else {
+          merged.set(key, {
+            name: ing.name ?? "Unknown",
+            amount: (ing.amount ?? 1) * multiplier,
+            unit: ing.unit ?? "",
+            from: new Set([recipeTitles[ing.recipe_id] ?? ""]),
+          });
+        }
+      }
+
+      const categorise = (name: string): string => {
+        const n = name.toLowerCase();
+        if (/chicken|beef|pork|lamb|turkey|fish|salmon|prawn|shrimp|bacon|ham|sausage|mince/.test(n)) return "Meat & Fish";
+        if (/milk|cream|cheese|yoghurt|yogurt|butter|egg/.test(n)) return "Dairy & Eggs";
+        if (/bread|flour|pasta|rice|noodle|oat|cereal/.test(n)) return "Carbs & Grains";
+        if (/oil|vinegar|sauce|mustard|ketchup|soy|stock|honey|sugar|salt|pepper|spice|cumin|paprika|cinnamon/.test(n)) return "Pantry";
+        return "Fruit & Veg";
+      };
+
+      const items = [...merged.values()].map((item) => ({
+        name: item.name,
+        amount: item.amount % 1 === 0 ? String(item.amount) : item.amount.toFixed(1),
+        unit: item.unit,
+        category: categorise(item.name),
+        checked: false,
+        source: [...item.from].filter(Boolean).join(", "),
+      }));
+      items.sort((a, b) => a.category.localeCompare(b.category));
+
+      const inserts = items.map((item) => ({
+        user_id: userId,
+        name: item.name,
+        amount: item.amount,
+        unit: item.unit,
+        category: item.category,
+        checked: item.checked,
+        source: item.source,
+      }));
+
+      const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId);
+      if (delErr) {
+        const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId, items);
+        if (upErr) return { ok: false, error: upErr.message };
+      } else if (inserts.length > 0) {
+        for (let i = 0; i < inserts.length; i += 50) {
+          const batch = inserts.slice(i, i + 50);
+          const { error: insErr } = await supabase.from("shopping_items").insert(batch);
+          if (insErr) return { ok: false, error: insErr.message };
+        }
+      }
+
+      setShoppingItemCount(inserts.length);
+      return { ok: true, count: inserts.length };
+    },
+    [userId, savedRecipes, discoverRecipes],
+  );
+
   const generatePlan = useCallback(async () => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
       Alert.alert("No recipes available", "Save at least 1 recipe from Discover to generate a plan.");
@@ -1260,19 +1379,20 @@ export default function PlannerScreen() {
       setPlanTargets(resolved);
       setGenerating(false);
 
-      // G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19):
-      // regenerate must purge the previous plan's `shopping_items`
-      // rows. The lifecycle effect at line ~207 only fires on plan
-      // → null; regenerate stays truthy, so old rows survived and
-      // re-hydrated on next shopping-screen mount. The "Generate
-      // Shopping List" flow further below already purges — but
-      // Regenerate is the primary path on mobile and can't depend
-      // on the user tapping that button again. Fire-and-forget; the
-      // shopping screen will rebuild from the fresh plan next time
-      // the user opens it.
+      // F1 fix (audit 2026-04-28): regenerate must REBUILD the
+      // shopping list, not just purge it. Previously the regenerate
+      // path purged `shopping_items` rows but the UI's only path to
+      // rebuild was a dead-code "Generate Shopping List" button —
+      // user landed on Shopping with an empty list and "Generate a
+      // meal plan first" copy even with an active plan. Now the
+      // shopping list auto-rebuilds against the new plan; if the
+      // rebuild itself errors (no ingredient data on the recipes,
+      // network drop), we still set count=0 so the user knows the
+      // list was reset.
       if (userId) {
-        void supabase.from("shopping_items").delete().eq("user_id", userId);
-        setShoppingItemCount(0);
+        void generateShoppingListFromPlan(newPlan).then((res) => {
+          if (!res.ok) setShoppingItemCount(0);
+        });
       }
 
       // Persist via T15 atomic RPC (one round-trip, transactional).
@@ -1532,7 +1652,26 @@ export default function PlannerScreen() {
             <View style={styles.summaryActions}>
               <Pressable
                 style={styles.summaryPrimaryBtn}
-                onPress={() => router.push("/shopping")}
+                onPress={async () => {
+                  // F1 fix (2026-04-28): if the shopping list is
+                  // empty (e.g. plan was regenerated and the auto-
+                  // rebuild failed, or the user is hitting this for
+                  // the first time after migration), build it from
+                  // the active plan before navigating. Falling
+                  // through silently to /shopping landed users on a
+                  // "Generate a meal plan first" empty state even
+                  // when they had an active plan.
+                  if (plan && shoppingItemCount === 0) {
+                    const res = await generateShoppingListFromPlan(plan);
+                    if (!res.ok) {
+                      Alert.alert(
+                        "Couldn't build shopping list",
+                        `${res.error}\n\nOpening Shopping anyway — you can retry from there.`,
+                      );
+                    }
+                  }
+                  router.push("/shopping");
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Open shopping list"
               >
@@ -2269,6 +2408,15 @@ export default function PlannerScreen() {
                     e.stopPropagation?.();
                     const dk = dateKeyFromDate(new Date());
                     const entryId = newMealId();
+                    // F30 fix (audit 2026-04-28): `meal.calories` etc.
+                    // are already post-portion (the planner bakes
+                    // portion into macros — see the per-meal storage
+                    // contract). Persisting BOTH the post-portion
+                    // macros AND `portion_multiplier: currentMult`
+                    // would double-apply if any reader (tracker
+                    // backfill, recap, weekly digest) multiplied
+                    // again. Persist `portion_multiplier: 1` since
+                    // the macros already reflect the user's choice.
                     const { error } = await supabase
                       .from("nutrition_entries")
                       .insert({
@@ -2282,7 +2430,7 @@ export default function PlannerScreen() {
                         protein: meal.protein,
                         carbs: meal.carbs,
                         fat: meal.fat,
-                        portion_multiplier: currentMult,
+                        portion_multiplier: 1,
                       });
                     if (error) {
                       console.error("[planner] log entry failed:", error.message);
