@@ -46,6 +46,19 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
   });
 });
 
+describe("Today composition root — tracking-extras prefs (P0-3, 2026-04-28)", () => {
+  it("re-reads tracking-extras prefs on focus (not just mount)", () => {
+    // The original implementation used `useEffect(..., [])`, which
+    // only ran once on mount. After Settings -> Tracking extras
+    // toggle the user came back to a stale Today. The fix is to
+    // wrap the AsyncStorage read in `useFocusEffect` so it runs
+    // every time Today is focused.
+    expect(indexSrc).toMatch(
+      /useFocusEffect\([\s\S]+?suppr\.tracking-extras\.v1[\s\S]+?\)/,
+    );
+  });
+});
+
 describe("LogSheet web wiring (NutritionTracker)", () => {
   const trackerPath = path.resolve(__dirname, "../../../../src/app/components/NutritionTracker.tsx");
   const trackerSrc = fs.readFileSync(trackerPath, "utf8");
