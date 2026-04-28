@@ -168,4 +168,36 @@ describe("generateSmartPlan", () => {
       }
     }
   });
+
+  it("GW-07 (2026-04-28): drops recipes with all-zero macros from the plan pool", () => {
+    // A recipe whose `recipes.calories/protein/carbs/fat` row is 0/null
+    // (e.g. duplicated draft, or one whose ingredient sums haven't been
+    // backfilled to the recipe row) must NOT appear in the generated
+    // plan. Pre-fix `generateSmartPlan` would include it and the
+    // planner card would render "0 cal · 0g P · 0g C · 0g F" — a
+    // direct trust failure since the recipe detail screen computes
+    // real macros from `recipe_ingredients`.
+    const zeroMacroDinner: SimpleRecipe = {
+      id: "z1",
+      title: "Empty draft",
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      mealType: ["dinner"],
+    };
+    const plan = generateSmartPlan({
+      recipes: [breakfast, lunch, zeroMacroDinner, snack],
+      targets,
+      days: 1,
+    });
+    // The Dinner slot should fall back to whatever real-macro recipe
+    // fits, NOT the zero-macro draft.
+    for (const day of plan) {
+      for (const meal of day.meals) {
+        expect(meal.recipeTitle).not.toBe("Empty draft");
+        expect(meal.recipeId).not.toBe("z1");
+      }
+    }
+  });
 });

@@ -766,16 +766,34 @@ export function generateSmartPlan(input: {
   seed?: number;
 }): DayPlan[] {
   const { recipes, targets } = input;
-  const pool = recipes.map((r) => ({
-    ...r,
-    ...coerceMacrosWhenCaloriesButNoGrams({
-      calories: r.calories,
-      protein: r.protein,
-      carbs: r.carbs,
-      fat: r.fat,
-      fiberG: r.fiberG,
-    }),
-  }));
+  const pool = recipes
+    .map((r) => ({
+      ...r,
+      ...coerceMacrosWhenCaloriesButNoGrams({
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: r.fiberG,
+      }),
+    }))
+    // GW-07 fix (audit 2026-04-28): drop recipes with no nutritional
+    // signal so the planner never surfaces a card showing 0 cal /
+    // 0g P/C/F. Pre-fix `generateSmartPlan` only ran the macro
+    // coercion helper; rows whose `recipes.calories` was 0 *and*
+    // ingredient sums hadn't been backfilled went straight into
+    // the joint sampler, which then produced a plan card with all-
+    // zero macros — confusing for the user since the recipe detail
+    // computes real macros from `recipe_ingredients` on demand.
+    // Web's `generatePlanFromLibrary` had this filter (P1-23,
+    // 2026-04-23); now the shared mobile path mirrors it.
+    .filter(
+      (r) =>
+        (Number.isFinite(r.calories) && r.calories > 0) ||
+        (Number.isFinite(r.protein) && r.protein > 0) ||
+        (Number.isFinite(r.carbs) && r.carbs > 0) ||
+        (Number.isFinite(r.fat) && r.fat > 0),
+    );
   const daysCount = Math.min(7, Math.max(1, Math.floor(input.days)));
   const slots = input.slotConfig?.slots ?? ["Breakfast", "Lunch", "Snacks", "Dinner"];
   const baseSeed = input.seed ?? Date.now();
