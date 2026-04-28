@@ -3,6 +3,7 @@ import { classifyMealType } from "./classifyMealType";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 import { normaliseSource } from "../../../src/lib/recipes/persistSourceAttribution";
 import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
+import { isStructuredSource } from "../../../src/lib/nutrition/structuredSourceGate";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -207,7 +208,17 @@ export async function saveImportedRecipe(
         fiber_g: Math.round((m?.fiberG ?? 0) * 10) / 10,
         sugar_g: Math.round((m?.sugarG ?? 0) * 10) / 10,
         sodium_mg: Math.round(m?.sodiumMg ?? 0),
-        is_verified: (m?.calories ?? 0) > 0,
+        // GW-08 fix (audit 2026-04-28): pre-fix this was
+        // `is_verified: (m?.calories ?? 0) > 0` — every successful
+        // LLM extract was marked verified, which then propagated
+        // through the recipe-level rollup and fed every "USDA
+        // verified" / "OFF adjusted" TrustChip across the app. The
+        // chip claimed catalog-grade confidence on macros that came
+        // straight from the importer prompt. Now gated on whether the
+        // macros actually came from a structured catalog (USDA / OFF /
+        // FatSecret / Edamam) — see
+        // `src/lib/nutrition/structuredSourceGate.ts`.
+        is_verified: isStructuredSource(m?.source),
         source: m?.source ?? null,
       };
     });
