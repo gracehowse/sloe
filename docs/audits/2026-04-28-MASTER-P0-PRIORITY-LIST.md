@@ -59,7 +59,7 @@ This is the **single ranked action list** for executor sprints. Audits are on di
 
 ### Group F — System trust
 23. ✅ **ERR-01 — Mobile has NO production error boundary.** **SHIPPED Batch 7 (af28509).** `RootErrorBoundary.tsx` class component wraps `RootLayout`.
-24. ❌ **EMAIL-01 — Zero email templates in repo.** Welcome / verify / reset / trial-ending / subscription / digest — none owned by Suppr. **OUTSTANDING — requires brand-manager voice + legal-reviewer footer + executor plumbing (large piece, multi-agent).**
+24. 🟡 **EMAIL-01 — Zero email templates in repo.** **PARTIALLY SHIPPED — Batch 34:** the six Supabase Auth templates (Confirm signup / Reset password / Magic link / Change email / Invite / Reauthentication) now live at `docs/emails/supabase-auth/*.html` and can be copy-pasted into the Supabase Dashboard. Brand-aligned (Suppr gradient mark, voice per `docs/ux/brand-guidelines.md` §6, honest plaintext fallback link, real privacy footer). Defaults are now Suppr-branded; the "scammy default" finding is closed for the auth flow. **Still outstanding:** custom transactional emails (trial-ending / subscription / weekly digest / plan-build-failed) — needs vendor selection (Resend / SendGrid / SES / Postmark) which is a separate monetisation-architect + integration-manager call before code can ship. Tracked in `docs/emails/README.md`.
 25. ✅ **CM1 — Cook screen crashes on malformed JSON `steps` query.** **SHIPPED Batch 1 (d11ef00).** Wrapped `JSON.parse(stepsJson)` in try/catch with type-narrowing.
 
 ### Group G — Settings / More structural debt
