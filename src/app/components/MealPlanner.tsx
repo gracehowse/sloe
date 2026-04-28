@@ -3,6 +3,7 @@ import {
   Coffee,
   Cookie,
   Lock,
+  Plus,
   RefreshCw,
   ShoppingCart,
   Sun,
@@ -48,6 +49,17 @@ interface MealPlannerProps {
  *  generated plan carries them. */
 type SlotKey = "breakfast" | "lunch" | "dinner" | "snacks";
 const SLOTS: readonly SlotKey[] = ["breakfast", "lunch", "dinner", "snacks"] as const;
+
+/** F2-I (2026-04-28) — capitalised slot names for newly-inserted
+ *  empty-slot meals (parity with mobile `ALL_MEAL_SLOTS`). The grid's
+ *  bySlot lookup lowercases on read, so either case is safe to write
+ *  — capitalised is the convention. */
+const SLOT_TITLE: Record<SlotKey, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snacks: "Snacks",
+};
 
 /** Slot icons — lucide-react parity with the mobile lucide-react-native
  *  set so the visual treatment lines up across platforms. */
@@ -234,6 +246,44 @@ export const MealPlanner = memo(function MealPlanner({
       return;
     }
     setPlanDays(next);
+  };
+
+  /** F2-I (2026-04-28) — add an empty slot back to a day. Mirrors
+   *  the mobile flow at `apps/mobile/app/(tabs)/planner.tsx:2451-2522`.
+   *  The slot is inserted as a placeholder; the user then taps Swap
+   *  to fill it. Recomputes day totals. */
+  const handleAddSlotBack = (dayIndex: number, slot: SlotKey) => {
+    setMealPlan((prev) => {
+      if (!prev) return prev;
+      return prev.map((dpRow, di) => {
+        if (di !== dayIndex) return dpRow;
+        // Don't duplicate if the slot is already present (case-
+        // insensitive match — see bySlot lookup).
+        if (dpRow.meals.some((m) => String(m.name ?? "").toLowerCase() === slot)) {
+          return dpRow;
+        }
+        const newMeal: DayPlan["meals"][number] = {
+          name: SLOT_TITLE[slot],
+          recipeTitle: "",
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          isPlaceholder: true,
+        };
+        const meals = [...dpRow.meals, newMeal];
+        const totals = meals.reduce(
+          (acc, m) => ({
+            calories: acc.calories + (Number(m.calories) || 0),
+            protein: acc.protein + (Number(m.protein) || 0),
+            carbs: acc.carbs + (Number(m.carbs) || 0),
+            fat: acc.fat + (Number(m.fat) || 0),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        );
+        return { ...dpRow, meals, totals };
+      });
+    });
   };
 
   /** F2-M (2026-04-28) — log a planned meal to today's tracker.
@@ -896,6 +946,38 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })}
+              {/* F2-I (2026-04-28): "Add slot back" chips for any
+                  canonical slot missing from this day. Mobile parity:
+                  `apps/mobile/app/(tabs)/planner.tsx:2451-2522`.
+                  Hidden when all four slots are present — keeps the
+                  card lean. */}
+              {(() => {
+                const presentLower = new Set(
+                  dp.meals.map((m) => String(m.name ?? "").toLowerCase()),
+                );
+                const missing = SLOTS.filter((s) => !presentLower.has(s));
+                if (missing.length === 0) return null;
+                return (
+                  <div
+                    className="border-t border-border pt-2 mt-1 flex flex-wrap gap-1.5"
+                    data-testid={`planner-add-slot-back-${dp.day}`}
+                  >
+                    {missing.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => handleAddSlotBack(di, slot)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-primary border border-primary/40 bg-primary/10 hover:bg-primary/15 transition-colors"
+                        style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                        aria-label={`Add ${SLOT_TITLE[slot]} slot`}
+                      >
+                        <Plus size={10} aria-hidden />
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
