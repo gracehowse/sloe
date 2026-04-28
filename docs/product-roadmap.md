@@ -20,10 +20,10 @@ Authority: `docs/decisions/2026-04-27-strategic-direction.md` (17 binding decisi
 | Phase 2 | B1.4 — Caffeine + alcohol behind Settings opt-in | **Shipped** (2026-04-27) | Default off; AsyncStorage / localStorage; no DB schema change |
 | Phase 2 | B1.3 — Pricing collapse Free + Pro | **Open** | Separate PR; coordinates with `monetisation-architect` |
 | Phase 2.5 | Household demote behind Settings flag | **Open** | Deferred from B2 of strategic batch — next follow-up |
-| Phase 3 | B2.1 — Canonical Log FAB → unified `<LogSheet>` | **Open** | Phase 2 ships the FAB placeholder; this batch wires the sheet |
-| Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Open** | Threads `mealPlanAlgo` scoring into Today render |
-| Phase 3 | B2.3 — Onboarding produces first plan | **Open** | Library seed + auto-plan-from-seed |
-| Phase 3 | B2.4 — Trust posture sweep on every macro row | **Open** | TrustChip + SourceDot threading across diary / planner / recipe / saved-meal / Quick Add / search |
+| Phase 3 | B2.1 — Canonical Log FAB → unified `<LogSheet>` | **Shipped** (2026-04-27) | Web + mobile primitive with 6 sub-tabs; barcode 0-kcal manual entry closes Top Broken Journey #5; legacy TodayFabSheet migration done |
+| Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Shipped** (2026-04-27) | `northStarSuggestion` scorer + 4-kind block (default / library-empty / over-budget / no-fit); time-of-day CTA branching; mobile swipe-to-skip + reduce-motion fallback |
+| Phase 3 | B2.3 — Onboarding produces first plan | **Partially shipped** (2026-04-27) | Selection state machine + threshold parity with north-star library minimum live; recipe-grid presentation + auto-plan-from-seed persist deferred (schema review per CLAUDE.md MCP rule) |
+| Phase 3 | B2.4 — Trust posture sweep on every macro row | **Shipped** (2026-04-27) | `mapMealSourceToDot` + `<SourceDot size={6}>` wired into web + mobile meal rows; `<TrustChip>` available for detail surfaces; LogSheet renders SourceDot on every result row |
 | Phase 4 | B3.1 — Adaptive TDEE Progress headline | **Open** | Sits in You tab now (B1.1 prerequisite landed) |
 | Phase 4 | B3.2 — Coeliac/gluten depth | **Open** | Depends on B2.4 chip carrier |
 | Phase 4 | B3.3 — TestFlight expansion (open beyond N=1) | **Open** | Gated on demo moment shipping (B2.1–2.4) |

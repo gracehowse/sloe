@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import NutritionSourceBadge from "../../../components/NutritionSourceBadge";
+import { SourceDot } from "../ui/source-dot";
+import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import type { UserTier } from "../../../types/recipe";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
 import {
@@ -284,7 +286,10 @@ export function TodayMealsSection({
                       style={{ paddingLeft: 56 }}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+                        {/* Phase 3 / B2.4 (D-2026-04-27-16) — source dot
+                            replaces the bare success bullet so every
+                            macro-bearing row carries provenance colour. */}
+                        <SourceDot source={mapMealSourceToDot(meal.source)} size={6} className="shrink-0" />
                         <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
                         {meal.source && <NutritionSourceBadge source={meal.source} />}
                       </div>

@@ -50,6 +50,16 @@ import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { StreakPip } from "./suppr/streak-pip";
 import { LogFab } from "./suppr/log-fab";
+import { LogSheet } from "./suppr/log-sheet";
+import { NorthStarBlock } from "./suppr/north-star-block";
+import {
+  pickNorthStarSuggestion,
+  detectSlotForHour,
+  ctaForSlot,
+  bandLabel,
+  isLibraryEligibleForNorthStar,
+  type NorthStarRecipe,
+} from "../../lib/nutrition/northStarSuggestion";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
@@ -207,6 +217,85 @@ function pushRecentFood(name: string) {
   localStorage.setItem(RECENT_BARCODE_KEY, JSON.stringify(next));
 }
 
+/**
+ * NorthStarBlockHost — small wrapper that runs the suggestion picker
+ * and selects which `<NorthStarBlock>` kind to render based on the
+ * library size, remaining macros, and time-of-day slot.
+ *
+ * Authority: D-2026-04-27-04. Spec §A-northstar.
+ * Lives in this file (rather than its own module) because it's a
+ * thin glue layer with no logic worth testing in isolation —
+ * everything testable is in `northStarSuggestion.ts` and the
+ * presentational `<NorthStarBlock>`.
+ */
+function NorthStarBlockHost({
+  viewMode,
+  savedRecipesForLibrary,
+  remainingCalories,
+  remainingProtein,
+  remainingCarbs,
+  remainingFat,
+  onPrimaryCta,
+  onBrowseLibrary,
+}: {
+  viewMode: string;
+  savedRecipesForLibrary: NorthStarRecipe[];
+  remainingCalories: number;
+  remainingProtein: number;
+  remainingCarbs: number;
+  remainingFat: number;
+  onPrimaryCta: () => void;
+  onBrowseLibrary: () => void;
+}) {
+  if (viewMode !== "day") return null;
+
+  // Over-budget — hide block, show calm caption.
+  if (remainingCalories <= 0) {
+    return <NorthStarBlock kind="over-budget" />;
+  }
+
+  // Library too small — invite the user to seed it.
+  if (!isLibraryEligibleForNorthStar(savedRecipesForLibrary.length)) {
+    return <NorthStarBlock kind="library-empty" onOpenLibrary={onBrowseLibrary} />;
+  }
+
+  const now = new Date();
+  const slot = detectSlotForHour(now.getHours() * 60 + now.getMinutes());
+  const remaining = {
+    calories: remainingCalories,
+    protein: remainingProtein,
+    carbs: remainingCarbs,
+    fat: remainingFat,
+  };
+
+  const suggestion = pickNorthStarSuggestion(savedRecipesForLibrary, remaining, {
+    slot: slot ?? undefined,
+  });
+
+  if (!suggestion) {
+    return <NorthStarBlock kind="no-fit" onBrowse={onBrowseLibrary} />;
+  }
+
+  return (
+    <NorthStarBlock
+      kind="default"
+      ctaLabel={ctaForSlot(slot)}
+      suggestion={{
+        recipeId: suggestion.recipe.id,
+        title: suggestion.recipe.title,
+        thumbnail: suggestion.recipe.thumbnail,
+        predictedCalories: suggestion.predictedCalories,
+        predictedProtein: suggestion.predictedProtein,
+        predictedCarbs: suggestion.predictedCarbs,
+        predictedFat: suggestion.predictedFat,
+        bandLabel: bandLabel(suggestion.band),
+        bandTight: suggestion.band === "tight",
+      }}
+      onPrimaryCta={onPrimaryCta}
+    />
+  );
+}
+
 export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpenProgress }: NutritionTrackerProps) {
   const {
     nutritionTargets,
@@ -292,6 +381,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [manualFiber, setManualFiber] = useState(0);
   const [manualWater, setManualWater] = useState(0);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  // Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet open state.
+  // The web LogSheet wires its sub-tabs to existing flows (FoodSearch
+  // dialog, barcode dialog, voice dialog, photo dialog) rather than
+  // re-implementing them. Opening the sheet replaces the Phase 2
+  // "Coming in Phase 3" alert path.
+  const [logSheetOpen, setLogSheetOpen] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState("");
   const [barcodeBusy, setBarcodeBusy] = useState(false);
   const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
@@ -1661,6 +1756,32 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDisplayModeChange={setRingDisplayMode}
       />
 
+      {/* Phase 3 / B2.2 (D-2026-04-27-04) — north-star "What to eat
+          next" block. Sits immediately after the calorie ring per
+          spec §A-northstar; gates on library size (V-6 default ≥5)
+          and on remaining-calorie envelope (over-budget hides /
+          collapses). The CTA primary opens the LogSheet pre-tabbed
+          to Search foods so the user can confirm the suggestion.
+
+          The component is presentation-only; the suggestion picker
+          is the canonical scorer in
+          `src/lib/nutrition/northStarSuggestion.ts`. */}
+      <NorthStarBlockHost
+        viewMode={viewMode}
+        savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+        remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+        remainingProtein={Math.max(0, targets.protein - totals.protein)}
+        remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
+        remainingFat={Math.max(0, targets.fat - totals.fat)}
+        onPrimaryCta={() => setLogSheetOpen(true)}
+        onBrowseLibrary={() => {
+          // The web Today is one route; "browse" is a no-op stub here
+          // (the user tab-clicks Recipes themselves). Logging surface
+          // is the LogSheet — opening it is a reasonable fallback.
+          setLogSheetOpen(true);
+        }}
+      />
+
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
           TodayDashboardMacroTiles grid below. Mobile parity: removed
           same day in apps/mobile/app/(tabs)/index.tsx. See
@@ -2331,7 +2452,40 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           web is the long-form companion, daily logging is a phone
           activity). Phase 2 ships placement only with a no-op tap;
           Phase 3 wires the unified <LogSheet>. */}
-      <LogFab visible={viewMode === "day"} />
+      <LogFab
+        visible={viewMode === "day"}
+        onPress={() => setLogSheetOpen(true)}
+      />
+
+      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet.
+          The 6 sub-tabs are presentation-only; tabs that need full
+          flows (search, barcode, voice, photo) close the sheet and
+          delegate to the existing dialog state machines so the
+          underlying logic stays canonical. The Search tab here is the
+          "two-tap" entry per spec — picking it routes to the full
+          `<FoodSearch>` modal (which handles custom foods, recents,
+          etc.). */}
+      <LogSheet
+        open={logSheetOpen}
+        onOpenChange={setLogSheetOpen}
+        search={{
+          query: "",
+          onQueryChange: () => {},
+          results: [],
+          onAdd: () => {
+            setLogSheetOpen(false);
+            setFoodSearchOpen(true);
+          },
+          state: {},
+        }}
+        barcode={{
+          state: {},
+        }}
+        recent={{ entries: [], onPick: () => {} }}
+        saved={{ meals: [], onPick: () => {} }}
+        voice={{ state: {} }}
+        photo={{ state: {} }}
+      />
     </div>
   );
 });

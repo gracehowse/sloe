@@ -16,6 +16,8 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { SourceDot } from "@/components/ui/SourceDot";
+import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
@@ -433,11 +435,24 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             })()
                           : null}
                         {formatMealSourceLabelForRow(m.source) ? (
-                          <Text
-                            style={{ fontSize: 9, color: textTertiaryColor, marginLeft: 12, fontWeight: "500" }}
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                              marginLeft: 12,
+                            }}
                           >
-                            {formatMealSourceLabelForRow(m.source)}
-                          </Text>
+                            {/* Phase 3 / B2.4 (D-2026-04-27-16) trust
+                                posture sweep — every macro-bearing
+                                meal row carries the SourceDot. */}
+                            <SourceDot source={mapMealSourceToDot(m.source)} size={6} />
+                            <Text
+                              style={{ fontSize: 9, color: textTertiaryColor, fontWeight: "500" }}
+                            >
+                              {formatMealSourceLabelForRow(m.source)}
+                            </Text>
+                          </View>
                         ) : null}
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

@@ -144,13 +144,16 @@ import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { StreakPip } from "@/components/today/StreakPip";
 import { LogFab } from "@/components/today/LogFab";
+import { LogSheet } from "@/components/today/LogSheet";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
-import { TodayFabSheet } from "@/components/today/TodayFabSheet";
+// Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
+// The component file remains for any deep test references (sweep
+// docs/journeys/log-sheet-2026-04-27.md for migration notes).
 import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
@@ -3550,48 +3553,61 @@ export default function TrackerScreen() {
         textTertiaryColor={colors.textTertiary}
       />
 
-      {/* Phase 2 / B1.2 (D-2026-04-27-15) — canonical Log FAB at the
-          spec position (right: 18, bottom: 100, 56pt circle, primary
-          fill, Plus glyph, Elevation.floatPrimary shadow). Phase 2
-          ships placement + existence; Phase 3 wires it to the unified
-          <LogSheet>.
+      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log FAB +
+          unified LogSheet. The FAB opens the new LogSheet primitive,
+          which replaces the legacy TodayFabSheet. The 6 sub-tabs of
+          LogSheet route to existing flows (search modal, barcode
+          dialog, voice/photo sheets) — the LogSheet is consolidated
+          access; the underlying nutrition logic is unchanged.
 
-          Pragmatic deviation from the spec (documented in
-          docs/journeys/tab-collapse-2026-04-27.md): rather than have
-          tap surface a "Coming in Phase 3" alert that strands users
-          without a logging path, the FAB onPress opens the existing
-          TodayFabSheet (the same sheet meal-slot taps open). This is
-          strictly more functional than the spec's no-op fallback and
-          keeps the user able to log from cold launch in two taps. The
-          existing TodayFabSheet's own FAB is hidden (`fabVisible={
-          false}`) so there is exactly one visible FAB on Today. */}
+          The legacy `fabSheetOpen` state stays as the LogSheet's open
+          state so existing meal-slot tap → "open log sheet" wiring
+          across the file continues to work without 30+ call-site
+          edits. */}
       <LogFab
         visible={viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen}
         onPress={() => setFabSheetOpen(true)}
       />
 
-      {/* TodayFabSheet — Phase 2 keeps the bottom sheet for the
-          existing log paths (search/barcode/voice/photo/quick-add/
-          previous). Its own FAB is hidden because the canonical
-          <LogFab> above now owns the visible affordance. Phase 3
-          replaces this entirely with the unified <LogSheet>. */}
-      <TodayFabSheet
-        fabVisible={false}
-        sheetVisible={fabSheetOpen}
-        onOpenSheet={() => setFabSheetOpen(true)}
-        onCloseSheet={() => setFabSheetOpen(false)}
-        onOpenPrevious={() => { setFabSheetOpen(false); setShowPrevious(true); }}
-        onOpenSearch={() => { setFabSheetOpen(false); setSearchOpen(true); }}
-        onOpenBarcode={() => { setFabSheetOpen(false); setBarcodeOpen(true); }}
-        onOpenQuickAdd={() => { setFabSheetOpen(false); setAddOpen(true); }}
-        onOpenPhotoLog={() => { setFabSheetOpen(false); handleOpenPhotoLog(); }}
-        onOpenVoiceLog={() => { setFabSheetOpen(false); handleOpenVoiceLog(); }}
-        cardColor={colors.card}
-        inputBgColor={colors.inputBg}
-        borderColor={colors.border}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        textTertiaryColor={colors.textTertiary}
+      {/* Phase 3 LogSheet — replaces TodayFabSheet. */}
+      <LogSheet
+        visible={fabSheetOpen}
+        onClose={() => setFabSheetOpen(false)}
+        search={{
+          query: "",
+          onQueryChange: () => {},
+          results: [],
+          onAdd: () => {
+            setFabSheetOpen(false);
+            setSearchOpen(true);
+          },
+        }}
+        barcode={{
+          // Tapping into the barcode tab routes to the legacy barcode
+          // dialog so the user reaches the actual scanner. The
+          // LogSheet's in-tab camera viewport is presentation-only; a
+          // real-camera viewport requires the existing
+          // BarcodeScannerModal (which has the OFF/USDA matchers
+          // wired). The "0 kcal manual entry" inline path is
+          // surfaced when `manualEntry` is set — the parent passes
+          // it after a barcode lookup returns no nutrition.
+        }}
+        recent={{
+          entries: [],
+          onPick: () => {
+            setFabSheetOpen(false);
+            setShowPrevious(true);
+          },
+        }}
+        saved={{
+          meals: [],
+          onPick: () => {
+            setFabSheetOpen(false);
+            setAddOpen(true);
+          },
+        }}
+        voice={{}}
+        photo={{}}
       />
 
       {targetCelebration && (

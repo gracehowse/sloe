@@ -167,11 +167,17 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).not.toMatch(/<TodayQuickLogStrip[\s\S]+?\/>/);
   });
 
-  it("renders the canonical <LogFab> wired to open the existing TodayFabSheet", () => {
+  it("renders the canonical <LogFab> wired to open the canonical LogSheet (was TodayFabSheet pre-Phase-3)", () => {
     expect(indexSrc).toMatch(/<LogFab[\s\S]+?onPress=\{\(\)\s*=>\s*setFabSheetOpen\(true\)\}/);
   });
 
-  it("hides the legacy TodayFabSheet's own FAB so there is exactly one visible FAB", () => {
-    expect(indexSrc).toMatch(/<TodayFabSheet[\s\S]+?fabVisible=\{false\}/);
+  it("Phase 3: replaces TodayFabSheet with the canonical <LogSheet>", () => {
+    // Phase 3 / B2.1: TodayFabSheet's import + render is gone; the
+    // FAB now opens the unified <LogSheet>. The fabSheetOpen state
+    // variable is retained as the LogSheet's open flag (parallels
+    // the web Phase 3 wiring in NutritionTracker.tsx).
+    expect(indexSrc).not.toContain('import { TodayFabSheet }');
+    expect(indexSrc).toContain("import { LogSheet }");
+    expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
 });
