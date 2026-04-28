@@ -518,14 +518,12 @@ export default function ProfileScreen() {
     session?.user?.user_metadata?.display_name ??
     session?.user?.email?.split("@")[0] ??
     "Your Profile";
-  const tierLabel =
-    profileData.userTier === "pro" ? "Pro" : profileData.userTier === "base" ? "Base" : "Free";
+  // PR-01 (audit 2026-04-28): Base tier display collapsed; legacy
+  // `userTier === "base"` rows render as "Free" since the user has
+  // no active paid entitlement post-Free+Pro collapse.
+  const tierLabel = profileData.userTier === "pro" ? "Pro" : "Free";
   const tierBadgeColor =
-    profileData.userTier === "pro"
-      ? Accent.primary
-      : profileData.userTier === "base"
-        ? Accent.success
-        : colors.textSecondary;
+    profileData.userTier === "pro" ? Accent.primary : colors.textSecondary;
   const joinedLabel = (() => {
     const createdAt = session?.user?.created_at;
     if (!createdAt) return "Joined recently";

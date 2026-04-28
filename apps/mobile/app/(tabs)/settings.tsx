@@ -463,15 +463,18 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>Your plan</Text>
         <View style={styles.card}>
           <View style={[styles.row, { justifyContent: "flex-start", gap: 12 }]}>
+            {/* PR-01 (audit 2026-04-28): Base tier display collapsed
+                — legacy `userTier === "base"` rows render as "Free"
+                since the user has no active paid entitlement. */}
             <View style={{
               paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8,
-              backgroundColor: userTier === "pro" ? Accent.primary + "18" : userTier === "base" ? Accent.success + "18" : colors.border + "60",
+              backgroundColor: userTier === "pro" ? Accent.primary + "18" : colors.border + "60",
             }}>
               <Text style={{
                 fontSize: 13, fontWeight: "700",
-                color: userTier === "pro" ? Accent.primary : userTier === "base" ? Accent.success : colors.textSecondary,
+                color: userTier === "pro" ? Accent.primary : colors.textSecondary,
               }}>
-                {userTier === "pro" ? "Pro" : userTier === "base" ? "Base" : "Free"}
+                {userTier === "pro" ? "Pro" : "Free"}
               </Text>
             </View>
             {authEmail ? <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>{authEmail}</Text> : null}

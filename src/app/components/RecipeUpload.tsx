@@ -382,6 +382,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
   useEffect(() => () => stopScanner(), [stopScanner]);
 
+  // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
+  // `userTier === "base"` row keeps publish access here as a
+  // grace-grant — they paid at some point. Free users still cannot
+  // publish, gating preserved.
   const isCreator = userTier === "base" || userTier === "pro";
 
   const resetForm = () => {
