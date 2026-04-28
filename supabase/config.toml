@@ -233,10 +233,38 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Branded email templates — EMAIL-01 (audit 2026-04-28). Source HTML
+# at `supabase/templates/*.html` (canonical) and mirror at
+# `docs/emails/supabase-auth/*.html` (for human reference). Subjects
+# match the comment line at the top of each HTML file.
+#
+# Pushed to the linked project via `supabase config push --project-ref
+# fnfgxsignmuepshbebrl`. The Dashboard view (Authentication → Email
+# Templates) will reflect these after push.
+
+[auth.email.template.invite]
+subject = "You're invited to join Suppr"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your Suppr account"
+content_path = "./supabase/templates/confirm-signup.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Suppr password"
+content_path = "./supabase/templates/reset-password.html"
+
+[auth.email.template.magic_link]
+subject = "Your Suppr login link"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email address"
+content_path = "./supabase/templates/change-email.html"
+
+[auth.email.template.reauthentication]
+subject = "Confirm a sensitive change to your Suppr account"
+content_path = "./supabase/templates/reauthentication.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -311,7 +339,16 @@ max_frequency = "5s"
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
 enabled = true
-client_id = "com.supprclub.suppr,com.supprclub.suppr.web"
+# Bundle IDs in priority order — the iOS TestFlight build uses
+# `com.supprclub.supprapp` (the production bundle, see
+# `apps/mobile/app.json`), the legacy `com.supprclub.suppr` bundle is
+# kept for users who installed earlier builds, and `.suppr.web` is the
+# Services ID for web-side Sign in with Apple. EMAIL-01 push regression
+# (2026-04-28): an earlier `supabase config push` accidentally dropped
+# `.supprapp` from this list and broke Apple Sign-In on TestFlight; the
+# bundle is restored here as the canonical source so future pushes
+# don't repeat the regression.
+client_id = "com.supprclub.suppr,com.supprclub.suppr.web,com.supprclub.supprapp"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 # Overrides the default auth redirectUrl.
