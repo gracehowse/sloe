@@ -20,6 +20,10 @@ import {
 } from "../../lib/planning/planDayLabel.ts";
 import { computePlanWeekSummaryScore } from "../../lib/planning/planWeekSummary.ts";
 import {
+  buildDayTotalVsGoalLine,
+  type DayTotalTone,
+} from "../../lib/planning/dayTotalVsGoal.ts";
+import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
@@ -52,6 +56,30 @@ const SLOT_ICONS: Record<SlotKey, LucideIcon> = {
 };
 
 type SwapTarget = { day: number; slot: SlotKey; mealIndex: number };
+
+/** F2-E (2026-04-28) — tone → tailwind class for the day-total
+ *  delta cells. Symmetric over/under bands per
+ *  `src/lib/planning/dayTotalVsGoal.ts` (10% / 20% bands; "amber"
+ *  for over-budget per `project_prototype_carryover_rules.md` —
+ *  never red). */
+function toneClasses(tone: DayTotalTone): string {
+  if (tone === "neutral") return "bg-muted text-muted-foreground";
+  if (tone === "amber") return "bg-warning-soft text-warning";
+  // For "red" we still use the warning palette (over-budget = amber
+  // not destructive per the prototype carryover rule).
+  return "bg-warning-soft text-warning";
+}
+
+/** F2-E (2026-04-28) — portion-multiplier display label, hidden at
+ *  1×. Mirrors the mobile pill at `apps/mobile/app/(tabs)/planner.tsx:2318-2340`. */
+function formatPortionMultiplier(mult: number | null | undefined): string | null {
+  if (typeof mult !== "number" || !Number.isFinite(mult) || mult <= 0) return null;
+  if (Math.abs(mult - 1) < 0.01) return null;
+  // Trim trailing zeros: 0.5 → "0.5×"; 1.5 → "1.5×"; 2 → "2×".
+  const rounded = Math.round(mult * 100) / 100;
+  const fixed = rounded.toString();
+  return `${fixed}×`;
+}
 
 /**
  * Web Meal Planner — prototype rewrite (2026-04-20).
@@ -326,6 +354,16 @@ export const MealPlanner = memo(function MealPlanner({
           const dayDate = planCalendarDateForIndex(di);
           const dayLabel = shortWeekdayLabel(dayDate);
           const isTodayCol = isSameCalendarDay(dayDate, new Date());
+          // F2-E (2026-04-28): day-total vs goal line — kcal header +
+          // P/C/F delta chips. Skipped on days with zero meals to
+          // keep the empty-day card lean.
+          const dayTotalLine = buildDayTotalVsGoalLine(dp.meals, {
+            calories: nutritionTargets.calories,
+            protein: nutritionTargets.protein,
+            carbs: nutritionTargets.carbs,
+            fat: nutritionTargets.fat,
+          });
+          const renderTotals = dayTotalLine.hasTargets && dp.meals.length > 0;
           // F2-A (2026-04-28): bySlot now indexes all four canonical
           // slots (Breakfast / Lunch / Dinner / Snacks) so the grid
           // renders Snacks when the generated plan carries it. Pre-
@@ -371,6 +409,44 @@ export const MealPlanner = memo(function MealPlanner({
                   </span>
                 ) : null}
               </div>
+              {/* F2-E (2026-04-28): day total vs goal — calories
+                  header + P/C/F delta chips. Mobile parity at
+                  `apps/mobile/app/(tabs)/planner.tsx:2053-2089`. */}
+              {renderTotals ? (
+                <div
+                  data-testid={`planner-day-totals-${dp.day}`}
+                  className="flex flex-col gap-1.5"
+                  aria-label={`Day total · ${Math.round(dayTotalLine.totals.calories)} of ${Math.round(nutritionTargets.calories)} kcal`}
+                >
+                  <p
+                    className={`tabular-nums inline-flex items-center rounded-md ${toneClasses(dayTotalLine.cells[0].tone)}`}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    {Math.round(dayTotalLine.totals.calories)} / {Math.round(nutritionTargets.calories)} kcal
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {dayTotalLine.cells.slice(1).map((cell) => (
+                      <span
+                        key={cell.key}
+                        className={`tabular-nums inline-flex items-center rounded-full ${toneClasses(cell.tone)}`}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          padding: "1px 6px",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {cell.label} {Math.round(cell.actual)}/{Math.round(cell.goal)}g
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {SLOTS.map((slot) => {
                 const SlotIcon = SLOT_ICONS[slot];
                 const entry = bySlot.get(slot);
@@ -406,6 +482,15 @@ export const MealPlanner = memo(function MealPlanner({
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
+                // F2-E (2026-04-28): per-meal portion-multiplier
+                // badge. Hidden at 1× (the silent default) so cards
+                // stay clean when no portion adjustment was made.
+                // The post-portion macros are already baked into
+                // `meal.calories` (per the F30 fix), so this badge
+                // is display-only — it explains, doesn't multiply.
+                const portionLabel = formatPortionMultiplier(
+                  (meal as { portionMultiplier?: number }).portionMultiplier,
+                );
                 return (
                   <div
                     key={slot}
@@ -433,22 +518,35 @@ export const MealPlanner = memo(function MealPlanner({
                       >
                         {slot}
                       </p>
-                      <p
-                        className="text-foreground"
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          lineHeight: 1.3,
-                          marginBottom: 4,
-                          paddingRight: 20,
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {isPlaceholder ? "Empty slot" : meal.recipeTitle}
-                      </p>
+                      <div className="flex items-start gap-1 mb-1" style={{ paddingRight: 20 }}>
+                        <p
+                          className="text-foreground flex-1 min-w-0"
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            lineHeight: 1.3,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {isPlaceholder ? "Empty slot" : meal.recipeTitle}
+                        </p>
+                        {portionLabel ? (
+                          <span
+                            className="shrink-0 inline-flex items-center rounded-full bg-primary/15 text-primary tabular-nums"
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: "1px 6px",
+                            }}
+                            aria-label={`${portionLabel} portion`}
+                          >
+                            {portionLabel}
+                          </span>
+                        ) : null}
+                      </div>
                       <p
                         className="text-muted-foreground tabular-nums"
                         style={{ fontSize: 10 }}
