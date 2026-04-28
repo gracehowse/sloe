@@ -92,15 +92,19 @@ describe("Round 2 — copy / discoverability", () => {
 });
 
 describe("Round 2 — destructive action escalation", () => {
-  it("B13: 'Delete my account permanently' has a ghost-button outline (not unstyled text)", () => {
+  it("B13: 'Delete my account' is its own row (M15/M16 fix), not stacked inside the reset modal", () => {
     const SRC = read("apps/mobile/app/(tabs)/more.tsx");
-    // The most-destructive action now has its own border + radius so the
-    // hierarchy reads as primary → outline → ghost rather than ending
-    // in unstyled text.
-    const idx = SRC.indexOf("Delete my account permanently");
-    expect(idx).toBeGreaterThan(0);
-    const window = SRC.slice(Math.max(0, idx - 800), idx);
-    expect(window).toMatch(/borderColor: t\.red \+ "20"/);
+    // M15/M16 fix (audit 2026-04-28): the previous "Delete my
+    // account permanently" button was the third destructive action
+    // inside the reset/erase modal — too easy to misclick. Account
+    // deletion now lives in its own SettingsRow (icon=Trash2,
+    // iconColor=t.red, label="Delete my account") with a deliberate
+    // two-step confirm flow that requires typing 'delete'.
+    expect(SRC).toMatch(/label="Delete my account"/);
+    // The ghost-button-inside-the-modal pattern is gone.
+    expect(SRC).not.toContain("Delete my account permanently");
+    // The new flow's "type delete" confirmation must be present.
+    expect(SRC).toMatch(/Type 'delete' to confirm/);
   });
 });
 

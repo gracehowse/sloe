@@ -77,6 +77,99 @@ type View =
   | "import"
   | "targets";
 
+/**
+ * RecipesSubTabPill — mobile-web Library↔Discover sub-tab pill bar.
+ * L5 fix (audit 2026-04-28): native has `RecipesSubTabHeader`; web's
+ * mobile-web breakpoint had no in-screen path to switch between
+ * Library and Discover (only the bottom nav routed to Library by
+ * default). This pill mirrors the existing Plan/Shop pattern at
+ * `App.tsx:283-313`. Hidden on `md+` where the desktop sidebar owns
+ * the navigation.
+ */
+function RecipesSubTabPill({
+  currentView,
+  onNavigate,
+}: {
+  currentView: "library" | "discover";
+  onNavigate: (view: "library" | "discover") => void;
+}) {
+  return (
+    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 py-2">
+      <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-muted/90 gap-1">
+        <button
+          type="button"
+          onClick={() => onNavigate("library")}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
+            currentView === "library"
+              ? "bg-card shadow-sm text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Library
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate("discover")}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
+            currentView === "discover"
+              ? "bg-card shadow-sm text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Discover
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * YouSubTabPill — mobile-web Progress↔Settings↔Profile sub-tab pill.
+ * Resolves the "You tab is one-screen dead end on mobile-web" P0
+ * (audit 2026-04-28) — pre-fix, tapping You routed to Progress with
+ * no path to Settings/Profile/Sign-Out without typing
+ * `?view=settings` in the URL bar.
+ *
+ * Three pills mirror the desktop sidebar's `you` group (Progress /
+ * Profile / Settings); the audit recommended collapsing native's
+ * Progress/Settings/More to two-pill Progress/Settings, but that's
+ * a separate strategic restructure. This pill at least closes the
+ * navigation gap so mobile-web users can reach Settings.
+ */
+function YouSubTabPill({
+  currentView,
+  onNavigate,
+}: {
+  currentView: "progress" | "profile" | "settings";
+  onNavigate: (view: "progress" | "profile" | "settings") => void;
+}) {
+  const tabs: Array<{ id: "progress" | "profile" | "settings"; label: string }> = [
+    { id: "progress", label: "Progress" },
+    { id: "profile", label: "Profile" },
+    { id: "settings", label: "Settings" },
+  ];
+  return (
+    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 py-2">
+      <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-muted/90 gap-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onNavigate(t.id)}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
+              currentView === t.id
+                ? "bg-card shadow-sm text-primary"
+                : "text-muted-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const {
     profileTier: userTier,
@@ -268,14 +361,17 @@ export default function App() {
         return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
       case "discover":
         return (
-          <DiscoverFeed
-            userTier={userTier}
-            initialOpenRecipeId={deepLinkRecipeId}
-            initialCookMode={searchParams.get("cook") === "1"}
-            initialPortions={parseFloat(searchParams.get("portions") ?? "") || undefined}
-            onConsumedDeepLinkRecipe={deepLinkRecipeId ? clearRecipeQuery : undefined}
-            onViewTracker={() => navigateToView("today")}
-          />
+          <>
+            <RecipesSubTabPill currentView="discover" onNavigate={navigateToView} />
+            <DiscoverFeed
+              userTier={userTier}
+              initialOpenRecipeId={deepLinkRecipeId}
+              initialCookMode={searchParams.get("cook") === "1"}
+              initialPortions={parseFloat(searchParams.get("portions") ?? "") || undefined}
+              onConsumedDeepLinkRecipe={deepLinkRecipeId ? clearRecipeQuery : undefined}
+              onViewTracker={() => navigateToView("today")}
+            />
+          </>
         );
       case "plan":
         return (
@@ -336,33 +432,47 @@ export default function App() {
           </>
         );
       case "progress":
-        return <FeatureErrorBoundary feature="Progress"><ProgressDashboard /></FeatureErrorBoundary>;
+        return (
+          <>
+            <YouSubTabPill currentView="progress" onNavigate={navigateToView} />
+            <FeatureErrorBoundary feature="Progress"><ProgressDashboard /></FeatureErrorBoundary>
+          </>
+        );
       case "profile":
         return (
-          <Profile
-            userTier={userTier}
-            displayName={displayName}
-            // Round-3 (2026-04-19): Profile upsell row fires with
-            // `from: "profile"` so F2 can slice which tab surfaced the
-            // upgrade intent.
-            onUpgrade={() => openUpgradePromo("profile")}
-            onOpenNutrition={() => navigateToView("today")}
-          />
+          <>
+            <YouSubTabPill currentView="profile" onNavigate={navigateToView} />
+            <Profile
+              userTier={userTier}
+              displayName={displayName}
+              // Round-3 (2026-04-19): Profile upsell row fires with
+              // `from: "profile"` so F2 can slice which tab surfaced the
+              // upgrade intent.
+              onUpgrade={() => openUpgradePromo("profile")}
+              onOpenNutrition={() => navigateToView("today")}
+            />
+          </>
         );
       case "library":
         return (
-          <Library userTier={userTier} onUpgrade={() => openUpgradePromo("recipes_library")} onGoDiscover={() => navigateToView("discover")} />
+          <>
+            <RecipesSubTabPill currentView="library" onNavigate={navigateToView} />
+            <Library userTier={userTier} onUpgrade={() => openUpgradePromo("recipes_library")} onGoDiscover={() => navigateToView("discover")} />
+          </>
         );
       case "shopping":
         return <ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} />;
       case "settings":
         return (
-          <Settings
-            userTier={userTier}
-            authEmail={authEmail}
-            scrollToPromoOnOpen={settingsScrollToPromo}
-            onScrollToPromoConsumed={clearSettingsScrollToPromo}
-          />
+          <>
+            <YouSubTabPill currentView="settings" onNavigate={navigateToView} />
+            <Settings
+              userTier={userTier}
+              authEmail={authEmail}
+              scrollToPromoOnOpen={settingsScrollToPromo}
+              onScrollToPromoConsumed={clearSettingsScrollToPromo}
+            />
+          </>
         );
       case "notifications":
         return <NotificationsCenter onOpenRecipe={openRecipeById} />;
