@@ -43,7 +43,8 @@ import { stripSectionPrefix } from "../../../src/lib/recipe-import/extractSocial
  * maintaining a hand-synced duplicate. Same value as before (0.50);
  * the import path is now stable across web + mobile.
  */
-export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
 // vs search-oriented helpers here — see `docs/product/web-mobile-parity-scope.md`
@@ -1257,12 +1258,27 @@ export function scaleMacros(
   return scaleFromPer100gGrams(per100g, grams);
 }
 
-/** Save verified ingredients back to Supabase and update recipe totals. */
+/** Save verified ingredients back to Supabase and update recipe totals.
+ *
+ * VR-01 fix (2026-04-28): the recipe-level `is_verified` flag is now
+ * gated on whether EVERY ingredient is matched at or above
+ * `RECIPE_INGREDIENT_REVIEW_CONFIDENCE`. Previously the flag was set
+ * unconditionally to true, so a recipe whose oats matched against
+ * "rolled oat sushi" with 35% confidence got a green Verified
+ * TrustChip on detail. Per CLAUDE.md: "If nutrition / ingredient
+ * matching is uncertain, do not guess." The recipe is only verified
+ * when no row needs review.
+ */
 export async function saveVerifiedIngredients(
   recipeId: string,
   ingredients: VerifiableIngredient[],
   servings: number,
 ): Promise<{ ok: true } | { error: string }> {
+  // VR-01: any ingredient unverified or below the review threshold
+  // disqualifies the recipe from `is_verified=true`.
+  const allRowsVerified = ingredients.every(
+    (ing) => ing.isVerified && ing.confidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+  );
   // 1. Compute and save recipe totals FIRST — ensures recipe-level macros always
   //    reflect the user's intent even if per-ingredient updates partially fail.
   //    We use `effectiveIngredientMacros` so per-ingredient overrides take
@@ -1315,7 +1331,7 @@ export async function saveVerifiedIngredients(
       fiber_g: perServing.fiberG,
       sugar_g: perServing.sugarG,
       sodium_mg: perServing.sodiumMg,
-      is_verified: true,
+      is_verified: allRowsVerified,
       allergens: inferredAllergens,
     })
     .eq("id", recipeId);
@@ -1336,7 +1352,7 @@ export async function saveVerifiedIngredients(
           fiber_g: perServing.fiberG,
           sugar_g: perServing.sugarG,
           sodium_mg: perServing.sodiumMg,
-          is_verified: true,
+          is_verified: allRowsVerified,
         })
         .eq("id", recipeId);
       if (fallbackErr) return { error: fallbackErr.message };

@@ -36,7 +36,21 @@ export default function CookModeScreen() {
     steps: string;
   }>();
 
-  const steps: string[] = stepsJson ? JSON.parse(stepsJson) : [];
+  // CM1 fix (2026-04-28): a malformed `steps` query param used to crash
+  // the screen with no error UI — `JSON.parse` would throw on the
+  // synchronous render path and Expo Router would surface a red box in
+  // dev / a blank screen in prod. Now we fail safe to an empty array
+  // and the screen renders the "no instructions yet" state below.
+  const steps: string[] = (() => {
+    if (!stepsJson) return [];
+    try {
+      const parsed = JSON.parse(stepsJson);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((s): s is string => typeof s === "string");
+    } catch {
+      return [];
+    }
+  })();
   const [current, setCurrent] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [timerElapsed, setTimerElapsed] = useState(0);

@@ -975,6 +975,39 @@ export function isHealthSyncAvailable(): boolean {
   return false;
 }
 
+/**
+ * HS-01 fix (2026-04-28) — probe whether HealthKit is still readable.
+ *
+ * iOS deliberately doesn't tell apps when read permission is denied
+ * (privacy feature), so we can't rely on a clean `getAuthStatus` call.
+ * Instead we attempt a tiny step-samples read for the last 24h. If the
+ * native bridge throws, the permission is almost certainly revoked
+ * (user toggled off in Settings → Privacy → Health → Suppr); empty
+ * results alone are NOT treated as denial — a perfectly inactive 24h
+ * is plausible for a real user.
+ *
+ * Returns `"connected"` on a clean read, `"denied"` when the bridge
+ * errored (user revoked access), and `"unavailable"` when HK isn't
+ * loadable at all (Android / simulator without HK / Expo Go).
+ */
+export async function probeHealthAccess(): Promise<
+  "connected" | "denied" | "unavailable"
+> {
+  const hk = loadAppleHealthKit();
+  if (!hk) return "unavailable";
+  const endDate = new Date();
+  const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+  try {
+    await getDailyStepCountSamplesPromise(hk, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+    return "connected";
+  } catch {
+    return "denied";
+  }
+}
+
 export type HealthKitPermissionOutcome = {
   /** True if at least body-metrics authorization completed (steps, weight, energy, workouts). */
   ok: boolean;

@@ -11,6 +11,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   isExpoGoRuntime,
   isHealthSyncAvailable,
+  probeHealthAccess,
   requestDietaryHealthPermissions,
   requestHealthPermissions,
   syncHealthData,
@@ -37,7 +38,14 @@ export default function HealthSyncScreen() {
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
 
-  // Persist import/export prefs + whether Apple Health connect completed (UI only)
+  // Persist import/export prefs + whether Apple Health connect completed (UI only).
+  // HS-01 (2026-04-28): the cached `health_sync_apple_connected` flag is
+  // only trusted as a starting signal — we then probe HealthKit on
+  // mount/focus and flip back to disconnected if the bridge errors
+  // (user revoked permission in iOS Settings → Privacy → Health →
+  // Suppr). Previously the flag was treated as authoritative for the
+  // life of the install, so a revoked-then-reopened user kept seeing
+  // green "Connected" + "Sync Now" while the integration was dead.
   useEffect(() => {
     (async () => {
       try {
@@ -53,6 +61,31 @@ export default function HealthSyncScreen() {
       } catch {}
     })();
   }, []);
+
+  // HS-01: re-probe HealthKit access on every focus. If the bridge
+  // errors, treat as revoked — clear the cached flag, drop the UI
+  // back to "Connect Apple Health". A read returning zero samples is
+  // NOT a denial signal (a real user might genuinely have no steps in
+  // 24h), so we only act on bridge errors.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        const status = await probeHealthAccess();
+        if (cancelled) return;
+        if (status === "denied") {
+          setConnected(false);
+          try {
+            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+            await AsyncStorage.removeItem(HEALTH_APPLE_CONNECTED_KEY);
+          } catch {}
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   // If native never calls back, don’t leave the Connect button spinning when leaving this screen.
   useFocusEffect(
