@@ -23,7 +23,21 @@ This is the **single ranked action list** for executor sprints. Audits are on di
 
 ### Group C — Plan / Shopping write-path
 10. ✅ **F1 — "Generate Shopping List" unreachable on mobile after regenerate.** **SHIPPED Batch 3 (dc9196b).** Extracted `generateShoppingListFromPlan` callback; reachable from summary card when count is 0.
-11. 🟡 **F2 — Web Planner is ~30% of mobile's surface.** **IN FLIGHT — Batch 23 (commit 02b3b41) shipped F2-A (Snacks slot + slot icons) + F2-B (day-count picker 1/3/7) + F2-C (Free-tier lock).** Per journey-architect's phased plan (2026-04-28), remaining batches D–M cover: start-date picker, per-meal portion badge + day-totals row, week summary card, named-slot switcher UI, slot toggles, "Add slot back" chips, leftover badge + distribution, household summary row, log-today action. Templates + portion stepper + day-summary-strip flagged for product-lead before porting (design call needed).
+11. 🟡 **F2 — Web Planner is ~30% of mobile's surface.** **IN FLIGHT — 9 of 11 sub-batches shipped:**
+    - ✅ F2-A Snacks slot + slot icons (batch 23, `02b3b41`)
+    - ✅ F2-B day-count picker 1/3/7 (batch 23)
+    - ✅ F2-C Free-tier lock — closes F5 (batch 23)
+    - ✅ F2-D start-date picker Today/Tomorrow/Next-week (batch 29, `8baf9cb`)
+    - ✅ F2-E per-meal portion badge + day-totals row (batch 24, `8d7fd2e`)
+    - ✅ F2-F week summary card with worst-short-day diagnosis (batch 25, `d11836f`)
+    - ✅ F2-G named-slot switcher UI (batch 30, `5419e38`)
+    - ✅ F2-I add-slot-back chips (batch 31, `0fcc5ff`)
+    - ✅ F2-J leftover badge display (batch 26, `d2a4fb8`)
+    - ✅ F2-K leftover distribution at generation time (batch 27, `e4ad639`)
+    - ✅ F2-M log-today action on meal rows (batch 28, `bf1f80a`)
+    - ❌ F2-H slot toggles (Breakfast/Lunch/Dinner/Snacks include-when-regenerating) — needs pass-through in `generatePlanFromLibrary` (~40 min)
+    - ❌ F2-L household summary row — needs household client check (~30 min)
+    - **Templates + portion stepper + day-summary-strip flagged for product-lead before porting (design call needed).**
 12. ⏸️ **F3 — Web Shopping list missing baseline interactions.** No share, export, clear-all, clear-checked, per-row remove, progress bar. **PARKED in stash@{0}** — work done but the prototype-port test was reverted by Grace, signalling the prototype-strip baseline should hold. **Needs product call: prototype baseline vs cross-platform parity.**
 13. ✅ **F30 — Mobile "Log today" portion_multiplier double-application.** **SHIPPED Batch 3 (dc9196b) + Batch 15 (c37b52c).** `portion_multiplier: 1` since macros are post-portion; `generateSmartPlan` now drops zero-macro recipes.
 
