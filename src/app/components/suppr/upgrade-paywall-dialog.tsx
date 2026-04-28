@@ -213,7 +213,18 @@ export function UpgradePaywallDialog({
   const showProGatedNote = variant === "free_to_base" && isProGatedTrigger;
 
   // --- Pricing (from SSOT, never hardcoded) -------------------------
-  const baseTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Base"), []);
+  // PR-01 (audit 2026-04-28): Base was removed from PRICING_TIERS.
+  // The Variant A (Free→Base) flow below still references `baseTier`
+  // for hardcoded-fallback prices (£3.99/£29.99). The full dialog
+  // collapse to a single Free→Pro variant lands in batch 20; this
+  // typecheck fix preserves the visible behaviour by always returning
+  // `undefined` from the lookup, which then trips every `?? hardcoded`
+  // fallback. The cast widens the comparison so the type narrowing
+  // for `t.name` doesn't reject a string we just removed.
+  const baseTier = useMemo(
+    () => PRICING_TIERS.find((t) => (t.name as string) === "Base"),
+    [],
+  );
   const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
 
   const isAnnual = period === "annual";

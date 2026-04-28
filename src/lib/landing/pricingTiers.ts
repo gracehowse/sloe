@@ -18,25 +18,25 @@
 
 import { FREE_SAVE_LIMIT } from "../../context/appData/constants";
 
-export type PricingTierName = "Free" | "Base" | "Pro";
+export type PricingTierName = "Free" | "Pro";
 
 export type BillingPeriod = "monthly" | "annual";
 
 export type PricingTier = {
   name: PricingTierName;
   tag: string;
-  /** Monthly-view price (e.g. "£3.99"). Free shows "£0". */
+  /** Monthly-view price (e.g. "£7.99"). Free shows "£0". */
   price: string;
   /** Monthly-view period suffix (e.g. "/month"). Free shows "forever". */
   period: string;
-  /** Annual-view price (e.g. "£29.99"). Absent for Free. */
+  /** Annual-view price (e.g. "£59.99"). Absent for Free. */
   annualPrice?: string;
   /** Annual-view period suffix — typically "/year". */
   annualPeriod?: string;
   /** Annual saving badge copy (e.g. "Save 37%"). */
   annualSavings?: string;
   /** Tier key for checkout. `null` for Free. */
-  checkoutTier: "base" | "pro" | null;
+  checkoutTier: "pro" | null;
   /** Bullet used on /pricing as a small tier summary. */
   nutritionNote: string;
   /** First line shown above the feature list ("Everything in …, plus"). */
@@ -50,6 +50,20 @@ export type PricingTier = {
  * in a tier must have a real gate (server check or client guard);
  * claims without a gate are treated as monetisation bugs and are
  * tracked in `docs/product/landing-maintenance.md`.
+ *
+ * PR-01 (audit 2026-04-28): Base tier removed per the 2026-04-27
+ * strategic direction (memory `project_strategic_direction_2026-04-27.md`).
+ * Pre-collapse there were three tiers (Free / Base / Pro); now Free
+ * + Pro only. The four Base features (unlimited saves, multi-day
+ * plans, shopping list from plan, publish) folded into Pro per
+ * monetisation-architect's recommendation — Free still includes the
+ * single-day plan + import + barcode + cook mode, so Pro's pitch is
+ * "the full multi-day loop + AI logging" at a single price point.
+ *
+ * Internal `UserTier` enum keeps `"base"` for safety (any legacy
+ * Stripe webhook event referencing a Base price ID writes
+ * `profiles.user_tier = "base"` and the runtime treats that branch
+ * as Free-equivalent for gating).
  */
 export const PRICING_TIERS: PricingTier[] = [
   {
@@ -74,40 +88,25 @@ export const PRICING_TIERS: PricingTier[] = [
     highlighted: false,
   },
   {
-    name: "Base",
-    tag: "The full meal-planning loop.",
-    price: "£3.99",
-    period: "/month",
-    annualPrice: "£29.99",
-    annualPeriod: "/year",
-    annualSavings: "Save 37%",
-    checkoutTier: "base",
-    nutritionNote: "Unlimited recipes + multi-day planning",
-    featHead: "Everything in Free, plus",
-    features: [
-      "Unlimited saved recipes",
-      "Multi-day meal plans matched to your macro targets",
-      "Shopping list from plan",
-      "Publish recipes to the community",
-    ],
-    highlighted: true,
-  },
-  {
     name: "Pro",
-    tag: "Log by photo and voice, faster.",
+    tag: "The full meal-planning loop, plus AI logging.",
     price: "£7.99",
     period: "/month",
     annualPrice: "£59.99",
     annualPeriod: "/year",
     annualSavings: "Save 37%",
     checkoutTier: "pro",
-    nutritionNote: "AI photo & voice logging",
-    featHead: "Everything in Base, plus",
+    nutritionNote: "Unlimited recipes + AI photo & voice logging",
+    featHead: "Everything in Free, plus",
     features: [
+      "Unlimited saved recipes",
+      "Multi-day meal plans matched to your macro targets",
+      "Shopping list from plan",
+      "Publish recipes to the community",
       "AI photo meal recognition (100/day)",
       "Voice food logging (100/day)",
       "Priority email support",
     ],
-    highlighted: false,
+    highlighted: true,
   },
 ];

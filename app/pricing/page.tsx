@@ -40,7 +40,7 @@ function normalisePaywallFrom(raw: string | string[] | undefined): PaywallViewed
 
 export const metadata: Metadata = {
   title: "Pricing — Suppr",
-  description: "Choose a plan that fits your goals. Free, Base, or Pro.",
+  description: "Choose a plan that fits your goals. Free or Pro.",
 };
 
 /**
@@ -75,7 +75,7 @@ const FAQ = [
     // matching note there; the client only blocks *new* saves above the
     // limit rather than making existing ones read-only. Round-2 legal
     // pass (2026-04-19) softened again: recipes "stay saved and editable".
-    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Base.`,
+    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Pro.`,
   },
   // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
   // (monetisation-architect round-2): parking a placeholder with no
@@ -134,9 +134,8 @@ export default async function PricingPage({
       {/* Canonical `paywall_viewed` contract (L6 G9 + 2026-04-19
           round-2): every emit carries `{ from, tier, surface, platform }`.
           `/pricing` is the full-route commercial surface, so
-          `surface: "route"`. `tier: "pro"` tracks the *primary* tier
-          being sold; the page does also advertise Base but the
-          monetisation funnel's conversion target is Pro. */}
+          `surface: "route"`. `tier: "pro"` tracks the only paid tier
+          (PR-01, 2026-04-28: Base removed per strategic direction). */}
       <PageViewTracker
         event={AnalyticsEvents.paywall_viewed}
         properties={{

@@ -112,14 +112,11 @@ export function PricingTiersGrid({
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
   // Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
-  // We filter the Base tier out of the rendered grid here. The
-  // PRICING_TIERS SSOT in src/lib/landing/pricingTiers.ts still carries
-  // Base for grandfathered subscribers + Stripe / RevenueCat
-  // entitlement compatibility. Stripe + RevenueCat reconfig is a
-  // separate monetisation-architect deliverable (gated on the Base
-  // migration path call); this UI change ships independently per
-  // Phase 5 sequencing.
-  const visibleTiers = tiers.filter((t) => t.name !== "Base");
+  // PR-01 (audit 2026-04-28): the Base filter is now a no-op — Base
+  // was removed from PRICING_TIERS in batch 19. Kept as a defensive
+  // identity pass so the pre-fix grid behaviour is preserved if any
+  // legacy tier name slips back into the SSOT during migration.
+  const visibleTiers = tiers;
 
   function onPeriodCommit(next: BillingPeriod) {
     if (next === billing) return;

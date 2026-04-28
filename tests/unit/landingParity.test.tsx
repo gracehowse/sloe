@@ -115,8 +115,8 @@ describe("landing page — pricing tier parity with /pricing route", () => {
     expect(PRICING_SOURCE).toContain('from "../../src/lib/landing/content');
   });
 
-  it("SSOT exposes exactly Free / Base / Pro", () => {
-    expect(PRICING_TIERS.map((t) => t.name)).toEqual(["Free", "Base", "Pro"]);
+  it("SSOT exposes exactly Free / Pro (PR-01, 2026-04-28 — Base tier removed per strategic direction)", () => {
+    expect(PRICING_TIERS.map((t) => t.name)).toEqual(["Free", "Pro"]);
   });
 
   it("landing displays every SSOT tier headline price", () => {
