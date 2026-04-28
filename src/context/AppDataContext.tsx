@@ -996,9 +996,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // compare web vs mobile perf. `generatePlanFromLibrary` is
         // already sync on web — the durationMs captures the sampler cost.
         const generateStartMs = Date.now();
-        const plan = generatePlanFromLibrary({ savedRecipes, targets, days });
+        const rawPlan = generatePlanFromLibrary({ savedRecipes, targets, days });
+        // F2-K (audit 2026-04-28): post-process the plan with the
+        // leftover-distribution pass, mirroring the mobile flow at
+        // `apps/mobile/app/(tabs)/planner.tsx:1361-1376`. A recipe with
+        // `servings >= 2` produces (servings - 1) leftover entries that
+        // fill compatible empty slots on subsequent days. This was a
+        // real cross-platform divergence — mobile users got leftovers
+        // distributed automatically; web users got every slot freshly
+        // sampled, which on small recipe pools produced repetition
+        // and increased the chance of duplicate-ingredient shopping.
+        const { distributeLeftovers } = await import("../lib/nutrition/leftoversPlanner.ts");
+        const recipesByRef: Record<string, { servings: number } | undefined> = {};
+        for (const r of savedRecipes) {
+          if (typeof r.servings === "number" && r.servings > 0) {
+            recipesByRef[r.id] = { servings: r.servings };
+          }
+        }
+        const { plan, leftoverCount } = distributeLeftovers(rawPlan, recipesByRef);
         const generateDurationMs = Date.now() - generateStartMs;
         setMealPlan(plan);
+        if (leftoverCount > 0) {
+          // Telemetry only — no user toast (mobile parity). The
+          // visible signal is the Leftover badge on the row itself.
+        }
         toast.success("Meal plan generated");
         if (notificationPrefs.mealReminders) {
           pushNotification({
