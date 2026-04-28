@@ -64,13 +64,13 @@ const config: Record<TrustChipVariant, VariantConfig> = {
     bg: "rgba(34, 168, 96, 0.08)",
     fg: "#22a860",
     glyph: "check",
-    label: "Gluten-free · high confidence",
+    label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {
     bg: "rgba(232, 160, 32, 0.10)",
     fg: "#e8a020",
     glyph: "sparkles",
-    label: "Gluten contamination risk · review",
+    label: "Contains potential gluten · review",
   },
 };
 

@@ -62,8 +62,8 @@ describe("TrustChip (mobile) — every variant renders the spec copy", () => {
     ["off-adjusted", "OFF · adjusted"],
     ["estimated", "Estimated · verify"],
     ["manual", "Manual"],
-    ["gluten-high-conf", "Gluten-free · high confidence"],
-    ["gluten-uncertain", "Gluten contamination risk · review"],
+    ["gluten-high-conf", "No gluten-containing ingredients"],
+    ["gluten-uncertain", "Contains potential gluten · review"],
   ] as const)("variant %s shows '%s'", (variant, expected) => {
     const { getByText } = render(<TrustChip variant={variant} />);
     expect(getByText(expected)).toBeTruthy();

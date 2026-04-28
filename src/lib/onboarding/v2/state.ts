@@ -42,6 +42,11 @@ export const STEP_IDS = [
   "reveal", // 12 — the aha moment
   "permissions", // 13
   "import", // 14
+  // Phase 5 / B2.3 (D-2026-04-27-14): final step is "Pick 5 recipes" —
+  // the user ends with a populated library + auto-generated first plan
+  // rather than just a target. See docs/specs/2026-04-27-production-design-spec.md
+  // Surface F + docs/decisions/2026-04-27-onboarding-candidate-source.md.
+  "recipes", // 15 — onboarding final step
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -62,6 +67,7 @@ export const STEP_LABELS: Record<StepId, string> = {
   reveal: "Your targets",
   permissions: "Permissions",
   import: "Import",
+  recipes: "Recipes",
 };
 
 export const TOTAL_STEPS = STEP_IDS.length;
@@ -134,6 +140,16 @@ export interface OnboardingState {
    * concrete targets.
    */
   weightSkipped: boolean;
+  /**
+   * Phase 5 / B2.3 — set of seed slugs the user picked on the final
+   * "Pick 5 recipes" step. Persisted across step navigation so the
+   * user can go back / forward without losing their selection.
+   * Stored as a string array (JSON-friendly); `togglePick` /
+   * `derivePickerState` work with `ReadonlySet<string>` for ergonomic
+   * referential-equality checks. The terminal-step handler converts
+   * between the two shapes.
+   */
+  pickedRecipeSlugs: string[];
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -211,6 +227,7 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   importSource: null,
   paceDangerAcknowledged: false,
   weightSkipped: false,
+  pickedRecipeSlugs: [],
 };
 
 /** Resolve the step index a navigation should land on, accounting for
@@ -314,6 +331,13 @@ export function canAdvance(
     case "permissions":
       return true; // both permissions are optional
     case "import":
+      return true;
+    case "recipes":
+      // Phase 5 / B2.3 — picker step. The CTA "Build my first week"
+      // is gated on `picked.size >= ONBOARDING_PICK_MIN` inside the
+      // RecipePickerStep itself; canAdvance returns true here so the
+      // shell's terminal-step button is reachable. The step component
+      // owns the disabled-state visual + the actual persist trigger.
       return true;
     default:
       return true;

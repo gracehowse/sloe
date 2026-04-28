@@ -34,8 +34,8 @@ const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState =>
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 14 steps in the documented order", () => {
-    expect(TOTAL_STEPS).toBe(14);
+  it("ships exactly 15 steps in the documented order (Phase 5: + recipes)", () => {
+    expect(TOTAL_STEPS).toBe(15);
     expect(STEP_IDS).toEqual([
       "welcome",
       "signup",
@@ -51,6 +51,7 @@ describe("onboarding v2 — step ordering", () => {
       "reveal",
       "permissions",
       "import",
+      "recipes",
     ]);
   });
 

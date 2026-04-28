@@ -13,6 +13,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { useOnboardingV2 } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
+import { derivePickerState } from "../../../../src/lib/onboarding/v2/finalStep";
 
 /**
  * Mobile flow shell — full-screen stack of step views with a top bar
@@ -38,6 +39,19 @@ export function MobileFlow() {
   const colors = useThemeColors();
   const StepComponent = MOBILE_STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
+
+  // Phase 5 / B2.3 — `recipes` is the new terminal step. The footer
+  // button reads "Build my first week" (or "Pick {n} more to continue"
+  // when below the threshold), and disables until the user has picked
+  // ≥ ONBOARDING_PICK_MIN seeds. Final completion handler lives in
+  // the mobile shell at apps/mobile/app/onboarding.tsx — the
+  // continue() fall-through here is the safety net for paths that
+  // bypass the shell (e.g. deep-link).
+  const isTerminal = currentStepId === "recipes";
+  const pickerState = React.useMemo(
+    () => derivePickerState(new Set(state.pickedRecipeSlugs ?? [])),
+    [state.pickedRecipeSlugs],
+  );
 
   // Stage E — fire the soft-warn `advanced` analytics event when the
   // user taps Continue from the Pace step while a warning is showing.
@@ -150,21 +164,28 @@ export function MobileFlow() {
       >
         <Pressable
           onPress={handleContinue}
-          disabled={!canAdvance}
+          disabled={!canAdvance || (isTerminal && !pickerState.canSubmit)}
           accessibilityRole="button"
-          accessibilityLabel="Continue"
-          accessibilityState={{ disabled: !canAdvance }}
+          accessibilityLabel={isTerminal ? pickerState.ctaLabel : "Continue"}
+          accessibilityState={{
+            disabled: !canAdvance || (isTerminal && !pickerState.canSubmit),
+          }}
           style={({ pressed }) => ({
             height: 56,
             borderRadius: 14,
             backgroundColor: Accent.primary,
             alignItems: "center",
             justifyContent: "center",
-            opacity: !canAdvance ? 0.4 : pressed ? 0.9 : 1,
+            opacity:
+              !canAdvance || (isTerminal && !pickerState.canSubmit)
+                ? 0.4
+                : pressed
+                  ? 0.9
+                  : 1,
           })}
         >
           <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0f" }}>
-            Continue
+            {isTerminal ? pickerState.ctaLabel : "Continue"}
           </Text>
         </Pressable>
       </View>

@@ -69,6 +69,17 @@ function findTier(name: "Base" | "Pro"): PricingTier {
 const PRO_TIER = findTier("Pro");
 const BASE_TIER = findTier("Base");
 
+/**
+ * Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
+ *
+ * The Base tier is hidden from the rendered paywall. RevenueCat
+ * offerings still carry the Base packages so existing subscribers
+ * keep their entitlement; the Stripe + RevenueCat reconfig (deprecate
+ * vs grandfather vs migrate) is a separate monetisation-architect
+ * deliverable. Once that lands we delete the BASE_* constants below.
+ */
+const SHOW_BASE_TIER = false as const;
+
 const PRO_FEATURE_HEAD = PRO_TIER.featHead ?? "Everything in Base, plus";
 const PRO_FEATURES = PRO_TIER.features;
 const BASE_FEATURE_HEAD = BASE_TIER.featHead ?? "Everything in Free, plus";
@@ -982,7 +993,7 @@ export default function PaywallScreen() {
               />
             ) : null}
 
-            {hasBase ? (
+            {SHOW_BASE_TIER && hasBase ? (
               <TierCard
                 tier="base"
                 title="Base"

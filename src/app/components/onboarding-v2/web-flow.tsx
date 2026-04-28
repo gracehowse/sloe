@@ -14,6 +14,16 @@ import { useOnboardingV2 } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
 import { mapV2GoalToLegacy, persistOnboardingV2 } from "@/lib/onboarding/v2/persist";
+import { derivePickerState } from "@/lib/onboarding/v2/finalStep";
+import {
+  ONBOARDING_SEEDS,
+  type OnboardingSeed,
+} from "@/lib/onboarding/onboardingSeeds";
+import {
+  resolveSeedsToRecipeIds,
+  saveResolvedSeeds,
+} from "@/lib/onboarding/onboardingSeedResolver";
+import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
 
 /**
  * Web flow shell — split layout with a narrative left column and an
@@ -33,8 +43,19 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  const isTerminal = currentStepId === "import";
+  // Phase 5 / B2.3 — `recipes` is the new terminal step (Surface F).
+  // The previous terminal step `import` still exists in the flow as a
+  // demo close, but the actual onboarding completion fires from the
+  // RecipePickerStep CTA so the user ends with a populated library +
+  // generated first week.
+  const isTerminal = currentStepId === "recipes";
   const [completing, setCompleting] = React.useState(false);
+  // completionStatus is set just before window.location.href fires —
+  // useful for tests (the bounce navigates immediately so no UI
+  // surface reads it post-set in a real session).
+  const [, setCompletionStatus] = React.useState<
+    null | { ok: boolean; planFailed?: boolean; missingCount?: number }
+  >(null);
 
   // Auto-skip the signup step when the visitor is already authed (e.g.
   // they came from /signin → /onboarding directly). The step renders
@@ -105,12 +126,59 @@ export function WebFlow() {
           state,
           targets,
         });
+
+        // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
+        // Best-effort: each step is independently observable so a
+        // partial failure (resolve miss / plan-build fail) still
+        // bounces the user to /home with a clear toast caller.
+        const pickedSeeds: OnboardingSeed[] = ONBOARDING_SEEDS.filter((s) =>
+          state.pickedRecipeSlugs.includes(s.slug),
+        );
+        let planFailed = false;
+        let missingCount = 0;
+        if (pickedSeeds.length > 0) {
+          const resolution = await resolveSeedsToRecipeIds(supabase, pickedSeeds);
+          missingCount = resolution.missing.length;
+          if (resolution.resolved.length > 0) {
+            await saveResolvedSeeds(supabase, {
+              userId: authedUserId,
+              resolved: resolution.resolved,
+            });
+            if (targets) {
+              const planResult = await buildFirstWeekFromSeeds(supabase, {
+                userId: authedUserId,
+                resolved: resolution.resolved,
+                targets: {
+                  calories: targets.target,
+                  proteinG: targets.proteinG,
+                  carbsG: targets.carbsG,
+                  fatG: targets.fatG,
+                  fiberG: targets.fiberG,
+                },
+              });
+              planFailed = !planResult.ok;
+            }
+          }
+        }
+
+        setCompletionStatus({ ok: true, planFailed, missingCount });
+
         track(AnalyticsEvents.onboarding_completed, {
           flow: "v2",
           weight_skipped: state.weightSkipped,
           goal: state.goal,
+          recipes_picked: pickedSeeds.length,
+          recipes_resolved: pickedSeeds.length - missingCount,
+          plan_built: !planFailed,
         });
-        window.location.href = "/home?view=discover";
+        // Per spec Surface F state: success → 600ms loader → Today.
+        // Plan failure → caller surfaces "We saved your recipes but
+        // couldn't build a plan" toast on /home (read from query
+        // string param).
+        const homeQs = planFailed
+          ? "?onboarding_complete=1&plan_build=failed"
+          : "?onboarding_complete=1";
+        window.location.href = `/home${homeQs}`;
       } else {
         // Anonymous completer — bounce to the canonical sign-up entry
         // point (/onboarding now runs the real auth inline; /signup
@@ -294,21 +362,33 @@ export function WebFlow() {
                   its own "Create account" CTA which fires the real
                   Supabase signUp and advances on success. Showing
                   both would let the user bypass the auth handshake. */}
-              {!isSignup && (
-                <Button
-                  size="lg"
-                  onClick={isTerminal ? handleComplete : handleContinue}
-                  disabled={!canAdvance || completing}
-                  className="h-12 px-6 font-bold"
-                >
-                  {isTerminal
-                    ? completing
-                      ? "Saving…"
-                      : "Open my dashboard"
-                    : "Continue"}
-                  <ArrowRight className="size-4" strokeWidth={2.2} />
-                </Button>
-              )}
+              {!isSignup && (() => {
+                // Phase 5 / B2.3 — terminal step is `recipes`. The
+                // "Build my first week" CTA is gated on the picker
+                // state's canSubmit flag (≥ ONBOARDING_PICK_MIN
+                // selected). The shell reads pickedRecipeSlugs from
+                // OnboardingState directly so the disabled state
+                // updates without prop drilling.
+                const pickerState = derivePickerState(
+                  new Set(state.pickedRecipeSlugs ?? []),
+                );
+                const terminalDisabled =
+                  isTerminal && !pickerState.canSubmit;
+                const terminalLabel = completing
+                  ? "Building your week…"
+                  : pickerState.ctaLabel;
+                return (
+                  <Button
+                    size="lg"
+                    onClick={isTerminal ? handleComplete : handleContinue}
+                    disabled={!canAdvance || completing || terminalDisabled}
+                    className="h-12 px-6 font-bold"
+                  >
+                    {isTerminal ? terminalLabel : "Continue"}
+                    <ArrowRight className="size-4" strokeWidth={2.2} />
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -111,6 +111,16 @@ export function PricingTiersGrid({
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
+  // Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
+  // We filter the Base tier out of the rendered grid here. The
+  // PRICING_TIERS SSOT in src/lib/landing/pricingTiers.ts still carries
+  // Base for grandfathered subscribers + Stripe / RevenueCat
+  // entitlement compatibility. Stripe + RevenueCat reconfig is a
+  // separate monetisation-architect deliverable (gated on the Base
+  // migration path call); this UI change ships independently per
+  // Phase 5 sequencing.
+  const visibleTiers = tiers.filter((t) => t.name !== "Base");
+
   function onPeriodCommit(next: BillingPeriod) {
     if (next === billing) return;
     // `paywall_period_changed` fires on committed toggle flips only
@@ -138,8 +148,8 @@ export function PricingTiersGrid({
       ) : null}
       <BillingToggle billing={billing} onChange={onPeriodCommit} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        {tiers.map((tier) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-3xl mx-auto">
+        {visibleTiers.map((tier) => {
           const isAnnual = billing === "annual";
           const showAnnual = isAnnual && Boolean(tier.annualPrice);
           const price = showAnnual ? tier.annualPrice! : tier.price;

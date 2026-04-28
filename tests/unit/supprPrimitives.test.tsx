@@ -88,8 +88,8 @@ describe("TrustChip", () => {
     ["off-adjusted", "OFF · adjusted"],
     ["estimated", "Estimated · verify"],
     ["manual", "Manual"],
-    ["gluten-high-conf", "Gluten-free · high confidence"],
-    ["gluten-uncertain", "Gluten contamination risk · review"],
+    ["gluten-high-conf", "No gluten-containing ingredients"],
+    ["gluten-uncertain", "Contains potential gluten · review"],
   ] as const)("variant=%s renders label %s", (variant, label) => {
     render(<TrustChip variant={variant} />);
     expect(screen.getByText(label)).toBeInTheDocument();

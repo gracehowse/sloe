@@ -92,8 +92,8 @@ describe("TrustChip rendering — every variant", () => {
       { v: "off-adjusted", expected: "OFF · adjusted" },
       { v: "estimated", expected: "Estimated · verify" },
       { v: "manual", expected: "Manual" },
-      { v: "gluten-high-conf", expected: "Gluten-free · high confidence" },
-      { v: "gluten-uncertain", expected: "Gluten contamination risk · review" },
+      { v: "gluten-high-conf", expected: "No gluten-containing ingredients" },
+      { v: "gluten-uncertain", expected: "Contains potential gluten · review" },
     ];
     for (const { v, expected } of variants) {
       const { unmount } = render(<TrustChip variant={v} />);

@@ -159,6 +159,9 @@ import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
+// Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
+import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
+import { useSavedLibraryRecipes } from "@/lib/recipes";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayAddFoodForm } from "@/components/today/TodayAddFoodForm";
@@ -1513,6 +1516,35 @@ export default function TrackerScreen() {
   ]);
 
   const remaining = effectiveCalorieGoal - totals.calories;
+
+  // Phase 5 / B3.M (2026-04-27) — fetch the user's saved library so
+  // `<NorthStarBlockHost>` can choose a "what to eat next" suggestion.
+  // Same hook the Library tab uses so we stay on a single source of
+  // truth for the saved set. Refresh handled by the hook's internal
+  // useEffect on userId change.
+  const { recipes: savedLibraryRecipes } = useSavedLibraryRecipes(userId ?? null);
+  const savedRecipesForLibrary = useMemo(
+    () =>
+      savedLibraryRecipes.map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories ?? 0,
+        protein: r.protein ?? 0,
+        carbs: r.carbs ?? 0,
+        fat: r.fat ?? 0,
+        thumbnail: r.image,
+        mealType: r.mealSlots,
+      })),
+    [savedLibraryRecipes],
+  );
+
+  // Per-macro remaining values used by the NorthStar suggestion picker.
+  // Calories are signed (already computed); macros clamp to 0 since
+  // "negative remaining protein" isn't a meaningful selector — the
+  // scorer treats over-target macros as neutral, not penalised.
+  const remainingProtein = Math.max(0, targets.protein - totals.protein);
+  const remainingCarbs = Math.max(0, targets.carbs - totals.carbs);
+  const remainingFat = Math.max(0, targets.fat - totals.fat);
 
   // Batch 5.12 — iOS widget snapshot. Writes today's totals + fast state
   // to a shared App Group-accessible snapshot (AsyncStorage always, file
@@ -3153,6 +3185,31 @@ export default function TrackerScreen() {
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
+            />
+
+            {/* Phase 5 / B3.M (2026-04-27) — NorthStarBlockHost wires
+                the "What to eat next from your library that hits your
+                remaining macros" surface. Renders between the Today
+                hero ring and the macro tiles, per spec Surface A.
+                Authority: D-2026-04-27-04. Per-day skip ledger backed
+                by AsyncStorage in the host. */}
+            <NorthStarBlockHost
+              viewMode={viewMode}
+              savedRecipesForLibrary={savedRecipesForLibrary}
+              remainingCalories={remaining}
+              remainingProtein={remainingProtein}
+              remainingCarbs={remainingCarbs}
+              remainingFat={remainingFat}
+              onPrimaryCta={() => {
+                // Tapping the CTA opens the suggested recipe's detail
+                // page; user can then "Log this meal" from there.
+                // Centralising the open-recipe action here keeps the
+                // host free of router knowledge.
+                const first = savedRecipesForLibrary[0];
+                if (first) router.push(`/recipe/${first.id}`);
+              }}
+              onBrowseLibrary={() => router.push("/(tabs)/library")}
+              selectedDateKey={dayKey}
             />
 
             {/* RemainingMacrosBar removed 2026-04-20 — the horizontal

@@ -19,6 +19,7 @@ import { StrategyStep } from "./strategy";
 import { RevealStep } from "./reveal";
 import { PermissionsStep } from "./permissions";
 import { ImportStep } from "./import";
+import { RecipePickerStep } from "./recipes";
 
 /** Step components MAY accept a `compact` prop (used by mobile); the
  *  shell passes it via spread so platform-specific layouts can still
@@ -42,6 +43,7 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
   reveal: RevealStep,
   permissions: PermissionsStep,
   import: ImportStep,
+  recipes: RecipePickerStep,
 };
 
 export {
@@ -59,4 +61,5 @@ export {
   RevealStep,
   PermissionsStep,
   ImportStep,
+  RecipePickerStep,
 };

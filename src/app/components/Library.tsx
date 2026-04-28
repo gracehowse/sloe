@@ -295,10 +295,18 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                   className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+                    {/* Phase 5 / B5 (2026-04-27) — view-transition-name
+                        on the card image so the recipe-card → detail
+                        morph (spec §1.1) has a continuous geometry
+                        anchor. Browsers without the View Transitions
+                        API (Firefox today) ignore the property — no
+                        regression. The matching name lives on the
+                        detail hero (RecipeDetail.tsx). */}
                     <img
                       src={recipe.image}
                       alt=""
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                      style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
                     />
                     <div
                       className={`absolute top-3 left-3 px-2 py-0.5 rounded-md text-[11px] font-semibold shadow-sm ${kindBadgeClasses(kind)}`}

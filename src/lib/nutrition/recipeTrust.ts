@@ -22,6 +22,10 @@
 
 import type { TrustChipVariant } from "../../app/components/ui/trust-chip";
 import { mapMealSourceToDot } from "./sourceMap";
+import {
+  classifyIngredientGluten,
+  type GlutenClassification,
+} from "./glutenClassifier";
 
 export interface RecipeTrustInput {
   /** Free-form source label (USDA / OFF / FatSecret / AI / Manual / null). */
@@ -125,4 +129,82 @@ export function aggregateRecipeTrust(rows: readonly RecipeTrustInput[]): TrustCh
  */
 export function recipeLevelTrust(input: RecipeTrustInput): TrustChipVariant {
   return mapToTrustVariant(input);
+}
+
+/* -------------------------- Gluten depth -------------------------- */
+
+/**
+ * Recipe-level gluten classification. Scans every ingredient line and
+ * decides whether the recipe earns a gluten-free chip, a contamination-
+ * risk chip, or no chip at all (gluten-containing recipes don't claim a
+ * chip — the absence is itself the signal).
+ *
+ * Production design spec — 2026-04-27 §1.6 + B3.2 (gluten depth).
+ * Authority: D-2026-04-27-13.
+ *
+ * Rules:
+ *   - Any ingredient `contains + high`     → null (no chip).
+ *   - Any ingredient `risk + medium`       → `gluten-uncertain`.
+ *   - All ingredients `free + high`        → `gluten-high-conf`.
+ *   - Empty ingredient list                → null (be honest).
+ *   - Mix of `free + high` and `free + low`→ null (insufficient
+ *     surface area to claim "gluten-free · high confidence" in good
+ *     faith — coeliac-grade UX requires a clear signal across every
+ *     line, not silent assumptions).
+ *
+ * Returns the recipe-level chip variant (`gluten-high-conf` |
+ * `gluten-uncertain`) plus the spec-pinned message string that ships
+ * on the chip. Null variant means "do not surface a gluten chip on
+ * this recipe."
+ */
+export interface RecipeGlutenResult {
+  variant: "gluten-high-conf" | "gluten-uncertain" | null;
+  message: string;
+  /** Per-ingredient classifications, exposed for inline UI flagging. */
+  perIngredient: GlutenClassification[];
+}
+
+export function classifyRecipeGluten(
+  ingredients: readonly string[],
+): RecipeGlutenResult {
+  if (!ingredients || ingredients.length === 0) {
+    return { variant: null, message: "", perIngredient: [] };
+  }
+
+  const perIngredient = ingredients.map((line) =>
+    classifyIngredientGluten(line ?? ""),
+  );
+
+  // Any explicit gluten-bearing ingredient → no chip (gluten-containing
+  // recipe by intent — the absence of the gluten-free chip is the
+  // signal). The card / detail surface is free to render this normally.
+  if (perIngredient.some((c) => c.status === "contains")) {
+    return { variant: null, message: "", perIngredient };
+  }
+
+  // Any risk marker → uncertain chip (review). Coeliac users get an
+  // explicit "review this" rather than a silent false-positive.
+  if (perIngredient.some((c) => c.status === "risk")) {
+    return {
+      variant: "gluten-uncertain",
+      message: "Contains potential gluten · review",
+      perIngredient,
+    };
+  }
+
+  // Every ingredient must be `free + high` for the high-confidence
+  // claim. A `free + low` line means we couldn't read the line with
+  // confidence — coeliac-grade UX refuses to claim "high confidence"
+  // on a line we can't classify. Silent (no chip) is the right
+  // posture here; the user gets the recipe rendered normally without
+  // a misleading chip.
+  if (perIngredient.every((c) => c.status === "free" && c.confidence === "high")) {
+    return {
+      variant: "gluten-high-conf",
+      message: "No gluten-containing ingredients",
+      perIngredient,
+    };
+  }
+
+  return { variant: null, message: "", perIngredient };
 }

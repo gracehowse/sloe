@@ -18,6 +18,7 @@ import { MobileStrategyStep } from "./strategy";
 import { MobileRevealStep } from "./reveal";
 import { MobilePermissionsStep } from "./permissions";
 import { MobileImportStep } from "./import";
+import { MobileRecipePickerStep } from "./recipes";
 
 export interface MobileStepComponentProps {
   compact?: boolean;
@@ -41,6 +42,7 @@ export const MOBILE_STEP_COMPONENTS: Record<
   reveal: MobileRevealStep,
   permissions: MobilePermissionsStep,
   import: MobileImportStep,
+  recipes: MobileRecipePickerStep,
 };
 
 export {
@@ -58,4 +60,5 @@ export {
   MobileRevealStep,
   MobilePermissionsStep,
   MobileImportStep,
+  MobileRecipePickerStep,
 };

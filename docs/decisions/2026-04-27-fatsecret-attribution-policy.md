@@ -50,7 +50,7 @@ Edamam keys are present in `.env.local` (`EDAMAM_APP_ID=7e8d54f7`).
 | Question | Answer |
 |---|---|
 | **Tier** | Free (inferred from `.env.local` comment: "Free tier: 1,000 req/day") |
-| **Content access** | Restaurant + branded food nutrition via Food Database API v2. Nutrition Analysis API (recipe-level macros from ingredient lines). **No recipe prose, instructions, or content fields through any Edamam tier.** |
+| **Content access** | Restaurant + branded food nutrition via Food Database API v2. Nutrition Analysis API (recipe-level macros from ingredient lines). The Food Database and Nutrition Analysis APIs do not return recipe prose or instructions — they are nutrition-data products. **Note:** the Edamam **Recipe Search API** is a separate product (separate credentials, separate contract) that does index recipe metadata from third-party publishers. We have no Recipe Search credentials. See `docs/decisions/2026-04-27-edamam-recipe-api-amendment.md` for full analysis. |
 | **Attribution** | Required per Edamam ToS. Already documented on `/licences` page as `Edamam API terms (commercial licence)`. Comment in `FoodSearch.tsx:937` correctly notes the Edamam attribution requirement. |
 | **Rate limit** | 1,000 req/day on Free tier |
 | **Implementation status** | Fully wired: `src/lib/edamam/client.ts`, `app/api/edamam/search/route.ts`, FoodSearch merges Edamam results alongside USDA and OFF |
