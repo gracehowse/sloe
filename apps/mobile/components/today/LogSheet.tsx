@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Camera,
+  ChevronRight,
   Clock,
   History,
   Mic,
@@ -167,17 +168,30 @@ export interface LogSheetProps {
   };
 }
 
+// LS-02 fix (audit 2026-04-28): pre-fix the six pills used the
+// long labels "Search foods" / "Scan barcode" / "Saved meals" /
+// "Voice log" / "Photo log" — total row width ~600-700pt — so on
+// every viewport ≤430pt the last 1-2 tabs (Voice + Photo, the Pro
+// features) were clipped off-screen. The horizontal ScrollView had
+// no fade-edge or chevron affordance, so first-time users landed on
+// Search, saw four tabs, and concluded "no AI features here" —
+// exactly the discoverability problem the entry-point consolidation
+// was meant to fix.
+// Shortened labels keep the row inside a 390pt iPhone without
+// scrolling. Accessibility labels keep the longer phrasing where
+// VoiceOver context still matters.
 const TAB_LIST: ReadonlyArray<{
   id: LogSheetTab;
   label: string;
+  a11yLabel: string;
   Icon: typeof Search;
 }> = [
-  { id: "search", label: "Search foods", Icon: Search },
-  { id: "barcode", label: "Scan barcode", Icon: ScanBarcode },
-  { id: "recent", label: "Recent", Icon: Clock },
-  { id: "saved", label: "Saved meals", Icon: History },
-  { id: "voice", label: "Voice log", Icon: Mic },
-  { id: "photo", label: "Photo log", Icon: Camera },
+  { id: "search", label: "Search", a11yLabel: "Search foods tab", Icon: Search },
+  { id: "barcode", label: "Scan", a11yLabel: "Scan barcode tab", Icon: ScanBarcode },
+  { id: "recent", label: "Recent", a11yLabel: "Recent tab", Icon: Clock },
+  { id: "saved", label: "Saved", a11yLabel: "Saved meals tab", Icon: History },
+  { id: "voice", label: "Voice", a11yLabel: "Voice log tab", Icon: Mic },
+  { id: "photo", label: "Photo", a11yLabel: "Photo log tab", Icon: Camera },
 ];
 
 export function LogSheet({
@@ -269,7 +283,7 @@ export function LogSheet({
             accessibilityRole="tablist"
             accessibilityLabel="Log sheet sub-tabs"
           >
-            {TAB_LIST.map(({ id, label, Icon }) => {
+            {TAB_LIST.map(({ id, label, a11yLabel, Icon }) => {
               const active = tab === id;
               return (
                 <Pressable
@@ -277,7 +291,7 @@ export function LogSheet({
                   onPress={() => handleSelectTab(id)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={`${label} tab`}
+                  accessibilityLabel={a11yLabel}
                   testID={`log-sheet-tab-${id}`}
                   style={[
                     styles.subtab,
@@ -333,47 +347,56 @@ function SearchTab({
 }: NonNullable<LogSheetProps["search"]>) {
   const colors = useThemeColors();
 
-  // When the host wires `onOpen`, the search input acts as a
-  // tap-to-open router: tapping it closes the LogSheet and opens the
-  // dedicated FoodSearchModal where real search happens. The TextInput
-  // is rendered non-editable so the user can't type-and-wait — the
-  // tap fires immediately. When `onOpen` is omitted (legacy callers),
-  // the editable input + onAdd flow still works.
+  // LS-01 fix (audit 2026-04-28): when the host wires `onOpen`, the
+  // search row is a tap-to-open BUTTON, not a TextInput. The
+  // earlier implementation rendered a read-only input that still
+  // looked like an input — placeholder + caret cue tricked users
+  // into typing-and-waiting (especially mobile-web Safari, which
+  // briefly toggled the on-screen keyboard before the modal swap).
+  // Now: button-styled row with a trailing chevron and "Search
+  // foods, brands, or recipes" copy that reads as an action target.
   const isRouter = typeof onOpen === "function";
-  const inputContent = (
-    <View
-      style={[
-        styles.searchInputWrap,
-        { backgroundColor: colors.inputBg },
-      ]}
-      pointerEvents={isRouter ? "none" : "auto"}
-    >
-      <Search size={IconSize.base} color={colors.textSecondary} />
-      <TextInput
-        accessibilityLabel="Search foods"
-        placeholder="Search foods, brands, or recipes…"
-        placeholderTextColor={colors.textTertiary}
-        value={query}
-        onChangeText={onQueryChange}
-        editable={!isRouter}
-        returnKeyType="search"
-        style={{ flex: 1, color: colors.text, fontSize: 14 }}
-      />
-    </View>
-  );
 
   return (
     <View style={{ flex: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
       {isRouter ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Search foods"
+          accessibilityLabel="Open search"
+          accessibilityHint="Opens the food search where you can find foods, brands, and recipes"
           onPress={onOpen}
+          style={({ pressed }) => [
+            styles.searchInputWrap,
+            {
+              backgroundColor: colors.inputBg,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
         >
-          {inputContent}
+          <Search size={IconSize.base} color={colors.textSecondary} />
+          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}>
+            Search foods, brands, or recipes
+          </Text>
+          <ChevronRight size={IconSize.base} color={colors.textTertiary} />
         </Pressable>
       ) : (
-        inputContent
+        <View
+          style={[
+            styles.searchInputWrap,
+            { backgroundColor: colors.inputBg },
+          ]}
+        >
+          <Search size={IconSize.base} color={colors.textSecondary} />
+          <TextInput
+            accessibilityLabel="Search foods"
+            placeholder="Search foods, brands, or recipes…"
+            placeholderTextColor={colors.textTertiary}
+            value={query}
+            onChangeText={onQueryChange}
+            returnKeyType="search"
+            style={{ flex: 1, color: colors.text, fontSize: 14 }}
+          />
+        </View>
       )}
 
       {state?.offline ? (

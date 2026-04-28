@@ -30,6 +30,7 @@
 import * as React from "react";
 import {
   Camera,
+  ChevronRight,
   Clock,
   History,
   Mic,
@@ -188,17 +189,23 @@ export interface LogSheetProps {
 
 type LucideIconCmp = typeof Search;
 
+// LS-02 fix (audit 2026-04-28): shorter labels keep the six-pill row
+// inside narrow viewports without horizontal scroll, so Voice + Photo
+// (the Pro features) aren't clipped off-screen and missed by first-
+// time users. `ariaLabel` keeps the longer phrasing for screen-reader
+// context. Mirrors the mobile change in LogSheet.tsx.
 const TAB_CONFIG: ReadonlyArray<{
   id: LogSheetTab;
   label: string;
+  ariaLabel: string;
   icon: LucideIconCmp;
 }> = [
-  { id: "search", label: "Search foods", icon: Search },
-  { id: "barcode", label: "Scan barcode", icon: ScanBarcode },
-  { id: "recent", label: "Recent", icon: Clock },
-  { id: "saved", label: "Saved meals", icon: History },
-  { id: "voice", label: "Voice log", icon: Mic },
-  { id: "photo", label: "Photo log", icon: Camera },
+  { id: "search", label: "Search", ariaLabel: "Search foods", icon: Search },
+  { id: "barcode", label: "Scan", ariaLabel: "Scan barcode", icon: ScanBarcode },
+  { id: "recent", label: "Recent", ariaLabel: "Recent", icon: Clock },
+  { id: "saved", label: "Saved", ariaLabel: "Saved meals", icon: History },
+  { id: "voice", label: "Voice", ariaLabel: "Voice log", icon: Mic },
+  { id: "photo", label: "Photo", ariaLabel: "Photo log", icon: Camera },
 ];
 
 export function LogSheet({
@@ -300,6 +307,7 @@ export function LogSheet({
                   type="button"
                   role="tab"
                   aria-selected={active}
+                  aria-label={entry.ariaLabel}
                   data-state={active ? "active" : "inactive"}
                   onClick={() => setTab(entry.id)}
                   className={cn(
@@ -355,30 +363,57 @@ function SearchTab({ query, onQueryChange, results, onAdd, state, onOpen }: Sear
   const isRouter = typeof onOpen === "function";
   return (
     <div data-slot="log-sheet-tab-search" className="flex flex-col gap-3">
-      <label className="relative block">
-        <span className="sr-only">Search foods</span>
-        <Search
-          aria-hidden
-          width={16}
-          height={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          type="search"
-          inputMode="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onFocus={isRouter ? onOpen : undefined}
-          onClick={isRouter ? onOpen : undefined}
-          readOnly={isRouter}
-          placeholder="Search foods, brands, or recipes…"
+      {/* LS-01 fix (audit 2026-04-28): when the host wires `onOpen`,
+          this row is a tap-to-open BUTTON (not an input). The earlier
+          read-only input still looked like an input — placeholder +
+          caret cue tricked users into typing-and-waiting on Safari
+          (the on-screen keyboard briefly toggled before the modal
+          swap). Now: button-styled row with a trailing chevron and
+          orienting copy that reads as an action target. The fallback
+          (no `onOpen`) still renders a real input for legacy callers. */}
+      {isRouter ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label="Open search"
           className={cn(
-            "h-11 w-full rounded-lg bg-muted pl-9 pr-3 text-[14px]",
+            "relative w-full h-11 rounded-lg bg-muted pl-9 pr-3 text-left text-[14px] text-muted-foreground",
+            "flex items-center gap-2 cursor-pointer",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            isRouter ? "cursor-pointer" : "",
+            "hover:bg-muted/80 transition-colors",
           )}
-        />
-      </label>
+        >
+          <Search
+            aria-hidden
+            width={16}
+            height={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <span className="flex-1">Search foods, brands, or recipes</span>
+          <ChevronRight aria-hidden width={16} height={16} className="text-muted-foreground" />
+        </button>
+      ) : (
+        <label className="relative block">
+          <span className="sr-only">Search foods</span>
+          <Search
+            aria-hidden
+            width={16}
+            height={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="search"
+            inputMode="search"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="Search foods, brands, or recipes…"
+            className={cn(
+              "h-11 w-full rounded-lg bg-muted pl-9 pr-3 text-[14px]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            )}
+          />
+        </label>
+      )}
 
       {state?.offline ? (
         <p className="text-[12px] text-muted-foreground">You're offline. Searching cached foods only.</p>

@@ -310,7 +310,7 @@ describe("LogSheet (mobile) — Voice / Photo permission denied", () => {
 describe("LogSheet (mobile) — Search tab router (P0-1, 2026-04-28)", () => {
   it("when onOpen is provided, pressing the search row fires onOpen", () => {
     const onOpen = vi.fn();
-    const { getAllByLabelText } = open({
+    const { getByLabelText } = open({
       search: {
         query: "",
         onQueryChange: () => {},
@@ -319,12 +319,10 @@ describe("LogSheet (mobile) — Search tab router (P0-1, 2026-04-28)", () => {
         onOpen,
       },
     });
-    // Two nodes carry the "Search foods" accessibility label: the
-    // outer Pressable wrapper (button) and the inner TextInput. The
-    // outer Pressable is the click target; press it to fire onOpen.
-    const matches = getAllByLabelText("Search foods");
-    expect(matches.length).toBeGreaterThan(0);
-    fireEvent.press(matches[0]!);
+    // LS-01 (audit 2026-04-28): the search row is a Pressable
+    // accessibility-labelled "Open search" (no inner TextInput).
+    const btn = getByLabelText("Open search");
+    fireEvent.press(btn);
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 

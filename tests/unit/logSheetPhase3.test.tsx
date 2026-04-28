@@ -66,13 +66,22 @@ describe("LogSheet (web) — primitive shape", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(6);
 
-    const labels = tabs.map((t) => t.textContent);
-    expect(labels).toContain("Search foods");
-    expect(labels).toContain("Scan barcode");
-    expect(labels).toContain("Recent");
-    expect(labels).toContain("Saved meals");
-    expect(labels).toContain("Voice log");
-    expect(labels).toContain("Photo log");
+    // LS-02 (audit 2026-04-28): visible labels shortened so the row
+    // doesn't clip Voice/Photo on narrow viewports. ARIA labels keep
+    // the longer phrasing for screen-reader context.
+    const visibleLabels = tabs.map((t) => t.textContent);
+    expect(visibleLabels).toContain("Search");
+    expect(visibleLabels).toContain("Scan");
+    expect(visibleLabels).toContain("Recent");
+    expect(visibleLabels).toContain("Saved");
+    expect(visibleLabels).toContain("Voice");
+    expect(visibleLabels).toContain("Photo");
+    const ariaLabels = tabs.map((t) => t.getAttribute("aria-label"));
+    expect(ariaLabels).toContain("Search foods");
+    expect(ariaLabels).toContain("Scan barcode");
+    expect(ariaLabels).toContain("Saved meals");
+    expect(ariaLabels).toContain("Voice log");
+    expect(ariaLabels).toContain("Photo log");
   });
 
   it("does not render the sheet content when closed", () => {
@@ -373,18 +382,19 @@ describe("LogSheet (web) — Photo tab", () => {
   });
 });
 
-describe("LogSheet (web) — Search tab router (P0-1, 2026-04-28)", () => {
-  it("when onOpen is provided, the search input is read-only and clicking fires onOpen", () => {
+describe("LogSheet (web) — Search tab router (P0-1, 2026-04-28; LS-01 button refit, 2026-04-28)", () => {
+  it("when onOpen is provided, the row renders as a button (not an input) and clicking fires onOpen", () => {
     const onOpen = vi.fn();
     const onQueryChange = vi.fn();
     open({
       search: { query: "", onQueryChange, results: [], onAdd: () => {}, onOpen },
     });
-    const input = screen.getByPlaceholderText(
-      "Search foods, brands, or recipes…",
-    ) as HTMLInputElement;
-    expect(input.readOnly).toBe(true);
-    fireEvent.click(input);
+    // LS-01: pre-fix this was a read-only `<input>` that still
+    // looked like an input. Now it's a real `<button>` so screen
+    // readers and Tab nav announce it correctly + the affordance
+    // matches the behaviour.
+    const btn = screen.getByRole("button", { name: "Open search" });
+    fireEvent.click(btn);
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
