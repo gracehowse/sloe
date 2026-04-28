@@ -65,10 +65,22 @@ export function MobileFlow() {
   const [completing, setCompleting] = React.useState(false);
 
   const isTerminal = currentStepId === "recipes";
+  const isSignup = currentStepId === "signup";
   const pickerState = React.useMemo(
     () => derivePickerState(new Set(state.pickedRecipeSlugs ?? [])),
     [state.pickedRecipeSlugs],
   );
+
+  // MV-02 auto-skip (audit 2026-04-28): when an already-authed user
+  // (returning visitor with a Supabase session in cache) lands on the
+  // signup step, bump them past it. Mirrors web-flow.tsx:67-71. Without
+  // this, an authed user who hits onboarding to re-set targets would
+  // be asked to sign up again.
+  React.useEffect(() => {
+    if (isSignup && userId) {
+      go(1);
+    }
+  }, [isSignup, userId, go]);
 
   /**
    * MV-01 fix (audit 2026-04-28) — terminal-step completion handler.
