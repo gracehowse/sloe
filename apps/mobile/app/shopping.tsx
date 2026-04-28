@@ -26,6 +26,7 @@ import {
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { PlanSubTabHeader } from "@/components/tabs/PlanSubTabHeader";
 
 type ShoppingItem = {
   id: string;
@@ -343,8 +344,22 @@ export default function ShoppingListScreen() {
   const checkedCount = items.filter((i) => i.checked).length;
   const progress = items.length > 0 ? checkedCount / items.length : 0;
 
+  const uncheckedCount = items.length - checkedCount;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
+          Shopping list as a sub-view). Tapping "This week" routes
+          back to /(tabs)/planner. */}
+      <PlanSubTabHeader
+        value="shopping"
+        shoppingUncheckedCount={uncheckedCount}
+        onChange={(next) => {
+          if (next === "plan") {
+            router.replace("/(tabs)/planner" as never);
+          }
+        }}
+      />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Header */}
         <View style={styles.headerRow}>

@@ -115,13 +115,21 @@ describe("Round 2 — design-tokens documentation", () => {
   });
 });
 
-describe("Round 2 follow-through — D25 inline strip empty-state gate", () => {
-  it("TodayQuickLogStrip is gated on mealsToday.length === 0 (visible only on empty days)", () => {
+describe("Round 2 follow-through — D25 inline strip empty-state gate (superseded by Phase 2 / B1.2)", () => {
+  it("TodayQuickLogStrip is no longer rendered on Today (Phase 2 / B1.2 canonical Today)", () => {
     const SRC = read("apps/mobile/app/(tabs)/index.tsx");
-    // The strip render must be wrapped in a conditional that checks the
-    // empty-day predicate — once any meal is logged the FAB is the
-    // single logging-entry affordance. Multiline match because the JSX
-    // line break sits between the conditional and the component tag.
-    expect(SRC).toMatch(/mealsToday\.length === 0 \?[\s\S]*?<TodayQuickLogStrip/);
+    // Phase 2 / B1.2 (2026-04-27, D-2026-04-27-15): the canonical
+    // Today removes the QuickLogStrip from the composition root in
+    // favour of the persistent <LogFab>. This test was previously
+    // pinning the empty-day-only gate (D25); the gate is now moot
+    // because the strip is no longer rendered at all. The assertion
+    // is inverted to pin the new direction — if a future contributor
+    // accidentally re-introduces <TodayQuickLogStrip /> on Today this
+    // test will fail.
+    //
+    // The component file is intentionally still imported by the
+    // legacy variant test; we only assert the JSX render call is
+    // gone, not the import.
+    expect(SRC).not.toMatch(/<TodayQuickLogStrip[\s\S]+?\/>/);
   });
 });

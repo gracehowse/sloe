@@ -1,9 +1,9 @@
-import { Tabs, Redirect } from 'expo-router';
+import { Tabs, Redirect, useRouter, usePathname } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Flame, Compass, BookOpen, CalendarDays, TrendingUp, CircleUser } from 'lucide-react-native';
+import { Flame, BookOpen, CalendarDays, CircleUser } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Accent } from '@/constants/theme';
@@ -11,10 +11,42 @@ import { useAuth } from '@/context/auth';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 
+/**
+ * Phase 2 / B1.1 — tab structure collapses 6 → 4 (2026-04-27 strategic
+ * direction, D-2026-04-27-02). The four primary tabs are:
+ *
+ *   Today / Recipes / Plan / You
+ *
+ * Mapping vs the previous 6-tab structure (Today / Discover / Library /
+ * Plan / Progress / More):
+ *
+ *  - Today  → unchanged (`/(tabs)/index`).
+ *  - Recipes → groups Library (default sub-tab) + Discover. Tab bar
+ *    routes the user to `/(tabs)/library`; the Library and Discover
+ *    screens render `<RecipesSubTabHeader>` at the top so users can
+ *    flip between them without leaving the Recipes group. Tab-bar
+ *    highlight is custom-computed so that being on `/discover` still
+ *    highlights the "Recipes" entry.
+ *  - Plan → unchanged route; planner now hosts the shopping list as a
+ *    sub-tab via `<PlanSubTabHeader>` (the existing Plan/Shop toggle on
+ *    web's mobile-web layout was the precedent).
+ *  - You → groups Progress (default sub-tab) + Settings + More. Same
+ *    sub-tab pattern as Recipes (custom highlight + sub-tab header).
+ *
+ * `discover`, `progress`, `more`, `settings`, `search`, `barcode`, and
+ * `notifications` remain as routable screens but are removed from the
+ * tab bar (`href: null`). All existing deep-links (e.g. `/library?from=
+ * onboarding`, `useSafeBack("/(tabs)/discover")`, `router.push("/(tabs)
+ * /more")` from the household card) continue to resolve.
+ *
+ * Documentation: `docs/journeys/tab-collapse-2026-04-27.md`.
+ */
 export default function TabLayout() {
   const { session, loading } = useAuth();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const pathname = usePathname() ?? '';
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(true);
 
@@ -64,35 +96,13 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: '600',
         },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
-      {/*
-        2026-04-26: Library promoted to a primary tab. Tester feedback:
-        "the library (ie recipes the user has saved themselves) are
-        harder to access than the main discovery dashboard which is
-        random recipes. your own library should be prominent." Order:
-        Today → Discover → Library → Plan → Progress → More.
-
-        2026-04-26 (round 3) — tester asked if 6 tabs is too many.
-        Evaluated and kept at 6. Each tab earns its slot:
-          - Today: critical daily habit, multi-time-per-day usage.
-          - Discover: recipe-browse (new content discovery).
-          - Library: user's own collection (recipe-organise).
-          - Plan: weekly meal-plan orchestrator.
-          - Progress: weight trends, journey, body fat, maintenance —
-            none of these surface anywhere else.
-          - More: settings + account + everything else.
-
-        Considered demoting Progress into More to land at 5 tabs but
-        rejected: weight + body composition + adaptive maintenance are
-        meaningful destinations that deserve top-level access. MFP,
-        Lose It, Yazio all run 5-6 tabs. Tab labels are tight at 9pt
-        but readable; bottom-bar height + insets handle smaller phones.
-      */}
+      {/* Today — unchanged. */}
       <Tabs.Screen
         name="index"
         options={{
@@ -100,18 +110,28 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Flame size={22} color={color} strokeWidth={2} />,
         }}
       />
-      <Tabs.Screen
-        name="discover"
-        options={{
-          title: 'Discover',
-          tabBarIcon: ({ color }) => <Compass size={22} color={color} strokeWidth={2} />,
-        }}
-      />
+      {/* Recipes — primary tab points at Library (the default sub-tab).
+          When the user is on /discover, the Recipes entry stays
+          highlighted because of the custom listener below; pressing
+          the Recipes tab from /discover is a no-op (the sub-tab pill
+          inside the screen owns sibling navigation). */}
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Library',
+          title: 'Recipes',
           tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={2} />,
+          tabBarAccessibilityLabel: 'Recipes',
+        }}
+        listeners={{
+          tabPress: (e) => {
+            // Tapping the Recipes tab while already on /discover should
+            // route to /library (the default sub-tab) so the user
+            // returns to a known anchor, not stay on /discover.
+            if (pathname.startsWith('/discover')) {
+              e.preventDefault();
+              router.replace('/(tabs)/library' as never);
+            }
+          },
         }}
       />
       <Tabs.Screen
@@ -121,25 +141,33 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
         }}
       />
+      {/* You — primary tab points at Progress (the default sub-tab).
+          When on /settings or /more, the You entry stays highlighted. */}
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'Progress',
-          tabBarIcon: ({ color }) => <TrendingUp size={22} color={color} strokeWidth={2} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
+          title: 'You',
           tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
+          tabBarAccessibilityLabel: 'You',
+        }}
+        listeners={{
+          tabPress: (e) => {
+            // Pressing You while on /settings or /more returns to /progress.
+            if (pathname.startsWith('/settings') || pathname.startsWith('/more')) {
+              e.preventDefault();
+              router.replace('/(tabs)/progress' as never);
+            }
+          },
         }}
       />
-      {/* Hidden tabs — accessed via navigation, not tab bar */}
+      {/* Hidden routes — accessible via deep links and sub-tab pills,
+          but not surfaced in the tab bar. */}
+      <Tabs.Screen name="discover" options={{ href: null }} />
+      <Tabs.Screen name="more" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

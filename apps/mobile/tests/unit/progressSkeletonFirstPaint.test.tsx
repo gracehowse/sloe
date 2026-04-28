@@ -84,6 +84,12 @@ vi.mock("expo-router", () => ({
     navigate: vi.fn(),
     replace: vi.fn(),
   }),
+  // Phase 2 / B1.1 — Progress screen now renders <YouSubTabHeader>
+  // which calls usePathname() to highlight the active sub-tab. The
+  // skeleton path mounts the header above the skeleton, so the mock
+  // needs to return a stable string. We use "/progress" so the
+  // Progress pill is highlighted, mirroring the production path.
+  usePathname: () => "/progress",
 }));
 vi.mock("@react-navigation/native", async () => {
   const ReactMod = await import("react");

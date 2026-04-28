@@ -10,7 +10,7 @@ import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
 import { Library } from "./components/Library.tsx";
 import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
-import { DesktopSidebar } from "./components/suppr/desktop-sidebar.tsx";
+import { DesktopSidebar, resolvePrimaryFromView, type SidebarView } from "./components/suppr/desktop-sidebar.tsx";
 
 const NotificationsCenter = dynamic(
   () => import("./components/NotificationsCenter.tsx").then((m) => ({ default: m.NotificationsCenter })),
@@ -455,35 +455,43 @@ export default function App() {
           {renderView()}
         </main>
 
-        {/* Bottom tabs — mobile-web only. Below `lg` the web feels like
-            the native mobile app; from `lg` up the sidebar takes over. */}
+        {/* Bottom tabs — mobile-web only. Below `md` the web feels like
+            the native mobile app; from `md` up the sidebar takes over.
+            Phase 2 / B1.1 (2026-04-27): collapsed 5 → 4 tabs to mirror
+            the new mobile structure (Today / Recipes / Plan / You).
+            Each primary entry maps to its default leaf view; the
+            highlighted state is computed from `resolvePrimaryFromView`
+            so being on /library still highlights "Recipes". */}
         <nav
           aria-label="Main navigation"
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           <div className="flex" role="tablist">
             {([
-              { view: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
-              { view: "discover" as const, icon: <Icons.discover className="w-5 h-5" />, label: "Discover" },
-              { view: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
-              { view: "progress" as const, icon: <Icons.sparkles className="w-5 h-5" />, label: "Progress" },
-              { view: "profile" as const, icon: <Icons.user className="w-5 h-5" />, label: "Profile" },
-            ] as const).map((tab) => (
-              <button
-                key={tab.view}
-                type="button"
-                role="tab"
-                aria-selected={currentView === tab.view}
-                aria-current={currentView === tab.view ? "page" : undefined}
-                onClick={() => navigateToView(tab.view)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-                  currentView === tab.view ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+              { primary: "today" as const, defaultLeaf: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
+              { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Icons.recipe className="w-5 h-5" />, label: "Recipes" },
+              { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
+              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.user className="w-5 h-5" />, label: "You" },
+            ] as const).map((tab) => {
+              const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
+              const isActive = activePrimary === tab.primary;
+              return (
+                <button
+                  key={tab.primary}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => navigateToView(tab.defaultLeaf as View)}
+                  className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </nav>
       </div>

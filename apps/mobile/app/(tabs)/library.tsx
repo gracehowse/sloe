@@ -39,6 +39,7 @@ import {
   matchesNutritionPill,
   type LibraryFilterPillId,
 } from "../../../../src/lib/recipes/libraryFilters";
+import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 
 type SortKey = "recent" | "calories" | "protein";
 
@@ -437,6 +438,10 @@ export default function LibraryScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Phase 2 / B1.1 — Recipes sub-tab pill bar (Library default,
+          Discover sibling). Lives at the top of every Recipes-group
+          screen so the user can flip without leaving the group. */}
+      <RecipesSubTabHeader />
       {/* Prototype: back chevron + "Library" title → "{n} recipes ·
           {m} saved" subtitle. The sort cycle button moves to the
           trailing slot so the control surface stays discoverable

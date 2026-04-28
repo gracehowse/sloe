@@ -67,6 +67,7 @@ import {
   sharingStorageKey,
 } from "../../../../src/lib/household/sharingGridStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 
 /* ── Icon Box ──
  * Mirrors the prototype's `.meal-row .icon-box` (36×36, radius 10,
@@ -537,9 +538,13 @@ export default function ProfileScreen() {
   })();
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
+          Settings + More siblings). */}
+      <YouSubTabHeader />
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+      contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
     >
       {/* Phone-top header (prototype port 2026-04-20):
           ACCOUNT overline + big "More" title + circular avatar
@@ -1353,5 +1358,6 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </ScrollView>
+    </View>
   );
 }

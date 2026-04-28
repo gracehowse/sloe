@@ -72,18 +72,22 @@ describe("Title normalisation at render boundary", () => {
   });
 });
 
-describe("Library prominence (mobile tab bar)", () => {
+describe("Recipes prominence (mobile tab bar) — Phase 2 collapse", () => {
   const SRC = read("apps/mobile/app/(tabs)/_layout.tsx");
 
-  it("Library is now a primary tab (not hidden via href: null)", () => {
-    // The library tab declaration must NOT be the hidden form
-    // `<Tabs.Screen name="library" options={{ href: null }} />`.
-    // The active form has a title and tabBarIcon.
-    expect(SRC).toMatch(/name="library"\s*\n\s*options=\{\{\s*\n\s*title:\s*'Library'/);
+  it("the Library route is the Recipes default sub-tab and remains a visible primary entry", () => {
+    // Phase 2 / B1.1 (2026-04-27, D-2026-04-27-02): the previous
+    // 6-tab structure surfaced Library as its own primary tab.
+    // The collapse re-labels the same `name="library"` Tabs.Screen
+    // entry to the visible title "Recipes" — it remains a visible
+    // tab-bar entry (NOT `href: null`) and routes to /library by
+    // default. This pins both: the entry stays visible, and its
+    // title is now "Recipes".
+    expect(SRC).toMatch(/name="library"\s*\n\s*options=\{\{\s*\n\s*title:\s*'Recipes'/);
     expect(SRC).not.toMatch(/<Tabs\.Screen name="library" options=\{\{ href: null \}\} \/>/);
   });
 
-  it("Library uses the BookOpen icon (lucide)", () => {
+  it("Recipes uses the BookOpen icon (lucide)", () => {
     expect(SRC).toMatch(/import \{[^}]*BookOpen[^}]*\} from 'lucide-react-native'/);
     expect(SRC).toMatch(/<BookOpen size=\{22\}/);
   });

@@ -92,6 +92,7 @@ import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
+import { PlanSubTabHeader } from "@/components/tabs/PlanSubTabHeader";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -1312,6 +1313,18 @@ export default function PlannerScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
+          Shopping list as a sub-view). Tapping "Shopping" routes to
+          the existing `/shopping` screen which carries a mirroring
+          header so the user can return without losing their place. */}
+      <PlanSubTabHeader
+        value="plan"
+        onChange={(next) => {
+          if (next === "shopping") {
+            router.push("/shopping" as Href);
+          }
+        }}
+      />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Prototype port (2026-04-20) — overline + big title on the
             left, round "options" pill on the right. The old inline

@@ -15,15 +15,25 @@ import {
  * TodayHero — dispatches between ring / bar / number variants and
  * renders the "change hero style" affordance in the card's corner.
  *
+ * Phase 2 / B1.2 (D-2026-04-27-03, 2026-04-27): the canonical Today
+ * locks the variant to "ring" and hides the picker affordance via
+ * `hidePicker`. The bar / number variants and the
+ * `<TodayHeroVariantPicker>` component remain in the tree so deep
+ * branch tests / archived screenshots still resolve, but no
+ * production caller surfaces the picker. Phase 3 removes the unused
+ * variants entirely.
+ *
  * Ported from the 2026-04-19 Claude Design prototype and trimmed
  * 2026-04-20 (see
- * `feedback_no_duplicate_today_hero_content.md`) — hero variants are
- * intentionally minimal because the adherence / macro widgets below
- * the hero on Today cover the same data more cleanly.
+ * `feedback_no_duplicate_today_hero_content.md`).
  */
 export interface TodayHeroProps {
   variant: TodayHeroVariant;
   onVariantChange: (next: TodayHeroVariant) => void;
+  /** Phase 2 / B1.2 — when `true`, the corner grid affordance and
+   *  the variant picker modal are hidden entirely. Today now sets
+   *  this to `true` so the canonical hero ships without the picker. */
+  hidePicker?: boolean;
 
   consumed: number;
   goal: number;
@@ -56,6 +66,7 @@ export function TodayHero(props: TodayHeroProps) {
   const {
     variant,
     onVariantChange,
+    hidePicker = false,
     consumed,
     goal,
     baseGoal,
@@ -123,40 +134,46 @@ export function TodayHero(props: TodayHeroProps) {
         />
       )}
 
-      {/* Picker affordance — 28x28 subtle tinted square, matches
-          the prototype's subdued treatment (screens-mobile.jsx:91-97).
-          Earlier 34x34 bordered circle overlapped the ring's upper-
-          right arc on narrow devices (ui-critic, 2026-04-20). */}
-      <Pressable
-        onPress={() => setPickerOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Change hero style"
-        hitSlop={12}
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          width: 28,
-          height: 28,
-          borderRadius: Radius.sm,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: `${textSecondaryColor}14`,
-        }}
-      >
-        <Ionicons name="grid-outline" size={13} color={textSecondaryColor} />
-      </Pressable>
+      {/* Picker affordance — hidden when `hidePicker` is `true` (set
+          by the canonical Today composition root, Phase 2 / B1.2).
+          Phase 3 will remove the picker + bar/number variants
+          entirely; until then we keep the code path so legacy
+          surfaces (e.g. unused screens-mobile prototypes) still
+          render. */}
+      {!hidePicker ? (
+        <>
+          <Pressable
+            onPress={() => setPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Change hero style"
+            hitSlop={12}
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              width: 28,
+              height: 28,
+              borderRadius: Radius.sm,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: `${textSecondaryColor}14`,
+            }}
+          >
+            <Ionicons name="grid-outline" size={13} color={textSecondaryColor} />
+          </Pressable>
 
-      <TodayHeroVariantPicker
-        visible={pickerOpen}
-        active={variant}
-        onSelect={onVariantChange}
-        onClose={() => setPickerOpen(false)}
-        cardBackgroundColor={cardBackgroundColor}
-        borderColor={borderColor}
-        textColor={textColor}
-        textTertiaryColor={textTertiaryColor}
-      />
+          <TodayHeroVariantPicker
+            visible={pickerOpen}
+            active={variant}
+            onSelect={onVariantChange}
+            onClose={() => setPickerOpen(false)}
+            cardBackgroundColor={cardBackgroundColor}
+            borderColor={borderColor}
+            textColor={textColor}
+            textTertiaryColor={textTertiaryColor}
+          />
+        </>
+      ) : null}
     </View>
   );
 }

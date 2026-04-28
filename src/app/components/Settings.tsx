@@ -41,6 +41,13 @@ import {
   type Sex,
 } from "../../lib/nutrition/tdee.ts";
 import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTargetsForActivity.ts";
+import {
+  DEFAULT_TRACKING_EXTRAS,
+  TRACKING_EXTRAS_STORAGE_KEY,
+  parseTrackingExtras,
+  serializeTrackingExtras,
+  type TrackingExtras,
+} from "../../lib/nutrition/trackingExtras.ts";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -132,6 +139,29 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [caffeineInput, setCaffeineInput] = useState<string>(String(targetCaffeineMg));
   const [alcoholInput, setAlcoholInput] = useState<string>(String(targetAlcoholGWeekly));
+  // Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras opt-in,
+  // defaults OFF. Web parity to mobile Settings. localStorage-only
+  // (no schema change). The NutritionTracker host reads this same
+  // key at render time to gate the caffeine + alcohol rows.
+  const [trackingExtras, setTrackingExtras] = useState<TrackingExtras>(DEFAULT_TRACKING_EXTRAS);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(TRACKING_EXTRAS_STORAGE_KEY);
+      setTrackingExtras(parseTrackingExtras(raw));
+    } catch {
+      // localStorage unavailable — keep defaults.
+    }
+  }, []);
+  const persistTrackingExtras = useCallback((next: TrackingExtras) => {
+    setTrackingExtras(next);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(TRACKING_EXTRAS_STORAGE_KEY, serializeTrackingExtras(next));
+    } catch {
+      // Soft failure — local state already reflects the toggle.
+    }
+  }, []);
   // Activity-level self-edit (build 10 fix E-2, 2026-04-19 —
   // TestFlight `AIIm60n` / `AHCSYMATS`). Stored activity level + the
   // body stats the recompute needs. Null-safe so the row still renders
@@ -767,6 +797,36 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   {day === "monday" ? "Monday" : "Sunday"}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras
+              opt-in. Caffeine + alcohol Today widgets default OFF.
+              Toggling on surfaces the corresponding row in the
+              hydration card on Today and preserves any historical
+              data unchanged. */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-foreground">Tracking extras</label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Off by default. Hydration stays on regardless. When off, your existing logs are preserved but the row is hidden on Today.
+            </p>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
+                <span className="text-sm text-foreground">Track caffeine</span>
+                <Switch
+                  checked={trackingExtras.trackCaffeine}
+                  onCheckedChange={(next) => persistTrackingExtras({ ...trackingExtras, trackCaffeine: !!next })}
+                  aria-label="Track caffeine on Today"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
+                <span className="text-sm text-foreground">Track alcohol</span>
+                <Switch
+                  checked={trackingExtras.trackAlcohol}
+                  onCheckedChange={(next) => persistTrackingExtras({ ...trackingExtras, trackAlcohol: !!next })}
+                  aria-label="Track alcohol on Today"
+                />
+              </label>
             </div>
           </div>
 

@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
+import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 
 // B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
 // to recipes whose creator_id is in the set the user follows. Empty
@@ -474,6 +475,10 @@ export default function DiscoverScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      {/* Phase 2 / B1.1 — Recipes sub-tab pill bar (Library default,
+          Discover sibling). Lives at the top of every Recipes-group
+          screen so the user can flip without leaving the group. */}
+      <RecipesSubTabHeader />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
         refreshControl={

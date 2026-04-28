@@ -95,6 +95,7 @@ import {
   weightKgByDayToPoints,
   type WeightRange,
 } from "@/lib/progress/weightTrend";
+import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -749,9 +750,13 @@ export default function ProgressScreen() {
 
   if (loading) {
     return (
+      <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
+        {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
+            Settings + More siblings). */}
+        <YouSubTabHeader />
       <ScrollView
         style={{ flex: 1, backgroundColor: t.bg }}
-        contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}
         testID="progress-skeleton"
       >
         {/* Header chrome — same position as post-load render so the
@@ -842,11 +847,16 @@ export default function ProgressScreen() {
           <ActivityIndicator size="small" color={t.accent} />
         </View>
       </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: insets.top + 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
+      {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
+          Settings + More siblings). */}
+      <YouSubTabHeader />
+    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }} keyboardShouldPersistTaps="handled">
       {/* Header — 2026-04-20 Claude Design prototype port.
           Uppercase overline reflects the currently-selected range,
           large "Progress" title (28pt / -0.6 tracking), round
@@ -1939,6 +1949,7 @@ export default function ProgressScreen() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </Text>
     </ScrollView>
+    </View>
   );
 }
 

@@ -30,13 +30,28 @@ A returning user who has ever interacted with any card continues to see that
 card — the gates are sticky.
 
 ### Layout
+
+> **Phase 2 update (2026-04-27, B1.2 canonical Today):** the hero
+> ring is the single canonical variant — the 3-variant picker (ring /
+> bar / number) is locked to ring; the corner grid affordance and
+> picker modal are suppressed via `<TodayHero hidePicker />`. The
+> streak ribbon is now a 22pt `<StreakPip>` rendered above the date
+> row. The TodayQuickLogStrip is no longer in the composition root;
+> the persistent `<LogFab>` (canonical 56pt circle, `right: 18,
+> bottom: 100`) is the sole logging-entry affordance going forward.
+> Phase 3 wires the FAB to the unified `<LogSheet>` (B2.1) and lands
+> the north-star "what to eat next" block (B2.2). See
+> `docs/journeys/tab-collapse-2026-04-27.md` for the full Phase 2
+> reasoning.
+
 ```
 ┌─────────────────────────────┐
+│           [🔥 5 days]       │  ← StreakPip (right-aligned), day-view only
 │  Day | Week  toggle         │
 │  ‹  Today  ›  (date nav)   │
 ├─────────────────────────────┤
-│  1,240 kcal left            │  ← hero number (red "+250 over" when exceeded)
-│  ███████░░░░ Food / Goal    │  ← calorie bar (red when over)
+│  1,240 kcal left            │  ← hero ring (canonical; picker locked)
+│  ███████░░░░ Food / Goal    │
 ├─────────────────────────────┤
 │  PROTEIN  ███████░ 60g/93g  │
 │  CARBS    █████░░░ 80g/124g │
@@ -68,8 +83,15 @@ card — the gates are sticky.
 │  └─ [ADD FOOD]              │
 ├─────────────────────────────┤
 │  [+ Quick Add] [Search]    │
-│  [Scan]        [Previous]  │  ← action buttons
+│  [Scan]        [Previous]  │  ← action buttons (see <LogFab> below)
 └─────────────────────────────┘
+
+                              ●  ← persistent <LogFab> (Phase 2 / B1.2)
+                                  56pt, right: 18, bottom: 100
+                                  Mobile: opens TodayFabSheet (existing
+                                  log paths). Mobile-web: surfaces a
+                                  "Coming in Phase 3" placeholder.
+                                  Desktop web: hidden (D-2026-04-27-11).
 ```
 
 ### Adding Food
@@ -210,6 +232,23 @@ A **usual meal** (internally `SavedMeal`) is a user-named bundle of 2+ foods the
 - Week boundary respects `profiles.week_start_day` (Monday or Sunday). In calendar-week mode the seven displayed days start on the user's chosen day. In rolling mode the window is always the 7 days ending on the selected date, ignoring week start.
 
 ## Hydration & Stimulants Card (Batch 2.5)
+
+> **Phase 2 update (2026-04-27, B1.4):** caffeine + alcohol rows are
+> now off by default and behind a Settings opt-in. See
+> `docs/journeys/tab-collapse-2026-04-27.md` for the full rationale
+> (D-2026-04-27-08). The toggle lives in Settings → "Tracking
+> extras"; defaults to off on both platforms. When off, the
+> corresponding row is hidden but `extra_caffeine_by_day` /
+> `extra_alcohol_g_by_day` data is preserved untouched. Hydration
+> stays on by default — it's a near-universal target.
+>
+> The shared opt-in lib is at `src/lib/nutrition/trackingExtras.ts`;
+> `TRACKING_EXTRAS_STORAGE_KEY = "suppr.tracking-extras.v1"` is
+> AsyncStorage on mobile, localStorage on web (no DB schema change).
+> The NutritionTracker host force-zeros `targets.caffeineMg` /
+> `targets.alcoholGWeekly` to 0 when the corresponding toggle is
+> off, which leverages the existing card-level row-hide rule
+> documented below.
 
 - Component: `src/app/components/suppr/hydration-stimulants-card.tsx` (web), `apps/mobile/components/HydrationStimulantsCard.tsx` (mobile).
 - Shared pure helper: `src/lib/nutrition/hydrationStimulants.ts` — presets, `weeklyAlcoholG`, `sumWaterFromMeals`, `isOverTarget`, `parseDayNumberMap`, `formatWaterAmount`, `imperialWaterQuickAdds`.

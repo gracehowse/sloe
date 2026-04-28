@@ -2,9 +2,33 @@
 
 This document extends the MVP hardening work with **nutrition depth**, **activity-adjusted targets**, and **social discovery**. It is the north-star for prioritization; implementation order should follow dependencies below.
 
-**Last reviewed:** 2026-04-25 (P0 batch close — Opus 4.7 codebase review).
+**Last reviewed:** 2026-04-27 (Phase 2 of strategic redesign — tab collapse + canonical Today + caffeine/alcohol opt-in shipped).
 
 **Supabase (2026-04-18):** migration drift on the linked prod project is **reconciled** through **`20260421180000`** (`supabase db push --linked`). Process and replay notes: [`docs/planning/supabase-migration-drift-inventory.md`](../planning/supabase-migration-drift-inventory.md).
+
+---
+
+## Strategic redesign — phase status (2026-04-27)
+
+Authority: `docs/decisions/2026-04-27-strategic-direction.md` (17 binding decisions) + `docs/specs/2026-04-27-production-design-spec.md`.
+
+| Phase | Batch | Status | Notes |
+|---|---|---|---|
+| Phase 1 | Foundation tokens + primitives (SupprCard / TrustChip / SourceDot / ConfidenceChip / EmptyState / SkeletonRow) | **Shipped** (2026-04-25 / -26) | CI green; both platforms |
+| Phase 2 | B1.1 — Tab structure 6 → 4 (Today / Recipes / Plan / You) | **Shipped** (2026-04-27) | Sub-tab pills on Recipes / Plan / You; web sidebar mirrors |
+| Phase 2 | B1.2 — Canonical Today (kill 3 variants, StreakPip, persistent LogFab, drop QuickLogStrip) | **Shipped** (2026-04-27) | North-star block deferred to Phase 3 / B2.2 (data dependency) |
+| Phase 2 | B1.4 — Caffeine + alcohol behind Settings opt-in | **Shipped** (2026-04-27) | Default off; AsyncStorage / localStorage; no DB schema change |
+| Phase 2 | B1.3 — Pricing collapse Free + Pro | **Open** | Separate PR; coordinates with `monetisation-architect` |
+| Phase 2.5 | Household demote behind Settings flag | **Open** | Deferred from B2 of strategic batch — next follow-up |
+| Phase 3 | B2.1 — Canonical Log FAB → unified `<LogSheet>` | **Open** | Phase 2 ships the FAB placeholder; this batch wires the sheet |
+| Phase 3 | B2.2 — North-star "what to eat next" block on Today | **Open** | Threads `mealPlanAlgo` scoring into Today render |
+| Phase 3 | B2.3 — Onboarding produces first plan | **Open** | Library seed + auto-plan-from-seed |
+| Phase 3 | B2.4 — Trust posture sweep on every macro row | **Open** | TrustChip + SourceDot threading across diary / planner / recipe / saved-meal / Quick Add / search |
+| Phase 4 | B3.1 — Adaptive TDEE Progress headline | **Open** | Sits in You tab now (B1.1 prerequisite landed) |
+| Phase 4 | B3.2 — Coeliac/gluten depth | **Open** | Depends on B2.4 chip carrier |
+| Phase 4 | B3.3 — TestFlight expansion (open beyond N=1) | **Open** | Gated on demo moment shipping (B2.1–2.4) |
+
+Detailed journey: [`docs/journeys/tab-collapse-2026-04-27.md`](journeys/tab-collapse-2026-04-27.md).
 
 ---
 

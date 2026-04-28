@@ -8,18 +8,26 @@ import { Icons } from "../ui/icons";
  * tablet widths (>= 768px / `md:`). Below that breakpoint we keep the
  * native bottom-tab layout that mirrors the mobile app — the same
  * user flow the mobile app ships with, so a phone-web visitor feels
- * at home. The direction is *desktop-first*: the default assumption
- * is a real browser window, and mobile-web is the narrow-width
- * exception (set 2026-04-18).
+ * at home.
  *
- * The sidebar follows the landing web-shot mock (`Suppr Landing.html`
- * → `.lp-web-shot`) with `Track` and `Recipes` categories. Item order
- * inside `Track` matches the bottom-tab order so a user who flips
- * between widths never has to re-learn navigation. `Recipes` is a
- * desktop-only convenience grouping — Library, Discover, and Shopping
- * already exist as routes in `App.tsx`; the sidebar just gives
- * desktop users a permanent entry point that mobile-web surfaces via
- * the header Library button or the planner "Shop" sub-tab.
+ * Phase 2 / B1.1 (2026-04-27 strategic spec, D-2026-04-27-02): the
+ * sidebar collapses to four primary destinations to mirror the new
+ * mobile tab bar:
+ *
+ *   Today / Recipes / Plan / You
+ *
+ * Sub-tabs render below the active item when applicable. Recipes
+ * groups Library (default) + Discover. You groups Progress (default)
+ * + Settings + More + (where applicable) Subscription.
+ *
+ * Routes that disappeared from primary nav: Discover (now sub-tab of
+ * Recipes), Library (default of Recipes), Progress (default of You),
+ * More (subsumed into You), Settings (subsumed into You), Shopping
+ * (sub-view of Plan).
+ *
+ * `currentView` keeps a wider `SidebarView` union so callers can route
+ * to any leaf (e.g. `setCurrentView("library")`); the sidebar maps
+ * each leaf to its parent group for highlight purposes.
  */
 
 // The view union here is kept in sync with the one in `App.tsx`.
@@ -47,33 +55,89 @@ export interface DesktopSidebarProps {
    *  hides the badge. */
   shoppingUncheckedCount?: number;
   /** Saved-recipe count on the Library row, shown as a badge.
-   *  Zero hides the badge (a fresh user shouldn't see "0"). Added
-   *  2026-04-20 for the Claude Design Today-prototype port. */
+   *  Zero hides the badge (a fresh user shouldn't see "0"). */
   libraryRecipeCount?: number;
 }
 
-type Item = {
-  view: SidebarView;
+type PrimaryView = "today" | "recipes" | "plan" | "you";
+
+interface PrimaryItem {
+  view: PrimaryView;
   label: string;
   icon: keyof typeof Icons;
-  /** Optional badge accessor — return the numeric count (0 hides). */
+  /** Default leaf SidebarView the primary entry should route to when
+   *  pressed (the user lands on a known anchor). */
+  defaultLeaf: SidebarView;
+  /** Leaf SidebarView ids that should highlight this primary entry. */
+  leaves: SidebarView[];
+}
+
+interface SubTabItem {
+  view: SidebarView;
+  label: string;
   badge?: (props: DesktopSidebarProps) => number;
+}
+
+const PRIMARY_ITEMS: PrimaryItem[] = [
+  {
+    view: "today",
+    label: "Today",
+    icon: "home",
+    defaultLeaf: "today",
+    leaves: ["today"],
+  },
+  {
+    view: "recipes",
+    label: "Recipes",
+    icon: "recipe",
+    defaultLeaf: "library",
+    leaves: ["library", "discover"],
+  },
+  {
+    view: "plan",
+    label: "Plan",
+    icon: "plan",
+    defaultLeaf: "plan",
+    leaves: ["plan", "shopping"],
+  },
+  {
+    view: "you",
+    label: "You",
+    icon: "profile",
+    defaultLeaf: "progress",
+    leaves: ["progress", "profile", "settings", "household-settings", "targets"],
+  },
+];
+
+/** Sub-tab rows shown below the active primary entry. */
+const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
+  today: [],
+  recipes: [
+    { view: "library", label: "Library", badge: (p) => p.libraryRecipeCount ?? 0 },
+    { view: "discover", label: "Discover" },
+  ],
+  plan: [
+    { view: "plan", label: "This week" },
+    { view: "shopping", label: "Shopping", badge: (p) => p.shoppingUncheckedCount ?? 0 },
+  ],
+  you: [
+    { view: "progress", label: "Progress" },
+    { view: "profile", label: "Profile" },
+    { view: "settings", label: "Settings" },
+  ],
 };
 
-const TRACK_ITEMS: Item[] = [
-  { view: "today", label: "Today", icon: "home" },
-  { view: "plan", label: "Plan", icon: "plan" },
-  { view: "progress", label: "Progress", icon: "progress" },
-];
-
-const RECIPE_ITEMS: Item[] = [
-  { view: "library", label: "Library", icon: "recipe", badge: (p) => p.libraryRecipeCount ?? 0 },
-  { view: "discover", label: "Discover", icon: "discover" },
-  { view: "shopping", label: "Shopping", icon: "shopping", badge: (p) => p.shoppingUncheckedCount ?? 0 },
-];
+/** Map any leaf SidebarView to the primary group that should highlight. */
+export function resolvePrimaryFromView(view: SidebarView): PrimaryView {
+  for (const item of PRIMARY_ITEMS) {
+    if (item.leaves.includes(view)) return item.view;
+  }
+  return "today";
+}
 
 export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
+  const activePrimary = resolvePrimaryFromView(currentView);
 
   return (
     <aside
@@ -92,93 +156,101 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3" aria-label="Sidebar navigation">
-        <SidebarGroup label="Track" items={TRACK_ITEMS} currentView={currentView} onNavigate={onNavigate} sidebarProps={props} />
-        <SidebarGroup label="Recipes" items={RECIPE_ITEMS} currentView={currentView} onNavigate={onNavigate} sidebarProps={props} />
+        <ul className="px-3 space-y-1">
+          {PRIMARY_ITEMS.map((item) => {
+            const isActive = activePrimary === item.view;
+            return (
+              <li key={item.view}>
+                <PrimarySidebarItem
+                  item={item}
+                  isActive={isActive}
+                  onNavigate={onNavigate}
+                />
+                {isActive && SUB_TABS[item.view].length > 0 ? (
+                  <ul className="mt-1 mb-2 ml-7 space-y-0.5 border-l border-border/60 pl-3">
+                    {SUB_TABS[item.view].map((sub) => (
+                      <li key={sub.view}>
+                        <SubTabSidebarItem
+                          sub={sub}
+                          currentView={currentView}
+                          onNavigate={onNavigate}
+                          sidebarProps={props}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
-
-      {/* "More" pinned to the bottom — matches the Today / Discover /
-          Plan / Progress / More bottom-tab grouping where More is the
-          right-most tab on mobile. Renamed from "Profile" 2026-04-20
-          for mobile-web parity. */}
-      {/* Only "More" is pinned — Settings lives inside More (mirrors
-          the mobile tab bar where Settings is reached via the More
-          tab). Grace 2026-04-20: no duplicate Settings row. */}
-      <div className="border-t border-border py-3">
-        <SidebarItem
-          item={{ view: "profile", label: "More", icon: "profile" }}
-          currentView={currentView}
-          onNavigate={onNavigate}
-          sidebarProps={props}
-        />
-      </div>
     </aside>
   );
 }
 
-function SidebarGroup({
-  label,
-  items,
-  currentView,
-  onNavigate,
-  sidebarProps,
-}: {
-  label: string;
-  items: Item[];
-  currentView: SidebarView;
-  onNavigate: (v: SidebarView) => void;
-  sidebarProps: DesktopSidebarProps;
-}) {
-  return (
-    <div className="px-3 pb-2">
-      <div className="px-2 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </div>
-      <ul>
-        {items.map((item) => (
-          <li key={item.view}>
-            <SidebarItem
-              item={item}
-              currentView={currentView}
-              onNavigate={onNavigate}
-              sidebarProps={sidebarProps}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function SidebarItem({
+function PrimarySidebarItem({
   item,
-  currentView,
+  isActive,
   onNavigate,
-  sidebarProps,
 }: {
-  item: Item;
-  currentView: SidebarView;
+  item: PrimaryItem;
+  isActive: boolean;
   onNavigate: (v: SidebarView) => void;
-  sidebarProps: DesktopSidebarProps;
 }) {
   const Icon = Icons[item.icon];
-  const active = currentView === item.view;
-  const badgeCount = item.badge?.(sidebarProps) ?? 0;
   return (
     <button
       type="button"
-      onClick={() => onNavigate(item.view)}
-      aria-current={active ? "page" : undefined}
-      className={`group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 mx-1 text-sm font-medium transition-colors ${
-        active
+      onClick={() => {
+        // Tapping a primary entry routes to its default leaf so the
+        // user always lands on a known anchor. If the user is already
+        // somewhere within the group (e.g. on /discover and they tap
+        // Recipes), we still re-route to the default leaf so the
+        // primary press is predictable.
+        onNavigate(item.defaultLeaf);
+      }}
+      aria-current={isActive ? "page" : undefined}
+      className={`group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        isActive
           ? "bg-accent-muted text-primary"
           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
       }`}
     >
       <Icon
-        className={`h-4 w-4 shrink-0 ${active ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+        className={`h-4 w-4 shrink-0 ${isActive ? "" : "text-muted-foreground group-hover:text-foreground"}`}
         aria-hidden
       />
       <span className="flex-1 text-left">{item.label}</span>
+    </button>
+  );
+}
+
+function SubTabSidebarItem({
+  sub,
+  currentView,
+  onNavigate,
+  sidebarProps,
+}: {
+  sub: SubTabItem;
+  currentView: SidebarView;
+  onNavigate: (v: SidebarView) => void;
+  sidebarProps: DesktopSidebarProps;
+}) {
+  const isActive = currentView === sub.view;
+  const badgeCount = sub.badge?.(sidebarProps) ?? 0;
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(sub.view)}
+      aria-current={isActive ? "page" : undefined}
+      className={`group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
+        isActive
+          ? "text-primary"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <span className="flex-1 text-left">{sub.label}</span>
       {badgeCount > 0 ? (
         <span className="min-w-[1.25rem] rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary text-center leading-5">
           {badgeCount > 99 ? "99+" : badgeCount}

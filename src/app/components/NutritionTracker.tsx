@@ -48,6 +48,8 @@ import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
+import { StreakPip } from "./suppr/streak-pip";
+import { LogFab } from "./suppr/log-fab";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
@@ -113,6 +115,12 @@ import {
   parseQuickAddCollapsed,
   serializeQuickAddCollapsed,
 } from "../../lib/nutrition/todayProgressiveDisclosure.ts";
+import {
+  DEFAULT_TRACKING_EXTRAS,
+  TRACKING_EXTRAS_STORAGE_KEY,
+  parseTrackingExtras,
+  type TrackingExtras,
+} from "../../lib/nutrition/trackingExtras.ts";
 
 export {
   parseDateKey,
@@ -463,6 +471,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     }
   });
   const [hydrationManualExpanded, setHydrationManualExpanded] = useState(false);
+  // Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras opt-in.
+  // Caffeine + alcohol Today widgets gate on this pref. Default OFF.
+  // localStorage-only; mirrors the mobile pref under the same key.
+  // The Settings page is the writer; NutritionTracker is the reader.
+  // We re-read on the `storage` event so cross-tab edits propagate
+  // (important on mobile-web where Settings + Today can be split
+  // tabs in some browsers).
+  const [trackingExtras, setTrackingExtras] = useState<TrackingExtras>(() => {
+    if (typeof window === "undefined") return { ...DEFAULT_TRACKING_EXTRAS };
+    try {
+      return parseTrackingExtras(window.localStorage.getItem(TRACKING_EXTRAS_STORAGE_KEY));
+    } catch {
+      return { ...DEFAULT_TRACKING_EXTRAS };
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: StorageEvent) => {
+      if (event.key !== TRACKING_EXTRAS_STORAGE_KEY) return;
+      setTrackingExtras(parseTrackingExtras(event.newValue));
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
   const toggleQuickAddCollapsed = useCallback(() => {
     setQuickAddCollapsed((prev) => {
       const next = !prev;
@@ -1369,10 +1401,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         waterTargetMl: targets.waterMl,
         extraWaterByDay,
         waterFromMealsMl: Math.max(0, totalWaterMl - extraWaterMlForSelectedDay),
-        extraCaffeineByDay: _extraCaffeineByDay,
-        extraAlcoholGByDay: alcoholByDayMerged,
+        // Phase 2 / B1.4 — caffeine/alcohol logs only contribute to
+        // the gate when their respective opt-in toggle is on. When
+        // the user has opted out, historical data is preserved but
+        // does not surface the card.
+        extraCaffeineByDay: trackingExtras.trackCaffeine ? _extraCaffeineByDay : {},
+        extraAlcoholGByDay: trackingExtras.trackAlcohol ? alcoholByDayMerged : {},
       }),
-    [targets.waterMl, extraWaterByDay, totalWaterMl, extraWaterMlForSelectedDay, _extraCaffeineByDay, alcoholByDayMerged],
+    [targets.waterMl, extraWaterByDay, totalWaterMl, extraWaterMlForSelectedDay, _extraCaffeineByDay, alcoholByDayMerged, trackingExtras.trackCaffeine, trackingExtras.trackAlcohol],
   );
   const stepsCardGateOpen = useMemo(
     () => isStepsCardVisible({ stepsByDay, activityBurnByDay }),
@@ -1520,6 +1556,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
       />
 
+      {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
+          alongside the date row. Replaces the demoted streak ribbon
+          (already removed from this surface 2026-04-20). On
+          mobile-web the pip is right-aligned above the date header to
+          mirror the mobile composition. Suppressed on week-view to
+          keep the week toggle uncrowded. */}
+      {viewMode === "day" ? (
+        <div className="flex justify-end pt-1.5 -mb-1 px-1">
+          <StreakPip days={streakDays} />
+        </div>
+      ) : null}
+
       <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -1664,15 +1712,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           point — matches the spec at
           docs/specs/2026-04-27-b4-today-screen-phase3.md and is
           revertable in 1 PostHog click without a deploy. */}
-      {!isFeatureEnabled("today_phase_3_quickadd_v2") && (
-        <TodayQuickLogStrip
-          userTier={userTier}
-          onOpenSearch={() => setFoodSearchOpen(true)}
-          onOpenVoiceLog={handleVoiceLog}
-          onOpenPhotoLog={handlePhotoLogClick}
-          onOpenBarcode={() => setBarcodeOpen(true)}
-        />
-      )}
+      {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
+          removed from Today's composition root. The persistent <LogFab>
+          (rendered at the root of the tracker on mobile-web) is the
+          canonical logging-entry affordance going forward; Phase 3
+          wires the unified <LogSheet> behind it. The strip component
+          file stays in the tree for reference and tests but no
+          production caller renders it on Today. */}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak
@@ -1906,8 +1952,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           weekStartDay={weekStartDay}
           targets={{
             waterMl: targets.waterMl,
-            caffeineMg: targetCaffeineMg,
-            alcoholGWeekly: targetAlcoholGWeekly,
+            // Phase 2 / B1.4 (D-2026-04-27-08): caffeine + alcohol
+            // are gated by Settings opt-in. When the user hasn't
+            // opted in, force the target to 0 so the row hides via
+            // the existing HydrationStimulantsCard rule. The
+            // underlying data is preserved untouched.
+            caffeineMg: trackingExtras.trackCaffeine ? targetCaffeineMg : 0,
+            alcoholGWeekly: trackingExtras.trackAlcohol ? targetAlcoholGWeekly : 0,
           }}
           waterTotalMl={totalWaterMl}
           waterFromMealsMl={Math.max(0, totalWaterMl - extraWaterMlForSelectedDay)}
@@ -2274,6 +2325,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onSave={handleCreateSavedMeal}
         suggestedName={saveComboSuggestedName}
       />
+
+      {/* Phase 2 / B1.2 (D-2026-04-27-15) — canonical Log FAB on
+          mobile-web Today. Hidden on desktop web (D-2026-04-27-11:
+          web is the long-form companion, daily logging is a phone
+          activity). Phase 2 ships placement only with a no-op tap;
+          Phase 3 wires the unified <LogSheet>. */}
+      <LogFab visible={viewMode === "day"} />
     </div>
   );
 });

@@ -142,6 +142,8 @@ import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
 import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
+import { StreakPip } from "@/components/today/StreakPip";
+import { LogFab } from "@/components/today/LogFab";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
@@ -294,25 +296,19 @@ export default function TrackerScreen() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(true);
   const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
-  // Today hero variant preference — ring / bar / number (prototype port 2026-04-20).
-  // Persisted under `suppr.hero.variant` so the user's choice survives reload.
-  const HERO_VARIANT_STORAGE_KEY = "suppr.hero.variant";
-  const [heroVariant, setHeroVariantState] = useState<TodayHeroVariant>("ring");
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY)
-      .then((raw) => {
-        if (cancelled) return;
-        if (raw === "ring" || raw === "bar" || raw === "number") {
-          setHeroVariantState(raw);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-  const setHeroVariant = useCallback((next: TodayHeroVariant) => {
-    setHeroVariantState(next);
-    AsyncStorage.setItem(HERO_VARIANT_STORAGE_KEY, next).catch(() => {});
+  // Phase 2 / B1.2 (D-2026-04-27-03): canonical Today is the ring
+  // variant only. The 3-variant picker (ring / bar / number) was
+  // shipped as a "user-pickable" hedge; per the strategic direction
+  // doc "Three variants is design indecision dressed as pluralism."
+  // We hard-pin the variant to "ring" here. The picker affordance
+  // (corner grid icon) is suppressed by passing a no-op
+  // `onVariantChange`. The TodayHero component still accepts the
+  // prop so we don't have to refactor the component tree in this
+  // phase — Phase 3 will remove the variant prop entirely along with
+  // the TodayHeroBar / TodayHeroNumber files.
+  const heroVariant: TodayHeroVariant = "ring";
+  const setHeroVariant = useCallback((_next: TodayHeroVariant) => {
+    // No-op: variant is locked to "ring". See note above.
   }, []);
   const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"];
   const [trackedMacros, setTrackedMacros] = useState<string[]>(DEFAULT_TRACKED_MACROS);
@@ -348,6 +344,44 @@ export default function TrackerScreen() {
   /** Batch 2.5 — alcohol per-day (g ethanol) + weekly target (g; 0 = hidden). */
   const [extraAlcoholGByDay, setExtraAlcoholGByDay] = useState<Record<string, number>>({});
   const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
+  // Phase 2 / B1.4 (D-2026-04-27-08) — caffeine + alcohol opt-in.
+  // Default OFF. Hydration stays as it's a near-universal target.
+  // Prefs are AsyncStorage-only (no schema change for Phase 2);
+  // Settings → "Tracking extras" surfaces the toggles. When false,
+  // the corresponding row in HydrationStimulantsCard hides via the
+  // existing `targets.caffeineMg === 0` / `targets.alcoholGWeekly
+  // === 0` rule — we just force the target prop to 0 at the call
+  // site. Existing data is preserved (no DB writes).
+  const [trackCaffeine, setTrackCaffeine] = useState<boolean>(false);
+  const [trackAlcohol, setTrackAlcohol] = useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(
+          // Inline the storage key string so this file doesn't need
+          // a new import — keeps the diff narrow. The key is
+          // exported from src/lib/nutrition/trackingExtras.ts as
+          // TRACKING_EXTRAS_STORAGE_KEY = "suppr.tracking-extras.v1".
+          "suppr.tracking-extras.v1",
+        );
+        if (cancelled) return;
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw) as { trackCaffeine?: boolean; trackAlcohol?: boolean } | null;
+          if (parsed && typeof parsed === "object") {
+            if (typeof parsed.trackCaffeine === "boolean") setTrackCaffeine(parsed.trackCaffeine);
+            if (typeof parsed.trackAlcohol === "boolean") setTrackAlcohol(parsed.trackAlcohol);
+          }
+        } catch {
+          // Malformed prefs — leave defaults.
+        }
+      } catch {
+        // AsyncStorage unavailable — keep defaults.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
   const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
@@ -1728,10 +1762,14 @@ export default function TrackerScreen() {
         waterTargetMl: waterGoalMl,
         extraWaterByDay,
         waterFromMealsMl,
-        extraCaffeineByDay,
-        extraAlcoholGByDay,
+        // Phase 2 / B1.4 — caffeine/alcohol logs only contribute to
+        // the gate when their respective opt-in toggle is on. When
+        // the user has opted out, historical caffeine/alcohol data
+        // is preserved but does not surface the card.
+        extraCaffeineByDay: trackCaffeine ? extraCaffeineByDay : {},
+        extraAlcoholGByDay: trackAlcohol ? extraAlcoholGByDay : {},
       }),
-    [waterGoalMl, extraWaterByDay, waterFromMealsMl, extraCaffeineByDay, extraAlcoholGByDay],
+    [waterGoalMl, extraWaterByDay, waterFromMealsMl, extraCaffeineByDay, extraAlcoholGByDay, trackCaffeine, trackAlcohol],
   );
   const stepsCardGateOpen = useMemo(
     () => isStepsCardVisible({ stepsByDay, activityBurnByDay }),
@@ -2950,6 +2988,16 @@ export default function TrackerScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top, position: "relative" }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
+            next to the date row. The earlier streak ribbon was removed
+            2026-04-20; this pip is the binding pattern going forward.
+            Lives above the date header on day-view; suppressed on
+            week-view to keep the week toggle uncrowded. */}
+        {viewMode === "day" && (
+          <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
+            <StreakPip days={streakDays} />
+          </View>
+        )}
         {/* Date navigation header */}
         <TodayDateHeader
           viewMode={viewMode}
@@ -3078,12 +3126,14 @@ export default function TrackerScreen() {
                 />
               )}
 
-            {/* Today hero — ring / bar / number variant, user-pickable
-                via the grid-icon affordance in the card's top-right.
-                Prototype port (2026-04-20 Claude Design drop). */}
+            {/* Phase 2 / B1.2 (D-2026-04-27-03): canonical Today hero —
+                ring variant only. The corner grid picker is hidden via
+                `hidePicker`. Bar and Number variants stay in the tree
+                for legacy compatibility but are not surfaced. */}
             <TodayHero
               variant={heroVariant}
               onVariantChange={setHeroVariant}
+              hidePicker
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
@@ -3157,26 +3207,14 @@ export default function TrackerScreen() {
                 opens the comprehensive Search-first sheet (Previous /
                 Scan / Photo / Voice + Quick Add footer) so no logging
                 option is ever lost. */}
-            {/* B4 Phase 3c (2026-04-27): gated behind PostHog flag
-                `today_phase_3_quickadd_v2`. When the flag is on, the
-                strip is suppressed unconditionally and the FAB is the
-                sole primary entry point. When the flag is off (default
-                pre-launch), retain the existing D86 empty-day-only
-                gate that has shipped since 2026-04-26. Spec:
-                docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
-            {!isFeatureEnabled("today_phase_3_quickadd_v2") && mealsToday.length === 0 ? (
-              <TodayQuickLogStrip
-                userTier={userTier}
-                onOpenSearch={() => setSearchOpen(true)}
-                onOpenVoice={handleOpenVoiceLog}
-                onOpenPhoto={handleOpenPhotoLog}
-                onOpenBarcode={() => setBarcodeOpen(true)}
-                cardColor={colors.card}
-                cardBorderColor={colors.cardBorder}
-                textSecondaryColor={colors.textSecondary}
-                textTertiaryColor={colors.textTertiary}
-              />
-            ) : null}
+            {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
+                removed from Today's composition root. The persistent
+                Log FAB (rendered below the meals section) is the sole
+                logging-entry affordance going forward; Phase 3 wires
+                the unified <LogSheet> behind it. The strip component
+                file (TodayQuickLogStrip.tsx) stays in the tree for
+                reference and the test suite, but no production caller
+                renders it on Today. */}
           </>
         )}
 
@@ -3427,8 +3465,15 @@ export default function TrackerScreen() {
             weekStartDay={weekStartDay}
             targets={{
               waterMl: waterGoalMl,
-              caffeineMg: targetCaffeineMg,
-              alcoholGWeekly: targetAlcoholGWeekly,
+              // Phase 2 / B1.4 (D-2026-04-27-08): caffeine + alcohol
+              // are gated by Settings opt-in. When the user hasn't
+              // opted in, force the target to 0 so the row hides via
+              // the existing HydrationStimulantsCard rule
+              // (`targets.caffeineMg === 0` / `targets.alcoholGWeekly
+              // === 0`). The underlying data (`extra_caffeine_by_day`
+              // / `extra_alcohol_g_by_day`) is preserved untouched.
+              caffeineMg: trackCaffeine ? targetCaffeineMg : 0,
+              alcoholGWeekly: trackAlcohol ? targetAlcoholGWeekly : 0,
             }}
             waterTotalMl={totalWaterMl}
             waterFromMealsMl={waterFromMealsMl}
@@ -3505,9 +3550,33 @@ export default function TrackerScreen() {
         textTertiaryColor={colors.textTertiary}
       />
 
-      {/* FAB + bottom sheet — always visible on day view. */}
+      {/* Phase 2 / B1.2 (D-2026-04-27-15) — canonical Log FAB at the
+          spec position (right: 18, bottom: 100, 56pt circle, primary
+          fill, Plus glyph, Elevation.floatPrimary shadow). Phase 2
+          ships placement + existence; Phase 3 wires it to the unified
+          <LogSheet>.
+
+          Pragmatic deviation from the spec (documented in
+          docs/journeys/tab-collapse-2026-04-27.md): rather than have
+          tap surface a "Coming in Phase 3" alert that strands users
+          without a logging path, the FAB onPress opens the existing
+          TodayFabSheet (the same sheet meal-slot taps open). This is
+          strictly more functional than the spec's no-op fallback and
+          keeps the user able to log from cold launch in two taps. The
+          existing TodayFabSheet's own FAB is hidden (`fabVisible={
+          false}`) so there is exactly one visible FAB on Today. */}
+      <LogFab
+        visible={viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen}
+        onPress={() => setFabSheetOpen(true)}
+      />
+
+      {/* TodayFabSheet — Phase 2 keeps the bottom sheet for the
+          existing log paths (search/barcode/voice/photo/quick-add/
+          previous). Its own FAB is hidden because the canonical
+          <LogFab> above now owns the visible affordance. Phase 3
+          replaces this entirely with the unified <LogSheet>. */}
       <TodayFabSheet
-        fabVisible={viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen}
+        fabVisible={false}
         sheetVisible={fabSheetOpen}
         onOpenSheet={() => setFabSheetOpen(true)}
         onCloseSheet={() => setFabSheetOpen(false)}

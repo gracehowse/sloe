@@ -38,6 +38,15 @@ import {
   type Sex,
 } from "../../../../src/lib/nutrition/tdee";
 import { recomputeTargetsForActivity } from "../../../../src/lib/nutrition/recomputeTargetsForActivity";
+import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  DEFAULT_TRACKING_EXTRAS,
+  TRACKING_EXTRAS_STORAGE_KEY,
+  parseTrackingExtras,
+  serializeTrackingExtras,
+  type TrackingExtras,
+} from "../../../../src/lib/nutrition/trackingExtras";
 
 type NotificationPrefs = {
   newRecipes: boolean;
@@ -114,6 +123,33 @@ export default function SettingsScreen() {
   const [profilePlanPace, setProfilePlanPace] = useState<PlanPace | null>(null);
   const [profileNutritionStrategy, setProfileNutritionStrategy] =
     useState<NutritionStrategy | null>(null);
+
+  // Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras opt-in.
+  // Defaults OFF. AsyncStorage-only (no schema change). Toggling
+  // updates the local state + persists immediately so Today picks up
+  // the new pref on next render via the effect in the tracker host.
+  const [trackingExtras, setTrackingExtras] = useState<TrackingExtras>(DEFAULT_TRACKING_EXTRAS);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(TRACKING_EXTRAS_STORAGE_KEY);
+        if (cancelled) return;
+        setTrackingExtras(parseTrackingExtras(raw));
+      } catch {
+        // Storage unavailable — keep defaults.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const persistTrackingExtras = useCallback(async (next: TrackingExtras) => {
+    setTrackingExtras(next);
+    try {
+      await AsyncStorage.setItem(TRACKING_EXTRAS_STORAGE_KEY, serializeTrackingExtras(next));
+    } catch {
+      // Soft failure — local state already reflects the toggle.
+    }
+  }, []);
 
   const styles = useMemo(
     () =>
@@ -409,7 +445,10 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
+          Settings + More siblings). */}
+      <YouSubTabHeader />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -774,6 +813,35 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
             {saving ? <Text style={styles.saving}>Saving…</Text> : null}
+
+            {/* Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras
+                opt-in. Caffeine + alcohol Today widgets default OFF.
+                Toggling on surfaces the corresponding row in the
+                hydration card on Today and preserves any historical
+                data unchanged. */}
+            <Text style={styles.sectionTitle}>Tracking extras</Text>
+            <View style={styles.card}>
+              <Row
+                label="Track caffeine"
+                value={trackingExtras.trackCaffeine}
+                onToggle={() => void persistTrackingExtras({ ...trackingExtras, trackCaffeine: !trackingExtras.trackCaffeine })}
+                styles={styles}
+                colors={colors}
+              />
+              <Row
+                label="Track alcohol"
+                value={trackingExtras.trackAlcohol}
+                onToggle={() => void persistTrackingExtras({ ...trackingExtras, trackAlcohol: !trackingExtras.trackAlcohol })}
+                isLast
+                styles={styles}
+                colors={colors}
+              />
+            </View>
+            <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4, marginHorizontal: Spacing.md }}>
+              Off by default. Hydration stays on regardless. When off,
+              your existing logs are preserved but the row is hidden
+              on Today.
+            </Text>
 
             {/* About — houses the "What's new in Suppr" surface.
                 Entry point per F-0 spec (2026-04-19): testers should
