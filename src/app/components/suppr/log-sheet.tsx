@@ -44,6 +44,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "../ui/utils";
 import { SourceDot, type SourceDotSource } from "../ui/source-dot";
+import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
 
 export type LogSheetTab =
@@ -394,40 +395,51 @@ function SearchTab({ query, onQueryChange, results, onAdd, state }: SearchTabPro
       ) : null}
 
       {!state?.loading && !state?.error && results.length > 0 ? (
-        <ul className="flex flex-col gap-1">
-          {results.map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
-            >
-              {r.thumbnail ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={r.thumbnail} alt="" className="h-9 w-9 rounded-md object-cover" />
-              ) : (
-                <div className="h-9 w-9 rounded-md bg-muted" aria-hidden />
-              )}
-              <div className="flex flex-1 flex-col gap-0.5">
-                <span className="text-[14px] font-medium">{r.title}</span>
-                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <SourceDot source={r.source} size={6} />
-                  <span className="tabular-nums">{r.kcal} kcal</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-label={`Add ${r.title}`}
-                onClick={() => onAdd(r)}
-                className={cn(
-                  "grid h-7 w-7 shrink-0 place-items-center rounded-full",
-                  "bg-primary/10 text-primary hover:bg-primary/20",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
-                )}
+        <>
+          <ul className="flex flex-col gap-1">
+            {results.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
               >
-                <span aria-hidden className="text-lg leading-none">+</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                {r.thumbnail ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={r.thumbnail} alt="" className="h-9 w-9 rounded-md object-cover" />
+                ) : (
+                  <div className="h-9 w-9 rounded-md bg-muted" aria-hidden />
+                )}
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-[14px] font-medium">{r.title}</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <SourceDot source={r.source} size={6} />
+                    <span className="tabular-nums">{r.kcal} kcal</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Add ${r.title}`}
+                  onClick={() => onAdd(r)}
+                  className={cn(
+                    "grid h-7 w-7 shrink-0 place-items-center rounded-full",
+                    "bg-primary/10 text-primary hover:bg-primary/20",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+                  )}
+                >
+                  <span aria-hidden className="text-lg leading-none">+</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {/* FatSecret attribution — ToS requires the badge wherever
+              FatSecret-sourced content is displayed. Rendered at the
+              foot of the result list when FatSecret results are present. */}
+          <FatSecretBadge
+            show={results.some((r) => r.source === "fatsecret")}
+            variant="text"
+            className="mt-1 pl-1"
+            data-testid="fatsecret-badge-search"
+          />
+        </>
       ) : null}
     </div>
   );

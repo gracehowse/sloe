@@ -51,8 +51,9 @@ import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts
 // list below.
 import { TrustChip } from "./ui/trust-chip";
 import { SourceDot } from "./ui/source-dot";
-import { aggregateRecipeTrust } from "../../lib/nutrition/recipeTrust.ts";
+import { aggregateRecipeTrust, classifyRecipeGluten } from "../../lib/nutrition/recipeTrust.ts";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap.ts";
+import { FatSecretBadge } from "./ui/FatSecretBadge";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -627,6 +628,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   };
 
   const RECIPE_MACRO_KEYS = new Set(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
+
+  // True when any ingredient in this recipe was matched against the
+  // FatSecret database — drives the attribution badge per FatSecret ToS.
+  const hasFatSecretIngredients = useMemo(
+    () => ingredients.some((ing) =>
+      typeof ing.source === "string" &&
+      ing.source.toLowerCase().includes("fatsecret"),
+    ),
+    [ingredients],
+  );
+
   const recipeMacrosToShow = useMemo(() => {
     const filtered = trackedMacros.filter((k) => RECIPE_MACRO_KEYS.has(k));
     return filtered.length > 0 ? filtered : ["protein", "carbs", "fat"];
@@ -1035,8 +1047,15 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         </div>
 
         {/* Hero Image */}
+        {/* Phase 5 / B5 (2026-04-27) — matching view-transition-name
+            anchors the card-to-detail morph. Spec §1.1 + Surface H. */}
         <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
-          <img src={recipe.image} alt={recipe.title} className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img
+            src={recipe.image}
+            alt={recipe.title}
+            className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
+            style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
         </div>
 
@@ -1070,6 +1089,15 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               isVerified: ing.isVerified,
             })),
           );
+          // Phase 5 / B3.2 — gluten depth (D-2026-04-27-13). Run the
+          // ingredient list through the gluten classifier and surface
+          // a chip when it earns one. `null` variant = no chip
+          // (gluten-containing recipe by intent OR insufficient
+          // surface to claim high confidence). Legal-reviewer copy
+          // pending pre-App-Store-submission review.
+          const glutenResult = classifyRecipeGluten(
+            ingredients.map((ing) => String(ing.name ?? "")),
+          );
           return (
             <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
               {pillTags.map((t) => (
@@ -1087,6 +1115,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 {fit}%
               </span>
               <TrustChip variant={trustVariant} data-testid="recipe-detail-trust-chip" />
+              {glutenResult.variant ? (
+                <TrustChip
+                  variant={glutenResult.variant}
+                  data-testid="recipe-detail-gluten-chip"
+                />
+              ) : null}
             </div>
           );
         })()}
@@ -1420,6 +1454,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Ingredients Tab */}
         {activeTab === "ingredients" && (
+          <>
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             {ingredients.length === 0 ? (
               <div className="px-6 py-8 text-center text-muted-foreground text-sm">No ingredients listed yet.</div>
@@ -1546,6 +1581,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               </div>
             )}
           </div>
+          {/* FatSecret attribution — ToS requires the badge wherever
+              FatSecret-sourced content is displayed. Rendered at the
+              foot of the ingredient list so it's adjacent to the
+              ingredient rows it applies to. */}
+          <FatSecretBadge
+            show={hasFatSecretIngredients}
+            variant="text"
+            className="mt-3"
+            data-testid="fatsecret-badge-ingredients"
+          />
+          </>
         )}
 
         {/* Steps Tab */}

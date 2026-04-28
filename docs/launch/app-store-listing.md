@@ -85,6 +85,9 @@ or £XX.99/year. Cancel anytime from Settings → Subscription.
 Built in the UK by a small independent team. We answer support email
 ourselves. Send us your hardest recipe and we'll add it to the test
 suite — that's how we made the food database honest in the first place.
+
+[ATTRIBUTION — required by third-party API contracts]
+Powered by fatsecret nutrition API (www.fatsecret.com)
 ```
 
 Replace [pricing] with actual values once Stripe Live is configured. Replace [team plurals] if Suppr remains a solo operation.
@@ -173,6 +176,19 @@ UK-first launch; en-UK is the primary locale. en-US screenshots can use the same
 4. Once cohort is happy: App Store Connect → App Store tab → fill all fields above.
 5. Submit for review. Apple SLA: 24–72 hours typical.
 6. On approval: release manually (don't auto-release) so a coordinated launch post is possible.
+
+## Attribution requirements
+
+Third-party data contracts mandate the following text appear in the App
+Store + Play Store description (both platforms).
+
+**FatSecret Platform API** (required — non-negotiable ToS clause):
+
+> Powered by fatsecret nutrition API (www.fatsecret.com)
+
+Copy the line above verbatim into the app description. The phrase must
+survive any copy-editing or localisation pass. Do not abbreviate, reword,
+or move it to a footnote. Authority: docs/decisions/2026-04-27-fatsecret-attribution-policy.md
 
 ## Pre-submission checklist (mirrors `docs/launch/checklist.md` Phase 2)
 

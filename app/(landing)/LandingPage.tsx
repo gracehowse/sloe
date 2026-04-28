@@ -50,6 +50,7 @@ import {
   type RoadmapItem,
 } from "../../src/lib/landing/content.ts";
 import "./landing.css";
+import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
 
 const NAV_LINKS = [
   { href: "#what", label: "How it works" },
@@ -1145,6 +1146,11 @@ function LandingFooter() {
               </li>
             </ul>
           </div>
+        </div>
+        {/* FatSecret attribution — required by FatSecret Platform API ToS.
+            Public, login-free placement per policy requirement. */}
+        <div className="lp-f-attribution">
+          <FatSecretBadge variant="badge" />
         </div>
         <div className="lp-f-bottom">
           <div>© {new Date().getFullYear()} Suppr. All rights reserved.</div>

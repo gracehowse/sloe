@@ -28,6 +28,7 @@ import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
+import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
 
 /**
@@ -427,6 +428,18 @@ function SearchTab({
             </Pressable>
           </View>
         )}
+        ListFooterComponent={
+          results.some((r) => r.source === "fatsecret") ? (
+            /* FatSecret attribution — ToS requires the badge wherever
+               FatSecret-sourced content is displayed. Footer of the
+               result list so it's immediately below the FatSecret rows. */
+            <FatSecretBadge
+              variant="text"
+              style={{ marginTop: 8, marginHorizontal: 4 }}
+              testID="fatsecret-badge-search"
+            />
+          ) : null
+        }
       />
     </View>
   );

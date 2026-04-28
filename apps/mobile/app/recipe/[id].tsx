@@ -78,7 +78,8 @@ import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 import { TrustChip } from "../../components/ui/TrustChip";
 import { SourceDot } from "../../components/ui/SourceDot";
-import { aggregateRecipeTrust } from "@/lib/recipeTrust";
+import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
+import { aggregateRecipeTrust, classifyRecipeGluten } from "@/lib/recipeTrust";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -692,6 +693,21 @@ export default function RecipeDetailScreen() {
           (i.carbs ?? 0) <= 0 &&
           (i.fat ?? 0) <= 0,
       ),
+    [ingredients],
+  );
+
+  // True when at least one ingredient was matched against FatSecret —
+  // drives the attribution badge per FatSecret Platform API ToS.
+  // This is broader than hasZeroedFatSecretIngredients: it covers both
+  // re-fetched rows (macros populated at request time) and zeroed Basic-
+  // tier rows that still carry a fatsecret_food_id.
+  const hasFatSecretIngredients = useMemo(
+    () =>
+      ingredients.some((i) => {
+        const src = (i.source ?? "").toLowerCase();
+        return src.includes("fatsecret") ||
+          (typeof i.fatsecret_food_id === "string" && i.fatsecret_food_id.length > 0);
+      }),
     [ingredients],
   );
 
@@ -1349,7 +1365,7 @@ export default function RecipeDetailScreen() {
               threshold (matches the existing ConfidenceDot
               high/medium gating in apps/mobile/app/recipe/[id].tsx
               and the canonical bucket in confidenceScoring.ts). */}
-          <View style={{ marginTop: 6, flexDirection: "row" }}>
+          <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
             <TrustChip
               variant={aggregateRecipeTrust(
                 ingredients.map((ing) => ({
@@ -1360,6 +1376,23 @@ export default function RecipeDetailScreen() {
               )}
               testID="recipe-detail-trust-chip"
             />
+            {/* Phase 5 / B3.2 (2026-04-27, D-2026-04-27-13) — gluten
+                depth chip. Surfaces a `gluten-high-conf` or
+                `gluten-uncertain` chip alongside the source TrustChip;
+                null variant means the recipe is gluten-containing by
+                intent (no chip). Legal-reviewer copy review pending
+                pre-App-Store-submission. */}
+            {(() => {
+              const gluten = classifyRecipeGluten(
+                ingredients.map((ing) => String(ing.name ?? "")),
+              );
+              return gluten.variant ? (
+                <TrustChip
+                  variant={gluten.variant}
+                  testID="recipe-detail-gluten-chip"
+                />
+              ) : null;
+            })()}
           </View>
           {recipeByline.label ? (
             <Pressable
@@ -1785,6 +1818,44 @@ export default function RecipeDetailScreen() {
                           source={mapMealSourceToDot(ing.source ?? null)}
                           size={6}
                         />
+                        {/* Phase 5 / B3.M — inline "Verify →" text-button
+                            on estimated ingredient rows. V-5 parity gap
+                            with web closed: the Pressable wrapping the
+                            row still opens the explainer Alert; this
+                            secondary text-button takes the user straight
+                            to /recipe/verify so they can resolve the
+                            row without going through the explainer
+                            first. Surfaces only when the row is below
+                            the verified threshold (confPct < 75 or
+                            unverified). Production design spec §1.6 +
+                            Surface H §Ingredients. */}
+                        {(confPct == null || confPct < 75) && recipeId ? (
+                          <Pressable
+                            accessibilityRole="link"
+                            accessibilityLabel={`Verify ${ing.name}`}
+                            onPress={(e) => {
+                              // Stop the parent Pressable's Alert from firing
+                              // — the user has indicated they want the
+                              // verify route, not the explainer.
+                              e.stopPropagation();
+                              router.push(
+                                `/recipe/verify?id=${recipeId}` as never,
+                              );
+                            }}
+                            hitSlop={6}
+                            testID={`ingredient-verify-cta-${i}`}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: "700",
+                                color: Accent.primary,
+                              }}
+                            >
+                              Verify →
+                            </Text>
+                          </Pressable>
+                        ) : null}
                       </View>
                       {/* F-85 (2026-04-25) — per-ingredient macro split bar
                           removed. Per ui-critic: a user cooking pancakes
@@ -1799,6 +1870,17 @@ export default function RecipeDetailScreen() {
               })}
             </View>
           )}
+          {/* FatSecret attribution — ToS requires the badge wherever
+              FatSecret-sourced content is displayed. Rendered at the
+              foot of the ingredient list when FatSecret ingredients
+              are present. */}
+          {hasFatSecretIngredients ? (
+            <FatSecretBadge
+              variant="text"
+              style={{ marginTop: 8, marginLeft: 4 }}
+              testID="fatsecret-badge-ingredients"
+            />
+          ) : null}
 
           {/* Steps Tab */}
           {activeTab === "steps" && instructionSteps.length > 0 && (
@@ -1816,6 +1898,7 @@ export default function RecipeDetailScreen() {
 
           {/* Nutrition Tab */}
           {activeTab === "nutrition" && (
+            <>
             <View>
               {/* 2x2 Grid (polish 2026-04-25 — formatMacroValue centralises
                   rounding so protein/carbs/fat keep 1-decimal precision and
@@ -1875,6 +1958,15 @@ export default function RecipeDetailScreen() {
                 </View>
               </View>
             </View>
+            {/* FatSecret attribution on the Nutrition tab. */}
+            {hasFatSecretIngredients ? (
+              <FatSecretBadge
+                variant="text"
+                style={{ marginTop: 8, marginLeft: 4 }}
+                testID="fatsecret-badge-nutrition"
+              />
+            ) : null}
+            </>
           )}
 
           {/* Log to journal — portion vs one recipe serving */}
