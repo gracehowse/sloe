@@ -801,7 +801,14 @@ export const MealPlanner = memo(function MealPlanner({
               </div>
               {/* F2-E (2026-04-28): day total vs goal — calories
                   header + P/C/F delta chips. Mobile parity at
-                  `apps/mobile/app/(tabs)/planner.tsx:2053-2089`. */}
+                  `apps/mobile/app/(tabs)/planner.tsx:2053-2089`.
+                  F2 follow-up #3 (2026-04-28, see
+                  `docs/decisions/2026-04-28-plan-day-summary-strip-web-divergence.md`):
+                  added a slim per-day progress bar that ports the
+                  one signal the mobile day-summary strip carries
+                  beyond what the grid already shows. The strip
+                  itself stays mobile-only (web 7-column grid serves
+                  the same spatial function). */}
               {renderTotals ? (
                 <div
                   data-testid={`planner-day-totals-${dp.day}`}
@@ -819,6 +826,33 @@ export const MealPlanner = memo(function MealPlanner({
                   >
                     {Math.round(dayTotalLine.totals.calories)} / {Math.round(nutritionTargets.calories)} kcal
                   </p>
+                  <div
+                    data-testid={`planner-day-progress-${dp.day}`}
+                    role="progressbar"
+                    aria-valuenow={Math.round(dayTotalLine.totals.calories)}
+                    aria-valuemin={0}
+                    aria-valuemax={Math.round(nutritionTargets.calories)}
+                    aria-label={`Calories progress for ${dayLabel}`}
+                    className={`h-1 rounded-full overflow-hidden ${
+                      dayTotalLine.cells[0].tone === "neutral"
+                        ? "bg-muted"
+                        : "bg-warning-soft"
+                    }`}
+                  >
+                    <div
+                      className={`h-full transition-all ${
+                        dayTotalLine.cells[0].tone === "neutral"
+                          ? "bg-primary"
+                          : "bg-warning"
+                      }`}
+                      style={{
+                        width:
+                          nutritionTargets.calories > 0
+                            ? `${Math.min(100, (dayTotalLine.totals.calories / nutritionTargets.calories) * 100)}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {dayTotalLine.cells.slice(1).map((cell) => (
                       <span

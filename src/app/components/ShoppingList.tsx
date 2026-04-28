@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { X } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import {
   formatMixedShoppingAmounts,
@@ -16,35 +17,41 @@ interface ShoppingListProps {
 }
 
 /**
- * Web Shopping list — prototype port (2026-04-20 rewrite).
+ * Web Shopping list — prototype baseline + F3 lifecycle interactions.
  *
- * Matches `docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
+ * Layout matches `docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
  * `WebShopping` exactly: `<h1 style="font-size:24">Shopping list</h1>`,
- * subtitle `N items · from this week's plan`, and a 3-column
- * `grid-cols-3 gap-4 max-w-[900px]` of category cards. Each card
- * carries an overline, then rows separated by top-border with a
- * 18×18 circular checkbox ring and inline `{name} ({qty} {unit})`
- * text.
+ * subtitle `N items · from this week's plan`, 3-column
+ * `grid-cols-3 gap-4 max-w-[900px]` of category cards.
  *
- * Intentionally stripped vs earlier ports (per Grace 2026-04-20):
- *  - no breadcrumb row (Recipes · Shopping list · date)
- *  - no Shopping progress bar / capsule
- *  - no Print / CSV / Text / meatballs export UI
- *  - no "Add custom item" input
- *  - no per-row trash icon
- *  - no recipe thumbnail images
- *  - no regenerate card
- *  - no out-of-sync banner (code path retained in context)
+ * F3 hybrid additions (audit 2026-04-28, see
+ * `docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`):
+ *  - Per-row X remove (mobile lifecycle parity)
+ *  - "Remove N checked" link, only when ≥1 row is checked
+ *  - Slim progress bar with `role="progressbar"` + `aria-valuenow`
  *
- * Data flow preserved: `toggleShoppingChecked` still persists via
- * `useAppData`. Empty state is a single muted "No items" card.
+ * Intentionally NOT shipped (prototype strip holds for chrome):
+ *  - Share button (defer until web share format is designed)
+ *  - Trash / clear-all (redundant with clear-checked + plan regen)
+ *  - Print / CSV / Text / meatballs export UI
+ *  - Breadcrumb, regenerate card, out-of-sync banner
+ *  - "Add custom item" input
+ *  - Recipe thumbnail images
+ *
+ * Data flow: `toggleShoppingChecked`, `removeShoppingItem`, and
+ * `setShoppingItems` all persist via `useAppData`.
  */
 export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
   onUpgrade: _onUpgrade,
   onNavigate: _onNavigate,
 }: ShoppingListProps) {
-  const { shoppingItems, toggleShoppingChecked } = useAppData();
+  const {
+    shoppingItems,
+    toggleShoppingChecked,
+    removeShoppingItem,
+    setShoppingItems,
+  } = useAppData();
 
   const categories = useMemo(
     () => Array.from(new Set(shoppingItems.map((item) => item.category))),
@@ -67,6 +74,17 @@ export const ShoppingList = memo(function ShoppingList({
     [categorySections],
   );
 
+  // F3 (2026-04-28): count of fully-checked groups for the progress
+  // bar and the "Remove N checked" link.
+  const checkedCount = useMemo(
+    () =>
+      categorySections.reduce(
+        (n, s) => n + s.groups.filter((g) => isShoppingGroupFullyChecked(g)).length,
+        0,
+      ),
+    [categorySections],
+  );
+
   const subtitle = `${totalItemCount} item${totalItemCount === 1 ? "" : "s"} · from this week's plan`;
 
   const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
@@ -80,6 +98,20 @@ export const ShoppingList = memo(function ShoppingList({
     }
   };
 
+  /** F3 (2026-04-28) — per-row remove. Mobile parity at
+   *  `apps/mobile/app/shopping.tsx` (uses the same context handler). */
+  const removeGroup = (group: ShoppingDisplayGroup) => {
+    for (const item of group.items) removeShoppingItem(item.id);
+  };
+
+  /** F3 (2026-04-28) — clear-checked link. Filters the persisted
+   *  shopping array down to unchecked items in one write. Mirrors
+   *  the mobile flow which uses the same `setShoppingItems` setter. */
+  const handleClearChecked = () => {
+    if (checkedCount === 0) return;
+    setShoppingItems((prev) => prev.filter((item) => !item.checked));
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-pm-5 py-pm-5">
       {/* Title + subtitle — paste-level fidelity to prototype WebShopping. */}
@@ -89,9 +121,53 @@ export const ShoppingList = memo(function ShoppingList({
       >
         Shopping list
       </h1>
-      <p className="text-muted-foreground" style={{ fontSize: 13, marginBottom: 20 }}>
+      <p className="text-muted-foreground" style={{ fontSize: 13, marginBottom: 12 }}>
         {subtitle}
       </p>
+
+      {/* F3 (2026-04-28): slim progress bar + clear-checked link.
+          Mobile parity at `apps/mobile/app/shopping.tsx`. Hidden on
+          empty lists; the clear-checked link only renders when ≥1
+          row is checked. */}
+      {totalItemCount > 0 ? (
+        <div
+          className="flex items-center gap-3 mb-5"
+          style={{ maxWidth: 900 }}
+        >
+          <div
+            data-testid="shopping-progress-bar"
+            role="progressbar"
+            aria-valuenow={checkedCount}
+            aria-valuemin={0}
+            aria-valuemax={totalItemCount}
+            aria-label={`${checkedCount} of ${totalItemCount} items checked off`}
+            className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"
+          >
+            <div
+              className="h-full bg-primary transition-all"
+              style={{
+                width:
+                  totalItemCount > 0
+                    ? `${(checkedCount / totalItemCount) * 100}%`
+                    : "0%",
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+            {checkedCount}/{totalItemCount}
+          </p>
+          {checkedCount > 0 ? (
+            <button
+              type="button"
+              onClick={handleClearChecked}
+              data-testid="shopping-clear-checked"
+              className="text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
+            >
+              Remove {checkedCount} checked
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {totalItemCount === 0 ? (
         <div
@@ -142,7 +218,7 @@ export const ShoppingList = memo(function ShoppingList({
                   return (
                     <li
                       key={group.key}
-                      className="flex items-center border-t border-border first:border-t-0"
+                      className="flex items-center border-t border-border first:border-t-0 group"
                       style={{ gap: 10, padding: "8px 0", fontSize: 13 }}
                     >
                       <button
@@ -161,14 +237,27 @@ export const ShoppingList = memo(function ShoppingList({
                         }}
                       />
                       <span
-                        className={
+                        className={`flex-1 ${
                           allChecked
                             ? "line-through text-muted-foreground"
                             : "text-foreground"
-                        }
+                        }`}
                       >
                         {rowLabel}
                       </span>
+                      {/* F3 (2026-04-28): per-row remove button.
+                          Visible on hover (group-hover:opacity-100)
+                          + always visible on focus for keyboard
+                          users. Mobile parity. */}
+                      <button
+                        type="button"
+                        onClick={() => removeGroup(group)}
+                        aria-label={`Remove ${displayName}`}
+                        data-testid={`shopping-row-remove-${group.key}`}
+                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <X width={14} height={14} aria-hidden />
+                      </button>
                     </li>
                   );
                 })}
