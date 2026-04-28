@@ -28,9 +28,10 @@ import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
-// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
-import { TrustChip } from "@/components/ui/TrustChip";
-import { recipeLevelTrust } from "@/lib/recipeTrust";
+// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
+// dropped — the Discover hero card no longer renders the chip because
+// the underlying source signal is fabricated (see the comment by the
+// hero card body for the full rationale).
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 
 // B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
@@ -441,16 +442,16 @@ export default function DiscoverScreen() {
                 </View>
               ) : null}
             </View>
-            {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) —
-                recipe-level TrustChip on Discover hero cards. */}
-            <View style={{ marginTop: 8, flexDirection: "row" }}>
-              <TrustChip
-                variant={recipeLevelTrust({
-                  source: item.isVerified ? "USDA" : null,
-                  isVerified: item.isVerified,
-                })}
-              />
-            </View>
+            {/* GW-08 (audit 2026-04-28): pre-fix this card rendered a
+                TrustChip whose source was fabricated from `item.isVerified`
+                via the recipe-trust helper. That bool is set by the
+                importer at `apps/mobile/lib/saveImportedRecipe.ts:210`
+                as `is_verified: m?.calories > 0` — true whenever the
+                LLM extracted any non-zero calorie value. The chip
+                therefore claimed "USDA verified" on recipes whose
+                macros came from the LLM. Removed until per-recipe
+                match quality is computed end-to-end from a real source
+                column (P1/P2 work in the GW-08 audit). */}
           </View>
         </Pressable>
       );

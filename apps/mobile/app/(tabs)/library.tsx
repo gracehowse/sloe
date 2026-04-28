@@ -40,9 +40,9 @@ import {
   type LibraryFilterPillId,
 } from "../../../../src/lib/recipes/libraryFilters";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
-// Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
-import { TrustChip } from "@/components/ui/TrustChip";
-import { recipeLevelTrust } from "@/lib/recipeTrust";
+// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
+// dropped — Library cards no longer render the chip; see the comment
+// by each card body for the rationale.
 
 type SortKey = "recent" | "calories" | "protein";
 
@@ -430,17 +430,11 @@ export default function LibraryScreen() {
                 </View>
               ) : null}
             </View>
-            {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) —
-                recipe-level TrustChip on Library cards. Mobile mirror
-                of the web Library grid sweep. */}
-            <View style={{ marginTop: 8, flexDirection: "row" }}>
-              <TrustChip
-                variant={recipeLevelTrust({
-                  source: item.isVerified ? "USDA" : null,
-                  isVerified: item.isVerified,
-                })}
-              />
-            </View>
+            {/* GW-08 (audit 2026-04-28): TrustChip removed for the same
+                reason as Discover hero — the source label was fabricated
+                from `item.isVerified` (which is itself written by the
+                importer as `(m?.calories ?? 0) > 0`). Restoring it
+                requires real per-recipe match-source data, P1/P2 work. */}
           </View>
         </Pressable>
       );

@@ -48,31 +48,46 @@ describe("recipeTrust mapper (mobile re-export) — table-driven", () => {
   });
 });
 
-describe("Phase 4 trust posture sweep — mobile source pins", () => {
-  it("recipe/[id].tsx imports TrustChip + SourceDot + helpers", () => {
+describe("Trust posture sweep — mobile source pins (post-GW-08, 2026-04-28)", () => {
+  // GW-08 (2026-04-28) reworked Phase 4's posture: the source-claim
+  // chips on Discover hero, Library cards, and Recipe Detail were
+  // removed because the underlying signal (`recipe_ingredients.is_verified`,
+  // populated by the importer as `(m?.calories ?? 0) > 0`) is fabricated.
+  // Mirror of `tests/unit/trustPostureSweepPhase4.test.tsx`.
+
+  it("recipe/[id].tsx keeps SourceDot + mapMealSourceToDot for ingredient rows", () => {
     const src = read("app/recipe/[id].tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
     expect(src).toMatch(/import\s*\{\s*SourceDot\s*\}/);
-    expect(src).toMatch(/aggregateRecipeTrust/);
     expect(src).toMatch(/mapMealSourceToDot/);
   });
 
-  it("recipe/[id].tsx renders the hero TrustChip + per-ingredient SourceDot", () => {
+  it("recipe/[id].tsx does NOT render the source TrustChip (GW-08 removal)", () => {
     const src = read("app/recipe/[id].tsx");
-    expect(src).toMatch(/testID="recipe-detail-trust-chip"/);
+    expect(src).not.toMatch(/testID="recipe-detail-trust-chip"/);
+    expect(src).not.toMatch(/^\s*import[^\n]*\baggregateRecipeTrust\b[^\n]*from/m);
+  });
+
+  it("recipe/[id].tsx keeps the gluten classifier chip — honest signal", () => {
+    const src = read("app/recipe/[id].tsx");
+    expect(src).toMatch(/classifyRecipeGluten/);
+    expect(src).toMatch(/testID="recipe-detail-gluten-chip"/);
+  });
+
+  it("recipe/[id].tsx still renders SourceDot per ingredient row at size=6", () => {
+    const src = read("app/recipe/[id].tsx");
     expect(src).toMatch(/<SourceDot[\s\S]+?size=\{6\}/);
   });
 
-  it("(tabs)/library.tsx imports TrustChip + recipeLevelTrust", () => {
+  it("(tabs)/library.tsx does NOT render TrustChip on cards (GW-08 removal)", () => {
     const src = read("app/(tabs)/library.tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
-    expect(src).toMatch(/recipeLevelTrust/);
+    expect(src).not.toMatch(/<TrustChip\b/);
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 
-  it("(tabs)/discover.tsx imports TrustChip + recipeLevelTrust", () => {
+  it("(tabs)/discover.tsx does NOT render TrustChip on hero card (GW-08 removal)", () => {
     const src = read("app/(tabs)/discover.tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
-    expect(src).toMatch(/recipeLevelTrust/);
+    expect(src).not.toMatch(/<TrustChip\b/);
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 
   it("legacy <TodayFabSheet> file is deleted — B3.Y cleanup", () => {

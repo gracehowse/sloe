@@ -66,6 +66,15 @@ This is the **single ranked action list** for executor sprints. Audits are on di
     - back it with a real, calibrated signal (DB column, score threshold, source provenance), OR
     - remove the chip until we can.
     *Per `.claude/CLAUDE.md`: "If nutrition / ingredient matching is uncertain, do not guess."* This is the canonical violation in product form.
+    **Status (2026-04-28, in flight):** nutrition-engine specialist completed full audit; mapped 17 distinct surfaces. Findings:
+    - **2 honest** (USDA `Foundation/SR Legacy/Survey` flag in food search; FatSecret legal-attribution badge)
+    - **3 honest-but-uncalibrated** (verifyRecipeResponse confidence; AI provenance via `isAiSourcedFoodHistoryItem`; gluten classifier)
+    - **5 weak** (per-ingredient confidence load-time fabrication; VR-01 gate; planner `macrosAreEstimated`; verify-recipe `needsReview`; SourceDot on Today rows)
+    - **6 decorative/always-true** (Discover hero TrustChip, Library card TrustChip web+mobile, Recipe Detail hero TrustChip, recipe `is_verified` write path, Discover SourceBadge, "fit %" Recipe Detail)
+    - **Root cause:** `recipe_ingredients.is_verified` carries 3 different meanings at 3 different layers; the importer at `apps/mobile/lib/saveImportedRecipe.ts:210` writes `is_verified: (m?.calories ?? 0) > 0` (true on every successful LLM extract), and that bool propagates through every downstream chip claiming "USDA verified".
+    - **Batch 16 (FIXED 2026-04-28):** removed source TrustChip from Discover hero (web+mobile), Library cards (web desktop+mobile-web grids, mobile native), Recipe Detail hero (web+mobile); removed always-85% fit pill on mobile Recipe Detail (mirroring F-45 Discover removal); fixed per-row `is_verified` write in `saveVerifiedIngredients` to gate on `confidence ≥ RECIPE_INGREDIENT_REVIEW_CONFIDENCE`. Tests `tests/unit/trustPostureSweepPhase4.test.tsx` + `apps/mobile/tests/unit/trustPostureSweepPhase4.test.tsx` flipped from positive to negative pins.
+    - **Batch 17 (PENDING):** fix the import path's structural lie at `saveImportedRecipe.ts:210` — gate `is_verified` on real source (`m?.source ∈ {USDA, OFF, FatSecret, Edamam}`).
+    - **Batch 18 (PENDING — needs migration):** persist + hydrate real per-ingredient `confidence` end-to-end so VR-01 gate, Verify screen confidence, and Recipe Detail trust signal all reflect calibrated values. The simplest correct approach: split `is_verified` into `match_source` (text) + `match_confidence` (numeric).
 
 ### Group I — CI gate (resolved)
 39. ~~**CI-01 — `next build` fails on `/404` and `/500` prerender.**~~ **RESOLVED 2026-04-28** — phantom failure from stale `.next` cache (left over from an aborted build mid-stash). Clean `rm -rf .next && next build` passes. CI was already green on `main`. No code change needed.

@@ -59,7 +59,9 @@ import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";
 import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
-import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
+// GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
+// when the always-85% pill was removed. Helper is still callable from
+// other surfaces (web Library card) where targets are passed for real.
 import { allocateIngredientMacrosFromLines } from "../../../../src/lib/nutrition/allocateIngredientMacrosFromLines";
 import {
   flatMacroRowsFromVerifyJson,
@@ -80,7 +82,11 @@ import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 import { TrustChip } from "../../components/ui/TrustChip";
 import { SourceDot } from "../../components/ui/SourceDot";
 import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
-import { aggregateRecipeTrust, classifyRecipeGluten } from "@/lib/recipeTrust";
+// GW-08 (audit 2026-04-28): `aggregateRecipeTrust` import dropped
+// when the source TrustChip was removed from this screen. The gluten
+// classifier is still load-bearing — it's a real ingredient-keyword
+// scan, not a fabricated source claim.
+import { classifyRecipeGluten } from "@/lib/recipeTrust";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
@@ -1292,13 +1298,10 @@ export default function RecipeDetailScreen() {
   // array of category strings (prod data has no `tags` column). We
   // render what's actually on the recipe — no invented tags.
   const pillTags: string[] = Array.isArray(recipe.meal_type) ? recipe.meal_type.filter(Boolean) : [];
-  // Fit percent: pass targets=null (mobile only loads macro-gram targets,
-  // not calorie target) so web + mobile deterministically agree on the
-  // helper's neutral fallback. Never invent nutrition values.
-  const fitPercent = computeRecipeFitPercent(
-    { calories: macros.calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat },
-    null,
-  ).percent;
+  // GW-08 (audit 2026-04-28): the per-recipe fit-percent pill was
+  // removed from this screen — see the comment above the hero in
+  // the JSX. The helper call is gone; the `computeRecipeFitPercent`
+  // import is also no longer needed.
 
   return (
     <View style={styles.container}>
@@ -1420,47 +1423,33 @@ export default function RecipeDetailScreen() {
         {/* Hero image — now sits below the top bar (no overlap). */}
         <Image source={{ uri: heroImageUrl }} style={styles.hero} />
 
-        {/* 2026-04-26 polish: pre-fix this row rendered the lowercase
-            meal-type pill ("lunch") AND a primary-tinted fit-percent pill
-            ("85%"). The meal-type duplicated the proper-case "Lunch" pill
-            below the title (same data, two pills) and the bare percentage
-            had no label so users couldn't tell what 85% referred to. Now:
-            no meal-type pill here (the proper-case one below the title is
-            canonical), and the fit-percent pill is labelled "match" so
-            its meaning is self-evident. */}
-        <View style={styles.tagRow}>
-          <View style={[styles.tagPill, styles.tagPillPrimary]}>
-            <Text style={[styles.tagPillText, styles.tagPillTextPrimary]}>{fitPercent}% match</Text>
-          </View>
-        </View>
+        {/* GW-08 (audit 2026-04-28): pre-fix this row rendered a primary-
+            tinted "{fitPercent}% match" pill, but the mobile fit-percent
+            helper is invoked with `targets = null` and falls back to
+            its hard-coded NEUTRAL_FALLBACK = 85, so every recipe
+            rendered "85% match" — pure decoration. F-45 already killed
+            the same pill on Discover hero in 2026-04-22 with the
+            explicit reason "Score means nothing — remove"; this
+            straggler now follows. The proper-case meal-type pill
+            below the title remains the canonical surface. */}
 
         <View style={styles.body}>
           {/* Title + meta */}
           <Text style={styles.title}>{normaliseRecipeDisplayTitle(decodeEntities(recipe.title))}</Text>
-          {/* Phase 4 / B3.X (2026-04-27, D-2026-04-27-16) — recipe
-              hero TrustChip immediately under the title. Variant
-              aggregates ingredient sources via the shared helper.
-              Mobile uses `confidence ≥ 0.7` as the verified
-              threshold (matches the existing ConfidenceDot
-              high/medium gating in apps/mobile/app/recipe/[id].tsx
-              and the canonical bucket in confidenceScoring.ts). */}
+          {/* GW-08 (audit 2026-04-28): the source TrustChip that lived
+              under the title was sourced from a circular signal —
+              `ing.confidence` is synthesised at load via
+              `r.is_verified ? 0.9 : 0.3`, so the chip variant
+              ultimately reflected `recipe_ingredients.is_verified`,
+              which is itself written by the importer as
+              `(m?.calories ?? 0) > 0` (every successful LLM extract).
+              The chip therefore claimed "USDA verified" / "OFF
+              adjusted" on recipes whose macros came from the LLM.
+              Removed until per-ingredient confidence is hydrated
+              end-to-end (P2 work in the GW-08 audit). The gluten
+              classifier chip stays — it walks the ingredient list
+              against a real keyword set and is honest. */}
           <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            <TrustChip
-              variant={aggregateRecipeTrust(
-                ingredients.map((ing) => ({
-                  source: ing.source ?? null,
-                  isVerified:
-                    typeof ing.confidence === "number" && ing.confidence >= 0.7,
-                })),
-              )}
-              testID="recipe-detail-trust-chip"
-            />
-            {/* Phase 5 / B3.2 (2026-04-27, D-2026-04-27-13) — gluten
-                depth chip. Surfaces a `gluten-high-conf` or
-                `gluten-uncertain` chip alongside the source TrustChip;
-                null variant means the recipe is gluten-containing by
-                intent (no chip). Legal-reviewer copy review pending
-                pre-App-Store-submission. */}
             {(() => {
               const gluten = classifyRecipeGluten(
                 ingredients.map((ing) => String(ing.name ?? "")),

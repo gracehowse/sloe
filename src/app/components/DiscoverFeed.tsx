@@ -14,8 +14,8 @@ import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeS
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
-import { TrustChip } from "./ui/trust-chip";
-import { recipeLevelTrust } from "../../lib/nutrition/recipeTrust.ts";
+// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
+// from the Discover hero card — see the comment on the card body.
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
 const HEARTS_KEY = "suppr-feed-hearts-v1";
@@ -725,16 +725,15 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         </span>
                       ) : null}
                     </div>
-                    {/* Phase 4 / B3.X — recipe-level TrustChip on the
-                        Discover desktop grid (D-2026-04-27-16). */}
-                    <div className="mt-2">
-                      <TrustChip
-                        variant={recipeLevelTrust({
-                          source: recipe.isVerified ? "USDA" : null,
-                          isVerified: recipe.isVerified,
-                        })}
-                      />
-                    </div>
+                    {/* GW-08 (audit 2026-04-28): TrustChip removed —
+                        the source label was fabricated from
+                        `recipe.isVerified`, which is set by the
+                        importer at `apps/mobile/lib/saveImportedRecipe.ts:210`
+                        as `is_verified: (m?.calories ?? 0) > 0` (true
+                        whenever the LLM extracts non-zero calories).
+                        Restoring it requires real per-recipe
+                        match-source data — P1/P2 work in the GW-08
+                        audit. */}
                   </div>
                 </button>
               );

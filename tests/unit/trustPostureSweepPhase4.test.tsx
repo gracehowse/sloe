@@ -135,20 +135,36 @@ describe("recipeTrust mapper — table-driven", () => {
   });
 });
 
-describe("Phase 4 trust posture sweep — source pins", () => {
-  it("RecipeDetail (web) imports TrustChip + SourceDot + recipe-trust helpers", () => {
+describe("Trust posture sweep — source pins (post-GW-08, 2026-04-28)", () => {
+  // GW-08 (2026-04-28) reworked Phase 4's posture: the source-claim
+  // chips on Discover hero, Library cards, and Recipe Detail were
+  // removed because the underlying signal (`recipe_ingredients.is_verified`,
+  // populated by the importer as `(m?.calories ?? 0) > 0`) is fabricated.
+  // The chips claim "USDA verified" on LLM-extracted recipes — a
+  // canonical violation of the "do not guess" rule. They stay gone
+  // until per-recipe match-source data is plumbed end-to-end. The
+  // gluten classifier chip remains because it's an honest ingredient-
+  // keyword scan.
+
+  it("RecipeDetail (web) keeps SourceDot + mapMealSourceToDot for ingredient rows", () => {
     const src = read("src/app/components/RecipeDetail.tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
     expect(src).toMatch(/import\s*\{\s*SourceDot\s*\}/);
-    expect(src).toMatch(/aggregateRecipeTrust/);
     expect(src).toMatch(/mapMealSourceToDot/);
   });
 
-  it("RecipeDetail renders the hero TrustChip with data-testid", () => {
+  it("RecipeDetail (web) does NOT render the source TrustChip (GW-08 removal)", () => {
     const src = read("src/app/components/RecipeDetail.tsx");
-    expect(src).toMatch(/data-testid="recipe-detail-trust-chip"/);
-    // Aggregated variant — uses the helper, not a hardcoded string
-    expect(src).toMatch(/aggregateRecipeTrust\(/);
+    expect(src).not.toMatch(/data-testid="recipe-detail-trust-chip"/);
+    // The aggregator is no longer called or imported from this surface.
+    // Match `aggregateRecipeTrust(` *not* in a comment (`//` immediately
+    // preceded), or any `import { ... aggregateRecipeTrust` line.
+    expect(src).not.toMatch(/^\s*import[^\n]*\baggregateRecipeTrust\b[^\n]*from/m);
+  });
+
+  it("RecipeDetail (web) keeps the gluten classifier chip — honest signal", () => {
+    const src = read("src/app/components/RecipeDetail.tsx");
+    expect(src).toMatch(/classifyRecipeGluten/);
+    expect(src).toMatch(/data-testid="recipe-detail-gluten-chip"/);
   });
 
   it("RecipeDetail renders SourceDot per ingredient row at size=6", () => {
@@ -158,24 +174,29 @@ describe("Phase 4 trust posture sweep — source pins", () => {
     expect(src).toMatch(/Verify →/);
   });
 
-  it("Library (web) imports TrustChip + recipeLevelTrust", () => {
+  it("Library (web) does NOT render any TrustChip on recipe cards (GW-08 removal)", () => {
     const src = read("src/app/components/Library.tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
-    expect(src).toMatch(/recipeLevelTrust/);
-    // Both desktop grid + mobile list paths render the chip
-    const matches = src.match(/<TrustChip\b/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(src).not.toMatch(/<TrustChip\b/);
+    // Match any non-comment `import { ... recipeLevelTrust ... }` statement.
+    // (Comment-only mentions in the file's GW-08 explanation comments
+    // are tolerated — what matters is the function isn't imported.)
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 
-  it("DiscoverFeed (web) imports TrustChip + recipeLevelTrust", () => {
+  it("DiscoverFeed (web) does NOT render TrustChip on the hero card (GW-08 removal)", () => {
     const src = read("src/app/components/DiscoverFeed.tsx");
-    expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
-    expect(src).toMatch(/recipeLevelTrust/);
+    expect(src).not.toMatch(/<TrustChip\b/);
+    // Match any non-comment `import { ... recipeLevelTrust ... }` statement.
+    // (Comment-only mentions in the file's GW-08 explanation comments
+    // are tolerated — what matters is the function isn't imported.)
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 
   it("LogSheet (web) keeps the Phase 3 SourceDot + TrustChip imports", () => {
-    // Regression guard — Phase 3 wired these; Phase 4 must not have
-    // dropped them while wiring desktop modal mode.
+    // Regression guard — LogSheet's TrustChip use is on individual
+    // food-search rows where the row carries a real source label
+    // ("USDA Foundation" / "Open Food Facts" / etc.), so it remains
+    // honest. Only the recipe-level surfaces were stripped.
     const src = read("src/app/components/suppr/log-sheet.tsx");
     expect(src).toMatch(/import\s*\{\s*SourceDot/);
     expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
@@ -185,5 +206,35 @@ describe("Phase 4 trust posture sweep — source pins", () => {
     const src = read("src/app/components/NutritionTracker.tsx");
     expect(src).toMatch(/import\s*\{\s*useIsDesktop\s*\}/);
     expect(src).toMatch(/<LogSheet[\s\S]+?desktop=\{isDesktop\}/);
+  });
+
+  it("Mobile recipe detail screen does NOT render the source TrustChip (GW-08 removal)", () => {
+    const src = read("apps/mobile/app/recipe/[id].tsx");
+    expect(src).not.toMatch(/testID="recipe-detail-trust-chip"/);
+    expect(src).not.toMatch(/^\s*import[^\n]*\baggregateRecipeTrust\b[^\n]*from/m);
+  });
+
+  it("Mobile recipe detail screen keeps the gluten classifier chip", () => {
+    const src = read("apps/mobile/app/recipe/[id].tsx");
+    expect(src).toMatch(/classifyRecipeGluten/);
+    expect(src).toMatch(/testID="recipe-detail-gluten-chip"/);
+  });
+
+  it("Mobile Discover hero does NOT render TrustChip (GW-08 removal)", () => {
+    const src = read("apps/mobile/app/(tabs)/discover.tsx");
+    expect(src).not.toMatch(/<TrustChip\b/);
+    // Match any non-comment `import { ... recipeLevelTrust ... }` statement.
+    // (Comment-only mentions in the file's GW-08 explanation comments
+    // are tolerated — what matters is the function isn't imported.)
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
+  });
+
+  it("Mobile Library card does NOT render TrustChip (GW-08 removal)", () => {
+    const src = read("apps/mobile/app/(tabs)/library.tsx");
+    expect(src).not.toMatch(/<TrustChip\b/);
+    // Match any non-comment `import { ... recipeLevelTrust ... }` statement.
+    // (Comment-only mentions in the file's GW-08 explanation comments
+    // are tolerated — what matters is the function isn't imported.)
+    expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 });

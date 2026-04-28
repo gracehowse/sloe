@@ -44,14 +44,20 @@ import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
 import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
-import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+// GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
+// when the always-85% pill was removed from this screen. Helper is
+// still callable from web Library card where targets are real.
 // Phase 4 / B3.X (2026-04-27) — trust posture sweep. Authority:
 // D-2026-04-27-16. The recipe-level chip aggregates ingredient
 // trust into a single hero chip; per-row dots sit on the ingredient
 // list below.
 import { TrustChip } from "./ui/trust-chip";
 import { SourceDot } from "./ui/source-dot";
-import { aggregateRecipeTrust, classifyRecipeGluten } from "../../lib/nutrition/recipeTrust.ts";
+// GW-08 (audit 2026-04-28): `aggregateRecipeTrust` import dropped
+// when the source TrustChip was removed from this screen. Gluten
+// classifier stays — it's a real ingredient-keyword scan, not a
+// fabricated source claim.
+import { classifyRecipeGluten } from "../../lib/nutrition/recipeTrust.ts";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap.ts";
 import { FatSecretBadge } from "./ui/FatSecretBadge";
 
@@ -1074,27 +1080,20 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             reflects the worst-case ingredient (estimated wins). */}
         {(() => {
           const pillTags: readonly string[] = Array.isArray(recipe.mealSlots) ? recipe.mealSlots : [];
-          const fit = computeRecipeFitPercent(
-            {
-              calories: recipe.calories ?? 0,
-              protein: recipe.protein ?? 0,
-              carbs: recipe.carbs ?? 0,
-              fat: recipe.fat ?? 0,
-            },
-            null,
-          ).percent;
-          const trustVariant = aggregateRecipeTrust(
-            ingredients.map((ing) => ({
-              source: ing.source ?? null,
-              isVerified: ing.isVerified,
-            })),
-          );
-          // Phase 5 / B3.2 — gluten depth (D-2026-04-27-13). Run the
-          // ingredient list through the gluten classifier and surface
-          // a chip when it earns one. `null` variant = no chip
-          // (gluten-containing recipe by intent OR insufficient
-          // surface to claim high confidence). Legal-reviewer copy
-          // pending pre-App-Store-submission review.
+          // GW-08 (audit 2026-04-28): the recipe-level fit-percent pill
+          // and the source TrustChip were removed.
+          //   - The fit pill was computed with `targets = null`, so it
+          //     always rendered the helper's NEUTRAL_FALLBACK = 85.
+          //     F-45 already removed the same pill from Discover hero
+          //     for the same reason ("Score means nothing — remove").
+          //   - The source TrustChip was sourced from
+          //     `aggregateRecipeTrust(ingredients[].isVerified)`, but
+          //     that boolean is fabricated at load via the synthetic
+          //     `confidence ≥ 0.7` mapping in `verifyRecipe.ts`. Until
+          //     real per-ingredient confidence is hydrated end-to-end
+          //     (P2 GW-08 work) the chip is decorative.
+          // The gluten classifier chip stays — it walks ingredient
+          // strings against a real keyword set and is honest.
           const glutenResult = classifyRecipeGluten(
             ingredients.map((ing) => String(ing.name ?? "")),
           );
@@ -1108,13 +1107,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   {t.toLowerCase()}
                 </span>
               ))}
-              <span
-                className="inline-flex items-center rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary"
-                aria-label={`Fit ${fit} percent`}
-              >
-                {fit}%
-              </span>
-              <TrustChip variant={trustVariant} data-testid="recipe-detail-trust-chip" />
               {glutenResult.variant ? (
                 <TrustChip
                   variant={glutenResult.variant}

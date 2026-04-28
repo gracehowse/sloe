@@ -1368,6 +1368,17 @@ export async function saveVerifiedIngredients(
   const errors: string[] = [];
   for (const ing of ingredients) {
     if (!ing.isDirty) continue;
+    // GW-08 (audit 2026-04-28): pre-fix `is_verified: true` was
+    // hardcoded — every dirty row got verified=true regardless of
+    // confidence. VR-01 (Batch 1) gated the recipe-level rollup but
+    // the per-row write was still unconditional. Now mirrors the
+    // recipe-level posture: the row only counts as verified when its
+    // confidence clears the review threshold. Rows below the threshold
+    // are saved (the user's edit persists) but stay flagged for
+    // review on the recipe-detail TrustChip aggregation.
+    const rowIsVerified =
+      typeof ing.confidence === "number" &&
+      ing.confidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
     const updates: Record<string, unknown> = {
       name: ing.matchedName ?? ing.name,
       amount: ing.amount,
@@ -1379,7 +1390,7 @@ export async function saveVerifiedIngredients(
       fiber_g: Math.round(ing.fiberG * 10) / 10,
       sugar_g: Math.round(ing.sugarG * 10) / 10,
       sodium_mg: Math.round(ing.sodiumMg),
-      is_verified: true,
+      is_verified: rowIsVerified,
       source: ing.source,
       // Allow caller to clear an override by setting `overrideMacros` to
       // undefined on a dirty row — we pass `null` to wipe the jsonb column.
