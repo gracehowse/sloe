@@ -1,5 +1,5 @@
 /**
- * UpgradePaywallDialog render + analytics test (Claude Design 2026-04-20).
+ * UpgradePaywallDialog render + analytics test.
  *
  * Pins the user-visible contract + the canonical analytics payload
  * shapes for the web whole-paywall modal that replaces the old
@@ -11,6 +11,13 @@
  * We mock the supabase client so the primary CTA's "start checkout"
  * path can be exercised without the real network + without pinning us
  * to a signed-in session.
+ *
+ * PR-01 (audit 2026-04-28): the dialog used to render two variants
+ * (Free→Base "the full meal-planning loop" and Base→Pro "AI logging").
+ * Base was removed from the SSOT per the 2026-04-27 strategic
+ * direction; the dialog now renders a single Free→Pro upsell. The
+ * Variant A / Variant B test cases have been merged into the new
+ * Pro-only assertions.
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -68,7 +75,7 @@ function Harness({
   );
 }
 
-describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
+describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
   beforeEach(() => {
     trackCalls.length = 0;
     try {
@@ -78,46 +85,47 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     }
   });
 
-  it("renders the hero pitch, five feature rows, and a 'Most popular' Base pricing card", () => {
+  it("renders the Pro hero pitch, six feature rows, and the 'Most popular' Pro pricing card", () => {
     render(<Harness />);
-    // "The full meal planning loop" intentionally renders twice — once
-    // in the hero title and once in the pricing card's tagline — so
-    // we assert via the heading role for the hero copy specifically.
+    // Hero copy — single Pro pitch.
     expect(
-      screen.getByRole("heading", { name: /The full meal planning loop/i }),
+      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Plans that hit your macros\. Shopping list from your plan/i),
+      screen.getByText(
+        /Snap a photo or say what you ate\. Pro handles the rest/i,
+      ),
     ).toBeInTheDocument();
 
-    // The five Base-tier feature rows, verbatim from the prototype.
+    // The six Pro feature rows — merged from prior Variant A + B.
+    expect(screen.getByText("AI photo meal recognition")).toBeInTheDocument();
+    expect(screen.getByText("Voice food logging")).toBeInTheDocument();
     expect(
       screen.getByText("Meal plans matched to your macros"),
     ).toBeInTheDocument();
     expect(screen.getByText("Shopping list from your plan")).toBeInTheDocument();
-    expect(screen.getByText("Cook mode with timers")).toBeInTheDocument();
-    expect(screen.getByText("Import from any source")).toBeInTheDocument();
     expect(screen.getByText("Unlimited saved recipes")).toBeInTheDocument();
+    expect(screen.getByText("Priority email support")).toBeInTheDocument();
 
     // Pricing card.
     expect(screen.getByText("Most popular")).toBeInTheDocument();
     // The primary CTA label carries the live tier price (pulled from
     // PRICING_TIERS — region-aware per CLAUDE.md). We assert only
-    // the "Continue with Base · " prefix here so this test doesn't
-    // break the day the tier price changes; a separate pricing-SSOT
-    // test pins the exact value.
+    // the "Upgrade to Pro · " prefix here so this test doesn't break
+    // the day the tier price changes; landingParity.test pins the
+    // exact value.
     expect(
-      screen.getByRole("button", { name: /Continue with Base · /i }),
+      screen.getByRole("button", { name: /Upgrade to Pro · /i }),
     ).toBeInTheDocument();
   });
 
-  it("fires paywall_viewed exactly once on open with the `from` attribution", () => {
+  it("fires paywall_viewed exactly once on open with the `from` attribution and tier=pro", () => {
     render(<Harness />);
     const viewed = trackCalls.filter((c) => c.event === "paywall_viewed");
     expect(viewed).toHaveLength(1);
     expect(viewed[0].payload).toEqual({
       from: "meal_planner",
-      tier: "base",
+      tier: "pro",
       surface: "upgrade_dialog",
       platform: "web",
     });
@@ -135,7 +143,9 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
       reason: "continue_free",
     });
     // The hero title should be gone after close.
-    expect(screen.queryByText("The full meal planning loop")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Log faster\. Let the AI do the work\./i),
+    ).not.toBeInTheDocument();
   });
 
   it("close X fires paywall_dismissed with reason=close_button", async () => {
@@ -177,16 +187,12 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     expect(trackCalls.filter((c) => c.event === "paywall_viewed")).toHaveLength(2);
   });
 
-  // --------------------------------------------------------------------
-  // D12 (2026-04-21) — dynamic tier-aware upsell additions.
-  // --------------------------------------------------------------------
-
-  it("fires upsell_variant_shown alongside paywall_viewed for Variant A (free)", () => {
+  it("fires upsell_variant_shown with variant=free_to_pro for free users (post-PR-01)", () => {
     render(<Harness userTier="free" />);
     const shown = trackCalls.filter((c) => c.event === "upsell_variant_shown");
     expect(shown).toHaveLength(1);
     expect(shown[0].payload).toEqual({
-      variant: "free_to_base",
+      variant: "free_to_pro",
       from: "meal_planner",
       surface: "upgrade_dialog",
       platform: "web",
@@ -196,70 +202,34 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     expect(trackCalls.filter((c) => c.event === "paywall_viewed")).toHaveLength(1);
   });
 
-  it("renders Variant B (Base → Pro) copy, CTAs, and locked renewal note for base users", () => {
+  it("legacy 'base' tier users get the same Pro pitch (PR-01: no separate Variant B)", () => {
     render(<Harness userTier="base" from="settings" />);
     expect(
       screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("AI photo meal recognition")).toBeInTheDocument();
-    expect(screen.getByText("Voice food logging")).toBeInTheDocument();
-    expect(screen.getByText("Everything in Base")).toBeInTheDocument();
-    expect(screen.getByText("Priority email support")).toBeInTheDocument();
-    // Base/pro should be labelled correctly, not "Most popular".
-    expect(screen.queryByText("Most popular")).not.toBeInTheDocument();
-    // Primary CTA is the Pro upgrade, not Base.
     expect(
       screen.getByRole("button", { name: /Upgrade to Pro · /i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Stay on Base$/i })).toBeInTheDocument();
-    // T24 (full-sweep 2026-04-24): full CMA disclosure replaces the
-    // previous one-line note. The "You keep Base if you downgrade"
-    // line is FALSE per docs/decisions/2026-04-21-pro-downgrade-path.md
-    // and must still not appear.
-    const renewal = screen.getByTestId("upsell-renewal-note");
-    expect(renewal).toHaveTextContent(
-      /Suppr Pro renews automatically at .* per month until cancelled\./i,
-    );
-    expect(renewal).toHaveTextContent(/Cancel anytime/i);
-    expect(renewal).toHaveTextContent(/refund policy/i);
-    expect(renewal).not.toHaveTextContent(/keep base/i);
+    // The "Stay on Base" secondary CTA is gone — Base no longer
+    // exists as a tier the user can stay on. Both Free and legacy
+    // Base see "Continue for free".
+    expect(
+      screen.getByRole("button", { name: /Continue for free/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Stay on Base/i)).not.toBeInTheDocument();
   });
 
-  it("fires upsell_variant_shown with variant=base_to_pro for base users", () => {
+  it("upsell_variant_shown emits variant=free_to_pro for legacy base users too", () => {
     render(<Harness userTier="base" from="voice_log" />);
     const shown = trackCalls.filter((c) => c.event === "upsell_variant_shown");
     expect(shown).toHaveLength(1);
     expect(shown[0].payload).toEqual({
-      variant: "base_to_pro",
+      variant: "free_to_pro",
       from: "voice_log",
       surface: "upgrade_dialog",
       platform: "web",
       user_tier: "base",
     });
-  });
-
-  it("Variant B 'Stay on Base' fires upsell_variant_dismissed with reason=secondary_cta", async () => {
-    const user = userEvent.setup();
-    render(<Harness userTier="base" from="settings" />);
-    await user.click(screen.getByRole("button", { name: /^Stay on Base$/i }));
-
-    const dismissed = trackCalls.filter(
-      (c) => c.event === "upsell_variant_dismissed",
-    );
-    expect(dismissed).toHaveLength(1);
-    expect(dismissed[0].payload).toEqual({
-      variant: "base_to_pro",
-      from: "settings",
-      reason: "secondary_cta",
-      surface: "upgrade_dialog",
-      platform: "web",
-      user_tier: "base",
-    });
-    // Legacy paywall_dismissed still fires alongside (reason mapped to
-    // `continue_free` for dashboard continuity).
-    const legacy = trackCalls.filter((c) => c.event === "paywall_dismissed");
-    expect(legacy).toHaveLength(1);
-    expect(legacy[0].payload).toEqual({ from: "settings", reason: "continue_free" });
   });
 
   it("Pro users render nothing — the dialog has no next tier to pitch", () => {
@@ -269,17 +239,16 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     expect(trackCalls).toHaveLength(0);
   });
 
-  it("Free user on a Pro-gated trigger surface sees Variant A with the pro-gated note", () => {
+  it("PR-01 (2026-04-28): Pro-gated trigger surface no longer shows the 'Voice/photo require Pro, Base unlocks the rest' note", () => {
     render(<Harness userTier="free" from="voice_log" />);
-    // Still Variant A — Base must be pitched before Pro.
     expect(
-      screen.getByRole("heading", { name: /The full meal planning loop/i }),
+      screen.getByRole("heading", { name: /Log faster\. Let the AI do the work\./i }),
     ).toBeInTheDocument();
+    // The intermediate-step note is gone — Pro is the single tier
+    // that unlocks voice and photo, plus everything else.
     expect(
-      screen.getByText(
-        /Voice and photo logging require Pro\. Base unlocks everything else\./i,
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/Base unlocks everything else/i),
+    ).not.toBeInTheDocument();
   });
 
   it("T24: defaults to monthly + renders the period toggle with annual savings badge", () => {
@@ -296,7 +265,7 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
     );
   });
 
-  it("T24: tapping Annual swaps the price + period across CTA, card, and disclosure", async () => {
+  it("T24: tapping Annual swaps the price + period across CTA, card, and disclosure (Pro pricing)", async () => {
     const user = userEvent.setup();
     render(<Harness userTier="free" />);
 
@@ -304,25 +273,28 @@ describe("UpgradePaywallDialog (Claude Design 2026-04-20)", () => {
 
     // CTA renews to per-year and shows the annual price.
     expect(
-      screen.getByRole("button", { name: /Continue with Base · £29\.99\/year/i }),
+      screen.getByRole("button", { name: /Upgrade to Pro · £59\.99\/year/i }),
     ).toBeInTheDocument();
 
     // Disclosure now reads "per year" + alt monthly equivalence line.
     const renewal = screen.getByTestId("upsell-renewal-note");
     expect(renewal).toHaveTextContent(/per year/i);
     expect(renewal).toHaveTextContent(/until cancelled/i);
-    expect(renewal).toHaveTextContent(/£3\.99 per month on the monthly plan/i);
+    expect(renewal).toHaveTextContent(/£7\.99 per month on the monthly plan/i);
   });
 
-  it("T24: full CMA disclosure includes renews-until-cancelled, cancel path, refund policy", () => {
+  it("T24: full CMA disclosure includes renews-until-cancelled, cancel path, refund policy (Pro)", () => {
     render(<Harness userTier="free" />);
     const renewal = screen.getByTestId("upsell-renewal-note");
     expect(renewal).toHaveTextContent(
-      /Suppr Base renews automatically at .* per month until cancelled\./i,
+      /Suppr Pro renews automatically at .* per month until cancelled\./i,
     );
     expect(renewal).toHaveTextContent(/Cancel anytime from Account → Billing/i);
     expect(renewal).toHaveTextContent(/Prices include any applicable VAT/i);
     expect(renewal).toHaveTextContent(/7-day refund policy/i);
+    // PR-01: Base must not appear in the disclosure.
+    expect(renewal).not.toHaveTextContent(/Suppr Base/i);
+    expect(renewal).not.toHaveTextContent(/keep base/i);
   });
 
   it("session cap suppresses a second auto-open but bypassSessionCap shows it", () => {

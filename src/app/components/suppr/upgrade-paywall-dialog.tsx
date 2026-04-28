@@ -1,34 +1,32 @@
 "use client";
 
 /**
- * UpgradePaywallDialog — dynamic tier-aware upgrade modal.
+ * UpgradePaywallDialog — Free → Pro upgrade modal.
  *
- * Originally a Free→Base-only port of the Claude Design 2026-04-20
- * prototype. Extended 2026-04-21 per D12
+ * History: this dialog originally shipped as a Free→Base-only port of
+ * the Claude Design 2026-04-20 prototype. Extended 2026-04-21 per D12
  * (`docs/decisions/2026-04-21-upgrade-dialog-dynamic-upsell.md`) to
- * render one of two variants based on the caller-supplied `userTier`:
- *
- *  - `userTier === "free"` → Variant A (Free → Base). Existing content,
- *    refined copy per §1 of the decision.
- *  - `userTier === "base"` → Variant B (Base → Pro). New feature set;
- *    primary CTA starts a `tier: "pro"` checkout session. Renewal note
- *    is the legal-safe neutral string — the "You keep Base if you
- *    downgrade" line is FALSE per
- *    `docs/decisions/2026-04-21-pro-downgrade-path.md` and must not
- *    reappear.
+ * render two variants (Free→Base + Base→Pro). PR-01 (audit
+ * 2026-04-28) collapsed Base out of the SSOT per the 2026-04-27
+ * strategic direction; this dialog now renders a single Free→Pro
+ * variant. Variant A (Free→Base) and Variant B (Base→Pro) merged into
+ * one Pro upsell.
  *
  * Pro users should never see this dialog — callers must guard at the
  * open-site. If a Pro user somehow reaches this with `userTier === "pro"`
- * the component renders nothing.
+ * the component renders nothing. Legacy Base-tier users (any
+ * grandfathered `userTier === "base"` row) are treated as Free for
+ * upsell purposes — they get the same Pro pitch.
  *
- * Edge case (§3): a Free user who reaches a Pro-gated trigger surface
- * (`voice_log` / `photo_log`) still sees Variant A, with an appended
- * note explaining that Voice/Photo require Pro and Base unlocks the
- * rest. The user must subscribe to Base before Pro is relevant.
+ * Edge case: Free users on a Pro-gated trigger surface (`voice_log`
+ * / `photo_log`) get the same Pro upsell — there's no longer a
+ * "Base unlocks everything else" intermediate step.
  *
- * Frequency cap (§3): one dialog open per session (sessionStorage key
- * `suppr-upsell-dialog-shown-v1`). Explicit intent taps — settings
- * upgrade row, in-surface CTA — bypass the cap via the
+ * Frequency cap: one dialog open per session (sessionStorage key
+ * `suppr-upsell-dialog-shown-v2` — bumped from v1 when the variant
+ * collapse landed so existing cap markers don't suppress the new
+ * Pro-only dialog for returning visitors). Explicit intent taps —
+ * settings upgrade row, in-surface CTA — bypass the cap via the
  * `bypassSessionCap` prop. The cap does not apply in SSR.
  *
  * Analytics (§5): three new events fire alongside the existing
@@ -37,25 +35,23 @@
  *   - `upsell_variant_shown`     (alongside `paywall_viewed`)
  *   - `upsell_variant_converted` (alongside `checkout_started`)
  *   - `upsell_variant_dismissed` (alongside `paywall_dismissed`)
- * All new emits are StrictMode-guarded via the same `viewedForOpenRef`
- * pattern used for `paywall_viewed`.
+ * All new emits carry `variant: "free_to_pro"` after the PR-01
+ * collapse. PostHog dashboards that previously sliced on
+ * `free_to_base` / `base_to_pro` should be re-anchored at the PR-01
+ * commit date.
  *
  * Prices are read from `PRICING_TIERS` at render time — never
  * hardcoded. Web-only scope; mobile paywall is handled by
- * `apps/mobile/app/paywall.tsx` and is explicitly out of scope for
- * D12.
+ * `apps/mobile/app/paywall.tsx`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ShoppingCart,
-  ChefHat,
-  Link as LinkIcon,
   Infinity as InfinityIcon,
   Camera,
   Mic,
-  Zap,
   Mail,
   Sparkles,
   X as XIcon,
@@ -76,37 +72,17 @@ type Feature = {
   description: string;
 };
 
-/** Variant A — Free → Base. Icons pinned per D12 §1. */
-const VARIANT_A_FEATURES: Feature[] = [
-  {
-    icon: CalendarDays,
-    title: "Meal plans matched to your macros",
-    description: "A week of meals tailored to your targets. Regenerate any day.",
-  },
-  {
-    icon: ShoppingCart,
-    title: "Shopping list from your plan",
-    description: "Aisle-sorted, quantities combined across recipes.",
-  },
-  {
-    icon: ChefHat,
-    title: "Cook mode with timers",
-    description: "Step-by-step with inline timers and per-step ingredients.",
-  },
-  {
-    icon: LinkIcon,
-    title: "Import from any source",
-    description: "Instagram, TikTok, blogs — parsed and matched against USDA in seconds.",
-  },
-  {
-    icon: InfinityIcon,
-    title: "Unlimited saved recipes",
-    description: "Free tier caps at 10. Base is uncapped.",
-  },
-];
-
-/** Variant B — Base → Pro. Icons pinned per D12 §1. */
-const VARIANT_B_FEATURES: Feature[] = [
+/**
+ * Pro upsell features. PR-01 (audit 2026-04-28) collapsed the prior
+ * Variant A (Free→Base, "the full meal-planning loop") and Variant B
+ * (Base→Pro, "AI logging") into a single feature list because Base
+ * was removed from the SSOT. The merged list opens with the
+ * highest-intent AI features (the Pro-distinguishing pitch) then
+ * carries forward the multi-day plan + shopping list + cook mode +
+ * unlimited saves features that used to live under Base. Icons
+ * inherited from the per-variant lists.
+ */
+const PRO_FEATURES: Feature[] = [
   {
     icon: Camera,
     title: "AI photo meal recognition",
@@ -118,9 +94,19 @@ const VARIANT_B_FEATURES: Feature[] = [
     description: 'Say "bowl of oats and a banana" and it\'s logged. Up to 100 per day.',
   },
   {
-    icon: Zap,
-    title: "Everything in Base",
-    description: "Plans, shopping list, cook mode, unlimited recipes — all included.",
+    icon: CalendarDays,
+    title: "Meal plans matched to your macros",
+    description: "A week of meals tailored to your targets. Regenerate any day.",
+  },
+  {
+    icon: ShoppingCart,
+    title: "Shopping list from your plan",
+    description: "Aisle-sorted, quantities combined across recipes.",
+  },
+  {
+    icon: InfinityIcon,
+    title: "Unlimited saved recipes",
+    description: "Free tier caps at 10. Pro is uncapped.",
   },
   {
     icon: Mail,
@@ -129,10 +115,21 @@ const VARIANT_B_FEATURES: Feature[] = [
   },
 ];
 
-/** sessionStorage key for the once-per-session frequency cap (§3). */
-const SESSION_CAP_KEY = "suppr-upsell-dialog-shown-v1";
+/**
+ * sessionStorage key for the once-per-session frequency cap. PR-01
+ * (2026-04-28) bumped this from v1 → v2 so any cap markers from the
+ * prior Variant-A era don't suppress the new Pro-only dialog for
+ * returning visitors.
+ */
+const SESSION_CAP_KEY = "suppr-upsell-dialog-shown-v2";
 
-type Variant = "free_to_base" | "base_to_pro";
+/**
+ * Single canonical variant after PR-01. Type retained as a string
+ * literal so the analytics emits keep their existing event shape;
+ * downstream PostHog dashboards see `variant: "free_to_pro"` from the
+ * PR-01 commit forward.
+ */
+type Variant = "free_to_pro";
 type UpsellUserTier = "free" | "base";
 
 export interface UpgradePaywallDialogProps {
@@ -198,44 +195,16 @@ export function UpgradePaywallDialog({
   const [period, setPeriod] = useState<"monthly" | "annual">("monthly");
 
   // --- Variant selection --------------------------------------------
-  const variant: Variant | null =
-    userTier === "free"
-      ? "free_to_base"
-      : userTier === "base"
-        ? "base_to_pro"
-        : null;
-
-  // Free users who land on a Pro-only trigger surface still get
-  // Variant A — Base is the necessary prerequisite — with a short
-  // note explaining why. Base users on the same surface get Variant
-  // B normally.
-  const isProGatedTrigger = from === "voice_log" || from === "photo_log";
-  const showProGatedNote = variant === "free_to_base" && isProGatedTrigger;
+  // PR-01 (audit 2026-04-28): single Free→Pro variant. Pro users
+  // render nothing (guard at line ~340). Any legacy `userTier ===
+  // "base"` row is treated as Free-equivalent for upsell purposes —
+  // they get the same Pro pitch.
+  const variant: Variant | null = userTier === "pro" ? null : "free_to_pro";
 
   // --- Pricing (from SSOT, never hardcoded) -------------------------
-  // PR-01 (audit 2026-04-28): Base was removed from PRICING_TIERS.
-  // The Variant A (Free→Base) flow below still references `baseTier`
-  // for hardcoded-fallback prices (£3.99/£29.99). The full dialog
-  // collapse to a single Free→Pro variant lands in batch 20; this
-  // typecheck fix preserves the visible behaviour by always returning
-  // `undefined` from the lookup, which then trips every `?? hardcoded`
-  // fallback. The cast widens the comparison so the type narrowing
-  // for `t.name` doesn't reject a string we just removed.
-  const baseTier = useMemo(
-    () => PRICING_TIERS.find((t) => (t.name as string) === "Base"),
-    [],
-  );
   const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
 
   const isAnnual = period === "annual";
-
-  const baseMonthlyPrice = baseTier?.price ?? "£3.99";
-  const baseAnnualPrice = baseTier?.annualPrice ?? "£29.99";
-  const basePriceLabel = isAnnual ? baseAnnualPrice : baseMonthlyPrice;
-  const basePeriodLabel = isAnnual
-    ? (baseTier?.annualPeriod ?? "/year")
-    : (baseTier?.period ?? "/month");
-  const basePeriodShort = basePeriodLabel.replace(/^\//, "");
 
   const proMonthlyPrice = proTier?.price ?? "£7.99";
   const proAnnualPrice = proTier?.annualPrice ?? "£59.99";
@@ -245,7 +214,7 @@ export function UpgradePaywallDialog({
     : (proTier?.period ?? "/month");
   const proPeriodShort = proPeriodLabel.replace(/^\//, "");
 
-  const annualSavingsLabel = baseTier?.annualSavings ?? "Save 37%";
+  const annualSavingsLabel = proTier?.annualSavings ?? "Save 37%";
 
   // --- StrictMode double-fire guard (shared across new + legacy emits) ---
   const viewedForOpenRef = useRef(false);
@@ -267,13 +236,12 @@ export function UpgradePaywallDialog({
     if (!variant) return; // Pro users — do not emit
     viewedForOpenRef.current = true;
 
-    // Legacy `paywall_viewed` — unchanged payload shape, preserves the
-    // pre-D12 funnel. `tier` reflects the TARGET tier of the upsell,
-    // matching prior usage (Base for Variant A, Pro for Variant B).
-    const targetTier: "base" | "pro" = variant === "free_to_base" ? "base" : "pro";
+    // Legacy `paywall_viewed` — unchanged payload shape, preserves
+    // the pre-D12 funnel. PR-01 (2026-04-28) collapsed `tier` to
+    // always "pro"; Base is gone from the SSOT.
     track(AnalyticsEvents.paywall_viewed, {
       from: from,
-      tier: targetTier,
+      tier: "pro",
       surface: "upgrade_dialog",
       platform: "web",
     });
@@ -296,12 +264,10 @@ export function UpgradePaywallDialog({
   const emitDismiss = useCallback(
     (reason: "secondary_cta" | "close_button" | "backdrop") => {
       if (!variant) return;
-      // Map new `secondary_cta` reason back onto the legacy
-      // `continue_free` string so pre-D12 dashboards keep working for
-      // Variant A. For Variant B the equivalent secondary ("Stay on
-      // Base") is a new dismissal path — we reuse `continue_free` on
-      // the legacy event as the closest existing slot, but the new
-      // event carries the accurate `secondary_cta` reason.
+      // Map `secondary_cta` reason onto the legacy `continue_free`
+      // string so pre-D12 dashboards keep working. Single Pro upsell
+      // post-PR-01 (2026-04-28) — the secondary CTA reads "Continue
+      // for free" again.
       const legacyReason: "continue_free" | "close_button" | "backdrop" =
         reason === "secondary_cta" ? "continue_free" : reason;
       track(AnalyticsEvents.paywall_dismissed, { from, reason: legacyReason });
@@ -346,7 +312,9 @@ export function UpgradePaywallDialog({
   const handleStartCheckout = useCallback(async () => {
     if (busy || !variant) return;
     setBusy(true);
-    const targetTier: "base" | "pro" = variant === "free_to_base" ? "base" : "pro";
+    // PR-01 (2026-04-28): single Pro target. The Variant A path that
+    // started a `tier: "base"` checkout is gone — Base price IDs are
+    // archived in Stripe + RevenueCat (operational follow-up).
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -363,7 +331,7 @@ export function UpgradePaywallDialog({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier: targetTier, period }),
+        body: JSON.stringify({ tier: "pro", period }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -376,12 +344,12 @@ export function UpgradePaywallDialog({
         return;
       }
       // Legacy `checkout_started` — unchanged shape.
-      track(AnalyticsEvents.checkout_started, { tier: targetTier, period, from });
-      // New `upsell_variant_converted` — fires alongside per D12 §5.
+      track(AnalyticsEvents.checkout_started, { tier: "pro", period, from });
+      // New `upsell_variant_converted` — always `free_to_pro` post-PR-01.
       track(AnalyticsEvents.upsell_variant_converted, {
         variant,
         from,
-        target_tier: targetTier,
+        target_tier: "pro",
         period,
         surface: "upgrade_dialog",
         platform: "web",
@@ -406,50 +374,37 @@ export function UpgradePaywallDialog({
     return null;
   }
 
-  // --- Copy per variant ---------------------------------------------
-  const isA = variant === "free_to_base";
+  // --- Copy ---------------------------------------------------------
+  // PR-01 (audit 2026-04-28): single Pro pitch. The earlier two-
+  // variant logic is gone; if you're seeing this dialog, you're being
+  // shown the Pro upsell.
+  const heroPill = "Suppr Pro";
+  const heroHeadline = "Log faster. Let the AI do the work.";
+  const heroSubtitle =
+    "Snap a photo or say what you ate. Pro handles the rest — and unlocks the full meal-planning loop.";
+  const features = PRO_FEATURES;
+  const priceLabel = proPriceLabel;
+  const periodLabel = proPeriodLabel;
+  const periodShort = proPeriodShort;
+  const cardLabel = "Pro";
+  const cardDescriptor = "Everything in Free, plus AI logging";
+  const showMostPopular = true;
 
-  const heroPill = isA ? "Suppr Base" : "Suppr Pro";
-  const heroHeadline = isA
-    ? "The full meal planning loop"
-    : "Log faster. Let the AI do the work.";
-  const heroSubtitle = isA
-    ? "Plans that hit your macros. Shopping list from your plan. Cook mode with timers."
-    : "Snap a photo or say what you ate. Pro handles the rest — no manual entry.";
-  const features = isA ? VARIANT_A_FEATURES : VARIANT_B_FEATURES;
-  const priceLabel = isA ? basePriceLabel : proPriceLabel;
-  const periodLabel = isA ? basePeriodLabel : proPeriodLabel;
-  const periodShort = isA ? basePeriodShort : proPeriodShort;
-  const cardLabel = isA ? "Base" : "Pro";
-  const cardDescriptor = isA
-    ? "The full meal planning loop"
-    : "Everything in Base, plus AI logging";
-  // §1: Variant A carries the "Most popular" badge; Variant B does not.
-  const showMostPopular = isA;
-
-  // T24 (full-sweep 2026-04-24): full CMA-aligned disclosure replaces
-  // the previous one-line renewal note. Mirrors the mobile paywall
-  // string (apps/mobile/app/paywall.tsx ~540) so the highest-intent
-  // web surface and the iOS surface make the same commitment to the
-  // user. No trial on web upgrade-dialog flow today; if/when added,
-  // append the trial-end + first-charge clause from mobile.
-  const productName = isA ? "Suppr Base" : "Suppr Pro";
+  // T24 (full-sweep 2026-04-24): full CMA-aligned disclosure. Mirrors
+  // the mobile paywall string (apps/mobile/app/paywall.tsx ~540) so
+  // the highest-intent web surface and the iOS surface make the same
+  // commitment to the user. No trial on web upgrade-dialog flow
+  // today; if/when added, append the trial-end + first-charge clause
+  // from mobile.
+  const productName = "Suppr Pro";
   const periodNoun = isAnnual ? "year" : "month";
-  const altLine =
-    isAnnual
-      ? ` (or ${isA ? baseMonthlyPrice : proMonthlyPrice} per month on the monthly plan)`
-      : "";
-  // Variant B was LOCKED to a neutral string — the "You keep Base if
-  // you downgrade" line is factually wrong per
-  // docs/decisions/2026-04-21-pro-downgrade-path.md. Both variants
-  // now share the same disclosure shape because both are honest
-  // commitments to renewal terms.
+  const altLine = isAnnual
+    ? ` (or ${proMonthlyPrice} per month on the monthly plan)`
+    : "";
   const renewalNote = `${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
 
-  const primaryCtaLabel = isA
-    ? `Continue with Base · ${priceLabel}/${periodShort}`
-    : `Upgrade to Pro · ${priceLabel}/${periodShort}`;
-  const secondaryCtaLabel = isA ? "Continue for free" : "Stay on Base";
+  const primaryCtaLabel = `Upgrade to Pro · ${priceLabel}/${periodShort}`;
+  const secondaryCtaLabel = "Continue for free";
 
   return (
     <div
@@ -489,13 +444,11 @@ export function UpgradePaywallDialog({
             {heroHeadline}
           </h2>
           <p className="text-[13px] opacity-85 leading-relaxed">{heroSubtitle}</p>
-          {showProGatedNote ? (
-            // §3 edge case — Free user reaches voice_log / photo_log.
-            <p className="mt-2 text-[12px] opacity-95 leading-relaxed font-medium">
-              Voice and photo logging require Pro. Base unlocks everything
-              else.
-            </p>
-          ) : null}
+          {/* PR-01 (2026-04-28) — the §3 edge-case note ("Voice and
+              photo require Pro. Base unlocks everything else.") was
+              removed when Base went away. The single Pro pitch already
+              includes voice + photo + the meal-planning loop — no
+              intermediate step to call out. */}
         </div>
 
         {/* Scrollable feature + price body */}
