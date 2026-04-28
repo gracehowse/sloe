@@ -511,6 +511,26 @@ export default function CreateRecipeScreen() {
     if (!title.trim()) { Alert.alert("Missing title", "Give your recipe a name."); return; }
     if (ingredients.length === 0) { Alert.alert("No ingredients", "Add at least one ingredient."); return; }
 
+    // CR-03 fix (audit 2026-04-28): mobile Publish toggle was
+    // unguarded — a user could flip the Switch and publish someone
+    // else's recipe under their name. Web requires the GoPublicDialog
+    // attestation checkbox; mobile had nothing equivalent. Now we
+    // confirm via Alert when `publish` is on at save time. Cancel
+    // returns to the form; OK proceeds with publish=true.
+    if (publish) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          "Publish to community?",
+          "I created this recipe and I have the right to share it publicly. Publishing makes it visible in Discover.",
+          [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            { text: "Publish", style: "default", onPress: () => resolve(true) },
+          ],
+        );
+      });
+      if (!proceed) return;
+    }
+
     setSaving(true);
     try {
       const { data: row, error: insErr } = await supabase

@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   Clock,
   Minus,
+  MoreHorizontal,
   Plus,
   PlusCircle,
   Share2,
@@ -1335,6 +1336,82 @@ export default function RecipeDetailScreen() {
             >
               <Share2 size={22} color={colors.text} />
             </Pressable>
+            {/* CR-01/CR-02 fix (audit 2026-04-28): mobile recipe
+                detail used to expose only Bookmark + Share. There
+                was no path to delete a recipe on mobile-native at
+                all (P0). The overflow menu now offers Delete to
+                owners with explicit confirmation copy. Edit and
+                Duplicate are queued in a follow-up batch. */}
+            {isRecipeOwner ? (
+              <Pressable
+                onPress={() => {
+                  Alert.alert(
+                    "Recipe options",
+                    undefined,
+                    [
+                      {
+                        text: "Delete recipe",
+                        style: "destructive",
+                        onPress: () => {
+                          Alert.alert(
+                            "Delete recipe?",
+                            `Deleting "${recipe.title}" will remove it from your library and any meal plan that references it. This can't be undone.`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: async () => {
+                                  if (!recipe?.id) return;
+                                  try {
+                                    const { error } = await supabase
+                                      .from("recipes")
+                                      .delete()
+                                      .eq("id", recipe.id);
+                                    if (error) {
+                                      Alert.alert("Couldn't delete", error.message);
+                                      return;
+                                    }
+                                    // Best-effort orphan cleanup —
+                                    // detach from any meal_plans rows
+                                    // that referenced this recipe so
+                                    // the planner doesn't show stale
+                                    // titles. Failures are silent
+                                    // (the tracker tolerates orphan
+                                    // refs by falling back to the
+                                    // snapshotted recipe_title).
+                                    void supabase
+                                      .from("meal_plans")
+                                      .update({ recipe_id: null })
+                                      .eq("recipe_id", recipe.id);
+                                    void supabase
+                                      .from("saves")
+                                      .delete()
+                                      .eq("recipe_id", recipe.id);
+                                    goBack();
+                                  } catch (e) {
+                                    Alert.alert(
+                                      "Couldn't delete",
+                                      e instanceof Error ? e.message : "Unknown error",
+                                    );
+                                  }
+                                },
+                              },
+                            ],
+                          );
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  );
+                }}
+                style={styles.topBarIconBtn}
+                accessibilityRole="button"
+                accessibilityLabel="More recipe actions"
+              >
+                <MoreHorizontal size={22} color={colors.text} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </View>
