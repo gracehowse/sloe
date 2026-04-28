@@ -17,6 +17,7 @@ import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
+import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
@@ -400,12 +401,14 @@ function RootLayoutInner() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AnalyticsProvider>
-        <SupprThemeProvider>
-          <RootLayoutInner />
-        </SupprThemeProvider>
-      </AnalyticsProvider>
-    </AuthProvider>
+    <RootErrorBoundary>
+      <AuthProvider>
+        <AnalyticsProvider>
+          <SupprThemeProvider>
+            <RootLayoutInner />
+          </SupprThemeProvider>
+        </AnalyticsProvider>
+      </AuthProvider>
+    </RootErrorBoundary>
   );
 }
