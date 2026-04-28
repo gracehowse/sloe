@@ -102,6 +102,16 @@ export interface IngredientRow {
   overrideMacros?: IngredientOverride;
   /** Batch 2.7 — true when the user added this row post-import (not parsed by the importer). */
   addedByUser?: boolean;
+  /**
+   * GW-08 P2 (audit 2026-04-28) — real per-ingredient match confidence
+   * (0..1). Persisted on `recipe_ingredients.confidence` (added by
+   * migration `20260408143000_add_verified_nutrition_micros.sql`).
+   * Pre-fix the load path discarded this column and synthesised a
+   * value from `is_verified`; the synthesis made VR-01's confidence
+   * gate circular. Now hydrated from the persisted column with a
+   * legacy fallback (0.9 / 0.3) when the column is null.
+   */
+  confidence?: number | null;
 }
 
 export interface ShoppingItem {

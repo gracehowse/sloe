@@ -290,7 +290,10 @@ export async function fetchIngredientsForVerification(
   const { data, error } = await supabase
     .from("recipe_ingredients")
     .select(
-      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+      // GW-08 P2 (audit 2026-04-28): added `confidence` so the
+      // VerifiableIngredient.confidence below reflects the real
+      // persisted column instead of the synthetic 0.9/0.3 mapping.
+      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
     )
     .eq("recipe_id", recipeId);
 
@@ -350,7 +353,21 @@ export async function fetchIngredientsForVerification(
       sugarG: r.sugar_g ?? 0,
       sodiumMg: r.sodium_mg ?? 0,
       source: r.source ?? null,
-      confidence: r.is_verified ? 0.9 : 0.3,
+      // GW-08 P2 (audit 2026-04-28): pre-fix this was always
+      // `r.is_verified ? 0.9 : 0.3` — a circular synthesis (the
+      // `is_verified` bit feeds the confidence value, which then
+      // feeds the recipe-level trust rollup that ultimately reads
+      // back the same bit). Now hydrates the real persisted
+      // `recipe_ingredients.confidence` column when present, with
+      // the legacy synthesis as fallback for pre-migration rows
+      // (column was added by `20260408143000_add_verified_nutrition_micros.sql`
+      // but rows persisted before that fix carry NULL).
+      confidence:
+        typeof r.confidence === "number" && Number.isFinite(r.confidence)
+          ? r.confidence
+          : r.is_verified
+            ? 0.9
+            : 0.3,
       matchedName: null,
       isVerified: r.is_verified ?? false,
       isDirty: false,

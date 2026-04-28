@@ -116,6 +116,8 @@ type DbIngredientRow = {
   source: string | null;
   override_macros?: IngredientOverride | null;
   added_by_user?: boolean | null;
+  /** GW-08 P2 (2026-04-28) — real persisted match confidence (0..1). */
+  confidence?: number | null;
 };
 
 function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
@@ -132,6 +134,14 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
     sodiumMg: row.sodium_mg ?? 0,
     isVerified: row.is_verified,
     source: row.source ?? "Manual",
+    // GW-08 P2 (2026-04-28): hydrate the real persisted confidence
+    // when present. Legacy rows (pre-confidence-column data) still
+    // come through with `null` — callers that need a number fall
+    // back to the synthetic 0.9/0.3 mapping based on `is_verified`.
+    confidence:
+      typeof row.confidence === "number" && Number.isFinite(row.confidence)
+        ? row.confidence
+        : null,
   };
   if (row.override_macros && typeof row.override_macros === "object") {
     const o = row.override_macros as IngredientOverride;
@@ -491,7 +501,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       const { data: ingRows, error: ingError } = await supabase
         .from("recipe_ingredients")
         .select(
-          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
         )
         .eq("recipe_id", recipe.id)
         .order("created_at", { ascending: true });
@@ -793,7 +803,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         .from("recipe_ingredients")
         .insert(insertRow)
         .select(
-          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user",
+          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
         )
         .single();
 

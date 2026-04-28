@@ -44,6 +44,14 @@ export type ApiImportedRecipe = {
     sugarG?: number;
     sodiumMg?: number;
     source?: string;
+    /**
+     * GW-08 P2 (audit 2026-04-28) — optional per-ingredient match
+     * confidence (0..1) from the verify-API matcher. When the
+     * importer doesn't surface it, we don't fabricate one — the
+     * persisted column stays NULL and the load path's legacy
+     * fallback applies.
+     */
+    confidence?: number;
   }[];
 };
 
@@ -220,6 +228,14 @@ export async function saveImportedRecipe(
         // `src/lib/nutrition/structuredSourceGate.ts`.
         is_verified: isStructuredSource(m?.source),
         source: m?.source ?? null,
+        // GW-08 P2 (audit 2026-04-28): persist real per-ingredient
+        // confidence when the matcher surfaces one. NULL is the
+        // honest answer for LLM-only rows — the load path's legacy
+        // fallback (0.9 if is_verified else 0.3) applies for those.
+        confidence:
+          typeof m?.confidence === "number" && Number.isFinite(m.confidence)
+            ? m.confidence
+            : null,
       };
     });
 
