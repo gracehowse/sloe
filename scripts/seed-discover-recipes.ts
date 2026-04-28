@@ -21,7 +21,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { parseRecipeFromHtml, siteNameFromUrl } from "../src/lib/recipe-import/parseRecipeFromHtml";
 import { allocateIngredientMacrosFromLines } from "../src/lib/nutrition/allocateIngredientMacrosFromLines";
 
-const SEED_AUTHOR_ID = "e9f85055-876b-4bde-9267-476567b16884";
+// GW-03/GW-04 fix (audit 2026-04-28): seeded rows now write
+// `author_id = NULL`. The previous SEED_AUTHOR_ID
+// ("e9f85055-876b-4bde-9267-476567b16884") was a real auth.users
+// row (Grace's TestFlight account). The Library predicate
+// `authorId === userId` then classified every seed row as
+// "Imported" on her account, surfacing as GW-04. The Discover
+// `.not("author_id", "is", null)` workaround that motivated using
+// a real UUID has been removed in the same release; platform-
+// curated rows can now safely be NULL-authored.
+const SEED_AUTHOR_ID: string | null = null;
 const USER_AGENT = "SupprBot/1.0 (+https://suppr-club.com/bot)";
 
 function loadEnvLocal(): void {
@@ -121,7 +130,7 @@ async function main() {
   }
 
   console.log(
-    `${dryRun ? "[dry-run] " : ""}Seeding ${urls.length} Discover recipes as author ${SEED_AUTHOR_ID}…`,
+    `${dryRun ? "[dry-run] " : ""}Seeding ${urls.length} Discover recipes as platform-curated rows (author_id = ${SEED_AUTHOR_ID === null ? "NULL" : SEED_AUTHOR_ID})…`,
   );
 
   let inserted = 0;
@@ -147,17 +156,16 @@ async function main() {
     const description =
       parsed.description ?? `Seeded from ${siteNameFromUrl(url)} for Discover testing.`;
 
-    // author_id intentionally null: the notify_followers_on_recipe_publish trigger
-    // references public.author_follows which is missing from the live DB (migration
-    // 20260408180000_phase_4b_creator_social.sql not applied). The trigger guards
-    // "IF new.author_id IS NOT NULL" so null skips the broken branch. The delete
-    // script matches these rows by source_url (seed-recipe-urls.txt), not author_id.
+    // GW-03/GW-04 (audit 2026-04-28): platform-curated rows now
+    // write `author_id = NULL`. Discover no longer filters NULL
+    // authors out (`apps/mobile/lib/recipes.ts` +
+    // `src/context/AppDataContext.tsx` had the `.not("author_id",
+    // "is", null)` removed in the same release). Library now treats
+    // the bookmark-state predicate as authoritative, so Saved
+    // surfaces don't depend on author_id at all. The delete script
+    // continues to match by source_url (seed-recipe-urls.txt).
     const recipeRow = {
-      // F-50 (2026-04-22): must populate author_id — Discover query
-      // (`apps/mobile/lib/recipes.ts`, `src/context/AppDataContext.tsx`)
-      // filters `.not("author_id", "is", null)` to exclude tombstoned
-      // rows, so NULL here hides seeded recipes from Discover entirely.
-      author_id: SEED_AUTHOR_ID as string | null,
+      author_id: SEED_AUTHOR_ID,
       title: parsed.title,
       description,
       instructions: parsed.instructions.join("\n\n"),

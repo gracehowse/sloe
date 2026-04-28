@@ -711,13 +711,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshDiscoverRecipes = useCallback(async () => {
+    // GW-03/GW-04 fix (audit 2026-04-28): see the matching comment
+    // in `apps/mobile/lib/recipes.ts`. The `.not("author_id", "is",
+    // null)` filter has been removed so platform-curated rows
+    // (author_id = NULL) surface in Discover; the seeder now writes
+    // NULL per the data-integrity remediation.
     const { data, error } = await supabase
       .from("recipes")
       .select(
         "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
-      .not("author_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(200);
 

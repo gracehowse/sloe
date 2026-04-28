@@ -40,13 +40,19 @@ export function useDiscoverRecipes() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // GW-03/GW-04 fix (audit 2026-04-28): the prior `.not("author_id",
+    // "is", null)` filter was a workaround for a long-resolved
+    // tombstoning behaviour. After 2026-04-28 the seeder writes
+    // `author_id = NULL` for platform-curated rows (per
+    // `supabase/migrations/20260503112000_unpoison_seed_author_ids.sql`
+    // + the patched `scripts/seed-discover-recipes.ts`). Keeping the
+    // filter would now hide every seeded recipe from Discover.
     const { data, error } = await supabase
       .from("recipes")
       .select(
         "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, allergens, dietary_flags",
       )
       .eq("published", true)
-      .not("author_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(200);
 

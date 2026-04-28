@@ -9,6 +9,7 @@ import {
   matchesNutritionPill,
   type LibraryFilterPillId,
 } from "../../lib/recipes/libraryFilters.ts";
+import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // — Library cards no longer render the chip; see card-body comments.
@@ -24,19 +25,26 @@ function entryKindForRecipe(
   explicit: LibraryEntryKind | undefined,
   userId: string | null,
 ): LibraryEntryKind {
+  // The explicit override map is populated by AppDataContext when
+  // the user create/import flow runs through it locally. It still
+  // wins because it captures user intent at write time. The
+  // "Unavailable" guard predates the orphan-filtering pass and is
+  // kept defensively.
   if (explicit) return explicit;
   if (recipe.creatorName === "Unavailable") return "saved";
-  // F-7 (TestFlight `AO2jdncS2GxyJaeXPPFR30M`, 2026-04-18): parity
-  // with `apps/mobile/app/(tabs)/library.tsx#entryKindForCard`. When
-  // the explicit map entry is missing (author-owned recipes unioned
-  // in because they're "mine by nature" even after unsave), fall
-  // back to `imported` if the recipe carries a source URL, else
-  // `created`.
-  if (userId && recipe.authorId && recipe.authorId === userId) {
-    const sourceUrl = (recipe as { sourceUrl?: string | null }).sourceUrl;
-    return sourceUrl ? "imported" : "created";
-  }
-  return "saved";
+  // GW-01 fix (audit 2026-04-28): predicate moved to the shared
+  // `src/lib/recipes/libraryEntryKind.ts` so web + mobile use the
+  // same rule. Saves win over authorship — see the shared module's
+  // header comment for the full rationale (seed-script poisoning of
+  // `recipes.author_id`).
+  return classifyLibraryEntry(
+    {
+      isSaved: Boolean(recipe.isSaved),
+      authorId: recipe.authorId ?? null,
+      sourceUrl: (recipe as { sourceUrl?: string | null }).sourceUrl ?? null,
+    },
+    userId,
+  );
 }
 
 function kindBadgeClasses(kind: LibraryEntryKind): string {

@@ -39,6 +39,7 @@ import {
   matchesNutritionPill,
   type LibraryFilterPillId,
 } from "../../../../src/lib/recipes/libraryFilters";
+import { classifyLibraryEntry } from "../../../../src/lib/recipes/libraryEntryKind";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — Library cards no longer render the chip; see the comment
@@ -52,25 +53,25 @@ const SORT_LABELS: Record<SortKey, string> = {
   protein: "Protein",
 };
 
-/** Derive entry-kind for a mobile library row.
- *
- *  Web uses an explicit `libraryEntryKindByRecipeId` map populated by
- *  AppDataContext when the user creates / imports a recipe. Mobile
- *  doesn't have that map, so we derive locally from `authorId` and
- *  `sourceUrl`:
- *    - own author + has source URL → imported (came in via the
- *      import-shared flow)
- *    - own author + no source URL  → created (built in the app)
- *    - someone else's author       → saved (came from Discover)
- */
+/** GW-01 fix (audit 2026-04-28): predicate moved to the shared
+ *  module `src/lib/recipes/libraryEntryKind.ts` so web + mobile
+ *  cannot drift. Saves now win over authorship — a recipe that's in
+ *  the saves set is "saved" regardless of author_id, which fixes
+ *  the seed-poisoned case where every save pointed at a row whose
+ *  author_id had been written as Grace's UUID by the URL-seed
+ *  script. */
 function entryKindForCard(
   card: RecipeCard,
   userId: string | null,
 ): "saved" | "created" | "imported" {
-  if (userId && card.authorId && card.authorId === userId) {
-    return card.sourceUrl ? "imported" : "created";
-  }
-  return "saved";
+  return classifyLibraryEntry(
+    {
+      isSaved: card.isSaved,
+      authorId: card.authorId ?? null,
+      sourceUrl: card.sourceUrl ?? null,
+    },
+    userId,
+  );
 }
 
 /** Human-readable total time for the card metadata row. */
