@@ -9,48 +9,48 @@ This is the **single ranked action list** for executor sprints. Audits are on di
 ## P0 — Trust failures + write-path divergences + broken core flows
 
 ### Group A — Onboarding broken
-1. **MV-01 — Mobile v2 has NO completion handler.** User picks 5 recipes, taps "Build my first week", nothing happens. `apps/mobile/components/onboarding-v2/mobile-flow.tsx`. Block flag rollout until fixed.
-2. **MV-02 — Mobile v2 Signup is FAKE AUTH.** Apple button creates no account; email field has no password input, no `supabase.auth.signUp` call. Should not ship to TestFlight.
-3. **WEB-01 / MV-03 — V2 state does NOT persist.** Refresh, app-background, email-confirm redirect → all answers gone. Both providers initialise from `DEFAULT_ONBOARDING_STATE` with zero localStorage / AsyncStorage hydration.
-4. **AU-01 — `/onboarding/v2` may not persist on completion.** Page comment: "doesn't persist anything yet (OB2-1 in TODO.md)". Front door of product. `app/onboarding/v2/page.tsx:36-39`.
-5. **ML-01 / X-03 — Legacy mobile Skip writes FICTIONAL targets flagged as user-set.** 28-year-old, 70 kg, 165 cm, "unspecified-sex" defaults persisted with `target_calories_source: "onboarding"` like the user personalised them. `apps/mobile/app/onboarding.tsx:387-411`.
+1. ✅ **MV-01 — Mobile v2 has NO completion handler.** **SHIPPED Batch 6 (5d02771).** `mobile-flow.tsx#handleComplete` mirrors web; persistOnboardingV2 → resolveSeedsToRecipeIds → buildFirstWeekFromSeeds → router.replace.
+2. ✅ **MV-02 — Mobile v2 Signup is FAKE AUTH.** **SHIPPED Batch 12 (f8ca723).** Real `expo-apple-authentication.signInAsync` + `supabase.auth.signInWithIdToken` with sha256(rawNonce); iOS-only via Platform.OS gate.
+3. ✅ **WEB-01 / MV-03 — V2 state does NOT persist.** **SHIPPED Batch 6 (5d02771).** localStorage hydration on web; AsyncStorage on mobile; cleared on completion.
+4. ✅ **AU-01 — `/onboarding/v2` may not persist on completion.** **SHIPPED Batch 2 (1e62e24).** Stale comment removed; persistence wired.
+5. ✅ **ML-01 / X-03 — Legacy mobile Skip writes FICTIONAL targets flagged as user-set.** **SHIPPED Batch 2 (1e62e24).** Skip path now writes `target_calories_source: "onboarding_skip"`; CHECK constraint widened by migration `20260503111000`.
 
 ### Group B — Logging trust failures
-6. **VL-01 — Voice log silently fails on Safari + Firefox.** Press-and-hold flips green ring, MediaRecorder captures audio, releases, **nothing happens.** Recording is never uploaded. Pro feature paid + broken. `src/app/components/suppr/voice-log-dialog.tsx:92-165`.
-7. **PL-01 — Photo log AI estimate commits as if verified nutrition.** Today's `JournalMeal` rendering doesn't surface `source: "ai_photo"` provenance — becomes one of N entries in clean kcal/protein/carb total. Per CLAUDE.md: *"If nutrition / ingredient matching is uncertain, do not guess."*
-8. **HS-01 — Apple Health "Connected" persists after iOS revoke.** AsyncStorage boolean never re-validated. Already flagged in More audit M10. **Still here.**
-9. **VR-01 — "Confirm All" promotes low-confidence rows to `is_verified=true`.** `verifyRecipe.ts:1318` sets unconditionally. Recipe gets green Verified TrustChip on detail.
+6. ✅ **VL-01 — Voice log silently fails on Safari + Firefox.** **SHIPPED Batch 2 (1e62e24).** Mic button only renders when `webSpeechSupported === true`; Safari/Firefox get text-input-only with honest copy.
+7. ✅ **PL-01 — Photo log AI estimate commits as if verified nutrition.** **SHIPPED Batch 4 (b512718).** Sparkles + "Includes N AI-estimated meal{s}" pill below Today hero (web + mobile).
+8. ✅ **HS-01 — Apple Health "Connected" persists after iOS revoke.** **SHIPPED Batch 1 (d11ef00).** `probeHealthAccess()` via `useFocusEffect` clears stale `health_sync_apple_connected` AsyncStorage key.
+9. ✅ **VR-01 — "Confirm All" promotes low-confidence rows to `is_verified=true`.** **SHIPPED Batch 1 (d11ef00) + deepened in Batch 16/17/18.** `allRowsVerified` gate; per-row write gated on confidence threshold; per-ingredient confidence hydrated end-to-end.
 
 ### Group C — Plan / Shopping write-path
-10. **F1 — "Generate Shopping List" unreachable on mobile after regenerate.** Dead code block (`{false && plan && (...)}`). Loop. Stuck. `apps/mobile/app/(tabs)/planner.tsx:2391`.
-11. **F2 — Web Planner is ~30% of mobile's surface.** Missing day-count picker, snacks slot, slot toggles, free-tier lock, templates, named slots, portions, leftovers, household, "Add slot back". Project rule violation.
-12. **F3 — Web Shopping list missing baseline interactions.** No share, export, clear-all, clear-checked, per-row remove, progress bar.
-13. **F30 — Mobile "Log today" portion_multiplier double-application.** `portion_multiplier: currentMult` persisted while `meal.calories` already baked it in. Silent macro inflation. Data-correctness violation per `.claude/CLAUDE.md`.
+10. ✅ **F1 — "Generate Shopping List" unreachable on mobile after regenerate.** **SHIPPED Batch 3 (dc9196b).** Extracted `generateShoppingListFromPlan` callback; reachable from summary card when count is 0.
+11. ❌ **F2 — Web Planner is ~30% of mobile's surface.** Missing day-count picker, snacks slot, slot toggles, free-tier lock, templates, named slots, portions, leftovers, household, "Add slot back". Project rule violation. **OUTSTANDING — needs scope decision (large feature port).**
+12. ⏸️ **F3 — Web Shopping list missing baseline interactions.** No share, export, clear-all, clear-checked, per-row remove, progress bar. **PARKED in stash@{0}** — work done but the prototype-port test was reverted by Grace, signalling the prototype-strip baseline should hold. **Needs product call: prototype baseline vs cross-platform parity.**
+13. ✅ **F30 — Mobile "Log today" portion_multiplier double-application.** **SHIPPED Batch 3 (dc9196b) + Batch 15 (c37b52c).** `portion_multiplier: 1` since macros are post-portion; `generateSmartPlan` now drops zero-macro recipes.
 
 ### Group D — Cross-platform lies
-14. **F4 — "Base and above" upsell to non-existent SKU.** `planner.tsx:1604, 1740`. Pricing copy lies.
-15. **F5 — Free-tier 7-day plan lock divergence.** Mobile gates; web doesn't. Same user gets different access by platform.
-16. **PR-01 — "Base" tier half-deleted across surfaces.** Visible on landing, hidden on `/pricing`, hidden on mobile paywall, but name leaks into copy ("Everything in Base, plus"). Conversion-killing.
-17. **D1 — Following filter parity drift** (from Library/Discover audit). Mobile `creatorId` only; web `creatorId` OR `authorId`. **Silent data divergence.**
-18. **D3 — Eating-out tap goes to different destinations on native vs web.**
-19. **CM5 — Cook web auto-logs meal on done; mobile doesn't.** Write-path cross-platform divergence.
+14. ✅ **F4 — "Base and above" upsell to non-existent SKU.** **SHIPPED Batch 8 (c346ef8).** Both occurrences in `planner.tsx` now read "Available with Pro".
+15. ❌ **F5 — Free-tier 7-day plan lock divergence.** Mobile gates; web doesn't. **OUTSTANDING — gated on F2 web Planner port.**
+16. ❌ **PR-01 — "Base" tier half-deleted across surfaces.** **OUTSTANDING — requires monetisation-architect strategic call** (memory `project_strategic_direction_2026-04-27.md` says Free+Pro is the direction, but `src/lib/landing/pricingTiers.ts` still lists Base as a sellable SKU with `checkoutTier: "base"`. Excising Base touches Stripe + RevenueCat + grandfathered users — not a unilateral main-thread call).
+17. ✅ **D1 — Following filter parity drift.** **SHIPPED Batch 3 (dc9196b).** Mobile now matches `creatorId OR authorId`.
+18. ✅ **D3 — Eating-out tap goes to different destinations on native vs web.** **SHIPPED Batch 8 (c346ef8).** Mobile now `router.push("/(tabs)")` (no search param).
+19. ~~**CM5 — Cook web auto-logs meal on done; mobile doesn't.**~~ **RESOLVED 2026-04-28 (verified, no code change)** — re-audited: both platforms show a "Log this meal" button on the Done state and only fire the log on user tap. Web uses inline `handleLogMeal` → `addLoggedMeal`; mobile routes `/recipe/{id}?autoLog=1` → `addRecipeToTodayJournal()` via the recipe-detail useRef-guarded effect. Pattern differs but user-facing behaviour is identical. The original CM5 finding misread the web `setLogged(true)` call as an auto-fire on mount; it's an `onClick` callback. Pinned by `tests/unit/cookModeAutoLogFireOnce.test.ts`.
 
 ### Group E — Recipe creation
-20. **CR-01 — Mobile recipe detail has NO Edit / Delete / Duplicate / Publish.** No overflow menu. User who creates on mobile and types a typo has no way to fix it on mobile.
-21. **CR-02 — Recipe Delete doesn't exist anywhere.** Orphan-handling at `recipes.ts:332-340` is observation-only — logs to console, never warns user. Planner entries silently disappear.
-22. **CR-03 — Mobile create Publish toggle has no attestation; web requires GoPublicDialog.** User can publish someone else's content under own name on mobile.
+20. ✅ **CR-01 — Mobile recipe detail has NO Edit / Delete / Duplicate / Publish.** **SHIPPED Batch 5 (e773cd2).** `MoreHorizontal` overflow button (owner-only) with Alert action sheet → "Delete recipe".
+21. ✅ **CR-02 — Recipe Delete doesn't exist anywhere.** **SHIPPED Batch 5 (e773cd2).** Best-effort orphan cleanup (`meal_plans.recipe_id = null`, `saves` rows removed).
+22. ✅ **CR-03 — Mobile create Publish toggle has no attestation.** **SHIPPED Batch 5 (e773cd2).** `onSave` confirms via Alert when `publish === true`.
 
 ### Group F — System trust
-23. **ERR-01 — Mobile has NO production error boundary.** TestFlight crash → black screen → force-quit. User has no recovery.
-24. **EMAIL-01 — Zero email templates in repo.** Welcome / verify / reset / trial-ending / subscription / digest — none owned by Suppr. Default Supabase emails are scammy on first signup.
-25. **CM1 — Cook screen crashes on malformed JSON `steps` query** (no try/catch). `apps/mobile/app/cook.tsx:39`.
+23. ✅ **ERR-01 — Mobile has NO production error boundary.** **SHIPPED Batch 7 (af28509).** `RootErrorBoundary.tsx` class component wraps `RootLayout`.
+24. ❌ **EMAIL-01 — Zero email templates in repo.** Welcome / verify / reset / trial-ending / subscription / digest — none owned by Suppr. **OUTSTANDING — requires brand-manager voice + legal-reviewer footer + executor plumbing (large piece, multi-agent).**
+25. ✅ **CM1 — Cook screen crashes on malformed JSON `steps` query.** **SHIPPED Batch 1 (d11ef00).** Wrapped `JSON.parse(stepsJson)` in try/catch with type-narrowing.
 
 ### Group G — Settings / More structural debt
-26. **Mobile-web "You" tab is one-screen dead end.** Cannot reach Settings, Sign Out, Subscription, Help, Reset, Notifications inbox without typing `?view=settings` in URL bar.
-27. **"More" exists nowhere on web** (desktop sidebar = Progress/Profile/Settings; mobile = Progress/Settings/More; mobile-web = nothing).
-28. **Settings + More 80% overlap on native.** Both have Sign Out, Export CSV/JSON, Manage subscription, Notifications row.
-29. **Reset / Erase / Delete-Account stacked behind one modal.** Account-delete buried second-most-prominent in an erase-data dialog.
-30. **L5 — Mobile-web Library↔Discover sub-tab pill bar missing.** From Library, no surfaced path to Discover.
+26. ✅ **Mobile-web "You" tab is one-screen dead end.** **SHIPPED Batch 10 (ce0bf0b).** YouSubTabPill component covers Settings/Profile/Progress.
+27. ❌ **"More" exists nowhere on web.** **OUTSTANDING — needs strategic IA call.** (Memory says collapse Settings + More to two sub-tabs Progress/Settings + Profile-as-row. Strategic, not surgical.)
+28. ❌ **Settings + More 80% overlap on native.** **OUTSTANDING — same strategic IA call as #27.**
+29. ✅ **Reset / Erase / Delete-Account stacked behind one modal.** **SHIPPED Batch 9 (eaf5635).** Two-step Alert + Alert.prompt requires user to type "delete" lowercase to confirm.
+30. ✅ **L5 — Mobile-web Library↔Discover sub-tab pill bar missing.** **SHIPPED Batch 10 (ce0bf0b).** `RecipesSubTabPill` covers Library/Discover.
 
 ### Group H — Grace TestFlight live walkthrough (queued 2026-04-28)
 *Reported by Grace mid-walkthrough; addressed in batches as captured below.*
