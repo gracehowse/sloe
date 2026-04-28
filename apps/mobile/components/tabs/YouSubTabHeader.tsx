@@ -8,27 +8,19 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * YouSubTabHeader — segmented sub-tab pill bar shown at the top of
- * the Progress, Settings, and More screens once the 6→4 tab collapse
- * landed (Phase 2 / B1.1, 2026-04-27 strategic spec).
+ * the Progress + Settings screens.
  *
- * The "You" primary tab merges what used to be three primary
- * destinations: Progress (now default), Settings, More. Per
- * D-2026-04-27-02:
- *   "Merging Progress+More resolves the indecision between two
- *    user-centric tabs."
- * and Surface E in the production design spec:
- *   "You is one tab combining identity, the weekly story, and
- *    settings depth."
+ * History: shipped 2026-04-27 with three pills (Progress / Settings /
+ * More) per the 6→4 tab collapse. Group G IA decision (2026-04-28,
+ * `docs/decisions/2026-04-28-group-g-ia-collapse.md`) collapsed to
+ * two pills — More is gone as a distinct destination; its sections
+ * fold into Settings across batches B-E. The "/more" route stays
+ * alive as a redirect so push-notification deep links don't break
+ * mid-migration.
  *
- * Default sub-tab is Progress (story-led, per D-2026-04-27-17). The
- * "Settings" sub-tab maps to the existing /(tabs)/settings screen.
- * The "More" sub-tab maps to /(tabs)/more — kept accessible because
- * many features (household, profile, paywall, support, etc.) are
- * still routed through it pending a Phase 4 settings consolidation.
- *
- * Three pills fit comfortably without horizontal scroll on a 320pt
- * device, so we don't need an overflow strategy. ScrollView is used
- * defensively so future additions (e.g. Subscription) won't truncate.
+ * Default sub-tab is Progress (story-led, per D-2026-04-27-17).
+ * Settings is the canonical configuration surface (the consolidated
+ * page that Batches B-E build out).
  */
 export function YouSubTabHeader() {
   const router = useRouter();
@@ -36,16 +28,19 @@ export function YouSubTabHeader() {
   const colors = useThemeColors();
 
   const onProgress = pathname?.startsWith("/progress") ?? false;
-  const onSettings = pathname?.startsWith("/settings") ?? false;
-  const onMore = pathname?.startsWith("/more") ?? false;
+  // Group G IA Batch A (2026-04-28): treat /more as Settings for the
+  // purposes of pill highlighting so the redirect from /more →
+  // /settings doesn't briefly de-highlight the You tab.
+  const onSettings =
+    (pathname?.startsWith("/settings") ?? false) ||
+    (pathname?.startsWith("/more") ?? false);
 
-  const handleSelect = (target: "progress" | "settings" | "more") => {
+  const handleSelect = (target: "progress" | "settings") => {
     if (process.env.EXPO_OS === "ios") {
       void Haptics.selectionAsync();
     }
     if (target === "progress" && onProgress) return;
     if (target === "settings" && onSettings) return;
-    if (target === "more" && onMore) return;
     router.replace(`/(tabs)/${target}` as never);
   };
 
@@ -87,14 +82,6 @@ export function YouSubTabHeader() {
             label="Settings"
             active={onSettings}
             onPress={() => handleSelect("settings")}
-            activeBg={colors.card}
-            activeText={Accent.primary}
-            inactiveText={colors.textSecondary}
-          />
-          <SubTabPill
-            label="More"
-            active={onMore}
-            onPress={() => handleSelect("more")}
             activeBg={colors.card}
             activeText={Accent.primary}
             inactiveText={colors.textSecondary}

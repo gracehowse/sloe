@@ -91,24 +91,32 @@ describe("RecipesSubTabHeader", () => {
   });
 });
 
-describe("YouSubTabHeader", () => {
-  it("renders the three You sub-tabs in canonical order", () => {
+describe("YouSubTabHeader (post-Group-G IA collapse, 2026-04-28)", () => {
+  // Group G IA decision (`docs/decisions/2026-04-28-group-g-ia-collapse.md`)
+  // collapsed the You sub-tabs from 3 (Progress / Settings / More) to
+  // 2 (Progress / Settings). The "/more" route stays alive as a
+  // redirect so deep links don't break, but the pill bar treats it
+  // as part of Settings for highlighting.
+  it("renders exactly two You sub-tabs (Progress + Settings)", () => {
     setPathname("/progress");
-    const { getByLabelText } = render(<YouSubTabHeader />);
+    const { getByLabelText, queryByLabelText } = render(<YouSubTabHeader />);
     expect(getByLabelText("Progress")).toBeTruthy();
     expect(getByLabelText("Settings")).toBeTruthy();
-    expect(getByLabelText("More")).toBeTruthy();
+    expect(queryByLabelText("More")).toBeNull();
   });
 
-  it("highlights the active sub-tab based on pathname", () => {
+  it("highlights Settings when on /settings or /more (legacy redirect path)", () => {
     setPathname("/settings");
     const { getByLabelText, rerender } = render(<YouSubTabHeader />);
     expect(getByLabelText("Settings").props.accessibilityState.selected).toBe(true);
     expect(getByLabelText("Progress").props.accessibilityState.selected).toBe(false);
 
+    // Legacy /more deep links keep the You tab highlighted on
+    // Settings during the migration window — the redirect to
+    // /settings will fire on mount.
     setPathname("/more");
     rerender(<YouSubTabHeader />);
-    expect(getByLabelText("More").props.accessibilityState.selected).toBe(true);
+    expect(getByLabelText("Settings").props.accessibilityState.selected).toBe(true);
   });
 
   it("routes to /(tabs)/settings when Settings is tapped from Progress", async () => {
