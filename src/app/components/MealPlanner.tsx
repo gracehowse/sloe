@@ -18,7 +18,10 @@ import {
   planCalendarDateForIndex,
   shortWeekdayLabel,
 } from "../../lib/planning/planDayLabel.ts";
-import { computePlanWeekSummaryScore } from "../../lib/planning/planWeekSummary.ts";
+import {
+  buildPlanWeekSummarySubtitle,
+  computePlanWeekSummaryScore,
+} from "../../lib/planning/planWeekSummary.ts";
 import {
   buildDayTotalVsGoalLine,
   type DayTotalTone,
@@ -165,6 +168,23 @@ export const MealPlanner = memo(function MealPlanner({
     ? `Week of ${weekOfLabel} · hits targets ${summary.hits} of ${summary.total} day${summary.total === 1 ? "" : "s"}`
     : `Week of ${weekOfLabel}`;
 
+  /** F2-F (2026-04-28) — week summary card. Promotes the subtitle's
+   *  "hits targets" line into a dedicated card with a worst-short-day
+   *  diagnosis + Shopping list / Regenerate CTAs. Mobile parity:
+   *  `apps/mobile/app/(tabs)/planner.tsx:1639-1698`. Hidden on empty
+   *  plans (no score) or when targets aren't set; the bottom CTA row
+   *  takes over in those cases so the user can still kick off
+   *  generation. */
+  const worstShortDayLabel = useMemo(() => {
+    if (!summary?.worstShort) return null;
+    const date = planCalendarDateForIndex(summary.worstShort.dayIndex);
+    return shortWeekdayLabel(date);
+  }, [summary]);
+  const summarySubtitle = summary
+    ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
+    : null;
+  const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
+
   const handleRegenerate = async () => {
     setIsGenerating(true);
     try {
@@ -305,6 +325,63 @@ export const MealPlanner = memo(function MealPlanner({
       >
         {subtitle}
       </p>
+
+      {/* F2-F (2026-04-28): week summary card. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1639-1698`. Carries the
+          "hits targets N of M days" headline + worst-short-day
+          diagnosis + Shopping list / Regenerate CTAs. Hidden when no
+          plan exists; the bottom CTA row takes over. */}
+      {showSummaryCard && summary ? (
+        <div
+          data-testid="planner-week-summary-card"
+          className="rounded-2xl border border-border bg-card mb-4"
+          style={{ padding: 16 }}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <p
+                className="text-foreground font-bold -tracking-[0.01em]"
+                style={{ fontSize: 15 }}
+              >
+                Hits your targets {summary.hits} of {summary.total} day{summary.total === 1 ? "" : "s"}
+              </p>
+              {summarySubtitle ? (
+                <p
+                  className="text-muted-foreground mt-1"
+                  style={{ fontSize: 12, lineHeight: 1.4 }}
+                >
+                  {summarySubtitle}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleShoppingList}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+              style={{ padding: "8px 14px", fontSize: 13 }}
+            >
+              <ShoppingCart size={14} strokeWidth={2} />
+              Shopping list
+            </button>
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ padding: "8px 14px", fontSize: 13 }}
+            >
+              <RefreshCw
+                size={14}
+                strokeWidth={2}
+                className={isGenerating ? "animate-spin" : ""}
+              />
+              Regenerate
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* F2-B (2026-04-28): day-count picker. Mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1734-1757`. F2-C: Free
@@ -604,9 +681,15 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
+      {/* F2-F (2026-04-28): bottom CTA row only renders when the
+          summary card isn't taking the lead — i.e. on empty plans
+          (so the user can still kick off generation) and when the
+          score isn't computable (no targets / no plan). When the
+          summary card is up, its in-card CTAs are the canonical
+          way to regenerate or open the shopping list. */}
       <div
         data-testid="planner-desktop-cta-row"
-        className="flex"
+        className={`flex ${showSummaryCard ? "hidden" : ""}`}
         style={{ gap: 8, marginTop: 20 }}
       >
         <button
