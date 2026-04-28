@@ -176,6 +176,14 @@ export const MealPlanner = memo(function MealPlanner({
   // `planCalendarDateForIndex(idx, startOffset)` helper already
   // accepts the offset; pre-fix the web planner always passed 0.
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0);
+  // F2-H (audit 2026-04-28) — which canonical slots to include in
+  // the next regenerate. Mobile parity at
+  // `apps/mobile/app/(tabs)/planner.tsx:1775-1793`. Defaults to all
+  // four; toggling Snacks off (the most common case) regenerates
+  // without snack rows.
+  const [enabledSlots, setEnabledSlots] = useState<Set<SlotKey>>(
+    () => new Set<SlotKey>(SLOTS),
+  );
 
   const targetCalories = nutritionTargets.calories;
 
@@ -227,7 +235,20 @@ export const MealPlanner = memo(function MealPlanner({
       // invocation that defaulted to 1 day, which was the F2 root
       // cause for "web Planner is ~30% of mobile's surface".
       const days = isFree ? 1 : planDays;
-      await generateMealPlan({ days });
+      // F2-H (2026-04-28): pass through the user's enabled-slot set.
+      // The shared `generatePlanFromLibrary` accepts `slots?: string[]`;
+      // we pass capitalised names ("Breakfast" etc.) so the algorithm's
+      // `recipeFitsMealSlot` lookup works. When all four slots are
+      // enabled we omit the option so the lib's default kicks in.
+      const slotsList: string[] = SLOTS.filter((s) => enabledSlots.has(s)).map(
+        (s) => SLOT_TITLE[s],
+      );
+      const useSlotOverride =
+        slotsList.length > 0 && slotsList.length < SLOTS.length;
+      await generateMealPlan({
+        days,
+        ...(useSlotOverride ? { slots: slotsList } : {}),
+      });
       await generateShoppingListFromPlan();
       toast.success("Plan regenerated");
     } catch {
@@ -235,6 +256,22 @@ export const MealPlanner = memo(function MealPlanner({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  /** F2-H (2026-04-28) — toggle a slot in the enabled set. Disallows
+   *  empty selection: at least one slot must remain enabled, since
+   *  zero slots = an empty plan and a confusing UX. */
+  const handleSlotToggle = (slot: SlotKey) => {
+    setEnabledSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slot)) {
+        if (next.size === 1) return prev; // can't disable last slot
+        next.delete(slot);
+      } else {
+        next.add(slot);
+      }
+      return next;
+    });
   };
 
   /** F2-C (2026-04-28) — clicking a Pro-locked day-count chip routes
@@ -598,6 +635,49 @@ export const MealPlanner = memo(function MealPlanner({
             >
               {d} {d === 1 ? "day" : "days"}
               {locked ? <Lock size={11} aria-label="Pro" /> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* F2-H (2026-04-28): slot toggles. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1775-1793`. Toggle off
+          slots you don't want the regenerator to fill (e.g. Snacks).
+          At least one slot must stay enabled — the toggle no-ops when
+          asked to disable the last one. */}
+      <div
+        data-testid="planner-slot-toggles-row"
+        className="flex items-center gap-2 mb-3 flex-wrap"
+        role="group"
+        aria-label="Slots to include when regenerating"
+      >
+        <span className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground mr-1">
+          Slots
+        </span>
+        {SLOTS.map((slot) => {
+          const SlotIcon = SLOT_ICONS[slot];
+          const enabled = enabledSlots.has(slot);
+          const isLast = enabled && enabledSlots.size === 1;
+          return (
+            <button
+              key={slot}
+              type="button"
+              role="switch"
+              aria-checked={enabled}
+              aria-disabled={isLast}
+              onClick={() => handleSlotToggle(slot)}
+              data-testid={`planner-slot-toggle-${slot}`}
+              className={[
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all capitalize",
+                enabled
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/60",
+                isLast ? "cursor-not-allowed opacity-80" : "",
+              ].join(" ")}
+              title={isLast ? "At least one slot must stay enabled" : undefined}
+            >
+              <SlotIcon size={11} aria-hidden />
+              {slot}
             </button>
           );
         })}

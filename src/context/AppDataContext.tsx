@@ -102,7 +102,16 @@ interface AppDataContextValue {
   setProfileWeightSurfaceMode: Dispatch<SetStateAction<WeightSurfaceMode>>;
   redeemPromoCode: (code: string) => Promise<RedeemPromoResult>;
   signOut: () => Promise<void>;
-  generateMealPlan: (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => Promise<void>;
+  generateMealPlan: (options?: {
+    targetsOverride?: Partial<PlannerTargets>;
+    days?: number;
+    /**
+     * F2-H (audit 2026-04-28) — caller-controlled slot list (e.g.
+     * `["Breakfast", "Lunch", "Dinner"]` to skip Snacks). Defaults
+     * to all four canonical slots when omitted.
+     */
+    slots?: string[];
+  }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
   shoppingListOutOfSync: boolean;
@@ -970,7 +979,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const generateMealPlan = useCallback(
-    async (options?: { targetsOverride?: Partial<PlannerTargets>; days?: number }) => {
+    async (options?: {
+      targetsOverride?: Partial<PlannerTargets>;
+      days?: number;
+      slots?: string[];
+    }) => {
       const { generatePlanFromLibrary } = await import("../lib/planning/generateMealPlan.ts");
       setIsGeneratingPlan(true);
       try {
@@ -996,7 +1009,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // compare web vs mobile perf. `generatePlanFromLibrary` is
         // already sync on web — the durationMs captures the sampler cost.
         const generateStartMs = Date.now();
-        const rawPlan = generatePlanFromLibrary({ savedRecipes, targets, days });
+        const rawPlan = generatePlanFromLibrary({
+          savedRecipes,
+          targets,
+          days,
+          ...(options?.slots && options.slots.length > 0
+            ? { slots: options.slots }
+            : {}),
+        });
         // F2-K (audit 2026-04-28): post-process the plan with the
         // leftover-distribution pass, mirroring the mobile flow at
         // `apps/mobile/app/(tabs)/planner.tsx:1361-1376`. A recipe with
