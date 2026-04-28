@@ -43,7 +43,7 @@ export function useDiscoverRecipes() {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min",
+        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, allergens, dietary_flags",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -99,6 +99,12 @@ export function useDiscoverRecipes() {
           cookTimeMin: cookOk ? Math.round(cookM) : null,
           prepTime: formatRecipeMinutes(prepOk ? prepM : null),
           cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+          // GW-02 (2026-04-28): pass `allergens` + `dietary_flags`
+          // through so the Library Vegetarian filter can use them as
+          // the primary signal. Both fall back to `[]` when the row
+          // doesn't carry them (legacy rows).
+          allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
+          dietaryFlags: Array.isArray(r.dietary_flags) ? (r.dietary_flags as string[]) : [],
         };
       });
       let enriched = mapped;
@@ -296,7 +302,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
       supabase
         .from("recipes")
         .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
         )
         .eq("author_id", userId)
         .order("created_at", { ascending: false }),
@@ -325,7 +331,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
       const { data: extraRows, error: recErr } = await supabase
         .from("recipes")
         .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, author:profiles!author_id(display_name, avatar_url)",
+          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
         )
         .in("id", extraIds);
       if (!recErr && Array.isArray(extraRows)) {
@@ -393,6 +399,9 @@ export function useSavedLibraryRecipes(userId: string | null) {
           cookTimeMin: cookOk ? Math.round(cookM) : null,
           prepTime: formatRecipeMinutes(prepOk ? prepM : null),
           cookTime: formatRecipeMinutes(cookOk ? cookM : null),
+          // GW-02 (2026-04-28): see useDiscoverRecipes() above.
+          allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
+          dietaryFlags: Array.isArray(r.dietary_flags) ? (r.dietary_flags as string[]) : [],
         };
         return [r.id as string, card] as const;
       }),

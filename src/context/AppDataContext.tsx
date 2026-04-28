@@ -705,7 +705,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
       .not("author_id", "is", null)
@@ -763,6 +763,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         allergens: Array.isArray((row as { allergens?: string[] }).allergens)
           ? ((row as { allergens?: string[] }).allergens as string[])
           : [],
+        // GW-02 (2026-04-28): pull `dietary_flags` so the Library
+        // Vegetarian filter can prefer the structured signal over
+        // the title-keyword heuristic.
+        dietaryFlags: Array.isArray((row as { dietary_flags?: unknown[] }).dietary_flags)
+          ? ((row as { dietary_flags?: unknown[] }).dietary_flags as string[])
+          : [],
       };
     });
 
@@ -787,7 +793,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min, allergens",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min, allergens, dietary_flags",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
@@ -835,6 +841,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         cookTime: formatRecipeMinutes(cookOk ? cookM : null),
         allergens: Array.isArray((row as { allergens?: string[] }).allergens)
           ? ((row as { allergens?: string[] }).allergens as string[])
+          : [],
+        // GW-02 (2026-04-28): see refreshDiscoverRecipes mapper.
+        dietaryFlags: Array.isArray((row as { dietary_flags?: unknown[] }).dietary_flags)
+          ? ((row as { dietary_flags?: unknown[] }).dietary_flags as string[])
           : [],
       };
     });

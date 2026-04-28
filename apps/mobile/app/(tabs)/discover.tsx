@@ -267,9 +267,17 @@ export default function DiscoverScreen() {
     // the gate; ui-critic flagged 2026-04-20).
     if (filter === "Popular") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
     if (filter === "Quick") {
+      // GW-06 (audit 2026-04-28): pre-fix any recipe with
+      // `cookTimeMin == null` passed through as "Quick" — most legacy
+      // imports don't carry cook time, so the pill silently behaved
+      // like "All". Now requires a real cook-time signal to qualify.
       const cm = r.cookTimeMin;
-      if (cm != null && cm > 0) return cm <= 20;
-      return true;
+      const pm = (r as { prepTimeMin?: number | null }).prepTimeMin;
+      const cookOk = typeof cm === "number" && cm > 0;
+      const prepOk = typeof pm === "number" && pm > 0;
+      if (!cookOk && !prepOk) return false;
+      const total = (cookOk ? cm : 0) + (prepOk ? pm : 0);
+      return total <= 30;
     }
     if (filter === "High Protein") return r.protein >= 25;
     if (filter === "Low Carb") return r.carbs <= 30;
@@ -560,7 +568,15 @@ export default function DiscoverScreen() {
             ref={searchInputRef}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search 48,000+ recipes & foods"
+            // GW-05 (audit 2026-04-28): pre-fix this read "Search
+            // 48,000+ recipes & foods" — that's an aspirational catalog
+            // size, not the real one. The community feed is a few
+            // hundred rows; the Edamam "eating out" pool kicks in at 3+
+            // characters and adds restaurant items, but it's not part
+            // of the recipe count. Honest copy until we either ship a
+            // real catalog count or explicitly pivot the placeholder
+            // to talk about Edamam.
+            placeholder="Search recipes"
             placeholderTextColor={colors.textTertiary}
             style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
           />

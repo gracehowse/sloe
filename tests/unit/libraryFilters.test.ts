@@ -3,6 +3,7 @@ import {
   LIBRARY_FILTER_PILLS,
   isHighProtein,
   isQuick,
+  isVegetarian,
   isVegetarianByTitle,
   matchesNutritionPill,
   HIGH_PROTEIN_G,
@@ -87,9 +88,67 @@ describe("libraryFilters — isVegetarianByTitle", () => {
     expect(isVegetarianByTitle(R({ title: "Salmon poke" }))).toBe(false);
     expect(isVegetarianByTitle(R({ title: "Bacon carbonara" }))).toBe(false);
   });
+  it("rejects GW-02-class titles whose meat isn't in the title (post-fix keyword expansion)", () => {
+    // Pre-GW-02 these all snuck into the Vegetarian pill because the
+    // keyword scan looked for "beef" / "chicken" / "fish" only.
+    expect(isVegetarianByTitle(R({ title: "Pasta Bolognese" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Beef Lasagne" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Chicken Biryani" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Lamb Kebab" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Schnitzel & chips" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Beef Stroganoff" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Pulled pork bao" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Seafood Paella" }))).toBe(false);
+    expect(isVegetarianByTitle(R({ title: "Scallop linguine" }))).toBe(false);
+  });
+  it("does not penalise vegetarian dishes whose name contains 'kidney bean' or similar", () => {
+    expect(isVegetarianByTitle(R({ title: "Kidney bean chilli" }))).toBe(true);
+  });
   it("rejects empty or whitespace-only titles (we don't assume)", () => {
     expect(isVegetarianByTitle(R({ title: "" }))).toBe(false);
     expect(isVegetarianByTitle(R({ title: "   " }))).toBe(false);
+  });
+});
+
+describe("libraryFilters — isVegetarian (layered: dietaryFlags > allergens > title)", () => {
+  it("trusts dietaryFlags ['vegetarian'] even when the title looks meaty", () => {
+    expect(
+      isVegetarian({
+        title: "Beef-style seitan ragu",
+        protein: 25,
+        dietaryFlags: ["vegetarian"],
+      }),
+    ).toBe(true);
+  });
+  it("trusts dietaryFlags ['vegan'] as a stronger superset of vegetarian", () => {
+    expect(
+      isVegetarian({
+        title: "Tofu chicken",
+        protein: 25,
+        dietaryFlags: ["vegan"],
+      }),
+    ).toBe(true);
+  });
+  it("rejects when allergens contains 'fish' regardless of title (ingredient-derived signal)", () => {
+    expect(
+      isVegetarian({
+        title: "Mediterranean bowl",
+        protein: 25,
+        allergens: ["fish"],
+      }),
+    ).toBe(false);
+  });
+  it("rejects when allergens contains 'crustaceans' or 'molluscs'", () => {
+    expect(
+      isVegetarian({ title: "Asian noodle bowl", protein: 25, allergens: ["crustaceans"] }),
+    ).toBe(false);
+    expect(
+      isVegetarian({ title: "Pasta with sauce", protein: 25, allergens: ["molluscs"] }),
+    ).toBe(false);
+  });
+  it("falls back to the title heuristic when neither structured signal is present", () => {
+    expect(isVegetarian({ title: "Pasta bolognese", protein: 25 })).toBe(false);
+    expect(isVegetarian({ title: "Mushroom risotto", protein: 12 })).toBe(true);
   });
 });
 

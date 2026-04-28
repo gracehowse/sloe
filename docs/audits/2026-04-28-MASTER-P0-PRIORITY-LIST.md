@@ -52,6 +52,24 @@ This is the **single ranked action list** for executor sprints. Audits are on di
 29. **Reset / Erase / Delete-Account stacked behind one modal.** Account-delete buried second-most-prominent in an erase-data dialog.
 30. **L5 — Mobile-web Library↔Discover sub-tab pill bar missing.** From Library, no surfaced path to Discover.
 
+### Group H — Grace TestFlight live walkthrough (queued 2026-04-28)
+*Reported by Grace mid-walkthrough; addressed in batches as captured below.*
+
+31. **GW-01 — Library `Saved` tab is missing Discover bookmarks.** Recipes the user bookmarked from Discover do not appear under Saved. Predicate is wrong or the bookmark write doesn't match the read filter. Trust failure — user thinks bookmarks are lost. **Status (2026-04-28):** code paths look correct on both platforms. Probable cause is RLS — `recipes_select_published_or_own` (`supabase/migrations/20260419100000_recipes_rls_published_only.sql`) blocks reads of any saved recipe that was later unpublished. Need DB inspection of Grace's saves rows + the `published` column on each referenced recipe. **Deferred until DB inspection.**
+32. **GW-02 — Library `Vegetarian` filter returns meat-containing recipes.** Filter is either off the wrong field, off a `tags` string match that misses, or doesn't read `dietary_flags`. Direct contradiction of user dietary intent. **FIXED 2026-04-28 (Batch 14)** — `src/lib/recipes/libraryFilters.ts` now layers (1) `dietaryFlags` ⇒ trust `vegan`/`vegetarian`, (2) `allergens` ⇒ reject `fish`/`crustaceans`/`molluscs`, (3) expanded title keyword scan covering common dishes that don't name the meat (bolognese, schnitzel, kebab, biryani, paella, scallop, etc.). Both web + mobile loaders now thread `dietary_flags` + `allergens` through to the predicate. Pinned by `tests/unit/libraryFilters.test.ts`.
+33. **GW-03 — Library `Created` filter returns recipes the user did not create.** Likely matching off the wrong owner column (`created_by` vs `imported_by` vs `user_id`) or showing the global library scoped to "any source" instead of user-owned. **Status (2026-04-28):** mobile predicate is `authorId === userId AND sourceUrl IS NULL → "created"` — code path is correct. If this is firing on recipes Grace didn't create, root is stale `author_id` rows in the DB (e.g. seeded data assigned to her UUID). **Deferred until DB inspection.**
+34. **GW-04 — Library `Imported` filter returns recipes the user did not import.** Same root as GW-03 — owner-column mismatch. **Status (2026-04-28):** same code path as GW-03 (`authorId === userId AND sourceUrl IS NOT NULL`). **Deferred until DB inspection.**
+35. **GW-05 — Discover search placeholder is dishonest ("Search 48k recipes").** We don't have 48k recipes — that's a placeholder. Replace with "Search recipes" until a real count exists. (See M14-pattern: dishonest copy.) **FIXED 2026-04-28 (Batch 14)** — both platforms now read "Search recipes".
+36. **GW-06 — Discover filters don't filter.** Tapping cuisine / time / fit / etc. doesn't change results. Either no-op handlers or predicate not wired into the query. **PARTIALLY FIXED 2026-04-28 (Batch 14)** — the "Quick" pill was passing through any recipe with `cookTimeMin == null` (most legacy imports), so it silently behaved like "All". Both platforms now require a real cook- or prep-time signal and apply a 30-minute total threshold. Other pills (For You / Following / Popular / High Protein / Low Carb) have correct predicates; "For You" intentionally pass-through and "Popular" requires `>= DISCOVER_POPULAR_MIN_SAVES` saves which can read as inert when no rows have hit that threshold.
+37. **GW-07 — Plan card showing 0 cal / 0 macros for a recipe that has real macros.** Plan-level read pulls macros from the wrong column (raw row vs computed view), or the plan-row hasn't been backfilled with the recipe's macros at insert time. **Data-correctness violation per `.claude/CLAUDE.md`** — same family as F30.
+38. **GW-08 — "Estimations and confidence tags across the app have no actual meaning or accuracy."** Blanket trust failure. TrustChip / confidence labels / "verified" badges / AI-source pills are all surface decoration unless tied to a real backing signal that the user can rely on. Audit every confidence-display surface and either:
+    - back it with a real, calibrated signal (DB column, score threshold, source provenance), OR
+    - remove the chip until we can.
+    *Per `.claude/CLAUDE.md`: "If nutrition / ingredient matching is uncertain, do not guess."* This is the canonical violation in product form.
+
+### Group I — CI gate (resolved)
+39. ~~**CI-01 — `next build` fails on `/404` and `/500` prerender.**~~ **RESOLVED 2026-04-28** — phantom failure from stale `.next` cache (left over from an aborted build mid-stash). Clean `rm -rf .next && next build` passes. CI was already green on `main`. No code change needed.
+
 ---
 
 ## P1 — High-priority drift, decoy interactions, cheap-tier surfaces
@@ -147,6 +165,13 @@ This is the **single ranked action list** for executor sprints. Audits are on di
 - Mobile-web pill bars (YouSubTabHeader + RecipesSubTabHeader)
 - 5 P1 visual refit specs already on disk → executor builds
 - The 46 P1 + 47 P2 + 18 P3 cleanup items
+
+**Insertion priority for Grace's live findings (Group H):**
+- **GW-08 (estimations + confidence tags)** is the highest-leverage item — touches every nutrition surface. Should be a dedicated audit + remediation pass, not a sprint task.
+- **GW-01..04 (Library predicates)** + **GW-06 (Discover filters)** are predicate-correctness bugs — straight repo-auditor + executor pass.
+- **GW-05 (Discover placeholder)** is a one-liner copy fix.
+- **GW-07 (Plan 0-macro card)** is a data-correctness write-path bug — same family as F30, treat with same severity.
+- **CI-01** must precede any further push.
 
 ---
 

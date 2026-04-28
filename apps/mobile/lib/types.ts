@@ -50,6 +50,19 @@ export interface RecipeCard {
   saves?: number;
   /** Number of times made. */
   made?: number;
+  /**
+   * Optional regulated-allergen slugs inferred at import / verify
+   * time. Same canonical list as web (`src/constants/regulatedAllergens.ts`).
+   * Used by the Library Vegetarian filter as a fish/shellfish signal.
+   */
+  allergens?: readonly string[];
+  /**
+   * GW-02 (2026-04-28) — dietary preset tags from `recipes.dietary_flags`
+   * (jsonb). Values include `"vegan" | "vegetarian" | "gluten-free" |
+   * "dairy-free" | "high-protein" | "keto" | "paleo" | "low-fodmap"`.
+   * Mirrors web `RecipeCard.dietaryFlags`.
+   */
+  dietaryFlags?: readonly string[];
 }
 
 export interface IngredientRow {

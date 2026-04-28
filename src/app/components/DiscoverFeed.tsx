@@ -402,9 +402,18 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       if (quickFilter === "High Protein" && recipe.protein < 25) return false;
       if (quickFilter === "Low Carb" && recipe.carbs > 30) return false;
       if (quickFilter === "Quick") {
+        // GW-06 (audit 2026-04-28): pre-fix recipes with
+        // `cookTimeMin == null` passed through as "Quick" — most
+        // legacy imports don't carry cook time, so the pill silently
+        // behaved like "All". Now requires a real cook- or prep-time
+        // signal to qualify.
         const cm = recipe.cookTimeMin;
-        if (cm != null && cm > 0) return cm <= 20;
-        return true;
+        const pm = recipe.prepTimeMin;
+        const cookOk = typeof cm === "number" && cm > 0;
+        const prepOk = typeof pm === "number" && pm > 0;
+        if (!cookOk && !prepOk) return false;
+        const total = (cookOk ? cm : 0) + (prepOk ? pm : 0);
+        return total <= 30;
       }
       if (quickFilter === "Popular" && (recipe.savedCount ?? 0) < DISCOVER_POPULAR_MIN_SAVES) return false;
       return true;
@@ -467,15 +476,18 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       </header>
 
       <div className="px-0 sm:px-2 md:px-0">
-        {/* Search bar — prototype treatment: bigger, 12px radius,
-            "Search 48,000+ recipes & foods" placeholder. At `md+` the
-            side gutter collapses so the bar sits flush with the
-            title; the bar itself is unchanged. */}
+        {/* Search bar — prototype treatment: bigger, 12px radius. At
+            `md+` the side gutter collapses so the bar sits flush with
+            the title; the bar itself is unchanged.
+            GW-05 (audit 2026-04-28): pre-fix the placeholder claimed
+            "48,000+ recipes & foods" — aspirational catalog size, not
+            the real one. Now honest until we either ship a real
+            catalog count or pivot the placeholder to talk about Edamam. */}
         <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3.5 md:mx-0">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
-            placeholder="Search 48,000+ recipes & foods"
+            placeholder="Search recipes"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
