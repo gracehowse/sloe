@@ -2,39 +2,17 @@
 
 **Audience:** Design / Product
 
-## Design System
+> **Status (2026-04-28).** This page used to duplicate the design system. The token block at the top had drifted to the **pre-2026 violet palette** (`Neon.purple = "#7c3aed"`, `MacroColors.protein = red`, etc.) which is not the palette the product ships. That block actively misled tooling and code-generation agents and has been removed. The canonical references are now:
+>
+> - **Brand voice & visual direction:** [`brand-guidelines.md`](./brand-guidelines.md)
+> - **Colour, spacing, typography & motion tokens:** [`brand-tokens.md`](./brand-tokens.md) — single source of truth for every hex, every spacing token, every radius. If a value is not in this file, it is not a token.
+> - **Component patterns & implementation rules:** [`design-system.md`](./design-system.md) — Card / OptionCard / RulerSlider / SupprMark / IconBox / EmptyState rules, font-weight scale, surface tints, audit checklist.
+>
+> What remains on this page is the **interaction-pattern catalogue**: long-press, pickers, modals, the Badge primitive, Empty States, Card radius, Progressive disclosure, Destructive confirms, Inline rename, Paywall surfaces. None of those depend on which exact hex protein is — they describe how primitives compose. When a section below references a colour, treat it as a pointer; the canonical hex lives in `brand-tokens.md`.
+>
+> If you are an agent prompted with "follow `patterns.md`": do not. Follow `brand-tokens.md` and `design-system.md` for tokens, and use this page only for the interaction primitives below.
 
-### Colours (Mobile)
-
-```typescript
-Neon = {
-  purple: "#7c3aed",  // Primary brand
-  pink: "#ec4899",    // Accents, saved state
-  green: "#22c55e",   // Success, verified, within target
-  red: "#ef4444",     // Error, over target, destructive
-  yellow: "#f59e0b",  // Warning, under target, needs review
-  blue: "#3b82f6",    // Carbs macro
-  cyan: "#06b6d4",    // Remaining, water
-  orange: "#f97316",  // Sodium
-}
-
-MacroColors = {
-  calories: purple,
-  protein: red,
-  carbs: blue,
-  fat: yellow,
-  fiber: green,
-  sugar: purple,
-  sodium: orange,
-  water: cyan,
-}
-```
-
-### Spacing / Radius
-- `Spacing: xs(4) sm(8) md(12) lg(16) xl(20) xxl(24) xxxl(32)`
-- `Radius: sm(8) md(12) lg(16) xl(20) full(9999)`
-
-### Stimulant tracker colours (Batch 2.5 / audit M9 2026-04-18)
+## Stimulant tracker colours (Batch 2.5 / audit M9 2026-04-18)
 - `--stimulant-caffeine` (web) / `StimulantColors.caffeine` (mobile) — `#8b5cf6` violet — hydration card caffeine row, chips, progress fill.
 - `--stimulant-alcohol` (web) / `Accent.warning` (mobile) — `#f59e0b` amber (web) / `#e8a020` amber (mobile — shared warning token) — hydration card alcohol row.
 - Full role table in `docs/ux/brand-tokens.md`. No hex values anywhere in the Hydration & Stimulants card source on either platform.
@@ -66,7 +44,7 @@ Used throughout for destructive/secondary actions:
 ### Meal Slot Picker
 Horizontal row of togglable chips (Breakfast / Lunch / Dinner / Snack):
 - Used in: tracker quick-log, import review, create-recipe, planner config
-- Active state: purple background, white text, checkmark icon
+- Active state: `--primary` background (web) / `Accent.primary` (mobile), white text, checkmark icon
 - Inactive: border only, secondary text
 
 ### Calorie/Macro Display
@@ -74,7 +52,7 @@ Two patterns:
 1. **Hero number** — large central number for the primary metric (calories remaining)
 2. **Progress bars** — horizontal bars with label/value for each macro
 
-Over-budget indicator: number turns red, shows "+" prefix, label changes to "kcal over"
+**Over-budget indicator: amber, never red.** 0–100% of target = success-green; 100–120% = warning-amber; 120%+ = deeper amber (`warningLight` in dark mode). Never `--destructive` / red — red implies failure, the user has not failed. Show the number with a `+` prefix, label changes to factual phrasing (e.g. "above target"); see `brand-guidelines.md` Section 6 for the copy rule against "over".
 
 ### Recipe Cards (Discover)
 ```
@@ -89,7 +67,7 @@ Over-budget indicator: number turns red, shows "+" prefix, label changes to "kca
 ```
 
 ### Save/Bookmark
-Consistent across all screens: Ionicons `bookmark` (filled) / `bookmark-outline` (empty), pink when saved.
+Consistent across all screens: bookmark icon (filled when saved, outline when empty), tinted `--primary` / `Accent.primary` (blue) when saved. _Note: the saved-state colour migrated from pink to primary blue during the 2026 design overhaul; see `brand-tokens.md`._
 
 ### Food Search Modal
 Full-screen modal with:
@@ -106,9 +84,9 @@ Full-screen modal with:
 ### Weekly Bar Chart
 Vertical bars for Mon-Sun:
 - Height proportional to calories (scaled to max of target or highest day)
-- Purple bars for normal, red for over-target
+- Bars tint `--primary` / `Accent.primary` (blue) for in-target days, `--warning` / `Accent.warning` (amber) for over-target days. **Never red** — the over-budget rule (`brand-guidelines.md`) applies here too.
 - Small calorie number above each bar
-- Today's label in bold purple
+- Today's label is bold and tinted `--primary`
 - Tap any bar to drill into Day view
 
 ## Badges
