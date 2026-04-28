@@ -28,15 +28,22 @@
   --text-3xl: 1.75rem;    /* 28px */
   --text-display: 2.25rem;/* 36px — hero numbers */
 
-  /** 4px grid spacing tokens */
-  --spacing-pm-1: 0.25rem;   /* 4px */
-  --spacing-pm-2: 0.5rem;    /* 8px */
-  --spacing-pm-3: 0.75rem;   /* 12px */
-  --spacing-pm-4: 1rem;      /* 16px */
-  --spacing-pm-5: 1.25rem;   /* 20px */
-  --spacing-pm-6: 1.5rem;    /* 24px */
-  --spacing-pm-8: 2rem;      /* 32px */
-  --spacing-pm-10: 2.5rem;   /* 40px */
+  /** 4px grid spacing tokens — semantic naming aligned with mobile
+   *  `Spacing.*` (Next-10 #11 from
+   *  `docs/ux/teardown-2026-04-28-daily-loop.md`, 2026-04-28). The
+   *  prior numeric `--spacing-pm-N` scheme had zero callers in
+   *  production code (audit-confirmed) and forced anyone working
+   *  cross-platform to mentally translate `pm-3 ↔ Spacing.md`. The
+   *  semantic names map 1:1 to mobile and match the documented
+   *  4px grid in `docs/ux/brand-tokens.md` and
+   *  `docs/ux/design-system.md`. */
+  --space-xs: 0.25rem;    /* 4px  ↔ Spacing.xs   */
+  --space-sm: 0.5rem;     /* 8px  ↔ Spacing.sm   */
+  --space-md: 0.75rem;    /* 12px ↔ Spacing.md   */
+  --space-lg: 1rem;       /* 16px ↔ Spacing.lg   */
+  --space-xl: 1.25rem;    /* 20px ↔ Spacing.xl   */
+  --space-xxl: 1.5rem;    /* 24px ↔ Spacing.xxl  */
+  --space-xxxl: 2rem;     /* 32px ↔ Spacing.xxxl */
 
   /** Radius — larger, more refined */
   --radius: 0.75rem;         /* 12px base */
@@ -379,15 +386,15 @@
   --ease-pm: var(--pm-ease);
   /* --ease-spring-soft and --ease-decel are read directly from :root */
 
-  /* Spacing */
-  --spacing-pm-1: 0.25rem;
-  --spacing-pm-2: 0.5rem;
-  --spacing-pm-3: 0.75rem;
-  --spacing-pm-4: 1rem;
-  --spacing-pm-5: 1.25rem;
-  --spacing-pm-6: 1.5rem;
-  --spacing-pm-8: 2rem;
-  --spacing-pm-10: 2.5rem;
+  /* Spacing — semantic naming, matches mobile `Spacing.*`
+     (renamed from `--spacing-pm-N` 2026-04-28, Next-10 #11). */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.25rem;
+  --space-xxl: 1.5rem;
+  --space-xxxl: 2rem;
 
   /* Transition defaults */
   --default-transition-duration: var(--pm-duration);

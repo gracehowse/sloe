@@ -318,7 +318,7 @@ Cross-platform comparison of `apps/mobile/constants/theme.ts` vs `src/styles/the
 - Border + cardBorder: light `#e4e4ec`, dark `#282830`
 - Input background: light `#ededf2`, dark `#202028`
 - Muted icon colour: light `#6b6b78`, dark `#7a7a88`
-- Spacing scale: `xs:4 sm:8 md:12 lg:16 xl:20 xxl:24 xxxl:32` ↔ `--spacing-pm-1 … --spacing-pm-10`
+- Spacing scale: `xs:4 sm:8 md:12 lg:16 xl:20 xxl:24 xxxl:32` ↔ `--space-xs … --space-xxxl` (renamed from `--spacing-pm-N` 2026-04-28 per Next-10 #11)
 - Radius scale: `sm:8 md:12 lg:16 xl:20` ↔ `--radius:12 --radius-card:16`
 
 **Intentional cross-platform divergence** — do NOT "fix" without revising this section first:
