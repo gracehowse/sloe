@@ -149,6 +149,11 @@ export const MealPlanner = memo(function MealPlanner({
   // (closes F5: "free-tier 7-day plan lock divergence"). Mobile
   // gates `d > 1` for Free; web now matches.
   const isFree = userTier === "free";
+  // F2-D (audit 2026-04-28) — start-date picker. 0 = Today,
+  // 1 = Tomorrow, 7 = Next week. The shared
+  // `planCalendarDateForIndex(idx, startOffset)` helper already
+  // accepts the offset; pre-fix the web planner always passed 0.
+  const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0);
 
   const targetCalories = nutritionTargets.calories;
 
@@ -158,12 +163,17 @@ export const MealPlanner = memo(function MealPlanner({
   );
 
   const weekOfLabel = useMemo(() => {
-    const first = new Date();
+    // F2-D (2026-04-28): the "Week of {date}" subtitle now reflects
+    // the chosen start offset (Today / Tomorrow / Next week) instead
+    // of always anchoring to today. The `mealPlan[0].day` offset still
+    // contributes for backwards-compat with plans persisted before
+    // the picker existed.
+    const first = planCalendarDateForIndex(0, startOffset);
     if (mealPlan && mealPlan.length > 0 && typeof mealPlan[0]?.day === "number") {
       first.setDate(first.getDate() + (mealPlan[0]!.day - 1));
     }
     return first.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-  }, [mealPlan]);
+  }, [mealPlan, startOffset]);
 
   const subtitle = summary
     ? `Week of ${weekOfLabel} · hits targets ${summary.hits} of ${summary.total} day${summary.total === 1 ? "" : "s"}`
@@ -178,9 +188,9 @@ export const MealPlanner = memo(function MealPlanner({
    *  generation. */
   const worstShortDayLabel = useMemo(() => {
     if (!summary?.worstShort) return null;
-    const date = planCalendarDateForIndex(summary.worstShort.dayIndex);
+    const date = planCalendarDateForIndex(summary.worstShort.dayIndex, startOffset);
     return shortWeekdayLabel(date);
-  }, [summary]);
+  }, [summary, startOffset]);
   const summarySubtitle = summary
     ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
     : null;
@@ -421,7 +431,7 @@ export const MealPlanner = memo(function MealPlanner({
           routes to upgrade. */}
       <div
         data-testid="planner-day-count-row"
-        className="flex items-center gap-2 mb-4"
+        className="flex items-center gap-2 mb-3 flex-wrap"
         role="radiogroup"
         aria-label="Plan length"
       >
@@ -454,13 +464,55 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
+      {/* F2-D (2026-04-28): start-date picker. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1759-1774`. */}
+      <div
+        data-testid="planner-start-date-row"
+        className="flex items-center gap-2 mb-4 flex-wrap"
+        role="radiogroup"
+        aria-label="Start date"
+      >
+        <span className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground mr-1">
+          Start
+        </span>
+        {([
+          { offset: 0 as const, label: "Today" },
+          { offset: 1 as const, label: "Tomorrow" },
+          { offset: 7 as const, label: "Next week" },
+        ]).map(({ offset, label }) => {
+          const active = startOffset === offset;
+          return (
+            <button
+              key={offset}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setStartOffset(offset)}
+              data-testid={`planner-start-${offset}`}
+              className={[
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-foreground hover:bg-muted/60",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         data-testid="planner-desktop-kanban"
         className={`grid grid-cols-1 ${gridColsClass}`}
         style={{ gap: 12 }}
       >
         {days.map((dp, di) => {
-          const dayDate = planCalendarDateForIndex(di);
+          // F2-D (2026-04-28): each day's calendar date now anchors
+          // off `startOffset` so a "Next week" plan renders the
+          // correct weekday labels rather than always starting from
+          // today.
+          const dayDate = planCalendarDateForIndex(di, startOffset);
           const dayLabel = shortWeekdayLabel(dayDate);
           const isTodayCol = isSameCalendarDay(dayDate, new Date());
           // F2-E (2026-04-28): day-total vs goal line — kcal header +
