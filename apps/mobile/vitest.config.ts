@@ -142,6 +142,14 @@ export default defineConfig({
       // spec at import time, which blows up under vitest. Shim forwards
       // children verbatim so RNTL can still walk the tree.
       { find: /^react-native-gesture-handler$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-gesture-handler.cjs") },
+      // Phase 6 P2 (2026-04-28) — `PressableScale` and `CalorieRing`
+      // import `react-native-reanimated`. The real package loads a
+      // worklets binding at import time (`react-native-worklets`) which
+      // doesn't survive the vmThreads pool. The shim provides the
+      // minimum surface (shared values, withTiming/withSpring,
+      // useAnimatedStyle, createAnimatedComponent) so render tests can
+      // mount the components without exercising animation internals.
+      { find: /^react-native-reanimated$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-reanimated.cjs") },
     ],
   },
 });
