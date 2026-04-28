@@ -136,6 +136,16 @@ export const MealPlanner = memo(function MealPlanner({
     discoverRecipes,
     nutritionTargets,
     addLoggedMeal,
+    // F2-G (audit 2026-04-28): named-slot switcher — let the user
+    // keep multiple meal plans (e.g. "Cutting", "Maintenance",
+    // "Holiday") and flip between them. The API surface is already
+    // wired here in AppDataContext; this batch exposes it on web.
+    mealPlanSlots,
+    activeMealPlanSlotId,
+    switchMealPlanSlot,
+    createMealPlanSlot,
+    renameMealPlanSlot,
+    deleteMealPlanSlot,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -422,6 +432,85 @@ export const MealPlanner = memo(function MealPlanner({
               Regenerate
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {/* F2-G (2026-04-28): named-slot switcher. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1500-1626`. Renders a
+          horizontal pill row with one chip per saved plan + a
+          New chip. The API (mealPlanSlots / switch / create / rename
+          / delete) is wired in AppDataContext; web previously didn't
+          render it at all. Hidden when there's only the default slot
+          and no meaningful state to switch to. */}
+      {mealPlanSlots.length > 1 || (mealPlanSlots.length === 1 && (mealPlan?.length ?? 0) > 0) ? (
+        <div
+          data-testid="planner-slot-switcher"
+          className="flex items-center gap-2 mb-3 flex-wrap"
+        >
+          <span className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground mr-1">
+            Plan
+          </span>
+          {mealPlanSlots.map((s) => {
+            const active = s.id === activeMealPlanSlotId;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => switchMealPlanSlot(s.id)}
+                onDoubleClick={() => {
+                  const next = window.prompt("Rename plan", s.name);
+                  if (next != null && next.trim() && next.trim() !== s.name) {
+                    renameMealPlanSlot(s.id, next.trim());
+                  }
+                }}
+                title="Click to switch · double-click to rename"
+                className={[
+                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-foreground hover:bg-muted/60",
+                ].join(" ")}
+              >
+                {s.name}
+                {active && mealPlanSlots.length > 1 ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Delete ${s.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
+                        deleteMealPlanSlot(s.id);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
+                          deleteMealPlanSlot(s.id);
+                        }
+                      }
+                    }}
+                    className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-destructive/15 hover:text-destructive cursor-pointer"
+                  >
+                    <X size={11} aria-hidden />
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt("Name your new plan", `Plan ${mealPlanSlots.length + 1}`);
+              if (name != null && name.trim()) {
+                createMealPlanSlot(name.trim());
+              }
+            }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border border-dashed border-border text-muted-foreground hover:bg-muted/60 transition-all"
+          >
+            + New
+          </button>
         </div>
       ) : null}
 
