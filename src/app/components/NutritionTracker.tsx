@@ -2568,32 +2568,36 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           "two-tap" entry per spec — picking it routes to the full
           `<FoodSearch>` modal (which handles custom foods, recents,
           etc.). */}
+      {/* Search-first LogSheet (Next-10 #12, 2026-04-28). Phase-3
+          6-tab strip removed; search is the always-visible primary
+          input with right-edge icons (scan / voice / photo) routing
+          to dedicated modals. Recent + Saved render inline via the
+          2-pill toggle below. "Or add manually" footer routes to the
+          quick-add path. */}
       <LogSheet
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
-        // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px
-        // (D-2026-04-27-11: web is the long-form companion, daily
-        // logging is a phone activity; desktop should still feel
-        // first-class when used).
+        // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px.
         desktop={isDesktop}
         search={{
-          query: "",
-          onQueryChange: () => {},
-          results: [],
-          onAdd: () => {
-            setLogSheetOpen(false);
-            setFoodSearchOpen(true);
-          },
-          // P0-1 (2026-04-28) — tap routes to the real FoodSearch
-          // modal. The LogSheet's search input is presentational only.
+          // Click the search row → close LogSheet, open FoodSearch.
+          // The LogSheet is router-only; the real search lives in
+          // the dedicated modal.
           onOpen: () => {
             setLogSheetOpen(false);
             setFoodSearchOpen(true);
           },
-          state: {},
         }}
         barcode={{
-          state: {},
+          // Click the scan icon → close LogSheet, open the barcode
+          // scanner. Web uses the existing BarcodeScannerDialog
+          // pattern via the FoodSearch modal's barcode tab today;
+          // until a dedicated dialog ships, route to FoodSearch
+          // (which has the barcode + manual-entry path wired).
+          onOpen: () => {
+            setLogSheetOpen(false);
+            setFoodSearchOpen(true);
+          },
         }}
         recent={{
           // P0-2b (2026-04-28) — hydrate from food-history. Recent is
@@ -2646,21 +2650,37 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           },
         }}
         voice={{
-          state: {},
           onStart: () => {
             // Close the unified LogSheet and route to the dedicated
-            // voice flow (mirrors mobile, 2026-04-28). The decoy mic
-            // button before this fix had no click handler.
+            // voice flow. Free + base tier users open the AI paywall
+            // dialog; Pro users get the real voice flow.
             setLogSheetOpen(false);
-            setVoiceLogOpen(true);
+            if (userTier === "pro") {
+              setVoiceLogOpen(true);
+            } else {
+              setAiPaywallFeature("voice_log");
+            }
           },
+          // Pro-gated — surface the lock badge for free + base.
+          locked: userTier !== "pro",
         }}
         photo={{
-          state: {},
           onCapture: () => {
             setLogSheetOpen(false);
-            setPhotoLogOpen(true);
+            if (userTier === "pro") {
+              setPhotoLogOpen(true);
+            } else {
+              setAiPaywallFeature("photo_log");
+            }
           },
+          locked: userTier !== "pro",
+        }}
+        onAddManually={() => {
+          // Footer "Or add manually" → close LogSheet, open the
+          // TodayAddMealDialog (web's quick-add dialog). Mirrors the
+          // mobile addOpen path.
+          setLogSheetOpen(false);
+          setAddOpen(true);
         }}
       />
     </div>

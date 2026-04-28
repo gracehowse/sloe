@@ -1,7 +1,5 @@
 import * as React from "react";
 import {
-  FlatList,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -16,11 +14,11 @@ import {
   ChevronRight,
   Clock,
   History,
+  Lock,
   Mic,
+  PencilLine,
   ScanBarcode,
   Search,
-  Sparkles,
-  WifiOff,
   X,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -33,39 +31,60 @@ import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
 
 /**
- * Mobile `<LogSheet>` — canonical log entry sheet.
+ * Mobile `<LogSheet>` — canonical log-entry sheet, search-first.
  *
- * Production design spec — 2026-04-27 Surface B.
- * Authority: D-2026-04-27-15 (one canonical log path).
+ * Production design spec — 2026-04-27 Surface B (post-2026-04-28
+ * search-first refactor — see `docs/ux/teardown-2026-04-28-daily-loop.md`
+ * Next-10 #12).
  *
- * Replaces the legacy `<TodayFabSheet>` + the 8+ entry-point splay.
- * Six sub-tabs:
- *   1. Search foods   — inline search input + result rows
- *   2. Scan barcode   — camera viewport (slotted by caller)
- *   3. Recent         — Today's recents + Earlier this week
- *   4. Saved meals    — list of templates
- *   5. Voice log      — 88×88 mic button (Pro-gated upstream)
- *   6. Photo log      — camera shutter (Pro-gated upstream)
+ * Pre-refactor structure: a 6-pill horizontal tab strip (Search / Scan /
+ * Recent / Saved / Voice / Photo) where each tab rendered a different
+ * content area. The tab strip read as a "power-user feature menu":
+ * first-time users had to read six labels and choose one before
+ * logging anything, and Voice + Photo (the Pro features) were
+ * frequently clipped off-screen on narrow viewports.
+ *
+ * Post-refactor: search is the canonical primary input. The other
+ * three input modes (scan, voice, photo) ride along as small right-
+ * edge icons inside the search row. Recent + Saved render inline as
+ * the default browse content via a 2-pill toggle below the search
+ * row. The 6-tab strip is gone. The user opens the sheet and
+ * IMMEDIATELY sees the input they want plus their recent meals — no
+ * navigation cost.
  *
  * Why callbacks not flows: the existing search / barcode / voice /
  * photo pipelines live in dedicated components (FoodSearchModal,
- * BarcodeScannerModal, VoiceLogSheet, PhotoLogSheet). The LogSheet
- * is the single visible entry point; the underlying pipelines are
- * unchanged. The LogSheet's job is consolidation of access, not
- * rebuilding nutrition logic.
+ * BarcodeScannerModal, VoiceLogSheet, PhotoLogSheet). The LogSheet's
+ * job is consolidation of access, not rebuilding nutrition logic.
+ * Tapping the search input → host closes LogSheet and opens
+ * FoodSearchModal. Tapping a right-edge icon → host opens the
+ * dedicated modal. Recent / Saved row pick → host logs the meal
+ * directly into the current slot.
+ *
+ * Pro gating: voice + photo are Pro-only on free + base tiers. The
+ * host passes `locked: true` to surface a small lock badge on those
+ * icons; the icon's `onTap` is still called so the host can route
+ * to the AI paywall sheet instead of the real flow. The LogSheet
+ * itself does not know about user tier.
  *
  * Spec deviation: spec calls for `@gorhom/bottom-sheet` with snap
  * points 50%/92%. That dependency is not yet in the project; rather
- * than introduce it for one component (which would require linking
- * react-native-reanimated wrappers that already exist), we use the
- * RN `Modal` pattern that all other Suppr sheets use. Snap behaviour
- * is approximated via `presentationStyle="overFullScreen"` + height-
- * controlled inner content. Documented at
+ * than introduce it for one component, we use the RN `Modal` pattern
+ * that all other Suppr sheets use. Snap behaviour is approximated
+ * via a height-controlled inner content. Documented at
  * `docs/journeys/log-sheet-2026-04-27.md`.
  *
  * Web mirror: `src/app/components/suppr/log-sheet.tsx`.
  */
 
+/**
+ * Legacy tab-id type retained for backwards compat with deep test
+ * references (`logSheetPhase3.test.tsx`). Post-2026-04-28 the
+ * LogSheet does not render a tab strip; the only "tabs" are the
+ * Recent / Saved pill toggle below the search row. The type union
+ * stays so any host or test still passing `initialTab` compiles
+ * cleanly — the prop is ignored.
+ */
 export type LogSheetTab =
   | "search"
   | "barcode"
@@ -114,22 +133,29 @@ export interface LogSheetTabState {
 export interface LogSheetProps {
   visible: boolean;
   onClose: () => void;
+  /** Ignored post-2026-04-28 — kept for backwards compat only. */
   initialTab?: LogSheetTab;
+  /** Search foods. Tap the search row → host closes LogSheet and
+   *  opens FoodSearchModal. Other fields (`query`, `results`, etc.)
+   *  are tolerated for backwards compat but not rendered — the
+   *  LogSheet is no longer an inline-search surface. When `onOpen`
+   *  is undefined the search row renders but is non-interactive
+   *  (the host has opted out of search). */
   search?: {
-    query: string;
-    onQueryChange: (q: string) => void;
-    results: LogSheetSearchResult[];
-    onAdd: (result: LogSheetSearchResult) => void;
-    state?: LogSheetTabState;
-    /** Fired when the user taps the search input. The host should
-     *  close the LogSheet and open the dedicated FoodSearchModal so
-     *  the user lands in the real search experience. The input is
-     *  presentational only — typing into the LogSheet's search row
-     *  does not produce results (the real index lives in the modal). */
     onOpen?: () => void;
+    /** @deprecated */ query?: string;
+    /** @deprecated */ onQueryChange?: (q: string) => void;
+    /** @deprecated */ results?: LogSheetSearchResult[];
+    /** @deprecated */ onAdd?: (result: LogSheetSearchResult) => void;
+    /** @deprecated */ state?: LogSheetTabState;
   };
+  /** Scan barcode. Tap the scan icon → host opens
+   *  BarcodeScannerModal. When host injects `manualEntry` (after a
+   *  scan resolves to a 0-kcal product), the LogSheet replaces its
+   *  default content with the manual-entry recovery form. */
   barcode?: {
-    cameraSlot?: React.ReactNode;
+    onOpen?: () => void;
+    locked?: boolean;
     manualEntry?: LogSheetBarcodeManualEntry | null;
     onConfirmManual?: (
       payload: LogSheetBarcodeManualEntry & {
@@ -140,7 +166,8 @@ export interface LogSheetProps {
         fat: number;
       },
     ) => void;
-    state?: LogSheetTabState;
+    /** @deprecated */ cameraSlot?: React.ReactNode;
+    /** @deprecated */ state?: LogSheetTabState;
   };
   recent?: {
     entries: LogSheetRecentEntry[];
@@ -152,78 +179,53 @@ export interface LogSheetProps {
     onPick: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
+  /** Voice log. Tap the mic icon → host closes LogSheet and opens
+   *  VoiceLogSheet (or the AI paywall sheet for free/base tiers). */
   voice?: {
-    micSlot?: React.ReactNode;
-    state?: LogSheetTabState;
-    /** Fired when the default mic button is tapped. The host should
-     *  close the LogSheet and open the dedicated VoiceLogSheet. */
     onStart?: () => void;
+    locked?: boolean;
+    /** @deprecated */ micSlot?: React.ReactNode;
+    /** @deprecated */ state?: LogSheetTabState;
   };
+  /** Photo log. Tap the camera icon → host closes LogSheet and
+   *  opens PhotoLogSheet (or the AI paywall for free/base). */
   photo?: {
-    shutterSlot?: React.ReactNode;
-    state?: LogSheetTabState;
-    /** Fired when the default capture button is tapped. The host
-     *  should close the LogSheet and open the dedicated PhotoLogSheet. */
     onCapture?: () => void;
+    locked?: boolean;
+    /** @deprecated */ shutterSlot?: React.ReactNode;
+    /** @deprecated */ state?: LogSheetTabState;
   };
+  /** "Or add manually →" footer link. Host typically wires this to
+   *  open the manual quick-add form. When undefined the footer is
+   *  hidden. */
+  onAddManually?: () => void;
 }
 
-// LS-02 fix (audit 2026-04-28): pre-fix the six pills used the
-// long labels "Search foods" / "Scan barcode" / "Saved meals" /
-// "Voice log" / "Photo log" — total row width ~600-700pt — so on
-// every viewport ≤430pt the last 1-2 tabs (Voice + Photo, the Pro
-// features) were clipped off-screen. The horizontal ScrollView had
-// no fade-edge or chevron affordance, so first-time users landed on
-// Search, saw four tabs, and concluded "no AI features here" —
-// exactly the discoverability problem the entry-point consolidation
-// was meant to fix.
-// Shortened labels keep the row inside a 390pt iPhone without
-// scrolling. Accessibility labels keep the longer phrasing where
-// VoiceOver context still matters.
-const TAB_LIST: ReadonlyArray<{
-  id: LogSheetTab;
-  label: string;
-  a11yLabel: string;
-  Icon: typeof Search;
-}> = [
-  { id: "search", label: "Search", a11yLabel: "Search foods tab", Icon: Search },
-  { id: "barcode", label: "Scan", a11yLabel: "Scan barcode tab", Icon: ScanBarcode },
-  { id: "recent", label: "Recent", a11yLabel: "Recent tab", Icon: Clock },
-  { id: "saved", label: "Saved", a11yLabel: "Saved meals tab", Icon: History },
-  { id: "voice", label: "Voice", a11yLabel: "Voice log tab", Icon: Mic },
-  { id: "photo", label: "Photo", a11yLabel: "Photo log tab", Icon: Camera },
-];
+type BrowseTab = "recent" | "saved";
 
 export function LogSheet({
   visible,
   onClose,
-  initialTab = "search",
   search,
   barcode,
   recent,
   saved,
   voice,
   photo,
+  onAddManually,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const [tab, setTab] = React.useState<LogSheetTab>(initialTab);
 
-  // Reset to initial tab on every fresh open. See web mirror for why.
+  // Pill toggle defaults to Recent. Resets on every fresh open so a
+  // returning user doesn't land on Saved if they last left the sheet
+  // there — the primary read is "what did I eat recently".
+  const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
-    if (!visible) setTab(initialTab);
-  }, [visible, initialTab]);
+    if (!visible) setBrowseTab("recent");
+  }, [visible]);
 
-  const handleSelectTab = React.useCallback(
-    (id: LogSheetTab) => {
-      if (id === tab) return;
-      setTab(id);
-      if (process.env.EXPO_OS === "ios") {
-        void Haptics.selectionAsync();
-      }
-    },
-    [tab],
-  );
+  const inManualEntryMode = !!barcode?.manualEntry;
 
   return (
     <Modal
@@ -252,11 +254,8 @@ export function LogSheet({
             },
           ]}
         >
-          {/* Drag handle 36×4 */}
-          <View
-            style={[styles.handle, { backgroundColor: colors.border }]}
-            accessible={false}
-          />
+          {/* Drag handle */}
+          <View style={[styles.handle, { backgroundColor: colors.border }]} accessible={false} />
 
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -275,96 +274,70 @@ export function LogSheet({
             </Pressable>
           </View>
 
-          {/* Sub-tab pill bar */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subtabContainer}
-            accessibilityRole="tablist"
-            accessibilityLabel="Log sheet sub-tabs"
-          >
-            {TAB_LIST.map(({ id, label, a11yLabel, Icon }) => {
-              const active = tab === id;
-              return (
-                <Pressable
-                  key={id}
-                  onPress={() => handleSelectTab(id)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={a11yLabel}
-                  testID={`log-sheet-tab-${id}`}
-                  style={[
-                    styles.subtab,
-                    {
-                      backgroundColor: active ? Accent.primary : colors.inputBg,
-                    },
-                  ]}
-                >
-                  <Icon
-                    size={IconSize.md}
-                    color={active ? "#fff" : colors.textSecondary}
-                    strokeWidth={2}
-                  />
-                  <Text
-                    style={[
-                      styles.subtabLabel,
-                      {
-                        color: active ? "#fff" : colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Content */}
-          <View style={{ flex: 1 }}>
-            {tab === "search" ? <SearchTab {...(search ?? { query: "", onQueryChange: () => {}, results: [], onAdd: () => {} })} /> : null}
-            {tab === "barcode" ? <BarcodeTab {...(barcode ?? {})} /> : null}
-            {tab === "recent" ? <RecentTab {...(recent ?? { entries: [], onPick: () => {} })} /> : null}
-            {tab === "saved" ? <SavedTab {...(saved ?? { meals: [], onPick: () => {} })} /> : null}
-            {tab === "voice" ? <VoiceTab {...(voice ?? {})} /> : null}
-            {tab === "photo" ? <PhotoTab {...(photo ?? {})} /> : null}
-          </View>
+          {inManualEntryMode ? (
+            <BarcodeManualEntry
+              entry={barcode!.manualEntry!}
+              onConfirm={barcode?.onConfirmManual}
+            />
+          ) : (
+            <DefaultComposition
+              search={search}
+              barcode={barcode}
+              recent={recent}
+              saved={saved}
+              voice={voice}
+              photo={photo}
+              browseTab={browseTab}
+              onBrowseTabChange={setBrowseTab}
+              onAddManually={onAddManually}
+            />
+          )}
         </View>
       </View>
     </Modal>
   );
 }
 
-/* -------------------------- Search tab -------------------------- */
+/* -------------------------- Default composition -------------------------- */
 
-function SearchTab({
-  query,
-  onQueryChange,
-  results,
-  onAdd,
-  state,
-  onOpen,
-}: NonNullable<LogSheetProps["search"]>) {
+function DefaultComposition({
+  search,
+  barcode,
+  recent,
+  saved,
+  voice,
+  photo,
+  browseTab,
+  onBrowseTabChange,
+  onAddManually,
+}: {
+  search: LogSheetProps["search"];
+  barcode: LogSheetProps["barcode"];
+  recent: LogSheetProps["recent"];
+  saved: LogSheetProps["saved"];
+  voice: LogSheetProps["voice"];
+  photo: LogSheetProps["photo"];
+  browseTab: BrowseTab;
+  onBrowseTabChange: (tab: BrowseTab) => void;
+  onAddManually?: () => void;
+}) {
   const colors = useThemeColors();
-
-  // LS-01 fix (audit 2026-04-28): when the host wires `onOpen`, the
-  // search row is a tap-to-open BUTTON, not a TextInput. The
-  // earlier implementation rendered a read-only input that still
-  // looked like an input — placeholder + caret cue tricked users
-  // into typing-and-waiting (especially mobile-web Safari, which
-  // briefly toggled the on-screen keyboard before the modal swap).
-  // Now: button-styled row with a trailing chevron and "Search
-  // foods, brands, or recipes" copy that reads as an action target.
-  const isRouter = typeof onOpen === "function";
+  const showRecent = !!recent;
+  const showSaved = !!saved;
+  const showBrowseToggle = showRecent && showSaved;
 
   return (
-    <View style={{ flex: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
-      {isRouter ? (
+    <View style={{ flex: 1 }}>
+      {/* Search row — primary input. Right-edge icons (scan / voice
+          / photo) ride along when the host wires the corresponding
+          callbacks. Each icon is tap-to-open: the host closes
+          LogSheet and opens the dedicated modal. */}
+      <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open search"
+          accessibilityLabel="Search foods"
           accessibilityHint="Opens the food search where you can find foods, brands, and recipes"
-          onPress={onOpen}
+          onPress={() => search?.onOpen?.()}
           style={({ pressed }) => [
             styles.searchInputWrap,
             {
@@ -374,197 +347,338 @@ function SearchTab({
           ]}
         >
           <Search size={IconSize.base} color={colors.textSecondary} />
-          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}>
+          <Text
+            style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}
+            numberOfLines={1}
+          >
             Search foods, brands, or recipes
+          </Text>
+          <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+        </Pressable>
+      </View>
+
+      {/* Browse pill toggle — Recent / Saved. Hidden when only one
+          source is available; the available one renders directly. */}
+      {showBrowseToggle ? (
+        <View style={[styles.browsePillRow, { backgroundColor: colors.inputBg }]}>
+          {(["recent", "saved"] as const).map((id) => {
+            const active = browseTab === id;
+            return (
+              <Pressable
+                key={id}
+                onPress={() => {
+                  if (id === browseTab) return;
+                  onBrowseTabChange(id);
+                  if (process.env.EXPO_OS === "ios") {
+                    void Haptics.selectionAsync();
+                  }
+                }}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={id === "recent" ? "Recent" : "Saved meals"}
+                style={[
+                  styles.browsePill,
+                  { backgroundColor: active ? colors.background : "transparent" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.browsePillLabel,
+                    { color: active ? colors.text : colors.textSecondary },
+                  ]}
+                >
+                  {id === "recent" ? "Recent" : "Saved meals"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* Browse content */}
+      <View style={{ flex: 1 }}>
+        {showRecent && (browseTab === "recent" || !showSaved) ? (
+          <RecentList recent={recent!} />
+        ) : null}
+        {showSaved && (browseTab === "saved" || !showRecent) ? (
+          <SavedList saved={saved!} />
+        ) : null}
+        {!showRecent && !showSaved ? (
+          <View style={{ flex: 1, padding: Spacing.lg, alignItems: "center", justifyContent: "center" }}>
+            <Text style={[Type.caption, { color: colors.textSecondary, textAlign: "center" }]}>
+              Search above for foods, or scan / speak / snap a photo.
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Footer: "Or add manually" — escape hatch for users who want
+          to type macros directly. Host wires this to the manual
+          quick-add form. */}
+      {onAddManually ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Or add manually"
+          onPress={onAddManually}
+          style={({ pressed }) => [
+            styles.manualFooter,
+            { borderTopColor: colors.border, opacity: pressed ? 0.6 : 1 },
+          ]}
+        >
+          <PencilLine size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
+          <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
+            Or add manually
           </Text>
           <ChevronRight size={IconSize.base} color={colors.textTertiary} />
         </Pressable>
-      ) : (
-        <View
-          style={[
-            styles.searchInputWrap,
-            { backgroundColor: colors.inputBg },
-          ]}
-        >
-          <Search size={IconSize.base} color={colors.textSecondary} />
-          <TextInput
-            accessibilityLabel="Search foods"
-            placeholder="Search foods, brands, or recipes…"
-            placeholderTextColor={colors.textTertiary}
-            value={query}
-            onChangeText={onQueryChange}
-            returnKeyType="search"
-            style={{ flex: 1, color: colors.text, fontSize: 14 }}
-          />
-        </View>
-      )}
-
-      {state?.offline ? (
-        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.sm }]}>
-          {"You're offline. Searching cached foods only."}
-        </Text>
       ) : null}
-
-      {state?.error ? (
-        <View style={[styles.errorBand, { backgroundColor: "rgba(232,160,32,0.10)" }]}>
-          <WifiOff size={IconSize.md} color="#e8a020" />
-          <Text style={[Type.caption, { color: "#e8a020", marginLeft: Spacing.xs }]}>
-            {"Couldn't search. Try again →"}
-          </Text>
-        </View>
-      ) : null}
-
-      {state?.loading ? (
-        <View style={{ marginTop: Spacing.md }}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={styles.skeletonRow}>
-              <View style={[styles.skeletonThumb, { backgroundColor: colors.inputBg }]} />
-              <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <View style={[styles.skeletonLine, { backgroundColor: colors.inputBg, width: "65%" }]} />
-                <View
-                  style={[
-                    styles.skeletonLine,
-                    { backgroundColor: colors.inputBg, width: "30%", marginTop: 6, height: 8 },
-                  ]}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {!state?.loading && !state?.error && results.length === 0 && query.trim() ? (
-        <View style={[styles.emptyBlock, { borderColor: colors.border }]}>
-          <Search size={32} color={colors.textTertiary} />
-          <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-            {`No matches for "${query}"`}
-          </Text>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-            Try fewer words, or scan a barcode.
-          </Text>
-        </View>
-      ) : null}
-
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: Spacing.xxl }}
-        renderItem={({ item }) => (
-          <View style={styles.resultRow}>
-            {item.thumbnail ? (
-              <Image source={{ uri: item.thumbnail }} style={styles.resultThumb} />
-            ) : (
-              <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
-            )}
-            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-              <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                <SourceDot source={item.source} size={6} />
-                <Text style={[Type.caption, { color: colors.textSecondary, marginLeft: 6, fontVariant: ["tabular-nums"] }]}>
-                  {item.kcal} kcal
-                </Text>
-              </View>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Add ${item.title}`}
-              onPress={() => {
-                if (process.env.EXPO_OS === "ios") {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-                onAdd(item);
-              }}
-              hitSlop={6}
-              style={[
-                styles.addBtn,
-                { backgroundColor: `${Accent.primary}1A` },
-              ]}
-            >
-              <Text style={{ color: Accent.primary, fontSize: 18, fontWeight: "700", lineHeight: 20 }}>+</Text>
-            </Pressable>
-          </View>
-        )}
-        ListFooterComponent={
-          results.some((r) => r.source === "fatsecret") ? (
-            /* FatSecret attribution — ToS requires the badge wherever
-               FatSecret-sourced content is displayed. Footer of the
-               result list so it's immediately below the FatSecret rows. */
-            <FatSecretBadge
-              variant="text"
-              style={{ marginTop: 8, marginHorizontal: 4 }}
-              testID="fatsecret-badge-search"
-            />
-          ) : null
-        }
-      />
     </View>
   );
 }
 
-/* -------------------------- Barcode tab -------------------------- */
+/* -------------------------- Right-edge icons -------------------------- */
 
-function BarcodeTab({
-  cameraSlot,
-  manualEntry,
-  onConfirmManual,
-  state,
-}: NonNullable<LogSheetProps["barcode"]>) {
+function RightEdgeIcons({
+  barcode,
+  voice,
+  photo,
+}: {
+  barcode: LogSheetProps["barcode"];
+  voice: LogSheetProps["voice"];
+  photo: LogSheetProps["photo"];
+}) {
+  // Render the icons in the documented order: Scan → Voice → Photo
+  // (matches the prior tab order to preserve user muscle memory from
+  // the 6-tab era). Each icon only renders when the host wires its
+  // open/start/capture callback — no callback, no icon (host has
+  // opted out of that input mode).
+  const icons: {
+    key: "scan" | "voice" | "photo";
+    label: string;
+    Icon: typeof Search;
+    onPress?: () => void;
+    locked: boolean;
+  }[] = [
+    {
+      key: "scan",
+      label: "Scan barcode",
+      Icon: ScanBarcode,
+      onPress: barcode?.onOpen,
+      locked: barcode?.locked ?? false,
+    },
+    {
+      key: "voice",
+      label: "Voice log",
+      Icon: Mic,
+      onPress: voice?.onStart,
+      locked: voice?.locked ?? false,
+    },
+    {
+      key: "photo",
+      label: "Photo log",
+      Icon: Camera,
+      onPress: photo?.onCapture,
+      locked: photo?.locked ?? false,
+    },
+  ];
+  return (
+    <View style={styles.rightEdgeIcons}>
+      {icons.map(({ key, label, Icon, onPress, locked }) =>
+        onPress ? (
+          <Pressable
+            key={key}
+            onPress={() => {
+              if (process.env.EXPO_OS === "ios") {
+                void Haptics.selectionAsync();
+              }
+              onPress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={locked ? `${label} (Pro)` : label}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.rightEdgeIcon,
+              { opacity: pressed ? 0.55 : 1 },
+            ]}
+          >
+            <Icon size={IconSize.base} color="#0f172a99" strokeWidth={2} />
+            {locked ? (
+              <View style={styles.lockBadge}>
+                <Lock size={8} color="#fff" strokeWidth={2.5} />
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null,
+      )}
+    </View>
+  );
+}
+
+/* -------------------------- Recent list -------------------------- */
+
+function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }) {
   const colors = useThemeColors();
+  const { entries, onPick, state } = recent;
+  const today = entries.filter((e) => e.bucket === "today");
+  const week = entries.filter((e) => e.bucket === "week");
 
-  if (state?.permissionDenied) {
+  if (state?.loading) {
+    return <SkeletonList colors={colors} />;
+  }
+
+  if (entries.length === 0) {
     return (
       <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
-        <ScanBarcode size={32} color={colors.textTertiary} />
+        <Clock size={32} color={colors.textTertiary} />
         <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-          Camera access needed
+          Your recent foods will appear here
         </Text>
         <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
-          Grant camera access to scan barcodes.
+          {"Log something once and it'll show up next time."}
         </Text>
       </View>
     );
   }
 
-  if (manualEntry) {
-    return <BarcodeManualEntry entry={manualEntry} onConfirm={onConfirmManual} />;
+  return (
+    <ScrollView contentContainerStyle={{ padding: Spacing.md, paddingBottom: Spacing.xxl }}>
+      {today.length > 0 ? (
+        <View>
+          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
+            {"Today's recents"}
+          </Text>
+          {today.map((e) => (
+            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} />
+          ))}
+        </View>
+      ) : null}
+      {week.length > 0 ? (
+        <View style={{ marginTop: Spacing.lg }}>
+          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
+            Earlier this week
+          </Text>
+          {week.map((e) => (
+            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} />
+          ))}
+        </View>
+      ) : null}
+      {entries.some((e) => e.source === "fatsecret") ? (
+        <FatSecretBadge variant="text" style={{ marginTop: 8, marginHorizontal: 4 }} />
+      ) : null}
+    </ScrollView>
+  );
+}
+
+/* -------------------------- Saved list -------------------------- */
+
+function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
+  const colors = useThemeColors();
+  const { meals, onPick, state } = saved;
+
+  if (state?.loading) {
+    return <SkeletonList colors={colors} />;
+  }
+
+  if (meals.length === 0) {
+    return (
+      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
+        <History size={32} color={colors.textTertiary} />
+        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
+          No saved meals yet
+        </Text>
+        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
+          Save a meal you eat often to log it in one tap.
+        </Text>
+      </View>
+    );
   }
 
   return (
-    <View style={{ flex: 1, padding: Spacing.md }}>
-      <View
-        style={{
-          aspectRatio: 4 / 3,
-          backgroundColor: "#000",
-          borderRadius: Radius.md,
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        {cameraSlot ?? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#888" }}>Camera viewport</Text>
-          </View>
-        )}
-        {/* Corner brackets */}
-        <View style={[styles.bracket, { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 }]} />
-        <View style={[styles.bracket, { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 }]} />
-        <View style={[styles.bracket, { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
-        <View style={[styles.bracket, { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 }]} />
+    <ScrollView contentContainerStyle={{ padding: Spacing.md, paddingBottom: Spacing.xxl }}>
+      {meals.map((m) => (
+        <BrowseRow
+          key={m.id}
+          title={m.title}
+          kcal={m.kcal}
+          source={m.source}
+          onPick={() => onPick(m)}
+        />
+      ))}
+    </ScrollView>
+  );
+}
+
+/* -------------------------- Browse row -------------------------- */
+
+function BrowseRow({
+  title,
+  kcal,
+  source,
+  onPick,
+}: {
+  title: string;
+  kcal: number;
+  source: SourceDotSource;
+  onPick: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Log ${title}`}
+      onPress={() => {
+        if (process.env.EXPO_OS === "ios") {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        onPick();
+      }}
+      style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
+      <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+        <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
+          <SourceDot source={source} size={6} />
+          <Text
+            style={[
+              Type.caption,
+              { color: colors.textSecondary, marginLeft: 6, fontVariant: ["tabular-nums"] },
+            ]}
+          >
+            {kcal} kcal
+          </Text>
+        </View>
       </View>
-      <Text
-        style={[
-          Type.caption,
-          { color: colors.textSecondary, textAlign: "center", marginTop: Spacing.md },
-        ]}
-      >
-        {"Point at a barcode — we'll match it to USDA, OFF, or FatSecret."}
-      </Text>
+    </Pressable>
+  );
+}
+
+/* -------------------------- Skeleton -------------------------- */
+
+function SkeletonList({ colors }: { colors: ReturnType<typeof useThemeColors> }) {
+  return (
+    <View style={{ padding: Spacing.md }}>
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} style={styles.skeletonRow}>
+          <View style={[styles.skeletonThumb, { backgroundColor: colors.inputBg }]} />
+          <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+            <View style={[styles.skeletonLine, { backgroundColor: colors.inputBg, width: "65%" }]} />
+            <View
+              style={[
+                styles.skeletonLine,
+                { backgroundColor: colors.inputBg, width: "30%", marginTop: 6, height: 8 },
+              ]}
+            />
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
+
+/* -------------------------- Barcode manual entry -------------------------- */
 
 function BarcodeManualEntry({
   entry,
@@ -589,7 +703,7 @@ function BarcodeManualEntry({
     borderRadius: 8,
     color: colors.text,
     textAlign: "right" as const,
-    fontVariant: ["tabular-nums"] as Array<"tabular-nums">,
+    fontVariant: ["tabular-nums"] as ("tabular-nums")[],
   };
 
   return (
@@ -703,312 +817,6 @@ function BarcodeManualEntry({
   );
 }
 
-/* -------------------------- Recent tab -------------------------- */
-
-function RecentTab({
-  entries,
-  onPick,
-  state,
-}: NonNullable<LogSheetProps["recent"]>) {
-  const colors = useThemeColors();
-  const today = entries.filter((e) => e.bucket === "today");
-  const week = entries.filter((e) => e.bucket === "week");
-
-  if (state?.loading) {
-    return (
-      <View style={{ padding: Spacing.md }}>
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={styles.skeletonRow}>
-            <View style={[styles.skeletonThumb, { backgroundColor: colors.inputBg }]} />
-            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-              <View style={[styles.skeletonLine, { backgroundColor: colors.inputBg, width: "65%" }]} />
-            </View>
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  if (entries.length === 0) {
-    return (
-      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
-        <Clock size={32} color={colors.textTertiary} />
-        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-          Your recent foods will appear here
-        </Text>
-        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
-          {"Log something once and it'll show up next time."}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: Spacing.md }}>
-      {today.length > 0 ? (
-        <View>
-          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
-            {"Today's recents"}
-          </Text>
-          {today.map((e) => (
-            <RecentRow key={e.id} entry={e} onPick={onPick} />
-          ))}
-        </View>
-      ) : null}
-      {week.length > 0 ? (
-        <View style={{ marginTop: Spacing.lg }}>
-          <Text style={[Type.label, { color: colors.textSecondary, marginBottom: 6 }]}>
-            Earlier this week
-          </Text>
-          {week.map((e) => (
-            <RecentRow key={e.id} entry={e} onPick={onPick} />
-          ))}
-        </View>
-      ) : null}
-    </ScrollView>
-  );
-}
-
-function RecentRow({
-  entry,
-  onPick,
-}: {
-  entry: LogSheetRecentEntry;
-  onPick: (entry: LogSheetRecentEntry) => void;
-}) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Log ${entry.title}`}
-      onPress={() => onPick(entry)}
-      style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
-    >
-      <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
-      <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-        <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
-          {entry.title}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-          <SourceDot source={entry.source} size={6} />
-          <Text
-            style={[
-              Type.caption,
-              { color: colors.textSecondary, marginLeft: 6, fontVariant: ["tabular-nums"] },
-            ]}
-          >
-            {entry.kcal} kcal
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-/* -------------------------- Saved tab -------------------------- */
-
-function SavedTab({
-  meals,
-  onPick,
-  state,
-}: NonNullable<LogSheetProps["saved"]>) {
-  const colors = useThemeColors();
-
-  if (state?.loading) {
-    return (
-      <View style={{ padding: Spacing.md }}>
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={styles.skeletonRow}>
-            <View style={[styles.skeletonThumb, { backgroundColor: colors.inputBg }]} />
-            <View style={[styles.skeletonLine, { backgroundColor: colors.inputBg, flex: 1, marginLeft: Spacing.sm }]} />
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  if (meals.length === 0) {
-    return (
-      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
-        <History size={32} color={colors.textTertiary} />
-        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-          No saved meals yet
-        </Text>
-        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
-          Save a meal you eat often to log it in one tap.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: Spacing.md }}>
-      {meals.map((m) => (
-        <Pressable
-          key={m.id}
-          accessibilityRole="button"
-          accessibilityLabel={`Log ${m.title}`}
-          onPress={() => onPick(m)}
-          style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
-          <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-            <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
-              {m.title}
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-              <SourceDot source={m.source} size={6} />
-              <Text
-                style={[
-                  Type.caption,
-                  { color: colors.textSecondary, marginLeft: 6, fontVariant: ["tabular-nums"] },
-                ]}
-              >
-                {m.kcal} kcal
-              </Text>
-            </View>
-          </View>
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-}
-
-/* -------------------------- Voice tab -------------------------- */
-
-function VoiceTab({ micSlot, state, onStart }: NonNullable<LogSheetProps["voice"]>) {
-  const colors = useThemeColors();
-
-  if (state?.permissionDenied) {
-    return (
-      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
-        <Mic size={32} color={colors.textTertiary} />
-        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-          Microphone access needed
-        </Text>
-        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
-          Grant mic access to use voice log.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.lg, gap: Spacing.md }}>
-      {state?.showFirstRunTip ? (
-        <View
-          style={{
-            padding: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text style={[Type.caption, { color: colors.textSecondary }]}>
-            <Text style={{ fontWeight: "700" }}>{"First time? "}</Text>
-            {"Speak naturally — “a chicken caesar salad with extra dressing” works."}
-          </Text>
-        </View>
-      ) : null}
-      {micSlot ?? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Tap to start recording"
-          onPress={onStart}
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: 44,
-            backgroundColor: Accent.primary,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Mic size={32} color="#fff" />
-        </Pressable>
-      )}
-      <Text style={[Type.caption, { color: colors.textSecondary }]}>
-        {"Tap to start. We'll transcribe + match macros."}
-      </Text>
-    </View>
-  );
-}
-
-/* -------------------------- Photo tab -------------------------- */
-
-function PhotoTab({ shutterSlot, state, onCapture }: NonNullable<LogSheetProps["photo"]>) {
-  const colors = useThemeColors();
-
-  if (state?.permissionDenied) {
-    return (
-      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
-        <Camera size={32} color={colors.textTertiary} />
-        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
-          Camera access needed
-        </Text>
-        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
-          Grant camera access to use photo log.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, padding: Spacing.md, gap: Spacing.md, alignItems: "center" }}>
-      {state?.showFirstRunTip ? (
-        <View
-          style={{
-            width: "100%",
-            padding: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <Sparkles size={IconSize.xs} color="#e8a020" />
-          <Text style={[Type.caption, { color: colors.textSecondary, flex: 1 }]}>
-            <Text style={{ fontWeight: "700" }}>{"First time? "}</Text>
-            {"One photo of your plate is enough — we'll estimate."}
-          </Text>
-        </View>
-      ) : null}
-      <View
-        style={{
-          aspectRatio: 4 / 3,
-          width: "100%",
-          backgroundColor: "#000",
-          borderRadius: Radius.md,
-          overflow: "hidden",
-        }}
-      >
-        {shutterSlot ?? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#888" }}>Camera viewport</Text>
-          </View>
-        )}
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Capture photo"
-        onPress={onCapture}
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: Accent.primary,
-          borderWidth: 4,
-          borderColor: Accent.primary,
-        }}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   modalRoot: {
     flex: 1,
@@ -1048,38 +856,63 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  subtabContainer: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: 6,
-  },
-  subtab: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-  },
-  subtabLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
   searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    height: 44,
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.xs,
+    height: 48,
     borderRadius: Radius.md,
   },
-  errorBand: {
+  rightEdgeIcons: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    gap: 2,
+  },
+  rightEdgeIcon: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: Radius.sm,
+    position: "relative",
+  },
+  lockBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Accent.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  browsePillRow: {
+    flexDirection: "row",
+    marginHorizontal: Spacing.md,
     marginTop: Spacing.md,
+    padding: 3,
+    borderRadius: Radius.md,
+  },
+  browsePill: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    borderRadius: Radius.sm,
+  },
+  browsePillLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  manualFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   skeletonRow: {
     flexDirection: "row",
@@ -1117,23 +950,10 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
   },
-  addBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  bracket: {
-    position: "absolute",
-    width: 20,
-    height: 20,
-    borderColor: "rgba(255,255,255,0.8)",
   },
 });
 

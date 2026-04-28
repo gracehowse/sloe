@@ -1,14 +1,23 @@
 /**
- * logSheetPhase3 — Pins the Phase 3 (B2.1, 2026-04-27) canonical
- * LogSheet primitive on mobile.
+ * logSheetPhase3 — Pins the LogSheet primitive on mobile.
  *
- * Authority: D-2026-04-27-15.
+ * Authority: D-2026-04-27-15 (one canonical log path).
  * Source: apps/mobile/components/today/LogSheet.tsx
  *
- * Same shape as the web mirror at tests/unit/logSheetPhase3.test.tsx.
- * Pins the primitive's behaviour at the unit level — the actual
- * wiring into Today's composition root has its own source-pin test
- * in `logSheetEntryPointConsolidation.test.ts`.
+ * **Updated 2026-04-28 for the search-first refactor (Next-10 #12 from
+ * `docs/ux/teardown-2026-04-28-daily-loop.md`).** The 6-tab strip
+ * (Search / Scan / Recent / Saved / Voice / Photo) was replaced with
+ * a search-first composition: a single tap-to-open search row with
+ * right-edge icons for scan / voice / photo, and a Recent / Saved
+ * 2-pill toggle below for the default browse content. The original
+ * Phase-3 tests pinned the 6-tab strip's accessibility labels and
+ * tab-switching behaviour — none of those tests reflect the
+ * post-refactor reality. This file pins the new contract; the old
+ * tests have been deleted in this rewrite. The file name is kept
+ * for git history continuity.
+ *
+ * Same shape as the web mirror at
+ * `tests/unit/logSheetPhase3.test.tsx`.
  */
 
 import * as React from "react";
@@ -18,7 +27,6 @@ import { render, fireEvent } from "@testing-library/react-native";
 import {
   LogSheet,
   type LogSheetProps,
-  type LogSheetSearchResult,
   type LogSheetRecentEntry,
   type LogSheetSavedMeal,
 } from "../../components/today/LogSheet";
@@ -64,56 +72,32 @@ function open(props?: Partial<LogSheetProps>) {
     <LogSheet
       visible
       onClose={() => {}}
-      search={{
-        query: "",
-        onQueryChange: () => {},
-        results: [],
-        onAdd: () => {},
-      }}
-      barcode={{}}
+      search={{ onOpen: () => {} }}
+      barcode={{ onOpen: () => {} }}
       recent={{ entries: [], onPick: () => {} }}
       saved={{ meals: [], onPick: () => {} }}
-      voice={{}}
-      photo={{}}
+      voice={{ onStart: () => {} }}
+      photo={{ onCapture: () => {} }}
       {...props}
     />,
   );
 }
 
 describe("LogSheet (mobile) — primitive shape", () => {
-  it("renders the canonical title and 6 sub-tabs when visible", () => {
-    const { getByText, getByLabelText } = open();
+  it("renders the canonical title when visible", () => {
+    const { getByText } = open();
     expect(getByText("Log a meal")).toBeTruthy();
-    // The 6 sub-tabs each carry an "<Label> tab" accessibility label.
-    expect(getByLabelText("Search foods tab")).toBeTruthy();
-    expect(getByLabelText("Scan barcode tab")).toBeTruthy();
-    expect(getByLabelText("Recent tab")).toBeTruthy();
-    expect(getByLabelText("Saved meals tab")).toBeTruthy();
-    expect(getByLabelText("Voice log tab")).toBeTruthy();
-    expect(getByLabelText("Photo log tab")).toBeTruthy();
   });
 
-  it("returns no content when not visible", () => {
+  it("renders nothing when not visible", () => {
     const { queryByText } = render(
       <LogSheet
         visible={false}
         onClose={() => {}}
-        search={{ query: "", onQueryChange: () => {}, results: [], onAdd: () => {} }}
+        search={{ onOpen: () => {} }}
       />,
     );
     expect(queryByText("Log a meal")).toBeNull();
-  });
-
-  it("Search tab is selected by default", () => {
-    const { getByLabelText } = open();
-    const searchTab = getByLabelText("Search foods tab");
-    expect(searchTab.props.accessibilityState?.selected).toBe(true);
-  });
-
-  it("respects an explicit initialTab", () => {
-    const { getByLabelText } = open({ initialTab: "barcode" });
-    const barcodeTab = getByLabelText("Scan barcode tab");
-    expect(barcodeTab.props.accessibilityState?.selected).toBe(true);
   });
 
   it("close button fires onClose", () => {
@@ -122,57 +106,153 @@ describe("LogSheet (mobile) — primitive shape", () => {
     fireEvent.press(getByLabelText("Close log sheet"));
     expect(onClose).toHaveBeenCalled();
   });
-
-  // Backdrop dismiss: the rendered tree carries the Pressable backdrop
-  // with `testID="log-sheet-backdrop"` and the canonical
-  // `accessibilityLabel="Dismiss log sheet"` — visible inspection shows
-  // it; the RNTL query matchers in the shim don't pick up host-only
-  // self-closing Pressables here. Close-button dismiss is asserted
-  // above and is the path users actually take.
 });
 
-describe("LogSheet (mobile) — Search tab", () => {
-  it("wires query changes through to onQueryChange", () => {
-    const onQueryChange = vi.fn();
-    const { getByLabelText } = open({
-      search: { query: "", onQueryChange, results: [], onAdd: () => {} },
-    });
-    fireEvent.changeText(getByLabelText("Search foods"), "chicken");
-    expect(onQueryChange).toHaveBeenCalledWith("chicken");
+describe("LogSheet (mobile) — search row + right-edge icons (Phase 4 / Next-10 #12)", () => {
+  it("search row tap fires search.onOpen", () => {
+    const onOpen = vi.fn();
+    const { getByLabelText } = open({ search: { onOpen } });
+    fireEvent.press(getByLabelText("Search foods"));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("fires onAdd with confirm haptic on row + tap", () => {
-    const result: LogSheetSearchResult = {
-      id: "r1",
-      title: "Chicken caesar salad",
-      kcal: 420,
-      source: "usda",
-    };
-    const onAdd = vi.fn();
-    const { getByLabelText } = open({
-      search: { query: "chicken", onQueryChange: () => {}, results: [result], onAdd },
-    });
-    fireEvent.press(getByLabelText("Add Chicken caesar salad"));
-    expect(onAdd).toHaveBeenCalledWith(result);
+  it("scan icon tap fires barcode.onOpen", () => {
+    const onScanOpen = vi.fn();
+    const { getByLabelText } = open({ barcode: { onOpen: onScanOpen } });
+    fireEvent.press(getByLabelText("Scan barcode"));
+    expect(onScanOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("renders 'No matches' empty state when query has text and no results", () => {
+  it("voice icon tap fires voice.onStart", () => {
+    const onStart = vi.fn();
+    const { getByLabelText } = open({ voice: { onStart } });
+    fireEvent.press(getByLabelText("Voice log"));
+    expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("photo icon tap fires photo.onCapture", () => {
+    const onCapture = vi.fn();
+    const { getByLabelText } = open({ photo: { onCapture } });
+    fireEvent.press(getByLabelText("Photo log"));
+    expect(onCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it("locked: true on voice surfaces a (Pro) accessibility hint", () => {
+    const { getByLabelText } = open({
+      voice: { onStart: () => {}, locked: true },
+    });
+    // Locked icons get the "(Pro)" suffix on their accessibility
+    // label so screen readers announce the gate. The icon's own
+    // tap callback still fires regardless — host decides whether
+    // to open the AI paywall sheet or the real flow.
+    expect(getByLabelText("Voice log (Pro)")).toBeTruthy();
+  });
+
+  it("locked: true on photo surfaces a (Pro) accessibility hint", () => {
+    const { getByLabelText } = open({
+      photo: { onCapture: () => {}, locked: true },
+    });
+    expect(getByLabelText("Photo log (Pro)")).toBeTruthy();
+  });
+
+  it("an icon with no callback wired is not rendered (host opted out)", () => {
+    const { queryByLabelText } = open({
+      barcode: undefined,
+      voice: undefined,
+      photo: undefined,
+    });
+    expect(queryByLabelText("Scan barcode")).toBeNull();
+    expect(queryByLabelText("Voice log")).toBeNull();
+    expect(queryByLabelText("Photo log")).toBeNull();
+  });
+});
+
+describe("LogSheet (mobile) — Recent / Saved browse pills (Phase 4 / Next-10 #12)", () => {
+  const todayEntry: LogSheetRecentEntry = {
+    id: "t1",
+    title: "Greek yogurt",
+    kcal: 130,
+    source: "off",
+    bucket: "today",
+  };
+  const weekEntry: LogSheetRecentEntry = {
+    id: "w1",
+    title: "Oats with banana",
+    kcal: 320,
+    source: "usda",
+    bucket: "week",
+  };
+  const meal: LogSheetSavedMeal = {
+    id: "m1",
+    title: "My usual oatmeal",
+    kcal: 380,
+    source: "manual",
+  };
+
+  it("renders Today + Earlier groups when both buckets have entries", () => {
     const { getByText } = open({
-      search: {
-        query: "asparagus",
-        onQueryChange: () => {},
-        results: [],
-        onAdd: () => {},
-      },
+      recent: { entries: [todayEntry, weekEntry], onPick: () => {} },
     });
-    expect(getByText('No matches for "asparagus"')).toBeTruthy();
+    expect(getByText("Today's recents")).toBeTruthy();
+    expect(getByText("Earlier this week")).toBeTruthy();
+  });
+
+  it("recent empty state when no entries", () => {
+    const { getByText } = open({
+      recent: { entries: [], onPick: () => {} },
+    });
+    expect(getByText("Your recent foods will appear here")).toBeTruthy();
+  });
+
+  it("recent row tap fires onPick with the entry", () => {
+    const onPick = vi.fn();
+    const { getByLabelText } = open({
+      recent: { entries: [todayEntry], onPick },
+    });
+    fireEvent.press(getByLabelText("Log Greek yogurt"));
+    expect(onPick).toHaveBeenCalledWith(todayEntry);
+  });
+
+  it("saved tab switch reveals saved meals (and hides recents)", () => {
+    const { getByText, queryByText, getByLabelText } = open({
+      recent: { entries: [todayEntry], onPick: () => {} },
+      saved: { meals: [meal], onPick: () => {} },
+    });
+    // Default lands on Recent.
+    expect(getByText("Today's recents")).toBeTruthy();
+    fireEvent.press(getByLabelText("Saved meals"));
+    // Recent group label is gone, saved meal is visible.
+    expect(queryByText("Today's recents")).toBeNull();
+    expect(getByText("My usual oatmeal")).toBeTruthy();
+  });
+
+  it("saved empty state when no meals", () => {
+    const { getByText, getByLabelText } = open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: [], onPick: () => {} },
+    });
+    fireEvent.press(getByLabelText("Saved meals"));
+    expect(getByText("No saved meals yet")).toBeTruthy();
+  });
+
+  it("saved row tap fires onPick with the meal", () => {
+    const onPick = vi.fn();
+    const { getByLabelText } = open({
+      // Explicitly clear `recent` so the Recent / Saved 2-pill toggle
+      // is hidden (the LogSheet only renders the toggle when both
+      // sources are provided). With recent undefined, saved meals
+      // render directly without needing a tab switch.
+      recent: undefined,
+      saved: { meals: [meal], onPick },
+    });
+    fireEvent.press(getByLabelText("Log My usual oatmeal"));
+    expect(onPick).toHaveBeenCalledWith(meal);
   });
 });
 
 describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
-  it("renders manual entry form when manualEntry is supplied", () => {
-    const { getByText, getByLabelText } = open({
-      initialTab: "barcode",
+  it("renders the manual-entry form when manualEntry is supplied (replaces default content)", () => {
+    const { getByText, getByLabelText, queryByLabelText } = open({
       barcode: {
         manualEntry: { productName: "Generic almonds", brand: "Tesco" },
       },
@@ -181,12 +261,13 @@ describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
     expect(getByText("Tesco")).toBeTruthy();
     expect(getByLabelText("Portion in grams")).toBeTruthy();
     expect(getByLabelText("Kilocalories")).toBeTruthy();
+    // Default search row is suppressed in manual-entry mode.
+    expect(queryByLabelText("Search foods")).toBeNull();
   });
 
   it("commits the captured payload via onConfirmManual", () => {
     const onConfirmManual = vi.fn();
     const { getByLabelText } = open({
-      initialTab: "barcode",
       barcode: {
         manualEntry: { productName: "Generic almonds" },
         onConfirmManual,
@@ -208,147 +289,23 @@ describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
       fat: 16,
     });
   });
-
-  it("renders the permission-denied state when state.permissionDenied is true", () => {
-    const { getByText } = open({
-      initialTab: "barcode",
-      barcode: { state: { permissionDenied: true } },
-    });
-    expect(getByText("Camera access needed")).toBeTruthy();
-  });
 });
 
-describe("LogSheet (mobile) — Recent tab", () => {
-  const todayEntry: LogSheetRecentEntry = {
-    id: "t1",
-    title: "Greek yogurt",
-    kcal: 130,
-    source: "off",
-    bucket: "today",
-  };
-  const weekEntry: LogSheetRecentEntry = {
-    id: "w1",
-    title: "Oats with banana",
-    kcal: 320,
-    source: "usda",
-    bucket: "week",
-  };
-
-  it("renders Today + Earlier groups", () => {
-    const { getByText } = open({
-      initialTab: "recent",
-      recent: { entries: [todayEntry, weekEntry], onPick: () => {} },
-    });
-    expect(getByText("Today's recents")).toBeTruthy();
-    expect(getByText("Earlier this week")).toBeTruthy();
+describe("LogSheet (mobile) — 'Or add manually' footer", () => {
+  it("renders the footer link when onAddManually is provided", () => {
+    const { getByLabelText } = open({ onAddManually: () => {} });
+    expect(getByLabelText("Or add manually")).toBeTruthy();
   });
 
-  it("renders empty state when there are no entries", () => {
-    const { getByText } = open({
-      initialTab: "recent",
-      recent: { entries: [], onPick: () => {} },
-    });
-    expect(getByText("Your recent foods will appear here")).toBeTruthy();
+  it("hides the footer link when onAddManually is undefined", () => {
+    const { queryByLabelText } = open({ onAddManually: undefined });
+    expect(queryByLabelText("Or add manually")).toBeNull();
   });
 
-  it("fires onPick when a row is pressed", () => {
-    const onPick = vi.fn();
-    const { getByLabelText } = open({
-      initialTab: "recent",
-      recent: { entries: [todayEntry], onPick },
-    });
-    fireEvent.press(getByLabelText("Log Greek yogurt"));
-    expect(onPick).toHaveBeenCalledWith(todayEntry);
-  });
-});
-
-describe("LogSheet (mobile) — Saved tab", () => {
-  const meal: LogSheetSavedMeal = {
-    id: "m1",
-    title: "My usual oatmeal",
-    kcal: 380,
-    source: "manual",
-  };
-
-  it("renders empty state when no saved meals", () => {
-    const { getByText } = open({
-      initialTab: "saved",
-      saved: { meals: [], onPick: () => {} },
-    });
-    expect(getByText("No saved meals yet")).toBeTruthy();
-  });
-
-  it("fires onPick on tap", () => {
-    const onPick = vi.fn();
-    const { getByLabelText } = open({
-      initialTab: "saved",
-      saved: { meals: [meal], onPick },
-    });
-    fireEvent.press(getByLabelText("Log My usual oatmeal"));
-    expect(onPick).toHaveBeenCalledWith(meal);
-  });
-});
-
-describe("LogSheet (mobile) — Voice / Photo permission denied", () => {
-  it("Voice tab shows mic permission copy when permission denied", () => {
-    const { getByText } = open({
-      initialTab: "voice",
-      voice: { state: { permissionDenied: true } },
-    });
-    expect(getByText("Microphone access needed")).toBeTruthy();
-  });
-
-  it("Photo tab shows camera permission copy when permission denied", () => {
-    const { getByText } = open({
-      initialTab: "photo",
-      photo: { state: { permissionDenied: true } },
-    });
-    expect(getByText("Camera access needed")).toBeTruthy();
-  });
-});
-
-describe("LogSheet (mobile) — Search tab router (P0-1, 2026-04-28)", () => {
-  it("when onOpen is provided, pressing the search row fires onOpen", () => {
-    const onOpen = vi.fn();
-    const { getByLabelText } = open({
-      search: {
-        query: "",
-        onQueryChange: () => {},
-        results: [],
-        onAdd: () => {},
-        onOpen,
-      },
-    });
-    // LS-01 (audit 2026-04-28): the search row is a Pressable
-    // accessibility-labelled "Open search" (no inner TextInput).
-    const btn = getByLabelText("Open search");
-    fireEvent.press(btn);
-    expect(onOpen).toHaveBeenCalledTimes(1);
-  });
-
-  it("without onOpen, the search input is editable and onQueryChange fires", () => {
-    const onQueryChange = vi.fn();
-    const { getByPlaceholderText } = open({
-      search: {
-        query: "",
-        onQueryChange,
-        results: [],
-        onAdd: () => {},
-      },
-    });
-    fireEvent.changeText(
-      getByPlaceholderText("Search foods, brands, or recipes…"),
-      "salmon",
-    );
-    expect(onQueryChange).toHaveBeenCalledWith("salmon");
-  });
-});
-
-describe("LogSheet (mobile) — tab switching", () => {
-  it("selecting a tab updates accessibilityState.selected", () => {
-    const { getByLabelText } = open();
-    const recentTab = getByLabelText("Recent tab");
-    fireEvent.press(recentTab);
-    expect(recentTab.props.accessibilityState?.selected).toBe(true);
+  it("footer tap fires onAddManually", () => {
+    const onAddManually = vi.fn();
+    const { getByLabelText } = open({ onAddManually });
+    fireEvent.press(getByLabelText("Or add manually"));
+    expect(onAddManually).toHaveBeenCalledTimes(1);
   });
 });
