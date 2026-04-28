@@ -265,31 +265,47 @@ export function VoiceLogDialog({
 
         {stage === "input" && (
           <div className="grid gap-3 py-2">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onPointerDown={handleRecordPressIn}
-                onPointerUp={handleRecordPressOut}
-                onPointerLeave={handleRecordPressOut}
-                onPointerCancel={handleRecordPressOut}
-                aria-label="Record voice log"
-                aria-pressed={isRecording}
-                className={`size-12 inline-flex items-center justify-center rounded-full border ${
-                  isRecording
-                    ? "bg-success text-white border-success shadow-lg animate-pulse"
-                    : "bg-success/10 text-success border-success/30 hover:bg-success/20"
-                }`}
-              >
-                <Icons.mic className="size-5" />
-              </button>
-              <div className="text-xs text-muted-foreground">
-                {isRecording
-                  ? "Listening… release to stop."
-                  : webSpeechSupported || mediaRecorderSupported
-                    ? "Press and hold to record, or type below."
-                    : "Voice capture not supported — type below."}
+            {/* VL-01 fix (2026-04-28): the mic button is only rendered
+                when Web Speech transcription is actually available
+                (Chrome/Edge). Safari + Firefox previously showed the
+                same press-to-record control, captured audio via
+                MediaRecorder, then silently discarded the recording
+                without ever transcribing. A paying Pro user pressed
+                the mic, saw the green "Listening…" state, released,
+                and got nothing — refund-trigger. Now the mic only
+                appears where it actually works; on every other
+                browser the dialog falls back to the text input with
+                honest copy. */}
+            {webSpeechSupported ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onPointerDown={handleRecordPressIn}
+                  onPointerUp={handleRecordPressOut}
+                  onPointerLeave={handleRecordPressOut}
+                  onPointerCancel={handleRecordPressOut}
+                  aria-label="Record voice log"
+                  aria-pressed={isRecording}
+                  className={`size-12 inline-flex items-center justify-center rounded-full border ${
+                    isRecording
+                      ? "bg-success text-white border-success shadow-lg animate-pulse"
+                      : "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                  }`}
+                >
+                  <Icons.mic className="size-5" />
+                </button>
+                <div className="text-xs text-muted-foreground">
+                  {isRecording
+                    ? "Listening… release to stop."
+                    : "Press and hold to record, or type below."}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                Voice transcription isn't available in this browser — type
+                your meal below and we'll match the macros.
+              </div>
+            )}
             <Input
               type="text"
               value={transcript}

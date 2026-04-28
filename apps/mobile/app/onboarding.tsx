@@ -391,9 +391,13 @@ export default function OnboardingScreen() {
       await supabase.from("profiles").upsert({
         id: userId,
         target_calories: defaultBudget,
-        // A2 provenance — onboarding skip path writes default budget. (migration 20260427110000)
+        // ML-01 / X-03 fix (2026-04-28): provenance is now
+        // `onboarding_skip`, NOT `onboarding`. Skipping is not
+        // personalising — these targets were never set by the user.
+        // CHECK constraint was widened in migration
+        // 20260503111000_target_calories_source_onboarding_skip.sql.
         target_calories_set_at: new Date().toISOString(),
-        target_calories_source: "onboarding",
+        target_calories_source: "onboarding_skip",
         target_protein: defaultMacros.protein,
         target_carbs: defaultMacros.carbs,
         target_fat: defaultMacros.fat,
