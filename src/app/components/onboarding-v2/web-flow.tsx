@@ -171,6 +171,16 @@ export function WebFlow() {
           recipes_resolved: pickedSeeds.length - missingCount,
           plan_built: !planFailed,
         });
+        // WEB-01 (2026-04-28): clear persisted onboarding state on
+        // successful completion. Without this, the next signup on the
+        // same browser pre-fills the previous user's answers — a real
+        // problem on shared devices and during testing.
+        try {
+          window.localStorage.removeItem("suppr.onboarding-v2.state");
+        } catch {
+          /* storage may be disabled — non-fatal */
+        }
+
         // Per spec Surface F state: success → 600ms loader → Today.
         // Plan failure → caller surfaces "We saved your recipes but
         // couldn't build a plan" toast on /home (read from query

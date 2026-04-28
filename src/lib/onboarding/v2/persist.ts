@@ -65,11 +65,15 @@
  * as legacy onboarding's defence-in-depth.
  */
 
-import type { ActivityLevel, Sex } from "@/lib/nutrition/tdee";
-// `Goal` lives in @/types/profile (the legacy DB-aligned enum
+// MV-01 fix (2026-04-28): switched from web-only `@/...` aliases to
+// relative paths so mobile tsc can resolve this module when imported
+// via `apps/mobile/components/onboarding-v2/mobile-flow.tsx` for the
+// terminal-step completion handler.
+import type { ActivityLevel, Sex } from "../../nutrition/tdee";
+// `Goal` lives at `src/types/profile.ts` (the legacy DB-aligned enum
 // `"cut" | "maintain" | "bulk"`). tdee.ts uses `goalType: string`
 // because legacy onboarding mixes UI labels in.
-import type { Goal as ProductionGoal } from "@/types/profile";
+import type { Goal as ProductionGoal } from "../../../types/profile";
 import type { Goal as V2Goal, OnboardingState } from "./state";
 import type { V2Targets } from "./targets";
 

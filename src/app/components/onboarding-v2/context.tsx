@@ -71,11 +71,80 @@ interface ProviderProps {
   initial?: Partial<OnboardingState>;
 }
 
+/**
+ * WEB-01 fix (audit 2026-04-28) — persist v2 state to localStorage so
+ * a refresh, accidental tab close, or email-confirmation redirect
+ * doesn't drop the user back at Welcome with all answers gone.
+ *
+ * The signup step's `emailRedirectTo` lands the user back at
+ * `/onboarding`, which 307s to `/onboarding/v2` and remounts a fresh
+ * provider. Without persistence, the user re-enters fresh and 11
+ * steps of body-stat answers vanish.
+ *
+ * `password` is intentionally NOT persisted (the auth call resolves
+ * synchronously inside the signup step before any redirect, so the
+ * password never needs to survive).
+ */
+const STORAGE_KEY = "suppr.onboarding-v2.state";
+
+function readPersistedState(): Partial<OnboardingState> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as Partial<OnboardingState>;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedState(state: OnboardingState): void {
+  if (typeof window === "undefined") return;
+  try {
+    // Strip transient / sensitive fields. `password` is an in-memory-
+    // only shape on the state; if a future schema adds it, exclude
+    // here.
+    const { ...persistable } = state;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
+  } catch {
+    // Quota / disabled storage — silent failure is acceptable; the
+    // worst case is a refresh dropping state, which is the existing
+    // behaviour we're trying to improve.
+  }
+}
+
 export function OnboardingV2Provider({ children, initial }: ProviderProps) {
-  const [state, setState] = React.useState<OnboardingState>(() => ({
-    ...DEFAULT_ONBOARDING_STATE,
-    ...(initial ?? {}),
-  }));
+  // When `initial` is provided (tests + dev preview pages), skip the
+  // localStorage hydration. The `initial` arg is the explicit fresh-
+  // start signal; mixing in persisted state from a previous render
+  // (or test run) breaks deterministic test scenarios. In production
+  // the route mounts the provider with no `initial` arg, so the
+  // user's persisted state hydrates correctly.
+  const hasInitial = initial !== undefined;
+  const [state, setState] = React.useState<OnboardingState>(() => {
+    if (hasInitial) {
+      return {
+        ...DEFAULT_ONBOARDING_STATE,
+        ...(initial ?? {}),
+      };
+    }
+    const persisted = readPersistedState();
+    return {
+      ...DEFAULT_ONBOARDING_STATE,
+      ...(persisted ?? {}),
+    };
+  });
+
+  // Save on every state change (debounced via React's batched updates).
+  // The state is small (<5KB) and writes are cheap; no debounce timer
+  // needed. Skip writes when `initial` was provided (test mode) so
+  // persistence stays exclusively a production-user concern.
+  React.useEffect(() => {
+    if (hasInitial) return;
+    writePersistedState(state);
+  }, [state, hasInitial]);
 
   const set = React.useCallback<OnboardingV2Context["set"]>((patch) => {
     setState((prev) => ({

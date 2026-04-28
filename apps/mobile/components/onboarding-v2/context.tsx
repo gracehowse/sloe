@@ -52,11 +52,65 @@ interface ProviderProps {
   initial?: Partial<OnboardingState>;
 }
 
+/**
+ * MV-03 fix (audit 2026-04-28) — persist v2 state to AsyncStorage so
+ * an app background, force-quit, or cold-start mid-flow doesn't drop
+ * the user back at Welcome with all answers gone.
+ *
+ * Mirrors the web `OnboardingV2Provider` localStorage approach. Reads
+ * eagerly on mount; writes on every state change. Cleared on
+ * successful completion by the mobile shell (parity with
+ * `web-flow.tsx#handleComplete`).
+ */
+const STORAGE_KEY = "suppr.onboarding-v2.state";
+
 export function OnboardingV2Provider({ children, initial }: ProviderProps) {
+  // When `initial` is provided (tests + dev preview), skip the
+  // AsyncStorage hydration. Same pattern as the web provider — the
+  // explicit `initial` arg signals a fresh start, never mix in
+  // persisted state.
+  const hasInitial = initial !== undefined;
   const [state, setState] = React.useState<OnboardingState>(() => ({
     ...DEFAULT_ONBOARDING_STATE,
     ...(initial ?? {}),
   }));
+
+  // Hydrate from AsyncStorage on mount. Async — initial render uses
+  // defaults, then a setState fires once the persisted state is read.
+  React.useEffect(() => {
+    if (hasInitial) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (cancelled || !raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setState((prev) => ({ ...prev, ...(parsed as Partial<OnboardingState>) }));
+        }
+      } catch {
+        // Storage unavailable / malformed JSON — fall back to defaults.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasInitial]);
+
+  // Persist on every state change. Skipped when `initial` was provided
+  // so test runs don't pollute the device's persisted onboarding.
+  React.useEffect(() => {
+    if (hasInitial) return;
+    void (async () => {
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // Quota / disabled storage — silent fail.
+      }
+    })();
+  }, [state, hasInitial]);
 
   const set = React.useCallback<OnboardingV2Context["set"]>((patch) => {
     setState((prev) => ({
