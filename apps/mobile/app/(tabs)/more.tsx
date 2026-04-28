@@ -904,20 +904,95 @@ export default function ProfileScreen() {
       {/* Danger zone */}
       <SectionHeading title="Danger zone" />
       <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.cardBorder, overflow: "hidden" }}>
+        {/* M15/M16 fix (audit 2026-04-28): pre-fix the danger zone
+            had TWO rows that opened the same modal ("Reset or erase
+            everything" and "Erase all app data…"), and that modal
+            stacked Reset Plan → Erase Data → Delete Account in one
+            sheet — second-most-prominent button was permanent
+            account deletion. Misclick risk on a screen meant for
+            "clear my plan and start over."
+            Now: ONE reset row → reset/erase modal (no account
+            delete inside). Account delete lives below in its own
+            row with a dedicated, more deliberate confirm flow that
+            requires typing the word "delete" to confirm. */}
         <SettingsRow
           isFirst
           icon={RefreshCw}
           iconColor={t.amber}
-          label="Reset or erase everything"
+          label="Reset or erase data"
           sub="New targets, or wipe log, library & plans"
           onPress={() => setResetModalOpen(true)}
         />
         <SettingsRow
           icon={Trash2}
           iconColor={t.red}
-          label="Erase all app data…"
-          sub="Journal, library, plans, shopping — opens reset options"
-          onPress={() => setResetModalOpen(true)}
+          label="Delete my account"
+          sub="Permanently removes account + all data"
+          onPress={() => {
+            // Two-step deliberate confirm — first explains the
+            // consequence, then requires typing "delete" so it can't
+            // happen via accidental double-tap on a destructive
+            // button stack.
+            Alert.alert(
+              "Delete your account?",
+              "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "I want to delete",
+                  style: "destructive",
+                  onPress: () => {
+                    Alert.prompt?.(
+                      "Type 'delete' to confirm",
+                      "We won't be able to recover this account.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete account",
+                          style: "destructive",
+                          onPress: async (text?: string) => {
+                            if ((text ?? "").trim().toLowerCase() !== "delete") {
+                              Alert.alert(
+                                "Not deleted",
+                                "Type the word 'delete' (lowercase) to confirm.",
+                              );
+                              return;
+                            }
+                            try {
+                              const { data: sessionData } = await supabase.auth.getSession();
+                              const token = sessionData?.session?.access_token;
+                              const base = getSupprWebBase();
+                              if (!base) {
+                                Alert.alert("Error", "API URL not configured. Please contact support.");
+                                return;
+                              }
+                              const res = await fetch(`${base}/api/account/delete`, {
+                                method: "DELETE",
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                              });
+                              const json = await res.json();
+                              if (json.ok) {
+                                await supabase.auth.signOut();
+                                Alert.alert(
+                                  "Account deleted",
+                                  "Your account has been permanently deleted.",
+                                );
+                              } else {
+                                Alert.alert("Deletion failed", json.error || "Please try again.");
+                              }
+                            } catch {
+                              Alert.alert("Deletion failed", "Please try again later.");
+                            }
+                          },
+                        },
+                      ],
+                      "plain-text",
+                    );
+                  },
+                },
+              ],
+            );
+          }}
         />
       </View>
 
@@ -1014,67 +1089,13 @@ export default function ProfileScreen() {
               </Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => {
-                Alert.alert(
-                  "Delete your account?",
-                  "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete Account",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const token = sessionData?.session?.access_token;
-                          const base = getSupprWebBase();
-                          if (!base) {
-                            Alert.alert("Error", "API URL not configured. Please contact support.");
-                            return;
-                          }
-                          const res = await fetch(`${base}/api/account/delete`, {
-                            method: "DELETE",
-                            headers: token ? { Authorization: `Bearer ${token}` } : {},
-                          });
-                          const json = await res.json();
-                          if (json.ok) {
-                            await supabase.auth.signOut();
-                            Alert.alert("Account deleted", "Your account has been permanently deleted.");
-                          } else {
-                            Alert.alert("Deletion failed", json.error || "Please try again.");
-                          }
-                        } catch {
-                          Alert.alert("Deletion failed", "Please try again later.");
-                        }
-                      },
-                    },
-                  ],
-                );
-              }}
-              // 2026-04-26 polish (round 2): give the most-destructive
-              // action a ghost-button treatment (subtle red border + lower
-              // opacity) so the visual escalation reads as
-              // primary → outline → ghost rather than primary → outline →
-              // unstyled-text. The hierarchy still says "this is the most
-              // dangerous action — least prominent button" but no longer
-              // looks like missing styling.
-              style={{
-                paddingVertical: 14,
-                alignItems: "center",
-                marginBottom: Spacing.sm,
-                borderWidth: 1,
-                borderColor: t.red + "20",
-                borderRadius: Radius.md,
-                opacity: 0.85,
-              }}
-            >
-              <Text style={{ color: t.red, fontWeight: "700", fontSize: 14 }}>Delete my account permanently</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2, textAlign: "center", paddingHorizontal: 12 }}>
-                Removes your account, all data, and signs you out
-              </Text>
-            </Pressable>
-
+            {/* M15/M16 fix (2026-04-28): the previous "Delete my
+                account permanently" button used to live inside this
+                modal as the third destructive action — too easy to
+                misclick on a sheet meant for "reset my plan and
+                start over". Account deletion now lives in its own
+                row in the danger-zone card with a deliberate "type
+                'delete' to confirm" flow. */}
             <Pressable
               onPress={() => setResetModalOpen(false)}
               style={{ paddingVertical: 14, alignItems: "center" }}
