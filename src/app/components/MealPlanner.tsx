@@ -23,6 +23,7 @@ import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
 } from "../../lib/planning/planWeekSummary.ts";
+import { HouseholdBar } from "./HouseholdBar.tsx";
 import {
   buildDayTotalVsGoalLine,
   type DayTotalTone,
@@ -464,6 +465,15 @@ export const MealPlanner = memo(function MealPlanner({
       >
         {subtitle}
       </p>
+
+      {/* F2-L (audit 2026-04-28): household bar — mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1708 <HouseholdSummaryRow />`.
+          The web `HouseholdBar` is the existing simplified-vs-original
+          component (member-picker chips + Manage link); it self-hides
+          for solo users (`!data?.household || members.length === 0`),
+          so adding it unconditionally on the planner page costs nothing
+          for accounts without a household. */}
+      <HouseholdBar />
 
       {/* F2-F (2026-04-28): week summary card. Mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1639-1698`. Carries the
