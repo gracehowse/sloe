@@ -86,6 +86,7 @@ import {
   computeEatAgainForSlot,
   computeRecentMeals,
   foodHistoryKey,
+  isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "../../lib/nutrition/foodHistory";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
@@ -1833,6 +1834,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
       />
+
+      {/* PL-01 (audit 2026-04-28) — when today's totals include
+          AI-estimated meals, surface the count so the user knows
+          which slice of the headline number is uncertain. Mirrors
+          the mobile chip in apps/mobile/app/(tabs)/index.tsx. */}
+      {(() => {
+        const aiCount = mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length;
+        if (aiCount === 0 || viewMode !== "day") return null;
+        return (
+          <div
+            className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full bg-source-ai/[0.08] px-3 py-1.5 text-[11px] font-medium text-muted-foreground"
+            role="status"
+            aria-label={`Today includes ${aiCount} AI-estimated meal${aiCount === 1 ? "" : "s"}`}
+          >
+            <Icons.sparkles className="size-3 text-source-ai" aria-hidden />
+            Includes {aiCount} AI-estimated meal{aiCount === 1 ? "" : "s"}
+          </div>
+        );
+      })()}
 
       {/* Phase 3 / B2.2 (D-2026-04-27-04) — north-star "What to eat
           next" block. Sits immediately after the calorie ring per

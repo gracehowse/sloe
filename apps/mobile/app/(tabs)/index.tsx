@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { Sparkles } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -86,6 +87,7 @@ import {
   computeEatAgainForSlot,
   computeRecentMeals,
   foodHistoryKey,
+  isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "../../../../src/lib/nutrition/foodHistory";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
@@ -1230,6 +1232,15 @@ export default function TrackerScreen() {
     [weekSummaryMode, selectedDate, weekStartDay],
   );
   const mealsToday = byDay[dayKey] ?? [];
+  // PL-01 fix (audit 2026-04-28): when any of today's meals were
+  // logged via voice/photo AI, surface that on the day's totals.
+  // Per CLAUDE.md: "If nutrition / ingredient matching is uncertain,
+  // do not guess." AI photo / voice estimates are inherently
+  // uncertain — they were previously visible only inside the
+  // voice/photo dialog, which closed on commit. Today's headline kcal
+  // total absorbed AI-sourced macros without any badge so the user
+  // had no way to tell which slice of the day was estimated.
+  const aiSourcedTodayCount = mealsToday.filter(isAiSourcedFoodHistoryItem).length;
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
 
@@ -3202,6 +3213,34 @@ export default function TrackerScreen() {
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
             />
+
+            {/* PL-01 (audit 2026-04-28) — when today's totals include
+                AI-estimated meals (voice/photo log), surface the count
+                so the user knows which slice of the headline number is
+                inherently uncertain. Only renders when ≥1 such meal
+                exists on the active day. */}
+            {viewMode === "day" && aiSourcedTodayCount > 0 ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "center",
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: colors.sourceAi + "14",
+                  marginBottom: 12,
+                }}
+                accessibilityRole="text"
+                accessibilityLabel={`Today includes ${aiSourcedTodayCount} AI-estimated meal${aiSourcedTodayCount === 1 ? "" : "s"}`}
+              >
+                <Sparkles size={11} color={colors.sourceAi} strokeWidth={2.25} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: "500" }}>
+                  Includes {aiSourcedTodayCount} AI-estimated meal{aiSourcedTodayCount === 1 ? "" : "s"}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Phase 5 / B3.M (2026-04-27) — NorthStarBlockHost wires
                 the "What to eat next from your library that hits your
