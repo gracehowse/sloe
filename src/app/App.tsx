@@ -11,6 +11,7 @@ import { NotificationsBell } from "./components/NotificationsBell.tsx";
 import { Library } from "./components/Library.tsx";
 import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
 import { DesktopSidebar, resolvePrimaryFromView, type SidebarView } from "./components/suppr/desktop-sidebar.tsx";
+import { SubTabPill } from "./components/ui/sub-tab-pill.tsx";
 
 const NotificationsCenter = dynamic(
   () => import("./components/NotificationsCenter.tsx").then((m) => ({ default: m.NotificationsCenter })),
@@ -78,13 +79,19 @@ type View =
   | "targets";
 
 /**
- * RecipesSubTabPill — mobile-web Library↔Discover sub-tab pill bar.
- * L5 fix (audit 2026-04-28): native has `RecipesSubTabHeader`; web's
- * mobile-web breakpoint had no in-screen path to switch between
- * Library and Discover (only the bottom nav routed to Library by
- * default). This pill mirrors the existing Plan/Shop pattern at
- * `App.tsx:283-313`. Hidden on `md+` where the desktop sidebar owns
- * the navigation.
+ * RecipesSubTabPill / YouSubTabPill — pre-2026-04-28 these were two
+ * inline pill components (~80 LOC of near-clone JSX) sitting at the
+ * top of `App.tsx`. The teardown's F5 finding called this out:
+ * "the implementation isn't a sub-tab system; it's two custom pill
+ * components and listener hacks that defeat the tab framework's
+ * defaults". Both are now thin callers of the shared
+ * `<SubTabPill>` primitive in `./components/ui/sub-tab-pill.tsx`,
+ * which mirrors the mobile primitive at byte-identical contract.
+ *
+ * The `md:hidden sticky top-0 z-40 border-b border-border bg-card/95
+ * backdrop-blur-md` wrapper preserves the sticky-header behaviour
+ * the old inline components carried — kept here in the host so the
+ * primitive stays generic.
  */
 function RecipesSubTabPill({
   currentView,
@@ -94,48 +101,20 @@ function RecipesSubTabPill({
   onNavigate: (view: "library" | "discover") => void;
 }) {
   return (
-    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 py-2">
-      <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-muted/90 gap-1">
-        <button
-          type="button"
-          onClick={() => onNavigate("library")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
-            currentView === "library"
-              ? "bg-card shadow-sm text-primary"
-              : "text-muted-foreground"
-          }`}
-        >
-          Library
-        </button>
-        <button
-          type="button"
-          onClick={() => onNavigate("discover")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
-            currentView === "discover"
-              ? "bg-card shadow-sm text-primary"
-              : "text-muted-foreground"
-          }`}
-        >
-          Discover
-        </button>
-      </div>
+    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
+      <SubTabPill
+        items={[
+          { id: "library", label: "Library" },
+          { id: "discover", label: "Discover" },
+        ]}
+        activeId={currentView}
+        onSelect={onNavigate}
+        accessibilityLabel="Recipes sections"
+      />
     </div>
   );
 }
 
-/**
- * YouSubTabPill — mobile-web Progress↔Settings↔Profile sub-tab pill.
- * Resolves the "You tab is one-screen dead end on mobile-web" P0
- * (audit 2026-04-28) — pre-fix, tapping You routed to Progress with
- * no path to Settings/Profile/Sign-Out without typing
- * `?view=settings` in the URL bar.
- *
- * Three pills mirror the desktop sidebar's `you` group (Progress /
- * Profile / Settings); the audit recommended collapsing native's
- * Progress/Settings/More to two-pill Progress/Settings, but that's
- * a separate strategic restructure. This pill at least closes the
- * navigation gap so mobile-web users can reach Settings.
- */
 function YouSubTabPill({
   currentView,
   onNavigate,
@@ -143,29 +122,18 @@ function YouSubTabPill({
   currentView: "progress" | "profile" | "settings";
   onNavigate: (view: "progress" | "profile" | "settings") => void;
 }) {
-  const tabs: Array<{ id: "progress" | "profile" | "settings"; label: string }> = [
-    { id: "progress", label: "Progress" },
-    { id: "profile", label: "Profile" },
-    { id: "settings", label: "Settings" },
-  ];
   return (
-    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 py-2">
-      <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-muted/90 gap-1">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onNavigate(t.id)}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
-              currentView === t.id
-                ? "bg-card shadow-sm text-primary"
-                : "text-muted-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
+      <SubTabPill
+        items={[
+          { id: "progress", label: "Progress" },
+          { id: "profile", label: "Profile" },
+          { id: "settings", label: "Settings" },
+        ]}
+        activeId={currentView}
+        onSelect={onNavigate}
+        accessibilityLabel="You sections"
+      />
     </div>
   );
 }
@@ -376,36 +344,16 @@ export default function App() {
       case "plan":
         return (
           <>
-            <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 py-2">
-              <div className="max-w-6xl mx-auto flex p-1 rounded-xl bg-muted/90 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPlannerMobileTab("plan")}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
-                    plannerMobileTab === "plan"
-                      ? "bg-card shadow-sm text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  Plan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlannerMobileTab("shop")}
-                  className={`relative flex-1 py-2.5 rounded-lg text-sm font-semibold transition-pm ${
-                    plannerMobileTab === "shop"
-                      ? "bg-card shadow-sm text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  Shopping
-                  {shoppingUncheckedCount > 0 ? (
-                    <span className="absolute -top-0.5 right-2 min-w-[1rem] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-4 text-center">
-                      {shoppingUncheckedCount > 99 ? "99+" : shoppingUncheckedCount}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
+            <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
+              <SubTabPill
+                items={[
+                  { id: "plan", label: "Plan" },
+                  { id: "shop", label: "Shopping", badge: shoppingUncheckedCount },
+                ]}
+                activeId={plannerMobileTab}
+                onSelect={setPlannerMobileTab}
+                accessibilityLabel="Plan sections"
+              />
             </div>
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
