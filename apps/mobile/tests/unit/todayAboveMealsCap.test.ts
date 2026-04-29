@@ -1,0 +1,138 @@
+/**
+ * Today above-meals cap — contract pins (mobile).
+ *
+ * Authority: `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5 #2.
+ * Source: `apps/mobile/app/(tabs)/index.tsx`
+ *
+ * The teardown's F1 finding called out that the Today screen had no
+ * editor: every audit added a card, nothing got deleted, and the
+ * above-meals composition swelled to 13 stacking blocks with multiple
+ * aspirational prompts visible at once. Top-5 #2 (2026-04-28) capped
+ * the composition at FOUR blocks (date header / hero / one context
+ * block / macro tiles) and folded the AI-sentinel pill into the hero
+ * card and the all-nutrients link into the macro-tiles section
+ * header.
+ *
+ * The cap is rule-by-convention without a test pin — and this is
+ * exactly the kind of invariant that quietly regresses across agent
+ * sweeps. This file source-pins each half of the cap so a future
+ * change that re-introduces a standalone block lights up CI.
+ *
+ * What's pinned:
+ *   - Each of the four context-block components (TodayFastingPill,
+ *     TodayEatAgainBanner, NorthStarBlockHost, TodayDeficitInsight)
+ *     renders AT MOST ONCE in `(tabs)/index.tsx` — they live inside a
+ *     single mutually-exclusive dispatch IIFE, never as separate
+ *     stacking conditionals.
+ *   - The "Includes N AI-estimated meals" sentinel text is NOT in
+ *     the host file (it moved into `TodayHero` via `aiSourcedCount`).
+ *   - The standalone "View all nutrients" Pressable is NOT in the
+ *     host file (it moved into `TodayDashboardMacroTiles`).
+ *   - The host renders the canonical 4-block primitives:
+ *     `<TodayDateHeader`, `<TodayHero`, `<TodayDashboardMacroTiles`,
+ *     `<TodayMealsSection` — once each.
+ *
+ * Web mirror: `tests/unit/todayAboveMealsCap.test.ts`.
+ */
+
+import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+const HOST_SRC = fs.readFileSync(
+  path.resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  "utf-8",
+);
+
+function countMatches(src: string, pattern: RegExp): number {
+  const m = src.match(pattern);
+  return m ? m.length : 0;
+}
+
+describe("Today above-meals cap (mobile) — context block dispatch", () => {
+  // Pattern note: `[\s/]` after the component name only matches real
+  // JSX renders (`<Foo `, `<Foo\n`, `<Foo/>`). It excludes JSX-style
+  // doc-comment references like `\`<Foo>\`` which would otherwise
+  // false-positive a `\b` boundary.
+
+  it("TodayFastingPill renders at most once (in the unified dispatch)", () => {
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
+  });
+
+  it("TodayEatAgainBanner renders at most once (in the unified dispatch)", () => {
+    expect(countMatches(HOST_SRC, /<TodayEatAgainBanner[\s/]/g)).toBeLessThanOrEqual(1);
+  });
+
+  it("NorthStarBlockHost renders at most once (in the unified dispatch)", () => {
+    expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
+  });
+
+  it("TodayDeficitInsight renders at most once (in the unified dispatch)", () => {
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("Today above-meals cap (mobile) — folded primitives", () => {
+  it("AI-sentinel 'Includes N AI-estimated meals' text is NOT in the host (folded into TodayHero)", () => {
+    // Pre-Phase-4 the host rendered a standalone <View> pill above
+    // the macro tiles with this exact copy. Phase 4 / Top-5 #2B
+    // moved the sentinel into the TodayHero card via the
+    // `aiSourcedCount` prop. If a future sweep re-adds the
+    // standalone pill, this pin fires.
+    expect(HOST_SRC).not.toMatch(/Includes \{?aiSourcedTodayCount/);
+    expect(HOST_SRC).not.toMatch(/Includes \{[^}]+\} AI-estimated meal/);
+  });
+
+  it("standalone 'View all nutrients' Pressable is NOT in the host (folded into TodayDashboardMacroTiles)", () => {
+    // Pre-Phase-4 the host rendered a centred <Pressable> with the
+    // text "View all nutrients" between the macro tiles and the
+    // meals section. Phase 4 / Top-5 #2C moved this into the
+    // TodayDashboardMacroTiles section header as a right-aligned
+    // "Nutrients" chevron link, surfaced via `showNutrientsLink` +
+    // `onPressNutrients` props. If a future sweep re-adds the
+    // standalone link, this pin fires. (Comment mentions of the
+    // string in the surrounding context are scrubbed; the pin
+    // matches any occurrence in source so doc-style comments stay
+    // out too.)
+    expect(HOST_SRC).not.toMatch(/View all nutrients/);
+  });
+});
+
+describe("Today above-meals cap (mobile) — canonical four primitives", () => {
+  it("renders <TodayDateHeader> exactly once", () => {
+    expect(countMatches(HOST_SRC, /<TodayDateHeader[\s/]/g)).toBe(1);
+  });
+
+  it("renders <TodayHero> exactly once", () => {
+    // The pattern excludes `<TodayHeroRing` and (deleted) variants
+    // because `[\s/]` enforces that the component name is followed
+    // by a word-terminating JSX character.
+    expect(countMatches(HOST_SRC, /<TodayHero[\s/]/g)).toBe(1);
+  });
+
+  it("renders <TodayDashboardMacroTiles> exactly once", () => {
+    expect(countMatches(HOST_SRC, /<TodayDashboardMacroTiles[\s/]/g)).toBe(1);
+  });
+
+  it("renders <TodayMealsSection> exactly once", () => {
+    expect(countMatches(HOST_SRC, /<TodayMealsSection[\s/]/g)).toBe(1);
+  });
+});
+
+describe("Today above-meals cap (mobile) — context dispatch shape", () => {
+  it("the context block uses an IIFE dispatch (single render path)", () => {
+    // The mutually-exclusive context block is an inline IIFE — the
+    // `(() => { ... })()` pattern in the JSX. This pin asserts the
+    // dispatch shape exists; if a future sweep replaces it with
+    // separate top-level conditionals (the pre-Phase-4 anti-
+    // pattern), the IIFE disappears and this fires.
+    //
+    // The pin matches any IIFE that returns one of the four
+    // context-block components — generous enough to survive
+    // refactors, strict enough to catch the regression.
+    const hasIIFE = /\(\(\)\s*=>\s*\{[\s\S]+?<(TodayFastingPill|TodayEatAgainBanner|NorthStarBlockHost|TodayDeficitInsight)/.test(
+      HOST_SRC,
+    );
+    expect(hasIIFE).toBe(true);
+  });
+});
