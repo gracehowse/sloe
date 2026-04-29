@@ -68,7 +68,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
               paddingVertical: 6,
               borderRadius: Radius.sm,
               alignItems: "center",
-              backgroundColor: activeMealSlot === s ? Accent.primary : borderColor + "40",
+              backgroundColor: activeMealSlot === s ? Accent.primary : borderColor + "30",
             }}
           >
             <Text style={{ fontSize: 11, fontWeight: "700", color: activeMealSlot === s ? "#fff" : textSecondaryColor }}>

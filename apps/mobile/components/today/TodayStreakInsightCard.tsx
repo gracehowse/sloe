@@ -88,8 +88,8 @@ export function TodayStreakInsightCard({
               paddingVertical: 6,
               borderRadius: Radius.md,
               borderWidth: 1,
-              borderColor: Accent.cyan + "59",
-              backgroundColor: Accent.cyan + "1A",
+              borderColor: Accent.cyan + "30",
+              backgroundColor: Accent.cyan + "18",
             }}
           >
             <Snowflake size={13} color={Accent.cyan} strokeWidth={1.75} />

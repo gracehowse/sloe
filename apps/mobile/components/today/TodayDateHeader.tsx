@@ -176,7 +176,7 @@ export function TodayDateHeader({
               width: 32,
               height: 32,
               borderRadius: 8,
-              backgroundColor: Accent.primary + "10",
+              backgroundColor: Accent.primary + "08",
               alignItems: "center",
               justifyContent: "center",
             }}

@@ -32,9 +32,9 @@ export function TodayEatAgainBanner({
     <View
       style={{
         marginBottom: Spacing.md,
-        backgroundColor: Accent.primary + "10",
+        backgroundColor: Accent.primary + "08",
         borderWidth: 1,
-        borderColor: Accent.primary + "40",
+        borderColor: Accent.primary + "30",
         borderRadius: Radius.lg,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,

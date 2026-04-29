@@ -87,11 +87,11 @@ export function TodayDeficitInsight({
   return (
     <View
       style={{
-        backgroundColor: Accent.primary + "12",
+        backgroundColor: Accent.primary + "08",
         borderRadius: Radius.md,
         padding: Spacing.md,
         borderWidth: 1,
-        borderColor: Accent.primary + "25",
+        borderColor: Accent.primary + "30",
       }}
     >
       <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>

@@ -2269,7 +2269,7 @@ export default function TrackerScreen() {
 
         addFoodBtn: {
           borderWidth: 1,
-          borderColor: Accent.primary + "60",
+          borderColor: Accent.primary + "30",
           borderRadius: Radius.md,
           paddingVertical: 14,
           alignItems: "center",
@@ -2306,7 +2306,7 @@ export default function TrackerScreen() {
           paddingVertical: Spacing.md,
           paddingHorizontal: Spacing.lg,
           borderWidth: 1,
-          borderColor: Accent.primary + "40",
+          borderColor: Accent.primary + "30",
         },
         offlineBannerText: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.text },
 
@@ -3102,7 +3102,7 @@ export default function TrackerScreen() {
         {loadError && (
           <Pressable
             onPress={() => { setLoadError(null); void loadJournal(); }}
-            style={{ backgroundColor: Accent.destructive + "15", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+            style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
             <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
             <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>

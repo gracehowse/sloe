@@ -115,7 +115,7 @@ export function TodayEditMealModal(props: TodayEditMealModalProps) {
                   paddingVertical: 6,
                   borderRadius: Radius.sm,
                   alignItems: "center",
-                  backgroundColor: editSlot === s ? Accent.primary : borderColor + "40",
+                  backgroundColor: editSlot === s ? Accent.primary : borderColor + "30",
                 }}
               >
                 <Text style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : textSecondaryColor }}>
@@ -213,7 +213,7 @@ export function TodayEditMealModal(props: TodayEditMealModalProps) {
                 justifyContent: "center",
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.destructive + "40",
+                borderColor: Accent.destructive + "30",
                 paddingVertical: 14,
               }}
               onPress={onDelete}

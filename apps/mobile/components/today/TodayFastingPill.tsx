@@ -32,7 +32,7 @@ export function TodayFastingPill({ startedAt, nowTick, onPress }: TodayFastingPi
         paddingVertical: 6,
         paddingHorizontal: Spacing.lg,
         alignSelf: "center",
-        backgroundColor: Accent.primary + "15",
+        backgroundColor: Accent.primary + "18",
         borderRadius: Radius.md,
         marginVertical: Spacing.xs,
       }}

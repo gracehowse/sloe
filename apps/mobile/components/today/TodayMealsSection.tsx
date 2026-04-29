@@ -188,7 +188,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               paddingHorizontal: 10,
               paddingVertical: 5,
               borderRadius: 999,
-              backgroundColor: Accent.primary + "12",
+              backgroundColor: Accent.primary + "08",
             }}
           >
             <Copy size={12} color={Accent.primary} />
@@ -300,9 +300,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         borderRadius: 13,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: Accent.primary + "14",
+                        backgroundColor: Accent.primary + "18",
                         borderWidth: 1,
-                        borderColor: Accent.primary + "40",
+                        borderColor: Accent.primary + "30",
                       }}
                     >
                       <Plus size={16} color={Accent.primary} />
@@ -335,7 +335,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           borderRadius: 999,
                           backgroundColor: Accent.primary + "18",
                           borderWidth: 1,
-                          borderColor: Accent.primary + "40",
+                          borderColor: Accent.primary + "30",
                           // F-80 — cap the chip so it cannot starve the title
                           // column when the meal name is long. `flexShrink: 1`
                           // lets it compress further if both columns are
@@ -475,9 +475,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     marginVertical: 6,
                     padding: 12,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary + "0D",
+                    backgroundColor: Accent.primary + "08",
                     borderWidth: 1,
-                    borderColor: Accent.primary + "40",
+                    borderColor: Accent.primary + "30",
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
