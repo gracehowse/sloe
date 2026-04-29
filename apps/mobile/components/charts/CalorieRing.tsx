@@ -321,12 +321,21 @@ export default function CalorieRing({
         >
           {animatedCenterValue}
         </Text>
+        {/* Center label ("REMAINING" / "LOGGED" / "OVER"). Grace
+            2026-04-28: the 10pt size + letterSpacing 0.8 ran ~54px
+            wide, which clipped the inner-most macro ring (r=32) at
+            the label's y position. Solution: shrink + tighten when
+            expanded so the text fits cleanly inside the inner-most
+            ring band. At fontSize 8 with no extra tracking the word
+            "REMAINING" is ~38px wide → ±19 from CX, well inside the
+            inner ring's ~±27 band at y. Collapsed mode keeps the
+            original 10pt + tracking for readability. */}
         <Text
           style={{
-            fontSize: 10,
+            fontSize: expanded ? 8 : 10,
             fontWeight: "700",
             color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
-            letterSpacing: 0.8,
+            letterSpacing: expanded ? 0 : 0.8,
             marginTop: 1,
           }}
         >

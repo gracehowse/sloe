@@ -245,8 +245,18 @@ function DailyRing({
         >
           {animatedCenterValue}
         </span>
+        {/* Centre label ("REMAINING" / "LOGGED" / "OVER"). Grace
+            2026-04-28: mobile flagged the label clipping inner-most
+            macro ring at the label's y. Web's ring is bigger
+            (160 vs 140) so the inner-most macro ring at r≈38 has
+            more horizontal room at the label's y (~±33 vs the label
+            width of ~54px → ±27, fits with margin). Web doesn't
+            have the same overlap, but for symmetry with the mobile
+            shrink we use a smaller `text-[9px]` + drop tracking
+            when expanded so the label always sits comfortably
+            inside the inner ring instead of grazing it. */}
         <span
-          className="text-[11px] font-semibold mt-0.5 uppercase tracking-wider"
+          className={`font-semibold mt-0.5 uppercase ${expanded ? "text-[9px] tracking-normal" : "text-[11px] tracking-wider"}`}
           style={{ color: centerLabelColor ?? "var(--muted-foreground)" }}
         >
           {centerLabel}
