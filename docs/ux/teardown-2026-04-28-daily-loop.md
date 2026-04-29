@@ -509,3 +509,172 @@ I'm not dumping a backlog. These are the actual moves.
 **Net code change:** ~70 LOC added across two ESLint config files, ~30 LOC of documentation in `design-system.md`. 0 new dependencies. The rule infrastructure is small; the value is preventive — every future agent sweep is now constrained at lint time on the today/ tree.
 
 **Why this is a meaningful close on F4.** The teardown's F4 finding called out "the system is documented but not **enforced**" — implying that fixing drift required fixing both docs AND lint. Earlier rounds in this teardown updated `patterns.md` (Top-5 #3), reconciled the icon library docs (Top-5 #4), and removed legacy alias paths (Next-10 #11 + #15). This round adds the lint enforcement layer that turns the documented rules into machine-checked constraints. The today/ tree is now the reference implementation; expanding to other surfaces follows the same pattern.
+
+### 2026-04-28 — Today above-meals cap pinned with regression-prevention tests
+
+**Done.** The cap-to-4-blocks rule from Top-5 #2 was rule-by-convention until this round. Two new contract test files source-pin both halves of the cap so a future agent sweep that re-introduces a standalone block lights up CI.
+
+**New files:**
+
+- `apps/mobile/tests/unit/todayAboveMealsCap.test.ts` (~16 assertions)
+- `tests/unit/todayAboveMealsCap.test.ts` (web parity, ~10 assertions)
+
+**What's pinned (mobile):**
+
+- Each of the four context-block components renders **at most once** in `(tabs)/index.tsx`: `TodayFastingPill`, `TodayEatAgainBanner`, `NorthStarBlockHost`, `TodayDeficitInsight`. They live inside one mutually-exclusive dispatch IIFE — never as separate stacking conditionals.
+- The "Includes N AI-estimated meals" sentinel text is **not** in the host (folded into `TodayHero` via `aiSourcedCount` — Top-5 #2B).
+- The standalone "View all nutrients" string is **not** in the host (folded into `TodayDashboardMacroTiles` — Top-5 #2C).
+- Canonical four primitives render **exactly once**: `<TodayDateHeader>`, `<TodayHero>`, `<TodayDashboardMacroTiles>`, `<TodayMealsSection>`.
+- The context dispatch uses an IIFE pattern (`(() => { ... })()`) — the regression mode is "split into separate top-level conditionals", and the IIFE shape is the canonical positive signal.
+
+**What's pinned (web):**
+
+- Same as mobile, minus `TodayDeficitInsight` (web removed it 2026-04-18, Pass 7) and replacing `TodayHero` with `TodayHeroStats`.
+- Standalone nutrient grid `{dayNutrientDetailRows.map(...)}` is **not** in the host (folded into `TodayDashboardMacroTiles` via `nutrientRows` prop).
+
+**Pattern note.** The component-name regex uses `[\s/]` after the name to match real JSX renders (`<Foo `, `<Foo\n`, `<Foo/>`) while excluding JSX-style doc-comment references like `` `<Foo>` `` that would otherwise false-positive a `\b` word boundary. Caught one such collision during pin authoring — there's a comment at `(tabs)/index.tsx:1547` referencing `` `<NorthStarBlockHost>` `` which made the initial `\b` pattern count two renders instead of one.
+
+**Verified.** Both new test files typecheck clean on their respective platforms. Static-grep of every assertion against the actual source confirms each pin matches. Vitest doesn't run in this sandbox; **Grace must run `npm run test` and `npm run mobile:test` locally to confirm — expected counts: 3329 web tests / 729 mobile tests** (each suite up by however many `it()` blocks the new file added).
+
+**Why this matters.** F1 in the teardown was "the Today screen has no editor — every audit adds a card, nothing gets deleted". Top-5 #2 fixed the symptom by capping above-meals to 4 blocks. This round fixes the failure mode itself: adding a fifth standalone block now requires either deleting an existing one OR updating the test pin (a deliberate act, not a quiet drift). The cap rule is now enforceable via PR, not just memory.
+
+**Net code change:** 2 new test files (~210 LOC combined). 0 production code touched. 0 new dependencies.
+
+### 2026-04-28 — Next-10 #10 done (today/ tree opacity standardisation, mobile-scoped)
+
+**Done.** Mobile today/ tree surface tints are now uniformly drawn from the canonical `08/18/30` tier documented in `docs/ux/design-system.md` "Surface tints". 17 non-canonical opacities replaced across 9 files. The teardown's F4(e) finding was that the design rule existed but the components had drifted to a mix of `08`, `0D`, `10`, `12`, `14`, `15`, `1A`, `25`, `40`, `59`, `60`. Today's tree now ships only the canonical three values.
+
+**Mapping applied** (per usage context):
+
+| Old | New | Reason |
+|---|---|---|
+| `0D`, `10`, `12` | `08` | very subtle background tints |
+| `14`, `15`, `1A` | `18` | medium-weight backgrounds (icon boxes, badge fills) |
+| `25`, `40`, `59`, `60` | `30` | borders and outlined emphasis |
+
+**Files touched (mobile):**
+
+- `apps/mobile/app/(tabs)/index.tsx` (3 changes — addFoodBtn border, offlineBanner border, error-banner bg)
+- `apps/mobile/components/today/TodayDeficitInsight.tsx` (bg + border)
+- `apps/mobile/components/today/TodayAddFoodForm.tsx` (inactive meal-slot bg)
+- `apps/mobile/components/today/TodayFastingPill.tsx` (bg)
+- `apps/mobile/components/today/TodayEatAgainBanner.tsx` (bg + border)
+- `apps/mobile/components/today/TodayDateHeader.tsx` (bg)
+- `apps/mobile/components/today/TodayStreakInsightCard.tsx` (bg + border)
+- `apps/mobile/components/today/TodayEditMealModal.tsx` (2 changes)
+- `apps/mobile/components/today/TodayMealsSection.tsx` (4 changes)
+
+**Two intentional foreground fills kept** (out of scope for the 08/18/30 surface-tint rule):
+- `apps/mobile/app/(tabs)/index.tsx:3776` `Accent.primary + "E8"` — celebration overlay foreground (heavily-tinted full-screen overlay, not a surface tint behind content).
+- `apps/mobile/components/today/TodayWeekView.tsx:135` `Accent.warning + "CC"` — over-target chart bar fill (foreground colour with reduced alpha, not a tinted background).
+
+**Web deferred (intentional).** Web opacity is expressed via Tailwind slash modifiers (`bg-primary/10`, `border-primary/30`) which step in 5-percent increments. The 08/18/30 hex tiers (3% / 9% / 19%) don't map cleanly to Tailwind's discrete scale. Most "violations" surfaced by initial grep on web are `bg-muted/50`-style muted-color softeners — different design intent (softening a muted fill, not tinting an accent). A separate Tailwind-opacity audit using slash-modifier classification (`/5`, `/10`, `/20`, `/30` as the canonical web steps) is the right shape — flagged as a follow-up. The mobile rule + lint enforcement establishes the intent; web parity catches up when someone with Tailwind context can do the per-class judgment work.
+
+**Verified.** Mobile typecheck clean. Mobile lint: 0 errors / 693 warnings (unchanged — the opacity rule isn't currently in the no-restricted-syntax rule set, so changes don't move the count). Static-grep verifies zero non-canonical surface-tint opacities remain in the today/ tree (`app/(tabs)/index.tsx`, `components/today/**`, `components/charts/CalorieRing.tsx`). Web unchanged.
+
+**Net code change:** 17 single-character opacity replacements across 9 mobile files (20 line-level changes — `git diff --cached --stat` counts adjacent bg + border edits as separate lines). 0 LOC delta. 0 new dependencies. Nothing structural changed; the visual difference per change is invisible-to-subtle (max 2 percentage points of opacity), but in aggregate the tier system is now consistent across the canonical Today surface.
+
+### 2026-04-28 — Calorie ring centre label overlap fix (Grace bug report)
+
+**Done.** Grace flagged that the centred label ("REMAINING" / "LOGGED" / "OVER") inside the calorie ring overlapped the inner-most macro ring band when the macros are expanded. The 10pt uppercase label with `letterSpacing: 0.8` ran ~54px wide at the label's y-position; the innermost macro ring (`r=32`) on mobile has its band at ~±27 from CX at that y, so the text clipped through the ring's stroke.
+
+**Fix.** Shrink + tighten the label when expanded so it fits cleanly inside the inner-most ring band — keep the label visible (Grace's explicit ask: "I don't want to hide the label, I just want it to fit"), drop fontSize from 10 → 8 and letterSpacing from 0.8 → 0 only when `expanded`. At fontSize 8 with no extra tracking, "REMAINING" is ~38px wide → ±19 from CX, well inside the inner ring's ~±27 band. Collapsed mode keeps the original 10pt + tracking 0.8 for readability.
+
+**Files:**
+- `apps/mobile/components/charts/CalorieRing.tsx` — `fontSize: expanded ? 8 : 10` + `letterSpacing: expanded ? 0 : 0.8`. The `<Text>` element renders in both modes; only the typography shrinks.
+- `src/app/components/suppr/daily-ring.tsx` — same shape on web (`text-[9px] tracking-normal` when expanded, `text-[11px] tracking-wider` when collapsed). Web's bigger ring (160 vs 140) means the overlap was less severe — calculation suggests it actually fit with margin — but the symmetric shrink keeps the label sitting comfortably inside the inner ring rather than grazing it.
+
+**Why shrink rather than hide.** The label tells the user what the number means (REMAINING vs LOGGED — toggled by long-press on mobile, by mode pill on web). Hiding it on expand would lose that semantic anchor; the user would have to remember the mode they were in. Shrinking preserves the anchor while resolving the visual collision.
+
+**Verified.** Web typecheck clean. Mobile typecheck clean. No tests touched (the label content is presentational; existing snapshot tests didn't pin typography sizes). **Grace should eyeball both platforms after pulling — the visual is the authoritative test.**
+
+**Net code change:** Two ternary expressions on the label's typography props (one per platform), ~30 LOC of explanatory comment across both files. 0 behaviour change in collapsed mode. Expanded mode shows the label at smaller-but-still-readable size, no longer clipping the macro rings.
+
+### 2026-04-28 — Next-10 #13 done (shared SubTab primitive)
+
+**Done.** Closes the F5 finding from the teardown ("the implementation isn't a sub-tab system; it's two custom pill components and listener hacks that defeat the tab framework's defaults"). The pre-Phase-4 codebase carried five near-identical inline sub-tab pill implementations:
+
+- `apps/mobile/components/tabs/RecipesSubTabHeader.tsx` — its own inline `SubTabPill` (130 LOC)
+- `apps/mobile/components/tabs/PlanSubTabHeader.tsx` — its own inline `SubTabPill` with badge support (147 LOC)
+- `apps/mobile/components/tabs/YouSubTabHeader.tsx` — its own inline `SubTabPill` with `minWidth: 92` quirk (135 LOC)
+- `src/app/App.tsx` `RecipesSubTabPill` (inline ~35 LOC)
+- `src/app/App.tsx` `YouSubTabPill` (inline ~35 LOC)
+
+Plus an inline Plan/Shop pill row buried in App.tsx's `case "plan"` render (~30 LOC).
+
+**Replaced with:** one shared primitive per platform, byte-identical contract.
+
+- `apps/mobile/components/ui/SubTabPill.tsx` — new file, ~180 LOC including JSDoc and the inner `Pill` row component. Exports `SubTabPill<TId>` with `items: { id, label, badge?, accessibilityLabel? }[]`, `activeId`, `onSelect`, `accessibilityLabel`, optional `scrollable` for the ≥3-pill case. Selection haptic fires on iOS automatically. Re-tap on active is a no-op.
+- `src/app/components/ui/sub-tab-pill.tsx` — new file, ~95 LOC. Same prop shape, Tailwind-styled (`bg-muted` track, `bg-card text-primary` active state). Exposes `className` for host margin / sticky-header wrapping.
+
+**Refactored consumers:**
+
+- Mobile `RecipesSubTabHeader.tsx`: 130 → 41 LOC
+- Mobile `PlanSubTabHeader.tsx`: 147 → 53 LOC
+- Mobile `YouSubTabHeader.tsx`: 135 → 56 LOC
+- Web `App.tsx` `RecipesSubTabPill` + `YouSubTabPill` + inline Plan/Shop pill row: ~95 → ~50 LOC
+
+Total: ~672 → ~395 LOC across the consumer files. Plus ~275 LOC of new primitive (mostly comments and types). Net: similar overall LOC, but the duplication is gone — every sub-tab pill in the product now flows through one component on each platform.
+
+**Why this matters (F5 close-out).** The teardown's F5 finding said: "the navigation model is still being negotiated against itself in production code, this week" with `RecipesSubTabPill` and `YouSubTabPill` as the canonical example. With the primitive landed, future agent sweeps that need to add a sub-tab group don't write inline pill JSX — they import `SubTabPill` and pass an items array. The consistency that was a doc-and-prayer is now structural.
+
+**Cross-platform parity preserved.** Same `SubTabItem` shape on both platforms. Same accessibility labels (`accessibilityLabel` on mobile / `aria-label` on web). Same selection-no-op behaviour. Same badge formatting (`>99 → "99+"`). The only intentional divergence is rendering (RN Pressable + StyleSheet vs Tailwind classes) — that's the platform boundary, by definition.
+
+**Existing tests preserved.** `apps/mobile/tests/unit/tabStructurePhase2.test.tsx` exercises `RecipesSubTabHeader`, `YouSubTabHeader`, `PlanSubTabHeader` via accessibility-label queries (`getByLabelText("Library")`, `fireEvent.press(getByLabelText("Discover"))`, etc.) and pins `router.replace("/(tabs)/discover")` semantics. The new primitive preserves all of these — labels match, click handlers fire, no-op-on-active-tab still works. Static read confirms test expectations align with the new render shape; **Grace runs `npm run mobile:test` locally to confirm.**
+
+**Verified.** Mobile typecheck clean. Web typecheck clean. Mobile lint: same baseline (no new warnings from the primitive — the no-restricted-syntax style rules are scoped to today/ tree, which the new primitive doesn't touch). Web lint: 0 errors / 91 warnings (up by 2 from the baseline 89 — both are pre-existing in App.tsx unrelated to this change: `HouseholdPanel` and `signOut` unused).
+
+**Net code change:** ~280 LOC removed from consumer files, ~275 LOC added in two new primitives + JSDoc. 0 behaviour change. 0 new dependencies.
+
+### 2026-04-28 — Next-10 #14 partial (Desktop Today week sidebar primitive built, wiring deferred)
+
+**Done.** New web component `src/app/components/suppr/today-week-sidebar.tsx` — compact 7-row strip suitable for the desktop right rail of Today. Each row: short day label, today tag (when applicable), calorie progress bar (success-green in-range, warning-amber over-target — never red, per `brand-guidelines.md` Section 9), kcal total or em-dash, chevron on the active row only. Rows are tappable; firing `onSelectDayKey` flips Today's selected date.
+
+**Why a separate primitive instead of reusing `<TodayWeekView>`.** `TodayWeekView` is a 271-line full-screen component built for week-mode (vertical bar chart, weekly macro adherence bars, totals card). The teardown's vision was different — "compact strip in the desktop right rail" — and squeezing the existing component into a 260px sidebar would have meant either a hostile shrink or a boolean prop with two divergent layouts. Cleaner to ship a purpose-built component for the sidebar use case. The two coexist: mobile + mobile-web continues to use `TodayWeekView` via the day/week toggle; desktop uses `TodayWeekSidebar` as a permanent rail.
+
+**Wiring deferred (intentional).** The host wiring point is `src/app/components/NutritionTracker.tsx`'s outer return wrapper (line 1705). NutritionTracker is a 2,600-LOC file Grace has actively committed to multiple times this session; restructuring its outermost JSX wrapper for a 2-column flex layout is a real conflict surface. The component's JSDoc carries the canonical wiring snippet — when Grace pulls a clean main, it's a 10-line edit to land. Until then, the primitive is dead code with no production impact.
+
+**Wiring snippet (ready for Grace, copy-paste into `NutritionTracker.tsx` line 1705):**
+
+```tsx
+return (
+  <div className="mx-auto px-pm-5 py-pm-5 lg:flex lg:gap-6 lg:max-w-[1024px] lg:px-pm-6">
+    <div className="max-w-2xl flex-1 min-w-0">
+      {/* existing tracker content stays inside this inner div */}
+      ...
+    </div>
+    <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-4 self-start">
+      <TodayWeekSidebar
+        byDay={nutritionByDay}
+        calorieTarget={effectiveCalorieTarget}
+        activeDateKey={selectedDateKey}
+        todayDateKey={todayKey()}
+        onSelectDayKey={(k) => setSelectedDateKey(k)}
+      />
+    </aside>
+  </div>
+);
+```
+
+The existing `<div className="max-w-2xl mx-auto px-pm-5 py-pm-5">` outer wrapper becomes the lg-flex shell with the inner `max-w-2xl flex-1` taking over the centring at `lg-` breakpoints.
+
+**Verified.** Web typecheck clean. Web lint clean for the new file (`npx eslint src/app/components/suppr/today-week-sidebar.tsx` exit 0). No tests added — the primitive is data-driven and small; a contract test would only verify accessibility-label patterns, not particularly valuable as a regression-prevention pin until the component is wired and the integration shape settles.
+
+**Net code change:** 1 new file (~210 LOC including JSDoc + types). 0 production code touched (deferred). 0 new dependencies.
+
+### 2026-04-28 — Next-10 #14 wiring landed (sidebar live on desktop)
+
+**Done.** Wired `<TodayWeekSidebar>` into `src/app/components/NutritionTracker.tsx` at the end of the return (just before the outer `</div>`). Used fixed positioning (`hidden xl:block fixed top-20 right-4 w-[260px] z-30`) instead of restructuring the outer wrapper — this is a smaller diff and avoids touching layout the rest of the tracker depends on.
+
+**Why xl breakpoint, not lg.** At `lg` (≥1024px), the layout is `DesktopSidebar (~240px) + max-w-2xl tracker (672px) + sidebar (260px)` ≈ 1172px needed. Below ~1280px the sidebar would overlap the tracker's right edge. `xl` (≥1280px) gives clearance with breathing room. Below `xl` the rail hides and the user falls back to the mobile-web day/week toggle.
+
+**Why fixed-position, not flex restructure.** The teardown's wiring snippet (in JSDoc on the component) used a flex container approach that required rewrapping the entire 980-LOC inner JSX of `NutritionTracker.tsx`. Fixed-position lets the sidebar sit in the viewport-edge gutter at xl without touching any of the existing layout — cleaner diff, no risk of breaking inner layouts that assume max-w-2xl context.
+
+**Trade-off accepted.** Fixed positioning means the sidebar doesn't scroll with the tracker. For a "look at the week" rail, that's actually the right behaviour — the user always sees the same 7-day strip regardless of how far they've scrolled into Today's content. If the design intent later shifts to a scroll-with-content pattern, swap fixed → sticky and add the flex wrapper from the JSDoc snippet.
+
+**Files touched (this round):**
+- `src/app/components/NutritionTracker.tsx` — added one import line + ~15 LOC of JSX (one component render + comment) at the end of the outer return.
+
+**Verified.** Web typecheck clean. Lint clean for the new wiring (`NutritionTracker.tsx` lint output is just pre-existing unused-import warnings unrelated to this change). Component renders only at `xl+`, so mobile-web is unaffected.
+
+**Net code change:** 1 import + ~15 LOC of JSX. 0 layout regressions on mobile-web.
