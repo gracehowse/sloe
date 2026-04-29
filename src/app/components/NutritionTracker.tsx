@@ -66,6 +66,7 @@ import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
+import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -2682,6 +2683,23 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           setLogSheetOpen(false);
           setAddOpen(true);
         }}
+      />
+
+      {/* Desktop Today right rail (Next-10 #14, 2026-04-28).
+          Fixed-position sidebar showing the last 7 days at xl+
+          (≥1280px) breakpoint where there's enough horizontal room
+          to clear both the DesktopSidebar nav (left) and the
+          centred max-w-2xl tracker (middle). Below xl, hidden — the
+          mobile-web user has the day/week toggle for the same
+          information. Reference:
+          `docs/ux/teardown-2026-04-28-daily-loop.md` Next-10 #14. */}
+      <TodayWeekSidebar
+        className="hidden xl:block fixed top-20 right-4 w-[260px] z-30"
+        byDay={nutritionByDay}
+        calorieTarget={effectiveCalorieTarget}
+        activeDateKey={selectedDateKey}
+        todayDateKey={todayKey()}
+        onSelectDayKey={(k) => setSelectedDateKey(k)}
       />
     </div>
   );
