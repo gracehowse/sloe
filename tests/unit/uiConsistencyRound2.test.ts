@@ -20,10 +20,26 @@ describe("Round 2 — text / casing fixes", () => {
     expect(SRC).not.toMatch(/Make this your usual \{slot\.toLowerCase\(\)\}/);
   });
 
-  it("D17: 'View all nutrients' caption no longer appends a confusing count", () => {
-    const SRC = read("apps/mobile/app/(tabs)/index.tsx");
-    expect(SRC).toMatch(/View all nutrients\b\s*<\/Text>/);
-    expect(SRC).not.toMatch(/View all nutrients \(\{dayNutrientDetailRowsWithoutMacroDupes\.length\}\)/);
+  it("D17: nutrients link migrated into the macro tiles header (Top-5 #2C, 2026-04-28); no confusing count anywhere", () => {
+    // Round 2 (2026-04-26) dropped a parenthesised count from the
+    // "View all nutrients (N)" link. Top-5 #2C (2026-04-28, see
+    // `docs/ux/teardown-2026-04-28-daily-loop.md`) went further:
+    // the standalone centred link was moved out of the host
+    // composition and into the macro-tiles section header as a
+    // small right-aligned "Nutrients" chevron link, opened via
+    // `showNutrientsLink` + `onPressNutrients` props on
+    // TodayDashboardMacroTiles. The pin asserts both halves:
+    // (1) the old "View all nutrients" string is gone from the
+    // host file, and (2) the new "Nutrients" label exists inside
+    // TodayDashboardMacroTiles.tsx. Neither file carries the
+    // count-appended variant the original audit flagged.
+    const HOST = read("apps/mobile/app/(tabs)/index.tsx");
+    expect(HOST).not.toMatch(/View all nutrients/);
+    expect(HOST).not.toMatch(/dayNutrientDetailRowsWithoutMacroDupes\.length\}\)/);
+
+    const TILES = read("apps/mobile/components/today/TodayDashboardMacroTiles.tsx");
+    expect(TILES).toMatch(/Nutrients\b\s*<\/Text>/);
+    expect(TILES).not.toMatch(/Nutrients \(\{[^}]+\.length\}\)/);
   });
 
   it("D19: shopping list screen title is Sentence Case (matches other top-level screens)", () => {

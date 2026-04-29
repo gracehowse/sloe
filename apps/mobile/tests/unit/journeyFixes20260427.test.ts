@@ -211,29 +211,40 @@ describe("Fix 4 — Profile target editor matches web parity", () => {
   });
 });
 
-// ── Fix 5 — Eat-again banner above hero on both platforms ────────────
+// ── Fix 5 — Eat-again banner placement on both platforms ────────────
+//
+// Phase 3a (2026-04-27) put the eat-again banner ABOVE the hero so an
+// active suggestion shaved a scroll. Phase 4 / Top-5 #2 (2026-04-28)
+// supersedes that placement — the banner is now part of a mutually-
+// exclusive context-block dispatch BELOW the hero (priority: fasting
+// > eat-again > north-star > deficit). The cap rule is "never more
+// than one prompt above the meals" — having eat-again above plus a
+// deficit/north-star prompt below was creating two aspirational
+// prompts at once. The pin asserts eat-again renders AFTER the hero
+// on both platforms. Reference:
+// `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #2.
 
-describe("Fix 5 — Phase 3a: eat-again banner renders above the Today hero", () => {
-  it("mobile composition root puts TodayEatAgainBanner before TodayHero", () => {
+describe("Fix 5 — Phase 4 (2026-04-28): eat-again banner is part of the post-hero context block", () => {
+  it("mobile composition root puts TodayEatAgainBanner after TodayHero", () => {
     const eatIdx = SRC.today.indexOf("<TodayEatAgainBanner");
-    // `<TodayHero` would match `useState<TodayHeroVariant>` higher up
-    // in the file. Pin to the JSX prop signature
-    // (`<TodayHero\n              variant=`) for an unambiguous match
-    // against the actual hero element render call.
-    const heroMatch = SRC.today.match(/<TodayHero[\s\n]+variant=/);
+    // Pin to the JSX prop signature (`<TodayHero\n  consumed=`) so we
+    // match the actual hero render call, not an interface or type
+    // declaration. `consumed` is TodayHero's first prop (Phase 3,
+    // D-2026-04-27-03 finished — variant picker removed).
+    const heroMatch = SRC.today.match(/<TodayHero[\s\n]+consumed=/);
     expect(eatIdx).toBeGreaterThan(0);
     expect(heroMatch).not.toBeNull();
     const heroIdx = heroMatch!.index ?? -1;
     expect(heroIdx).toBeGreaterThan(0);
-    expect(eatIdx).toBeLessThan(heroIdx);
+    expect(eatIdx).toBeGreaterThan(heroIdx);
   });
 
-  it("web NutritionTracker puts TodayEatAgainBanner before TodayHeroStats", () => {
+  it("web NutritionTracker puts TodayEatAgainBanner after TodayHeroStats", () => {
     const eatIdx = SRC.webTracker.indexOf("<TodayEatAgainBanner");
     const heroIdx = SRC.webTracker.indexOf("<TodayHeroStats");
     expect(eatIdx).toBeGreaterThan(0);
     expect(heroIdx).toBeGreaterThan(0);
-    expect(eatIdx).toBeLessThan(heroIdx);
+    expect(eatIdx).toBeGreaterThan(heroIdx);
   });
 
   it("mobile keeps the conditional gate (no banner when there's no recommendation)", () => {

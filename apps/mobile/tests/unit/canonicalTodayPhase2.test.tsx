@@ -136,17 +136,22 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).toMatch(/<StreakPip\s+days=\{streakDays\}/);
   });
 
-  it("passes hidePicker to <TodayHero> so the variant picker is suppressed", () => {
-    // The exact JSX may shift; pin "hidePicker" appearing as a prop on
-    // TodayHero rather than the precise indentation.
-    expect(indexSrc).toMatch(/<TodayHero[\s\S]+?hidePicker[\s\S]+?\/>/);
-  });
-
-  it("locks the heroVariant to 'ring' (no AsyncStorage hydration of bar/number)", () => {
-    expect(indexSrc).toContain('const heroVariant: TodayHeroVariant = "ring"');
-    // The legacy AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY) call
-    // must be gone — its replacement is a no-op setHeroVariant.
+  it("Phase 3 (2026-04-28): the variant picker has been removed entirely (no variant / hidePicker / onVariantChange props)", () => {
+    // Phase 2 set `hidePicker={true}` and pinned `heroVariant: "ring"`
+    // as a hedge while the bar / number variant components were still
+    // in the tree. Phase 3 (D-2026-04-27-03 finished) deletes the
+    // variant components and turns TodayHero into a thin wrapper
+    // around TodayHeroRing. After this change, the variant prop, the
+    // hidePicker prop, and the heroVariant local variable should ALL
+    // be absent from the composition root.
+    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?variant=\{/);
+    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?hidePicker/);
+    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?onVariantChange/);
+    expect(indexSrc).not.toMatch(/heroVariant: TodayHeroVariant/);
     expect(indexSrc).not.toContain('AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY)');
+    // TodayHero is still rendered — pin the open tag so a future
+    // refactor that removes the hero entirely fails this test loudly.
+    expect(indexSrc).toMatch(/<TodayHero[\s\n]+consumed=/);
   });
 
   it("no longer renders <TodayQuickLogStrip> in the composition root", () => {

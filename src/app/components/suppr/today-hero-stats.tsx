@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Sparkles } from "lucide-react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import { TODAY_STAT_LABELS } from "../../../lib/copy/today";
@@ -40,20 +41,54 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   /** Total burn = basal + active, from Apple Health where synced. 0
    *  when Health is not connected. */
   burnedKcal: number;
+  /** Phase 4 / Top-5 #2 (2026-04-28) — count of AI-estimated meals
+   *  on the active day. When > 0, an inline caption renders below
+   *  the hero ("Includes N AI-estimated meals"). Replaces the
+   *  standalone pill that used to float between the hero and the
+   *  macro tiles. Mirror of the mobile `aiSourcedCount` prop on
+   *  `TodayHero`. */
+  aiSourcedCount?: number;
 }
 
 export function TodayHeroStats(props: TodayHeroStatsProps) {
+  const aiCount = props.aiSourcedCount ?? 0;
   return (
     <>
       {/* Mobile-web — keep the existing TodayHeroRing experience. */}
       <div className="md:hidden">
         <TodayHeroRing {...extractRingProps(props)} />
+        {aiCount > 0 ? <AiSentinelInline count={aiCount} className="-mt-2 mb-4" /> : null}
       </div>
 
       {/* Desktop — bare ring + 2×2 tiles, mode toggle absolutely
           positioned so it doesn't affect ring-column height. */}
       <DesktopHeroStats {...props} />
     </>
+  );
+}
+
+/**
+ * AiSentinelInline — small "Includes N AI-estimated meals" pill.
+ * Phase 4 / Top-5 #2 (2026-04-28) folds this inline beneath the hero
+ * (mobile-web + inside the desktop hero card) so the user-facing
+ * signal survives without occupying its own above-meals block.
+ */
+function AiSentinelInline({
+  count,
+  className = "",
+}: {
+  count: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`mx-auto inline-flex items-center gap-1.5 rounded-full bg-source-ai/[0.08] px-3 py-1.5 text-[11px] font-medium text-muted-foreground ${className}`}
+      role="status"
+      aria-label={`Today includes ${count} AI-estimated meal${count === 1 ? "" : "s"}`}
+    >
+      <Sparkles className="size-3 text-source-ai" aria-hidden />
+      Includes {count} AI-estimated meal{count === 1 ? "" : "s"}
+    </div>
   );
 }
 
@@ -95,9 +130,11 @@ function DesktopHeroStats({
   onToggleExpanded,
   displayMode,
   onDisplayModeChange,
+  aiSourcedCount,
 }: TodayHeroStatsProps) {
   const net = loggedKcal - targetKcal;
   const netStr = formatNet(net);
+  const aiCount = aiSourcedCount ?? 0;
 
   return (
     <div className="hidden md:block relative mb-4 rounded-card border border-border bg-card p-6">
@@ -164,6 +201,9 @@ function DesktopHeroStats({
           />
         </div>
       </div>
+      {aiCount > 0 ? (
+        <AiSentinelInline count={aiCount} className="mt-4" />
+      ) : null}
     </div>
   );
 }

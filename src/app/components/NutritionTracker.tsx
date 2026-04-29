@@ -65,7 +65,6 @@ import {
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
-import { TodayHeroRing } from "./suppr/today-hero-ring";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
@@ -1791,39 +1790,35 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         />
       )}
 
-      {/* Fasting status pill — under the date header so an active fast
-          is visible at the top of Today, not buried at the bottom.
-          Mobile parity (`apps/mobile/app/(tabs)/index.tsx` 2664). */}
-      {viewMode === "day" && activeFast ? (
-        <TodayFastingPill activeFastElapsedLabel={fastingElapsedLabel} />
-      ) : null}
+      {/* Phase 4 / Top-5 #2 (2026-04-28) — Fasting pill moved into the
+          unified context block below the hero; no standalone render
+          here. See `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5
+          #2 for the priority rule (fasting > eat-again > north-star).
+          Mobile parity in `apps/mobile/app/(tabs)/index.tsx`. */}
 
       {viewMode === "day" && (
       <>
-      {/* B4 Phase 3a (2026-04-27) — Eat-again banner moved to top-of-feed,
-          immediately under the date header / fasting pill, ABOVE the
-          hero. Original position was between Quick add and Meals (kept
-          mobile parity at the time). The reposition reflects the user
-          tap-economy signal: eat-again is the fastest path to a logged
-          meal — surfacing it pre-hero shaves a scroll. Spec:
-          docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
-      {eatAgainSuggestion && !eatAgainDismissedForToday && selectedDateKey === todayKey() && (
-        <TodayEatAgainBanner
-          suggestion={eatAgainSuggestion}
-          slot={currentSlotFromTime}
-          onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
-          onDismiss={dismissEatAgain}
-        />
-      )}
+      {/* Phase 4 / Top-5 #2 (2026-04-28) — Today's above-meals composition
+          is capped at FOUR blocks (date header / hero / one context block /
+          macro tiles). Pre-Phase-4 the eat-again banner / hero / AI pill /
+          north-star block / macro tiles / nutrients grid all stacked
+          unconditionally; the cap rule moves the eat-again banner into a
+          mutually exclusive context-block dispatch below the hero. The
+          AI-estimated count chip moved INSIDE the hero (TodayHeroStats's
+          new `aiSourcedCount` prop). Reference:
+          `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5 #2. */}
 
       {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
           Desktop (>= 768px) renders stats beside the ring; mobile-web
           shows just the ring. Canonical copy + deficit/surplus detail
-          comes from `src/lib/copy/today.ts`. */}
+          comes from `src/lib/copy/today.ts`. AI-estimated-count chip
+          surfaces inline as a caption inside the hero block via
+          `aiSourcedCount` (Phase 4). */}
       <TodayHeroStats
         loggedKcal={Math.round(totals.calories)}
         targetKcal={Math.round(effectiveCalorieTarget)}
         burnedKcal={Math.round(totalBurnKcal)}
+        aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
         proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
@@ -1835,65 +1830,83 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDisplayModeChange={setRingDisplayMode}
       />
 
-      {/* PL-01 (audit 2026-04-28) — when today's totals include
-          AI-estimated meals, surface the count so the user knows
-          which slice of the headline number is uncertain. Mirrors
-          the mobile chip in apps/mobile/app/(tabs)/index.tsx. */}
+      {/* Single context block — priority order: fasting > eat-again >
+          north-star. Mutually exclusive. Pre-Phase-4 these rendered as
+          three separate stacked conditionals (sometimes multiple at
+          once); the cap rule (teardown §2) is "never more than one
+          prompt above the meals". Web has no `TodayDeficitInsight`
+          equivalent (removed 2026-04-18, Pass 7) — when remaining > 0
+          but the user has already logged, the slot stays empty rather
+          than fall through to the north-star. The Net tile inside
+          `TodayHeroStats` already conveys the deficit on web. */}
       {(() => {
-        const aiCount = mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length;
-        if (aiCount === 0 || viewMode !== "day") return null;
+        // 1. Active fast wins outright.
+        if (activeFast) {
+          return <TodayFastingPill activeFastElapsedLabel={fastingElapsedLabel} />;
+        }
+        // 2. Budget met or exceeded, with a re-log suggestion that
+        //    hasn't been dismissed today.
+        if (
+          eatAgainSuggestion &&
+          !eatAgainDismissedForToday &&
+          selectedDateKey === todayKey()
+        ) {
+          return (
+            <TodayEatAgainBanner
+              suggestion={eatAgainSuggestion}
+              slot={currentSlotFromTime}
+              onLog={() => logHistoryItem(eatAgainSuggestion, currentSlotFromTime)}
+              onDismiss={dismissEatAgain}
+            />
+          );
+        }
+        // 3. Phase 3 / B2.2 (D-2026-04-27-04) — north-star "What to eat
+        //    next" block. The presentation component is gated internally
+        //    on library size (V-6 default ≥5) and on remaining-calorie
+        //    envelope (over-budget hides / collapses); the canonical
+        //    scorer is `src/lib/nutrition/northStarSuggestion.ts`. The
+        //    CTA opens the LogSheet pre-tabbed to Search so the user
+        //    confirms the suggestion.
         return (
-          <div
-            className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full bg-source-ai/[0.08] px-3 py-1.5 text-[11px] font-medium text-muted-foreground"
-            role="status"
-            aria-label={`Today includes ${aiCount} AI-estimated meal${aiCount === 1 ? "" : "s"}`}
-          >
-            <Icons.sparkles className="size-3 text-source-ai" aria-hidden />
-            Includes {aiCount} AI-estimated meal{aiCount === 1 ? "" : "s"}
-          </div>
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+            remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+            remainingProtein={Math.max(0, targets.protein - totals.protein)}
+            remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
+            remainingFat={Math.max(0, targets.fat - totals.fat)}
+            onPrimaryCta={(_recipeId) => {
+              // Web routes the CTA into the unified LogSheet rather
+              // than opening the recipe directly — the user confirms
+              // the suggestion via search. _recipeId is unused here
+              // but the host contract requires the arg for cross-
+              // platform parity with mobile (which routes to
+              // /recipe/{id}).
+              setLogSheetOpen(true);
+            }}
+            onBrowseLibrary={() => {
+              // The web Today is one route; "browse" is a no-op stub
+              // here (the user tab-clicks Recipes themselves).
+              // Logging surface is the LogSheet — opening it is a
+              // reasonable fallback.
+              setLogSheetOpen(true);
+            }}
+            selectedDateKey={selectedDateKey}
+          />
         );
       })()}
-
-      {/* Phase 3 / B2.2 (D-2026-04-27-04) — north-star "What to eat
-          next" block. Sits immediately after the calorie ring per
-          spec §A-northstar; gates on library size (V-6 default ≥5)
-          and on remaining-calorie envelope (over-budget hides /
-          collapses). The CTA primary opens the LogSheet pre-tabbed
-          to Search foods so the user can confirm the suggestion.
-
-          The component is presentation-only; the suggestion picker
-          is the canonical scorer in
-          `src/lib/nutrition/northStarSuggestion.ts`. */}
-      <NorthStarBlockHost
-        viewMode={viewMode}
-        savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
-        remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-        remainingProtein={Math.max(0, targets.protein - totals.protein)}
-        remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
-        remainingFat={Math.max(0, targets.fat - totals.fat)}
-        onPrimaryCta={(_recipeId) => {
-          // Web routes the CTA into the unified LogSheet rather than
-          // opening the recipe directly — the user confirms the
-          // suggestion via search. _recipeId is unused here but the
-          // host contract requires the arg for cross-platform parity
-          // with mobile (which routes to /recipe/{id}).
-          setLogSheetOpen(true);
-        }}
-        onBrowseLibrary={() => {
-          // The web Today is one route; "browse" is a no-op stub here
-          // (the user tab-clicks Recipes themselves). Logging surface
-          // is the LogSheet — opening it is a reasonable fallback.
-          setLogSheetOpen(true);
-        }}
-        selectedDateKey={selectedDateKey}
-      />
 
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
           TodayDashboardMacroTiles grid below. Mobile parity: removed
           same day in apps/mobile/app/(tabs)/index.tsx. See
           feedback_no_duplicate_today_hero_content.md. */}
 
-      {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings), same keys as mobile */}
+      {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
+          same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the
+          non-macro nutrient rows that previously rendered as a
+          standalone block below now ship inline inside this component
+          via the `nutrientRows` prop, so the above-meals composition
+          stays at four blocks (date / hero / context / macro tiles). */}
       <TodayDashboardMacroTiles
         trackedMacros={trackedDashboardMacros}
         proteinCurrent={totals.protein}
@@ -1911,24 +1924,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         formatWaterLine={formatWaterLine}
         onAddWaterMl={addWaterMlForSelectedDay}
         netCarbsLensEnabled={netCarbsLensEnabled}
+        nutrientRows={dayNutrientDetailRows}
       />
-
-      {dayNutrientDetailRows.length > 0 ? (
-        <div className="mb-3">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Nutrients</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {dayNutrientDetailRows.map((row) => (
-              <div
-                key={row.key}
-                className="rounded-xl border border-border bg-card px-3 py-2.5"
-              >
-                <p className="text-[10px] text-muted-foreground">{row.label}</p>
-                <p className="text-sm font-semibold tabular-nums text-foreground">{row.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
           Snap are gated; free-tier users see a lock icon and tapping

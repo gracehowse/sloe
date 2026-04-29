@@ -44,6 +44,12 @@ export interface TodayHeroRingProps {
   displayMode: "remaining" | "consumed";
   onToggleDisplayMode: () => void;
   textTertiaryColor: string;
+
+  /** Optional caption row rendered inside the hero card, below the
+   *  ring. Used by the Phase 4 / Top-5 #2 (2026-04-28) AI-sentinel
+   *  inline pill ("Includes N AI-estimated meals"). When `null` /
+   *  `undefined`, only the ring renders. */
+  footerContent?: React.ReactNode;
 }
 
 export function TodayHeroRing({
@@ -63,6 +69,7 @@ export function TodayHeroRing({
   displayMode,
   onToggleDisplayMode,
   textTertiaryColor: _textTertiaryColor,
+  footerContent,
 }: TodayHeroRingProps) {
   return (
     <View
@@ -97,6 +104,7 @@ export function TodayHeroRing({
       {/* F-47 (2026-04-22): gesture caption removed — tester flagged
           "middle section cluttered with 3 prompts". Tap affordance is
           discoverable via the ring itself. */}
+      {footerContent}
     </View>
   );
 }

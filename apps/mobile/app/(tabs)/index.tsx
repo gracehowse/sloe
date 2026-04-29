@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Sparkles } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -145,7 +144,6 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
-import { type TodayHeroVariant } from "@/components/today/TodayHeroVariantPicker";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { StreakPip } from "@/components/today/StreakPip";
 import { LogFab } from "@/components/today/LogFab";
@@ -307,20 +305,12 @@ export default function TrackerScreen() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(true);
   const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
-  // Phase 2 / B1.2 (D-2026-04-27-03): canonical Today is the ring
-  // variant only. The 3-variant picker (ring / bar / number) was
-  // shipped as a "user-pickable" hedge; per the strategic direction
-  // doc "Three variants is design indecision dressed as pluralism."
-  // We hard-pin the variant to "ring" here. The picker affordance
-  // (corner grid icon) is suppressed by passing a no-op
-  // `onVariantChange`. The TodayHero component still accepts the
-  // prop so we don't have to refactor the component tree in this
-  // phase — Phase 3 will remove the variant prop entirely along with
-  // the TodayHeroBar / TodayHeroNumber files.
-  const heroVariant: TodayHeroVariant = "ring";
-  const setHeroVariant = useCallback((_next: TodayHeroVariant) => {
-    // No-op: variant is locked to "ring". See note above.
-  }, []);
+  // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
+  // the ring hero. The 3-variant picker (ring / bar / number) was
+  // removed in this phase — TodayHero is now a thin wrapper around
+  // TodayHeroRing and the TodayHeroBar / TodayHeroNumber /
+  // TodayHeroVariantPicker components were deleted. See
+  // `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #1 for context.
   const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"];
   const [trackedMacros, setTrackedMacros] = useState<string[]>(DEFAULT_TRACKED_MACROS);
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
@@ -3123,14 +3113,11 @@ export default function TrackerScreen() {
 
         {/* Streak badge — removed from here, shown after meals section in prototype style */}
 
-        {/* Fasting status pill */}
-        {viewMode === "day" && activeFastStart && (
-          <TodayFastingPill
-            startedAt={activeFastStart}
-            nowTick={fastingTick}
-            onPress={() => router.push("/fasting")}
-          />
-        )}
+        {/* Phase 4 / Top-5 #2 (2026-04-28) — Fasting pill moved into the
+            unified context block below the hero; no standalone render
+            here. See `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5
+            #2 for the priority rule (fasting > eat-again > north-star
+            > deficit). */}
 
         {viewMode === "week" ? (
           <TodayWeekView
@@ -3166,45 +3153,31 @@ export default function TrackerScreen() {
           />
         ) : (
           <>
-            {/* B4 Phase 3a (2026-04-27) — Eat-again banner repositioned
-                ABOVE the hero. Was rendered between Quick add and Meals
-                (around line 3182 in the previous layout). The
-                `!(remaining > 0)` gate is preserved so the banner only
-                surfaces when the day's budget is met or exceeded —
-                that's the existing pragmatic timing rule and we keep
-                it; only the position changes. Spec:
-                docs/specs/2026-04-27-b4-today-screen-phase3.md. */}
-            {isToday &&
-              eatAgainSuggestion &&
-              !eatAgainDismissedForToday &&
-              !(remaining > 0) && (
-                <TodayEatAgainBanner
-                  suggestion={eatAgainSuggestion}
-                  slot={currentSlotFromTime}
-                  textColor={colors.text}
-                  textSecondaryColor={colors.textSecondary}
-                  onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
-                  onDismiss={dismissEatAgain}
-                />
-              )}
+            {/* Phase 4 / Top-5 #2 (2026-04-28) — Today's above-meals
+                composition is capped at FOUR blocks (date header /
+                hero / one context block / macro tiles). The previous
+                layout stacked up to 13 blocks above the meals section
+                with multiple aspirational prompts competing for the
+                user's first 200 vertical pixels. Reference:
+                `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5
+                #2.
 
-            {/* Phase 2 / B1.2 (D-2026-04-27-03): canonical Today hero —
-                ring variant only. The corner grid picker is hidden via
-                `hidePicker`. Bar and Number variants stay in the tree
-                for legacy compatibility but are not surfaced. */}
+                Hero — single ring. AI-estimated-meal count surfaces
+                inline as a caption inside the hero card via
+                `aiSourcedCount` (was a standalone pill above the macro
+                tiles pre-Phase-4). */}
             <TodayHero
-              variant={heroVariant}
-              onVariantChange={setHeroVariant}
-              hidePicker
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
+              aiSourcedCount={aiSourcedTodayCount}
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
               cardBackgroundColor={colors.card}
               borderColor={colors.border}
               trackColor={colors.border}
+              sourceAiColor={colors.sourceAi}
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
               fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
@@ -3214,63 +3187,93 @@ export default function TrackerScreen() {
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
             />
 
-            {/* PL-01 (audit 2026-04-28) — when today's totals include
-                AI-estimated meals (voice/photo log), surface the count
-                so the user knows which slice of the headline number is
-                inherently uncertain. Only renders when ≥1 such meal
-                exists on the active day. */}
-            {viewMode === "day" && aiSourcedTodayCount > 0 ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  alignSelf: "center",
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: colors.sourceAi + "14",
-                  marginBottom: 12,
-                }}
-                accessibilityRole="text"
-                accessibilityLabel={`Today includes ${aiSourcedTodayCount} AI-estimated meal${aiSourcedTodayCount === 1 ? "" : "s"}`}
-              >
-                <Sparkles size={11} color={colors.sourceAi} strokeWidth={2.25} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: "500" }}>
-                  Includes {aiSourcedTodayCount} AI-estimated meal{aiSourcedTodayCount === 1 ? "" : "s"}
-                </Text>
-              </View>
-            ) : null}
+            {/* Single context block — priority order: fasting >
+                eat-again > north-star > deficit. Mutually exclusive.
+                Pre-Phase-4 these rendered as 4 separate stacked
+                conditionals (sometimes multiple at once); the cap
+                rule (teardown §2) is "never more than one prompt
+                above the meals". */}
+            {(() => {
+              // 1. Active fast wins outright.
+              if (activeFastStart) {
+                return (
+                  <TodayFastingPill
+                    startedAt={activeFastStart}
+                    nowTick={fastingTick}
+                    onPress={() => router.push("/fasting")}
+                  />
+                );
+              }
+              // 2. Budget met or exceeded, with a re-log suggestion
+              //    that hasn't been dismissed today.
+              if (
+                isToday &&
+                eatAgainSuggestion &&
+                !eatAgainDismissedForToday &&
+                !(remaining > 0)
+              ) {
+                return (
+                  <TodayEatAgainBanner
+                    suggestion={eatAgainSuggestion}
+                    slot={currentSlotFromTime}
+                    textColor={colors.text}
+                    textSecondaryColor={colors.textSecondary}
+                    onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
+                    onDismiss={dismissEatAgain}
+                  />
+                );
+              }
+              // 3. Remaining > 0 and the user hasn't logged anything
+              //    yet today — north-star recipe suggestion (the host
+              //    has its own internal gate that returns null when
+              //    no saved recipe matches; if so, the slot stays
+              //    empty rather than falling through to the deficit
+              //    insight, which would read odd at 0 logged kcal).
+              if (isToday && remaining > 0 && mealsToday.length === 0) {
+                return (
+                  <NorthStarBlockHost
+                    viewMode={viewMode}
+                    savedRecipesForLibrary={savedRecipesForLibrary}
+                    remainingCalories={remaining}
+                    remainingProtein={remainingProtein}
+                    remainingCarbs={remainingCarbs}
+                    remainingFat={remainingFat}
+                    onPrimaryCta={(recipeId) => router.push(`/recipe/${recipeId}`)}
+                    onBrowseLibrary={() => router.push("/(tabs)/library")}
+                    selectedDateKey={dayKey}
+                  />
+                );
+              }
+              // 4. Remaining > 0 with logs already today — deficit
+              //    insight summarises pace.
+              if (isToday && remaining > 0) {
+                return (
+                  <TodayDeficitInsight
+                    remaining={remaining}
+                    weekSummaryMode={weekSummaryMode}
+                    selectedDate={selectedDate}
+                    weekStartDay={weekStartDay}
+                    byDay={byDay}
+                    targetCalories={targets.calories}
+                    preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+                    activityBonusCaloriesOnly={activityBonusCaloriesOnly}
+                    activityBurnByDay={activityBurnByDay}
+                    basalBurnByDay={basalBurnByDay}
+                    maintenanceKcal={maintenanceKcal}
+                    dayActivityBudgetAddon={dayActivityBudgetAddon}
+                    textSecondaryColor={colors.textSecondary}
+                  />
+                );
+              }
+              // No context block fits this state.
+              return null;
+            })()}
 
-            {/* Phase 5 / B3.M (2026-04-27) — NorthStarBlockHost wires
-                the "What to eat next from your library that hits your
-                remaining macros" surface. Renders between the Today
-                hero ring and the macro tiles, per spec Surface A.
-                Authority: D-2026-04-27-04. Per-day skip ledger backed
-                by AsyncStorage in the host. */}
-            <NorthStarBlockHost
-              viewMode={viewMode}
-              savedRecipesForLibrary={savedRecipesForLibrary}
-              remainingCalories={remaining}
-              remainingProtein={remainingProtein}
-              remainingCarbs={remainingCarbs}
-              remainingFat={remainingFat}
-              onPrimaryCta={(recipeId) => {
-                // The host now passes the suggestion's recipe id so we
-                // route to the correct recipe rather than the first
-                // saved one (regression fix 2026-04-28).
-                router.push(`/recipe/${recipeId}`);
-              }}
-              onBrowseLibrary={() => router.push("/(tabs)/library")}
-              selectedDateKey={dayKey}
-            />
-
-            {/* RemainingMacrosBar removed 2026-04-20 — the horizontal
-                5-column kcal/P/C/F/Fi adherence strip duplicated the
-                2x2 macro tile grid below and read as visual noise on
-                Today. See feedback_no_duplicate_today_hero_content.md. */}
-
-            {/* Dynamic Macro Cards — 2x2 grid, prototype treatment */}
+            {/* Macro tiles — 2x2 grid. The standalone all-nutrients
+                link that previously floated as a centred row below
+                the tiles now renders as a right-aligned "Nutrients"
+                chevron in the tiles' section header
+                (Phase 4 / Top-5 #2C, 2026-04-28). */}
             <TodayDashboardMacroTiles
               trackedMacros={trackedMacros}
               totals={totals}
@@ -3279,6 +3282,8 @@ export default function TrackerScreen() {
               waterGoalMl={waterGoalMl}
               mealsToday={mealsToday}
               onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
+              showNutrientsLink={dayNutrientDetailRowsWithoutMacroDupes.length > 0}
+              onPressNutrients={() => setNutrientsModalOpen(true)}
               cardColor={colors.card}
               cardBorderColor={colors.cardBorder}
               borderColor={colors.border}
@@ -3288,46 +3293,6 @@ export default function TrackerScreen() {
               mutedColor={colors.border}
               netCarbsLensEnabled={netCarbsLensEnabled}
             />
-
-            {/* All nutrients detail link.
-                2026-04-26 polish (round 2): pre-fix this read "View all
-                nutrients (9)" where 9 was the *available* count, but the
-                user only configures 4 by default. Read as "9 are
-                configured". Dropped the parenthesised count — the link
-                surfaces the modal where the full list lives, no need to
-                pre-announce a number. */}
-            {dayNutrientDetailRowsWithoutMacroDupes.length > 0 ? (
-              <Pressable onPress={() => setNutrientsModalOpen(true)} style={{ marginBottom: 12, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary, textAlign: "center" }}>
-                  View all nutrients
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* 4 Quick-log chips — prototype style.
-                Batch 5.13 — Voice and Photo are Pro features; free + base
-                tiers see a lock icon and the Pro paywall on tap. Mirrors
-                the web quick-log strip ordering.
-
-                2026-04-26 polish (round 2 follow-through): the strip and
-                the FAB are both logging-entry affordances. Tester flagged
-                the duplication. Resolution: keep the strip as a
-                discoverable affordance for the empty Today state (new
-                users + start-of-day, when the visual cue needs to be
-                obvious), and let the FAB be the single entry once the
-                user has any logs for the day. Reduces clutter post-log
-                without sacrificing discoverability pre-log. The FAB
-                opens the comprehensive Search-first sheet (Previous /
-                Scan / Photo / Voice + Quick Add footer) so no logging
-                option is ever lost. */}
-            {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
-                removed from Today's composition root. The persistent
-                Log FAB (rendered below the meals section) is the sole
-                logging-entry affordance going forward; Phase 3 wires
-                the unified <LogSheet> behind it. The strip component
-                file (TodayQuickLogStrip.tsx) stays in the tree for
-                reference and the test suite, but no production caller
-                renders it on Today. */}
           </>
         )}
 
@@ -3337,24 +3302,10 @@ export default function TrackerScreen() {
             longer surfaced on Today. Re-add if streak signal becomes
             a retention lever later. */}
 
-        {/* Deficit insight */}
-        {viewMode === "day" && isToday && remaining > 0 && (
-          <TodayDeficitInsight
-            remaining={remaining}
-            weekSummaryMode={weekSummaryMode}
-            selectedDate={selectedDate}
-            weekStartDay={weekStartDay}
-            byDay={byDay}
-            targetCalories={targets.calories}
-            preferActivityAdjustedCalories={preferActivityAdjustedCalories}
-            activityBonusCaloriesOnly={activityBonusCaloriesOnly}
-            activityBurnByDay={activityBurnByDay}
-            basalBurnByDay={basalBurnByDay}
-            maintenanceKcal={maintenanceKcal}
-            dayActivityBudgetAddon={dayActivityBudgetAddon}
-            textSecondaryColor={colors.textSecondary}
-          />
-        )}
+        {/* Deficit insight moved into the unified context block
+            inside the day-mode wrapper above (Phase 4 / Top-5 #2,
+            2026-04-28). It renders only when no higher-priority
+            context block (fasting / eat-again / north-star) fits. */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
         {/* Eat again — suggest re-logging the most recent meal in the

@@ -151,13 +151,23 @@ tab restructure.
 
 ### Locked variant — kill the 3-variant picker
 
-`TodayHero` accepts a new `hidePicker` prop. The Today composition
-root passes `hidePicker` (true), pinning the variant to `"ring"`. The
-`TodayHeroVariantPicker` modal and the corner grid affordance are
-suppressed. The bar / number variant components remain in the tree
-for legacy compatibility and the existing variant-picker test
-(`apps/mobile/tests/unit/todayHeroVariantPicker.test.tsx`); Phase 3
-will remove them entirely.
+**Phase 2 (2026-04-27):** `TodayHero` accepted a new `hidePicker` prop;
+the Today composition root passed `hidePicker` (true), pinning the
+variant to `"ring"`. The `TodayHeroVariantPicker` modal and the corner
+grid affordance were suppressed. The bar / number variant components
+remained in the tree for legacy compatibility.
+
+**Phase 3 (2026-04-28, this PR):** The variant infrastructure was
+removed entirely. `TodayHero` is now a thin wrapper around
+`TodayHeroRing` with no variant prop, no `hidePicker`, and no
+`onVariantChange`. `TodayHeroBar.tsx`, `TodayHeroNumber.tsx`, and
+`TodayHeroVariantPicker.tsx` were tombstoned (empty `export {};` files
+pending `rm` — the Cowork session that landed the change couldn't
+delete files in unsupervised mode). The dedicated picker test
+(`apps/mobile/tests/unit/todayHeroVariantPicker.test.tsx`) was
+likewise tombstoned. The `canonicalTodayPhase2` test now pins the
+absence of all three props as the contract going forward. Reference:
+`docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #1.
 
 D-2026-04-27-03 quote: *"Three variants is design indecision dressed
 as pluralism. With N=1 tester, 'user picks' is a hedge, not a

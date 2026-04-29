@@ -1,54 +1,55 @@
-import React, { useState } from "react";
-import { Pressable, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Radius } from "@/constants/theme";
+import React from "react";
+import { Text, View } from "react-native";
+import { Sparkles } from "lucide-react-native";
+import { Spacing } from "@/constants/theme";
 
 import { TodayHeroRing } from "./TodayHeroRing";
-import { TodayHeroBar } from "./TodayHeroBar";
-import { TodayHeroNumber } from "./TodayHeroNumber";
-import {
-  TodayHeroVariantPicker,
-  type TodayHeroVariant,
-} from "./TodayHeroVariantPicker";
 
 /**
- * TodayHero — dispatches between ring / bar / number variants and
- * renders the "change hero style" affordance in the card's corner.
+ * TodayHero — the canonical Today calorie hero, rendered as a ring.
  *
- * Phase 2 / B1.2 (D-2026-04-27-03, 2026-04-27): the canonical Today
- * locks the variant to "ring" and hides the picker affordance via
- * `hidePicker`. The bar / number variants and the
- * `<TodayHeroVariantPicker>` component remain in the tree so deep
- * branch tests / archived screenshots still resolve, but no
- * production caller surfaces the picker. Phase 3 removes the unused
- * variants entirely.
+ * Phase 3 (2026-04-28): the three-variant picker (ring / bar / number)
+ * was removed per D-2026-04-27-03 — "Three variants is design
+ * indecision dressed as pluralism." `TodayHero` is now a thin wrapper
+ * around `TodayHeroRing`.
  *
- * Ported from the 2026-04-19 Claude Design prototype and trimmed
- * 2026-04-20 (see
- * `feedback_no_duplicate_today_hero_content.md`).
+ * Phase 4 / Top-5 #2 (2026-04-28): the AI-estimated-meal sentinel
+ * (formerly a standalone pill rendered between the hero and the
+ * macro tiles) moved INSIDE the hero card as an inline caption row
+ * below the ring. The pill above the macro tiles was one of the
+ * 13 above-meals blocks the teardown's §F1 finding flagged; folding
+ * it into the hero closes that block while preserving the user-
+ * facing signal. Set `aiSourcedCount` from the host (counts AI
+ * voice / photo / barcode meals on the active day); when 0 or
+ * undefined, no caption renders. `sourceAiColor` should be
+ * `colors.sourceAi` from `useThemeColors()` so the dot tints
+ * correctly in light + dark.
+ *
+ * Web parity: web's `today-hero-ring.tsx` was already single-variant.
  */
 export interface TodayHeroProps {
-  variant: TodayHeroVariant;
-  onVariantChange: (next: TodayHeroVariant) => void;
-  /** Phase 2 / B1.2 — when `true`, the corner grid affordance and
-   *  the variant picker modal are hidden entirely. Today now sets
-   *  this to `true` so the canonical hero ships without the picker. */
-  hidePicker?: boolean;
-
   consumed: number;
   goal: number;
   baseGoal?: number;
 
-  // Ring-only: macro progress (0..1) for the inner rings when expanded
+  /** Count of AI-sourced meals on the active day (voice / photo /
+   *  AI-fallback). When > 0, an inline caption renders inside the
+   *  hero card; when 0/undefined, no caption. */
+  aiSourcedCount?: number;
+  /** Tint for the AI sparkles dot — pass `colors.sourceAi` from the
+   *  host's theme hook. Required when `aiSourcedCount > 0`. */
+  sourceAiColor?: string;
+
+  // Macro progress (0..1) for the inner rings when expanded
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
 
-  // Ring-only: expand-macros state (host-owned)
+  // Expand-macros state (host-owned)
   expanded: boolean;
   onToggleExpanded: () => void;
 
-  // All variants: remaining/consumed toggle (host-owned)
+  // Remaining/consumed toggle (host-owned)
   displayMode: "remaining" | "consumed";
   onToggleDisplayMode: () => void;
 
@@ -62,14 +63,12 @@ export interface TodayHeroProps {
 }
 
 export function TodayHero(props: TodayHeroProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
   const {
-    variant,
-    onVariantChange,
-    hidePicker = false,
     consumed,
     goal,
     baseGoal,
+    aiSourcedCount,
+    sourceAiColor,
     proteinPct,
     carbsPct,
     fatPct,
@@ -85,95 +84,60 @@ export function TodayHero(props: TodayHeroProps) {
     trackColor,
   } = props;
 
+  const showAiSentinel =
+    typeof aiSourcedCount === "number" && aiSourcedCount > 0;
+
   return (
-    <View style={{ position: "relative" }}>
-      {variant === "ring" && (
-        <TodayHeroRing
-          consumed={consumed}
-          goal={goal}
-          baseGoal={baseGoal}
-          textColor={textColor}
-          secondaryColor={textSecondaryColor}
-          trackColor={trackColor}
-          cardBackgroundColor={cardBackgroundColor}
-          borderColor={borderColor}
-          proteinPct={proteinPct}
-          carbsPct={carbsPct}
-          fatPct={fatPct}
-          expanded={expanded}
-          onToggleExpanded={onToggleExpanded}
-          displayMode={displayMode}
-          onToggleDisplayMode={onToggleDisplayMode}
-          textTertiaryColor={textTertiaryColor}
-        />
-      )}
-      {variant === "bar" && (
-        <TodayHeroBar
-          consumed={consumed}
-          goal={goal}
-          displayMode={displayMode}
-          onToggleDisplayMode={onToggleDisplayMode}
-          cardBackgroundColor={cardBackgroundColor}
-          borderColor={borderColor}
-          textSecondaryColor={textSecondaryColor}
-          textTertiaryColor={textTertiaryColor}
-          trackColor={trackColor}
-        />
-      )}
-      {variant === "number" && (
-        <TodayHeroNumber
-          consumed={consumed}
-          goal={goal}
-          displayMode={displayMode}
-          onToggleDisplayMode={onToggleDisplayMode}
-          cardBackgroundColor={cardBackgroundColor}
-          borderColor={borderColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          textTertiaryColor={textTertiaryColor}
-        />
-      )}
-
-      {/* Picker affordance — hidden when `hidePicker` is `true` (set
-          by the canonical Today composition root, Phase 2 / B1.2).
-          Phase 3 will remove the picker + bar/number variants
-          entirely; until then we keep the code path so legacy
-          surfaces (e.g. unused screens-mobile prototypes) still
-          render. */}
-      {!hidePicker ? (
-        <>
-          <Pressable
-            onPress={() => setPickerOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Change hero style"
-            hitSlop={12}
-            style={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              width: 28,
-              height: 28,
-              borderRadius: Radius.sm,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: `${textSecondaryColor}14`,
-            }}
-          >
-            <Ionicons name="grid-outline" size={13} color={textSecondaryColor} />
-          </Pressable>
-
-          <TodayHeroVariantPicker
-            visible={pickerOpen}
-            active={variant}
-            onSelect={onVariantChange}
-            onClose={() => setPickerOpen(false)}
-            cardBackgroundColor={cardBackgroundColor}
-            borderColor={borderColor}
-            textColor={textColor}
-            textTertiaryColor={textTertiaryColor}
-          />
-        </>
-      ) : null}
+    <View>
+      <TodayHeroRing
+        consumed={consumed}
+        goal={goal}
+        baseGoal={baseGoal}
+        textColor={textColor}
+        secondaryColor={textSecondaryColor}
+        trackColor={trackColor}
+        cardBackgroundColor={cardBackgroundColor}
+        borderColor={borderColor}
+        proteinPct={proteinPct}
+        carbsPct={carbsPct}
+        fatPct={fatPct}
+        expanded={expanded}
+        onToggleExpanded={onToggleExpanded}
+        displayMode={displayMode}
+        onToggleDisplayMode={onToggleDisplayMode}
+        textTertiaryColor={textTertiaryColor}
+        footerContent={
+          showAiSentinel ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "center",
+                gap: Spacing.xs + 2,
+                paddingTop: Spacing.xs,
+              }}
+              accessibilityRole="text"
+              accessibilityLabel={`Today includes ${aiSourcedCount} AI-estimated meal${aiSourcedCount === 1 ? "" : "s"}`}
+            >
+              <Sparkles
+                size={11}
+                color={sourceAiColor ?? textSecondaryColor}
+                strokeWidth={2.25}
+              />
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: textSecondaryColor,
+                  fontWeight: "500",
+                }}
+              >
+                Includes {aiSourcedCount} AI-estimated meal
+                {aiSourcedCount === 1 ? "" : "s"}
+              </Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }

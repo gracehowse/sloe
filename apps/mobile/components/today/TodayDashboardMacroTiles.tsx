@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import {
   Beef,
   Candy,
+  ChevronRight,
   Droplet,
   Droplets,
   Gauge,
@@ -47,6 +48,14 @@ export interface TodayDashboardMacroTilesProps {
    *  with the value computed via `netCarbsForRow(carbs, fibre, true)`.
    *  Helpers refuse the "Net carbs" label when fibre is unknown. */
   netCarbsLensEnabled?: boolean;
+  /** Phase 4 / Top-5 #2 (2026-04-28) — when `true`, render a small
+   *  right-aligned "Nutrients" link in a header row above the tiles
+   *  that opens the all-nutrients modal. Replaces the standalone
+   *  centred link that previously floated between the tiles and the
+   *  meals section. */
+  showNutrientsLink?: boolean;
+  /** Required when `showNutrientsLink` is `true`. */
+  onPressNutrients?: () => void;
 }
 
 type MacroDef = {
@@ -78,6 +87,8 @@ export function TodayDashboardMacroTiles({
   textTertiaryColor,
   mutedColor,
   netCarbsLensEnabled,
+  showNutrientsLink,
+  onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
   const microSum = mealsToday.reduce(
     (a, m) => ({
@@ -114,7 +125,41 @@ export function TodayDashboardMacroTiles({
   // earlier negative-margin hack, which relied on compensating parent
   // padding that Today's scroll container doesn't guarantee.
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md }}>
+    <View style={{ marginBottom: Spacing.md }}>
+      {/* Phase 4 / Top-5 #2 (2026-04-28) — optional right-aligned
+          "Nutrients" link replaces the standalone centred link that
+          used to float below the tiles. Renders only when the host
+          flags it (i.e. there are non-macro nutrient rows worth
+          surfacing for the active day). */}
+      {showNutrientsLink && onPressNutrients ? (
+        <Pressable
+          onPress={onPressNutrients}
+          accessibilityRole="button"
+          accessibilityLabel="View all nutrients for today"
+          hitSlop={6}
+          style={{
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 2,
+            paddingVertical: Spacing.xs,
+            marginBottom: Spacing.xs,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "600",
+              color: Accent.primary,
+              letterSpacing: 0.4,
+            }}
+          >
+            Nutrients
+          </Text>
+          <ChevronRight size={12} color={Accent.primary} strokeWidth={2.25} />
+        </Pressable>
+      ) : null}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
@@ -214,6 +259,7 @@ export function TodayDashboardMacroTiles({
           </Pressable>
         );
       })}
+      </View>
     </View>
   );
 }

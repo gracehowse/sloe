@@ -50,6 +50,19 @@ export interface TodayDashboardMacroTilesProps {
    *  current "Carbs" display. The lens silently falls back to "Carbs"
    *  when fibre is not tracked. */
   netCarbsLensEnabled?: boolean;
+  /** Phase 4 / Top-5 #2 (2026-04-28) — non-macro nutrient rows for
+   *  the active day (e.g. saturated fat, sodium, etc., computed via
+   *  `buildDayNutrientDetailRows`). When present, renders a "Nutrients"
+   *  sub-section below the tile grid as part of this component
+   *  (instead of a standalone stacking block in the host).
+   *
+   *  Web parity divergence vs mobile is intentional: mobile opens a
+   *  full modal because phone screen real estate is tight; web
+   *  inlines the rows here because desktop has the room. Both
+   *  surfaces achieve "the data is one tap / glance away from the
+   *  macro tiles". Document divergence in
+   *  `docs/ux/teardown-2026-04-28-daily-loop.md` execution log. */
+  nutrientRows?: ReadonlyArray<{ key: string; label: string; value: string }>;
 }
 
 type TileMeta = {
@@ -200,10 +213,11 @@ function buildMacroTile(
 }
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
-  const { trackedMacros, onAddWaterMl } = props;
+  const { trackedMacros, onAddWaterMl, nutrientRows } = props;
 
   return (
-    <div className="grid grid-cols-2 gap-2 mb-4">
+    <div className="mb-4">
+    <div className="grid grid-cols-2 gap-2">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
@@ -266,6 +280,32 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
           </div>
         );
       })}
+    </div>
+    {/* Phase 4 / Top-5 #2 (2026-04-28) — non-macro nutrient rows
+        embedded directly below the tile grid as part of this
+        component, replacing the standalone block that previously
+        stacked between the tiles and the meals section in the host.
+        Renders only when the host passes ≥1 row. */}
+    {nutrientRows && nutrientRows.length > 0 ? (
+      <div className="mt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          Nutrients
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {nutrientRows.map((row) => (
+            <div
+              key={row.key}
+              className="rounded-xl border border-border bg-card px-3 py-2.5"
+            >
+              <p className="text-[10px] text-muted-foreground">{row.label}</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground">
+                {row.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null}
     </div>
   );
 }

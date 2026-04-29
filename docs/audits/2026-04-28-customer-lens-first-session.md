@@ -149,7 +149,7 @@ But the **screens themselves are the desktop web screens**. `<NutritionTracker>`
 
 1. **"Coming in Phase 3" alert in the LogFab placeholder.** Direct prototype admission in production.
 2. **Onboarding-v2 web `(preview)` title metadata.**
-3. **Hero variant picker code path that's been hard-pinned to "ring"** but Bar / Number variants still ship in the bundle.
+3. ~~**Hero variant picker code path that's been hard-pinned to "ring"** but Bar / Number variants still ship in the bundle.~~ Resolved 2026-04-28 — Phase 3 hero variant cleanup removed the variant prop from `TodayHero`, tombstoned `TodayHeroBar` / `TodayHeroNumber` / `TodayHeroVariantPicker` (pending `rm`), and updated the canonicalTodayPhase2 test to pin no-variant-prop. See `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #1.
 4. **Mobile RN onboarding has both `app/onboarding.tsx` (legacy) and `app/onboarding-v2.tsx`** with one redirecting to the other. Two parallel onboarding files = "we're mid-migration".
 5. **Landing taught one product structure**, app delivers another — feels like the screenshots are from the old build.
 6. **Day-0 ring shows `0 / 1,800` against a normal layout** rather than a "Welcome — log your first meal" overlay.
@@ -194,7 +194,7 @@ Already top-5 above. Adding:
 10. **Today Day-0 path: render a "Day 1 of your plan" hero** until the user has logged something. Owner: `ui-product-designer`.
 11. **Library and Plan empty states**: explicit CTA to go save 5 recipes from Discover. Owner: `ui-product-designer`.
 12. **Persona C: native-feeling sheets via `@gorhom/bottom-sheet` on web** (or a CSS approximation that supports drag-to-dismiss). Owner: `ui-product-designer`.
-13. **Drop the dead `TodayHeroBar` / `TodayHeroNumber` files.** Owner: `executor`.
+13. ~~**Drop the dead `TodayHeroBar` / `TodayHeroNumber` files.**~~ ✅ Done 2026-04-28 — files tombstoned (empty `export {};` pending `rm`); production callers no longer import them.
 14. **Settings sub-tab discoverability inside You.** Add a Settings shortcut on Today (top-right). Owner: `ui-product-designer`.
 15. **Persona C: bottom-tab layout actually mirrors the mobile-app tab bar at the same iconography and 4-tab order.** Owner: `design-system-enforcer`.
 16. **Trust-strip on landing**: tighten wrap behaviour at phone width. Owner: `visual-qa`.
