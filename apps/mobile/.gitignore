@@ -9,6 +9,13 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Stray Next.js declaration file — never belongs in apps/mobile/
+# (occasionally generated when something accidentally invokes the
+# Next.js compiler from this dir during a typecheck or build run;
+# see teardown 2026-04-28 for context). Defensive ignore so it
+# can't reappear silently.
+next-env.d.ts
+
 # Native
 .kotlin/
 *.orig.*
