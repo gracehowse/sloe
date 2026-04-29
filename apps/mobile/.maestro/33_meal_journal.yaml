@@ -16,6 +16,9 @@ name: "Meal journal — day strip, logged meals, long-press actions"
 - assertVisible:
     text: ".*(?:Today|Mon|Tue|Wed|Thu|Fri|Sat|Sun).*"
 
+# Visual baseline #1 — day-strip + ring + StreakPip header.
+- takeScreenshot: screenshots/latest/journal-01-day-strip
+
 # Scroll down to journal section
 - swipe:
     direction: UP
@@ -25,6 +28,9 @@ name: "Meal journal — day strip, logged meals, long-press actions"
 # Check for meal slots (Breakfast, Lunch, Dinner, Snack)
 - assertVisible:
     text: ".*(?:Breakfast|Lunch|Dinner|Snack|No meals logged|Add food).*"
+
+# Visual baseline #2 — meal-slot section. Either filled cards or empty state.
+- takeScreenshot: screenshots/latest/journal-02-meals-section
 
 # If meals are logged, verify meal card content
 - runFlow:
@@ -47,6 +53,9 @@ name: "Meal journal — day strip, logged meals, long-press actions"
       # Should open food logging modal/sheet
       - assertVisible:
           text: ".*(?:Search|Voice|Snap|Scan|Log|food).*"
+      # Visual baseline #3 — LogSheet open from journal Add-food entry point.
+      # Catches sheet-handle, sub-tab pill alignment, FAB-vs-sheet z-index issues.
+      - takeScreenshot: screenshots/latest/journal-03-log-sheet
       # Dismiss
       - runFlow:
           when:

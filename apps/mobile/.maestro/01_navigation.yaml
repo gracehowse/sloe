@@ -1,7 +1,7 @@
 # @cases TC-NAV-01
 # @screen (tabs)
 appId: com.supprclub.supprapp
-name: "Tab navigation — all 5 tabs load and respond"
+name: "Tab navigation — all 4 tabs load and respond"
 ---
 - runFlow: shared/login.yaml
 
@@ -11,10 +11,15 @@ name: "Tab navigation — all 5 tabs load and respond"
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
-# Discover tab — verify content loads
-- tapOn: ".*Discover, tab.*"
+# Recipes tab — Library is the default sub-tab (per (tabs)/_layout.tsx).
+# Discover lives behind a sub-tab pill inside Recipes (RecipesSubTabHeader).
+- tapOn: ".*Recipes, tab.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- tapOn:
+    text: "Discover"
+    accessibilityRole: "tab"
 - waitForAnimationToEnd
 # Discover prototype header (Browse + Discover); not the old macro subtitle.
 - assertVisible: ".*Browse.*"
@@ -27,8 +32,8 @@ name: "Tab navigation — all 5 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*Meal Plan.*"
 
-# Progress tab — verify content loads
-- tapOn: ".*Progress, tab.*"
+# You tab — Progress is the default sub-tab (per (tabs)/_layout.tsx).
+- tapOn: ".*You, tab.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -36,8 +41,10 @@ name: "Tab navigation — all 5 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|progress will appear).*"
 
-# More tab (tab title is "More", not "Profile")
-- tapOn: ".*More, tab.*"
+# Settings sub-tab inside You — replaces the legacy "More" tab.
+- tapOn:
+    text: "Settings"
+    accessibilityRole: "tab"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -49,10 +56,9 @@ name: "Tab navigation — all 5 tabs load and respond"
 - assertVisible: ".*Today, tab.*"
 
 # Rapid tab switching — regression test for crash/flicker
-- tapOn: ".*Discover, tab.*"
+- tapOn: ".*Recipes, tab.*"
 - tapOn: ".*Plan, tab.*"
-- tapOn: ".*Progress, tab.*"
-- tapOn: ".*More, tab.*"
+- tapOn: ".*You, tab.*"
 - tapOn: ".*Today, tab.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Today, tab.*"

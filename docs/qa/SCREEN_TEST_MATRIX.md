@@ -8,7 +8,8 @@ This repo already has **Maestro** UI flows under `apps/mobile/.maestro/` (see `a
 
 1. **Exploratory / release QA** — Pick a screen, run the **manual** cases ( Preconditions + Steps + Expected ). Log pass/fail in TestFlight, Linear, or a spreadsheet.
 2. **Regression** — When a bug is fixed, add a **Maestro** assertion (or a new flow) and reference the same `TC-…` id in the YAML header comment.
-3. **With Cursor** — Paste a failing `TC-…` block into chat; the agent can update RN code **or** the matching `.maestro/*.yaml`. The agent **cannot** tap your phone; it can only edit flows and suggest `maestro test …` commands you run locally.
+3. **Visual regression** — Three flows (`02_today_screen`, `33_meal_journal`, `25_import_shared`) emit screenshots that are pixel-diffed against a committed baseline. Catches the layout / contrast / z-index bugs `assertVisible` misses. Workflow + setup in [`apps/mobile/.maestro/README.md` § Visual regression](../../apps/mobile/.maestro/README.md#visual-regression--screenshot-diff). Run `npm run mobile:test:screens:diff` after the suite; review `apps/mobile/screenshots/diff/report.html`.
+4. **With Cursor** — Paste a failing `TC-…` block into chat; the agent can update RN code **or** the matching `.maestro/*.yaml`. The agent **cannot** tap your phone; it can only edit flows and suggest `maestro test …` commands you run locally.
 
 ## Case ID convention
 

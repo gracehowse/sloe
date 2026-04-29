@@ -12,6 +12,9 @@ name: "Import Shared Recipe — idle state, URL input, source grid"
     element: ".*Import from TikTok.*"
     direction: DOWN
 
+# Visual baseline #1 — Discover with import row in view.
+- takeScreenshot: screenshots/latest/import-01-discover
+
 # Tap the Discover import row (avoid matching unrelated "Import" UI)
 - runFlow:
     when:
@@ -31,6 +34,10 @@ name: "Import Shared Recipe — idle state, URL input, source grid"
       # Verify idle state UI — the paste card
       - assertVisible:
           text: ".*(?:Paste a recipe link|Looking for a link).*"
+
+      # Visual baseline #2 — Import idle state.
+      # Catches paste-card padding, IMPORT-FROM grid alignment, button stacking.
+      - takeScreenshot: screenshots/latest/import-02-idle
 
       # Verify source grid buttons (Import From section)
       - runFlow:

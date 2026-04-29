@@ -36,3 +36,9 @@ apps/mobile/suppr-mobile@*
 
 # Fetched TestFlight feedback may contain tester emails / screenshots
 docs/testflight-feedback/data/
+
+# Maestro screenshot diff — only the baseline is tracked; latest/ and diff/
+# are regenerated each Maestro run. See apps/mobile/.maestro/README.md
+# (§ "Visual regression — screenshot diff").
+apps/mobile/screenshots/latest/
+apps/mobile/screenshots/diff/

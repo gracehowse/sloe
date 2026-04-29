@@ -8,7 +8,8 @@ Run these in order before a release or large mobile PR:
 
 1. **`npm run mobile:verify`** (repo root) — **ESLint** (errors fail), **TypeScript**, **Vitest** (`apps/mobile/tests/unit`), and **Maestro suite manifest** (every flow in `config.yaml` exists + `runFlow: shared/*.yaml` resolves). No Simulator required.
 2. **`npm run mobile:test:e2e`** — Full **Maestro** suite against a running dev client + Metro (see [Running](#running)). Requires `E2E_*` and optional silent auth env in `apps/mobile/.env`.
-3. **Manual-only flows** (not in `config.yaml`): `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt` — run ad hoc when those surfaces change.
+3. **`npm run mobile:test:screens:diff`** — Visual-regression layer over the suite. Compares `apps/mobile/screenshots/latest/` (produced by step 2) against the committed `screenshots/baseline/`. Catches layout shift, contrast drift, z-index regressions that text-only assertions miss. See [Visual regression — screenshot diff](#visual-regression--screenshot-diff). First-time setup needs `npm run mobile:test:screens:update-baseline` after a clean step-2 run.
+4. **Manual-only flows** (not in `config.yaml`): `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt` — run ad hoc when those surfaces change.
 
 GitHub **CI** `mobile` job runs lint, typecheck, import-path guards, Vitest, and **`test:e2e:verify-suite`** so broken or renamed Maestro files fail the build even without Maestro installed on the runner.
 
@@ -82,6 +83,50 @@ maestro record .maestro/01_navigation.yaml -e EXPO_DEV_SERVER_URL='exp://127.0.0
 
 **Physical device:** Metro must be reachable from the phone. Often `exp://<your-mac-lan-ip>:8081`, or use `npx expo start --tunnel` and the **`exp://`** URL Expo prints for tunnel mode.
 
+## Visual regression — screenshot diff
+
+Maestro flows assert text visibility, not how the screen *looks*. A button can overlap a macro card by 3 px and every `assertVisible` still passes. The screenshot-diff layer closes that gap on the daily-loop surfaces.
+
+**What's wired:**
+
+- `02_today_screen.yaml`, `33_meal_journal.yaml`, `25_import_shared.yaml` call `takeScreenshot: screenshots/latest/<name>` at deliberate moments (default state, scrolled, sheet open, etc.). Maestro runs from `apps/mobile/`, so these land at `apps/mobile/screenshots/latest/<name>.png`.
+- `scripts/maestro-screenshot-diff.mjs` compares `screenshots/latest/` against `screenshots/baseline/` using `pixelmatch`, writes per-shot diffs, and emits `screenshots/diff/report.html` (side-by-side baseline / latest / diff). Exits non-zero if any shot's differing pixels exceed `--threshold` (default 0.1%).
+- `screenshots/baseline/` is committed; `screenshots/latest/` and `screenshots/diff/` are gitignored.
+
+**First run (one-time):**
+
+```bash
+# 1. Run the suite to produce screenshots/latest/.
+npm run mobile:test:e2e
+
+# 2. Eyeball each PNG under apps/mobile/screenshots/latest/. If they look right,
+#    promote to baseline:
+npm run mobile:test:screens:update-baseline
+
+# 3. Commit the new baselines.
+git add apps/mobile/screenshots/baseline/
+git commit -m "test(mobile): seed screenshot baselines for today/journal/import"
+```
+
+**Per-release / per-PR:**
+
+```bash
+npm run mobile:test:e2e            # populates screenshots/latest/
+npm run mobile:test:screens:diff   # writes screenshots/diff/report.html
+open apps/mobile/screenshots/diff/report.html
+```
+
+A `FAIL` row means the diff exceeded the threshold — open the report and look at the diff PNG. Three classes of regression caught here that text assertions miss: layout shift (e.g. ring label clipping inner macros), contrast / colour drift (token rename gone wrong), and z-index regressions (sheet under FAB).
+
+**When to update the baseline:** any time a deliberate visual change ships on Today, the meal journal, the LogSheet, or import. Workflow: ship the change → run the suite → review the diffs → if they match the intent, run `npm run mobile:test:screens:update-baseline` and commit.
+
+**Tuning:** flag `--threshold=0.005` (0.5%) on the diff command if anti-aliasing on a noisy device produces false positives, or `--tolerance=0.05` to make pixelmatch stricter per-pixel. Defaults are tuned for iPhone 15 Simulator.
+
+**Caveats:**
+
+- Different simulator / device == different pixel dimensions == `SIZE MISMATCH`. Standardise on one Simulator (recommend iPhone 15, Light mode, default text size) for the baseline. Document it in your CI config when this graduates.
+- Don't bake date-of-week or auth-tier-dependent content into shots. Day-strip is fine (we screenshot the whole header), but a "Day 47 streak" pip will diff every day. The current shots avoid this.
+
 ## Stable selectors (prototype / tab bar drift)
 
 - **Tab bar:** prefer `.*Today, tab.*`, `.*Discover, tab.*`, etc., over matching screen titles.
@@ -113,7 +158,7 @@ Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2
 | File | What it tests |
 |------|--------------|
 | 01_navigation.yaml | All 5 tabs load and respond; rapid tab switching regression |
-| 02_today_screen.yaml | Calorie ring, macro cards, quick-log buttons, ring toggle, scroll, voice/search quick-log |
+| 02_today_screen.yaml | Calorie ring, macro cards, quick-log buttons, ring toggle, scroll, voice/search quick-log · 📸 screenshots: `today-01-loaded`, `today-02-scrolled`, `today-03-voice-{upsell,sheet}`, `today-04-search-modal` |
 | 03_meal_plan.yaml | Generate plan, verify meals + macros, shopping list button |
 | 04_profile_settings.yaml | Reorganised sections, targets, legal links, export |
 | 05_recipe_detail.yaml | Recipe: ingredients, macros, portions, save, Start Cooking, Log to journal |
@@ -136,7 +181,7 @@ Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2
 | 22_barcode_scanner.yaml | Barcode scanner: permission prompt, scanner UI, navigation |
 | 23_nutrition_sources.yaml | Nutrition sources info: USDA, Open Food Facts, FatSecret, disclaimer |
 | 24_health_sync.yaml | Health sync: feature list, nutrition import/export, connect button, Expo Go warning |
-| 25_import_shared.yaml | Import shared recipe: idle state, URL input, source grid, clipboard |
+| 25_import_shared.yaml | Import shared recipe: idle state, URL input, source grid, clipboard · 📸 screenshots: `import-01-discover`, `import-02-idle` |
 | 26_recipe_verify.yaml | Recipe verify: ingredient list, nutrition facts, portion editing, confirm |
 | 27_progress_metric.yaml | Progress metric detail: calorie/protein/streak deep dive, day breakdown |
 | 28_notifications_prompt.yaml | Notification prompt: enable/skip flow (post-onboarding) |

@@ -22,6 +22,10 @@ name: "Today screen — ring, macros, quick-log buttons"
 - assertVisible: ".*Search.*"
 - assertVisible: ".*Scan.*"
 
+# Visual baseline #1 — ring + macros + quick-log in their default state.
+# Catches ring-label clipping, macro-card overflow, quick-log icon misalignment.
+- takeScreenshot: screenshots/latest/today-01-loaded
+
 # Verify the macro-toggle affordance is present (in either show or hide state).
 - assertVisible:
     text: ".*Tap to (?:show|hide) macros.*"
@@ -31,6 +35,9 @@ name: "Today screen — ring, macros, quick-log buttons"
     direction: UP
     duration: 400
 - waitForAnimationToEnd
+
+# Visual baseline #2 — scrolled state. Header collapse + meal-slot cards.
+- takeScreenshot: screenshots/latest/today-02-scrolled
 
 # Scroll back up to verify no crash
 - swipe:
@@ -46,12 +53,16 @@ name: "Today screen — ring, macros, quick-log buttons"
     when:
       visible: ".*Voice logging is a Pro feature.*"
     commands:
+      # Visual baseline #3a — Pro upsell sheet (Free / Base tier path).
+      - takeScreenshot: screenshots/latest/today-03-voice-upsell
       - tapOn: ".*Not now.*"
       - waitForAnimationToEnd
 - runFlow:
     when:
       visible: ".*Describe what you ate.*"
     commands:
+      # Visual baseline #3b — voice sheet (Pro tier path).
+      - takeScreenshot: screenshots/latest/today-03-voice-sheet
       - assertVisible:
           text: ".*(?:Describe what you ate|Cancel).*"
       - tapOn: ".*Cancel.*"
@@ -63,6 +74,8 @@ name: "Today screen — ring, macros, quick-log buttons"
 - waitForAnimationToEnd
 - assertVisible:
     text: ".*(?:Food search|Search foods).*"
+# Visual baseline #4 — food search modal initial state (search field, recent foods).
+- takeScreenshot: screenshots/latest/today-04-search-modal
 # Go back
 - back
 - waitForAnimationToEnd
