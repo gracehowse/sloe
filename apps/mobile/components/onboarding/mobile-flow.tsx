@@ -31,7 +31,6 @@ import {
 } from "../../../../src/lib/onboarding/persist";
 import { useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
-import { derivePickerState } from "../../../../src/lib/onboarding/finalStep";
 
 void mapV2GoalToLegacy;
 
@@ -64,12 +63,14 @@ export function MobileFlow() {
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
-  const isTerminal = currentStepId === "recipes";
+  // Customer-lens shrink (2026-04-30): `reveal` is the new terminal
+  // step — the linear flow ends after the aha moment and the user
+  // lands on Today three screens sooner. The seed-and-plan path in
+  // `handleComplete` still runs but `pickedRecipeSlugs` is empty for
+  // a normal completion (it'll be populated when the post-launch
+  // recipes nudge lands).
+  const isTerminal = currentStepId === "reveal";
   const isSignup = currentStepId === "signup";
-  const pickerState = React.useMemo(
-    () => derivePickerState(new Set(state.pickedRecipeSlugs ?? [])),
-    [state.pickedRecipeSlugs],
-  );
 
   // MV-02 auto-skip (audit 2026-04-28): when an already-authed user
   // (returning visitor with a Supabase session in cache) lands on the
@@ -269,21 +270,14 @@ export function MobileFlow() {
             <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
 
+          {/* Customer-lens shrink (2026-04-30): the numeric counter
+              ("12/12" / formerly "1/15…15/15") is removed because
+              N-of-15 anchored testers on remaining work and was the
+              highest single-friction signal in the audit. The progress
+              bar still gives a "I'm partway through" sense without
+              naming a hard total — Cal AI / MFP / Lifesum all use
+              progress-only on their flows. */}
           <ProgressBar value={displayIndex} total={displayTotal} />
-
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.textSecondary,
-              fontWeight: "700",
-              fontVariant: ["tabular-nums"],
-              letterSpacing: 0.2,
-              minWidth: 28,
-              textAlign: "right",
-            }}
-          >
-            {displayIndex}/{displayTotal}
-          </Text>
         </View>
       </View>
 
@@ -305,18 +299,14 @@ export function MobileFlow() {
       >
         <Pressable
           onPress={handleContinue}
-          disabled={
-            completing || !canAdvance || (isTerminal && !pickerState.canSubmit)
-          }
+          disabled={completing || !canAdvance}
           accessibilityRole="button"
-          accessibilityLabel={isTerminal ? pickerState.ctaLabel : "Continue"}
+          accessibilityLabel={isTerminal ? "Build my plan" : "Continue"}
           accessibilityState={{
-            disabled:
-              completing || !canAdvance || (isTerminal && !pickerState.canSubmit),
+            disabled: completing || !canAdvance,
           }}
           style={({ pressed }) => {
-            const isDisabled =
-              completing || !canAdvance || (isTerminal && !pickerState.canSubmit);
+            const isDisabled = completing || !canAdvance;
             return {
               height: 56,
               borderRadius: 14,
@@ -343,13 +333,10 @@ export function MobileFlow() {
               style={{
                 fontSize: 16,
                 fontWeight: "700",
-                color:
-                  !canAdvance || (isTerminal && !pickerState.canSubmit)
-                    ? colors.textTertiary
-                    : "#0a0a0f",
+                color: !canAdvance ? colors.textTertiary : "#0a0a0f",
               }}
             >
-              {isTerminal ? pickerState.ctaLabel : "Continue"}
+              {isTerminal ? "Build my plan" : "Continue"}
             </Text>
           )}
         </Pressable>

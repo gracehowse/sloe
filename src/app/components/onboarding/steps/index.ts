@@ -2,6 +2,13 @@
  * Step component registry. The flow shell (Stage C) keys into this
  * map by `currentStepId` rather than importing every step file
  * inline, so adding/removing a step is a one-file change.
+ *
+ * Customer-lens shrink (2026-04-30): `permissions`, `import`, and
+ * `recipes` are no longer part of the linear flow — see comments in
+ * `src/lib/onboarding/state.ts` for the rationale and the organic
+ * discovery surfaces that absorb their affordances. The component
+ * files are kept on disk — re-export them so the post-launch nudge
+ * queue (follow-up PR) can mount them out of the linear shell.
  */
 import type { ComponentType } from "react";
 import type { StepId } from "@/lib/onboarding/state";
@@ -41,9 +48,6 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
   diet: DietStep,
   strategy: StrategyStep,
   reveal: RevealStep,
-  permissions: PermissionsStep,
-  import: ImportStep,
-  recipes: RecipePickerStep,
 };
 
 export {
@@ -59,6 +63,7 @@ export {
   DietStep,
   StrategyStep,
   RevealStep,
+  // Out-of-flow components — kept for the post-launch nudge queue.
   PermissionsStep,
   ImportStep,
   RecipePickerStep,

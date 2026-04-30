@@ -1,6 +1,11 @@
 /**
  * Mobile step component registry. Mirrors
  * `src/app/components/onboarding/steps/index.ts` (web).
+ *
+ * Customer-lens shrink (2026-04-30): `permissions`, `import`, and
+ * `recipes` are no longer in the linear flow — components kept and
+ * re-exported for the post-launch nudge queue (follow-up). See
+ * `src/lib/onboarding/state.ts` for rationale.
  */
 import type { ComponentType } from "react";
 import type { StepId } from "@/lib/onboarding";
@@ -40,9 +45,6 @@ export const MOBILE_STEP_COMPONENTS: Record<
   diet: MobileDietStep,
   strategy: MobileStrategyStep,
   reveal: MobileRevealStep,
-  permissions: MobilePermissionsStep,
-  import: MobileImportStep,
-  recipes: MobileRecipePickerStep,
 };
 
 export {
@@ -58,6 +60,7 @@ export {
   MobileDietStep,
   MobileStrategyStep,
   MobileRevealStep,
+  // Out-of-flow components — kept for the post-launch nudge queue.
   MobilePermissionsStep,
   MobileImportStep,
   MobileRecipePickerStep,

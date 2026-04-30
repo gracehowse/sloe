@@ -17,7 +17,10 @@ import {
  * Onboarding v2 — state shape, step ordering, and `canAdvance`
  * validation rules. Locks in the decision-doc invariants:
  *
- *  - 13 steps in fixed order; `pace` auto-skips when goal = maintain.
+ *  - 12 steps in fixed order; `pace` auto-skips when goal = maintain.
+ *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
+ *    `import`, `recipes` were moved off the linear flow. Components
+ *    kept on disk for the post-launch nudge queue.)
  *  - Pace safety floor is SOFT-WARN — `canAdvance("pace", …)` returns
  *    true even when projected target falls below 1,200/1,500 kcal.
  *    Only the *banner* policy lives in `targets.ts`.
@@ -34,8 +37,8 @@ const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState =>
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 15 steps in the documented order (Phase 5: + recipes)", () => {
-    expect(TOTAL_STEPS).toBe(15);
+  it("ships exactly 12 steps in the documented order (customer-lens shrink 2026-04-30: permissions/import/recipes off-flow)", () => {
+    expect(TOTAL_STEPS).toBe(12);
     expect(STEP_IDS).toEqual([
       "welcome",
       "signup",
@@ -49,10 +52,20 @@ describe("onboarding v2 — step ordering", () => {
       "diet",
       "strategy",
       "reveal",
-      "permissions",
-      "import",
-      "recipes",
     ]);
+  });
+
+  it("does NOT include the off-flow steps (permissions/import/recipes) in STEP_IDS", () => {
+    // These step components still exist on disk (and are still
+    // exported from steps/index.ts for the post-launch nudge queue),
+    // but they must not be reachable via the linear shell anymore.
+    // Locking this in protects against an accidental re-introduction
+    // of the 15-step counter that customer-lens flagged as the highest
+    // single-friction signal in onboarding.
+    const ids: readonly string[] = STEP_IDS;
+    expect(ids).not.toContain("permissions");
+    expect(ids).not.toContain("import");
+    expect(ids).not.toContain("recipes");
   });
 
   it("has a label for every step id", () => {
@@ -148,10 +161,9 @@ describe("onboarding v2 — canAdvance per step", () => {
     ["activity", baseState({ activity: "moderate" }), true, "moderate"],
     // diet — optional
     ["diet", baseState(), true, "always advances (optional)"],
-    // reveal / permissions / import — informational
+    // reveal — informational, terminal step (was: permissions / import
+    // also lived here pre customer-lens shrink 2026-04-30).
     ["reveal", baseState(), true, ""],
-    ["permissions", baseState(), true, ""],
-    ["import", baseState(), true, ""],
   ];
 
   for (const [step, state, expected, label] of cases) {

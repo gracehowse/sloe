@@ -97,24 +97,10 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
         </div>
       ) : null,
   },
-  permissions: {
-    eyebrow: "Step 13 · Access",
-    head: "Quick permission.",
-    body: "Optional and revocable. Suppr only asks for what it needs to surface useful nudges.",
-  },
-  import: {
-    eyebrow: "Try it",
-    head: "Import your\nfirst recipe.",
-    body: "Paste any link — Instagram reel, TikTok, a blog post — and Suppr parses ingredients, matches them against USDA, and calculates macros in seconds.",
-  },
-  // Phase 5 / B2.3 — final step narrative. The card on the right
-  // ends with the populated artifact (a week's plan); this side is
-  // the framing that makes the picker feel like reward, not work.
-  recipes: {
-    eyebrow: "Last step",
-    head: "Pick five\nyou'd actually cook.",
-    body: "We'll seed your library and build a first week from these. Change anything later — these are starting points, not commitments.",
-  },
+  // Customer-lens shrink (2026-04-30): `permissions` / `import` /
+  // `recipes` narrative entries were removed alongside their step IDs.
+  // The post-launch nudge queue (follow-up PR) will surface these
+  // affordances as in-app banners on Today, not as flow steps.
 };
 
 function NarrativeStat({

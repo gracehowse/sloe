@@ -14,7 +14,6 @@ import { useOnboarding } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
 import { mapV2GoalToLegacy, persistOnboarding } from "@/lib/onboarding/persist";
-import { derivePickerState } from "@/lib/onboarding/finalStep";
 import {
   ONBOARDING_SEEDS,
   type OnboardingSeed,
@@ -43,12 +42,14 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // Phase 5 / B2.3 — `recipes` is the new terminal step (Surface F).
-  // The previous terminal step `import` still exists in the flow as a
-  // demo close, but the actual onboarding completion fires from the
-  // RecipePickerStep CTA so the user ends with a populated library +
-  // generated first week.
-  const isTerminal = currentStepId === "recipes";
+  // Customer-lens shrink (2026-04-30): `reveal` is the new terminal
+  // step — `permissions`, `import`, `recipes` were moved off the
+  // linear flow per the audit (15-step counter was the highest-friction
+  // signal vs Cal AI / MFP / Lifesum). The seed-and-plan write path
+  // below still runs but `pickedRecipeSlugs` is empty for a normal
+  // completion; it'll re-populate when the post-launch nudge queue
+  // lands. See state.ts for rationale + organic discovery surfaces.
+  const isTerminal = currentStepId === "reveal";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
   // useful for tests (the bounce navigates immediately so no UI
@@ -271,13 +272,12 @@ export function WebFlow() {
       {/* Top bar — brand + progress.
           Grid layout (visual-qa P1) so the progress bar sits at the
           true horizontal centre regardless of the wordmark / right-
-          slot widths. On desktop the canonical step number is carried
-          by the narrative-column eyebrow; on mobile-web the narrative
-          column collapses (`hidden md:flex`) so we surface the
-          numeric counter inline beside the progress bar (sync-
-          enforcer #18, 2026-04-30). Welcome + Reveal don't render an
-          in-card overline either, so this counter is the only
-          position indicator on those steps at phone widths.
+          slot widths.
+          Customer-lens shrink (2026-04-30): the numeric "n/12"
+          counter (formerly "n/15") is removed at all widths because
+          N-of-15 anchored testers on remaining work. The narrative
+          column's eyebrow still carries the per-step label on
+          desktop; the bar carries the partway feel on phone widths.
           The Save & Exit stub is hidden until the wired-up confirm
           flow lands (tracked in TODO.md OB2 follow-ups). */}
       <header className="h-14 md:h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-9">
@@ -289,11 +289,7 @@ export function WebFlow() {
           total={displayTotal}
           className="w-full max-w-[260px] md:max-w-[360px] justify-self-center"
         />
-        <div className="justify-self-end">
-          <span className="md:hidden text-[11px] font-bold tracking-wider text-muted-foreground tabular-nums">
-            {displayIndex}/{displayTotal}
-          </span>
-        </div>
+        <div className="justify-self-end" aria-hidden />
       </header>
 
       {/* Body. Mobile-web collapses the split to the card column only —
@@ -381,25 +377,20 @@ export function WebFlow() {
                   Supabase signUp and advances on success. Showing
                   both would let the user bypass the auth handshake. */}
               {!isSignup && (() => {
-                // Phase 5 / B2.3 — terminal step is `recipes`. The
-                // "Build my first week" CTA is gated on the picker
-                // state's canSubmit flag (≥ ONBOARDING_PICK_MIN
-                // selected). The shell reads pickedRecipeSlugs from
-                // OnboardingState directly so the disabled state
-                // updates without prop drilling.
-                const pickerState = derivePickerState(
-                  new Set(state.pickedRecipeSlugs ?? []),
-                );
-                const terminalDisabled =
-                  isTerminal && !pickerState.canSubmit;
+                // Customer-lens shrink (2026-04-30): terminal step is
+                // now `reveal`. The "Build my plan" CTA fires the
+                // `handleComplete` write path directly — no picker
+                // gate, no five-recipe minimum. Onboarding ends at the
+                // aha moment; recipes / import / health-sync are
+                // organic surfaces post-launch.
                 const terminalLabel = completing
-                  ? "Building your week…"
-                  : pickerState.ctaLabel;
+                  ? "Building your plan…"
+                  : "Build my plan";
                 return (
                   <Button
                     size="lg"
                     onClick={isTerminal ? handleComplete : handleContinue}
-                    disabled={!canAdvance || completing || terminalDisabled}
+                    disabled={!canAdvance || completing}
                     className="h-12 px-6 font-bold"
                   >
                     {isTerminal ? terminalLabel : "Continue"}

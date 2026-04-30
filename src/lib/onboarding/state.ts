@@ -26,7 +26,25 @@ import type { ActivityLevel, NutritionStrategy, Sex } from "../nutrition/tdee";
  *  via `mapGoalToStrategy` and `mapGoalToBudgetGoal` in `targets.ts`. */
 export type Goal = "lose" | "maintain" | "gain" | "recomp";
 
-/** Step IDs in display order. The flow auto-skips `pace` for maintain. */
+/** Step IDs in display order. The flow auto-skips `pace` for maintain.
+ *
+ *  Customer-lens shrink (2026-04-30): three optional steps —
+ *  `permissions`, `import`, `recipes` — were moved off the linear flow
+ *  to cut the step counter from 15 to 12 (Cal AI ships 6, MFP 5,
+ *  Lifesum 7; 15 was an outlier and tested as a churn anchor). The
+ *  removed steps' affordances live on as organic discovery surfaces
+ *  post-onboarding:
+ *    - HealthKit + notifications → Settings → Health sync (always-on)
+ *    - Recipe import → /(tabs)/library → Import button + /import-shared
+ *    - Recipe seeding → /(tabs)/library browse + Today empty-state CTA
+ *  Reveal is now the terminal "aha + finish" step — the seed-and-plan
+ *  persistence path in `web-flow.tsx#handleComplete` and
+ *  `mobile-flow.tsx#handleComplete` still runs but `pickedSeeds.length
+ *  === 0` is the steady state, so it gracefully degrades to a
+ *  targets-only completion. Step component files
+ *  (`steps/permissions.tsx`, `steps/import.tsx`, `steps/recipes.tsx`)
+ *  are kept on disk — they're the building blocks for the post-launch
+ *  nudge queue follow-up. */
 export const STEP_IDS = [
   "welcome", // 01
   "signup", // 02
@@ -39,14 +57,7 @@ export const STEP_IDS = [
   "pace", // 09 — auto-skipped when goal = maintain
   "diet", // 10
   "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
-  "reveal", // 12 — the aha moment
-  "permissions", // 13
-  "import", // 14
-  // Phase 5 / B2.3 (D-2026-04-27-14): final step is "Pick 5 recipes" —
-  // the user ends with a populated library + auto-generated first plan
-  // rather than just a target. See docs/specs/2026-04-27-production-design-spec.md
-  // Surface F + docs/decisions/2026-04-27-onboarding-candidate-source.md.
-  "recipes", // 15 — onboarding final step
+  "reveal", // 12 — terminal "aha + finish" (was: aha; recipes was 15)
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -65,9 +76,6 @@ export const STEP_LABELS: Record<StepId, string> = {
   diet: "Diet",
   strategy: "Macro style",
   reveal: "Your targets",
-  permissions: "Permissions",
-  import: "Import",
-  recipes: "Recipes",
 };
 
 export const TOTAL_STEPS = STEP_IDS.length;
@@ -327,17 +335,11 @@ export function canAdvance(
       // macro split even if they don't tap a card.
       return true;
     case "reveal":
-      return true;
-    case "permissions":
-      return true; // both permissions are optional
-    case "import":
-      return true;
-    case "recipes":
-      // Phase 5 / B2.3 — picker step. The CTA "Build my first week"
-      // is gated on `picked.size >= ONBOARDING_PICK_MIN` inside the
-      // RecipePickerStep itself; canAdvance returns true here so the
-      // shell's terminal-step button is reachable. The step component
-      // owns the disabled-state visual + the actual persist trigger.
+      // Customer-lens shrink (2026-04-30) — `reveal` is now the
+      // terminal step. The shell's footer CTA fires the
+      // `handleComplete` write path (persist targets + optionally
+      // seed-and-plan if `pickedRecipeSlugs` is non-empty, which only
+      // happens when the post-launch nudge queue lands).
       return true;
     default:
       return true;
