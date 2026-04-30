@@ -5,8 +5,12 @@ name: "Meal plan — generate, view, shopping list"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Plan, tab.*"
+- tapOn:
+    id: "tab-plan"
 - assertVisible: ".*Meal Plan.*"
+
+# Visual baseline #1 — Plan landing (idle / generated state).
+- takeScreenshot: screenshots/latest/plan-01-landing
 
 # Generate button should be visible
 - assertVisible:
@@ -25,11 +29,17 @@ name: "Meal plan — generate, view, shopping list"
 - assertVisible:
     text: ".*(?:Breakfast|Lunch|Dinner).*"
 
+# Visual baseline #2 — Plan with day cards generated.
+- takeScreenshot: screenshots/latest/plan-02-generated
+
 # Shopping list entry (may require scroll on smaller viewports)
 - scrollUntilVisible:
     element: ".*Shopping List.*"
     direction: DOWN
 - assertVisible: ".*Shopping List.*"
+
+# Visual baseline #3 — Shopping list section in view.
+- takeScreenshot: screenshots/latest/plan-03-shopping-section
 
 # Planner supports horizontal day strip — swipe should not crash
 - swipe:

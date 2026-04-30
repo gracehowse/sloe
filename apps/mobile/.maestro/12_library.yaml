@@ -5,15 +5,19 @@ name: "Library — header, search, sort, empty state"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover, tab.*"
+- tapOn:
+    id: "tab-recipes"
 - waitForAnimationToEnd
 
-# Tap My Library CTA
-- tapOn: ".*My Library.*"
-- waitForAnimationToEnd
+# tab-recipes lands on /(tabs)/library directly (Library is the default
+# sub-tab in the Recipes group post 2026-04-27 IA collapse). The legacy
+# "My Library" CTA on Today is gone — no extra navigation needed.
 
 # Library screen should load
 - assertVisible: ".*Library.*"
+
+# Visual baseline #1 — Library landing.
+- takeScreenshot: screenshots/latest/library-01-landing
 
 # Sort button should be visible
 - assertVisible:

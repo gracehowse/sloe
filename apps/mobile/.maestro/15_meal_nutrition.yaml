@@ -3,7 +3,8 @@ name: "Meal nutrition detail — macros, micro breakdown"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
 # Scroll to find a logged meal entry

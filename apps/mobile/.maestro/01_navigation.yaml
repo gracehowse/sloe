@@ -7,33 +7,35 @@ name: "Tab navigation — all 4 tabs load and respond"
 
 # Verify Today screen loaded with key content
 - assertVisible:
-    text: ".*Today, tab.*"
+    id: "tab-today"
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
 # Recipes tab — Library is the default sub-tab (per (tabs)/_layout.tsx).
 # Discover lives behind a sub-tab pill inside Recipes (RecipesSubTabHeader).
-- tapOn: ".*Recipes, tab.*"
+- tapOn:
+    id: "tab-recipes"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - tapOn:
-    text: "Discover"
-    accessibilityRole: "tab"
+    id: "subtab-discover"
 - waitForAnimationToEnd
 # Discover prototype header (Browse + Discover); not the old macro subtitle.
 - assertVisible: ".*Browse.*"
 - assertVisible: ".*Discover.*"
 
 # Plan tab — verify content loads
-- tapOn: ".*Plan, tab.*"
+- tapOn:
+    id: "tab-plan"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - assertVisible: ".*Meal Plan.*"
 
 # You tab — Progress is the default sub-tab (per (tabs)/_layout.tsx).
-- tapOn: ".*You, tab.*"
+- tapOn:
+    id: "tab-you"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -41,24 +43,34 @@ name: "Tab navigation — all 4 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|progress will appear).*"
 
-# Settings sub-tab inside You — replaces the legacy "More" tab.
+# Settings sub-tab inside You — Group G IA (2026-04-28) collapsed to
+# Progress + Settings only. Settings page anchors verified here:
+# "Your plan" header, "Appearance", "Account" — all live on /settings
+# (not on /more). Goals & Targets is currently orphaned on /more
+# pending Group G batches B-E migration.
 - tapOn:
-    text: "Settings"
-    accessibilityRole: "tab"
+    id: "subtab-settings"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: ".*Goals & Targets.*"
+- assertVisible: ".*(?:Your plan|Appearance|Account).*"
 
 # Return to Today — round-trip complete
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
-- assertVisible: ".*Today, tab.*"
+- assertVisible:
+    id: "tab-today"
 
 # Rapid tab switching — regression test for crash/flicker
-- tapOn: ".*Recipes, tab.*"
-- tapOn: ".*Plan, tab.*"
-- tapOn: ".*You, tab.*"
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-recipes"
+- tapOn:
+    id: "tab-plan"
+- tapOn:
+    id: "tab-you"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
-- assertVisible: ".*Today, tab.*"
+- assertVisible:
+    id: "tab-today"

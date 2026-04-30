@@ -9,12 +9,18 @@ name: "Login — form validation, error states, successful auth"
     visible: ".*(?:Sign In|Today).*"
     timeout: 90000
 
-# If already authenticated, sign out first via More tab > scroll to Sign Out
+# If already authenticated, sign out first via You tab → Settings sub-tab >
+# scroll to Sign Out. (IA 6→4 tab change on 2026-04-27 collapsed the legacy
+# "More" tab into You/Settings.)
 - runFlow:
     when:
       visible: ".*Today.*"
     commands:
-      - tapOn: ".*More, tab.*"
+      - tapOn:
+          id: "tab-you"
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "subtab-settings"
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element: ".*Sign Out.*"

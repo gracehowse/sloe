@@ -5,11 +5,25 @@ name: "Barcode Scanner — permission screen, UI elements"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
+# Quick-log strip retired 2026-04-27 (Phase 3 / B2.1). Entry is now:
+# LogFab → LogSheet opens → tap "Scan barcode" right-edge icon. The FAB has
+# accessibilityLabel "Log a meal"; the scan icon has accessibilityLabel
+# "Scan barcode". (See LogFab.tsx + LogSheet.tsx.)
 - tapOn:
-    id: "today-quick-log-scan"
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+# Use the visible header text — testIDs inside RN Modals are unreliable
+# in Maestro's iOS 26 accessibility traversal until the modal animation
+# fully settles. See LogSheet.tsx:262 for the "Log a meal" header.
+- assertVisible:
+    text: "^Log a meal$"
+- tapOn:
+    text: "Scan barcode"
 - waitForAnimationToEnd
 
 # The barcode screen should show either:
@@ -33,5 +47,6 @@ name: "Barcode Scanner — permission screen, UI elements"
       - assertVisible: ".*Point at a product barcode.*"
 
 # Navigate back to Today
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

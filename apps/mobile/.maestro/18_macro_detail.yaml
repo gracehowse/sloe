@@ -3,7 +3,8 @@ name: "Macro detail — breakdown by meal"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
 # Tap on a macro card (Protein, Carbs, or Fat)
@@ -16,6 +17,9 @@ name: "Macro detail — breakdown by meal"
 
       # Should see macro detail screen
       - assertVisible: ".*Protein.*"
+
+      # Visual baseline — macro detail page.
+      - takeScreenshot: screenshots/latest/macro-detail-01-protein
 
       # If meals are logged, should show per-meal breakdown
       - runFlow:

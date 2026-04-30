@@ -337,6 +337,7 @@ function DefaultComposition({
           accessibilityRole="button"
           accessibilityLabel="Search foods"
           accessibilityHint="Opens the food search where you can find foods, brands, and recipes"
+          testID="log-sheet-search-row"
           onPress={() => search?.onOpen?.()}
           style={({ pressed }) => [
             styles.searchInputWrap,

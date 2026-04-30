@@ -5,7 +5,8 @@ name: "Meal journal — day strip, logged meals, long-press actions"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
 # Verify calorie ring is present
@@ -79,8 +80,7 @@ name: "Meal journal — day strip, logged meals, long-press actions"
     duration: 400
 - waitForAnimationToEnd
 
-# Quick-log strip
-- assertVisible: ".*Snap.*"
-- assertVisible: ".*Voice.*"
-- assertVisible: ".*Search.*"
-- assertVisible: ".*Scan.*"
+# LogFab — persistent 56pt circular Log button (Phase 2 / B1.2). Replaces
+# the legacy quick-log strip retired 2026-04-27 (Phase 3 / B2.1).
+- assertVisible:
+    id: "today-log-fab"

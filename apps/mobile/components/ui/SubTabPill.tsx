@@ -104,6 +104,10 @@ export function SubTabPill<TId extends string>({
             active={active}
             scrollable={scrollable}
             accessibilityLabel={item.accessibilityLabel ?? item.label}
+            // Stable e2e selector — Maestro flows tap by id rather than
+            // by label text, which can be ambiguous across screens.
+            // Convention: `subtab-{id}` (e.g. `subtab-discover`).
+            testID={`subtab-${item.id}`}
             activeBg={colors.card}
             activeText={Accent.primary}
             inactiveText={colors.textSecondary}
@@ -146,6 +150,7 @@ interface PillProps {
   active: boolean;
   scrollable: boolean;
   accessibilityLabel: string;
+  testID: string;
   activeBg: string;
   activeText: string;
   inactiveText: string;
@@ -158,6 +163,7 @@ function Pill({
   active,
   scrollable,
   accessibilityLabel,
+  testID,
   activeBg,
   activeText,
   inactiveText,
@@ -169,6 +175,7 @@ function Pill({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel}
+      testID={testID}
       style={{
         flex: 1,
         // YouSubTab-style scrollable groups need a min width so 3+
@@ -180,6 +187,21 @@ function Pill({
         paddingHorizontal: scrollable ? Spacing.sm : 0,
         borderRadius: Radius.sm,
         backgroundColor: active ? activeBg : "transparent",
+        // Audit 2026-04-29 papercut #9 — the active pill's `colors.card`
+        // background sits on a `colors.cardBorder` container; in light
+        // mode both are near-white, leaving the active state visually
+        // soft. A subtle shadow lifts the active pill so the selected
+        // state reads cleanly across all surfaces (Library / Discover,
+        // Plan / Shopping, Progress / Settings).
+        ...(active
+          ? {
+              shadowColor: "#000",
+              shadowOpacity: 0.08,
+              shadowRadius: 3,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 2,
+            }
+          : null),
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",

@@ -5,8 +5,20 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): /more is UI-orphaned post Group G IA
+# collapse — the More sub-tab pill was removed, leaving stat pills,
+# Goals, Connections, Recipes, App section, Legal, Danger Zone all
+# unreachable via tap navigation. Deeplink to keep this flow alive
+# until the Group G migration into /settings completes.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Confirm we're on More — the "Account" overline + "More" page title
+# render at the top (more.tsx:553-558).
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 # Verify avatar/name area
 - assertVisible:
@@ -116,3 +128,9 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
     commands:
       - assertVisible: ".*Upgrade to Pro.*"
       - assertVisible: ".*Multi-day plans.*"
+
+# Return to Today so the next flow's launchApp resumes on a tab shell
+# rather than persisted /more state.
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd

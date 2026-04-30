@@ -5,7 +5,8 @@ name: "Recipe Verify — ingredient list, nutrition facts, confirm button"
 
 # Navigate to a recipe detail first, then to verify
 # Go to Discover → tap first recipe → look for verify/review link
-- tapOn: ".*Discover, tab.*"
+- tapOn:
+    id: "tab-recipes"
 - waitForAnimationToEnd
 
 # Tap the first recipe card
@@ -60,5 +61,6 @@ name: "Recipe Verify — ingredient list, nutrition facts, confirm button"
             - waitForAnimationToEnd
 
 # Navigate back to home
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

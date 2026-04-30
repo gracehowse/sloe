@@ -15,13 +15,14 @@ import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { consumeNewSocialRecipeUrlFromClipboard, isSocialShareRecipeUrl } from '@/lib/clipboardShareForward';
+import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
 import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
-import { extractUrlFromShareText, urlFromDeepLink } from '@/lib/resolveImportUrl';
+import { extractUrlFromShareText } from '@/lib/resolveImportUrl';
+import { decideDeepLinkAction } from '@/lib/deepLinkRouting';
 import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
 import { setPendingSiriAction } from '@/lib/siriPending';
 import { track } from '@/lib/analytics';
@@ -53,26 +54,18 @@ function ForwardSocialSharesToImport() {
 
   const forward = useCallback(
     (href: string) => {
-      const t = href.trim();
-      // Batch 5.12 — Siri / Shortcuts-app deep links are handled by
-      // HandleSiriDeepLinks. Skip here so we don't race-navigate.
-      if (parseSiriDeepLink(t) != null) return;
-      if (/^suppr:/i.test(t)) {
-        const u = urlFromDeepLink(t);
-        if (u) {
-          router.replace({ pathname: "/import-shared", params: { url: u } });
-        } else {
-          // Share-intent deep link (suppr://…) —
-          // redirect home so expo-router doesn't show "Unmatched Route".
-          // ForwardShareIntentToImport will pick up the data and navigate.
-          router.replace("/");
-        }
-        return;
+      // Decision logic extracted to `lib/deepLinkRouting` for unit-testing.
+      // 2026-04-29 audit fix: previously this handler called
+      // `router.replace("/")` for any `suppr://` URL without a
+      // recipe URL embedded — silently redirecting navigation
+      // deeplinks like `suppr:///settings`, `suppr:///more`, etc.
+      // back to Today. The pure decision function now returns
+      // "ignore" for those, letting Expo Router handle them.
+      const action = decideDeepLinkAction(href);
+      if (action.kind === "forward-to-import") {
+        router.replace({ pathname: "/import-shared", params: { url: action.url } });
       }
-      if (!/^https?:\/\//i.test(t)) return;
-      const u = extractUrlFromShareText(t);
-      if (!u || !isSocialShareRecipeUrl(u)) return;
-      router.replace({ pathname: "/import-shared", params: { url: u } });
+      // "ignore" / "siri" → no-op (Siri owned by HandleSiriDeepLinks).
     },
     [router],
   );

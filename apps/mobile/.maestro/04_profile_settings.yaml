@@ -3,8 +3,19 @@ name: "Profile & settings — sections, navigation, data export"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (flagged 2026-04-29): the Group G IA decision
+# (docs/decisions/2026-04-28-group-g-ia-collapse.md) removed the "More"
+# sub-tab pill — only Progress / Settings exist on the You tab now.
+# The /more page is still alive but has NO UI entrypoint; Goals,
+# Connections, Apple Health, Help, Legal etc. are orphaned there until
+# the migration into /settings completes (batches B-E). Until then we
+# deeplink to /more so the flow can still verify those sections render.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 # Check top-of-screen sections (visible without scroll)
 - assertVisible: ".*Goals & Targets.*"
@@ -41,3 +52,9 @@ name: "Profile & settings — sections, navigation, data export"
 
 # Terms
 - assertVisible: ".*Terms of Use.*"
+
+# Return to Today so the next flow's launchApp resumes on a tab shell
+# rather than persisted /more state.
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd

@@ -3,8 +3,15 @@ name: "Nutrition Sources — info screen with all data sources"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): Help & Information row lives on /more,
+# which is UI-orphaned post Group G IA collapse (no More pill anymore).
+# Deeplink to /more until the row migrates into /settings.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 # Navigate to Help & Information, or directly to nutrition sources
 # Nutrition sources is accessible from various paths; go via profile
@@ -43,3 +50,8 @@ name: "Nutrition Sources — info screen with all data sources"
       # Go back
       - tapOn: ".*Back.*"
       - waitForAnimationToEnd
+
+# Return to Today so the next flow's launchApp resumes on a tab shell.
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd

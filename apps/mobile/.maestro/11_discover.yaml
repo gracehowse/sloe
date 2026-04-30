@@ -5,15 +5,24 @@ name: "Discover — search, filters, import CTA, recipe cards"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover, tab.*"
+# Recipes tab → Discover sub-tab. The legacy "Discover" tab collapsed
+# into Recipes/Discover on 2026-04-27 (IA 6→4 tab change). Library is
+# the default landing inside Recipes; Discover requires a sub-tab tap.
+- tapOn:
+    id: "tab-recipes"
+- waitForAnimationToEnd
+- tapOn:
+    id: "subtab-discover"
 - waitForAnimationToEnd
 
 # Header (prototype: BROWSE + Discover — no "Recipes that fit your macros" subtitle)
 - assertVisible: ".*Browse.*"
 - assertVisible: ".*Discover.*"
 
-# Search bar (placeholder updated 2026-04)
-- assertVisible: ".*Search 48,000.*"
+# Search bar — placeholder pivoted from "Search 48,000+ recipes" to
+# the more honest "Search recipes" 2026-04 (see (tabs)/discover.tsx:580
+# comment: aspirational catalog count was misleading vs real catalog).
+- assertVisible: ".*Search recipes.*"
 
 # Filter pills visible
 - assertVisible: ".*For You.*"

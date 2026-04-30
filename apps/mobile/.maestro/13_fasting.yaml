@@ -3,15 +3,14 @@ name: "Fasting — timer ring, start/end, history"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (flagged 2026-04-29): Fasting screen has no entrypoint
+# from More or Settings after the IA 6→4 collapse. The only in-product
+# path is the TodayFastingPill in the unified context block on Today,
+# which only renders when a fast is *already active*. Until a stable
+# entrypoint is restored, navigate via deeplink so this flow can still
+# verify the fasting screen renders correctly.
+- openLink: suppr:///fasting
 - waitForAnimationToEnd
-
-# Look for fasting link in profile/settings
-- scrollUntilVisible:
-    element: ".*Fasting.*"
-    direction: DOWN
-
-- tapOn: ".*Fasting.*"
 - waitForAnimationToEnd
 
 # Header
@@ -49,6 +48,9 @@ name: "Fasting — timer ring, start/end, history"
     element: ".*History.*"
     direction: DOWN
 
-# Navigate back
+# Return to Today so the next flow's launchApp resumes on a tab shell
+# rather than persisted /fasting state. Coordinate-based back tap was
+# unreliable when the route was outside the tab shell.
 - tapOn:
-    point: "5%,8%"
+    id: "tab-today"
+- waitForAnimationToEnd

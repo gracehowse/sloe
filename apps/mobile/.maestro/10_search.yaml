@@ -6,7 +6,8 @@ name: "Food search — open from Today, query USDA/OpenFood, error path"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
 - tapOn:

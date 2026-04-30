@@ -3,7 +3,8 @@ name: "Progress screen — stats, charts, weight journey, time range"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Progress, tab.*"
+- tapOn:
+    id: "tab-you"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
@@ -23,7 +24,16 @@ name: "Progress screen — stats, charts, weight journey, time range"
     when:
       visible: ".*LAST 30 DAYS.*"
     commands:
+      # Daily Calories chart is below the fold — render order is:
+      # range overline → stat tiles → Daily Calories chart → Macro
+      # Adherence (progress.tsx:1302 + 1406). Scroll to find each.
+      - scrollUntilVisible:
+          element: ".*Daily Calories.*"
+          direction: DOWN
       - assertVisible: ".*Daily Calories.*"
+      - scrollUntilVisible:
+          element: ".*Macro Adherence.*"
+          direction: DOWN
       - assertVisible: ".*Macro Adherence.*"
 
       # Scroll to weight section

@@ -3,7 +3,8 @@ name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
 - tapOn:

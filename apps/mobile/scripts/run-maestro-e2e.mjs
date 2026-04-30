@@ -126,6 +126,49 @@ async function assertMetroUp(env) {
 
 warnDisk();
 
+/**
+ * Lock the iOS Simulator status bar to a deterministic state before
+ * Maestro runs. Without this, the clock + battery + signal bars
+ * change between runs and produce false-positive screenshot diffs
+ * (audit 2026-04-29 papercut investigation: tour-19-nutrition-sources
+ * failed with 4% diff that was 100% the clock advancing). 9:41 is
+ * Apple's marketing convention; full battery + WiFi 100% give a
+ * stable chrome row across captures.
+ *
+ * `xcrun simctl status_bar booted override` is iOS-only and a no-op
+ * if no simulator is booted (we tolerate the exit code; this is best-
+ * effort polish, not a hard requirement).
+ */
+function lockSimulatorStatusBar() {
+  if (process.platform !== "darwin") return;
+  spawnSync(
+    "xcrun",
+    [
+      "simctl",
+      "status_bar",
+      "booted",
+      "override",
+      "--time",
+      "9:41",
+      "--dataNetwork",
+      "wifi",
+      "--wifiMode",
+      "active",
+      "--wifiBars",
+      "3",
+      "--cellularMode",
+      "notSupported",
+      "--batteryState",
+      "charged",
+      "--batteryLevel",
+      "100",
+    ],
+    { stdio: "ignore" },
+  );
+}
+
+lockSimulatorStatusBar();
+
 const childEnv = buildChildEnv();
 
 if (!childEnv.E2E_EMAIL?.trim() || !childEnv.E2E_PASSWORD) {

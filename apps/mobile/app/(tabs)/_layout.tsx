@@ -102,12 +102,15 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
-      {/* Today — unchanged. */}
+      {/* Today — unchanged.
+          tabBarTestID stable selector for Maestro / e2e (iOS 26 dropped
+          the ", tab" VoiceOver suffix that flows used to match against). */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Today',
           tabBarIcon: ({ color }) => <Flame size={22} color={color} strokeWidth={2} />,
+          tabBarButtonTestID: 'tab-today',
         }}
       />
       {/* Recipes — primary tab points at Library (the default sub-tab).
@@ -121,6 +124,7 @@ export default function TabLayout() {
           title: 'Recipes',
           tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={2} />,
           tabBarAccessibilityLabel: 'Recipes',
+          tabBarButtonTestID: 'tab-recipes',
         }}
         listeners={{
           tabPress: (e) => {
@@ -139,6 +143,7 @@ export default function TabLayout() {
         options={{
           title: 'Plan',
           tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
+          tabBarButtonTestID: 'tab-plan',
         }}
       />
       {/* You — primary tab points at Progress (the default sub-tab).
@@ -149,6 +154,7 @@ export default function TabLayout() {
           title: 'You',
           tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
           tabBarAccessibilityLabel: 'You',
+          tabBarButtonTestID: 'tab-you',
         }}
         listeners={{
           tabPress: (e) => {

@@ -1,5 +1,5 @@
 appId: com.supprclub.supprapp
-name: "Ensure authenticated (assumes app is already running)"
+name: "Ensure authenticated + app on canonical tab shell"
 ---
 # Two ways to reach the main tabs:
 #
@@ -12,9 +12,22 @@ name: "Ensure authenticated (assumes app is already running)"
 #    on the simulator when auto sign-in is not active.
 #
 # Test user must have profiles.onboarding_completed=true or flows will never see "Today".
+
+# Force a fresh app launch at the start of every flow. Without this, suite
+# state pollutes between flows: a previous flow may leave the app on a deep
+# route / modal, the next flow's `extendedWaitUntil .*Today.*` matches stale
+# text (e.g. a date-strip "Today" or "TODAY" in the calorie ring), and the
+# subsequent `tab-*` testID lookup fails because the user isn't actually on
+# the tab shell. Adds ~3s per flow but produces deterministic state.
 #
-# Launch the app before the suite if needed:
-#   xcrun simctl launch booted com.supprclub.supprapp
+# NOTE (2026-04-29): tried following launchApp with `openLink: suppr:///`
+# to force navigation back to root (Expo Router persists nav state and
+# can resume on /fasting after a deeplink-leaving flow). That broke
+# every flow — the empty-path URL caused the bundle to lose focus or
+# never finish loading. Reverted; deeplink-using flows must navigate
+# back to a tab shell themselves before they end.
+- launchApp:
+    appId: com.supprclub.supprapp
 
 - runFlow:
     when:

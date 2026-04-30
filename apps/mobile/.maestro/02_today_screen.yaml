@@ -1,42 +1,42 @@
 # @cases TC-TODAY-01
 # @screen (tabs)/index
 appId: com.supprclub.supprapp
-name: "Today screen — ring, macros, quick-log buttons"
+name: "Today screen — ring, macros, LogFab → LogSheet"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
-# Calorie ring visible
+# Calorie ring visible — canonical "Today loaded" signal.
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
-# Macro cards visible (at least one)
+# LogFab — persistent 56pt circular Log button (Phase 2 / B1.2). Replaces
+# the legacy quick-log strip. Wired via accessibilityLabel "Log a meal".
 - assertVisible:
-    text: ".*(?:Protein|Carbs|Fat).*"
+    id: "today-log-fab"
 
-# Quick-log strip — labels are Search / Voice / Snap / Scan (Snap = photo log).
-- assertVisible: ".*Snap.*"
-- assertVisible: ".*Voice.*"
-- assertVisible: ".*Search.*"
-- assertVisible: ".*Scan.*"
-
-# Visual baseline #1 — ring + macros + quick-log in their default state.
-# Catches ring-label clipping, macro-card overflow, quick-log icon misalignment.
+# Visual baseline #1 — ring + LogFab + above-meals state on initial load.
+# Catches ring-label clipping, macro-card overflow, FAB position drift.
+# Note: macro tiles (Protein / Carbs / Fat) live below the fold post Top-5 #1
+# (2026-04-28); they're verified by the scrolled screenshot below, not by a
+# pre-scroll text assertion. The "Tap to show/hide macros" affordance was
+# also removed in the same cleanup pass.
 - takeScreenshot: screenshots/latest/today-01-loaded
 
-# Verify the macro-toggle affordance is present (in either show or hide state).
-- assertVisible:
-    text: ".*Tap to (?:show|hide) macros.*"
-
-# Scroll down to verify meal journal section loads
+# Scroll down to verify macros + meal journal section loads
 - swipe:
     direction: UP
     duration: 400
 - waitForAnimationToEnd
 
-# Visual baseline #2 — scrolled state. Header collapse + meal-slot cards.
+# Macro tiles should now be visible after scroll.
+- assertVisible:
+    text: ".*(?:Protein|Carbs|Fat).*"
+
+# Visual baseline #2 — scrolled state. Macro tiles + meal-slot cards.
 - takeScreenshot: screenshots/latest/today-02-scrolled
 
 # Scroll back up to verify no crash
@@ -45,37 +45,53 @@ name: "Today screen — ring, macros, quick-log buttons"
     duration: 400
 - waitForAnimationToEnd
 
-# Voice — Pro: voice sheet; Free/Base: in-flow Pro upsell (tap Not now).
+# Open LogSheet via the FAB. Search-first sheet (Next-10 #12) with
+# right-edge icons for Scan / Voice / Photo (Phase 3 / B2.1).
 - tapOn:
-    id: "today-quick-log-voice"
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "log-sheet-root"
+
+# Visual baseline #3 — LogSheet open from Today FAB (search row + right-edge icons).
+- takeScreenshot: screenshots/latest/today-03-log-sheet
+
+# Voice icon — Pro: voice sheet; Free/Base: in-flow Pro upsell.
+# accessibilityLabel is "Voice log" (or "Voice log (Pro)" when locked).
+- tapOn:
+    text: ".*Voice log.*"
 - waitForAnimationToEnd
 - runFlow:
     when:
       visible: ".*Voice logging is a Pro feature.*"
     commands:
-      # Visual baseline #3a — Pro upsell sheet (Free / Base tier path).
-      - takeScreenshot: screenshots/latest/today-03-voice-upsell
+      # Visual baseline #4a — Pro upsell sheet (Free / Base tier path).
+      - takeScreenshot: screenshots/latest/today-04-voice-upsell
       - tapOn: ".*Not now.*"
       - waitForAnimationToEnd
 - runFlow:
     when:
       visible: ".*Describe what you ate.*"
     commands:
-      # Visual baseline #3b — voice sheet (Pro tier path).
-      - takeScreenshot: screenshots/latest/today-03-voice-sheet
+      # Visual baseline #4b — voice sheet (Pro tier path).
+      - takeScreenshot: screenshots/latest/today-04-voice-sheet
       - assertVisible:
           text: ".*(?:Describe what you ate|Cancel).*"
       - tapOn: ".*Cancel.*"
       - waitForAnimationToEnd
 
-# Search quick-log opens food search modal
+# Re-open LogSheet (closed when voice path completed) and route to Search.
 - tapOn:
-    id: "today-quick-log-search"
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Search foods"
 - waitForAnimationToEnd
 - assertVisible:
     text: ".*(?:Food search|Search foods).*"
-# Visual baseline #4 — food search modal initial state (search field, recent foods).
-- takeScreenshot: screenshots/latest/today-04-search-modal
+
+# Visual baseline #5 — FoodSearchModal initial state (search field, recent foods).
+- takeScreenshot: screenshots/latest/today-05-search-modal
 # Go back
 - back
 - waitForAnimationToEnd

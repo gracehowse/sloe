@@ -3,16 +3,12 @@ name: "Weight tracker — sections, input, charts"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Progress, tab.*"
+# The "Weight" section title on Progress (line 1783) is not interactive
+# — only the "Trend" stat tile (top of Progress) and the WeightSparseState
+# "Log weight" button (only renders <3 weight logs) navigate to
+# /weight-tracker. Deeplink directly to skip flaky tile tapping.
+- openLink: suppr:///weight-tracker
 - waitForAnimationToEnd
-
-# Scroll to find weight entry point
-- scrollUntilVisible:
-    element: ".*Weight.*"
-    direction: DOWN
-
-# Tap into weight tracker
-- tapOn: ".*Weight.*"
 - waitForAnimationToEnd
 
 # Weight tracker screen sections
@@ -53,6 +49,8 @@ name: "Weight tracker — sections, input, charts"
     commands:
       - assertVisible: ".*Body Fat.*"
 
-# Navigate back
+# Return to Today so the next flow's launchApp resumes on a tab shell
+# rather than persisted /weight-tracker state.
 - tapOn:
-    point: "5%,8%"
+    id: "tab-today"
+- waitForAnimationToEnd

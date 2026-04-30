@@ -3,21 +3,26 @@ name: "Progress Metric Detail — calorie/protein/streak deep dive"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Progress, tab.*"
+- tapOn:
+    id: "tab-you"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 
 # Verify the Progress screen renders with at least one metric tile.
+# Titles are rendered uppercase via CSS textTransform but the underlying
+# text nodes are mixed case ("Avg Calories" / "Protein Hit" / "Streak").
+# The "Avg Calories" title becomes "Avg on logged days (X/7)" on partial
+# weeks (progress.tsx:1229), so match either prefix.
 - extendedWaitUntil:
-    visible: ".*(?:AVG CALORIES|PROTEIN HIT|STREAK|Your progress will appear here).*"
+    visible: ".*(?:Avg Calories|Avg on logged days|Protein Hit|Streak|Your progress will appear here).*"
     timeout: 30000
 
-# If a tile is present, drill into AVG CALORIES detail and verify metric page renders.
+# If a tile is present, drill into Avg Calories detail and verify metric page renders.
 - runFlow:
     when:
-      visible: ".*AVG CALORIES.*"
+      visible: ".*(?:Avg Calories|Avg on logged days).*"
     commands:
-      - tapOn: ".*AVG CALORIES.*"
+      - tapOn: ".*(?:Avg Calories|Avg on logged days).*"
       - waitForAnimationToEnd
       - waitForAnimationToEnd
 

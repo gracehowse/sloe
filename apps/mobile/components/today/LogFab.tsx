@@ -61,6 +61,7 @@ export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: Lo
         accessibilityRole="button"
         accessibilityLabel="Log a meal"
         accessibilityHint="Opens the log sheet for searching foods, scanning barcodes, or quick logging"
+        testID="today-log-fab"
         hitSlop={8}
         style={({ pressed }) => [
           {

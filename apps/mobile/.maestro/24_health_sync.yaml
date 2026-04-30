@@ -3,8 +3,17 @@ name: "Health Sync — screen layout, feature list, connect button"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): Apple Health row lives in /more's
+# Connections section, but /more is UI-orphaned post Group G IA
+# collapse (no More pill, redirect to /settings not yet wired).
+# Apple Health setup is currently unreachable from any tap path —
+# only deeplink. Flagged for product fix; deeplink here keeps coverage.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 # Navigate to Health Sync via Apple Health row in Connections
 - scrollUntilVisible:
@@ -58,4 +67,9 @@ name: "Health Sync — screen layout, feature list, connect button"
 
 # Go back
 - back
+- waitForAnimationToEnd
+
+# Return to Today so the next flow's launchApp resumes on a tab shell.
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

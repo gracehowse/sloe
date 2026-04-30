@@ -3,9 +3,16 @@ name: "Profile & targets — nutrition goals, dietary prefs, body stats"
 ---
 - runFlow: shared/login.yaml
 
-# Navigate to Profile tab
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): Daily Targets row lives in /more's
+# Goals & Targets section, which is UI-orphaned post Group G IA
+# collapse. Daily target editing is currently unreachable via taps;
+# deeplink keeps this flow alive until the Settings migration completes.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 - scrollUntilVisible:
     element: ".*Daily Targets.*"
@@ -43,4 +50,9 @@ name: "Profile & targets — nutrition goals, dietary prefs, body stats"
 # Navigate back
 - tapOn:
     point: "5%,8%"
+- waitForAnimationToEnd
+
+# Return to Today so the next flow's launchApp resumes on a tab shell.
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

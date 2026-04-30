@@ -5,7 +5,8 @@ name: "Shopping list — items, check off, share"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Plan, tab.*"
+- tapOn:
+    id: "tab-plan"
 - waitForAnimationToEnd
 
 # Same tab as meal plan; list CTA is often below the first screenful

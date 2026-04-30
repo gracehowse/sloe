@@ -5,23 +5,31 @@ name: "Import Shared Recipe — idle state, URL input, source grid"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Discover, tab.*"
+# Recipes tab → Discover sub-tab. The legacy "Discover" tab collapsed
+# into Recipes/Discover on 2026-04-27 (IA 6→4 tab change). Library is
+# the default landing inside Recipes; Discover requires a sub-tab tap.
+# Use testID-based selectors (subtab-discover from SubTabPill primitive,
+# discover-import-cta on the Import row) — text-based matching was
+# ambiguous and timing-sensitive.
+- tapOn:
+    id: "tab-recipes"
+- waitForAnimationToEnd
+- tapOn:
+    id: "subtab-discover"
 - waitForAnimationToEnd
 
 - scrollUntilVisible:
-    element: ".*Import from TikTok.*"
+    element:
+      id: "discover-import-cta"
     direction: DOWN
 
 # Visual baseline #1 — Discover with import row in view.
 - takeScreenshot: screenshots/latest/import-01-discover
 
-# Tap the Discover import row (avoid matching unrelated "Import" UI)
-- runFlow:
-    when:
-      visible: ".*Import from TikTok.*"
-    commands:
-      - tapOn: ".*Import from TikTok.*"
-      - waitForAnimationToEnd
+# Tap the Discover import row
+- tapOn:
+    id: "discover-import-cta"
+- waitForAnimationToEnd
 
 # Verify import screen loaded
 - runFlow:

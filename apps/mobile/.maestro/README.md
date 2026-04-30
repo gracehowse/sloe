@@ -127,10 +127,15 @@ A `FAIL` row means the diff exceeded the threshold — open the report and look 
 - Different simulator / device == different pixel dimensions == `SIZE MISMATCH`. Standardise on one Simulator (recommend iPhone 15, Light mode, default text size) for the baseline. Document it in your CI config when this graduates.
 - Don't bake date-of-week or auth-tier-dependent content into shots. Day-strip is fine (we screenshot the whole header), but a "Day 47 streak" pip will diff every day. The current shots avoid this.
 
-## Stable selectors (prototype / tab bar drift)
+## Stable selectors
 
-- **Tab bar:** prefer `.*Today, tab.*`, `.*Discover, tab.*`, etc., over matching screen titles.
-- **Today quick log:** chips expose `testID` `today-quick-log-search`, `today-quick-log-voice`, `today-quick-log-snap`, `today-quick-log-scan` (see `TodayQuickLogStrip.tsx`).
+- **Tab bar (post 6→4 IA collapse, 2026-04-27):** the four visible tab labels are `Today`, `Recipes`, `Plan`, `You`. Match via stable testIDs — `tapOn: { id: "tab-today" }`, `tab-recipes`, `tab-plan`, `tab-you` (set as `tabBarButtonTestID` in `(tabs)/_layout.tsx`). The older `.*Today, tab.*` regex relied on iOS VoiceOver appending a `, tab` suffix; iOS 26 dropped that. The legacy labels `Discover, tab` / `Progress, tab` / `More, tab` no longer exist either — they collapsed into Recipes/You sub-tab pills.
+- **Sub-tab pills (`SubTabPill`):** `Recipes` lands on Library by default, with sub-tab pills `Library` and `Discover` (see `RecipesSubTabHeader.tsx`). `You` lands on Progress by default, with sub-tab pills `Progress` and `Settings` (see `YouSubTabHeader.tsx` — the legacy `More` pill was removed in the Group G IA collapse, 2026-04-28). Match a sub-tab via testID — `tapOn: { id: "subtab-discover" }`, `subtab-library`, `subtab-settings`, `subtab-progress`, `subtab-plan`, `subtab-shopping` (the convention is `subtab-{id}`, set on the `SubTabPill` Pill primitive). Text-based matching via `text: "^Discover$"` works but is timing-sensitive when the pill bar mounts; prefer the testID. Maestro's `tapOn` does **not** support `accessibilityRole` as a property — use `text:` (regex) or `id:` (testID) only.
+- **`/more` is currently UI-orphaned** (Group G IA collapse, 2026-04-28). The Settings consolidation is mid-flight; many sections (stat pills, Goals & Targets, Connections / Apple Health, Daily Targets, Create Recipe, Help & Information, Legal, Danger Zone) still live on `/(tabs)/more` but have no sub-tab pill or row pointing there. Flows for those sections deeplink via `openLink: suppr:///more` until the migration into `/settings` lands. Once Group G batches B-E ship, those flows should switch to `tapOn: { id: "subtab-settings" }`.
+- **LogFab (Today):** the persistent 56pt circular Log button (replaces the legacy quick-log strip retired 2026-04-27). Match via `tapOn: { id: "today-log-fab" }`. See `LogFab.tsx`.
+- **LogSheet (opens from LogFab):** root has `testID="log-sheet-root"`, backdrop `testID="log-sheet-backdrop"`, search row `testID="log-sheet-search-row"`. Right-edge icons via accessibility labels: `Scan barcode` / `Voice log` / `Photo log` (`Voice log (Pro)` and `Photo log (Pro)` when locked for Free / Base tier). Footer `Or add manually` and `Close log sheet` are accessibility-labelled. See `LogSheet.tsx`.
+- **Discover Import CTA:** `testID="discover-import-cta"` on the "Import from TikTok, Instagram..." row (added 2026-04-29 because the longer visible text made `tapOn: text:` brittle). See `(tabs)/discover.tsx`.
+- **Legacy `TodayQuickLogStrip.tsx`** is imported but no longer rendered in `(tabs)/index.tsx` (line 164). Treat as dead code pending decision (delete vs. re-wire) — do **not** rely on the `today-quick-log-*` testIDs.
 
 ## Authentication
 

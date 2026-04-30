@@ -5,9 +5,21 @@ name: "Settings hub — sections, navigation, profile info"
 ---
 - runFlow: shared/login.yaml
 
-# Navigate to Profile/More tab
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): this flow tests /more sections that are
+# UI-orphaned post Group G IA collapse. Deeplink until migration lands.
+# NOTE: overlaps heavily with 29_more_menu — candidate for dedup once
+# the Settings consolidation is complete.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Wait for the Account overline (the More-screen's stable phone-top
+# header — see more.tsx:553) to confirm the deeplink resolved before
+# asserting page contents. Without this, the assertion sometimes runs
+# while Expo Router is still resolving the URL.
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
 # Verify profile header — tier subtitle (Free/Pro/Base) appears under the name
 - assertVisible:
@@ -89,4 +101,9 @@ name: "Settings hub — sections, navigation, profile info"
 # Navigate back to Profile tab
 - tapOn:
     point: "5%,8%"
+- waitForAnimationToEnd
+
+# Return to Today so the next flow's launchApp resumes on a tab shell.
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

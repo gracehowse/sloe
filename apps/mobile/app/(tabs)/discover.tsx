@@ -748,6 +748,9 @@ export default function DiscoverScreen() {
         {/* Import CTA */}
         <Pressable
           onPress={() => router.push("/import-shared" as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
+          testID="discover-import-cta"
           style={{
             flexDirection: "row",
             alignItems: "center",

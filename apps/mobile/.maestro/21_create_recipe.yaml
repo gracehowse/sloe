@@ -3,10 +3,18 @@ name: "Create Recipe — form fields, ingredient add, totals, validation"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*More, tab.*"
+# PRODUCT GAP (2026-04-29): Create Recipe row lives on /more, but the
+# More sub-tab pill was removed in Group G IA collapse and the row
+# hasn't migrated to /settings yet. /more is still alive as a route
+# but UI-orphaned. Deeplink so this flow keeps coverage.
+- openLink: suppr:///more
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*Account.*"
+    timeout: 15000
 
-# Navigate to Create Recipe via the settings row
+# Navigate to Create Recipe via the More-screen row
 - scrollUntilVisible:
     element: ".*Create Recipe.*"
     direction: DOWN
@@ -88,4 +96,9 @@ name: "Create Recipe — form fields, ingredient add, totals, validation"
 
 # Cancel creation — go back
 - tapOn: ".*Cancel.*"
+- waitForAnimationToEnd
+
+# Return to Today so the next flow's launchApp resumes on a tab shell.
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd

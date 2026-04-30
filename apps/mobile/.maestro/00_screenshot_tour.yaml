@@ -1,0 +1,136 @@
+# @cases TC-TOUR-01
+# @screen multiple
+appId: com.supprclub.supprapp
+name: "Screenshot tour — capture baseline shots of every key surface"
+---
+# Dedicated screenshot capture flow. Different from the rest of the
+# suite: this flow is cheap to fail, doesn't assert against fragile
+# product copy, and uses deeplinks where possible to skip flaky
+# tap-tap-tap navigation. Run this when you want to refresh the
+# baseline:
+#
+#   maestro test apps/mobile/.maestro/00_screenshot_tour.yaml
+#   npm run mobile:test:screens:update-baseline
+#
+# Conditional `runFlow when: visible: id:` patterns were removed
+# 2026-04-29 because Maestro hangs indefinitely waiting for a
+# never-visible testID. We use deeplinks for sub-routes that aren't
+# default tab landings.
+
+- runFlow: shared/login.yaml
+
+# ---- Today (the most important screen — first-impression surface) ----
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-01-today
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-02-today-scrolled
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+
+# ---- Recipes group (Library default + Discover sub-tab) ----
+- tapOn:
+    id: "tab-recipes"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-03-library
+
+- tapOn:
+    id: "subtab-discover"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-04-discover
+
+# ---- Plan + Shopping (deeplinks instead of sub-tab pill detection) ----
+- openLink: suppr:///planner
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-05-plan
+
+- openLink: suppr:///shopping
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-06-shopping
+
+# ---- You group (Progress default + Settings sub-tab) ----
+- openLink: suppr:///progress
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-07-progress
+
+- openLink: suppr:///settings
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-08-settings
+
+# ---- /more (UI-orphaned post Group G IA collapse — deeplink only) ----
+- openLink: suppr:///more
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-09-more
+
+# ---- Deep routes ----
+- openLink: suppr:///weight-tracker
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-10-weight-tracker
+
+- openLink: suppr:///fasting
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-11-fasting
+
+- openLink: suppr:///targets
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-12-targets
+
+- openLink: suppr:///health-sync
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-13-health-sync
+
+- openLink: suppr:///notifications
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-14-notifications
+
+- openLink: suppr:///paywall
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-15-paywall
+
+- openLink: suppr:///whats-new
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-16-whats-new
+
+- openLink: suppr:///import-shared
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-17-import-shared
+
+- openLink: suppr:///create-recipe
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-18-create-recipe
+
+- openLink: suppr:///nutrition-sources
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-19-nutrition-sources
+
+- openLink: suppr:///profile
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-20-profile
+
+# ---- Return to a known shell. ----
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd

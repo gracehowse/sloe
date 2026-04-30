@@ -5,11 +5,31 @@ name: "Food search modal — search, results, portion selection"
 ---
 - runFlow: shared/login.yaml
 
-- tapOn: ".*Today, tab.*"
+- tapOn:
+    id: "tab-today"
 - waitForAnimationToEnd
 
+# Quick-log strip retired 2026-04-27 (Phase 3 / B2.1). Entry is now:
+# LogFab → LogSheet opens → tap "Search foods" row. The FAB has
+# accessibilityLabel "Log a meal"; the search row has accessibilityLabel
+# "Search foods". (See LogFab.tsx + LogSheet.tsx.)
 - tapOn:
-    id: "today-quick-log-search"
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+# Assert via the visible header text rather than testID. iOS 26 +
+# RN Modal + accessibilityViewIsModal: the testIDs inside the modal
+# aren't always exposed in Maestro's accessibility traversal until
+# the modal animation fully settles. The "Log a meal" header text is
+# Text-rendered (line 262) and reliably appears in the tree.
+- assertVisible:
+    text: "^Log a meal$"
+# The "Search foods" Pressable has accessibilityLabel "Search foods"
+# but its inner visible text is the longer placeholder "Search foods,
+# brands, or recipes" — text:-based matching is ambiguous, so use the
+# accessibilityLabel directly.
+- tapOn:
+    text: "^Search foods$"
 - waitForAnimationToEnd
 
 # Verify food search screen/modal loaded
