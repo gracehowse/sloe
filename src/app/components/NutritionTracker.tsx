@@ -1324,6 +1324,74 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [addLoggedMeal, mealSlot],
   );
 
+  /**
+   * Canonical food-search selection commit. Used by both the
+   * `<FoodSearch>` dialog and the inline `<FoodSearchPanel>` mounted
+   * inside `<LogSheet>`. Both surfaces produce the exact same
+   * `FoodSearchSelection` payload so the journal row, source label,
+   * caffeine/alcohol auto-track, and OFF micro persistence stay
+   * byte-for-byte identical regardless of entry point. Mirrors the
+   * mobile Today FoodSearchModal commit flow byte-for-byte.
+   */
+  const commitFoodSearchSelection = useCallback(
+    (selection: FoodSearchSelection) => {
+      const grams = selection.chosenPortion.gramWeight * selection.quantity;
+      const f = grams / 100;
+      // Mirror mobile's attribution — USDA / Open Food Facts / Custom
+      // foods all show a human-readable `source` in the journal row so
+      // the user can tell where the numbers came from after the fact.
+      const sourceLabel =
+        selection.source === "CUSTOM"
+          ? "Custom food"
+          : selection.source === "OFF"
+          ? "Open Food Facts"
+          : selection.source === "Edamam"
+          ? "Edamam"
+          : "USDA FoodData Central";
+      const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
+      // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash scaled
+      // values on the meal's `micros` map so the insert path in
+      // `useNutritionJournalState` can bump
+      // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day` and
+      // the delete path can decrement by the same delta. Null per-100g
+      // → 0 (never invented).
+      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+        grams,
+        caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
+        alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
+      });
+      // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
+      // merged with caffeine/alcohol overrides.
+      const explicitMicros: Record<string, number> = {};
+      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+      const micros = scaleMicrosForGrams(
+        (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
+        grams,
+        explicitMicros,
+      );
+      addLoggedMeal(
+        {
+          name: mealSlot,
+          recipeTitle: selection.name,
+          time: timeLabel,
+          calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
+          protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
+          carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
+          fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
+          source: sourceLabel,
+          ...(fiberG > 0 ? { fiberG } : {}),
+          ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        },
+        // Mirror mobile's `food_logged.source` mapping: custom food
+        // logs fire with `"custom_food"`, USDA/OFF/Edamam with
+        // `"manual"` (the canonical shared-food source).
+        selection.source === "CUSTOM" ? "custom_food" : "manual",
+      );
+    },
+    [addLoggedMeal, mealSlot, timeLabel],
+  );
+
   const recipeOptions = useMemo((): RecipeCard[] => {
     return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
   }, [savedRecipesForLibrary]);
@@ -2266,10 +2334,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
       />
 
-      {/* Post-ship #5 (C1a, 2026-04-18) — shared FoodSearch modal.
-          Replaces the former inline USDA-only search inside
-          TodayAddMealDialog. Custom foods surface at the top; USDA +
-          OFF below. Mirrors mobile's Today FoodSearchModal wiring. */}
+      {/* Post-ship #5 (C1a, 2026-04-18) — shared FoodSearch dialog.
+          As of 2026-04-30 (web parity with mobile commit `1968953`)
+          the dialog is a thin wrapper over `<FoodSearchPanel>`. The
+          same panel is also mounted INLINE inside `<LogSheet>` (see
+          the LogSheet block below) — both surfaces share
+          `commitFoodSearchSelection` so the food-logging flow is
+          identical regardless of entry point. */}
       <FoodSearch
         open={foodSearchOpen}
         onClose={() => setFoodSearchOpen(false)}
@@ -2290,61 +2361,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           fiber: totals.fiber,
         }}
         onSelect={(selection: FoodSearchSelection) => {
-          const grams = selection.chosenPortion.gramWeight * selection.quantity;
-          const f = grams / 100;
-          // Mirror mobile's attribution — USDA / Open Food Facts /
-          // Custom foods all show a human-readable `source` in the
-          // journal row so the user can tell where the numbers came
-          // from after the fact.
-          const sourceLabel =
-            selection.source === "CUSTOM"
-              ? "Custom food"
-              : selection.source === "OFF"
-              ? "Open Food Facts"
-              : selection.source === "Edamam"
-              ? "Edamam"
-              : "USDA FoodData Central";
-          const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash
-          // scaled values on the meal's `micros` map so the insert path
-          // in `useNutritionJournalState` can bump
-          // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`
-          // and the delete path can decrement by the same delta. Null
-          // per-100 g → 0 (never invented). Mirrors the mobile Today
-          // FoodSearchModal commit flow byte-for-byte.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams,
-            caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
-            alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
-          });
-          // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
-          // merged with caffeine/alcohol overrides. Mirrors mobile Today.
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-            grams,
-            explicitMicros,
-          );
-          addLoggedMeal(
-            {
-              name: mealSlot,
-              recipeTitle: selection.name,
-              time: timeLabel,
-              calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
-              protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
-              carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
-              fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
-              source: sourceLabel,
-              ...(fiberG > 0 ? { fiberG } : {}),
-              ...(Object.keys(micros).length > 0 ? { micros } : {}),
-            },
-            // Mirror mobile's `food_logged.source` mapping: custom food
-            // logs fire with `"custom_food"`, USDA/OFF with `"manual"`
-            // (the canonical shared-food source).
-            selection.source === "CUSTOM" ? "custom_food" : "manual",
-          );
+          commitFoodSearchSelection(selection);
           setFoodSearchOpen(false);
         }}
       />
@@ -2610,12 +2627,39 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px.
         desktop={isDesktop}
         search={{
-          // Click the search row → close LogSheet, open FoodSearch.
-          // The LogSheet is router-only; the real search lives in
-          // the dedicated modal.
-          onOpen: () => {
+          // 2026-04-30 (web parity with mobile commit `1968953`) —
+          // INLINE-SEARCH MODE. Wiring `onSelect` flips `<LogSheet>`
+          // from the legacy "tap a button to open the FoodSearch
+          // dialog" pattern to a real `<Input>` that types directly
+          // into a mounted `<FoodSearchPanel>`. The same panel the
+          // dialog uses, just in `mode="compact"` for the LogSheet's
+          // tighter vertical budget. Budget context + custom-foods
+          // wiring are the same as the dialog so fit-this-in lights
+          // up and Custom foods surface at the top.
+          //
+          // After a successful pick the panel emits the canonical
+          // `FoodSearchSelection`; we commit it through the shared
+          // `commitFoodSearchSelection` helper (same path the dialog
+          // uses) and close the sheet.
+          macroTargets: {
+            calories: effectiveCalorieTarget,
+            protein: targets.protein,
+            carbs: targets.carbs,
+            fat: targets.fat,
+            fiber: targets.fiber,
+          },
+          macroConsumed: {
+            calories: totals.calories,
+            protein: totals.protein,
+            carbs: totals.carbs,
+            fat: totals.fat,
+            fiber: totals.fiber,
+          },
+          supabase,
+          userId: authedUserId ?? null,
+          onSelect: (selection) => {
+            commitFoodSearchSelection(selection);
             setLogSheetOpen(false);
-            setFoodSearchOpen(true);
           },
         }}
         barcode={{
