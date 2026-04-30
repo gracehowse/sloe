@@ -231,9 +231,15 @@ export const ShoppingList = memo(function ShoppingList({
                   const displayName = dedupedSingle
                     ? dedupedSingle.name
                     : group.displayName;
-                  const rowLabel = qtyLine
-                    ? `${displayName} (${qtyLine})`
-                    : displayName;
+                  // Audit 2026-04-30 visual-qa P2 #16 — the row used to
+                  // render "2 cups flour (2 cups)" when the ingredient
+                  // display name already had the qty inlined. Skip the
+                  // parenthetical when `qtyLine` is already a substring
+                  // of `displayName` (case-insensitive).
+                  const rowLabel =
+                    qtyLine && !displayName.toLowerCase().includes(qtyLine.toLowerCase())
+                      ? `${displayName} (${qtyLine})`
+                      : displayName;
                   return (
                     <li
                       key={group.key}

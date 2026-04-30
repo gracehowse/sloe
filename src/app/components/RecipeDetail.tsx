@@ -39,6 +39,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu.tsx";
+import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
@@ -158,6 +165,17 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   return out;
 }
 
+// Audit 2026-04-30 visual-qa P1 #6 — ingredient amount float overflow.
+// `(parseFloat(amount) * servings) / baseServings` produced strings
+// like "0.6666666666666666 cup" when the user changed the servings
+// stepper. Round to 2dp, drop trailing zeros, return integers as-is.
+function formatIngredientAmount(raw: number): string {
+  if (!Number.isFinite(raw)) return "";
+  const rounded = Math.round(raw * 100) / 100;
+  if (Number.isInteger(rounded)) return rounded.toString();
+  return rounded.toFixed(2).replace(/\.?0+$/, "");
+}
+
 export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
@@ -211,6 +229,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // Batch 2.7 — add-ingredient + per-ingredient override dialogs.
   const [addIngOpen, setAddIngOpen] = useState(false);
   const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
+  // Audit 2026-04-30 visual-qa P0 #3 — mobile meatball menu drives
+  // these dialogs since the inline buttons are hidden below `md`.
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [goPublicMobileOpen, setGoPublicMobileOpen] = useState(false);
 
   const [followCreatorId, setFollowCreatorId] = useState<string | null>(null);
   const [recipeAuthorId, setRecipeAuthorId] = useState<string | null>(null);
@@ -951,15 +973,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="sticky top-0 backdrop-blur-xl bg-card/80 border-b border-border/50 px-6 py-4 flex items-center gap-4 z-10 shadow-sm">
-        <button onClick={onBack} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all">
+      {/* Audit 2026-04-30 visual-qa P0 #3 + P2 #17 — on a 375px
+          viewport with all 7 header items rendered the title shrunk
+          to 0-2 chars. Fix: every button is now `shrink-0`, and below
+          `md` the secondary actions (Edit, Unpublish, Go public)
+          collapse into a meatball menu so the always-visible row is
+          Back · Title · Cook · Save · Share · ⋮ . z-index bumped to
+          z-20 to win against the hero `shadow-2xl` stacking context. */}
+      <div className="sticky top-0 backdrop-blur-xl bg-card/80 border-b border-border/50 px-6 py-4 flex items-center gap-4 z-20 shadow-sm">
+        <button
+          onClick={onBack}
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all shrink-0"
+        >
           <Icons.back className="w-5 h-5" />
         </button>
         {/* 2026-04-20 prototype port — centred bold title in the
             sticky top bar (was a gradient left-aligned headline).
             Truncated with ellipsis if overflowing. */}
         {/* F-85 (2026-04-25) — web parity for de-CAPS recipe title. */}
-        <h2 className="flex-1 text-center font-semibold text-foreground truncate">{normaliseRecipeDisplayTitle(recipe.title)}</h2>
+        <h2 className="flex-1 min-w-0 text-center font-semibold text-foreground truncate">{normaliseRecipeDisplayTitle(recipe.title)}</h2>
         {isMyRecipe ? (
           <button
             type="button"
@@ -967,18 +999,20 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
               router.replace(`/home?${q}`, { scroll: false });
             }}
-            className="px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold"
+            className="hidden md:inline-flex px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold shrink-0"
           >
             Edit
           </button>
         ) : null}
         {isMyRecipe && isPublished === false ? (
-          <GoPublicDialog
-            recipeTitle={recipe.title}
-            disabled={dbLoading}
-            onConfirmPublish={() => void setPublished(true)}
-            triggerLabel="Go public"
-          />
+          <div className="hidden md:inline-flex shrink-0">
+            <GoPublicDialog
+              recipeTitle={recipe.title}
+              disabled={dbLoading}
+              onConfirmPublish={() => void setPublished(true)}
+              triggerLabel="Go public"
+            />
+          </div>
         ) : null}
         {isMyRecipe && isPublished === true ? (
           <AlertDialog>
@@ -986,7 +1020,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               <button
                 type="button"
                 disabled={dbLoading}
-                className="px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hidden md:inline-flex px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 Unpublish
               </button>
@@ -1011,7 +1045,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => setCookModeOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0"
           >
             <Icons.cook className="w-4 h-4" />
             Cook
@@ -1027,7 +1061,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         <button
           type="button"
           onClick={() => toggleSaveRecipe(recipe.id, userTier)}
-          className={`p-2.5 rounded-xl border transition-all shadow-sm ${
+          className={`p-2.5 rounded-xl border transition-all shadow-sm shrink-0 ${
             saved
               ? "text-primary bg-primary/10 border-primary/40 shadow-primary/20"
               : "text-foreground border-border/70 bg-card hover:bg-muted/60"
@@ -1039,12 +1073,98 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         <button
           type="button"
           onClick={() => void shareRecipeDeepLink(recipe.id)}
-          className="p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm"
+          className="p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm shrink-0"
           aria-label="Share recipe link"
         >
           <Icons.share className="w-5 h-5" />
         </button>
+        {/* Audit 2026-04-30 visual-qa P0 #3 — mobile-only meatball
+            menu collapses Edit / Unpublish / Go public so the title
+            keeps room to breathe on narrow viewports. The desktop
+            inline buttons above are `hidden md:inline-flex`; this
+            menu is `md:hidden`. Renders only when there's at least
+            one secondary action to surface (i.e. it's the user's
+            own recipe). */}
+        {isMyRecipe ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="More actions"
+                className="md:hidden p-2.5 text-foreground border border-border/70 bg-card hover:bg-muted/60 rounded-xl transition-all shadow-sm shrink-0"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
+                  router.replace(`/home?${q}`, { scroll: false });
+                }}
+              >
+                Edit
+              </DropdownMenuItem>
+              {isPublished === false ? (
+                <DropdownMenuItem
+                  disabled={dbLoading}
+                  onSelect={() => setGoPublicMobileOpen(true)}
+                >
+                  Go public
+                </DropdownMenuItem>
+              ) : null}
+              {isPublished === true ? (
+                <DropdownMenuItem
+                  disabled={dbLoading}
+                  onSelect={() => setUnpublishOpen(true)}
+                >
+                  Unpublish
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </div>
+      {/* Audit 2026-04-30 visual-qa P0 #3 — controlled mobile-menu
+          dialogs. They're rendered outside the sticky header so the
+          dropdown can close cleanly before the dialog opens. */}
+      {isMyRecipe && isPublished === true ? (
+        <AlertDialog open={unpublishOpen} onOpenChange={setUnpublishOpen}>
+          <AlertDialogContent className="bg-card border border-border rounded-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unpublish this recipe?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes it from public discovery. It will stay in your library as a private draft.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl"
+                onClick={() => {
+                  setUnpublishOpen(false);
+                  void setPublished(false);
+                }}
+              >
+                Unpublish
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
+      {isMyRecipe && isPublished === false && goPublicMobileOpen ? (
+        <GoPublicDialog
+          recipeTitle={recipe.title}
+          disabled={dbLoading}
+          onConfirmPublish={() => {
+            setGoPublicMobileOpen(false);
+            void setPublished(true);
+          }}
+          triggerLabel="Go public"
+          autoOpen
+          onAutoOpenClose={() => setGoPublicMobileOpen(false)}
+        />
+      ) : null}
 
       <div className="px-6 py-8 space-y-8">
         <div className="rounded-xl border border-border/80 bg-muted/90 px-4 py-3 text-sm text-foreground">
@@ -1559,7 +1679,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                         </div>
                         <p className="text-[11px] text-muted-foreground">
                           {ingredient.amount
-                            ? `${(parseFloat(ingredient.amount) * servings) / baseServings} ${ingredient.unit}`.trim()
+                            ? `${formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings)} ${ingredient.unit}`.trim()
                             : ingredient.unit}
                         </p>
                       </div>

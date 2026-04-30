@@ -293,13 +293,17 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             Daily calorie target
           </p>
           <div
-            className="relative my-3"
-            style={{ width: 200, height: 200 }}
+            // Audit 2026-04-30 visual-qa P2 #15 — fixed 200x200px box
+            // overflowed narrow mobile-web viewports. `max-w-full` lets
+            // it shrink, `aspect-square` keeps the ring round, and the
+            // SVG's `viewBox` already handles the inner scaling.
+            className="relative my-3 w-[200px] max-w-full h-auto aspect-square"
           >
             <svg
-              width={200}
-              height={200}
+              width="100%"
+              height="100%"
               viewBox="0 0 200 200"
+              preserveAspectRatio="xMidYMid meet"
               className="absolute inset-0 -rotate-90"
             >
               <defs>

@@ -187,8 +187,14 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
         </div>
 
         {/* Search and Filter */}
-        <div className="flex gap-3 mt-6">
-          <div className="flex-1 relative group">
+        {/* Audit 2026-04-30 visual-qa P1 #10 — at md+, the prior
+            `flex gap-3` placed the search input and the pill row
+            side-by-side. When pills wrapped to two rows, the search
+            input stayed at one row, so the heights diverged and the
+            layout looked broken. Stack vertically at every breakpoint
+            now: search on row 1, filter pills on row 2. */}
+        <div className="flex flex-col gap-3 mt-6">
+          <div className="relative group">
             <Icons.search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
               type="text"
@@ -483,11 +489,16 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                   </div>
                 </div>
                 <div className="p-5">
+                  {/* Audit 2026-04-30 visual-qa P0 #4 — long titles on the
+                      mobile-web card path used to wrap to 4-5 lines and
+                      blow out card height. Match the desktop grid path
+                      (line-clamp:2) so card heights stay consistent and
+                      the meta row underneath remains visible. */}
                   <h4 className="mb-3">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
-                      className="text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+                      className="line-clamp-2 text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
                     >
                       {recipe.title}
                     </button>

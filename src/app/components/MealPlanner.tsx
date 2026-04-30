@@ -773,12 +773,16 @@ export const MealPlanner = memo(function MealPlanner({
           return (
             <div
               key={`day-${dp.day}`}
-              className={`rounded-2xl border flex flex-col ${
+              // Audit 2026-04-30 visual-qa P1 #13 — moved spacing
+              // tokens from inline style (`padding: 14`, `gap: 10`)
+              // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
+              // is consistent with the rest of the system and easier
+              // to track via the design tokens.
+              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 ${
                 isTodayCol
                   ? "bg-primary/10 border-primary/30"
                   : "bg-card border-border"
               }`}
-              style={{ padding: 14, gap: 10 }}
             >
               <div className="flex items-center justify-between">
                 <p className="text-foreground" style={{ fontSize: 13, fontWeight: 700 }}>
@@ -878,8 +882,10 @@ export const MealPlanner = memo(function MealPlanner({
                   return (
                     <div
                       key={slot}
-                      className="rounded-xl bg-muted relative"
-                      style={{ padding: 10 }}
+                      // Audit 2026-04-30 visual-qa P1 #13 — `p-2.5`
+                      // replaces inline `padding: 10` for token parity
+                      // with the surrounding day-card spacing.
+                      className="rounded-xl bg-muted relative p-2.5"
                     >
                       <p
                         className="text-muted-foreground uppercase inline-flex items-center gap-1.5"
@@ -931,8 +937,9 @@ export const MealPlanner = memo(function MealPlanner({
                 return (
                   <div
                     key={slot}
-                    className="rounded-xl bg-muted relative"
-                    style={{ padding: 10 }}
+                    // Audit 2026-04-30 visual-qa P1 #13 — `p-2.5`
+                    // replaces inline `padding: 10` for token parity.
+                    className="rounded-xl bg-muted relative p-2.5"
                   >
                     <button
                       type="button"
@@ -1120,7 +1127,11 @@ export const MealPlanner = memo(function MealPlanner({
           way to regenerate or open the shopping list. */}
       <div
         data-testid="planner-desktop-cta-row"
-        className={`flex ${showSummaryCard ? "hidden" : ""}`}
+        // Audit 2026-04-30 visual-qa P1 #7 — Tailwind JIT can purge
+        // a class only injected via interpolation (`${... ? "hidden" : ""}`).
+        // Both branches are explicit literals now so the class always
+        // ends up in the production CSS.
+        className={showSummaryCard ? "hidden" : "flex"}
         style={{ gap: 8, marginTop: 20 }}
       >
         <button

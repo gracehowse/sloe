@@ -527,7 +527,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           profile" link to /profile (the full editor). */}
       <div
         data-testid="settings-profile-header-card"
-        className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg flex items-center gap-4"
+        className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-sm flex items-center gap-4"
       >
         <div
           aria-hidden
@@ -540,10 +540,20 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <p className="text-base font-bold text-foreground leading-tight truncate">
             {profileDisplayLabel}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+          {/* Audit 2026-04-30 visual-qa P1 #9 — when "Free tier · email"
+              shared a single truncated line, the tier label got chopped
+              before the email did, leaving "Free t…". Split into two
+              lines: tier label is short and never needs truncating;
+              email gets its own line with `truncate` so the dot-and-tld
+              doesn't run under the avatar. */}
+          <p className="text-xs text-muted-foreground mt-0.5">
             {profileTierLabel} tier
-            {authEmail ? <> &middot; {authEmail}</> : null}
           </p>
+          {authEmail ? (
+            <p className="text-xs text-muted-foreground truncate">
+              {authEmail}
+            </p>
+          ) : null}
         </div>
         <Link
           href="/home?view=profile"
@@ -557,7 +567,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Current plan */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Your plan</h3>
@@ -585,7 +595,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Promo code (e.g. testing / partner access) */}
       <div
         ref={promoSectionRef}
-        className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg scroll-mt-8"
+        className="bg-card border border-border rounded-2xl p-6 mb-6 scroll-mt-8"
       >
         <div className="flex items-center gap-2 mb-4">
           <Icons.ticket className="w-5 h-5 text-muted-foreground" />
@@ -640,7 +650,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Account Section */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Account</h3>
@@ -684,7 +694,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Preferences */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Preferences</h3>
@@ -1108,7 +1118,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Notifications */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Notifications</h3>
@@ -1195,7 +1205,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           (2026-04-19): single reliable entry point for testers to see
           which of their feedback items shipped in the latest build.
           Mirrors the mobile Settings "About" section. */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">About</h3>
@@ -1212,7 +1222,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Privacy */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+      <div className="bg-card border border-border rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Privacy & Security</h3>

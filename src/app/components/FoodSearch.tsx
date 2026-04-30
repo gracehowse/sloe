@@ -1323,14 +1323,13 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
                   </div>
                 </div>
               )}
-
-              <button
-                onClick={onConfirm}
-                className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
-              >
-                <Icons.check className="h-4 w-4" />
-                Use this
-              </button>
+              {/* Audit 2026-04-30 visual-qa P0 #1 — the "Use this" CTA was
+                  previously rendered at the tail of this scroll area, so
+                  on short viewports it scrolled off below the fold and
+                  was unreachable. The button now lives in a sticky
+                  border-t footer (rendered outside this scroll
+                  container, see below). Spacer kept so the last form
+                  field has breathing room above the footer edge. */}
             </div>
           ) : (
             <>
@@ -1513,6 +1512,23 @@ export function FoodSearch({ open, onClose, onSelect, initialQuery = "", initial
             </>
           )}
         </div>
+
+        {/* Audit 2026-04-30 visual-qa P0 #1 — sticky footer holds the
+            "Use this" CTA so it stays accessible no matter how many
+            portion chips or fields the body scrolls. Only renders in
+            preview mode (matches the previous in-body button's
+            visibility). */}
+        {preview && scaled ? (
+          <div className="border-t border-border bg-card px-6 py-4 shrink-0">
+            <button
+              onClick={onConfirm}
+              className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
+            >
+              <Icons.check className="h-4 w-4" />
+              Use this
+            </button>
+          </div>
+        ) : null}
 
         {/* Custom food create/edit dialog. Rendered outside the results
             list so it's unaffected by FoodSearch close/reopen cycles. */}
