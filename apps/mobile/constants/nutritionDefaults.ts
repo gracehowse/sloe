@@ -1,27 +1,13 @@
 /**
- * App-wide default nutrition targets.
- * Used as fallbacks when a user has not yet set their own targets in their profile.
- * Keep this as the SINGLE source of truth — never hardcode target numbers elsewhere.
+ * Mobile re-export of the shared `NUTRITION_DEFAULTS`.
  *
- * Typed as `number` (not `as const` literals) so `useState(NUTRITION_DEFAULTS.steps)` etc.
- * infer `number`, not literal types like `10000`.
+ * 2026-04-30 (#15): the canonical defaults moved to
+ * `src/constants/nutritionDefaults.ts` so the web Settings page (and
+ * the now-shared `src/lib/account/nukeAccountData.ts`) can import the
+ * same values. Mobile callers keep their existing
+ * `@/constants/nutritionDefaults` alias and need no change.
  */
-export type NutritionDefaults = {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number;
-  water: number;
-  steps: number;
-};
-
-export const NUTRITION_DEFAULTS: NutritionDefaults = {
-  calories: 2000,
-  protein: 150,
-  carbs: 200,
-  fat: 65,
-  fiber: 28,
-  water: 2000,
-  steps: 10000,
-};
+export {
+  NUTRITION_DEFAULTS,
+  type NutritionDefaults,
+} from "../../../src/constants/nutritionDefaults";

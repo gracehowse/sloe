@@ -23,6 +23,12 @@ import {
   dedupeShoppingLabel,
   shoppingItemsTiedToCurrentPlan,
 } from "../../../src/lib/planning/shoppingListLifecycle";
+import {
+  formatMixedShoppingAmounts,
+  groupShoppingItemsByIngredientName,
+  isShoppingGroupFullyChecked,
+  type ShoppingDisplayGroup,
+} from "../../../src/lib/planning/shoppingDisplayGroups";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -339,12 +345,39 @@ export default function ShoppingListScreen() {
     ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   }), [colors]);
 
-  // Group by category
-  const categories = [...new Set(items.map((i) => i.category))];
+  // 2026-04-30 (#2): badge + progress now reflect *grouped* rows so
+  // the displayed count matches what the user sees on screen. Web has
+  // always counted groups; mobile counted raw items, so a list with
+  // two recipes contributing 50 ingredient rows each could show
+  // "99+" while only ~70 actual products needed buying.
+  const groupedSections = useMemo(() => {
+    const cats = [...new Set(items.map((i) => i.category))];
+    return cats.map((category) => ({
+      name: category,
+      groups: groupShoppingItemsByIngredientName(
+        items.filter((i) => i.category === category),
+      ),
+    }));
+  }, [items]);
+  const categories = useMemo(
+    () => groupedSections.map((s) => s.name),
+    [groupedSections],
+  );
+  const totalGroupCount = useMemo(
+    () => groupedSections.reduce((n, s) => n + s.groups.length, 0),
+    [groupedSections],
+  );
+  const checkedGroupCount = useMemo(
+    () =>
+      groupedSections.reduce(
+        (n, s) => n + s.groups.filter(isShoppingGroupFullyChecked).length,
+        0,
+      ),
+    [groupedSections],
+  );
   const checkedCount = items.filter((i) => i.checked).length;
-  const progress = items.length > 0 ? checkedCount / items.length : 0;
-
-  const uncheckedCount = items.length - checkedCount;
+  const progress = totalGroupCount > 0 ? checkedGroupCount / totalGroupCount : 0;
+  const uncheckedCount = totalGroupCount - checkedGroupCount;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -424,45 +457,107 @@ export default function ShoppingListScreen() {
               </Pressable>
             )}
 
-            {/* Items by category */}
-            {categories.map((cat) => {
-              const catItems = items.filter((i) => i.category === cat);
+            {/* Items by category — grouped by ingredient name to match
+                web (issue #2, 2026-04-30). Pre-fix two recipes adding
+                "Instant Oats" produced two separate rows like
+                "875 g Instant Oats" and "175 g Instant Oats"; with the
+                shape of `name` sometimes carrying a duplicate prefix,
+                this rendered as "875 g 175 g Instant Oats". The web
+                ShoppingList in src/app/components/ShoppingList.tsx has
+                always used `groupShoppingItemsByIngredientName` +
+                `formatMixedShoppingAmounts` to merge rows; mobile now
+                does the same so quantities like "Instant Oats (875 g
+                + 175 g)" show on a single line. */}
+            {groupedSections.map((section) => {
               return (
-                <View key={cat} style={styles.card}>
-                  <Text style={styles.categoryTitle}>{cat}</Text>
-                  {catItems.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      style={styles.itemRow}
-                      onPress={() => toggleItem(item.id)}
-                      onLongPress={() => {
-                        Alert.alert("Remove item", `Delete "${item.name}"?`, [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Remove", style: "destructive", onPress: () => removeItem(item.id) },
-                        ]);
-                      }}
-                    >
-                      <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
-                        {item.checked && <Text style={styles.checkmark}>✓</Text>}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
-                          {(() => {
-                            // G-2: dedupe `<amount> <unit>` when it
-                            // already prefixes `name`. See helper
-                            // docstring in shoppingListLifecycle.ts.
-                            const d = dedupeShoppingLabel({
-                              amount: item.amount,
-                              unit: item.unit,
-                              name: item.name,
-                            });
-                            return `${d.amount} ${d.unit} ${d.name}`.replace(/\s+/g, " ").trim();
-                          })()}
-                        </Text>
-                        <Text style={styles.itemFrom}>{item.from}</Text>
-                      </View>
-                    </Pressable>
-                  ))}
+                <View key={section.name} style={styles.card}>
+                  <Text style={styles.categoryTitle}>{section.name}</Text>
+                  {section.groups.map((group: ShoppingDisplayGroup) => {
+                    const allChecked = isShoppingGroupFullyChecked(group);
+                    const dedupedSingle =
+                      group.items.length === 1
+                        ? dedupeShoppingLabel({
+                            amount: group.items[0]!.amount,
+                            unit: group.items[0]!.unit,
+                            name: group.displayName,
+                          })
+                        : null;
+                    const qtyLine = dedupedSingle
+                      ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
+                      : formatMixedShoppingAmounts(group.items);
+                    const displayName = dedupedSingle
+                      ? dedupedSingle.name
+                      : group.displayName;
+                    const rowLabel = qtyLine
+                      ? `${displayName} (${qtyLine})`
+                      : displayName;
+                    const fromLabel = [
+                      ...new Set(
+                        group.items
+                          .flatMap((i) =>
+                            i.from.split(",").map((s) => s.trim()),
+                          )
+                          .filter(Boolean),
+                      ),
+                    ].join(", ");
+                    return (
+                      <Pressable
+                        key={group.key}
+                        style={styles.itemRow}
+                        onPress={() => {
+                          // Toggle the whole group as one — same behaviour
+                          // as web's `toggleGroupChecked`.
+                          for (const item of group.items) {
+                            if (allChecked) {
+                              if (item.checked) toggleItem(item.id);
+                            } else if (!item.checked) {
+                              toggleItem(item.id);
+                            }
+                          }
+                        }}
+                        onLongPress={() => {
+                          Alert.alert(
+                            group.items.length > 1 ? "Remove items" : "Remove item",
+                            group.items.length > 1
+                              ? `Delete ${group.items.length} rows for "${displayName}"?`
+                              : `Delete "${displayName}"?`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Remove",
+                                style: "destructive",
+                                onPress: () => {
+                                  for (const item of group.items) removeItem(item.id);
+                                },
+                              },
+                            ],
+                          );
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.checkbox,
+                            allChecked && styles.checkboxChecked,
+                          ]}
+                        >
+                          {allChecked && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.itemName,
+                              allChecked && styles.itemChecked,
+                            ]}
+                          >
+                            {rowLabel}
+                          </Text>
+                          {fromLabel ? (
+                            <Text style={styles.itemFrom}>{fromLabel}</Text>
+                          ) : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               );
             })}

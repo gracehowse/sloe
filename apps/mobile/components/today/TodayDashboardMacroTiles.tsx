@@ -107,7 +107,16 @@ export function TodayDashboardMacroTiles({
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
       // ships.
-      label: carbsLabel(totals.fiber, Boolean(netCarbsLensEnabled)),
+      // 2026-04-30 (#1): label now uses `targets.fiber`, not
+      // `totals.fiber`. Pre-fix the tile rendered as "CARBS 0 / 75 g"
+      // because totals.fiber was 0 with no meals logged → label fell
+      // back to "Carbs" — but the *target value* was already net
+      // (91 − 16 = 75), creating an apparent Today=75g vs Targets=91g
+      // divergence. The lens always has fibre data behind it via the
+      // target, so the label can honestly say "Net carbs" from the
+      // first render. The fall-back to "Carbs" still triggers when
+      // the user has no fibre target set at all (target.fiber == 0).
+      label: carbsLabel(targets.fiber, Boolean(netCarbsLensEnabled)),
       current: netCarbsForRow(totals.carbs, totals.fiber, Boolean(netCarbsLensEnabled)),
       target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
       color: MacroColors.carbs,

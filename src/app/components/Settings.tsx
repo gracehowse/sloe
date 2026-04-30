@@ -41,6 +41,8 @@ import {
   type Sex,
 } from "../../lib/nutrition/tdee.ts";
 import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTargetsForActivity.ts";
+import { nukeAllUserAppData } from "../../lib/account/nukeAccountData.ts";
+import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults.ts";
 import {
   DEFAULT_TRACKING_EXTRAS,
   TRACKING_EXTRAS_STORAGE_KEY,
@@ -121,6 +123,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [accountDeletionStage, setAccountDeletionStage] = useState<
     "idle" | "first" | "second"
   >("idle");
+  // 2026-04-30 (#15): Reset/Erase parity with mobile. Two destructive
+  // actions kept distinct from the account deletion below: "Reset
+  // targets" is inline (set defaults, stay in app), "Erase everything"
+  // wipes server data + sends the user through onboarding again.
+  // Mobile equivalent in `apps/mobile/components/settings/SettingsBundleContent.tsx`.
+  const [eraseEverythingOpen, setEraseEverythingOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -381,6 +390,87 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     const { error } = await supabase.from("profiles").update(updates).eq("id", uid);
     if (error) toast.error("Failed to save preference");
   }, []);
+
+  // 2026-04-30 (#15): Reset/Erase parity with mobile
+  // (`apps/mobile/components/settings/SettingsBundleContent.tsx`).
+  // Reset = inline defaults + toast, no re-onboarding. Erase = full
+  // server wipe + redirect to /onboarding/v2 (mirrors product-lead's
+  // 2026-04-30 ratification of Option A for issue #16).
+  const handleResetTargets = useCallback(async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        toast.error("Not signed in");
+        return;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          target_calories: NUTRITION_DEFAULTS.calories,
+          target_calories_set_at: new Date().toISOString(),
+          target_calories_source: "reset_default",
+          target_protein: NUTRITION_DEFAULTS.protein,
+          target_carbs: NUTRITION_DEFAULTS.carbs,
+          target_fat: NUTRITION_DEFAULTS.fat,
+          target_fiber_g: NUTRITION_DEFAULTS.fiber,
+          target_water_ml: NUTRITION_DEFAULTS.water,
+        })
+        .eq("id", uid);
+      if (error) {
+        toast.error(`Reset failed: ${error.message}`);
+        return;
+      }
+      toast.success("Targets reset to defaults", {
+        description:
+          "Your calorie and macro goals are back to Suppr defaults.",
+        action: {
+          label: "Edit targets",
+          onClick: () => {
+            window.location.href = "/home?view=targets";
+          },
+        },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setResetting(false);
+    }
+  }, [resetting]);
+
+  const handleEraseEverything = useCallback(async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        toast.error("Not signed in");
+        return;
+      }
+      const r = await nukeAllUserAppData(supabase, uid);
+      if (!r.ok) {
+        toast.error(`Could not erase data: ${r.message}`);
+        return;
+      }
+      // Web has no AsyncStorage, but the equivalent localStorage
+      // onboarding scratchpad must be cleared so the next session
+      // doesn't pre-fill with the deleted user's answers (mirrors
+      // mobile fix #14).
+      try {
+        window.localStorage.removeItem("suppr.onboarding-v2.state");
+      } catch {
+        /* non-fatal */
+      }
+      window.location.href = "/onboarding/v2";
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erase failed");
+    } finally {
+      setResetting(false);
+    }
+  }, [resetting]);
 
   const handleChangePassword = useCallback(async () => {
     if (!authEmail) { toast.error("No email on this account"); return; }
@@ -1240,6 +1330,37 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           >
             Terms of service
           </Link>
+          {/* Reset or start over (web parity to mobile, 2026-04-30 #15).
+              Reset targets = inline; Erase everything = wipe + re-onboard.
+              The two destructive surfaces below this block delete the
+              account itself — distinct from a data reset. */}
+          <button
+            type="button"
+            onClick={handleResetTargets}
+            disabled={resetting}
+            className="w-full text-left px-4 py-3 bg-primary/5 hover:bg-primary/10 disabled:opacity-50 rounded-lg transition-all text-foreground border border-primary/20"
+          >
+            <p className="font-medium">
+              {resetting ? "Resetting…" : "Reset targets"}
+            </p>
+            <p className="text-xs mt-0.5 text-muted-foreground">
+              Defaults your calorie and macro goals. Keeps your food log,
+              planner, and saved recipes.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setEraseEverythingOpen(true)}
+            disabled={resetting}
+            className="w-full text-left px-4 py-3 bg-destructive/5 hover:bg-destructive/10 disabled:opacity-50 rounded-lg transition-all text-destructive border border-destructive/30"
+          >
+            <p className="font-medium">Erase everything</p>
+            <p className="text-xs mt-0.5 text-destructive/70">
+              Deletes food log, journal, library saves, shopping lists,
+              imported recipes, and synced activity. Sends you through
+              setup again.
+            </p>
+          </button>
           <button
             type="button"
             onClick={() => setClearLocalOpen(true)}
@@ -1275,6 +1396,18 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         planPace={profilePlanPace}
         nutritionStrategy={profileNutritionStrategy}
         onConfirm={handleActivityLevelConfirm}
+      />
+      {/* 2026-04-30 (#15 + #19): Erase Everything confirm. Mirrors the
+          mobile dialog at SettingsBundleContent.tsx:1357 — every category
+          listed in the section copy must also appear in the confirm
+          body so the user knows exactly what they're agreeing to. */}
+      <DestructiveConfirmDialog
+        open={eraseEverythingOpen}
+        onOpenChange={setEraseEverythingOpen}
+        title="Erase everything?"
+        description="This will permanently delete your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay. This cannot be undone."
+        confirmLabel="Erase everything"
+        onConfirm={handleEraseEverything}
       />
       <DestructiveConfirmDialog
         open={clearLocalOpen}

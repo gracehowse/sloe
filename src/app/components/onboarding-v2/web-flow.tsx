@@ -271,9 +271,13 @@ export function WebFlow() {
       {/* Top bar — brand + progress.
           Grid layout (visual-qa P1) so the progress bar sits at the
           true horizontal centre regardless of the wordmark / right-
-          slot widths. The dual step-indicator (top-bar counter +
-          eyebrow on the narrative side) was deliberately dropped —
-          the eyebrow carries the canonical step number per ui-critic.
+          slot widths. On desktop the canonical step number is carried
+          by the narrative-column eyebrow; on mobile-web the narrative
+          column collapses (`hidden md:flex`) so we surface the
+          numeric counter inline beside the progress bar (sync-
+          enforcer #18, 2026-04-30). Welcome + Reveal don't render an
+          in-card overline either, so this counter is the only
+          position indicator on those steps at phone widths.
           The Save & Exit stub is hidden until the wired-up confirm
           flow lands (tracked in TODO.md OB2 follow-ups). */}
       <header className="h-14 md:h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-9">
@@ -285,7 +289,11 @@ export function WebFlow() {
           total={displayTotal}
           className="w-full max-w-[260px] md:max-w-[360px] justify-self-center"
         />
-        <div className="justify-self-end" />
+        <div className="justify-self-end">
+          <span className="md:hidden text-[11px] font-bold tracking-wider text-muted-foreground tabular-nums">
+            {displayIndex}/{displayTotal}
+          </span>
+        </div>
       </header>
 
       {/* Body. Mobile-web collapses the split to the card column only —

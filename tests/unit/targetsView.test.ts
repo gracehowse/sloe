@@ -79,6 +79,47 @@ describe("targetsView — buildMacroTiles", () => {
     expect(tiles[1].pct).toBe(0);
     expect(tiles[1].target).toBe(0);
   });
+
+  // 2026-04-30 (#1): Today applied the net-carbs lens but /targets did
+  // not, so the carbs target diverged across the two surfaces (75g vs
+  // 91g for the same user). The view-model now accepts the lens flag so
+  // both platforms can stay in sync.
+  it("when net-carbs lens is enabled, carbs tile shows net carbs and 'NET CARBS' label", () => {
+    const tiles = buildMacroTiles({
+      targets: { protein: 122, carbs: 91, fat: 31, fiber: 16 },
+      consumed: { protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      netCarbsLensEnabled: true,
+    });
+    const carbs = tiles[1];
+    expect(carbs.key).toBe("carbs");
+    expect(carbs.label).toBe("NET CARBS");
+    // 91 − 16 = 75g target, the value Today renders today.
+    expect(carbs.target).toBe(75);
+    expect(carbs.current).toBe(0);
+  });
+
+  it("when lens is disabled, carbs tile renders gross carbs as 'CARBS'", () => {
+    const tiles = buildMacroTiles({
+      targets: { protein: 122, carbs: 91, fat: 31, fiber: 16 },
+      consumed: { protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      netCarbsLensEnabled: false,
+    });
+    const carbs = tiles[1];
+    expect(carbs.label).toBe("CARBS");
+    expect(carbs.target).toBe(91);
+  });
+
+  it("falls back to 'CARBS' label when lens is on but no fibre target is set", () => {
+    // The carbsLabel helper refuses to say 'Net carbs' when fibre is
+    // 0/missing — applies to targets the same way it applies to row data.
+    const tiles = buildMacroTiles({
+      targets: { protein: 122, carbs: 91, fat: 31, fiber: 0 },
+      consumed: { protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      netCarbsLensEnabled: true,
+    });
+    expect(tiles[1].label).toBe("CARBS");
+    expect(tiles[1].target).toBe(91);
+  });
 });
 
 describe("targetsView — buildGoalCard", () => {

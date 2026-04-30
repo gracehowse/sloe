@@ -51,10 +51,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { isHealthSyncAvailable } from "@/lib/healthSync";
-import {
-  nukeAllUserAppData,
-  clearStructuredMealPlans,
-} from "@/lib/nukeAccountData";
+import { nukeAllUserAppData } from "../../../../src/lib/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "../../../../src/lib/nutrition/weekStartDayClient";
@@ -522,33 +519,43 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
       try {
         if (clearData) {
+          // Erase everything — wipes server data + local scratchpads, then
+          // sends the user through onboarding again. Per 2026-04-30 product
+          // call (issue #16), this is the only path that re-runs onboarding.
           const r = await nukeAllUserAppData(supabase, userId);
           if (!r.ok) {
             Alert.alert("Could not erase data", r.message);
             return;
           }
           try {
+            // `suppr.onboarding-v2.state` matches the AsyncStorage key in
+            // `apps/mobile/components/onboarding-v2/context.tsx` — without
+            // this, the next session pre-fills with the deleted user's
+            // answers (issue #14).
             await AsyncStorage.multiRemove([
               "health_import_nutrition",
               "health_export_nutrition",
               "health_import_generic_labels",
               "health_sync_apple_connected",
+              "suppr.onboarding-v2.state",
             ]);
           } catch {
             /* ignore */
           }
+          // Route to v2 (issue #13). Legacy `/onboarding` is on a deletion
+          // countdown — this avoids the legacy-form flicker.
+          router.replace("/onboarding-v2" as any);
         } else {
-          const cleared = await clearStructuredMealPlans(supabase, userId);
-          if (!cleared.ok) {
-            Alert.alert("Reset failed", cleared.message);
-            return;
-          }
-          // Tagging the reset as `reset_default` so Rule 2 (Maintenance
-          // Recalibrate) can tell this apart from a real user-set target.
+          // Reset targets — inline. Per 2026-04-30 product call (issue #16),
+          // this resets calorie/macro defaults but does NOT clear the planner,
+          // food log, or saved recipes, and does NOT re-run onboarding. The
+          // copy "Keep My Data" should mean what it says.
           const { error } = await supabase
             .from("profiles")
             .update({
               target_calories: NUTRITION_DEFAULTS.calories,
+              // Tagging the reset as `reset_default` so Rule 2 (Maintenance
+              // Recalibrate) can tell this apart from a real user-set target.
               target_calories_set_at: new Date().toISOString(),
               target_calories_source: "reset_default",
               target_protein: NUTRITION_DEFAULTS.protein,
@@ -556,16 +563,21 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               target_fat: NUTRITION_DEFAULTS.fat,
               target_fiber_g: NUTRITION_DEFAULTS.fiber,
               target_water_ml: NUTRITION_DEFAULTS.water,
-              onboarding_completed: false,
             })
             .eq("id", userId);
           if (error) {
             Alert.alert("Reset failed", error.message);
             return;
           }
+          Alert.alert(
+            "Targets reset to defaults",
+            "Your calorie and macro goals are back to Suppr defaults. Edit them anytime.",
+            [
+              { text: "Edit targets", onPress: () => router.push("/targets" as any) },
+              { text: "OK", style: "default" },
+            ],
+          );
         }
-
-        router.replace("/onboarding" as any);
       } catch (e: unknown) {
         Alert.alert(
           "Reset failed",
@@ -1322,7 +1334,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   lineHeight: 18,
                 }}
               >
-                Reset targets clears your planner and defaults your goals while keeping your food log and saved recipes. Erase everything also removes journal entries, library saves, shopping lists, your private imported recipes, and synced activity summaries stored on Suppr — then sends you through onboarding again. Your account and subscription tier stay as they are.
+                Reset targets defaults your calorie and macro goals while keeping your food log, planner, and saved recipes. Erase everything also removes journal entries, library saves, shopping lists, your private imported recipes, and synced activity — then sends you through setup again. Your account and subscription stay.
               </Text>
             </View>
 
@@ -1339,7 +1351,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               }}
             >
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-                {resetting ? "Resetting..." : "Reset Plan (Keep My Data)"}
+                {resetting ? "Resetting..." : "Reset targets"}
               </Text>
               <Text
                 style={{
@@ -1348,19 +1360,19 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   marginTop: 2,
                 }}
               >
-                Keeps your food log and saved recipes
+                Defaults your goals — keeps food log, planner, recipes
               </Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
                 Alert.alert(
-                  "Clear all data?",
-                  "This will permanently delete your food log, saved recipes, and meal plans. This cannot be undone.",
+                  "Erase everything?",
+                  "This will permanently delete your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay. This cannot be undone.",
                   [
                     { text: "Cancel", style: "cancel" },
                     {
-                      text: "Clear Everything",
+                      text: "Erase everything",
                       style: "destructive",
                       onPress: () => handleResetPlan(true),
                     },
@@ -1379,7 +1391,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               }}
             >
               <Text style={{ color: t.red, fontWeight: "700", fontSize: 15 }}>
-                Erase all app data
+                Erase everything
               </Text>
               <Text
                 style={{
@@ -1390,7 +1402,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   paddingHorizontal: 12,
                 }}
               >
-                Journal, library, plans, shopping, private recipes, notifications
+                Wipes all data and sends you through setup again
               </Text>
             </Pressable>
 

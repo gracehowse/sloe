@@ -1,7 +1,11 @@
+// 2026-04-30 (#15): moved from `apps/mobile/lib/nukeAccountData.ts` so
+// the function is importable from the web Settings page without
+// reaching into the mobile package. Path-relative imports preserved
+// so this file stays platform-agnostic.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { upsertShoppingListJsonItems } from "../../../src/lib/supabase/shoppingJsonFallback";
-import { upsertNutritionJournalByDay } from "../../../src/lib/supabase/phase1LegacyJsonb";
+import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults";
+import { upsertShoppingListJsonItems } from "../supabase/shoppingJsonFallback";
+import { upsertNutritionJournalByDay } from "../supabase/phase1LegacyJsonb";
 
 export type NukeResult = { ok: true } | { ok: false; message: string };
 
