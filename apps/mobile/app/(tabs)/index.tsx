@@ -636,6 +636,51 @@ export default function TrackerScreen() {
     };
   }, []);
 
+  /**
+   * Phase 5 (2026-04-30) — AI-first-log tooltip gate. Replaces the
+   * per-day "Includes N AI-estimated meals" sentinel that used to
+   * render inside `TodayHero`. customer-lens flagged the daily
+   * caption as a defensive disclaimer that contradicted the
+   * 2026-04-27 strategic direction (macro-tracker-first, not AI-
+   * first). The replacement: one tooltip below the user's first AI-
+   * sourced meal row ever, then never again.
+   *
+   * Three states:
+   *   - `null` (initial): AsyncStorage hasn't hydrated yet — render
+   *     no tooltip. Avoids a flash when the storage key is set.
+   *   - `false`: storage says we have NOT shown the tooltip yet —
+   *     the first AI-sourced meal row will trigger it.
+   *   - `true`: we have shown the tooltip already (or the user just
+   *     dismissed it this session) — never show again.
+   */
+  const AI_TOOLTIP_STORAGE_KEY = "suppr.ai-explainer-shown.v1";
+  const [aiTooltipShown, setAiTooltipShown] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(AI_TOOLTIP_STORAGE_KEY)
+      .then((raw) => {
+        if (!cancelled) setAiTooltipShown(raw != null);
+      })
+      .catch(() => {
+        if (!cancelled) setAiTooltipShown(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissAiFirstLogTooltip = useCallback(() => {
+    setAiTooltipShown(true);
+    void AsyncStorage.setItem(
+      AI_TOOLTIP_STORAGE_KEY,
+      new Date().toISOString(),
+    ).catch(() => {
+      /* storage denied — in-session state still hides the tooltip;
+         worst case it shows again on next launch, never twice in
+         the same session. */
+    });
+  }, []);
+
   const savedMealSlots = useMemo(() => {
     const s = new Set<string>();
     for (const m of hostSavedMeals) {
@@ -1231,15 +1276,24 @@ export default function TrackerScreen() {
     [weekSummaryMode, selectedDate, weekStartDay],
   );
   const mealsToday = byDay[dayKey] ?? [];
-  // PL-01 fix (audit 2026-04-28): when any of today's meals were
-  // logged via voice/photo AI, surface that on the day's totals.
-  // Per CLAUDE.md: "If nutrition / ingredient matching is uncertain,
-  // do not guess." AI photo / voice estimates are inherently
-  // uncertain — they were previously visible only inside the
-  // voice/photo dialog, which closed on commit. Today's headline kcal
-  // total absorbed AI-sourced macros without any badge so the user
-  // had no way to tell which slice of the day was estimated.
-  const aiSourcedTodayCount = mealsToday.filter(isAiSourcedFoodHistoryItem).length;
+
+  /**
+   * Phase 5 (2026-04-30) — id of the first AI-sourced meal row to
+   * anchor the AI-first-log tooltip below. `null` until AsyncStorage
+   * hydrates (`aiTooltipShown === null`), or when the user has
+   * already seen the tooltip on a prior launch (`aiTooltipShown ===
+   * true`), or when there is no AI-sourced meal on the active day.
+   */
+  const aiFirstLogTooltipMealId = useMemo<string | null>(() => {
+    if (aiTooltipShown !== false) return null;
+    for (const m of mealsToday) {
+      if (isAiSourcedFoodHistoryItem({ source: m.source ?? null })) {
+        return m.id;
+      }
+    }
+    return null;
+  }, [mealsToday, aiTooltipShown]);
+
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
 
@@ -3179,22 +3233,25 @@ export default function TrackerScreen() {
                 `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5
                 #2.
 
-                Hero — single ring. AI-estimated-meal count surfaces
-                inline as a caption inside the hero card via
-                `aiSourcedCount` (was a standalone pill above the macro
-                tiles pre-Phase-4). */}
+                Hero — single ring. Phase 5 (2026-04-30): the inline
+                "Includes N AI-estimated meals" sentinel inside the
+                hero card was removed — customer-lens flagged it as a
+                defensive disclaimer that contradicted the 2026-04-27
+                strategic direction (macro-tracker-first, not AI-
+                first). The signal is now delivered once via
+                `AiFirstLogTooltip` on the user's first AI meal row in
+                `TodayMealsSection`, gated by AsyncStorage so it never
+                fires twice. */}
             <TodayHero
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
-              aiSourcedCount={aiSourcedTodayCount}
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
               cardBackgroundColor={colors.card}
               borderColor={colors.border}
               trackColor={colors.border}
-              sourceAiColor={colors.sourceAi}
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
               fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
@@ -3434,6 +3491,8 @@ export default function TrackerScreen() {
             hintVisibleForSlot={hintVisibleForSlot}
             onDismissUsualMealHint={dismissUsualMealHint}
             onAcceptUsualMealHint={acceptUsualMealHint}
+            aiFirstLogTooltipMealId={aiFirstLogTooltipMealId}
+            onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
           />
         )}
 

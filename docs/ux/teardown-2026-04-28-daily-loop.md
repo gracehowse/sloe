@@ -678,3 +678,28 @@ The existing `<div className="max-w-2xl mx-auto px-pm-5 py-pm-5">` outer wrapper
 **Verified.** Web typecheck clean. Lint clean for the new wiring (`NutritionTracker.tsx` lint output is just pre-existing unused-import warnings unrelated to this change). Component renders only at `xl+`, so mobile-web is unaffected.
 
 **Net code change:** 1 import + ~15 LOC of JSX. 0 layout regressions on mobile-web.
+
+### 2026-04-30 — Phase 5: drop daily AI sentinel, replace with one-time first-log tooltip (mobile)
+
+**Done.** The "Includes N AI-estimated meals" caption that Phase 4 / Top-5 #2B folded inside the `TodayHero` card has been deleted entirely. customer-lens flagged the daily caption as a defensive disclaimer that contradicted the 2026-04-27 strategic direction (macro-tracker-first, not AI-first) — the user opens Today and the very first thing under the calorie ring was an apology for using AI. That's the wrong posture for a macro tracker that ships AI as one input mode among several.
+
+**The replacement.** A one-time `AiFirstLogTooltip` rendered below the user's first AI-sourced meal row in `TodayMealsSection`. Copy: "We fill in nutrition for photos & voice. Tap to verify or edit." X close + 6-second auto-fade both dismiss; AsyncStorage key `suppr.ai-explainer-shown.v1` gates the lifecycle so it never fires twice on the same device. After the one-time bubble, AI-sourced meals continue to carry the existing SourceDot pill on their row — that's the signal that survives.
+
+**Mobile changes (`apps/mobile/`):**
+
+- `components/today/TodayHero.tsx` — removed `aiSourcedCount` and `sourceAiColor` props from the type and the JSX. Removed the inline `<Sparkles>` + caption block beneath the ring. Imports of `Sparkles` and `Spacing` dropped (now unused).
+- `components/today/TodayHeroRing.tsx` — dropped the `footerContent` slot (added Phase 4) since nothing renders into it any more.
+- `components/today/AiFirstLogTooltip.tsx` — **new**. Self-contained inline bubble (Sparkles icon + copy + X close). Auto-fades after 6 s via a host-driven `onDismiss`. Theme-tokenised. Accessibility labels: `AI estimation explanation` on the bubble, `Dismiss tooltip` on the X (with `accessibilityRole="button"`).
+- `components/today/TodayMealsSection.tsx` — added `aiFirstLogTooltipMealId` and `onDismissAiFirstLogTooltip` props; renders `AiFirstLogTooltip` directly below the matching meal row inside the existing `meals.map`. Wrapped each row in a `<React.Fragment>` so the tooltip can sit between the `<Swipeable>` and the next iteration without disturbing the slot card chrome.
+- `app/(tabs)/index.tsx` — removed `aiSourcedTodayCount` derivation (and the comment that justified the daily sentinel). Added `aiTooltipShown` state hydrated from AsyncStorage, `dismissAiFirstLogTooltip` callback, and `aiFirstLogTooltipMealId` `useMemo` that picks the first AI-sourced meal id when the gate is open. Passed both new props to `<TodayMealsSection>`. The `isAiSourcedFoodHistoryItem` import stays — re-used by the memo.
+
+**Tests.**
+
+- `apps/mobile/tests/unit/aiFirstLogTooltip.test.tsx` — **new** (~7 assertions): pins `visible=false` renders nothing, the canonical copy on `visible=true`, accessibility labels, X-tap fires `onDismiss` once, the 6-second auto-fade fires `onDismiss` once, the timer is cancelled when visibility flips false, and the timer is cancelled on unmount.
+- `apps/mobile/tests/unit/todayAboveMealsCap.test.ts` — header comment updated to record the Phase 5 deletion. The negative pin (`Includes N AI-estimated meals` text not in host) now also asserts `aiSourcedCount=` and `aiSourcedTodayCount =` are absent — both regression modes for re-introducing the daily caption are blocked.
+
+**Web parity.** Web's `today-hero-ring.tsx` was already single-variant and never carried the sentinel pill (Phase 4 introduced it on web inside `today-hero-stats.tsx` via `<AiSentinelInline>`). Web's `aiSourcedCount` / `<AiSentinelInline>` carry the same defensive-disclaimer problem and should be deleted in a follow-up so the surfaces match — flagged for `sync-enforcer` rather than expanded into this commit so the worktree stays scoped to the Today mobile change. Mobile is now the canonical posture; web follows.
+
+**Verified.** `npx tsc --noEmit` clean on root + mobile. `npx vitest run --no-coverage` (mobile): all 81 test files / 771 tests green, including the 7 new `aiFirstLogTooltip.test.tsx` cases and the updated `todayAboveMealsCap.test.ts` pins.
+
+**Net code change:** ~50 LOC removed from `TodayHero.tsx` + `TodayHeroRing.tsx` + the host derivation. ~110 LOC added across `AiFirstLogTooltip.tsx` (component) and the host gate. ~115 LOC added in the new test file. 0 new dependencies.

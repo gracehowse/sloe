@@ -21,6 +21,7 @@ import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
+import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -72,6 +73,19 @@ export interface TodayMealsSectionProps {
   onDismissUsualMealHint: (slot: string) => void;
   /** Ship M1 — user tapped "Save as usual" on the hint for `slot`. */
   onAcceptUsualMealHint: (slot: string) => void;
+  /**
+   * Phase 5 (2026-04-30) — AI-first-log tooltip lifecycle. The host
+   * resolves the meal id of the FIRST AI-sourced row to anchor the
+   * tooltip below; this component renders the tooltip below that row
+   * when set. `null` (or unset) means no tooltip. The tooltip is a
+   * one-time event gated by AsyncStorage in the host; once the user
+   * dismisses or the bubble auto-fades, host clears this and writes
+   * the storage key so it never fires again.
+   */
+  aiFirstLogTooltipMealId?: string | null;
+  /** Phase 5 (2026-04-30) — fired on X tap or auto-fade. Host
+   *  persists the storage key and clears `aiFirstLogTooltipMealId`. */
+  onDismissAiFirstLogTooltip?: () => void;
 }
 
 /**
@@ -167,6 +181,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     hintVisibleForSlot,
     onDismissUsualMealHint,
     onAcceptUsualMealHint,
+    aiFirstLogTooltipMealId,
+    onDismissAiFirstLogTooltip,
   } = props;
 
   const [usualPicker, setUsualPicker] = useState<
@@ -371,8 +387,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               {hasMeals &&
                 isOpen &&
                 meals.map((m) => (
+                  <React.Fragment key={m.id}>
                   <Swipeable
-                    key={m.id}
                     overshootRight={false}
                     friction={2}
                     renderRightActions={() => (
@@ -470,6 +486,21 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       </View>
                     </Pressable>
                   </Swipeable>
+                  {/* Phase 5 (2026-04-30) — one-time AI-first-log
+                      tooltip. Anchored below the row whose id matches
+                      `aiFirstLogTooltipMealId`. Host gates this on
+                      AsyncStorage so it ever fires once per device.
+                      Both X tap and the 6s auto-fade route through
+                      `onDismissAiFirstLogTooltip` so persistence
+                      stays in one place. */}
+                  {aiFirstLogTooltipMealId === m.id &&
+                    onDismissAiFirstLogTooltip != null && (
+                      <AiFirstLogTooltip
+                        visible
+                        onDismiss={onDismissAiFirstLogTooltip}
+                      />
+                    )}
+                  </React.Fragment>
                 ))}
               {/* Ship M1 — first-run hint inside the slot body. Teaches
                   the feature once per slot then stops. */}
