@@ -1,7 +1,7 @@
 # @cases TC-TODAY-01
 # @screen (tabs)/index
 appId: com.supprclub.supprapp
-name: "Today screen — ring, macros, LogFab → LogSheet"
+name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 ---
 - runFlow: shared/login.yaml
 
@@ -13,13 +13,17 @@ name: "Today screen — ring, macros, LogFab → LogSheet"
 - assertVisible:
     text: ".*(?:LOGGED|kcal).*"
 
-# LogFab — persistent 56pt circular Log button (Phase 2 / B1.2). Replaces
-# the legacy quick-log strip. Wired via accessibilityLabel "Log a meal".
+# Centered raised Log button — 56pt circular Plus button living in the
+# global SupprTabBar between Recipes and Plan (2026-04-30; replaced the
+# side LogFab at right:18 / bottom:100). The `today-log-fab` testID was
+# intentionally retained so this and the other LogSheet-entry flows
+# (22_barcode_scanner, 32_food_search_modal, 33_meal_journal) keep
+# matching without YAML edits. Accessibility label remains "Log a meal".
 - assertVisible:
     id: "today-log-fab"
 
-# Visual baseline #1 — ring + LogFab + above-meals state on initial load.
-# Catches ring-label clipping, macro-card overflow, FAB position drift.
+# Visual baseline #1 — ring + tab-bar Log button + above-meals state on initial load.
+# Catches ring-label clipping, macro-card overflow, raised-button position drift.
 # Note: macro tiles (Protein / Carbs / Fat) live below the fold post Top-5 #1
 # (2026-04-28); they're verified by the scrolled screenshot below, not by a
 # pre-scroll text assertion. The "Tap to show/hide macros" affordance was
@@ -45,15 +49,17 @@ name: "Today screen — ring, macros, LogFab → LogSheet"
     duration: 400
 - waitForAnimationToEnd
 
-# Open LogSheet via the FAB. Search-first sheet (Next-10 #12) with
-# right-edge icons for Scan / Voice / Photo (Phase 3 / B2.1).
+# Open LogSheet via the centered raised tab-bar Log button. Search-first
+# sheet (Next-10 #12) with right-edge icons for Scan / Voice / Photo
+# (Phase 3 / B2.1). The `today-log-fab` testID resolves to the new
+# raised tab-bar button (2026-04-30); same effect.
 - tapOn:
     id: "today-log-fab"
 - waitForAnimationToEnd
 - assertVisible:
     id: "log-sheet-root"
 
-# Visual baseline #3 — LogSheet open from Today FAB (search row + right-edge icons).
+# Visual baseline #3 — LogSheet open from the centered raised tab-bar button.
 - takeScreenshot: screenshots/latest/today-03-log-sheet
 
 # Voice icon — Pro: voice sheet; Free/Base: in-flow Pro upsell.

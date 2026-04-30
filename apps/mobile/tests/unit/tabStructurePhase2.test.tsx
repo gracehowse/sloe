@@ -219,4 +219,18 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
   it("renames the Progress Tabs.Screen to You for the visible tab title", () => {
     expect(layoutSrc).toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'You'/s);
   });
+
+  it("uses the custom <SupprTabBar> renderer (2026-04-30 — centered raised Log button)", () => {
+    // The customer-lens audit retired the side <LogFab>. The Log
+    // button is now rendered as a centered raised Plus inside the
+    // global <SupprTabBar>. The button is purely visual — there is
+    // still no fifth Tabs.Screen — so the 4-tab IA above stays
+    // intact. Pin both the import and the wiring so a regression
+    // that removes the custom tab bar (and therefore loses the Log
+    // button on every screen) fails CI loudly.
+    expect(layoutSrc).toContain(
+      "import { SupprTabBar } from '@/components/tabs/SupprTabBar'",
+    );
+    expect(layoutSrc).toMatch(/tabBar=\{\(props\)\s*=>\s*<SupprTabBar\s+\{\.\.\.props\}\s*\/>\}/);
+  });
 });

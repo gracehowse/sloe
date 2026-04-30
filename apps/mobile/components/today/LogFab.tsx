@@ -6,18 +6,31 @@ import * as Haptics from "expo-haptics";
 import { Accent, Elevation } from "@/constants/theme";
 
 /**
- * LogFab — persistent 56pt circular Log button that lives at
- * `right: 18, bottom: 100` on Today (Phase 2 / B1.2, production
- * design spec Surface A §10).
+ * LogFab — persistent 56pt circular Log button.
  *
- * Authority (D-2026-04-27-15):
+ * **DEPRECATED on mobile (2026-04-30).** No longer rendered in
+ * Today's composition root. The customer-lens audit flagged the
+ * side position (`right: 18, bottom: 100`) as overlapping right-edge
+ * meal cards + macro tile column, and as the wrong genre for iOS
+ * (Cal AI / Lifesum / MyFitnessPal converged on a centered raised
+ * tab-bar button years ago). The Log entry point is now the
+ * centered raised Plus button inside `<SupprTabBar>` — see
+ * `apps/mobile/components/tabs/LogTabBarButton.tsx`.
+ *
+ * The component file is intentionally preserved (deferred deletion)
+ * for two reasons:
+ *   1. `tests/unit/canonicalTodayPhase2.test.tsx` still exercises
+ *      the component primitive (visibility, default tap, custom
+ *      placement) — proving the old behaviour didn't regress in
+ *      the codebase, even if the call site moved.
+ *   2. The web side still ships its own `<LogFab>` on mobile-web
+ *      (`src/app/components/suppr/log-fab.tsx`); deleting the
+ *      mobile primitive while the web one still ships would
+ *      surprise a future cross-platform refactor.
+ *
+ * Original authority (D-2026-04-27-15):
  *   "Persistent Log FAB on Today. One sheet with tabs:
  *    search / barcode / recent / saved / voice / photo."
- *
- * Wired by the Today host to open the canonical `<LogSheet>` (B2.1,
- * Phase 3). `onPress` is required in practice — the previous Phase 2
- * "Coming in Phase 3" Alert.alert fallback was removed 2026-04-28
- * once Phase 3 had shipped on both platforms.
  *
  * Tap, scale, haptic per §1.1 of the production design spec:
  *   "FAB tap. Scale 1 → 0.94 → 1 over 180ms. Combined with haptic

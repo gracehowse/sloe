@@ -95,6 +95,49 @@ custom `tabPress` listener and replaces the route with `/library` so
 the primary press always lands on the default sub-tab. Same for
 You / `/settings` / `/more` → `/progress`.
 
+### Centered raised Log button (2026-04-30 update)
+
+The four-tab IA above is unchanged, but the tab bar itself is now
+rendered by a custom `<SupprTabBar>` component (passed to `<Tabs>`
+via the `tabBar={...}` prop). The custom bar renders the same four
+primary tabs PLUS a centered raised Plus button between Recipes and
+Plan — the canonical Log entry point.
+
+Why custom: the `<LogFab>` previously sat at `right:18 / bottom:100`
+on Today, overlapping right-edge meal cards + macro tile column.
+Customer-lens flagged it as breaking iOS genre convention (Cal AI /
+Lifesum / MyFitnessPal / Twitter X all converged on a centered raised
+tab-bar button). Moving the button into the tab bar:
+
+- preserves the four-tab IA (no fifth `Tabs.Screen`);
+- makes the Log entry global to all tabs (the user can open the
+  LogSheet from Recipes / Plan / You without backing out to Today
+  first);
+- removes the right-edge overlap on Today;
+- matches the Cal AI / Lifesum genre.
+
+Wire-up:
+- `apps/mobile/components/tabs/SupprTabBar.tsx` — custom tab bar.
+  Filters out hidden routes (`href: null`), renders 4 visible tabs,
+  and injects `<LogTabBarButton>` between visible-index 1 (Recipes)
+  and visible-index 2 (Plan).
+- `apps/mobile/components/tabs/LogTabBarButton.tsx` — 56pt raised
+  Plus, `top:-16` so it overflows above the tab bar fill line.
+  `testID="today-log-fab"` retained from the old FAB so existing
+  Maestro flows keep matching.
+- The button's onPress calls `router.push({ pathname: "/(tabs)",
+  params: { openLog: "1" } })`. `(tabs)/index.tsx` consumes
+  `params.openLog === "1"` via a `useEffect` and opens the LogSheet
+  (`setFabSheetOpen(true)`), then clears the param so a back-nav
+  doesn't re-open the sheet.
+- The legacy `<LogFab>` component file (`apps/mobile/components/
+  today/LogFab.tsx`) is preserved for now (deferred deletion) but is
+  no longer rendered in Today's composition root.
+
+Web mobile-web is intentionally NOT in sync with this change yet —
+its `LogFab` still ships at `right:18 / bottom:100` (deferred
+follow-up; flagged to `sync-enforcer`).
+
 ---
 
 ## Web implementation

@@ -146,7 +146,12 @@ import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { StreakPip } from "@/components/today/StreakPip";
-import { LogFab } from "@/components/today/LogFab";
+// `LogFab` is retired on mobile (2026-04-30) — the centered raised
+// Log button now lives inside the global `<SupprTabBar>` via
+// `<LogTabBarButton>`. The component file is preserved (deferred
+// deletion) for: (a) test history continuity in
+// canonicalTodayPhase2.test.tsx, and (b) parity with the web
+// `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
@@ -283,7 +288,7 @@ function formatMealTimeDisplay(time: string | undefined, createdAt?: string | nu
 
 export default function TrackerScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string }>();
+  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string; openLog?: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -527,6 +532,19 @@ export default function TrackerScreen() {
     }
     // _t is a cache-buster so re-navigating to the same date still fires
   }, [params.date, params._t]);
+
+  // 2026-04-30 — `?openLog=1` deep-link from the centered raised Log
+  // button in `<SupprTabBar>`. The button lives in the global tab bar
+  // so the user can tap it from any tab; it routes to Today and we
+  // consume the param here to open the canonical LogSheet (which owns
+  // the journal write-path). Clear the param afterwards so a back-nav
+  // doesn't re-open the sheet on the next focus.
+  useEffect(() => {
+    if (params.openLog === "1") {
+      setFabSheetOpen(true);
+      router.setParams({ openLog: undefined } as Record<string, undefined>);
+    }
+  }, [params.openLog, router]);
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
@@ -3698,21 +3716,21 @@ export default function TrackerScreen() {
         textTertiaryColor={colors.textTertiary}
       />
 
-      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log FAB +
-          unified LogSheet. The FAB opens the new LogSheet primitive,
-          which replaces the legacy TodayFabSheet. The 6 sub-tabs of
-          LogSheet route to existing flows (search modal, barcode
-          dialog, voice/photo sheets) — the LogSheet is consolidated
-          access; the underlying nutrition logic is unchanged.
+      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log button +
+          unified LogSheet. 2026-04-30: the side `<LogFab>` (right: 18,
+          bottom: 100) was retired; the Log button now lives as a
+          centered raised Plus inside the global `<SupprTabBar>` (see
+          `apps/mobile/components/tabs/LogTabBarButton.tsx`). The tab
+          bar button navigates Today with `?openLog=1`, which the
+          effect above consumes to open this LogSheet. Meal-slot taps
+          and other in-screen call sites still call
+          `setFabSheetOpen(true)` directly, so no other wiring
+          changed.
 
-          The legacy `fabSheetOpen` state stays as the LogSheet's open
-          state so existing meal-slot tap → "open log sheet" wiring
-          across the file continues to work without 30+ call-site
-          edits. */}
-      <LogFab
-        visible={viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen}
-        onPress={() => setFabSheetOpen(true)}
-      />
+          The legacy `fabSheetOpen` state name is intentionally kept
+          (rather than renamed to `logSheetOpen`) so existing meal-slot
+          tap call sites and the source-pin tests continue to work
+          without 30+ call-site edits. */}
 
       {/* Search-first LogSheet (Next-10 #12, 2026-04-28). The 6-tab
           strip is gone; search is the always-visible primary input

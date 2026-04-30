@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sun, BookOpen, CalendarDays, CircleUser } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
+import { SupprTabBar } from '@/components/tabs/SupprTabBar';
 import { Accent } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -84,9 +85,21 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // 2026-04-30 (customer-lens): centered raised Log button replaces
+      // the side `<LogFab>`. The custom `<SupprTabBar>` renders the
+      // four primary tabs PLUS a 5th visual element (raised Plus
+      // button) between Recipes and Plan. The button is UI-only — no
+      // 5th screen route — so the 4-tab IA from D-2026-04-27-02
+      // stays intact. Tapping it routes to `/(tabs)?openLog=1` and
+      // Today consumes the param to open the canonical `<LogSheet>`.
+      tabBar={(props) => <SupprTabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: Accent.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
+        // The custom tab bar reads its own height/padding from
+        // `useSafeAreaInsets`, but we keep these here as defensive
+        // defaults in case any nested screen re-instantiates the
+        // stock bar.
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,

@@ -41,8 +41,15 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
     expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
 
-  it("LogFab onPress opens the canonical sheet (no Phase 2 alert path)", () => {
-    expect(indexSrc).toMatch(/<LogFab[\s\S]+?onPress=\{\(\)\s*=>\s*setFabSheetOpen\(true\)\}/);
+  it("centered raised Log button opens the canonical sheet via `?openLog=1` (replaces the side <LogFab>, 2026-04-30)", () => {
+    // The side `<LogFab>` was retired 2026-04-30 (customer-lens
+    // audit). The new entry point is the centered raised button in
+    // `<SupprTabBar>`, which routes Today with `?openLog=1`. Pin the
+    // consumer effect here so a regression that drops the deep-link
+    // wiring (and therefore breaks the tab bar Log button) fails CI.
+    expect(indexSrc).toMatch(
+      /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
+    );
   });
 });
 
