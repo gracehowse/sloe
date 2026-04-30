@@ -459,6 +459,30 @@ I'm not dumping a backlog. These are the actual moves.
 
 **Net code change:** ~353 LOC removed from LogSheet implementations across both platforms, 2 host files updated with new prop wiring, 2 test files rewritten to match the new contract. 0 new dependencies. The LogSheet now models a single mental concept — "log a meal, search-first" — instead of presenting a menu of six entry points.
 
+### 2026-04-30 — inline-search refactor (mobile, follow-up to Next-10 #12)
+
+**Done.** Customer-lens flagged that the 2026-04-28 search-first refactor still nested two modals: tapping the search row CLOSED the LogSheet and OPENED a separate `<FoodSearchModal>` whose first job was rendering an actual `<TextInput>`. Cal AI (the closest competitor) shows a real `<TextInput>` you can type into immediately — Suppr's nested-modal pattern was a learning step no competitor required. Grace explicitly chose option (a) (real lift) over a header-strip palliative ("we don't want temp hacks").
+
+**Mobile (`apps/mobile/`):**
+
+- `components/food-search/FoodSearchPanel.tsx` — new file. Lifted the entire body of `<FoodSearchModal>` (debounced search effect, results list with pagination + USDA macro backfill, custom-foods CRUD with merge-at-top + long-press action sheet, the preview portion picker with chips + stepper + nutrition lines + fit-this-in projection, and the create-custom-food sub-sheet) into a presentational, host-agnostic component. Caller provides `query` + `onSelect`; panel does the rest. `mode="full"` matches FoodSearchModal density; `mode="compact"` is for LogSheet's tighter vertical budget.
+- `components/FoodSearchModal.tsx` — rewritten as a thin wrapper. Modal page-sheet shell + autoFocus `<TextInput>` + close button + `<FoodSearchPanel mode="full">`. From ~1,400 LOC to ~140. All six existing call sites (Today, discover, search tab, recipe verify, create-recipe, import-shared) keep working unchanged — same prop surface.
+- `components/today/LogSheet.tsx` — search row is now a real `<TextInput>` with `autoFocus` when the host wires `search.onSelect` (inline mode). Empty query keeps Recent / Saved visible; non-empty query mounts `<FoodSearchPanel mode="compact">` inline. Wraps in `<KeyboardAvoidingView behavior="padding">` so results scroll above the iOS keyboard. Hosts that wire only `search.onOpen` (legacy mode) keep the tap-to-open Pressable for backwards compat.
+- `app/(tabs)/index.tsx` — host wiring updated: extracted the FoodSearchModal `onSelect` commit logic into a shared `handleFoodSearchSelect` callback (mirrors web's NutritionTracker shape). LogSheet's `search` prop now wires `onSelect`, `macroTargets`, `macroConsumed`, `supabase`, `userId` for the inline path. The standalone `<FoodSearchModal>` mount stays (still used by the "search instead" path inside `<TodayAddFoodForm>`) but now points to the same shared handler.
+- `tests/unit/logSheetPhase3.test.tsx` — added 6 tests for inline-search mode: real `<TextInput>` rendering, query-empty-vs-non-empty branching with Recent / Saved hidden when query is non-empty, legacy `onOpen` fallback path, query reset on close+re-open, right-edge icons preserved in inline mode. Existing 21 tests still pass (legacy mode untouched).
+- `tests/unit/foodSearchPagination.test.ts` — source-pin assertions moved from MODAL_SRC to PANEL_SRC (pagination state lives in the panel now).
+- `tests/unit/foodSearchPrimaryServingParity.test.ts`, `tests/unit/offMicrosPullThroughParity.test.ts` — read modal + panel concatenated so either file can host the canonical wiring.
+
+**API contract changes (additive, fully backwards-compatible).**
+
+- `LogSheetProps.search` gains `onSelect`, `macroTargets`, `macroConsumed`, `supabase`, `userId`. When `onSelect` is wired the search row flips to inline mode; otherwise it stays as the 2026-04-28 tap-to-open Pressable.
+- `LogSheetInlineSelectedFood` re-exported from LogSheet for hosts that want the type without reaching into `FoodSearchPanel` directly.
+- `FoodSearchModal`'s public prop surface unchanged — modal is now a wrapper, not a rewrite.
+
+**Verified.** `npx tsc --noEmit` clean on both `apps/mobile/tsconfig.json` and root `tsconfig.json`. Mobile vitest: **789 passed (82 files)**. Web vitest: **3361 passed (294 files)**. Mobile lint: 0 errors, ~155 pre-existing token-hygiene warnings on the migrated panel (inherited from the modal byte-for-byte). The Maestro `00d3_today_fab_log_sheet.yaml` flow's `today-log-fab` + `log-sheet-root` + `log-sheet-search-row` testIDs preserved.
+
+**Web parity flag.** Web has the same nested-modal smell (`<LogSheet>` opens `<FoodSearch>` modal on search-row click). Lifting `<FoodSearch>` into a `<FoodSearchPanel>` is a substantial follow-up — the web FoodSearch is ~1,500 LOC of similarly intertwined preview / portion / custom-food / pagination logic. Flagged for `sync-enforcer` as a deferred parity commit. Until that ships, mobile and web have an intentional UX divergence at the LogSheet → search transition: mobile is inline, web still hops modals.
+
 ### 2026-04-28 — Next-10 #15 + #11 done (token alias cleanup)
 
 **Done.** Both Next-10 token-cleanup items shipped together. Net effect: every duplicate token path that an agent sweep could pick the wrong side of has been removed.

@@ -25,6 +25,16 @@ const MOBILE_VERIFY = resolve(__dirname, "../../lib/verifyRecipe.ts");
 const MOBILE_BARCODE = resolve(__dirname, "../../app/(tabs)/barcode.tsx");
 const MOBILE_INDEX = resolve(__dirname, "../../app/(tabs)/index.tsx");
 const MOBILE_MODAL = resolve(__dirname, "../../components/FoodSearchModal.tsx");
+/**
+ * 2026-04-30 — preview state + SelectedFood emit live in the shared
+ * `FoodSearchPanel.tsx` so the same component can mount inline in
+ * `<LogSheet>`. Both files are read here; the assertion concatenates
+ * them so either may host the relevant snippet.
+ */
+const MOBILE_PANEL = resolve(
+  __dirname,
+  "../../components/food-search/FoodSearchPanel.tsx",
+);
 const WEB_FOOD_SEARCH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
 const WEB_OFF_SEARCH = resolve(__dirname, "../../../../src/lib/openFoodFacts/searchProducts.ts");
 const WEB_OFF_BARCODE = resolve(
@@ -34,11 +44,17 @@ const WEB_OFF_BARCODE = resolve(
 const WEB_TRACKER = resolve(__dirname, "../../../../src/app/components/NutritionTracker.tsx");
 const PARSER = resolve(__dirname, "../../../../src/lib/openFoodFacts/parseOffMicros.ts");
 
+const modalSrc = readFileSync(MOBILE_MODAL, "utf8");
+const panelSrc = readFileSync(MOBILE_PANEL, "utf8");
+
 const SRC = {
   verify: readFileSync(MOBILE_VERIFY, "utf8"),
   barcode: readFileSync(MOBILE_BARCODE, "utf8"),
   todayIndex: readFileSync(MOBILE_INDEX, "utf8"),
-  modal: readFileSync(MOBILE_MODAL, "utf8"),
+  modal: modalSrc,
+  panel: panelSrc,
+  /** Combined modal + panel — preview / SelectedFood may live in either. */
+  modalAndPanel: `${modalSrc}\n${panelSrc}`,
   webSearch: readFileSync(WEB_FOOD_SEARCH, "utf8"),
   webOffSearch: readFileSync(WEB_OFF_SEARCH, "utf8"),
   webOffBarcode: readFileSync(WEB_OFF_BARCODE, "utf8"),
@@ -100,11 +116,11 @@ describe("F-79 — UnifiedSearchResult / SelectedFood / FoodSearchSelection carr
     expect(SRC.verify).toMatch(/microsPer100g\?\:\s*Record<string,\s*number>/);
   });
 
-  it("mobile FoodSearchModal Preview state + SelectedFood carry microsPer100g", () => {
-    expect(SRC.modal).toMatch(/microsPer100g\?\:\s*Record<string,\s*number>/);
-    expect(SRC.modal).toMatch(/microsPer100g:\s*item\.microsPer100g/);
+  it("mobile FoodSearchPanel Preview state + SelectedFood carry microsPer100g", () => {
+    expect(SRC.modalAndPanel).toMatch(/microsPer100g\?\:\s*Record<string,\s*number>/);
+    expect(SRC.modalAndPanel).toMatch(/microsPer100g:\s*item\.microsPer100g/);
     // onSelect emit must spread the field through, not strip it.
-    expect(SRC.modal).toMatch(/preview\.microsPer100g\s*\?\s*\{\s*microsPer100g:/);
+    expect(SRC.modalAndPanel).toMatch(/preview\.microsPer100g\s*\?\s*\{\s*microsPer100g:/);
   });
 
   it("web FoodSearchSelection declares microsPer100g + setPreview emits it", () => {

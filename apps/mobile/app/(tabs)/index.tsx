@@ -35,7 +35,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
-import FoodSearchModal from "@/components/FoodSearchModal";
+import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 import DayStrip from "@/components/charts/DayStrip";
@@ -1287,6 +1287,77 @@ export default function TrackerScreen() {
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
     [dayKey],
+  );
+
+  /**
+   * Shared food-search commit path — fires when the user picks a
+   * portion + quantity from either:
+   *   - the inline `<FoodSearchPanel>` mounted inside `<LogSheet>`
+   *     (2026-04-30, primary surface), or
+   *   - the standalone `<FoodSearchModal>` (still mounted for the
+   *     "search instead" path inside `<TodayAddFoodForm>`).
+   *
+   * Mirrors web's FoodSearch onSelect commit byte-for-byte. Hosts
+   * the F-13 (caffeine + alcohol) + F-79 (full per-100g micros)
+   * branches because both flows commit through the same journal
+   * shape.
+   */
+  const handleFoodSearchSelect = useCallback(
+    (result: FoodSearchSelectedFood) => {
+      const grams = result.chosenPortion.gramWeight * result.quantity;
+      const f = grams / 100;
+      const source =
+        result.source === "CUSTOM"
+          ? "Custom food"
+          : result.source === "OFF"
+          ? "Open Food Facts"
+          : result.source === "Edamam"
+          ? "Edamam"
+          : "USDA FoodData Central";
+      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+        grams,
+        caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
+        alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
+      });
+      const explicitMicros: Record<string, number> = {};
+      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+      const micros = scaleMicrosForGrams(
+        result.microsPer100g ?? {},
+        grams,
+        explicitMicros,
+      );
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: result.name,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: Math.round(result.macrosPer100g.calories * f),
+        protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
+        carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
+        fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
+        source,
+        ...(Object.keys(micros).length > 0 ? { micros } : {}),
+      };
+      setByDay((prev) => ({
+        ...prev,
+        [dayKey]: [...(prev[dayKey] ?? []), meal],
+      }));
+      if (userId && (caffeineMg > 0 || alcoholG > 0)) {
+        void updateStimulantsForDay(supabase, userId, dayKey, {
+          caffeineMg,
+          alcoholG,
+        });
+      }
+      try {
+        track(AnalyticsEvents.food_logged, {
+          source: result.source === "CUSTOM" ? "custom_food" : "manual",
+          calories: meal.calories,
+          slot: activeMealSlot,
+        });
+      } catch { /* noop */ }
+    },
+    [activeMealSlot, dayKey, userId, supabase],
   );
 
   const trackerWeekSummaryKeys = useMemo(
@@ -3743,13 +3814,29 @@ export default function TrackerScreen() {
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
         search={{
-          // Tap the search row → close LogSheet, open FoodSearchModal.
-          // The LogSheet is router-only; the real search experience
-          // lives in the dedicated modal.
-          onOpen: () => {
-            setFabSheetOpen(false);
-            setSearchOpen(true);
+          // INLINE-SEARCH MODE (2026-04-30): the search row is a real
+          // `<TextInput>` with autoFocus, and results render INSIDE the
+          // LogSheet via `<FoodSearchPanel>`. No nested-modal hop. The
+          // legacy `onOpen` route stays in the LogSheet API as a
+          // fallback for hosts that haven't migrated yet — Today uses
+          // the inline path.
+          onSelect: handleFoodSearchSelect,
+          macroTargets: {
+            calories: effectiveCalorieGoal,
+            protein: targets.protein,
+            carbs: targets.carbs,
+            fat: targets.fat,
+            fiber: targets.fiber,
           },
+          macroConsumed: {
+            calories: totals.calories,
+            protein: totals.protein,
+            carbs: totals.carbs,
+            fat: totals.fat,
+            fiber: totals.fiber,
+          },
+          supabase: supabase as unknown as { from: (table: string) => unknown },
+          userId: userId ?? null,
         }}
         barcode={{
           // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
@@ -3943,86 +4030,13 @@ export default function TrackerScreen() {
           fat: totals.fat,
           fiber: totals.fiber,
         }}
-        onSelect={(result) => {
-          const grams = result.chosenPortion.gramWeight * result.quantity;
-          const f = grams / 100;
-          // Resolve the attribution source per source type so the journal
-          // shows "Custom · <food name>" rather than a misleading USDA tag.
-          const source =
-            result.source === "CUSTOM"
-              ? "Custom food"
-              : result.source === "OFF"
-              ? "Open Food Facts"
-              : result.source === "Edamam"
-              ? "Edamam"
-              : "USDA FoodData Central";
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol for this
-          // portion. Stashed under `micros.caffeineMg` / `micros.alcoholG`
-          // so a future delete can decrement by the same delta. Null
-          // per-100 g -> 0 (never invent). Mirrors web's FoodSearch
-          // onSelect commit path byte-for-byte.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams,
-            caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
-            alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
-          });
-          // F-79 (2026-04-25) — scale the full OFF micro set for `grams` and
-          // merge with caffeine/alcohol overrides (F-13). Empty when the
-          // source didn't expose any micros (USDA / Edamam / custom rows).
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            result.microsPer100g ?? {},
-            grams,
-            explicitMicros,
-          );
-          const meal: JournalMeal = {
-            id: newMealId(),
-            name: activeMealSlot,
-            recipeTitle: result.name,
-            time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-            calories: Math.round(result.macrosPer100g.calories * f),
-            protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
-            carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
-            fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
-            source,
-            ...(Object.keys(micros).length > 0 ? { micros } : {}),
-          };
-          setByDay((prev) => ({
-            ...prev,
-            [dayKey]: [...(prev[dayKey] ?? []), meal],
-          }));
-          // F-13 — bump `profiles.extra_caffeine_by_day` /
-          // `extra_alcohol_g_by_day` for this day. Fire-and-forget; a
-          // failure here never rolls back the local log. The debounced
-          // sync effect will upsert the meal row + its micros shortly.
-          if (userId && (caffeineMg > 0 || alcoholG > 0)) {
-            void updateStimulantsForDay(supabase, userId, dayKey, {
-              caffeineMg,
-              alcoholG,
-            });
-          }
-          // L6 G1 (2026-04-18) — the Today FoodSearchModal commit was
-          // the only `food_logged` emit site on mobile without a
-          // source. Fire the canonical event with `custom_food` when
-          // the hit is from the user's custom food library, otherwise
-          // `manual` (USDA / Open Food Facts). Recipe-verify flows
-          // that also mount this modal do NOT emit `food_logged` —
-          // this host is the logging surface.
-          try {
-            track(AnalyticsEvents.food_logged, {
-              source: result.source === "CUSTOM" ? "custom_food" : "manual",
-              calories: meal.calories,
-              slot: activeMealSlot,
-            });
-          } catch { /* noop */ }
-          // F-38 (2026-04-21): keep modal open so the user can add
-          // multiple items to the same meal without tapping back through
-          // the FAB. Tester reported "can't add anything else to
-          // breakfast after yogurt" — the old auto-close meant each item
-          // needed a separate round-trip. The X button still dismisses.
-        }}
+        // Shared commit path — same logic the inline `<FoodSearchPanel>`
+        // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
+        // F-79 + L6 G1 all live in the shared callback.
+        // F-38 (2026-04-21): keep modal open so the user can add
+        // multiple items to the same meal without tapping back through
+        // the FAB. The X button still dismisses.
+        onSelect={handleFoodSearchSelect}
         onClose={() => setSearchOpen(false)}
       />
 
