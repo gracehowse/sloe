@@ -23,6 +23,7 @@ import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
 } from "../../lib/planning/planWeekSummary.ts";
+import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import {
   buildDayTotalVsGoalLine,
@@ -1159,125 +1160,98 @@ export const MealPlanner = memo(function MealPlanner({
         </button>
       </div>
 
-      {swapFor ? (
-        <div
-          onClick={() => setSwapFor(null)}
-          className="fixed inset-0 grid place-items-center"
-          style={{
-            background: "var(--overlay, rgba(0,0,0,0.5))",
-            zIndex: 1000,
-            padding: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-card border border-border rounded-2xl"
-            style={{
-              width: 440,
-              maxWidth: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              padding: 20,
-            }}
-          >
-            <div
-              className="flex items-center justify-between"
-              style={{ marginBottom: 14 }}
+      {/* Modal-dismissibility audit (2026-04-30) — migrated from a
+          custom fixed-overlay div to Radix Dialog so the swap picker
+          dismisses via Escape, the visible Radix close X, AND
+          backdrop click (including iOS Safari touch, where the prior
+          synthetic-click + stopPropagation combo silently swallowed
+          backdrop taps). DialogContent ships its own corner X, so the
+          custom close button was removed to avoid a double-X. */}
+      <Dialog
+        open={swapFor !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSwapFor(null);
+        }}
+      >
+        <DialogContent className="max-w-[440px] w-[calc(100vw-2rem)] p-5 gap-0 max-h-[80vh] overflow-y-auto bg-card">
+          <div style={{ marginBottom: 14 }}>
+            <p
+              className="text-muted-foreground uppercase"
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+              }}
             >
-              <div>
-                <p
-                  className="text-muted-foreground uppercase"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  Swap
-                </p>
-                <h3
-                  className="text-foreground capitalize"
-                  style={{ margin: "4px 0 0", fontSize: 16 }}
-                >
-                  {shortWeekdayLabel(
+              Swap
+            </p>
+            <DialogTitle
+              className="text-foreground capitalize"
+              style={{ margin: "4px 0 0", fontSize: 16 }}
+            >
+              {swapFor
+                ? `${shortWeekdayLabel(
                     planCalendarDateForIndex(
                       Math.max(
                         0,
                         plan.findIndex((d) => d.day === swapFor.day),
                       ),
                     ),
-                  )}{" "}
-                  · {swapFor.slot}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSwapFor(null)}
-                className="bg-muted text-foreground grid place-items-center"
-                style={{
-                  border: 0,
-                  width: 30,
-                  height: 30,
-                  borderRadius: 8,
-                  cursor: "pointer",
-                }}
-                aria-label="Close swap picker"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="flex flex-col" style={{ gap: 6 }}>
-              {swapPool.length === 0 ? (
-                <p className="text-muted-foreground" style={{ fontSize: 13 }}>
-                  No recipes available to swap in.
-                </p>
-              ) : (
-                swapPool.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => pickSwap(r.id)}
-                    className="grid bg-muted text-foreground text-left"
-                    style={{
-                      gridTemplateColumns: "1fr auto",
-                      gap: 10,
-                      padding: "12px 14px",
-                      border: 0,
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 600 }}>{r.title}</p>
-                      <p
-                        className="text-muted-foreground"
-                        style={{ fontSize: 11, marginTop: 2 }}
-                      >
-                        {r.servings ?? 1} serving{(r.servings ?? 1) === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <div
-                      className="tabular-nums text-right"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
-                    >
-                      <p style={{ fontSize: 13, fontWeight: 700 }}>
-                        {Math.round(r.calories)}
-                      </p>
-                      <p
-                        className="text-muted-foreground"
-                        style={{ fontSize: 10 }}
-                      >
-                        {Math.round(r.protein)} P · {Math.round(r.carbs)} C
-                      </p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+                  )} · ${swapFor.slot}`
+                : "Swap meal"}
+            </DialogTitle>
           </div>
-        </div>
-      ) : null}
+          <div className="flex flex-col" style={{ gap: 6 }}>
+            {swapPool.length === 0 ? (
+              <p className="text-muted-foreground" style={{ fontSize: 13 }}>
+                No recipes available to swap in.
+              </p>
+            ) : (
+              swapPool.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => pickSwap(r.id)}
+                  className="grid bg-muted text-foreground text-left"
+                  style={{
+                    gridTemplateColumns: "1fr auto",
+                    gap: 10,
+                    padding: "12px 14px",
+                    border: 0,
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>{r.title}</p>
+                    <p
+                      className="text-muted-foreground"
+                      style={{ fontSize: 11, marginTop: 2 }}
+                    >
+                      {r.servings ?? 1} serving{(r.servings ?? 1) === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div
+                    className="tabular-nums text-right"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    <p style={{ fontSize: 13, fontWeight: 700 }}>
+                      {Math.round(r.calories)}
+                    </p>
+                    <p
+                      className="text-muted-foreground"
+                      style={{ fontSize: 10 }}
+                    >
+                      {Math.round(r.protein)} P · {Math.round(r.carbs)} C
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
