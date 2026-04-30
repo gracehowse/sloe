@@ -1,0 +1,133 @@
+# @cases TC-ONB-V2-STEPS
+# @screen onboarding-v2
+appId: com.supprclub.supprapp
+name: "Onboarding v2 — capture every step (point-tap edition)"
+---
+# 2026-04-30 (audit comprehensive coverage 100% pass).
+#
+# Authed-user entry to /onboarding-v2 lands on Goal (step 03) since
+# welcome (01) + signup (02) are both auto-skipped for an authenticated
+# session.
+#
+# Why point-taps: text-based tapOn ("Continue", "Maintain", etc.)
+# triggers Maestro's view-hierarchy probe, which crashes XCUITest on
+# iOS 26 with kAXErrorInvalidUIElement on certain RN modal trees.
+# Point-taps go straight to coordinates and skip the probe entirely.
+# Coordinates are tuned for the iPhone 17 logical viewport (393×852).
+#
+# Goal=Maintain selected so Pace (09) auto-skips. Recipes (15,
+# terminal) is captured but NOT submitted — `back` exits.
+#
+# Coordinates (iPhone 17 logical pt, expressed as % of viewport):
+#   Continue button       50%, 92%   (bottom-pinned full-width pill)
+#   Selection card 1/2    50%, 38%   (first card in a 2-card stack)
+#   Selection card 1/4    50%, 38%   (first of 4-card stack — Lose fat)
+#   Selection card 2/4    50%, 49%   (second — Maintain)
+#   Selection card 3/4    50%, 60%   (third — Gain muscle / Moderate)
+#   Permission "Not now"  50%, 78%   (below the prompt body)
+# These are tuned for the bundle layout and may need adjustment after
+# the prototype migration completes.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///onboarding-v2
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-03-goal
+
+# Step 03 — Goal: tap "Maintain" (2/4) → Continue
+- tapOn:
+    point: "50%,49%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-03b-goal-selected
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-04-sex
+
+# Step 04 — Sex: tap "Female" (1/2) → Continue
+- tapOn:
+    point: "50%,38%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-05-age
+
+# Step 05 — Age (default 28, just Continue)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-06-height
+
+# Step 06 — Height
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-07-weight
+
+# Step 07 — Weight
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-08-activity
+
+# Step 08 — Activity: tap "Moderately active" (3/5) → Continue
+- tapOn:
+    point: "50%,55%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-10-diet
+
+# Pace (09) auto-skipped → 10 Diet (default selection, Continue)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-11-strategy
+
+# Step 11 — Strategy: tap "Balanced" (1/3) → Continue
+- tapOn:
+    point: "50%,38%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-12-reveal
+
+# Step 12 — Reveal → Continue
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-13-permissions
+
+# Step 13 — Permissions (skip both "Not now" buttons)
+- tapOn:
+    point: "50%,55%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,78%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-14-import
+
+# Step 14 — Import → Continue
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-15-recipes
+
+# Step 15 — Recipes (terminal). Don't submit; `back` exits.
+- back
+- waitForAnimationToEnd

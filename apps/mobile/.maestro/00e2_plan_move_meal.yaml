@@ -1,0 +1,25 @@
+# @cases TC-FIX-MOVE-MEAL
+# @screen plan
+appId: com.supprclub.supprapp
+name: "Fixture — Plan tab → long-press meal row → Move/Swap action sheet"
+---
+# Long-press a meal row in the plan to open the iOS Alert sheet with
+# Move/Swap/Delete/Cancel. If no meal exists in the slot the sheet
+# says "No meal in this slot." which is also useful coverage.
+# Position-tap fallback because plan rows aren't testID'd directly.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///(tabs)/planner
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-50-plan-week
+# Long-press first meal-row area (Breakfast on the active day)
+- longPressOn:
+    point: "50%,55%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-51-move-meal-sheet
+# Capture-and-exit: the iOS native action sheet probe crashes XCUITest
+# on iOS 26. Next run's launchApp resets state.

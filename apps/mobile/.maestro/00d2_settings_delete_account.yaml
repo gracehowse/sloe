@@ -1,0 +1,27 @@
+# @cases TC-INT-DELETE-ACCT
+# @screen settings
+appId: com.supprclub.supprapp
+name: "Interactive — Delete account stage 1 (native Alert)"
+---
+# Capture-and-exit. The Delete-account row triggers an iOS native
+# Alert; probing the alert's hierarchy crashes XCUITest on iOS 26.
+# Next sub-flow's launchApp resets state.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///settings
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "settings-bundle-delete-account-row"
+    direction: DOWN
+    timeout: 30000
+    speed: 30
+    visibilityPercentage: 50
+- tapOn:
+    id: "settings-bundle-delete-account-row"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-03-delete-account-stage1

@@ -1,0 +1,24 @@
+# @cases TC-INT-TARGETS-EDIT
+# @screen targets
+appId: com.supprclub.supprapp
+name: "Interactive — Targets summary + Edit → Profile editor"
+---
+# 2026-04-30 patch: extended settle so Supabase profile/targets query
+# returns before capture (was capturing a bare spinner).
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///targets
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-70-targets-summary
+- tapOn: "Edit"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-71-profile-edit

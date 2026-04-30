@@ -12,6 +12,20 @@ set -e
 SCREENSHOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/screenshots/latest"
 mkdir -p "$SCREENSHOT_DIR"
 
+# Guardrail (added 2026-04-30 after a silent failure): without Metro on
+# :8081 the dev-client app sits on the Expo Dev Launcher and every
+# `simctl openurl` lands on the launcher menu, not the real Suppr UI.
+# Captures look populated but show identical launcher screens. Fail fast
+# instead of producing 35 useless PNGs.
+if ! lsof -nP -i :8081 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "✗ Metro is not listening on :8081." >&2
+  echo "  Start it before running this script:" >&2
+  echo "    (cd apps/mobile && npx expo start --port 8081 --dev-client &)" >&2
+  echo "  Then deeplink the dev client to localhost:" >&2
+  echo "    xcrun simctl openurl booted 'exp+suppr://expo-development-client/?url=http://localhost:8081'" >&2
+  exit 2
+fi
+
 # Lock status bar so captures stay deterministic
 xcrun simctl status_bar booted override \
   --time "9:41" \

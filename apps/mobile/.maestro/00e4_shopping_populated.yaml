@@ -1,0 +1,22 @@
+# @cases TC-FIX-SHOPPING
+# @screen shopping
+appId: com.supprclub.supprapp
+name: "Fixture — Shopping populated state + scrolled"
+---
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///shopping
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-90-shopping-top
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-91-shopping-scrolled

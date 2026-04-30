@@ -302,6 +302,7 @@ const STACK_HEADER_HIDDEN = new Set([
   "profile",
   "paywall",
   "onboarding",
+  "onboarding-v2",
   "notifications-prompt",
   // Custom in-screen headers (avoid double back + native title clash)
   "weight-tracker",

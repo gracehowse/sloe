@@ -1,0 +1,27 @@
+# @cases TC-FIX-RECIPE-DETAIL
+# @screen recipe-detail
+appId: com.supprclub.supprapp
+name: "Fixture — Recipe detail (tap first library card)"
+---
+# Library cards have no testID (cardless Pressable, line 367 of
+# app/(tabs)/library.tsx). We position-tap the first card area.
+# If empty library, capture is just a "no recipes yet" empty-state
+# which is itself a useful surface to audit.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///(tabs)/library
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-30-library-saved
+# First card sits in the upper third of the FlatList area on a phone.
+# Use point-tap as a fallback since cards lack testIDs/labels.
+- tapOn:
+    point: "50%,38%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-31-recipe-detail-saved
+- back
+- waitForAnimationToEnd
