@@ -130,7 +130,8 @@ name: "Screenshot tour — capture baseline shots of every key surface"
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/tour-20-profile
 
-# ---- Return to a known shell. ----
-- tapOn:
-    id: "tab-today"
+# ---- Return to a known shell. /profile is a root-level Stack route
+# so the (tabs) bar isn't rendered there, which made `tab-today` not
+# resolve. Re-enter the tab group via the index deeplink instead. ----
+- openLink: suppr:///(tabs)
 - waitForAnimationToEnd
