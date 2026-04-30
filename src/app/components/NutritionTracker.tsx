@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
@@ -49,7 +50,13 @@ import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { StreakPip } from "./suppr/streak-pip";
-import { LogFab } from "./suppr/log-fab";
+// `<LogFab>` (./suppr/log-fab) is no longer rendered on mobile-web.
+// The canonical Log entry point is now the centered raised Plus
+// button in the mobile-web `<nav>` (App.tsx), mirroring the mobile
+// `<SupprTabBar>` + `<LogTabBarButton>` pattern from commit
+// `6633d2d`. The component file is preserved for now (deferred
+// deletion) so any external reference (tests, type imports) keeps
+// resolving until a follow-up sweep.
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
@@ -462,6 +469,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   // re-implementing them. Opening the sheet replaces the Phase 2
   // "Coming in Phase 3" alert path.
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  // 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
+  // consume the `?openLog=1` URL param dispatched by the centered
+  // raised Plus button in the App.tsx mobile-web `<nav>` (mirrors the
+  // mobile `<SupprTabBar>` raised-button pattern). The button lives
+  // globally across all tabs; tapping it from Recipes / Plan / You
+  // routes to Today and stamps `openLog=1`. We open the canonical
+  // `<LogSheet>` here (which owns the journal write path) and clear
+  // the param so a back-nav doesn't re-open the sheet.
+  const trackerRouter = useRouter();
+  const trackerSearchParams = useSearchParams();
+  const openLogParam = trackerSearchParams.get("openLog");
+  useEffect(() => {
+    if (openLogParam !== "1") return;
+    setLogSheetOpen(true);
+    const params = new URLSearchParams(trackerSearchParams.toString());
+    params.delete("openLog");
+    const q = params.toString();
+    trackerRouter.replace(q ? `/home?${q}` : "/home", { scroll: false });
+  }, [openLogParam, trackerRouter, trackerSearchParams]);
   // Phase 4 / B3.Y — desktop (≥1024px) renders the LogSheet as a
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
@@ -1938,12 +1964,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           docs/specs/2026-04-27-b4-today-screen-phase3.md and is
           revertable in 1 PostHog click without a deploy. */}
       {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
-          removed from Today's composition root. The persistent <LogFab>
-          (rendered at the root of the tracker on mobile-web) is the
-          canonical logging-entry affordance going forward; Phase 3
-          wires the unified <LogSheet> behind it. The strip component
-          file stays in the tree for reference and tests but no
-          production caller renders it on Today. */}
+          removed from Today's composition root. The canonical
+          logging-entry affordance is now the centered raised Plus
+          button in the mobile-web `<nav>` (App.tsx), which opens the
+          unified `<LogSheet>` via the `?openLog=1` URL param consumer
+          above (mirrors mobile `<SupprTabBar>` + `<LogTabBarButton>`,
+          commit `6633d2d`). The strip component file stays in the
+          tree for reference and tests but no production caller
+          renders it on Today. */}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak
@@ -2551,15 +2579,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         suggestedName={saveComboSuggestedName}
       />
 
-      {/* Phase 2 / B1.2 (D-2026-04-27-15) — canonical Log FAB on
-          mobile-web Today. Hidden on desktop web (D-2026-04-27-11:
-          web is the long-form companion, daily logging is a phone
-          activity). Phase 2 ships placement only with a no-op tap;
-          Phase 3 wires the unified <LogSheet>. */}
-      <LogFab
-        visible={viewMode === "day"}
-        onPress={() => setLogSheetOpen(true)}
-      />
+      {/* 2026-04-30 (web mobile-web parity with mobile commit
+          `6633d2d`): the side `<LogFab>` (right:18 / bottom:100,
+          `md:hidden`) is no longer rendered. The canonical Log entry
+          point on mobile-web is now the centered raised Plus button
+          in the bottom `<nav>` (App.tsx), mirroring the mobile
+          `<SupprTabBar>` raised-button slot. Desktop web (≥ md) has
+          no FAB per D-2026-04-27-11 — desktop layout is unchanged.
+          Tapping the raised button stamps `?openLog=1` on the URL;
+          the `useEffect` above (search-param consumer) opens the
+          `<LogSheet>` and clears the param. */}
 
       {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet.
           The 6 sub-tabs are presentation-only; tabs that need full

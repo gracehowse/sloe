@@ -3,15 +3,32 @@
 import { Plus } from "lucide-react";
 
 /**
- * LogFab — persistent circular Log button that lives at the
- * bottom-right of Today on mobile-web. On desktop web the FAB is
- * intentionally hidden (D-2026-04-27-11: web is the long-form
- * companion; daily macro tracking is a phone activity, so the FAB
- * lives where mobile users naturally tap).
+ * LogFab — persistent circular Log button that lived at the
+ * bottom-right of Today on mobile-web.
  *
- * Authority (D-2026-04-27-15):
- *   "Persistent Log FAB on Today. One sheet with tabs:
- *    search / barcode / recent / saved / voice / photo."
+ * STATUS (2026-04-30, deferred deletion): no longer rendered on
+ * mobile-web. The canonical Log entry point is now the centered
+ * raised Plus button in the App.tsx mobile-web `<nav>` (parity with
+ * mobile commit `6633d2d`, which moved the FAB into a custom
+ * `<SupprTabBar>` slot between Recipes and Plan). Customer-lens
+ * audit flagged the side FAB as overlapping right-edge meal cards
+ * + macro tile column on Today, and as the wrong iOS genre — Cal AI
+ * / Lifesum / MyFitnessPal / Twitter X all converged on a centered
+ * raised tab-bar button. This file is preserved for now so existing
+ * imports and tests resolve until a follow-up sweep removes both
+ * the web and mobile primitive files together.
+ *
+ * The implementation below is left intact (and the existing
+ * `tests/unit/logFab.test.tsx` still asserts the primitive's
+ * contract for the component itself) but no production caller
+ * renders it. The "no longer rendered" pin lives in
+ * `tests/unit/mobileWebRaisedLogButton.test.ts`.
+ *
+ * Authority history:
+ *   D-2026-04-27-15 — "Persistent Log FAB on Today. One sheet with
+ *   tabs: search / barcode / recent / saved / voice / photo."
+ *   (FAB placement evolved 2026-04-30; the LogSheet authority is
+ *   unchanged.)
  *
  * Wired by `NutritionTracker.tsx` to open the canonical `<LogSheet>`.
  * `onPress` is required in practice — there is no fallback behaviour.
