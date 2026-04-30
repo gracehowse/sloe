@@ -314,24 +314,36 @@ export function MobileFlow() {
             disabled:
               completing || !canAdvance || (isTerminal && !pickerState.canSubmit),
           }}
-          style={({ pressed }) => ({
-            height: 56,
-            borderRadius: 14,
-            backgroundColor: Accent.primary,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity:
-              completing || !canAdvance || (isTerminal && !pickerState.canSubmit)
-                ? 0.4
-                : pressed
-                  ? 0.9
-                  : 1,
-          })}
+          style={({ pressed }) => {
+            const isDisabled =
+              completing || !canAdvance || (isTerminal && !pickerState.canSubmit);
+            return {
+              height: 56,
+              borderRadius: 14,
+              // Disabled uses a neutral grey so it's clearly inert. The
+              // prior `opacity: 0.4` on Accent.primary rendered as a
+              // washed-out lavender that read as "still active blue" at
+              // a glance (audit 2026-04-30 visual-qa P2).
+              backgroundColor: isDisabled ? colors.border : Accent.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: isDisabled ? 1 : pressed ? 0.9 : 1,
+            };
+          }}
         >
           {completing ? (
             <ActivityIndicator color="#0a0a0f" />
           ) : (
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0f" }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color:
+                  !canAdvance || (isTerminal && !pickerState.canSubmit)
+                    ? colors.textTertiary
+                    : "#0a0a0f",
+              }}
+            >
               {isTerminal ? pickerState.ctaLabel : "Continue"}
             </Text>
           )}

@@ -200,7 +200,7 @@ export default function FastingScreen() {
         </View>
 
         <Text style={[styles.stateLabel, { color: isFasting ? (isComplete ? Accent.success : Accent.primary) : colors.textSecondary }]}>
-          {isFasting ? (isComplete ? "FAST COMPLETE" : "FASTING") : "Ready when you are"}
+          {isFasting ? (isComplete ? "Fast complete" : "Fasting") : "Ready when you are"}
         </Text>
         <Text style={styles.windowLabel}>{fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat</Text>
 

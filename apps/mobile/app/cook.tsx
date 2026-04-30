@@ -128,8 +128,10 @@ export default function CookModeScreen() {
     container: { flex: 1, backgroundColor: colors.background },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md, padding: Spacing.xxl },
     errorText: { color: colors.text, fontSize: 16 },
-    backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
-    backBtnText: { color: colors.text, fontWeight: "600" },
+    emptyHeading: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
+    emptySub: { color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
+    backBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Accent.primary, marginTop: Spacing.lg },
+    backBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
     header: {
       flexDirection: "row",
@@ -241,9 +243,12 @@ export default function CookModeScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>No instructions available</Text>
+          <Text style={styles.emptyHeading}>No cook steps yet</Text>
+          <Text style={styles.emptySub}>
+            This recipe doesn't have step-by-step instructions. You can still log it from the recipe page.
+          </Text>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backBtnText}>Go back</Text>
+            <Text style={styles.backBtnText}>Back to recipe</Text>
           </Pressable>
         </View>
       </View>
