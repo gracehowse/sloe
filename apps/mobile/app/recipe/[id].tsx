@@ -2068,6 +2068,37 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
+          {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
+              Ties the recipe back to the user's daily calorie target.
+              Rounded to nearest 5%. Skipped when nutrition is unknown. */}
+          {(() => {
+            const kcalNum = Math.round(macros.calories);
+            const targetCals = userTargets.calories;
+            if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
+            const rawPct = (kcalNum / targetCals) * 100;
+            const pct = Math.max(1, Math.round(rawPct / 5) * 5);
+            return (
+              <View
+                style={{
+                  alignSelf: "center",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: 6,
+                  borderRadius: Radius.full,
+                  backgroundColor: Accent.primary + "14",
+                  marginBottom: Spacing.lg,
+                }}
+                accessibilityLabel={`Approximately ${pct} percent of your daily calorie target`}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>
+                  ≈ {pct}% of your day
+                </Text>
+              </View>
+            );
+          })()}
+
           {/* v3 macro tiles — visual hero of the screen. 2026-05-02 v4
               user feedback "the widgets should be the same size and
               fit on one row" — switched the wrap layout (which let
