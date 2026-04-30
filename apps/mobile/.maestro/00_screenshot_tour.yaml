@@ -68,11 +68,41 @@ name: "Screenshot tour — capture baseline shots of every key surface"
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/tour-08-settings
 
-# ---- /more (UI-orphaned post Group G IA collapse — deeplink only) ----
+# Group G IA Batch B (2026-04-29): /settings now mounts the
+# `SettingsBundleContent` component, so the previously-orphaned
+# Goals & targets, Connections, Apple Health, Recipes, Legal, Build,
+# and Danger zone sections are reachable from this screen. Capture
+# a scrolled shot so the baseline includes those rows for review.
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-08b-settings-mid
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-08c-settings-bottom
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+
+# ---- /more — Group G Batch D (2026-04-30) collapsed this into a
+# redirect to /settings. Capture the deeplink-resolved screen as a
+# regression check that the redirect lands users on Settings instead
+# of dead-ending. The screenshot is identical to tour-08-settings;
+# leaving the capture in place to lock the redirect contract. ----
 - openLink: suppr:///more
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- takeScreenshot: screenshots/latest/tour-09-more
+- takeScreenshot: screenshots/latest/tour-09-more-redirected
 
 # ---- Deep routes ----
 - openLink: suppr:///weight-tracker

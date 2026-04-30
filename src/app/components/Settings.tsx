@@ -402,6 +402,22 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   };
   const currentTier = tierLabels[userTier] ?? tierLabels.free;
 
+  // Group G IA Batch C (2026-04-29): Profile sidebar entry collapsed
+  // into a header card on Settings. Avatar uses the same brand
+  // gradient as Profile.tsx + mobile so the two surfaces read as one
+  // paint system. /profile remains the full editor route — tap the
+  // "Edit profile" affordance to drill in.
+  const profileAvatarInitial = (
+    profileDisplayName?.trim()?.[0] ?? authEmail?.[0] ?? "S"
+  ).toUpperCase();
+  const profileAvatarGradient =
+    "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
+  const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
+  const profileDisplayLabel =
+    profileDisplayName?.trim()?.length
+      ? profileDisplayName
+      : authEmail?.split("@")[0] ?? "Your profile";
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
@@ -413,6 +429,41 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h1 className="text-foreground bg-clip-text text-transparent">Settings</h1>
         </div>
         <p className="text-muted-foreground">Manage your account and preferences</p>
+      </div>
+
+      {/* Profile header card — Group G IA Batch C (2026-04-29). Replaces
+          the standalone Profile sidebar entry with a tap-to-edit row at
+          the top of Settings. Avatar + display name + tier pill + "Edit
+          profile" link to /profile (the full editor). */}
+      <div
+        data-testid="settings-profile-header-card"
+        className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg flex items-center gap-4"
+      >
+        <div
+          aria-hidden
+          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
+          style={{ background: profileAvatarGradient }}
+        >
+          {profileAvatarInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-foreground leading-tight truncate">
+            {profileDisplayLabel}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {profileTierLabel} tier
+            {authEmail ? <> &middot; {authEmail}</> : null}
+          </p>
+        </div>
+        <Link
+          href="/home?view=profile"
+          data-testid="settings-edit-profile-link"
+          className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          aria-label="Edit profile"
+        >
+          Edit profile
+          <Icons.forward className="w-4 h-4" aria-hidden />
+        </Link>
       </div>
 
       {/* Current plan */}

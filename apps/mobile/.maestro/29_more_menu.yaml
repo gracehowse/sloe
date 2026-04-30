@@ -1,90 +1,96 @@
 # @cases TC-MORE-01
-# @screen (tabs)/more
+# @screen (tabs)/settings
 appId: com.supprclub.supprapp
-name: "More/Profile tab — full settings verification, sign out, danger zone"
+name: "Settings hub — full settings verification, sign out, danger zone"
 ---
 - runFlow: shared/login.yaml
 
-# PRODUCT GAP (2026-04-29): /more is UI-orphaned post Group G IA
-# collapse — the More sub-tab pill was removed, leaving stat pills,
-# Goals, Connections, Recipes, App section, Legal, Danger Zone all
-# unreachable via tap navigation. Deeplink to keep this flow alive
-# until the Group G migration into /settings completes.
-- openLink: suppr:///more
+# Group G IA Batch D (2026-04-30): /more is now a redirect to /settings.
+# Deeplinking to either resolves to /settings; we point at /settings
+# directly so the flow's intent is unambiguous. The bundle owns
+# Membership, Goals & targets, Connections, Recipes, Legal, Build,
+# and Danger zone — the same surfaces this flow used to verify on
+# /more.
+- openLink: suppr:///settings
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 
-# Confirm we're on More — the "Account" overline + "More" page title
-# render at the top (more.tsx:553-558).
+# Confirm we're on Settings — the page title renders at the top.
 - extendedWaitUntil:
-    visible: ".*Account.*"
+    visible: "Settings"
     timeout: 15000
 
-# Verify avatar/name area
+# Verify the profile header card / tier strip renders (Free/Pro
+# tier label appears in either the existing Plan section or the
+# bundle's profile card).
 - assertVisible:
     text: ".*(?:Free|Pro|Base).*"
 
-# Verify stat pills (Recipes, Streak, Score)
+# Scroll down past Settings's existing sections (Plan, Appearance,
+# Account, Body & activity, Journal display, Notifications, Tracking
+# extras, About, Data) to reach the bundle.
+- scrollUntilVisible:
+    element: ".*Recipes.*"
+    direction: DOWN
 - assertVisible: ".*Recipes.*"
 - assertVisible: ".*Streak.*"
-- assertVisible: ".*Score.*"
 
-# Verify Goals & Targets section
-- assertVisible: ".*Goals & Targets.*"
-- assertVisible: ".*Daily Targets.*"
-- assertVisible: ".*Dashboard Widgets.*"
-- assertVisible: ".*Week Starts On.*"
+# Verify Goals & targets bundle section
+- scrollUntilVisible:
+    element: ".*Goals & targets.*"
+    direction: DOWN
+- assertVisible: ".*Goals & targets.*"
+- assertVisible: ".*Daily targets.*"
+- assertVisible: ".*Dashboard widgets.*"
+- assertVisible: ".*Week starts on.*"
 
-# Connections + notifications rows sit below the fold on small phones
+# Connections section
 - scrollUntilVisible:
     element: ".*Connections.*"
     direction: DOWN
 - assertVisible: ".*Connections.*"
 - assertVisible: ".*Apple Health.*"
-- assertVisible: ".*Notifications.*"
 
-# Verify Recipes section
+# Recipes section (bundle's "Create recipe" row)
 - scrollUntilVisible:
-    element: ".*Create Recipe.*"
+    element: ".*Create recipe.*"
     direction: DOWN
-- assertVisible: ".*Create Recipe.*"
+- assertVisible: ".*Create recipe.*"
 
-# Verify App section
+# Bundle's App section + Legal section
 - scrollUntilVisible:
-    element: ".*Appearance.*"
+    element: ".*Help & information.*"
     direction: DOWN
-- assertVisible: ".*Appearance.*"
 - assertVisible: ".*Export nutrition log.*"
-- assertVisible: ".*Help & Information.*"
+- assertVisible: ".*Help & information.*"
 
-# Verify Legal section
 - scrollUntilVisible:
     element: ".*Legal.*"
     direction: DOWN
-- assertVisible: ".*Privacy Policy.*"
-- assertVisible: ".*Terms of Use.*"
+- assertVisible: ".*Privacy policy.*"
+- assertVisible: ".*Terms of use.*"
 
-# Verify Danger Zone
+# Danger zone — the M15/M16 fix split the modal stack into two rows:
+# "Reset or erase data" (modal) and a separate "Delete my account"
+# row with a typed-confirm flow.
 - scrollUntilVisible:
-    element: ".*Danger Zone.*"
+    element: ".*Danger zone.*"
     direction: DOWN
-- assertVisible: ".*Danger Zone.*"
-- assertVisible: ".*Reset or erase everything.*"
+- assertVisible: ".*Danger zone.*"
+- assertVisible: ".*Reset or erase data.*"
+- assertVisible: ".*Delete my account.*"
 
-# Verify Sign Out button
+# Sign Out button (bundle renders it beneath the danger zone card).
 - scrollUntilVisible:
-    element: ".*Sign Out.*"
+    element: "Sign Out"
     direction: DOWN
-- assertVisible: ".*Sign Out.*"
+- assertVisible: "Sign Out"
 
-# Verify "Erase all app data" button
-- assertVisible: ".*Erase all app data.*"
-
-# Test Dashboard Widgets picker
+# Test Dashboard widgets picker
 - scrollUntilVisible:
-    element: ".*Dashboard Widgets.*"
+    element: ".*Dashboard widgets.*"
     direction: UP
-- tapOn: ".*Dashboard Widgets.*"
+- tapOn: ".*Dashboard widgets.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Protein.*"
 - assertVisible: ".*Carbs.*"
@@ -95,7 +101,7 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 - waitForAnimationToEnd
 
 # Test Week Start Day picker
-- tapOn: ".*Week Starts On.*"
+- tapOn: ".*Week starts on.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Monday.*"
 - assertVisible: ".*Sunday.*"
@@ -103,16 +109,15 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 - tapOn: ".*Monday.*"
 - waitForAnimationToEnd
 
-# Test Reset modal opens
+# Test reset/erase modal opens
 - scrollUntilVisible:
-    element: ".*Reset or erase everything.*"
+    element: ".*Reset or erase data.*"
     direction: DOWN
-- tapOn: ".*Reset or erase everything.*"
+- tapOn: ".*Reset or erase data.*"
 - waitForAnimationToEnd
 - assertVisible: ".*Reset or start over.*"
 - assertVisible: ".*Reset Plan \\(Keep My Data\\).*"
 - assertVisible: ".*Erase all app data.*"
-- assertVisible: ".*Delete my account permanently.*"
 - assertVisible: ".*Cancel.*"
 # Dismiss
 - tapOn: ".*Cancel.*"
@@ -120,17 +125,16 @@ name: "More/Profile tab — full settings verification, sign out, danger zone"
 
 # Verify upgrade banner for free users
 - scrollUntilVisible:
-    element: ".*Goals & Targets.*"
+    element: ".*Goals & targets.*"
     direction: UP
 - runFlow:
     when:
-      visible: ".*Upgrade to Pro.*"
+      visible: ".*Upgrade your plan.*"
     commands:
-      - assertVisible: ".*Upgrade to Pro.*"
-      - assertVisible: ".*Multi-day plans.*"
+      - assertVisible: ".*Upgrade your plan.*"
+      - assertVisible: ".*Unlimited recipes.*"
 
-# Return to Today so the next flow's launchApp resumes on a tab shell
-# rather than persisted /more state.
+# Return to Today so the next flow's launchApp resumes on a tab shell.
 - tapOn:
     id: "tab-today"
 - waitForAnimationToEnd

@@ -1,104 +1,88 @@
 # @cases TC-SETTINGS-01
-# @screen (tabs)/more
+# @screen (tabs)/settings
 appId: com.supprclub.supprapp
 name: "Settings hub — sections, navigation, profile info"
 ---
 - runFlow: shared/login.yaml
 
-# PRODUCT GAP (2026-04-29): this flow tests /more sections that are
-# UI-orphaned post Group G IA collapse. Deeplink until migration lands.
-# NOTE: overlaps heavily with 29_more_menu — candidate for dedup once
-# the Settings consolidation is complete.
-- openLink: suppr:///more
+# Group G IA Batch D (2026-04-30): /more is now a redirect to
+# /settings. Both deeplinks resolve to /settings; we point directly
+# at /settings so the flow's intent is unambiguous.
+- openLink: suppr:///settings
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 
-# Wait for the Account overline (the More-screen's stable phone-top
-# header — see more.tsx:553) to confirm the deeplink resolved before
-# asserting page contents. Without this, the assertion sometimes runs
-# while Expo Router is still resolving the URL.
 - extendedWaitUntil:
-    visible: ".*Account.*"
+    visible: "Settings"
     timeout: 15000
 
-# Verify profile header — tier subtitle (Free/Pro/Base) appears under the name
+# Verify tier label
 - assertVisible:
     text: ".*(?:Free|Pro|Base).*"
 
-# Verify stat pills
+# Bundle stats strip (Recipes / Streak)
+- scrollUntilVisible:
+    element: ".*Recipes.*"
+    direction: DOWN
 - assertVisible: ".*Recipes.*"
 - assertVisible: ".*Streak.*"
-- assertVisible: ".*Score.*"
 
-# Verify Goals & Targets section
-- assertVisible: ".*Goals & Targets.*"
-- assertVisible: ".*Daily Targets.*"
-- assertVisible: ".*Dashboard Widgets.*"
-- assertVisible: ".*Week Starts On.*"
+# Goals & targets bundle section
+- scrollUntilVisible:
+    element: ".*Goals & targets.*"
+    direction: DOWN
+- assertVisible: ".*Goals & targets.*"
+- assertVisible: ".*Daily targets.*"
+- assertVisible: ".*Dashboard widgets.*"
+- assertVisible: ".*Week starts on.*"
 
-# Verify Connections section
+# Connections
 - scrollUntilVisible:
     element: ".*Connections.*"
     direction: DOWN
 - assertVisible: ".*Apple Health.*"
 - assertVisible: ".*Notifications.*"
 
-# Verify Recipes section
+# Recipes section
 - scrollUntilVisible:
-    element: ".*Create Recipe.*"
+    element: ".*Create recipe.*"
     direction: DOWN
-- assertVisible: ".*Create Recipe.*"
+- assertVisible: ".*Create recipe.*"
 
-# Verify App section
+# Bundle's App section
 - scrollUntilVisible:
-    element: ".*Appearance.*"
+    element: ".*Help & information.*"
     direction: DOWN
-- assertVisible: ".*Appearance.*"
 - assertVisible: ".*Export nutrition log.*"
-- assertVisible: ".*Help & Information.*"
+- assertVisible: ".*Help & information.*"
 
-# Verify Legal section
+# Legal
 - scrollUntilVisible:
     element: ".*Legal.*"
     direction: DOWN
-- assertVisible: ".*Privacy Policy.*"
-- assertVisible: ".*Terms of Use.*"
+- assertVisible: ".*Privacy policy.*"
+- assertVisible: ".*Terms of use.*"
 
-# Verify Danger Zone
+# Danger zone
 - scrollUntilVisible:
-    element: ".*Danger Zone.*"
+    element: ".*Danger zone.*"
     direction: DOWN
-- assertVisible: ".*Reset or erase everything.*"
+- assertVisible: ".*Reset or erase data.*"
+- assertVisible: ".*Delete my account.*"
 
-# Navigate into Daily Targets (profile editor) — scroll up from bottom sections
+# Navigate into Daily targets
 - scrollUntilVisible:
-    element: ".*Daily Targets.*"
+    element: ".*Daily targets.*"
     direction: UP
-- tapOn: ".*Daily Targets.*"
+- tapOn: ".*Daily targets.*"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 
-# Verify profile editor loaded
+# Verify targets editor loaded
 - assertVisible:
     text: ".*(?:Goals & Targets|Daily Targets|Calories|Profile).*"
 
 # Navigate back
-- tapOn:
-    point: "5%,8%"
-- waitForAnimationToEnd
-
-# Navigate into Appearance (settings)
-- scrollUntilVisible:
-    element: ".*Appearance.*"
-    direction: DOWN
-- tapOn: ".*Appearance.*"
-- waitForAnimationToEnd
-
-# Verify settings screen loaded
-- assertVisible:
-    text: ".*(?:Theme|Automatic|Light|Dark|Appearance).*"
-
-# Navigate back to Profile tab
 - tapOn:
     point: "5%,8%"
 - waitForAnimationToEnd

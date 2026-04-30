@@ -65,14 +65,18 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     expect(screen.getByRole("button", { name: /^Discover/ })).toBeDefined();
   });
 
-  it("renders You sub-tabs (Progress / Profile / Settings) only when You is active", () => {
+  it("renders You sub-tabs (Progress / Settings) only when You is active — Profile collapsed by Group G IA Batch C", () => {
     const { rerender } = render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
     expect(screen.queryByRole("button", { name: /^Settings/ })).toBeNull();
 
     rerender(<DesktopSidebar currentView="progress" onNavigate={() => {}} />);
     expect(screen.getByRole("button", { name: /^Progress/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /^Profile/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Settings/ })).toBeDefined();
+    // Group G IA Batch C (2026-04-29): Profile sub-tab collapsed into
+    // the Settings header-card "Edit profile" affordance. The /profile
+    // route remains alive as the full editor (see leaves test below)
+    // — only the sidebar entry is gone.
+    expect(screen.queryByRole("button", { name: /^Profile$/ })).toBeNull();
   });
 
   it("renders Plan sub-tabs (This week / Shopping) when Plan is active", () => {

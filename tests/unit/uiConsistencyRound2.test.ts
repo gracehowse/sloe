@@ -109,13 +109,14 @@ describe("Round 2 — copy / discoverability", () => {
 
 describe("Round 2 — destructive action escalation", () => {
   it("B13: 'Delete my account' is its own row (M15/M16 fix), not stacked inside the reset modal", () => {
-    const SRC = read("apps/mobile/app/(tabs)/more.tsx");
-    // M15/M16 fix (audit 2026-04-28): the previous "Delete my
-    // account permanently" button was the third destructive action
-    // inside the reset/erase modal — too easy to misclick. Account
-    // deletion now lives in its own SettingsRow (icon=Trash2,
-    // iconColor=t.red, label="Delete my account") with a deliberate
-    // two-step confirm flow that requires typing 'delete'.
+    // Source moved (2026-04-29, Group G IA Batch B): the danger zone
+    // now lives in `SettingsBundleContent`, mounted on both
+    // `/(tabs)/more` and `/(tabs)/settings`. The original M15/M16 fix
+    // — separating account-delete from the reset modal so it can't be
+    // misclicked — is preserved verbatim in the bundle.
+    const SRC = read(
+      "apps/mobile/components/settings/SettingsBundleContent.tsx",
+    );
     expect(SRC).toMatch(/label="Delete my account"/);
     // The ghost-button-inside-the-modal pattern is gone.
     expect(SRC).not.toContain("Delete my account permanently");

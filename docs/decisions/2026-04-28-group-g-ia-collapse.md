@@ -91,32 +91,125 @@ Each batch is independently shippable, testable, revertible.
 that would have gone to More → Settings.
 **Risk:** trivial. Visual only.
 
-### Batch B — Move 4+ sections from More to Settings (no deletions yet)
+### Batch B — Move 4+ sections from More to Settings (no deletions yet) ✅ Shipped 2026-04-29
+
+**Approach (final, differs from straight-copy):** the More-tab body
+was extracted into a single shared component
+`apps/mobile/components/settings/SettingsBundleContent.tsx` that owns
+its own state, all 6 modals, and the entire row stack (Profile card,
+Stats, Membership, Household, Goals & targets, Connections, Recipes,
+App, Legal, Build, Danger zone, Sign Out). Both `/(tabs)/more` and
+`/(tabs)/settings` mount the bundle, so revertibility is `git revert`
+on a single PR and a Batch D cleanup of `more.tsx` only deletes the
+screen wrapper — not the shared rendering.
+
+The bundle takes a `context: "more" | "settings"` prop. Today the
+prop only suppresses the self-routing "Settings" row when rendered
+on Settings; future divergence (e.g., a Settings-only header) lives
+behind the same prop.
 
 **Scope:** add Membership, Goals & targets, Connections, Recipes,
-Household, Legal, About, Build, Danger zone to Settings as new
-sections. **Don't delete from More yet.** Both screens exist; the
-duplication is intentional and temporary.
+Household, Legal, App, Build, Danger zone, Sign Out to Settings as
+new sections (via the shared bundle). **Don't delete from More yet.**
+Both screens exist; the duplication is intentional and temporary.
+
+**Test pins added:**
+- `apps/mobile/tests/unit/settingsBundleParity.test.ts` — locks the
+  testID contract, the 6-modal mount count, the delete-account
+  network shape, and the "both screens import the bundle" guarantee.
+- `apps/mobile/tests/unit/upgradeBannerCopyParity.test.ts` —
+  repointed from `more.tsx` to the bundle.
+- `tests/unit/uiConsistencyRound2.test.ts` (B13) — repointed.
+
+**Maestro:** `00_screenshot_tour.yaml` gained two scrolled captures
+(`tour-08b-settings-mid`, `tour-08c-settings-bottom`) so the
+baseline includes the bundle's new rows on the Settings surface.
+
 **Risk:** medium. New rendering; no destructive deletions.
 
-### Batch C — Web parity: collapse Profile sidebar entry into Settings
+### Batch C — Web parity: collapse Profile sidebar entry into Settings ✅ Shipped 2026-04-29
 
-**Scope:** web only. Move Profile sidebar entry into Settings
-header card. Add the same sections that mobile got in Batch B. Add
-`?view=profile` query handler that scrolls to the editor link.
-**Risk:** medium. New page composition.
+**Scope shipped:**
+- `DesktopSidebar.SUB_TABS.you` collapsed 3 → 2 (Progress + Settings).
+  `profile` stays in `leaves` so /profile still highlights "You".
+- `App.tsx` `YouSubTabPill` (mobile-web) collapsed 3 → 2 pills with the
+  type signature narrowed to `"progress" | "settings"`. The /profile
+  case renders with Settings highlighted on the pill so the user
+  understands they are inside the Settings flow when on the editor.
+- `Settings.tsx` gained a profile header card at the very top: 56px
+  brand-gradient avatar + display name + "{Tier} tier · {email}"
+  subtitle + "Edit profile →" affordance routing to `/home?view=profile`.
+  testIDs: `settings-profile-header-card` (root) and
+  `settings-edit-profile-link` (CTA).
+- `/profile` route remains alive as the full editor — no behavioural
+  change to the editor itself.
 
-### Batch D — Delete the old paths (HIGH RISK)
+**Scope deferred (intentional):**
+- The literal "?view=profile query handler that scrolls to the editor
+  link" wording from the original decision was not implemented. The
+  current `?view=profile` URL still routes to the full editor (no
+  bookmark breakage). The header card is unconditionally visible so
+  the editor entry point is always one tap away regardless of how the
+  user arrived. If TestFlight feedback shows a tighter scroll-to
+  affordance is needed, it lands as a follow-up in the post-D
+  cleanup.
+- The full mobile bundle's Goals & targets / Connections / Recipes /
+  Household / Build / Danger zone sections were NOT ported to web
+  Settings. Web has its own equivalent surfaces (full Profile editor,
+  inline body-stats panel, Plan-tab Household card) so a 1:1 port
+  would duplicate UX. This batch is sidebar-collapse + header-card
+  parity, not section-by-section bundle parity.
 
-**Scope:** delete duplicated rows from `apps/mobile/app/(tabs)/more.tsx`
-(everything except a redirect). Delete `Profile.tsx` from web
-sidebar. Convert `more.tsx` into a thin redirect component.
-**Why third, not first:** account-delete + reset-data flows live in
-More (`more.tsx:929-994`). Test pin
-`tests/unit/accountDeleteFlow*.test.ts` MUST stay green across this
-batch.
-**Ship signal:** Grace runs the full reset-data path AND the
-typed-confirm delete path on TestFlight (throwaway account).
+**Test pins added:**
+- `tests/unit/settingsProfileHeaderCardParity.test.ts` — 9 tests
+  pinning the header-card testIDs, brand gradient, tier collapse,
+  sidebar SUB_TABS shape, leaves mapping, mobile-web pill items, and
+  the `/profile` → `currentView="settings"` highlight rule.
+- `tests/unit/desktopSidebar.test.tsx` — existing test updated
+  (Progress/Profile/Settings → Progress/Settings) with an explicit
+  guard that the Profile sub-tab is gone.
+
+**Risk:** medium. New page composition. No destructive deletions. The
+deeplink contract for `?view=profile` is unchanged.
+
+### Batch D — Delete the old paths (HIGH RISK) ✅ Shipped 2026-04-30
+
+**Verification before merge:** Grace ran the app on her iPhone 17
+Pro via `expo run:ios --device` and walked the bundle on /settings
+(reset-data + typed-confirm-delete + Apple Health connect + Daily
+targets + Dashboard widgets + Caffeine/Alcohol + Weekly recap).
+Confirmed every section reachable from /settings; no regressions vs
+pre-Batch D /more behaviour. The TestFlight requirement was relaxed
+to simulator-or-device since iOS Simulator now supports HealthKit.
+
+**Scope shipped:**
+- `apps/mobile/app/(tabs)/more.tsx` collapsed from a 110-line wrapper
+  to a 17-line `<Redirect href="/(tabs)/settings" />`. Push
+  notifications, bookmarks, and any external system that still
+  deep-links to `suppr:///more` redirects to `/(tabs)/settings`.
+- `apps/mobile/tests/unit/settingsBundleParity.test.ts` — assertion
+  set updated: dropped the "/more renders the bundle" pin; added a
+  new "/more is a thin redirect, no state, no bundle render" pin.
+- Web sidebar Profile entry — already deleted in Batch C.
+- Maestro flows repointed (4 of 4):
+  - `00_screenshot_tour.yaml` — `tour-09-more` renamed to
+    `tour-09-more-redirected` (capture proves the redirect resolves).
+  - `04_profile_settings.yaml` — deeplink `/more` → `/settings`,
+    assertions updated to match the post-bundle copy ("Goals &
+    targets" / "Privacy policy" / "Terms of use").
+  - `29_more_menu.yaml` — full rewrite. Same intent (verify every
+    bundle section + reset modal + dashboard widgets + week start),
+    pointed at `/settings`, stale assertions purged ("Score" pill,
+    "Reset or erase everything", "Delete my account permanently",
+    "Multi-day plans" upgrade copy).
+  - `31_settings_hub.yaml` — same treatment.
+- Decision doc + master P0 list updated; Notion roadmap row updated.
+
+**What's intentionally still alive (until Batch E):**
+- `apps/mobile/app/(tabs)/more.tsx` exists as the redirect.
+- The `pathname.startsWith('/more')` listener in
+  `_layout.tsx:162` (the You-tab tap handler that re-routes to
+  /progress when the user is already on /settings or /more).
 
 ### Batch E — Cleanup
 

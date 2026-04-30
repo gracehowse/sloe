@@ -39,6 +39,7 @@ import {
 } from "../../../../src/lib/nutrition/tdee";
 import { recomputeTargetsForActivity } from "../../../../src/lib/nutrition/recomputeTargetsForActivity";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
+import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DEFAULT_TRACKING_EXTRAS,
@@ -915,6 +916,16 @@ export default function SettingsScreen() {
             </View>
           </>
         )}
+
+        {/* Group G IA Batch B (2026-04-29) — settings absorbs the
+            More-tab body so every row reachable from /more is also
+            reachable here. Decision doc:
+            `docs/decisions/2026-04-28-group-g-ia-collapse.md`. The
+            bundle owns its own state, loading, and modals. Some rows
+            (Export CSV/JSON, Notifications) are also rendered above
+            in the legacy Settings sections; intentional during
+            B–D, the duplicates are removed in the post-D cleanup. */}
+        <SettingsBundleContent context="settings" />
       </ScrollView>
 
       {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19). */}

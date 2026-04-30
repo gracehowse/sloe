@@ -18,12 +18,14 @@ import { Icons } from "../ui/icons";
  *
  * Sub-tabs render below the active item when applicable. Recipes
  * groups Library (default) + Discover. You groups Progress (default)
- * + Settings + More + (where applicable) Subscription.
+ * + Settings (Group G IA Batch C, 2026-04-29: Profile sub-tab removed
+ * — Profile is now a "Edit profile" header-card row inside Settings;
+ * the /profile route remains alive as the full editor target).
  *
  * Routes that disappeared from primary nav: Discover (now sub-tab of
  * Recipes), Library (default of Recipes), Progress (default of You),
  * More (subsumed into You), Settings (subsumed into You), Shopping
- * (sub-view of Plan).
+ * (sub-view of Plan), Profile (collapsed into Settings header card).
  *
  * `currentView` keeps a wider `SidebarView` union so callers can route
  * to any leaf (e.g. `setCurrentView("library")`); the sidebar maps
@@ -122,7 +124,6 @@ const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
   ],
   you: [
     { view: "progress", label: "Progress" },
-    { view: "profile", label: "Profile" },
     { view: "settings", label: "Settings" },
   ],
 };

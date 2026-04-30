@@ -115,19 +115,26 @@ function RecipesSubTabPill({
   );
 }
 
+/**
+ * YouSubTabPill — mobile-web sub-tab pill (>= md hidden). Group G IA
+ * Batch C (2026-04-29) collapsed this from 3 pills (Progress / Profile
+ * / Settings) to 2 (Progress / Settings) to mirror the mobile-app
+ * YouSubTabHeader. Profile is now reachable from the Settings header
+ * card. The /profile route remains alive as a deep-link target for
+ * the full editor.
+ */
 function YouSubTabPill({
   currentView,
   onNavigate,
 }: {
-  currentView: "progress" | "profile" | "settings";
-  onNavigate: (view: "progress" | "profile" | "settings") => void;
+  currentView: "progress" | "settings";
+  onNavigate: (view: "progress" | "settings") => void;
 }) {
   return (
     <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
       <SubTabPill
         items={[
           { id: "progress", label: "Progress" },
-          { id: "profile", label: "Profile" },
           { id: "settings", label: "Settings" },
         ]}
         activeId={currentView}
@@ -387,9 +394,15 @@ export default function App() {
           </>
         );
       case "profile":
+        // Group G IA Batch C (2026-04-29): /profile is now a drill-down
+        // from the Settings header card's "Edit profile" link, not a
+        // primary sub-tab. The mobile-web pill renders with Settings
+        // highlighted so the user understands they are inside the
+        // Settings flow; tapping Progress or Settings navigates back
+        // up the IA tree.
         return (
           <>
-            <YouSubTabPill currentView="profile" onNavigate={navigateToView} />
+            <YouSubTabPill currentView="settings" onNavigate={navigateToView} />
             <Profile
               userTier={userTier}
               displayName={displayName}
