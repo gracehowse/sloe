@@ -42,9 +42,9 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 describe("StreakPip", () => {
-  it("renders 'Start your streak' label at zero days", () => {
+  it("renders 'Start streak' label at zero days", () => {
     const { getByText } = render(<StreakPip days={0} />);
-    expect(getByText("Start your streak")).toBeTruthy();
+    expect(getByText("Start streak")).toBeTruthy();
   });
 
   it("renders '1 day' (singular) at one day", () => {
@@ -62,10 +62,10 @@ describe("StreakPip", () => {
 
   it("clamps non-finite or negative inputs to 0 (defensive)", () => {
     const { getByText } = render(<StreakPip days={Number.NaN} />);
-    expect(getByText("Start your streak")).toBeTruthy();
+    expect(getByText("Start streak")).toBeTruthy();
 
     const { getByText: getNeg } = render(<StreakPip days={-3} />);
-    expect(getNeg("Start your streak")).toBeTruthy();
+    expect(getNeg("Start streak")).toBeTruthy();
   });
 
   it("exposes a stable accessibility label", () => {
