@@ -1033,7 +1033,12 @@ export default function FoodSearchModal({
   }), [colors]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
       <KeyboardSafeView
         scroll={false}
         dismissOnBackgroundTap={false}

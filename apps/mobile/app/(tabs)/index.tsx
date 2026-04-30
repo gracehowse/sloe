@@ -3369,7 +3369,7 @@ export default function TrackerScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Ionicons name="flash-outline" size={18} color={Accent.primary} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
-                <Text style={{ fontSize: 12, color: colors.textTertiary }}>
+                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
                   Usual meals, recent, frequent, favourites
                 </Text>
               </View>

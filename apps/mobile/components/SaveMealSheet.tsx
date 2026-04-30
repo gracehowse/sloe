@@ -27,8 +27,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
 
 type Theme = {
@@ -158,9 +159,28 @@ export default function SaveMealSheet({
                 }}
               />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>
-              Save as a usual meal
-            </Text>
+            {/* Header row: title + X close (audit 2026-04-30 modal-dismiss
+                sweep — keyboard-up on iOS can hide the backdrop strip). */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: Spacing.sm,
+              }}
+            >
+              <Text style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.text }}>
+                Save as a usual meal
+              </Text>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={12}
+              >
+                <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
+              </Pressable>
+            </View>
             <Text
               style={{
                 fontSize: 13,

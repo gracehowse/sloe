@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
@@ -172,6 +172,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   const [usualPicker, setUsualPicker] = useState<
     { slot: string; options: SavedMeal[] } | null
   >(null);
+  const [usualPickerShowAll, setUsualPickerShowAll] = useState(false);
 
   return (
     <View>
@@ -419,7 +420,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: cardColor,
                       }}
                     >
-                      <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
                           <Text style={{ fontSize: 12, color: textColor }} numberOfLines={1}>
@@ -557,15 +558,24 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
         </Pressable>
       </View>
 
-      {/* Ship M1 — usual-meal picker for slots with 2+ matches. */}
+      {/* Ship M1 — usual-meal picker for slots with 2+ matches.
+          Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"
+          footer when there are more, instead of silently dropping
+          options past index 3. */}
       <Modal
         visible={usualPicker != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setUsualPicker(null)}
+        onRequestClose={() => {
+          setUsualPicker(null);
+          setUsualPickerShowAll(false);
+        }}
       >
         <Pressable
-          onPress={() => setUsualPicker(null)}
+          onPress={() => {
+            setUsualPicker(null);
+            setUsualPickerShowAll(false);
+          }}
           style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
         >
           <Pressable
@@ -576,6 +586,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               borderTopRightRadius: Radius.lg,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
+              maxHeight: "80%",
             }}
           >
             <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: 2 }}>
@@ -584,41 +595,72 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md }}>
               Pick which saved meal to log. Newest logged first.
             </Text>
-            {(usualPicker?.options ?? []).slice(0, 3).map((m) => {
-              const summary = summariseSavedMeal(m);
-              const itemsLabel =
-                summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+            {(() => {
+              const allOptions = usualPicker?.options ?? [];
+              const total = allOptions.length;
+              const collapsedLimit = 3;
+              const showCollapsed = total > 5 && !usualPickerShowAll;
+              const visible = showCollapsed ? allOptions.slice(0, collapsedLimit) : allOptions;
               return (
-                <Pressable
-                  key={m.id}
-                  onPress={() => {
-                    if (usualPicker) {
-                      onLogSavedMeal(m, usualPicker.slot);
-                    }
-                    setUsualPicker(null);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
-                  style={{
-                    padding: Spacing.md,
-                    borderRadius: Radius.lg,
-                    borderWidth: 1,
-                    borderColor: cardBorderColor,
-                    marginBottom: Spacing.sm,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: textColor }} numberOfLines={1}>
-                    {m.name}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-                    {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
-                    {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
-                  </Text>
-                </Pressable>
+                <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                  {visible.map((m) => {
+                    const summary = summariseSavedMeal(m);
+                    const itemsLabel =
+                      summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+                    return (
+                      <Pressable
+                        key={m.id}
+                        onPress={() => {
+                          if (usualPicker) {
+                            onLogSavedMeal(m, usualPicker.slot);
+                          }
+                          setUsualPicker(null);
+                          setUsualPickerShowAll(false);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
+                        style={{
+                          padding: Spacing.md,
+                          borderRadius: Radius.lg,
+                          borderWidth: 1,
+                          borderColor: cardBorderColor,
+                          marginBottom: Spacing.sm,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: textColor }} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
+                          {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
+                          {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  {showCollapsed ? (
+                    <Pressable
+                      onPress={() => setUsualPickerShowAll(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Show all ${total} saved meals`}
+                      style={{
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        marginBottom: Spacing.sm,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                        {`Show all ${total} saved meals →`}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </ScrollView>
               );
-            })}
+            })()}
             <Pressable
-              onPress={() => setUsualPicker(null)}
+              onPress={() => {
+                setUsualPicker(null);
+                setUsualPickerShowAll(false);
+              }}
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               style={{

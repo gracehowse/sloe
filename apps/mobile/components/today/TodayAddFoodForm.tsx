@@ -71,7 +71,10 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
               backgroundColor: activeMealSlot === s ? Accent.primary : borderColor + "30",
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: "700", color: activeMealSlot === s ? "#fff" : textSecondaryColor }}>
+            <Text
+              numberOfLines={1}
+              style={{ fontSize: 11, fontWeight: "700", color: activeMealSlot === s ? "#fff" : textSecondaryColor }}
+            >
               {s}
             </Text>
           </Pressable>

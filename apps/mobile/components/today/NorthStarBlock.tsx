@@ -104,7 +104,7 @@ export function NorthStarBlock({
         padding="md"
         style={styles.row}
       >
-        <Sparkles size={IconSize.lg} color={Accent.primary} />
+        <Sparkles size={IconSize.lg} color={colors.text} />
         <View style={{ flex: 1 }}>
           <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
             {"Pick a few recipes you'd actually cook — we'll suggest from there."}

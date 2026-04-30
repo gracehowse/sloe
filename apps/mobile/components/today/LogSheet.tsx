@@ -448,6 +448,7 @@ function RightEdgeIcons({
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
 }) {
+  const colors = useThemeColors();
   // Render the icons in the documented order: Scan → Voice → Photo
   // (matches the prior tab order to preserve user muscle memory from
   // the 6-tab era). Each icon only renders when the host wires its
@@ -502,7 +503,7 @@ function RightEdgeIcons({
               { opacity: pressed ? 0.55 : 1 },
             ]}
           >
-            <Icon size={IconSize.base} color="#0f172a99" strokeWidth={2} />
+            <Icon size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
             {locked ? (
               <View style={styles.lockBadge}>
                 <Lock size={8} color="#fff" strokeWidth={2.5} />
@@ -754,9 +755,17 @@ function BarcodeManualEntry({
           style={[inputStyle, { width: 100 }]}
         />
       </View>
+      <Text style={[Type.caption, { color: colors.textSecondary, fontWeight: "600" }]}>
+        Macros (g)
+      </Text>
       <View style={{ flexDirection: "row", gap: Spacing.sm }}>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Protein (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Protein
+          </Text>
           <TextInput
             accessibilityLabel="Protein grams"
             keyboardType="decimal-pad"
@@ -766,7 +775,12 @@ function BarcodeManualEntry({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Carbs (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Carbs
+          </Text>
           <TextInput
             accessibilityLabel="Carbs grams"
             keyboardType="decimal-pad"
@@ -776,7 +790,12 @@ function BarcodeManualEntry({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Fat (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Fat
+          </Text>
           <TextInput
             accessibilityLabel="Fat grams"
             keyboardType="decimal-pad"

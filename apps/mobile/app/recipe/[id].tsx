@@ -2306,14 +2306,32 @@ export default function RecipeDetailScreen() {
         </View>
       </Modal>
 
-      {/* Cook Mode Overlay */}
-      {cookMode && instructionSteps.length > 0 && (
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
+      {/* Cook Mode Overlay — Modal so Android hardware-back dismisses
+          the overlay instead of navigating the router away from the
+          recipe screen entirely (audit 2026-04-30 modal-dismiss sweep). */}
+      <Modal
+        visible={cookMode && instructionSteps.length > 0}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => {
+          setCookMode(false);
+          setCookStep(0);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
               <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
-              <Pressable onPress={() => setCookMode(false)}>
-                <X size={28} color={colors.textSecondary} />
+              <Pressable
+                onPress={() => {
+                  setCookMode(false);
+                  setCookStep(0);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Exit cook mode"
+                hitSlop={12}
+              >
+                <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
             </View>
             <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
@@ -2341,14 +2359,17 @@ export default function RecipeDetailScreen() {
             ) : (
               <Pressable
                 style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
-                onPress={() => setCookMode(false)}
+                onPress={() => {
+                  setCookMode(false);
+                  setCookStep(0);
+                }}
               >
                 <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
               </Pressable>
             )}
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }

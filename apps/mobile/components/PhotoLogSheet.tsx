@@ -26,8 +26,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
   aggregateTotals,
   averageConfidence,
@@ -273,9 +274,28 @@ export default function PhotoLogSheet({
             <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <Ionicons name="camera" size={20} color={Accent.primary} />
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Photo log</Text>
+            {/* Header row: title + X close (audit 2026-04-30 modal-dismiss
+                sweep — keyboard-up on iOS can hide the backdrop strip). */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
+            >
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="camera" size={20} color={Accent.primary} />
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Photo log</Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={12}
+              >
+                <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
+              </Pressable>
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"

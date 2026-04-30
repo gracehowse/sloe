@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Clock } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 
 /**
@@ -37,7 +37,7 @@ export function TodayFastingPill({ startedAt, nowTick, onPress }: TodayFastingPi
         marginVertical: Spacing.xs,
       }}
     >
-      <Ionicons name="time" size={16} color={Accent.primary} />
+      <Clock size={16} color={Accent.primary} strokeWidth={2.25} />
       <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>
         Fasting — {h}h {m}m
       </Text>
