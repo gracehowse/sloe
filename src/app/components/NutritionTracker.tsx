@@ -2606,15 +2606,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           // last-logged date so the LogSheet renders two groups.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            return computeRecentMeals(nutritionByDay, 12).map((item) => ({
-              id: foodHistoryKey(item.recipeTitle, item.calories),
-              title: item.recipeTitle,
-              kcal: Math.round(item.calories),
-              source: mapMealSourceToDot(item.source),
-              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                ? ("today" as const)
-                : ("week" as const),
-            }));
+            // Mobile parity (`apps/mobile/app/(tabs)/index.tsx` ~L3693):
+            // strip the MyFitnessPal HealthKit fallback rows
+            // ("Food log (NNN kcal)") so Recents doesn't fill with
+            // identical-looking, low-information entries. The fallback
+            // string lives in `apps/mobile/lib/healthSync.ts:905`; the
+            // regex must stay identical to mobile to keep the filter in
+            // sync across surfaces.
+            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
+            return computeRecentMeals(nutritionByDay, 12)
+              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .map((item) => ({
+                id: foodHistoryKey(item.recipeTitle, item.calories),
+                title: item.recipeTitle,
+                kcal: Math.round(item.calories),
+                source: mapMealSourceToDot(item.source),
+                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                  ? ("today" as const)
+                  : ("week" as const),
+              }));
           })(),
           onPick: (picked) => {
             setLogSheetOpen(false);

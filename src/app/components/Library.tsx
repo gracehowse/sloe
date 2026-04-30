@@ -96,6 +96,23 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
   const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
 
   const savedCount = savedRecipesForLibrary.length;
+  // 2026-04-30 audit visual-qa P1 #7 (mobile parity with
+  // `apps/mobile/app/(tabs)/library.tsx` L495-525): show counts on
+  // the entry-kind pills (All / Saved) so the user knows the size of
+  // each bucket at a glance. Other pills (high-protein / quick /
+  // vegetarian / created / imported) get no count — they're filters,
+  // not buckets.
+  // "All" = total saved-library size (matches the desktop subtitle).
+  // "Saved" = entries classified as kind="saved" by the shared
+  // `classifyLibraryEntry` predicate so the count never disagrees
+  // with what the "Saved" pill actually filters down to.
+  const savedOnlyCount = useMemo(
+    () =>
+      savedRecipesForLibrary.filter(
+        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === "saved",
+      ).length,
+    [savedRecipesForLibrary, libraryEntryKindByRecipeId, uid],
+  );
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -185,21 +202,31 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
-            {LIBRARY_FILTER_PILLS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setPill(f.id)}
-                className={[
-                  "shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
-                  pill === f.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-foreground hover:bg-muted/60",
-                ].join(" ")}
-              >
-                {f.label}
-              </button>
-            ))}
+            {LIBRARY_FILTER_PILLS.map((f) => {
+              const count =
+                f.id === "all"
+                  ? savedCount
+                  : f.id === "saved"
+                    ? savedOnlyCount
+                    : null;
+              const label = count != null ? `${f.label} · ${count}` : f.label;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setPill(f.id)}
+                  className={[
+                    "shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
+                    pill === f.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-foreground hover:bg-muted/60",
+                  ].join(" ")}
+                  aria-label={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
             {/* Sort cycle button — mobile parity
                 (`apps/mobile/app/(tabs)/library.tsx` `cycleSort`). Cycles
                 Recent → Calories → Protein → Recent. Web previously had

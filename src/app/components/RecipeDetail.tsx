@@ -1332,6 +1332,68 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             </div>
           );
         })()}
+        {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
+            Mobile parity with `apps/mobile/app/recipe/[id].tsx` L1597-1660.
+            Ties the recipe to the user's daily calorie target — the
+            killer differentiator vs MFP / Lifesum.
+
+            Verdict treatment:
+              ≤ 50%  → "Fits your day" with checkmark, success-green
+              51–99% → `≈ X% of your day`, amber warning
+              ≥ 100% → `≈ X% of your day · over a full day`, destructive
+
+            Skipped when nutrition is unknown or target unset. */}
+        {(() => {
+          const kcalNum = Math.round(scaledMacros.calories);
+          const targetCals = nutritionTargets.calories;
+          if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
+          const rawPct = (kcalNum / targetCals) * 100;
+          const pct = Math.max(1, Math.round(rawPct / 5) * 5);
+          const fits = pct <= 50;
+          const overDay = pct >= 100;
+          const toneVar = fits
+            ? "var(--success)"
+            : overDay
+              ? "var(--destructive)"
+              : "var(--warning)";
+          const label = fits
+            ? "Fits your day"
+            : overDay
+              ? `≈ ${pct}% of your day · over a full day`
+              : `≈ ${pct}% of your day`;
+          const a11y = fits
+            ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+            : overDay
+              ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
+              : `Approximately ${pct} percent of your daily calorie target.`;
+          return (
+            <div className="mb-4 flex justify-center">
+              <div
+                className="inline-flex items-center gap-1.5 rounded-full"
+                style={{
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  backgroundColor: `color-mix(in srgb, ${toneVar} 10%, transparent)`,
+                  color: toneVar,
+                }}
+                role="status"
+                aria-label={a11y}
+              >
+                {fits ? <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden /> : null}
+                <span className="font-bold" style={{ fontSize: 12 }}>
+                  {label}
+                </span>
+                {fits ? (
+                  <span className="font-medium" style={{ fontSize: 12, opacity: 0.7 }}>
+                    · ≈ {pct}%
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })()}
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Macros</p>
         <div className="mb-4 flex flex-wrap gap-2">
           {recipeMacrosToShow.map((macro) => {

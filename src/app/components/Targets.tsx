@@ -278,17 +278,64 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Top row: Daily calorie target + Goal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
-        {/* Daily calorie target */}
-        <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {/* Daily calorie target — 2026-04-30 audit visual-qa P1 #10:
+            mirror the onboarding reveal's gradient ring and the mobile
+            Targets screen (`apps/mobile/app/targets.tsx` L422-470) so
+            the "what's my target" surface has the same premium-tier
+            visual ceiling as the first-time delight moment. The ring
+            renders at 100% (full sweep) since this is a target display,
+            not a progress display — Today owns the "how am I doing"
+            view. Gradient id (`targets-ring-gradient`) is distinct from
+            the daily-ring gradient to avoid SVG id collision when both
+            mount together. */}
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col items-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground self-start">
             Daily calorie target
           </p>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-[42px] md:text-[48px] font-extrabold text-foreground tabular-nums -tracking-[0.03em] leading-none">
-              {targets.calories > 0 ? targets.calories.toLocaleString("en-US") : "—"}
-            </span>
+          <div
+            className="relative my-3"
+            style={{ width: 200, height: 200 }}
+          >
+            <svg
+              width={200}
+              height={200}
+              viewBox="0 0 200 200"
+              className="absolute inset-0 -rotate-90"
+            >
+              <defs>
+                <linearGradient id="targets-ring-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#6c8cff" />
+                  <stop offset="1" stopColor="#e04888" />
+                </linearGradient>
+              </defs>
+              <circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke="var(--ring-bg)"
+                strokeWidth={10}
+                fill="none"
+              />
+              <circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke="url(#targets-ring-gradient)"
+                strokeWidth={10}
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-[42px] font-extrabold text-foreground tabular-nums -tracking-[0.03em] leading-none">
+                {targets.calories > 0 ? targets.calories.toLocaleString("en-US") : "—"}
+              </span>
+              <span className="text-[11px] text-muted-foreground tabular-nums mt-1">
+                kcal / day
+              </span>
+            </div>
           </div>
-          <p className="text-[13px] text-muted-foreground mt-2">{calorieSubline}</p>
+          <p className="text-[13px] text-muted-foreground mt-1 text-center">{calorieSubline}</p>
         </div>
 
         {/* Goal */}
