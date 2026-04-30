@@ -245,7 +245,7 @@ export default function CookModeScreen() {
         <View style={styles.centered}>
           <Text style={styles.emptyHeading}>No cook steps yet</Text>
           <Text style={styles.emptySub}>
-            This recipe doesn't have step-by-step instructions. You can still log it from the recipe page.
+            This recipe doesn&apos;t have step-by-step instructions. You can still log it from the recipe page.
           </Text>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>Back to recipe</Text>
