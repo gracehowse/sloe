@@ -121,3 +121,39 @@ P0 = trust failure or block-ship. P1 = premium-feel, retention, or activation da
 2. Commit with a single message linking the audit doc + each decision file
 3. Update Notion (Decisions log rows for the three new decision docs; mark the relevant Tasks DB items as Done)
 
+### 2026-04-30 — comprehensive coverage pass (every user journey)
+
+**Directive**: "audit is not complete until every single possible user journey is screenshotted, reviewed, tested etc."
+
+**Infrastructure built**:
+- `docs/audits/2026-04-30-coverage-matrix.md` — every surface (35 mobile routes + 21 web pages) mapped vs Maestro flow coverage, captured-state, and outstanding gaps
+- `apps/mobile/.maestro/00b_screenshot_tour_extended.yaml` — extended Maestro tour with +30 surfaces (Reset modal, deep stack routes, onboarding entry, login, household-settings, cook, macro-detail per macro, progress-metric per metric, recipe-verify, notifications-prompt)
+- `apps/mobile/scripts/capture-every-route.sh` — direct simctl-driven capture of every deeplinkable route, no Maestro testID dependency
+- `tests/e2e/screenshots/web-screenshot-tour.spec.ts` — Playwright spec capturing 19 web routes × 2 viewports (desktop + mobile-web) = 38 captures; viewport-only to fit agent image-dimension budget
+
+**Captures landed (~94 PNGs)**:
+- 35 mobile route captures (`route-*.png`) via simctl + simctl io booted screenshot — every deeplinkable route
+- 34 web captures (`web-{desktop,mobile}-*.png`) — viewport-only, all under 2000px
+- Existing 24 tour captures retained (3 fresh-refreshed, 21 stale pre-#13/#14/#16 fixes; the simctl captures supersede them where there's overlap)
+
+**Agent reviews (4 in parallel, all images Read sequentially to fit per-turn budget)**:
+- **customer-lens** (auth + onboarding) — 10 friction findings, 3 P0
+- **ui-critic** (web visuals) — first-ever web visual audit; 12 named upgrades; web rated "Solid at best, Prototype-level on commercial + legal + auth surfaces"
+- **design-system-enforcer** (cross-platform parity) — 5 highest-impact gaps + ~19 polish-queue adopts across 10 surfaces
+- **visual-qa** (mobile route defects) — 5 ranked defects, 1 P0 (Search Dynamic Island collision), plus systemic ALL-CAPS observation
+
+**New findings filed to Notion Tasks DB**: 27 rows (4 P0, 13 P1, 10 P2) covering:
+- Mobile P0: Search header Dynamic Island collision, native legacy onboarding flicker
+- Web P0: cookie banner overlaps signup CTA on mobile-web
+- Web P1: form fields look disabled, Create-account 50% opacity, /signin /signup /login show same form, pricing reads as Bootstrap, mobile-onboarding-v2 == marketing landing, native v2 "Onboarding V2" debug header, hero typography too quiet, Help/Privacy/Terms unstyled prose, mobile pricing buries Pro
+- Mobile P1: Today macro tiles still Ionicons, hard-coded reds escape Accent.destructive, planner macro string truncates "F...", Search empty results no state, Web /today missing right-rail, hero ring gesture asymmetry, web auth shell missing sidebar/topbar
+- P2: ALL-CAPS systemic, disclaimer policy decision, footer 2008-era, roadmap rows identical, reset-password no back link, auth pages 40% filler, /dev/primitives possibly public on prod, polish queue (19 items)
+
+**Outstanding gaps captured but not addressable in this pass** (filed in coverage matrix §"Coverage gaps"):
+- 15 surfaces require pre-state to capture (Onboarding 13 individual steps, recipe detail with real ID, creator profile, cook mode active, active fasting, Today populated, Plan auto-built, Shopping multi-recipe grouped, voice log, photo log, HealthKit post-grant, account deletion 2-stage, paywall purchase flow, notification populated, Apple Health sync running)
+- Action coverage gaps: long-press, swipe-to-delete, pull-to-refresh, theme switcher across screens, reduce-motion, keyboard interactions, error states, loading states — partial coverage in existing Maestro flows; comprehensive interactive audit deferred
+
+**Verdict**: ~50% of surfaces visually audited (mobile + web). ~25 net-new actionable findings. Web visual quality is materially behind mobile. The 24-hour ago fixes (commit 3d76d2c) hold up — no regressions found in the audit pass.
+
+**Total Notion entries this audit cycle**: 4 Decisions log + 27 + 12 = 39 Tasks DB rows.
+

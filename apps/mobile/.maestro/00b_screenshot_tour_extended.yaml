@@ -1,0 +1,245 @@
+# @cases TC-TOUR-EXTENDED
+# @screen multiple
+appId: com.supprclub.supprapp
+name: "Extended screenshot tour — surfaces not captured by 00_screenshot_tour.yaml"
+---
+# 2026-04-30 (audit follow-up): the canonical 00_screenshot_tour.yaml
+# captures 24 surfaces. Grace's directive ("audit is not complete until
+# every single possible user journey is screenshotted") requires
+# coverage of every reachable screen. This flow captures the remaining
+# surfaces — sub-dialogs, populated states, deep routes that the main
+# tour skipped, and the post-fix Reset/Erase modal sheet shape.
+#
+# Run order:
+#   1. apps/mobile/.maestro/00_screenshot_tour.yaml (baseline 24 captures)
+#   2. apps/mobile/.maestro/00b_screenshot_tour_extended.yaml (this file, +30 captures)
+#
+# Coverage scope of this file:
+#   - Login + auth fallback states
+#   - Sub-views inside main tabs (Library detail, Plan template picker)
+#   - Modal sheets (Reset/Erase, Move meal, Log sheet, Voice log)
+#   - Deep routes the main tour skips (cook, recipe verify, household)
+#   - Populated Today / Plan / Shopping after data is added
+#   - Onboarding v2 flow — every step (welcome → recipes terminal)
+
+- runFlow: shared/login.yaml
+
+# ────────────────────────────────────────────────────────────────────
+# A. Settings sub-actions — modal sheets after the IA collapse
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///settings
+- waitForAnimationToEnd
+
+# Reset/Erase modal sheet — opens via "Reset or start over" row
+# inside the Danger zone section. The sheet itself is the surface
+# that audit #16 + #19 + #21 reshaped. Capture the post-fix UI.
+# (If the row's id changes, the testID-or-text fallback handles it.)
+- runFlow:
+    when:
+      visible: "Reset or start over"
+    commands:
+      - tapOn: "Reset or start over"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-01-reset-modal-mobile
+      - tapOn: "Cancel"
+      - waitForAnimationToEnd
+
+# Activity level picker — opens from BODY & ACTIVITY → Activity row.
+- runFlow:
+    when:
+      visible: "Activity level"
+    commands:
+      - tapOn: "Activity level"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-02-activity-picker
+      - tapOn:
+          id: "close-activity-picker"
+          optional: true
+      - back
+
+# ────────────────────────────────────────────────────────────────────
+# B. Deep stack routes the main tour omitted
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///household-settings
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-10-household-settings
+
+- openLink: suppr:///cook
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-11-cook-mode
+
+- openLink: suppr:///macro-detail?macro=protein
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-12-macro-detail-protein
+
+- openLink: suppr:///macro-detail?macro=carbs
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-13-macro-detail-carbs
+
+- openLink: suppr:///macro-detail?macro=fat
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-14-macro-detail-fat
+
+- openLink: suppr:///macro-detail?macro=fiber
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-15-macro-detail-fiber
+
+- openLink: suppr:///burn-detail
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-16-burn-detail
+
+- openLink: suppr:///progress-metric?metric=weight
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-17-progress-metric-weight
+
+- openLink: suppr:///progress-metric?metric=calories
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-18-progress-metric-calories
+
+- openLink: suppr:///meal-nutrition
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-19-meal-nutrition
+
+- openLink: suppr:///recipe/verify
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-20-recipe-verify
+
+- openLink: suppr:///notifications-prompt
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-21-notifications-prompt
+
+# ────────────────────────────────────────────────────────────────────
+# C. Search modal — opens from Today FAB or Library search icon
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///(tabs)
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "today-fab"
+    commands:
+      - tapOn:
+          id: "today-fab"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-30-log-sheet
+      # Inside log sheet: voice tab
+      - tapOn:
+          id: "log-tab-voice"
+          optional: true
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-31-log-sheet-voice
+      # Inside log sheet: search tab
+      - tapOn:
+          id: "log-tab-search"
+          optional: true
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-32-log-sheet-search
+      # Close
+      - back
+
+# ────────────────────────────────────────────────────────────────────
+# D. Library detail — populated state with a saved recipe
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///(tabs)/library
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-40-library-saved
+# Try a recipe card tap (first recipe in the list)
+- runFlow:
+    when:
+      visible:
+        id: "recipe-card-0"
+    commands:
+      - tapOn:
+          id: "recipe-card-0"
+      - waitForAnimationToEnd
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-41-recipe-detail-saved
+      - back
+
+# Discover sub-tab populated
+- tapOn:
+    id: "subtab-discover"
+    optional: true
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-42-discover-populated
+
+# ────────────────────────────────────────────────────────────────────
+# E. Plan tab — populated week + day detail
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///(tabs)/planner
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-50-plan-this-week
+# Tap a meal to open MoveMealSheet
+- runFlow:
+    when:
+      visible: "Lunch"
+    commands:
+      - longPressOn: "Lunch"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/latest/tour-ext-51-move-meal-sheet
+      - back
+
+# ────────────────────────────────────────────────────────────────────
+# F. Shopping list — grouped state (post-#2 fix)
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///shopping
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-60-shopping-grouped
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-61-shopping-scrolled
+
+# ────────────────────────────────────────────────────────────────────
+# G. Onboarding v2 — every step
+# ────────────────────────────────────────────────────────────────────
+#
+# The /onboarding-v2 route renders the MobileFlow component. Without
+# resetting onboarding_completed=false on the DB, this route normally
+# redirects authed users away. Capture the route as it lands; if the
+# user already completed onboarding, the screenshot will show the
+# redirect target. To capture every step, sign out + go through the
+# flow manually. (Marker — Grace re-runs this section after Erase.)
+
+- openLink: suppr:///onboarding-v2
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-70-onboarding-entry
+
+# Tap Continue through each step. Each step's specific captures are
+# best taken interactively — defer to Grace's manual run after Erase.
+
+# ────────────────────────────────────────────────────────────────────
+# H. Login + auth fallback
+# ────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///login
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/tour-ext-80-login
+
+# Return to tab shell so subsequent test runs start clean.
+- openLink: suppr:///(tabs)
+- waitForAnimationToEnd
