@@ -8,7 +8,7 @@
  * Type.caption 11pt 600 1.2 line-height. Selected: bg
  * rgba(76,108,224,0.08) + border primary + 12pt Check overlay.
  *
- * Web mirror: `src/app/components/onboarding-v2/recipe-picker-grid.tsx`.
+ * Web mirror: `src/app/components/onboarding/recipe-picker-grid.tsx`.
  */
 
 import * as React from "react";
@@ -27,7 +27,7 @@ import {
   derivePickerState,
   pickCounterLabel,
   togglePick,
-} from "../../../../src/lib/onboarding/v2/finalStep";
+} from "../../../../src/lib/onboarding/finalStep";
 
 export interface RecipePickerGridProps {
   diet?: readonly string[];

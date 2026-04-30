@@ -111,14 +111,19 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain('"/targets"');
   });
 
-  it("erase routes to /onboarding-v2 not legacy /onboarding (issue #13)", () => {
-    expect(bundle).toContain('"/onboarding-v2"');
-    expect(bundle).not.toMatch(/router\.replace\("\/onboarding"\s*as\s*any\)/);
+  it("erase routes to canonical /onboarding (post-rename, was /onboarding-v2 — issue #13)", () => {
+    // The legacy `/onboarding` route was deleted 2026-04-30 and the
+    // v2 flow promoted to the canonical name. `router.replace` must
+    // point at the canonical path.
+    expect(bundle).toContain('"/onboarding"');
   });
 
   it("erase clears suppr.onboarding-v2.state AsyncStorage scratchpad (issue #14)", () => {
-    // Without this, the next session pre-fills the v2 onboarding form
+    // Without this, the next session pre-fills the onboarding form
     // with the deleted user's answers — violating the "Erase" promise.
+    // KEY NAME PRESERVED: the storage key still uses the `-v2` suffix
+    // because renaming it would orphan in-flight onboarding state for
+    // existing users. Live data — keep verbatim.
     expect(bundle).toContain('"suppr.onboarding-v2.state"');
   });
 

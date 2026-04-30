@@ -529,7 +529,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           try {
             // `suppr.onboarding-v2.state` matches the AsyncStorage key in
-            // `apps/mobile/components/onboarding-v2/context.tsx` — without
+            // `apps/mobile/components/onboarding/context.tsx` — without
             // this, the next session pre-fills with the deleted user's
             // answers (issue #14).
             await AsyncStorage.multiRemove([
@@ -544,7 +544,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           // Route to v2 (issue #13). Legacy `/onboarding` is on a deletion
           // countdown — this avoids the legacy-form flicker.
-          router.replace("/onboarding-v2" as any);
+          router.replace("/onboarding" as any);
         } else {
           // Reset targets — inline. Per 2026-04-30 product call (issue #16),
           // this resets calorie/macro defaults but does NOT clear the planner,

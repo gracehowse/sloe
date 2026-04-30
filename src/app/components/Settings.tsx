@@ -464,7 +464,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       } catch {
         /* non-fatal */
       }
-      window.location.href = "/onboarding/v2";
+      window.location.href = "/onboarding";
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erase failed");
     } finally {
