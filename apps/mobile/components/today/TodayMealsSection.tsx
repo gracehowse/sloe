@@ -382,12 +382,18 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             onDeleteMeal(m.id);
                           }}
+                          // 2026-04-30 visual-qa: removed `paddingVertical: 8`
+                          // so the destructive zone stretches to the meal
+                          // row's natural height (3 lines: name +
+                          // timestamp + source badge). Without this, the
+                          // red zone showed bg padding top + bottom and
+                          // looked misaligned. The Swipeable parent flex
+                          // row + sibling's natural height handle the rest.
                           style={{
                             width: 88,
                             backgroundColor: Accent.destructive,
                             justifyContent: "center",
                             alignItems: "center",
-                            paddingVertical: 8,
                           }}
                           accessibilityRole="button"
                           accessibilityLabel="Remove meal"

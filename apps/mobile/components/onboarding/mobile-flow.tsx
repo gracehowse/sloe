@@ -320,11 +320,16 @@ export function MobileFlow() {
             return {
               height: 56,
               borderRadius: 14,
-              // Disabled uses a neutral grey so it's clearly inert. The
-              // prior `opacity: 0.4` on Accent.primary rendered as a
-              // washed-out lavender that read as "still active blue" at
-              // a glance (audit 2026-04-30 visual-qa P2).
-              backgroundColor: isDisabled ? colors.border : Accent.primary,
+              // Disabled uses `inputBg` — a slightly tinted card surface
+              // distinct from the page bg. Earlier iterations swung
+              // between two failure modes: `opacity: 0.4` on Accent.primary
+              // (washed-out lavender that read as still-active blue) and
+              // `colors.border` (too close to the page bg in dark mode,
+              // testers tapped a "disabled" button thinking it was active).
+              // `inputBg` sits between the two — clearly inert without
+              // disappearing into the backdrop. (audit 2026-04-30 medium
+              // polish.)
+              backgroundColor: isDisabled ? colors.inputBg : Accent.primary,
               alignItems: "center",
               justifyContent: "center",
               opacity: isDisabled ? 1 : pressed ? 0.9 : 1,

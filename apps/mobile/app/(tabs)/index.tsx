@@ -3279,6 +3279,14 @@ export default function TrackerScreen() {
                     maintenanceKcal={maintenanceKcal}
                     dayActivityBudgetAddon={dayActivityBudgetAddon}
                     textSecondaryColor={colors.textSecondary}
+                    // 2026-04-30 visual-qa: Today was 4-5 blue-tinted cards
+                    // stacked (hero ring, fasting pill, duplicate-day chip,
+                    // deficit banner). Banner is informational so its
+                    // chrome is now neutral; the leading "~X kcal" line
+                    // still carries the primary blue so the number reads
+                    // as the focal point.
+                    surfaceBackgroundColor={colors.cardBorder}
+                    surfaceBorderColor={colors.border}
                   />
                 );
               }

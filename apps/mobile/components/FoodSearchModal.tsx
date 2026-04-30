@@ -21,6 +21,12 @@ import {
   Search as SearchIcon,
   X,
 } from "lucide-react-native";
+import Svg, {
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -1090,44 +1096,68 @@ export default function FoodSearchModal({
               <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>
                 SERVING SIZE
               </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: Spacing.sm }}
-                keyboardShouldPersistTaps="handled"
-              >
-                {preview.portions.map((p, idx) => {
-                  const isActive = preview.chosenPortion.label === p.label;
-                  return (
-                    <Pressable
-                      key={`${p.label}-${idx}`}
-                      onPress={() => {
-                        setPreview((prev) => {
-                          if (!prev) return prev;
-                          const defaultQty = p.label === "g" || p.label === "ml" ? 100 : 1;
-                          return { ...prev, chosenPortion: p, quantity: defaultQty, quantityText: String(defaultQty) };
-                        });
-                      }}
-                      style={{
-                        paddingHorizontal: 14, paddingVertical: 8,
-                        borderRadius: Radius.md, borderWidth: 1,
-                        borderColor: isActive ? Accent.success : colors.border,
-                        backgroundColor: isActive ? Accent.success + "15" : "transparent",
-                        minWidth: 50, alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
-                        {p.label}
-                      </Text>
-                      {p.gramWeight !== 1 && (
-                        <Text style={{ fontSize: 10, color: colors.textTertiary }}>
-                          {p.gramWeight} g
+              {/* Right-edge fade hints additional portion chips off-screen.
+                  Card bg matches `colors.card` so the gradient blends into
+                  the preview surface (visual-qa 2026-04-30 medium polish). */}
+              <View style={{ position: "relative" }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: Spacing.sm }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {preview.portions.map((p, idx) => {
+                    const isActive = preview.chosenPortion.label === p.label;
+                    return (
+                      <Pressable
+                        key={`${p.label}-${idx}`}
+                        onPress={() => {
+                          setPreview((prev) => {
+                            if (!prev) return prev;
+                            const defaultQty = p.label === "g" || p.label === "ml" ? 100 : 1;
+                            return { ...prev, chosenPortion: p, quantity: defaultQty, quantityText: String(defaultQty) };
+                          });
+                        }}
+                        style={{
+                          paddingHorizontal: 14, paddingVertical: 8,
+                          borderRadius: Radius.md, borderWidth: 1,
+                          borderColor: isActive ? Accent.success : colors.border,
+                          backgroundColor: isActive ? Accent.success + "15" : "transparent",
+                          minWidth: 50, alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
+                          {p.label}
                         </Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                        {p.gramWeight !== 1 && (
+                          <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                            {p.gramWeight} g
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                {/* SVG-based fade — `expo-linear-gradient` isn't a project
+                    dep (planner.tsx + welcome.tsx both note this). We use
+                    react-native-svg, which is already installed, to draw
+                    a transparent → card-colour fade along the right edge
+                    of the chip rail. */}
+                <View
+                  pointerEvents="none"
+                  style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 24 }}
+                >
+                  <Svg width="100%" height="100%">
+                    <Defs>
+                      <SvgLinearGradient id="portionFade" x1="0" y1="0" x2="1" y2="0">
+                        <Stop offset="0" stopColor={colors.card} stopOpacity="0" />
+                        <Stop offset="1" stopColor={colors.card} stopOpacity="1" />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <Rect width="100%" height="100%" fill="url(#portionFade)" />
+                  </Svg>
+                </View>
+              </View>
 
               {/* Number of servings */}
               <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1 }}>

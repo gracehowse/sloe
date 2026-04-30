@@ -854,7 +854,7 @@ export default function VerifyScreen() {
                       style={styles.actionBtn}
                       onPress={() => { setOverrideIndex(i); setExpandedIndex(null); }}
                       accessibilityRole="button"
-                      accessibilityLabel={`Override nutrition for ${displayName}`}
+                      accessibilityLabel={`Edit nutrition for ${displayName}`}
                     >
                       <Ionicons
                         name={rowHasOverride ? "create" : "create-outline"}
@@ -862,7 +862,7 @@ export default function VerifyScreen() {
                         color={Accent.primary}
                       />
                       <Text style={styles.actionBtnText}>
-                        {rowHasOverride ? "Edit override" : "Override nutrition"}
+                        {rowHasOverride ? "Edit values" : "Edit nutrition"}
                       </Text>
                     </Pressable>
                     <Pressable
