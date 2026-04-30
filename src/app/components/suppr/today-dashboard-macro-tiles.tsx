@@ -253,7 +253,17 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            <div className="mt-2.5 h-[5px] rounded-full bg-muted overflow-hidden">
+            {/* Premium-feel papercut #4 (audit 2026-04-29): the bar
+                exists but at 0% the fill is invisible against a
+                near-grey track, so empty tiles read as having a
+                divider, not a progress bar. Tint the track with the
+                macro's brand colour at ~14% so each tile is legible
+                as "your X progress" even before any logging. Mirror
+                of the same change in mobile `TodayDashboardMacroTiles`. */}
+            <div
+              className="mt-2.5 h-[6px] rounded-full overflow-hidden"
+              style={{ background: `color-mix(in_oklab, ${tile.fillVar} 14%, transparent)` }}
+            >
               <div
                 className="h-full rounded-full transition-[width] duration-700"
                 style={{ width: `${tile.pct}%`, background: tile.fillVar }}

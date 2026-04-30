@@ -198,6 +198,13 @@ export default function CalorieRing({
 }: Props) {
   const diff = Math.round(goal - consumed);
   const isOver = consumed > goal;
+  // Premium-feel papercut #2 (audit 2026-04-29): the empty-state ring
+  // dominates Today's first impression — a giant `0` and "LOGGED"
+  // label scream "you've done nothing today" before the user has had
+  // a chance to. Soft-mode the centre when consumed is exactly 0 so
+  // the suggestion card + macro tiles can lead the visual hierarchy
+  // instead. Once the user logs anything, normal treatment resumes.
+  const isEmpty = consumed === 0;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);
@@ -310,17 +317,32 @@ export default function CalorieRing({
             `useAnimatedNumber`. The displayed integer counts up
             smoothly when the user logs a meal, finishing with the
             ring sweep (~800ms cubic out). Snaps on displayMode
-            toggle. */}
-        <Text
-          style={{
-            fontSize: expanded ? 22 : 28,
-            fontWeight: "700",
-            color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
-            fontVariant: ["tabular-nums"],
-          }}
-        >
-          {animatedCenterValue}
-        </Text>
+            toggle. Empty state (audit 2026-04-29 papercut #2)
+            replaces the giant "0" with a softer "Start your day"
+            invitation so the empty ring stops dominating the screen. */}
+        {isEmpty && displayMode === "consumed" ? (
+          <Text
+            style={{
+              fontSize: expanded ? 14 : 16,
+              fontWeight: "500",
+              color: secondaryColor,
+              textAlign: "center",
+            }}
+          >
+            Start your day
+          </Text>
+        ) : (
+          <Text
+            style={{
+              fontSize: expanded ? 22 : 28,
+              fontWeight: "700",
+              color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {animatedCenterValue}
+          </Text>
+        )}
         {/* Center label ("REMAINING" / "LOGGED" / "OVER"). Grace
             2026-04-28: the 10pt size + letterSpacing 0.8 ran ~54px
             wide, which clipped the inner-most macro ring (r=32) at
@@ -329,18 +351,22 @@ export default function CalorieRing({
             ring band. At fontSize 8 with no extra tracking the word
             "REMAINING" is ~38px wide → ±19 from CX, well inside the
             inner ring's ~±27 band at y. Collapsed mode keeps the
-            original 10pt + tracking for readability. */}
-        <Text
-          style={{
-            fontSize: expanded ? 8 : 10,
-            fontWeight: "700",
-            color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
-            letterSpacing: expanded ? 0 : 0.8,
-            marginTop: 1,
-          }}
-        >
-          {centerLabel}
-        </Text>
+            original 10pt + tracking for readability.
+            Hidden in empty state — the "Start your day" copy above
+            already invites action; LOGGED beneath would be redundant. */}
+        {!(isEmpty && displayMode === "consumed") && (
+          <Text
+            style={{
+              fontSize: expanded ? 8 : 10,
+              fontWeight: "700",
+              color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
+              letterSpacing: expanded ? 0 : 0.8,
+              marginTop: 1,
+            }}
+          >
+            {centerLabel}
+          </Text>
+        )}
         {/* Budget line hidden when the concentric macro rings are
             showing — Grace 2026-04-20: text + rings looked squished. */}
         {!expanded ? (

@@ -101,11 +101,53 @@ function tryTrailingFraction(s: string): { amount: string; unit: string; name: s
 
 /**
  * Parse a single ingredient line into structured fields.
+ *
+ * Defensive guard (audit 2026-04-29 papercut #6): if the parse produces a
+ * `name` that starts with a digit, the line was likely malformed (e.g.
+ * "1 5 large eggs" from a unicode-fraction encoding mishap, or ranges
+ * typed without a hyphen) and `splitUnitAndName` left the second
+ * number stuck on the front of `name`. Rather than emit garbled
+ * `${amount} ${unit} ${name}` like "1 5 large eggs" downstream in the
+ * shopping list, attempt a recovery parse on just the name; if that
+ * succeeds with a clean (non-digit-leading) name use it, otherwise
+ * fall back to a single-string ingredient with no amount/unit so the
+ * raw line displays cleanly. See
+ * `docs/audits/2026-04-29-mobile-e2e-audit-findings.md` (#6).
  */
 export function parseIngredientLine(raw: string): { amount: string; unit: string; name: string } {
-  const result = parseIngredientLineInner(raw);
-  // Always strip parenthetical weight info from the final name
-  return { ...result, name: stripParentheticalWeight(result.name) };
+  const first = parseIngredientLineInner(raw);
+  const cleaned = { ...first, name: stripParentheticalWeight(first.name) };
+
+  if (!nameLooksMalformed(cleaned.name)) {
+    return cleaned;
+  }
+
+  // Recovery — try parsing the malformed name on its own.
+  const recovered = parseIngredientLineInner(cleaned.name);
+  const recoveredCleaned = { ...recovered, name: stripParentheticalWeight(recovered.name) };
+  if (recoveredCleaned.name && !nameLooksMalformed(recoveredCleaned.name)) {
+    // Prefer the recovery's amount/unit when it produced something;
+    // otherwise keep the first parse's amount.
+    return {
+      amount: recoveredCleaned.amount || cleaned.amount,
+      unit: recoveredCleaned.unit || cleaned.unit,
+      name: recoveredCleaned.name,
+    };
+  }
+
+  // Recovery didn't help — surface the raw line as the name with no
+  // amount/unit so the shopping label renders the user's original
+  // text rather than a malformed "1 5 large eggs" composite.
+  return { amount: "", unit: "", name: raw.trim() };
+}
+
+/**
+ * Heuristic: a parsed ingredient name should not start with a digit.
+ * When it does, splitUnitAndName failed to consume an embedded
+ * quantity/unit and the leading digit is stuck on the noun phrase.
+ */
+function nameLooksMalformed(name: string): boolean {
+  return /^\d/.test(name.trim());
 }
 
 function parseIngredientLineInner(raw: string): { amount: string; unit: string; name: string } {

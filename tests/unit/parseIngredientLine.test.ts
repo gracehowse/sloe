@@ -164,5 +164,52 @@ describe("parseIngredientLine", () => {
     expect(result.name).not.toContain("400g");
     expect(result.name).toContain("chickpeas");
   });
+
+  // Audit 2026-04-29 papercut #6 — shopping list rendered "3 6 large
+  // eggs" / "1 5 large eggs" because malformed ingredient lines left
+  // the second number stuck on the front of `name`. The fix recovers
+  // by re-parsing or falling back to the raw line so the shopping
+  // label never composes "<amount> <unit> <name>" with a numeric
+  // leading name. See docs/audits/2026-04-29-mobile-e2e-audit-findings.md.
+  describe("malformed ingredient recovery (papercut #6)", () => {
+    it("recovers '1 5 large eggs' to amount=5 unit=large name=eggs", () => {
+      const r = parseIngredientLine("1 5 large eggs");
+      expect(r.name).not.toMatch(/^\d/);
+      expect(r.name).toBe("eggs");
+      expect(r.unit).toBe("large");
+      // Amount is allowed to be either "5" (recovery succeeded) or a
+      // raw fallback — the load-bearing assertion is "name doesn't
+      // start with a number" so the shopping label can't render
+      // "X Y large eggs".
+    });
+
+    it("recovers '3 6 large eggs' the same way", () => {
+      const r = parseIngredientLine("3 6 large eggs");
+      expect(r.name).not.toMatch(/^\d/);
+      expect(r.name).toBe("eggs");
+      expect(r.unit).toBe("large");
+    });
+
+    it("falls back to raw line when recovery can't produce a clean name", () => {
+      // Two leading numbers + no recognisable unit = nothing the
+      // parser can rescue. The line surfaces as-is rather than
+      // being concatenated by the shopping renderer.
+      const r = parseIngredientLine("1 5 9");
+      expect(r.amount).toBe("");
+      expect(r.unit).toBe("");
+      expect(r.name).toBe("1 5 9");
+    });
+
+    it("doesn't regress simple numeric-prefixed names that aren't malformed", () => {
+      // "2 chicken breasts" still parses cleanly via the embedded
+      // countable rule (existing test above pins this) — verifying
+      // the recovery guard doesn't introduce new behaviour for the
+      // happy path.
+      const r = parseIngredientLine("2 chicken breasts");
+      expect(r.amount).toBe("2");
+      expect(r.unit).toBe("breast");
+      expect(r.name).toBe("chicken");
+    });
+  });
 });
 

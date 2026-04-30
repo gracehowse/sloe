@@ -228,11 +228,19 @@ export function TodayDashboardMacroTiles({
                   / {def.target} {def.unit}
                 </Text>
               </View>
+              {/* Premium-feel papercut #4 (audit 2026-04-29): the bar
+                  exists but at 0% the fill is invisible against a
+                  near-grey track, so empty tiles read as having a
+                  divider, not a progress bar. Tint the track with the
+                  macro's brand colour at 14% opacity so each tile is
+                  legible as "your X progress" even before any logging
+                  — and the brighter fill stands out cleanly as the
+                  user logs through the day. */}
               <View
                 style={{
-                  height: 5,
+                  height: 6,
                   borderRadius: 999,
-                  backgroundColor: mutedColor,
+                  backgroundColor: `${def.color}24`,
                   marginTop: Spacing.sm + 2,
                   overflow: "hidden",
                 }}

@@ -185,11 +185,23 @@ export function buildGoalCard(opts: {
   const curDisplay = Math.round(currentWeightKg * 10) / 10;
   const goalDisplay = Math.round(goalWeightKg * 10) / 10;
 
+  // Audit 2026-04-29 papercut #8 — concrete projected dates feel
+  // closer than abstract "more than a year at current rate". When
+  // capped past 1 year we now still show the projected date, with a
+  // "1+ year(s) out" qualifier so the user understands the projection
+  // horizon. `daysToGoalUncapped` preserves the raw computation that
+  // `daysToGoal` nulls out at the 1-year cap.
   let dateFragment: string | null = null;
   if (typeof timeline.daysToGoal === "number" && timeline.daysToGoal > 0 && !timeline.cappedAtMaxDays) {
     const target = new Date(now.getTime() + timeline.daysToGoal * 86400000);
     dateFragment = `could reach by ≈ ${formatGoalDate(target)}`;
+  } else if (timeline.cappedAtMaxDays && typeof timeline.daysToGoalUncapped === "number") {
+    const target = new Date(now.getTime() + timeline.daysToGoalUncapped * 86400000);
+    const years = Math.floor(timeline.daysToGoalUncapped / 365);
+    const yearQualifier = years >= 2 ? `${years}+ years out` : "1+ year out";
+    dateFragment = `on track for ≈ ${formatGoalDate(target)} · ${yearQualifier}`;
   } else if (timeline.cappedAtMaxDays) {
+    // Defensive fallback — uncapped projection unavailable.
     dateFragment = "more than a year at current rate";
   }
 

@@ -946,8 +946,24 @@ export default function PlannerScreen() {
           justifyContent: "center",
           marginTop: 3,
         },
-        mealLogBtn: { paddingVertical: 12, paddingHorizontal: 10, minWidth: 64, alignItems: "flex-end" },
-        mealLogBtnText: { fontSize: 12, fontWeight: "700", color: Accent.primary, textAlign: "right" },
+        // Audit 2026-04-29 papercut #11 — bold 700-weight saturated
+        // Accent.primary text screamed for attention with 2-4 of these
+        // visible per day card, competing with the rest of the page.
+        // Demote to a subtle-fill pill (8% Accent bg, primary text,
+        // 600-weight) so the button reads as a tappable affordance
+        // without dominating. Mirrors the #3 demotion of the Today
+        // suggestion-card CTA.
+        mealLogBtn: {
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          minWidth: 64,
+          borderRadius: 8,
+          backgroundColor: `${Accent.primary}14`,
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 4,
+        },
+        mealLogBtnText: { fontSize: 12, fontWeight: "600", color: Accent.primary, textAlign: "center" },
         mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
         shoppingListCard: {

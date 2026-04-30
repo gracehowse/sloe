@@ -140,6 +140,13 @@ function DailyRing({
         : RING_LABELS.remaining;
   const centerValueColor = isOverBudget ? "var(--warning)" : undefined;
   const centerLabelColor = isOverBudget ? "var(--warning)" : undefined;
+  // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
+  // dominated Today's first impression. Soft-mode the centre when
+  // consumed is exactly 0 (in "consumed" displayMode) so the
+  // suggestion card + macro tiles can lead the visual hierarchy
+  // instead of a giant `0`. Mirror of the same change in mobile
+  // `CalorieRing.tsx`.
+  const isEmpty = consumed === 0 && displayMode === "consumed";
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
@@ -234,42 +241,56 @@ function DailyRing({
 
       {/* Centre text — number tweens to `centerValue` via
           `useAnimatedNumber`. Counts up smoothly when consumed
-          changes; snaps on displayMode toggle. */}
+          changes; snaps on displayMode toggle. Empty state (audit
+          2026-04-29 papercut #2) replaces the giant `0` with a
+          softer "Start your day" invitation so the empty ring stops
+          dominating Today's first impression. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span
-          className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
-          style={{
-            fontSize: expanded ? "22px" : "var(--text-display)",
-            color: centerValueColor,
-          }}
-        >
-          {animatedCenterValue}
-        </span>
-        {/* Centre label ("REMAINING" / "LOGGED" / "OVER"). Grace
-            2026-04-28: mobile flagged the label clipping inner-most
-            macro ring at the label's y. Web's ring is bigger
-            (160 vs 140) so the inner-most macro ring at r≈38 has
-            more horizontal room at the label's y (~±33 vs the label
-            width of ~54px → ±27, fits with margin). Web doesn't
-            have the same overlap, but for symmetry with the mobile
-            shrink we use a smaller `text-[9px]` + drop tracking
-            when expanded so the label always sits comfortably
-            inside the inner ring instead of grazing it. */}
-        <span
-          className={`font-semibold mt-0.5 uppercase ${expanded ? "text-[9px] tracking-normal" : "text-[11px] tracking-wider"}`}
-          style={{ color: centerLabelColor ?? "var(--muted-foreground)" }}
-        >
-          {centerLabel}
-        </span>
-        {/* Budget line renders in BOTH expanded + collapsed states
-            (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
-            ui-critic called out that the expanded view hid the
-            denominator and left the user looking at a number with no
-            anchor. We keep the same 10px tabular caption in both
-            modes so the centre of the ring always carries its target. */}
-        <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-          of {Math.round(target).toLocaleString()} kcal
-        </span>
+        {isEmpty ? (
+          <span
+            className="font-medium leading-tight text-center text-muted-foreground"
+            style={{ fontSize: expanded ? "14px" : "16px" }}
+          >
+            Start your day
+          </span>
+        ) : (
+          <>
+            <span
+              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
+              style={{
+                fontSize: expanded ? "22px" : "var(--text-display)",
+                color: centerValueColor,
+              }}
+            >
+              {animatedCenterValue}
+            </span>
+            {/* Centre label ("REMAINING" / "LOGGED" / "OVER"). Grace
+                2026-04-28: mobile flagged the label clipping inner-most
+                macro ring at the label's y. Web's ring is bigger
+                (160 vs 140) so the inner-most macro ring at r≈38 has
+                more horizontal room at the label's y (~±33 vs the label
+                width of ~54px → ±27, fits with margin). Web doesn't
+                have the same overlap, but for symmetry with the mobile
+                shrink we use a smaller `text-[9px]` + drop tracking
+                when expanded so the label always sits comfortably
+                inside the inner ring instead of grazing it. */}
+            <span
+              className={`font-semibold mt-0.5 uppercase ${expanded ? "text-[9px] tracking-normal" : "text-[11px] tracking-wider"}`}
+              style={{ color: centerLabelColor ?? "var(--muted-foreground)" }}
+            >
+              {centerLabel}
+            </span>
+            {/* Budget line renders in BOTH expanded + collapsed states
+                (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
+                ui-critic called out that the expanded view hid the
+                denominator and left the user looking at a number with no
+                anchor. We keep the same 10px tabular caption in both
+                modes so the centre of the ring always carries its target. */}
+            <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+              of {Math.round(target).toLocaleString()} kcal
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

@@ -147,6 +147,28 @@ describe("targetsView — buildGoalCard", () => {
     expect(card?.status).toBe("wrong_way");
     expect(card?.statusLabel).toBe("Off track");
   });
+
+  // Audit 2026-04-29 papercut #8 — capped projections now show a
+  // concrete date with a "1+ year out" qualifier rather than the
+  // psychologically-deflating "more than a year at current rate".
+  it("capped projection shows concrete date + year-qualifier (papercut #8)", () => {
+    // Losing 0.1 kg/wk to drop 30 kg ≈ 2,100 days (~5.7 years) — way
+    // past the 1-year cap.
+    const card = buildGoalCard({
+      currentWeightKg: 100,
+      goalWeightKg: 70,
+      weightKgByDay: {
+        "2026-04-12": 100.1,
+        "2026-04-19": 100.0,
+      },
+      now: new Date("2026-04-19T12:00:00Z"),
+    });
+    expect(card?.subtitle).toMatch(/on track for ≈ /);
+    // Expect the year-qualifier ("5+ years out" or "1+ year out").
+    expect(card?.subtitle).toMatch(/(\d+\+ years out|1\+ year out)/);
+    // Should NOT contain the deflating legacy copy.
+    expect(card?.subtitle).not.toMatch(/more than a year at current rate/);
+  });
 });
 
 describe("targetsView — formatGoalDate", () => {

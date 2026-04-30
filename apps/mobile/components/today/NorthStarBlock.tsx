@@ -300,6 +300,13 @@ function NorthStarDefault({
             </Text>
           </View>
 
+          {/* Premium-feel papercut #3 (audit 2026-04-29): the CTA
+              previously used solid Accent.primary, matching the
+              persistent Today FAB and creating two competing
+              same-colour buttons within a thumb's reach. Demote to
+              a subtle-fill variant (8% Accent + Accent text) so the
+              FAB stays the loudest pixel and this card reads as a
+              suggestion, not a demand. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={ctaLabel}
@@ -307,14 +314,14 @@ function NorthStarDefault({
             style={({ pressed }) => [
               styles.cta,
               {
-                backgroundColor: Accent.primary,
+                backgroundColor: `${Accent.primary}14`,
                 marginTop: 8,
                 alignSelf: "flex-start",
-                opacity: pressed ? 0.85 : 1,
+                opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
-            <Text style={styles.ctaLabel}>{ctaLabel}</Text>
+            <Text style={[styles.ctaLabel, { color: Accent.primary }]}>{ctaLabel}</Text>
           </Pressable>
         </View>
       </SupprCard>

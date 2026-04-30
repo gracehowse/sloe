@@ -1052,16 +1052,21 @@ export const MealPlanner = memo(function MealPlanner({
                     {/* F2-M (2026-04-28): "Log today" button on each
                         meal row. Mobile parity at
                         `apps/mobile/app/(tabs)/planner.tsx:2406-2447`.
-                        Mirrors mobile's text-link affordance — small
-                        and unobtrusive so it doesn't dominate the
-                        card. Disabled when the slot is empty / a
+                        Audit 2026-04-29 papercut #11: previously a
+                        bold text link in saturated `text-primary`,
+                        which screamed for attention with 2-4 of these
+                        visible per day card. Demoted to a subtle-fill
+                        pill (8% primary bg + primary text, semibold
+                        not bold) so the button reads as a tappable
+                        affordance without dominating the row. Mirrors
+                        the mobile change. Disabled when the slot is a
                         placeholder. */}
                     {!isPlaceholder ? (
                       <button
                         type="button"
                         onClick={() => handleLogToday(meal)}
-                        className="text-primary hover:underline font-semibold mt-1.5 inline-flex items-center"
-                        style={{ fontSize: 11 }}
+                        className="inline-flex items-center justify-center rounded-md bg-primary/10 px-3 py-1 text-primary font-semibold mt-1.5 hover:bg-primary/15 transition-colors"
+                        style={{ fontSize: 12 }}
                         data-testid={`planner-log-today-${dp.day}-${slot}`}
                       >
                         Log today

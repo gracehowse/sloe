@@ -812,12 +812,21 @@ export default function ImportSharedScreen() {
       gap: Spacing.md,
     },
     sourceButton: {
-      flex: 0.45,
+      // Audit 2026-04-29 papercut #7: Instagram / YouTube labels were
+      // wrapping mid-word ("Instagr/am", "YouTu/be") because the
+      // button was too narrow at horizontal padding 14 + icon 32 +
+      // gap 8 (effective text width < label intrinsic width). Switch
+      // to `flex: 1` with a `minWidth` so 4 buttons distribute evenly
+      // across the row, drop horizontal padding from 14 to 8 to give
+      // the label more breathing room. Combined with `numberOfLines:
+      // 1` on the label, "Instagram" + "YouTube" fit cleanly.
+      flex: 1,
+      minWidth: 64,
       backgroundColor: colors.card,
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingHorizontal: 14,
+      paddingHorizontal: 8,
       paddingVertical: 14,
       alignItems: "center",
       gap: Spacing.sm,
@@ -1440,7 +1449,9 @@ export default function ImportSharedScreen() {
                         color={Accent.primary}
                       />
                     </View>
-                    <Text style={styles.sourceLabel}>{source.label}</Text>
+                    <Text style={styles.sourceLabel} numberOfLines={1}>
+                      {source.label}
+                    </Text>
                   </Pressable>
                 ))}
               </View>

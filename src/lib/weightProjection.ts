@@ -245,6 +245,18 @@ export function weightJourneyProgress(opts: {
 export type WeightGoalTimeline = {
   /** Estimated days to reach goal weight (null if not achievable or no goal) */
   daysToGoal: number | null;
+  /**
+   * Audit 2026-04-29 papercut #8 — when `cappedAtMaxDays` is true the
+   * rate-based projection ran past the 1-year cap; the UI used to
+   * collapse this to a vague "more than a year at current rate"
+   * fragment, which premium-feel reviewers flagged as deflating
+   * (TestFlight feedback: "tells me nothing actionable"). This field
+   * preserves the uncapped projection so the UI can show a concrete
+   * date with a "1+ years out" qualifier — concrete projected dates
+   * feel closer than abstract "more than a year". Null when the rate
+   * is too low to project at all (matches `daysToGoal`'s null path).
+   */
+  daysToGoalUncapped: number | null;
   /** Weekly rate of change in kg based on recent trend */
   weeklyRateKg: number;
   /** Current weight */
@@ -317,6 +329,7 @@ export function calcGoalTimeline(opts: {
         : "gaining";
 
   let daysToGoal: number | null = null;
+  let daysToGoalUncapped: number | null = null;
   let cappedAtMaxDays = false;
   if (Math.abs(weeklyRateKg) >= 0.1) {
     const dailyRateKg = weeklyRateKg / 7;
@@ -325,6 +338,10 @@ export function calcGoalTimeline(opts: {
 
     if (isMovingRight) {
       const computed = Math.round(Math.abs(remainingKg / dailyRateKg));
+      // Always preserve the raw projection in `daysToGoalUncapped` so
+      // the new (audit 2026-04-29 papercut #8) copy path can surface
+      // a concrete date even past the 1-year cap.
+      daysToGoalUncapped = computed;
       if (computed > MAX_DAYS_TO_GOAL) {
         // Item #15 — past the cap, surface the cap signal so the UI
         // can render "More than 1 year at current rate" rather than an
@@ -341,6 +358,7 @@ export function calcGoalTimeline(opts: {
 
   return {
     daysToGoal,
+    daysToGoalUncapped,
     weeklyRateKg,
     currentKg: currentWeightKg,
     goalKg: goalWeightKg,
