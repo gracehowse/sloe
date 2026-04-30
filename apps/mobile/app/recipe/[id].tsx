@@ -249,7 +249,7 @@ export default function RecipeDetailScreen() {
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
-  const [userTargets, setUserTargets] = useState({ protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
+  const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [logPortion, setLogPortion] = useState(1);
@@ -274,11 +274,12 @@ export default function RecipeDetailScreen() {
     }
     const { data } = await supabase
       .from("profiles")
-      .select("tracked_macros, target_protein, target_carbs, target_fat, target_fiber_g")
+      .select("tracked_macros, target_calories, target_protein, target_carbs, target_fat, target_fiber_g")
       .eq("id", userId)
       .maybeSingle();
     if (!data) return;
     setUserTargets({
+      calories: (data.target_calories as number) ?? NUTRITION_DEFAULTS.calories,
       protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
       carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
       fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
@@ -1589,6 +1590,43 @@ export default function RecipeDetailScreen() {
                     Calories not yet computed — open the Ingredients tab to verify
                   </Text>
                 )}
+              </View>
+            );
+          })()}
+
+          {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
+              Ties the recipe back to the user's daily calorie target,
+              the killer differentiator vs MFP / Lifesum. Format:
+              `≈ X% of your daily calories` (rounded to nearest 5%).
+              Skipped when nutrition is unknown or the target is the
+              app default (suggests the user hasn't set their target). */}
+          {(() => {
+            const kcalNum = Math.round(macros.calories);
+            const targetCals = userTargets.calories;
+            if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
+            const rawPct = (kcalNum / targetCals) * 100;
+            // Round to nearest 5% so the badge doesn't churn on small
+            // recipe edits and reads as a confident summary, not a
+            // precise calculation.
+            const pct = Math.max(1, Math.round(rawPct / 5) * 5);
+            return (
+              <View
+                style={{
+                  alignSelf: "center",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: 6,
+                  borderRadius: Radius.full,
+                  backgroundColor: Accent.primary + "14",
+                  marginBottom: Spacing.lg,
+                }}
+                accessibilityLabel={`Approximately ${pct} percent of your daily calorie target`}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>
+                  ≈ {pct}% of your day
+                </Text>
               </View>
             );
           })()}

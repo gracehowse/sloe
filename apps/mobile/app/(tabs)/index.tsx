@@ -3681,17 +3681,29 @@ export default function TrackerScreen() {
           // P0-2b (2026-04-28) — hydrate from food-history. Recent is
           // capped at 12 rows; bucket "today" / "week" splits by
           // last-logged date so the LogSheet can render two groups.
+          //
+          // 2026-04-30 audit visual-qa: filter out HealthKit-imported
+          // entries that resolved to the `Food log (X kcal)` fallback
+          // because their source app (MFP, etc.) didn't expose a food
+          // name through the HealthKit metadata. These rows have no
+          // useful identity for re-logging — they're just calorie
+          // totals — so showing 9+ identical-looking "Food log (XXX kcal)
+          // (via MyFitnessPal)" rows in Recents is noise. The fallback
+          // string lives in `apps/mobile/lib/healthSync.ts:905`.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            return computeRecentMeals(byDay, 12).map((item) => ({
-              id: foodHistoryKey(item.recipeTitle, item.calories),
-              title: item.recipeTitle,
-              kcal: Math.round(item.calories),
-              source: mapMealSourceToDot(item.source),
-              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                ? ("today" as const)
-                : ("week" as const),
-            }));
+            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
+            return computeRecentMeals(byDay, 12)
+              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .map((item) => ({
+                id: foodHistoryKey(item.recipeTitle, item.calories),
+                title: item.recipeTitle,
+                kcal: Math.round(item.calories),
+                source: mapMealSourceToDot(item.source),
+                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                  ? ("today" as const)
+                  : ("week" as const),
+              }));
           })(),
           onPick: (picked) => {
             setFabSheetOpen(false);

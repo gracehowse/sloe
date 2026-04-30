@@ -16,6 +16,12 @@ import {
   Droplets,
   Leaf,
 } from "lucide-react-native";
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -406,14 +412,61 @@ export default function TargetsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Daily calorie target */}
-        <View style={styles.card}>
+        {/* Daily calorie target — 2026-04-30 audit visual-qa P1 #10:
+            mirror the onboarding reveal's gradient ring so the
+            "what's my target" surface has the same premium-tier
+            visual ceiling as the first-time delight moment. The
+            ring renders at 100% (full sweep) since this is a
+            target display, not a progress display — Today owns
+            the "how am I doing" view. */}
+        <View style={[styles.card, { alignItems: "center" }]}>
           <Text style={styles.overline}>DAILY CALORIE TARGET</Text>
-          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-            <Text style={styles.bigNumber}>{targets.calories.toLocaleString()}</Text>
-            <Text style={styles.kcalUnit}>kcal</Text>
+          <View
+            style={{
+              width: 200,
+              height: 200,
+              alignItems: "center",
+              justifyContent: "center",
+              marginVertical: Spacing.md,
+            }}
+          >
+            <Svg
+              width={200}
+              height={200}
+              style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}
+            >
+              <Defs>
+                <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={Accent.primaryLight} />
+                  <Stop offset="1" stopColor={MacroColors.fat} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke={colors.inputBg}
+                strokeWidth={10}
+                fill="none"
+              />
+              <Circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke="url(#targets-grad)"
+                strokeWidth={10}
+                fill="none"
+                strokeLinecap="round"
+              />
+            </Svg>
+            <View style={{ alignItems: "center" }}>
+              <Text style={styles.bigNumber}>{targets.calories.toLocaleString()}</Text>
+              <Text style={[styles.kcalUnit, { marginLeft: 0, marginTop: 2 }]}>
+                kcal / day
+              </Text>
+            </View>
           </View>
-          <Text style={styles.caption}>{tdeeCaption}</Text>
+          <Text style={[styles.caption, { textAlign: "center" }]}>{tdeeCaption}</Text>
         </View>
 
         {/* Macros */}

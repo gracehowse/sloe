@@ -1725,9 +1725,16 @@ export default function PlannerScreen() {
 
         {/* Plan setup — visible whenever a plan exists so users can change
             day count, start date, and included slots before regenerating
-            without clearing the whole plan first. */}
+            without clearing the whole plan first.
+            2026-04-30 audit visual-qa P1 #6: when collapsed, was a
+            full-width card with body copy ("Tap to change how many
+            days...") that competed with the actual meal rows. Now
+            renders as a quiet single-line header in collapsed state —
+            settings UI shouldn't dominate the surface that's supposed
+            to show this week's plan. Expanded state still shows the
+            full options below. */}
         {plan && plan.length > 0 ? (
-          <View style={styles.card}>
+          <View style={[styles.card, !planSetupExpanded && { paddingVertical: Spacing.md }]}>
             <Pressable
               onPress={() => setPlanSetupExpanded((v) => !v)}
               style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
@@ -1736,11 +1743,11 @@ export default function PlannerScreen() {
             >
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={styles.cardTitle}>Plan setup</Text>
-                <Text style={styles.cardDesc}>
-                  {planSetupExpanded
-                    ? "Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately."
-                    : "Tap to change how many days, which meals to include, and start date — then regenerate."}
-                </Text>
+                {planSetupExpanded ? (
+                  <Text style={styles.cardDesc}>
+                    Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
+                  </Text>
+                ) : null}
               </View>
               <Text style={{ fontSize: 18, color: colors.textSecondary }}>{planSetupExpanded ? "▼" : "▶"}</Text>
             </Pressable>

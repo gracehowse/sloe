@@ -494,6 +494,18 @@ export default function LibraryScreen() {
       >
         {LIBRARY_FILTER_PILLS.map((f) => {
           const active = pill === f.id;
+          // 2026-04-30 audit visual-qa P1 #7: show counts on the
+          // entry-kind pills (All / Saved) so the user knows the
+          // size of each bucket at a glance. Other pills are
+          // filters (High-Protein / Quick / Vegetarian) and don't
+          // need counts — the filtered list itself shows what's left.
+          const count =
+            f.id === "all"
+              ? savedRecipes.length
+              : f.id === "saved"
+                ? savedCount
+                : null;
+          const label = count != null ? `${f.label} · ${count}` : f.label;
           return (
             <Pressable
               key={f.id}
@@ -501,13 +513,13 @@ export default function LibraryScreen() {
               style={[styles.filterPill, active && styles.filterPillActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`Filter: ${f.label}`}
+              accessibilityLabel={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
             >
               <Text
                 style={[styles.filterPillText, active && styles.filterPillTextActive]}
                 maxFontSizeMultiplier={1.2}
               >
-                {f.label}
+                {label}
               </Text>
             </Pressable>
           );

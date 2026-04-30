@@ -469,9 +469,38 @@ export default function ShoppingListScreen() {
                 does the same so quantities like "Instant Oats (875 g
                 + 175 g)" show on a single line. */}
             {groupedSections.map((section) => {
+              // 2026-04-30 audit visual-qa P1 #8: section-level
+              // progress so the user feels each category complete
+              // as they shop. Counts items in this section's groups
+              // checked vs total. A group is "checked" when all its
+              // items are checked (matches the row-level toggle).
+              const sectionTotal = section.groups.length;
+              const sectionChecked = section.groups.filter((g) =>
+                isShoppingGroupFullyChecked(g),
+              ).length;
               return (
                 <View key={section.name} style={styles.card}>
-                  <Text style={styles.categoryTitle}>{section.name}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={styles.categoryTitle}>{section.name}</Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: colors.textSecondary,
+                        letterSpacing: 0.5,
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {sectionChecked}/{sectionTotal}
+                    </Text>
+                  </View>
                   {section.groups.map((group: ShoppingDisplayGroup) => {
                     const allChecked = isShoppingGroupFullyChecked(group);
                     const dedupedSingle =

@@ -3,7 +3,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -11,7 +16,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -182,14 +187,24 @@ export default function FastingScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* Timer ring */}
+      {/* Timer ring — 2026-04-30 audit visual-qa P1 #5: brand
+          gradient stroke (matches onboarding reveal + Today calorie
+          ring) so Fasting reads as part of the same premium visual
+          language, not a separate MVP feature. */}
       <View style={[styles.card, { alignItems: "center" }]}>
         <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: "center", justifyContent: "center" }}>
           <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute" }}>
+            <Defs>
+              <SvgLinearGradient id="fasting-grad" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={Accent.primaryLight} />
+                <Stop offset="1" stopColor={MacroColors.fat} />
+              </SvgLinearGradient>
+            </Defs>
             <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} stroke={colors.border} strokeWidth={STROKE} fill="none" />
             <AnimatedCircle
               cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-              stroke={ringColor} strokeWidth={STROKE} fill="none"
+              stroke={isComplete ? Accent.success : "url(#fasting-grad)"}
+              strokeWidth={STROKE} fill="none"
               strokeDasharray={`${CIRC}`} animatedProps={animatedProps}
               strokeLinecap="round" rotation="-90" origin={`${RING_SIZE / 2},${RING_SIZE / 2}`}
             />
@@ -222,13 +237,39 @@ export default function FastingScreen() {
         )}
       </View>
 
-      {/* Start / End button */}
-      <Pressable
-        style={[styles.btn, { backgroundColor: isFasting ? (isComplete ? Accent.success : Accent.destructive) : Accent.primary }]}
-        onPress={isFasting ? endFast : startFast}
-      >
-        <Text style={styles.btnText}>{isFasting ? (isComplete ? "Complete Fast" : "End Fast") : "Start Fast"}</Text>
-      </Pressable>
+      {/* Start / End button — 2026-04-30 audit visual-qa P1 #5:
+          End Fast was rendered as a full-width destructive red,
+          jarring against the rest of the indigo language and
+          treating a non-destructive action ("end my fast") as if
+          it were "delete my data". Primary blue stays for Start
+          Fast (the action we want to celebrate). End Fast demotes
+          to a quieter outlined button. Complete Fast keeps the
+          success-green solid (it's a celebratory state). */}
+      {isFasting && !isComplete ? (
+        <Pressable
+          style={[
+            styles.btn,
+            {
+              backgroundColor: "transparent",
+              borderWidth: 1,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={endFast}
+        >
+          <Text style={[styles.btnText, { color: colors.textSecondary }]}>End Fast</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          style={[
+            styles.btn,
+            { backgroundColor: isComplete ? Accent.success : Accent.primary },
+          ]}
+          onPress={isFasting ? endFast : startFast}
+        >
+          <Text style={styles.btnText}>{isComplete ? "Complete Fast" : "Start Fast"}</Text>
+        </Pressable>
+      )}
 
       {/* History */}
       {recentCompleted.length > 0 && (

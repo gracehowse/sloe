@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import Svg, { Circle, G } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -258,6 +264,28 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
+          {/* Brand gradient — same indigo→pink stops as the
+              onboarding reveal ring (`steps/reveal.tsx`). Audit
+              2026-04-30 ui-critic flagged that the solid green ring
+              was reading as functional ("you hit your target") rather
+              than aesthetic, while the onboarding reveal at step 12
+              uses the brand gradient that's the design ceiling. Pulling
+              the same gradient into the daily ring closes the
+              visual-language gap between first-time delight and daily
+              use. Over-budget keeps the destructive solid red so the
+              "you went over" signal stays unambiguous. */}
+          <Defs>
+            <SvgLinearGradient
+              id="calorie-ring-gradient"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
+            >
+              <Stop offset="0" stopColor={Accent.primaryLight} />
+              <Stop offset="1" stopColor={MacroColors.fat} />
+            </SvgLinearGradient>
+          </Defs>
           {/* Main calorie ring track */}
           <Circle
             cx={CX}
@@ -272,7 +300,7 @@ export default function CalorieRing({
             cx={CX}
             cy={CX}
             r={R}
-            stroke={isOver ? Accent.destructive : Accent.success}
+            stroke={isOver ? Accent.destructive : "url(#calorie-ring-gradient)"}
             strokeWidth={STROKE}
             fill="none"
             strokeDasharray={`${mainCirc}`}
