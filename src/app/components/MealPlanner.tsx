@@ -24,6 +24,8 @@ import {
   computePlanWeekSummaryScore,
 } from "../../lib/planning/planWeekSummary.ts";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
+import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import { TextPromptDialog } from "./suppr/text-prompt-dialog";
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import {
   buildDayTotalVsGoalLine,
@@ -164,6 +166,21 @@ export const MealPlanner = memo(function MealPlanner({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [swapFor, setSwapFor] = useState<SwapTarget | null>(null);
+  // Audit 2026-04-30 — themed-dialog migration. Replaces the prior
+  // `window.prompt` (rename + new plan) and `window.confirm` (delete
+  // plan) calls with `TextPromptDialog` + `DestructiveConfirmDialog`.
+  // Native browser dialogs were unthemed (broken in dark mode), fired
+  // twice on some iOS Safari versions for `window.confirm`, and were
+  // blocked outright in cross-origin iframes.
+  const [renameSlotTarget, setRenameSlotTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteSlotTarget, setDeleteSlotTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [newPlanOpen, setNewPlanOpen] = useState(false);
   // F2-B (audit 2026-04-28) — day-count picker. Mobile parity:
   // `apps/mobile/app/(tabs)/planner.tsx` exposes 1 / 3 / 7 day options.
   // Default to 7 so the existing 7-column grid layout stays the
@@ -555,13 +572,11 @@ export const MealPlanner = memo(function MealPlanner({
                 key={s.id}
                 type="button"
                 onClick={() => switchMealPlanSlot(s.id)}
-                onDoubleClick={() => {
-                  const next = window.prompt("Rename plan", s.name);
-                  if (next != null && next.trim() && next.trim() !== s.name) {
-                    renameMealPlanSlot(s.id, next.trim());
-                  }
-                }}
+                onDoubleClick={() =>
+                  setRenameSlotTarget({ id: s.id, name: s.name })
+                }
                 title="Click to switch · double-click to rename"
+                data-testid={`planner-slot-chip-${s.id}`}
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all",
                   active
@@ -575,18 +590,16 @@ export const MealPlanner = memo(function MealPlanner({
                     role="button"
                     tabIndex={0}
                     aria-label={`Delete ${s.name}`}
+                    data-testid={`planner-slot-delete-${s.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
-                        deleteMealPlanSlot(s.id);
-                      }
+                      setDeleteSlotTarget({ id: s.id, name: s.name });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
-                          deleteMealPlanSlot(s.id);
-                        }
+                        e.stopPropagation();
+                        setDeleteSlotTarget({ id: s.id, name: s.name });
                       }
                     }}
                     className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-destructive/15 hover:text-destructive cursor-pointer"
@@ -599,12 +612,8 @@ export const MealPlanner = memo(function MealPlanner({
           })}
           <button
             type="button"
-            onClick={() => {
-              const name = window.prompt("Name your new plan", `Plan ${mealPlanSlots.length + 1}`);
-              if (name != null && name.trim()) {
-                createMealPlanSlot(name.trim());
-              }
-            }}
+            onClick={() => setNewPlanOpen(true)}
+            data-testid="planner-slot-new"
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border border-dashed border-border text-muted-foreground hover:bg-muted/60 transition-all"
           >
             + New
@@ -1252,6 +1261,61 @@ export const MealPlanner = memo(function MealPlanner({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Audit 2026-04-30 — themed dialogs replace the prior
+          `window.prompt` (rename + new plan) and `window.confirm`
+          (delete plan) calls. Native browser prompts were unthemed
+          (broken in dark mode), inconsistent across browsers (iOS
+          Safari fires `confirm` twice on some versions), and blocked
+          in cross-origin iframes. */}
+      <TextPromptDialog
+        open={renameSlotTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameSlotTarget(null);
+        }}
+        title="Rename plan"
+        description="Give this plan a new name."
+        inputLabel="Plan name"
+        placeholder="e.g. Cutting"
+        currentValue={renameSlotTarget?.name ?? ""}
+        confirmLabel="Save"
+        onConfirm={(nextName) => {
+          if (renameSlotTarget && nextName !== renameSlotTarget.name) {
+            renameMealPlanSlot(renameSlotTarget.id, nextName);
+          }
+        }}
+      />
+      <TextPromptDialog
+        open={newPlanOpen}
+        onOpenChange={setNewPlanOpen}
+        title="New plan"
+        description="Name your new plan so you can switch between it and your other plans."
+        inputLabel="Plan name"
+        placeholder={`Plan ${mealPlanSlots.length + 1}`}
+        currentValue=""
+        confirmLabel="Create"
+        onConfirm={(name) => {
+          createMealPlanSlot(name);
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={deleteSlotTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSlotTarget(null);
+        }}
+        title={
+          deleteSlotTarget
+            ? `Delete "${deleteSlotTarget.name}"?`
+            : "Delete plan?"
+        }
+        description="Your other plans stay intact. This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteSlotTarget) {
+            deleteMealPlanSlot(deleteSlotTarget.id);
+          }
+        }}
+      />
     </div>
   );
 });
