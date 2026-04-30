@@ -281,28 +281,36 @@ export default function CalorieRing({
             rotation="-90"
             origin={`${CX},${CX}`}
           />
-          {/* Macro rings (shown when expanded) */}
-          {expanded && (
+          {/* Macro rings (shown when expanded AND not empty).
+              Empty + expanded previously rendered three nested grey
+              tracks plus the unfilled calorie ring — four concentric
+              empty rings that read as a wireframe placeholder rather
+              than an intentional "ready to start" state. Audit
+              2026-04-30 ui-critic flagged this as the single biggest
+              first-impression gap vs Cal AI / Lifesum / MFP. Hiding
+              the macro rings in the empty state collapses the visual
+              to one clean track + the soft "Start your day" copy. */}
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[0]}
               pct={proteinPct}
               color={MacroColors.protein}
               trackColor={trackColor}
               delay={80}
-  
+
             />
           )}
-          {expanded && (
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[1]}
               pct={carbsPct}
               color={MacroColors.carbs}
               trackColor={trackColor}
               delay={160}
-  
+
             />
           )}
-          {expanded && (
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[2]}
               pct={fatPct}
