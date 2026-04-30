@@ -510,6 +510,8 @@ export default function ShoppingListScreen() {
     },
   }), [colors]);
 
+  // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
+  // match on-screen groups (web parity).
   const groupedSections = useMemo(() => {
     const cats = [...new Set(items.map((i) => i.category))];
     return cats.map((category) => ({
