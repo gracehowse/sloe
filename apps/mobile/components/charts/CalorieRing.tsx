@@ -286,14 +286,23 @@ export default function CalorieRing({
               <Stop offset="1" stopColor={MacroColors.fat} />
             </SvgLinearGradient>
           </Defs>
-          {/* Main calorie ring track */}
+          {/* Main calorie ring track. Zero/near-zero state previously
+              showed a flat grey track (gradient only became visible
+              once the user logged something), which read as "the
+              brand hasn't loaded yet" on first-launch captures. Audit
+              2026-04-30 ui-critic re-run flagged it as an A1 conversion
+              blocker. Fix: when consumed is exactly 0, draw the track
+              with the same gradient at low opacity so the brand is
+              always present; the empty arc still has zero length, so
+              progress reads identically once the user logs. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={trackColor}
+            stroke={isEmpty ? "url(#calorie-ring-gradient)" : trackColor}
             strokeWidth={STROKE}
+            opacity={isEmpty ? 0.18 : 1}
           />
           {/* Main calorie ring progress */}
           <AnimatedCircle

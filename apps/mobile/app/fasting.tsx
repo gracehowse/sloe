@@ -200,14 +200,44 @@ export default function FastingScreen() {
                 <Stop offset="1" stopColor={MacroColors.fat} />
               </SvgLinearGradient>
             </Defs>
-            <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} stroke={colors.border} strokeWidth={STROKE} fill="none" />
-            <AnimatedCircle
-              cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-              stroke={isComplete ? Accent.success : "url(#fasting-grad)"}
-              strokeWidth={STROKE} fill="none"
-              strokeDasharray={`${CIRC}`} animatedProps={animatedProps}
-              strokeLinecap="round" rotation="-90" origin={`${RING_SIZE / 2},${RING_SIZE / 2}`}
-            />
+            {/* Zero / near-zero state previously showed a flat grey
+                track + a tiny rounded arc-cap that read as a magenta
+                dot at 12 o'clock (audit 2026-04-30 ui-critic A2: "looks
+                like a UI bug"). Fix: when the user is not actively
+                fasting (idle) OR is < 0.5% in (~ first 5 min of a 16h
+                fast), tint the track itself with the gradient at low
+                opacity so the brand reads as always-present, and skip
+                the rounded cap on the progress arc until it has enough
+                length to render as an arc rather than a dot. */}
+            {(() => {
+              const showGradientTrack = !isFasting || pct < 0.005;
+              return (
+                <>
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={R}
+                    stroke={showGradientTrack ? "url(#fasting-grad)" : colors.border}
+                    strokeWidth={STROKE}
+                    fill="none"
+                    opacity={showGradientTrack ? 0.18 : 1}
+                  />
+                  <AnimatedCircle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={R}
+                    stroke={isComplete ? Accent.success : "url(#fasting-grad)"}
+                    strokeWidth={STROKE}
+                    fill="none"
+                    strokeDasharray={`${CIRC}`}
+                    animatedProps={animatedProps}
+                    strokeLinecap={pct < 0.02 ? "butt" : "round"}
+                    rotation="-90"
+                    origin={`${RING_SIZE / 2},${RING_SIZE / 2}`}
+                  />
+                </>
+              );
+            })()}
           </Svg>
           <Text style={{ fontSize: 40, fontWeight: "800", color: isFasting ? colors.text : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
             {isFasting ? dur.display : "—"}

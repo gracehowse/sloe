@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import {
   Bookmark,
+  Check,
   ChevronLeft,
   Clock,
   Minus,
@@ -1596,8 +1597,15 @@ export default function RecipeDetailScreen() {
 
           {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
               Ties the recipe back to the user's daily calorie target,
-              the killer differentiator vs MFP / Lifesum. Format:
-              `≈ X% of your daily calories` (rounded to nearest 5%).
+              the killer differentiator vs MFP / Lifesum.
+
+              Verdict treatment (audit re-run 2026-04-30 ui-critic A3:
+              the original `≈ 30% of your day` was just a number, not a
+              verdict — same colour regardless of whether the recipe
+              fits a sensible portion of the day or blows through it).
+                ≤ 50%   → "Fits your day" with checkmark, success-green
+                51–99%  → `≈ X% of your day`, amber warning tinge
+                ≥ 100%  → `≈ X% of your day · over a full day`, red
               Skipped when nutrition is unknown or the target is the
               app default (suggests the user hasn't set their target). */}
           {(() => {
@@ -1605,10 +1613,24 @@ export default function RecipeDetailScreen() {
             const targetCals = userTargets.calories;
             if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
             const rawPct = (kcalNum / targetCals) * 100;
-            // Round to nearest 5% so the badge doesn't churn on small
-            // recipe edits and reads as a confident summary, not a
-            // precise calculation.
             const pct = Math.max(1, Math.round(rawPct / 5) * 5);
+            const fits = pct <= 50;
+            const overDay = pct >= 100;
+            const tone = fits
+              ? { bg: Accent.success + "1A", fg: Accent.success }
+              : overDay
+                ? { bg: Accent.destructive + "1A", fg: Accent.destructive }
+                : { bg: Accent.warning + "1A", fg: Accent.warning };
+            const label = fits
+              ? "Fits your day"
+              : overDay
+                ? `≈ ${pct}% of your day · over a full day`
+                : `≈ ${pct}% of your day`;
+            const a11y = fits
+              ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+              : overDay
+                ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
+                : `Approximately ${pct} percent of your daily calorie target.`;
             return (
               <View
                 style={{
@@ -1619,14 +1641,20 @@ export default function RecipeDetailScreen() {
                   paddingHorizontal: Spacing.md,
                   paddingVertical: 6,
                   borderRadius: Radius.full,
-                  backgroundColor: Accent.primary + "14",
+                  backgroundColor: tone.bg,
                   marginBottom: Spacing.lg,
                 }}
-                accessibilityLabel={`Approximately ${pct} percent of your daily calorie target`}
+                accessibilityLabel={a11y}
               >
-                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>
-                  ≈ {pct}% of your day
+                {fits ? <Check size={14} color={tone.fg} strokeWidth={2.5} /> : null}
+                <Text style={{ fontSize: 12, fontWeight: "700", color: tone.fg }}>
+                  {label}
                 </Text>
+                {fits ? (
+                  <Text style={{ fontSize: 12, fontWeight: "500", color: tone.fg, opacity: 0.7 }}>
+                    · ≈ {pct}%
+                  </Text>
+                ) : null}
               </View>
             );
           })()}
