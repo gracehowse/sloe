@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Flame, BookOpen, CalendarDays, CircleUser } from 'lucide-react-native';
+import { Sun, BookOpen, CalendarDays, CircleUser } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Accent } from '@/constants/theme';
@@ -109,7 +109,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Today',
-          tabBarIcon: ({ color }) => <Flame size={22} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color }) => <Sun size={22} color={color} strokeWidth={2.25} />,
           tabBarButtonTestID: 'tab-today',
         }}
       />

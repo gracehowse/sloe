@@ -2,6 +2,7 @@ import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprMark } from "@/components/SupprMark";
@@ -18,6 +19,7 @@ import { useOnboarding } from "../context";
 export function MobileWelcomeStep() {
   const { go } = useOnboarding();
   const colors = useThemeColors();
+  const router = useRouter();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
@@ -103,19 +105,42 @@ export function MobileWelcomeStep() {
             Get started
           </Text>
         </Pressable>
-        <Text
+        <View
           style={{
-            textAlign: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
             marginTop: 14,
-            fontSize: 14,
-            color: colors.textSecondary,
           }}
         >
-          Have an account?{" "}
-          <Text style={{ color: Accent.primaryLight, fontWeight: "600" }}>
-            Sign in
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary,
+            }}
+          >
+            Have an account?{" "}
           </Text>
-        </Text>
+          <Pressable
+            onPress={() => router.push("/login")}
+            accessibilityRole="link"
+            accessibilityLabel="Sign in to existing account"
+            hitSlop={12}
+          >
+            {({ pressed }) => (
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Accent.primaryLight,
+                  fontWeight: "600",
+                  opacity: pressed ? 0.7 : 1,
+                }}
+              >
+                Sign in
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </View>
     </View>
   );

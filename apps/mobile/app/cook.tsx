@@ -140,7 +140,11 @@ export default function CookModeScreen() {
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
     },
-    headerExit: { color: Accent.destructive, fontSize: 16, fontWeight: "600" },
+    // Audit 2026-04-30: Exit is navigation, not deletion. Was rendered
+    // in `Accent.destructive` (red) which made users hesitate. Reserve
+    // red for true destructive actions; use the standard text colour
+    // here so Exit reads as "go back" rather than "discard cook".
+    headerExit: { color: colors.text, fontSize: 16, fontWeight: "600" },
     headerCounter: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
 
     progressBar: {

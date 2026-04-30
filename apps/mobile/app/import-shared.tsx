@@ -33,6 +33,7 @@ import { classifyMealType } from "@/lib/classifyMealType";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
+import { SupprMark } from "@/components/SupprMark";
 import { scaleMacros } from "@/lib/verifyRecipe";
 import { parseIngredientForSearch } from "@/lib/verifyRecipe";
 import {
@@ -652,15 +653,9 @@ export default function ImportSharedScreen() {
       alignItems: "center",
       gap: Spacing.md,
     },
-    brandCircle: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: Accent.primary,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    brandLetter: { color: "#fff", fontSize: 24, fontWeight: "800" },
+    // brandCircle / brandLetter removed (audit 2026-04-30) — replaced by
+    // the canonical `<SupprMark>` component (was rendering a "P" letter
+    // pre-rebrand). See `apps/mobile/components/SupprMark.tsx`.
     loaderGap: { marginVertical: Spacing.sm },
     panelTitle: {
       fontSize: 20,
@@ -1050,9 +1045,7 @@ export default function ImportSharedScreen() {
       >
         {(authLoading || state === "checking") && (
           <View style={styles.panelCard}>
-            <View style={styles.brandCircle}>
-              <Text style={styles.brandLetter}>P</Text>
-            </View>
+            <SupprMark size={56} />
             <ActivityIndicator size="large" color={Accent.primary} style={styles.loaderGap} />
             <Text style={styles.panelTitle}>Looking for a link…</Text>
             <Text style={styles.panelSub}>
@@ -1388,9 +1381,7 @@ export default function ImportSharedScreen() {
         {!authLoading && userId && state === "idle" && (
           <>
             <View style={styles.panelCard}>
-              <View style={styles.brandCircle}>
-                <Text style={styles.brandLetter}>P</Text>
-              </View>
+              <SupprMark size={56} />
               <Text style={styles.panelTitle}>Paste a recipe link</Text>
               <Text style={styles.panelSub}>
                 From Instagram, TikTok, or any recipe site. If you just shared to Suppr, the link may already be on
