@@ -246,7 +246,7 @@ export default function OverrideIngredientSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Reset to matched macros"
               >
-                <Text style={styles.btnDestructiveText}>Reset</Text>
+                <Text style={styles.btnDestructiveText}>Reset to match</Text>
               </Pressable>
             ) : null}
             <Pressable

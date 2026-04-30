@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
+import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
 // Direct-to-Supabase household client. Web previously used the Next.js
@@ -188,9 +189,10 @@ export function HouseholdPanel() {
     }
   };
 
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+
   const leaveHousehold = async () => {
     if (!authedUserId) return;
-    if (!confirm("Are you sure you want to leave this household?")) return;
     try {
       const { error: leaveErr } = await leaveHouseholdRemote(supabase as any, authedUserId);
       if (leaveErr) {
@@ -312,7 +314,7 @@ export function HouseholdPanel() {
               </button>
             )}
             <button
-              onClick={() => void leaveHousehold()}
+              onClick={() => setConfirmingLeave(true)}
               className="text-xs text-muted-foreground hover:text-destructive"
             >
               Leave
@@ -459,6 +461,19 @@ export function HouseholdPanel() {
           </div>
         )}
       </div>
+
+      <DestructiveConfirmDialog
+        open={confirmingLeave}
+        onOpenChange={(open) => {
+          if (!open) setConfirmingLeave(false);
+        }}
+        title="Leave this household?"
+        description="You'll keep your own targets and meal history. You can rejoin later with an invite code."
+        confirmLabel="Leave"
+        onConfirm={() => {
+          void leaveHousehold();
+        }}
+      />
 
       {/* Upcoming meals */}
       {upcomingMeals.length > 0 && (
