@@ -15,7 +15,12 @@ import {
 } from "react-native";
 import { useCameraPermissions } from "expo-camera";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
-import { Ionicons } from "@expo/vector-icons";
+// 2026-04-29: migrated from `@expo/vector-icons` (Ionicons) to
+// `lucide-react-native` per the team standardisation set
+// 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
+// Glyph map used: camera-outline → Camera, add-circle → PlusCircle,
+// alert-circle → AlertCircle.
+import { AlertCircle, Camera, PlusCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
@@ -106,7 +111,11 @@ export default function BarcodeScreen() {
         setError("Product not found. Try a different barcode or enter it manually.");
       }
     },
-    [loading, last],
+    // `last` removed 2026-04-29: the callback only reads `lastRef.current`
+    // (a stable ref) and the `setLast` setter; the bare `last` state is
+    // never referenced inside, so eslint exhaustive-deps was correctly
+    // flagging the dep as unnecessary.
+    [loading],
   );
 
   const handleLog = useCallback(async () => {
@@ -430,7 +439,7 @@ export default function BarcodeScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Ionicons name="camera-outline" size={48} color={colors.textSecondary} style={styles.permIcon} />
+        <Camera size={48} color={colors.textSecondary} style={styles.permIcon} strokeWidth={1.75} />
         <Text style={styles.permText}>
           Suppr needs your camera to scan product barcodes and look up nutrition info.
         </Text>
@@ -539,7 +548,7 @@ export default function BarcodeScreen() {
                 {logging ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Ionicons name="add-circle" size={20} color="#fff" />
+                  <PlusCircle size={20} color="#fff" />
                 )}
                 <Text style={styles.logBtnText} numberOfLines={1}>
                   {logging ? "Logging…" : "Log this"}
@@ -558,7 +567,7 @@ export default function BarcodeScreen() {
 
         {error && !manualMode && (
           <>
-            <Ionicons name="alert-circle" size={32} color={Accent.destructive} style={styles.errorIcon} />
+            <AlertCircle size={32} color={Accent.destructive} style={styles.errorIcon} strokeWidth={2} />
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={resetScan} accessibilityLabel="Try scanning again">
               <Text style={styles.retryBtnText}>Try again</Text>
@@ -638,7 +647,7 @@ export default function BarcodeScreen() {
               {logging ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Ionicons name="add-circle" size={20} color="#fff" />
+                <PlusCircle size={20} color="#fff" />
               )}
               <Text style={styles.logBtnText}>{logging ? "Logging..." : "Add to Tracker"}</Text>
             </Pressable>
