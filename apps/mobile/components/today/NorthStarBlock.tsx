@@ -53,6 +53,16 @@ export interface NorthStarBlockSuggestion {
   predictedFat: number;
   bandLabel: string;
   bandTight: boolean;
+  /**
+   * Activation hook (audit 2026-04-30 — leak fix #5): one-line
+   * subtitle explaining WHICH macro the suggestion fits. Without this
+   * the user sees "Close fit" but doesn't know what's being fitted —
+   * the algorithm reads as a black box. Computed by
+   * `whyLineForSuggestion` in `northStarSuggestion.ts` and passed in
+   * by the host. Optional so older callers / non-default kinds remain
+   * source-compatible.
+   */
+  whyLine?: string;
 }
 
 export interface NorthStarBlockProps {
@@ -266,6 +276,22 @@ function NorthStarDefault({
           >
             {suggestion.title}
           </Text>
+          {suggestion.whyLine ? (
+            <Text
+              // Activation hook (audit 2026-04-30 — leak fix #5).
+              // 12pt secondary matches the existing card cadence
+              // (the chip + macros caption row below uses the same
+              // size). Trust signal — tells the user WHICH macro
+              // fits, so "Close fit" stops reading as black-box.
+              style={[
+                Type.caption,
+                { color: colors.textSecondary, marginTop: 2 },
+              ]}
+              numberOfLines={1}
+            >
+              {suggestion.whyLine}
+            </Text>
+          ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
             <View
               style={[

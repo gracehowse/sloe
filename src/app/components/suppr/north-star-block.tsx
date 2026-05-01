@@ -49,6 +49,15 @@ export interface NorthStarBlockSuggestion {
   bandLabel: string;
   /** Whether the band is "tight" (success-tinted chip) or other. */
   bandTight: boolean;
+  /**
+   * Activation hook (audit 2026-04-30 — leak fix #5): one-line
+   * subtitle explaining WHICH macro the suggestion fits. Without this
+   * the user sees "Close fit" but doesn't know what's being fitted —
+   * the algorithm reads as a black box. Mirror of the mobile
+   * `NorthStarBlock`. Computed by `whyLineForSuggestion` in
+   * `northStarSuggestion.ts` and passed in by the host.
+   */
+  whyLine?: string;
 }
 
 export interface NorthStarBlockProps {
@@ -193,6 +202,14 @@ export function NorthStarBlock({
           What to eat next
         </span>
         <span className="text-[15px] font-bold leading-tight">{suggestion.title}</span>
+        {suggestion.whyLine ? (
+          // Activation hook (audit 2026-04-30 — leak fix #5). 12px
+          // muted matches the existing card cadence; tells the user
+          // WHICH macro fits so "Close fit" stops reading as black-box.
+          <span className="text-[12px] text-muted-foreground leading-tight">
+            {suggestion.whyLine}
+          </span>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span
             data-band={suggestion.bandTight ? "tight" : "soft"}

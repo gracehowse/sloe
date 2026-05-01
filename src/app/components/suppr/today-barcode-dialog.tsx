@@ -17,6 +17,11 @@ import {
   type OffProductMacros,
 } from "../../../lib/openFoodFacts/fetchProductByBarcode";
 import { scaleFromPer100gGrams } from "../../../lib/openFoodFacts/scaleFromPer100g";
+import {
+  clampRememberedToServingOptions,
+  getRememberedPortion,
+  recordPortion,
+} from "../../../lib/barcodePortionMemory";
 
 /**
  * TodayBarcodeDialog — the Open Food Facts barcode lookup + review.
@@ -89,6 +94,9 @@ export interface TodayBarcodeDialogProps {
 }
 
 export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
+  // Audit/2026-04-30 — barcode portion memory parity with mobile.
+  // Cleared on close so a fresh open doesn't surface a stale hint.
+  const [rememberedPortion, setRememberedPortion] = React.useState<number | null>(null);
   const {
     open,
     onOpenChange,
@@ -189,11 +197,26 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     onBarcodeEditProChange("");
                     onBarcodeEditCarbChange("");
                     onBarcodeEditFatChange("");
-                    onBarcodeGramsStrChange(
-                      typeof p.servingSizeG === "number" && p.servingSizeG > 0
-                        ? String(Math.round(p.servingSizeG * 10) / 10)
-                        : "100",
-                    );
+                    // Audit/2026-04-30 — pre-fill grams with the
+                    // remembered portion when the user has logged this
+                    // barcode before; otherwise fall back to the OFF
+                    // reference serving.
+                    const remembered = getRememberedPortion(barcodeValue);
+                    if (remembered != null && remembered > 0) {
+                      const snapped = clampRememberedToServingOptions(
+                        remembered,
+                        p.servingOptions ?? null,
+                      );
+                      setRememberedPortion(remembered);
+                      onBarcodeGramsStrChange(String(Math.round(snapped * 10) / 10));
+                    } else {
+                      setRememberedPortion(null);
+                      onBarcodeGramsStrChange(
+                        typeof p.servingSizeG === "number" && p.servingSizeG > 0
+                          ? String(Math.round(p.servingSizeG * 10) / 10)
+                          : "100",
+                      );
+                    }
                   } finally {
                     onBarcodeBusyChange(false);
                   }
@@ -381,6 +404,11 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                           })}
                       </div>
                     </div>
+                    {rememberedPortion != null && rememberedPortion > 0 ? (
+                      <p className="text-xs text-primary">
+                        You usually log {Math.round(rememberedPortion)} g — using that.
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
                       Diary line: <span className="font-medium text-foreground">{titleForLog}</span> ({portion})
                     </p>
@@ -447,6 +475,10 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                       fiberG = scaled.fiberG > 0 ? scaled.fiberG : undefined;
                     }
                     const adjusted = barcodeMacrosManual || titleForLog.trim() !== p.name.trim();
+                    // Audit/2026-04-30 — remember this portion for the
+                    // next lookup of the same barcode (parity with mobile).
+                    recordPortion(barcodeValue, barcodeGramsParsed);
+                    setRememberedPortion(null);
                     onConfirm({
                       product: p,
                       titleForLog,

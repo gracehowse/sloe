@@ -20,8 +20,10 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  ONBOARDING_DEFAULT_SEED_SLUGS,
   ONBOARDING_SEEDS,
   SEED_FILTER_FALLBACK_THRESHOLD,
+  defaultOnboardingSeeds,
   filterOnboardingSeeds,
 } from "../../src/lib/onboarding/onboardingSeeds";
 
@@ -183,5 +185,77 @@ describe("filterOnboardingSeeds — fallback threshold", () => {
 
   it("respects the threshold constant exactly", () => {
     expect(SEED_FILTER_FALLBACK_THRESHOLD).toBe(6);
+  });
+});
+
+describe("defaultOnboardingSeeds (activation hook — leak fix #2)", () => {
+  it("returns exactly 5 default seeds with no diet filter", () => {
+    const r = defaultOnboardingSeeds({ diet: [] });
+    expect(r).toHaveLength(ONBOARDING_DEFAULT_SEED_SLUGS.length);
+    expect(r).toHaveLength(5);
+  });
+
+  it("every default slug resolves to a real seed in ONBOARDING_SEEDS", () => {
+    // Pin: every entry in `ONBOARDING_DEFAULT_SEED_SLUGS` must exist in
+    // the canonical seed list — otherwise the activation flow tries to
+    // resolve a phantom slug and the library stays empty.
+    const slugs = new Set(ONBOARDING_SEEDS.map((s) => s.slug));
+    for (const defaultSlug of ONBOARDING_DEFAULT_SEED_SLUGS) {
+      expect(slugs.has(defaultSlug)).toBe(true);
+    }
+  });
+
+  it("hits the NORTH_STAR_LIBRARY_MIN threshold (5) so the block renders", () => {
+    // The default seed count must be at least 5 — anything less and a
+    // user who completes onboarding without picking recipes still lands
+    // with the north-star block stuck in its empty-state.
+    expect(defaultOnboardingSeeds({ diet: [] }).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("covers breakfast / lunch / dinner so the time-of-day filter has candidates", () => {
+    // The scorer's slot filter excludes recipes whose mealType doesn't
+    // match. We don't tag the seed list with explicit mealType slots
+    // today (the picker uses dietTags only), but slot diversity has to
+    // be encoded via the seed mix — protein 25-45g, prepMins 5-40 covers
+    // all three slots in practice. Pin: at least one seed has prepMins
+    // <= 10 (breakfast-friendly) AND at least one has prepMins >= 25
+    // (dinner-friendly).
+    const defaults = defaultOnboardingSeeds({ diet: [] });
+    expect(defaults.some((s) => s.prepMins <= 10)).toBe(true);
+    expect(defaults.some((s) => s.prepMins >= 25)).toBe(true);
+  });
+
+  it("filters down to vegan-only when diet=vegan", () => {
+    // The default 5 are mixed (omni + pesc + veg) — none are tagged
+    // vegan. So the helper falls through the picker-style fallback
+    // and returns a vegan-safe slice of the full library (filtered
+    // up to 5 vegan rows).
+    const r = defaultOnboardingSeeds({ diet: ["vegan"] });
+    expect(r.length).toBeGreaterThan(0);
+    for (const seed of r) {
+      const tags = seed.dietTags.map((t) => t.toLowerCase());
+      expect(tags.includes("vegan")).toBe(true);
+    }
+  });
+
+  it("filters down to vegetarian-only when diet=vegetarian", () => {
+    const r = defaultOnboardingSeeds({ diet: ["vegetarian"] });
+    expect(r.length).toBeGreaterThan(0);
+    for (const seed of r) {
+      const tags = seed.dietTags.map((t) => t.toLowerCase());
+      // vegan is a subset of vegetarian — both pass the filter.
+      const ok = tags.includes("vegan") || tags.includes("vegetarian");
+      expect(ok).toBe(true);
+    }
+  });
+
+  it("respects allergens — no seed contains an allergen substring in its title", () => {
+    // Default 5 contain salmon and chicken. Filtering by 'salmon' must
+    // drop the salmon entry from the result.
+    const r = defaultOnboardingSeeds({ diet: [], allergies: ["salmon"] });
+    expect(r.length).toBeGreaterThan(0);
+    for (const seed of r) {
+      expect(seed.matchTitle.toLowerCase().includes("salmon")).toBe(false);
+    }
   });
 });

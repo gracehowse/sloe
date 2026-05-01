@@ -340,6 +340,9 @@ const STACK_TITLES: Record<string, string> = {
   "create-recipe": "New recipe",
   "nutrition-sources": "Nutrition sources",
   "whats-new": "What's new",
+  // 2026-04-30 — destination for the StreakPip tap. The header back
+  // chevron lands on Today (the only place the pip is rendered).
+  "weekly-recap": "Weekly recap",
   "+not-found": "Not found",
 };
 
@@ -385,6 +388,12 @@ function RootLayoutInner() {
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
+        {/* 2026-04-30 — StreakPip destination. iOS-only mobile feature;
+            web pip stays display-only (no /weekly-recap route on web). */}
+        <Stack.Screen
+          name="weekly-recap"
+          options={{ headerShown: true, title: "Weekly recap", headerBackTitle: "Today" }}
+        />
         </Stack>
         <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

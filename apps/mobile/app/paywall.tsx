@@ -519,16 +519,19 @@ export default function PaywallScreen() {
   // UK CMA auto-renewal disclosure requires: (1) the price, (2) the renewal
   // frequency, (3) that it renews automatically until cancelled, (4) a clear
   // cancellation path, and — when a free trial is offered — (5) the trial
-  // end date and (6) the date of first charge. These dates are derived
-  // client-side from the moment the user is viewing the paywall; Apple will
-  // anchor the actual charge on purchase, but a concrete date is what the
-  // CMA / ASA expect rather than "in 7 days".
-  const trialEndDateLabel = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  }, []);
-  const firstChargeDateLabel = trialEndDateLabel; // charge = trial end
+  // length and (6) when the first charge occurs.
+  //
+  // Wave-2 (2026-04-30 audit-vs-competitors): the previous copy baked a
+  // calendar date computed at render time (`today + 7`). If the user
+  // delayed purchase by 2 days, the printed date was wrong by 2 days —
+  // a trust-grade fault. Apple anchors the real trial-end and first-
+  // charge dates from the actual purchase moment in the receipt; the
+  // pre-purchase disclosure now states the trial length + first-charge
+  // cadence in days, not a stale clock-time. Post-purchase confirmation
+  // surfaces (subscription receipt, Apple's own subscription manager)
+  // own the concrete dates from there. CMA's required elements are all
+  // preserved: price, renewal frequency, auto-renew until cancelled,
+  // cancel path, trial length, when the first charge falls.
   const monthlyProPriceString = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
   const disclosureText = (() => {
     const proPriceString = currentProPkg?.product.priceString ?? fallbackProPrice;
@@ -542,7 +545,7 @@ export default function PaywallScreen() {
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
     if (trialApplies && currentProPkg) {
-      return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Your 7-day free trial ends on ${trialEndDateLabel}; first charge on ${firstChargeDateLabel}. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+      return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
     }
     return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
   })();

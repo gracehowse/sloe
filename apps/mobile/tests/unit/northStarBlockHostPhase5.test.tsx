@@ -162,4 +162,33 @@ describe("NorthStarBlockHost branching", () => {
       expect(lib6.map((r) => r.id)).toContain(passed);
     }
   });
+
+  it("renders the why-line subtitle on the default suggestion (activation hook leak fix #5)", () => {
+    // The card must surface "Fits your remaining N kcal" (or one of
+    // the protein variants) below the title so the user sees WHICH
+    // macro the algorithm is fitting. Pre-fix, only the band chip
+    // ("Close fit") rendered, which read as black-box.
+    const tree = render(
+      <NorthStarBlockHost
+        viewMode="day"
+        savedRecipesForLibrary={lib6}
+        remainingCalories={500}
+        remainingProtein={20}
+        remainingCarbs={40}
+        remainingFat={15}
+        onPrimaryCta={() => {}}
+        onBrowseLibrary={() => {}}
+        selectedDateKey="2026-04-27"
+      />,
+    );
+    // The why-line is one of three formats — all three are accepted
+    // here so the test doesn't need to predict which branch the
+    // scorer picks. Pin: at least ONE of the three patterns renders.
+    const allText = JSON.stringify(tree.toJSON());
+    const hasWhyLine =
+      /Fits your remaining \d+\s?kcal/.test(allText) ||
+      /Fits your remaining \d+g protein/.test(allText) ||
+      /Hits both your protein \+ calorie target/.test(allText);
+    expect(hasWhyLine).toBe(true);
+  });
 });

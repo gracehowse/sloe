@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
+  type NudgeEligibilityState,
   type OnboardingNudge,
   type OnboardingNudgeId,
   nudgeLastDismissedKey,
@@ -63,22 +64,25 @@ async function readDismissalState(id: OnboardingNudgeId): Promise<DismissalState
 
 /**
  * Filter the static catalogue down to the first nudge that passes:
- *   1. Not permanently removed.
- *   2. Either never dismissed OR cooldown has elapsed.
+ *   1. The runtime `eligibility` predicate (if present).
+ *   2. Not permanently removed.
+ *   3. Either never dismissed OR cooldown has elapsed.
  *
  * Order in `ONBOARDING_NUDGES` IS priority order — see `nudges.ts`.
  */
 function selectNextNudge(
   catalogue: OnboardingNudge[],
   dismissalsById: Record<OnboardingNudgeId, DismissalState>,
+  state: NudgeEligibilityState,
   now: number,
 ): OnboardingNudge | null {
   for (const nudge of catalogue) {
-    const state = dismissalsById[nudge.id];
-    if (state.removed) continue;
-    if (state.lastDismissedAt != null) {
+    if (nudge.eligibility && !nudge.eligibility(state)) continue;
+    const ds = dismissalsById[nudge.id];
+    if (ds.removed) continue;
+    if (ds.lastDismissedAt != null) {
       const cooldownMs = nudge.cooldownDays * DAY_MS;
-      if (now - state.lastDismissedAt < cooldownMs) continue;
+      if (now - ds.lastDismissedAt < cooldownMs) continue;
     }
     return nudge;
   }
@@ -93,6 +97,12 @@ function selectNextNudge(
  * selector after every `markDismissed` call so the UI advances to the
  * next nudge (or null) without remounting.
  *
+ * The host passes a `state` object describing the user's current
+ * library / log volume / permission posture; each nudge's
+ * `eligibility` predicate decides if it's the right moment to surface
+ * (e.g. don't ask for HealthKit until the user has logged a few
+ * times). See `nudges.ts` and `types.ts → NudgeEligibilityState`.
+ *
  * Hydration window: while reading from storage, `nudge` is `null`. This
  * prevents a flash where a stale "permissions" prompt renders for a
  * frame before the storage read tells us it's already been dismissed.
@@ -101,7 +111,7 @@ function selectNextNudge(
  * a storage hiccup must not crash Today. The user simply sees the
  * banner re-appear on next launch — never twice in the same launch.
  */
-export function useNextNudge(): UseNextNudgeResult {
+export function useNextNudge(state: NudgeEligibilityState): UseNextNudgeResult {
   const [dismissalsById, setDismissalsById] = useState<
     Record<OnboardingNudgeId, DismissalState> | null
   >(null);
@@ -113,14 +123,14 @@ export function useNextNudge(): UseNextNudgeResult {
       try {
         const entries = await Promise.all(
           ONBOARDING_NUDGES.map(async (n) => {
-            const state = await readDismissalState(n.id);
-            return [n.id, state] as const;
+            const ds = await readDismissalState(n.id);
+            return [n.id, ds] as const;
           }),
         );
         if (cancelled) return;
         const map = {} as Record<OnboardingNudgeId, DismissalState>;
-        for (const [id, state] of entries) {
-          map[id] = state;
+        for (const [id, ds] of entries) {
+          map[id] = ds;
         }
         setDismissalsById(map);
       } catch (err) {
@@ -178,9 +188,10 @@ export function useNextNudge(): UseNextNudgeResult {
   );
 
   // Until hydration completes, render no nudge — avoids the flash
-  // described above. Once hydrated, re-run the selector against `now`.
+  // described above. Once hydrated, re-run the selector against `now`
+  // and the live eligibility state from the host.
   const nudge = dismissalsById
-    ? selectNextNudge(ONBOARDING_NUDGES, dismissalsById, Date.now())
+    ? selectNextNudge(ONBOARDING_NUDGES, dismissalsById, state, Date.now())
     : null;
 
   return { nudge, markDismissed };

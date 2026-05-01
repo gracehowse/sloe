@@ -34,6 +34,8 @@ import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dail
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
 import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
+import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
+import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -60,6 +62,13 @@ export default function BarcodeScreen() {
   const [manualProtein, setManualProtein] = useState("");
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualFat, setManualFat] = useState("");
+
+  // Audit/2026-04-30 — when the user has logged this exact barcode
+  // before, surface "You usually log {n} g — using that" near the
+  // portion picker. `null` = no remembered portion (default-serving
+  // path); a number = grams pulled from AsyncStorage via
+  // `getRememberedPortion`. Cleared on every fresh scan.
+  const [rememberedPortion, setRememberedPortion] = useState<number | null>(null);
 
   // Correction mode state (edit scanned product data and save to DB)
   const [correctionMode, setCorrectionMode] = useState(false);
@@ -102,12 +111,26 @@ export default function BarcodeScreen() {
       setLoading(false);
       if (result) {
         setProduct(result);
-        if (result.servingSizeG && result.servingSizeG > 0) {
-          setGramsInput(String(Math.round(result.servingSizeG)));
+        // Audit/2026-04-30 — barcode portion memory. If the user has
+        // logged this barcode before, default to that grams instead of
+        // the OFF reference serving. Snap to the closest serving
+        // option when the food has presets so the picker label stays
+        // truthful (e.g. "1 bar (40 g)" instead of a freeform 38 g).
+        const remembered = await getRememberedPortion(e.data);
+        if (remembered != null && remembered > 0) {
+          const snapped = clampRememberedToServingOptions(remembered, result.servingOptions ?? null);
+          setRememberedPortion(remembered);
+          setGramsInput(String(Math.round(snapped)));
         } else {
-          setGramsInput("100");
+          setRememberedPortion(null);
+          if (result.servingSizeG && result.servingSizeG > 0) {
+            setGramsInput(String(Math.round(result.servingSizeG)));
+          } else {
+            setGramsInput("100");
+          }
         }
       } else {
+        setRememberedPortion(null);
         setError("Product not found. Try a different barcode or enter it manually.");
       }
     },
@@ -177,12 +200,32 @@ export default function BarcodeScreen() {
           alcoholG,
         });
       }
+      // Audit/2026-04-30 — remember this portion size for the barcode
+      // so the next scan defaults here. Fire-and-forget; AsyncStorage
+      // failures are non-fatal (the meal already persisted).
+      if (last) void recordPortion(last, grams);
+      // Audit/2026-04-30 — per-meal Apple HealthKit write (parity with
+      // MFP / Cal AI). Honours the "Share meals to Health" toggle and
+      // is idempotent on `mealId`. Fire-and-forget — HK errors must
+      // not block the logged-meal alert.
+      void writeMealToHealthKitIfEnabled({
+        mealId,
+        name: `${product.name} (${portionSummary})`,
+        calories: scaled.calories,
+        protein: scaled.protein,
+        carbs: scaled.carbs,
+        fat: scaled.fat,
+        fiberG: scaled.fiberG ?? null,
+        date: new Date().toISOString(),
+        source: "Open Food Facts",
+        origin: "barcode",
+      });
       Alert.alert("Logged", `${product.name} (${portionSummary}) added to today's tracker.`, [
-        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); } },
+        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setRememberedPortion(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
-  }, [scaled, product, userId, grams, portionSummary, router]);
+  }, [scaled, product, userId, grams, portionSummary, router, last]);
 
   const handleManualLog = useCallback(async () => {
     const cal = Number(manualCalories) || 0;
@@ -214,12 +257,28 @@ export default function BarcodeScreen() {
     } else {
       // F-2 — freeze today's target on first log of the day.
       void snapshotDailyTargetIfMissing(supabase, userId);
+      // Audit/2026-04-30 — per-meal HK write + portion memory. The
+      // manual-entry path implies grams = 1 serving (no scaling), so
+      // remembering "100 g" by default is useful enough to keep the
+      // next scan-and-correction cheap.
+      if (last) void recordPortion(last, 100);
+      void writeMealToHealthKitIfEnabled({
+        mealId,
+        name: manualName.trim(),
+        calories: cal,
+        protein: Math.round((Number(manualProtein) || 0) * 10) / 10,
+        carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
+        fat: Math.round((Number(manualFat) || 0) * 10) / 10,
+        date: new Date().toISOString(),
+        source: "Manual barcode entry",
+        origin: "manual",
+      });
       Alert.alert("Logged", `${manualName.trim()} added to today's tracker.`, [
-        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); } },
+        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
-  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router]);
+  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last]);
 
   const openCorrectionMode = useCallback(() => {
     if (!product) return;
@@ -506,7 +565,13 @@ export default function BarcodeScreen() {
               />
               <Text style={styles.servingUnit}>g</Text>
             </View>
-            <Text style={styles.servingHint}>Tap a label serving or edit grams.</Text>
+            {rememberedPortion != null && rememberedPortion > 0 ? (
+              <Text style={[styles.servingHint, { color: Accent.primary }]}>
+                You usually log {Math.round(rememberedPortion)} g — using that.
+              </Text>
+            ) : (
+              <Text style={styles.servingHint}>Tap a label serving or edit grams.</Text>
+            )}
             <View style={styles.presetRow}>
               {(product.servingOptions ?? []).map((o) => {
                 const selected = Math.abs(o.grams - grams) < 0.51;

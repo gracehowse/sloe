@@ -298,6 +298,74 @@ function bandFor(calDelta: number, calorieRemaining: number): NorthStarSuggestio
 }
 
 /**
+ * Activation hook (audit 2026-04-30 — leak fix #5).
+ *
+ * Compute the one-line subtitle shown beneath the suggestion title in
+ * the north-star card. The card already shows a band chip ("Close
+ * fit", "Hits within 3%") + a macros caption — but neither says WHICH
+ * macro the suggestion fits. Without that context the chip reads as
+ * black-box ("close to what?"), which the audit flagged as the #5
+ * activation leak.
+ *
+ * Strategy: pick the strongest one of three reasons, in order of
+ * trust signal:
+ *   1. "Hits both your protein + calorie target" — when the
+ *      suggestion lands ≤15% off remaining calories AND fills ≥80%
+ *      of the remaining protein gap (with a positive gap).
+ *   2. "Fits your remaining N g protein" — when the protein gap is
+ *      meaningful (>= 10g) and the suggestion delivers ≥80% of it.
+ *   3. "Fits your remaining N kcal" — fallback. Always available
+ *      because the scorer only returns suggestions with positive
+ *      remaining calories.
+ *
+ * If the algorithm has multiple why-lines per ranking factor, this
+ * helper picks the strongest 1 — never lists all (per the spec).
+ *
+ * Pure function — no I/O, no side effects.
+ */
+export function whyLineForSuggestion(
+  suggestion: NorthStarSuggestion,
+  remaining: NorthStarRemaining,
+): string {
+  if (!Number.isFinite(remaining.calories) || remaining.calories <= 0) {
+    // Defensive — caller should have already short-circuited via
+    // `pickNorthStarSuggestion` returning null on this case. Fall
+    // back to a generic line rather than throw.
+    return "Fits your remaining macros";
+  }
+
+  const calRemaining = Math.round(remaining.calories);
+  const protRemaining = Math.round(remaining.protein);
+  const calDeltaPct =
+    Math.abs(suggestion.calorieDelta) / Math.max(1, remaining.calories);
+
+  // Protein direction — only meaningful when the user is still under
+  // their protein target. The scorer rewards protein toward-target;
+  // we only count it as a why if the gap was non-trivial AND the
+  // suggestion fills most of it.
+  const proteinGap = remaining.protein - suggestion.predictedProtein;
+  const filledProteinFraction =
+    remaining.protein > 0
+      ? Math.min(1, suggestion.predictedProtein / remaining.protein)
+      : 0;
+  const proteinFits =
+    remaining.protein >= 10 &&
+    filledProteinFraction >= 0.8 &&
+    proteinGap >= -remaining.protein * 0.2; // not wildly over
+
+  const calorieFits = calDeltaPct <= 0.15;
+
+  if (proteinFits && calorieFits) {
+    return "Hits both your protein + calorie target";
+  }
+  if (proteinFits) {
+    // Word "remaining" with the actual gram count the user has left.
+    return `Fits your remaining ${protRemaining}g protein`;
+  }
+  return `Fits your remaining ${calRemaining} kcal`;
+}
+
+/**
  * Library threshold for rendering the north-star block. Per V-6
  * sub-decision (D-2026-04-27-04), default ships at ≥5; the value is
  * exported so a future flag can rebind it without re-deploying the

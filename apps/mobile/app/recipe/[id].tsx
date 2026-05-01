@@ -40,6 +40,7 @@ import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import {
   recipeAggregateHasFatSecret,
   scrubFatSecretMacros,
@@ -968,8 +969,9 @@ export default function RecipeDetailScreen() {
       const micros: Record<string, number> = {};
       if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
+      const newId = newMealId();
       const { error } = await supabase.from("nutrition_entries").insert({
-        id: newMealId(),
+        id: newId,
         user_id: userId,
         date_key: dk,
         name: slot,
@@ -989,6 +991,22 @@ export default function RecipeDetailScreen() {
       } else {
         // F-2 — snapshot today's target on first log.
         void snapshotDailyTargetIfMissing(supabase, userId);
+        // Audit/2026-04-30 — per-meal Apple HealthKit write (parity
+        // with MFP / Cal AI). Honours the "Share meals to Health"
+        // toggle and is idempotent on `mealId`. Fire-and-forget — HK
+        // errors must not block the logged-meal alert.
+        void writeMealToHealthKitIfEnabled({
+          mealId: newId,
+          name: recipe.title,
+          calories: scaledForLog.calories,
+          protein: scaledForLog.protein,
+          carbs: scaledForLog.carbs,
+          fat: scaledForLog.fat,
+          fiberG: scaledForLog.fiber_g ?? null,
+          date: new Date().toISOString(),
+          source: "Recipe",
+          origin: "recipe",
+        });
         Alert.alert("Logged", `${recipe.title} added to today at ${mult}× portion.`, [
           { text: "Stay", style: "cancel" },
           { text: "View Today", onPress: () => router.push("/(tabs)" as any) },

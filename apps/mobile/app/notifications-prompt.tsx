@@ -45,7 +45,11 @@ export default function NotificationsPromptScreen() {
       if (dismissed) {
         if (!redirectedRef.current) {
           redirectedRef.current = true;
-          router.replace("/(tabs)/discover");
+          // Activation hook (audit 2026-04-30): land on Today, not
+          // Discover. Post-Reveal momentum was being killed by a wall
+          // of strangers' recipes; Today preserves the aha by anchoring
+          // the user on their freshly-built ring + library.
+          router.replace("/(tabs)?firstRun=1");
         }
         return;
       }
@@ -94,14 +98,19 @@ export default function NotificationsPromptScreen() {
     // Whether the user granted, denied, or hit a missing-native-module
     // path, the prompt has done its job. Suppress it so we never re-nag.
     await markNotificationsPromptDismissed();
-    router.replace("/(tabs)/discover");
+    // Activation hook (audit 2026-04-30): land on Today, not Discover.
+    // After the Reveal moment we want momentum on the user's own ring,
+    // not a wall of strangers' recipes.
+    router.replace("/(tabs)?firstRun=1");
   }
 
   async function onSkip() {
     // Skip is an informed decision — also suppress, so a deliberate
     // "no" doesn't re-prompt on every launch.
     await markNotificationsPromptDismissed();
-    router.replace("/(tabs)/discover");
+    // Activation hook (audit 2026-04-30): see `onEnable` — Today, not
+    // Discover.
+    router.replace("/(tabs)?firstRun=1");
   }
 
   const styles = useMemo(() => StyleSheet.create({

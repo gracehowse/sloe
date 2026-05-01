@@ -226,6 +226,26 @@ describe("notifications-prompt.tsx wiring", () => {
     // when the user has already responded.
     expect(SOURCE).toMatch(/if\s*\(showPrompt\s*!==\s*true\)/);
   });
+
+  it("routes to Today (not Discover) post-prompt — activation hook (audit 2026-04-30)", () => {
+    // Leak fix #1: after the Reveal moment, momentum was being killed by
+    // landing on Discover (a wall of strangers' recipes). Today is the
+    // post-Reveal anchor. All three router.replace calls (mount-skip,
+    // onEnable, onSkip) must route to /(tabs) — never /(tabs)/discover.
+    const replaceCalls = SOURCE.match(/router\.replace\(["'`][^"'`]+["'`]\)/g) ?? [];
+    expect(replaceCalls.length).toBeGreaterThanOrEqual(3);
+    for (const call of replaceCalls) {
+      expect(call).not.toMatch(/discover/);
+      expect(call).toMatch(/\(tabs\)/);
+    }
+  });
+
+  it("passes ?firstRun=1 so Today can light up first-run polish", () => {
+    // The query param is what triggers the post-onboarding push
+    // explainer + ring celebration on Today. If a refactor removes the
+    // param, the activation hooks silently stop firing.
+    expect(SOURCE).toMatch(/firstRun=1/);
+  });
 });
 
 /**

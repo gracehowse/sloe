@@ -28,6 +28,7 @@ import {
   detectSlotForHour,
   ctaForSlot,
   bandLabel,
+  whyLineForSuggestion,
   NORTH_STAR_LIBRARY_MIN,
   isLibraryEligibleForNorthStar,
   type NorthStarRecipe,
@@ -275,5 +276,165 @@ describe("library threshold (V-6 sub-decision)", () => {
     expect(isLibraryEligibleForNorthStar(5)).toBe(true);
     expect(isLibraryEligibleForNorthStar(50)).toBe(true);
     expect(isLibraryEligibleForNorthStar(NaN)).toBe(false);
+  });
+});
+
+describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
+  it("returns the protein+calorie why-line when both fit", () => {
+    // Picking a recipe at 480 kcal vs 500 remaining → cal delta 20
+    // (4% — calorieFits=true). Protein 32g vs remaining 35g → 91%
+    // filled (proteinFits=true).
+    const recipes: NorthStarRecipe[] = [
+      {
+        id: "a",
+        title: "Match",
+        calories: 480,
+        protein: 32,
+        carbs: 50,
+        fat: 18,
+      },
+    ];
+    const remaining = { calories: 500, protein: 35, carbs: 60, fat: 20 };
+    const suggestion = pickNorthStarSuggestion(recipes, remaining);
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, remaining);
+    expect(line).toBe("Hits both your protein + calorie target");
+  });
+
+  it("returns the protein-only why-line when calorie fit is loose", () => {
+    // 600 cal vs 500 remaining → cal delta 100 (20% — calorieFits=false).
+    // 35g protein vs 35g remaining → 100% filled (proteinFits=true).
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Match",
+          calories: 600,
+          protein: 35,
+          carbs: 60,
+          fat: 22,
+        },
+      ],
+      { calories: 500, protein: 35, carbs: 60, fat: 20 },
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, {
+      calories: 500,
+      protein: 35,
+      carbs: 60,
+      fat: 20,
+    });
+    expect(line).toBe("Fits your remaining 35g protein");
+  });
+
+  it("falls back to the calorie why-line when protein fit is weak", () => {
+    // 500 cal vs 500 remaining → cal delta 0 (0% — calorieFits=true).
+    // 5g protein vs 35g remaining → 14% filled (proteinFits=false because
+    // remaining.protein >= 10 but filledProteinFraction < 0.8).
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Match",
+          calories: 500,
+          protein: 5,
+          carbs: 50,
+          fat: 18,
+        },
+      ],
+      { calories: 500, protein: 35, carbs: 60, fat: 20 },
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, {
+      calories: 500,
+      protein: 35,
+      carbs: 60,
+      fat: 20,
+    });
+    expect(line).toBe("Fits your remaining 500 kcal");
+  });
+
+  it("uses calorie why-line when remaining protein is < 10g (already mostly hit)", () => {
+    // The protein-fits gate requires remaining.protein >= 10 — so a user
+    // with only 5g of protein left should never see the protein why-line
+    // even if the suggestion's protein delivery is close to that gap.
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Match",
+          calories: 500,
+          protein: 5,
+          carbs: 50,
+          fat: 18,
+        },
+      ],
+      { calories: 500, protein: 5, carbs: 60, fat: 20 },
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, {
+      calories: 500,
+      protein: 5,
+      carbs: 60,
+      fat: 20,
+    });
+    expect(line).toBe("Fits your remaining 500 kcal");
+  });
+
+  it("returns a generic line when remaining calories are non-positive (defensive)", () => {
+    // Caller should have already short-circuited via
+    // pickNorthStarSuggestion returning null in this case — this asserts
+    // we don't crash if it does sneak through.
+    const fakeSuggestion = {
+      recipe: {
+        id: "x",
+        title: "X",
+        calories: 500,
+        protein: 30,
+        carbs: 50,
+        fat: 18,
+      },
+      portionMultiplier: 1.0,
+      predictedCalories: 500,
+      predictedProtein: 30,
+      predictedCarbs: 50,
+      predictedFat: 18,
+      calorieDelta: 0,
+      band: "tight" as const,
+      score: 0,
+    };
+    const line = whyLineForSuggestion(fakeSuggestion, {
+      calories: 0,
+      protein: 30,
+      carbs: 50,
+      fat: 18,
+    });
+    expect(line).toBe("Fits your remaining macros");
+  });
+
+  it("never returns an empty string", () => {
+    // Brittleness check — every branch must return a non-empty,
+    // user-readable string.
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Match",
+          calories: 100,
+          protein: 5,
+          carbs: 10,
+          fat: 4,
+        },
+      ],
+      { calories: 1000, protein: 50, carbs: 120, fat: 30 },
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, {
+      calories: 1000,
+      protein: 50,
+      carbs: 120,
+      fat: 30,
+    });
+    expect(line.length).toBeGreaterThan(0);
   });
 });

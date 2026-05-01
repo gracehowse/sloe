@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   FlatList,
   InteractionManager,
@@ -196,7 +197,7 @@ type DayPlan = {
   residualProteinGap?: number;
 };
 
-type PlanRecipeRef = { id: string; title: string; calories: number };
+type PlanRecipeRef = { id: string; title: string; calories: number; image?: string | null };
 
 /**
  * 2026-04-26 polish (round 2): snap displayed portion multipliers to the
@@ -254,6 +255,12 @@ export default function PlannerScreen() {
         id: r.id,
         title: r.title,
         calories: Number(r.calories) || 0,
+        // Wave-2 (2026-04-30): recipe hero image surfaces in the day-
+        // card meal rows so a 7-day plan reads visually instead of as
+        // a wall of slot icons. `r.image` is mapped from `image_url`
+        // by `useDiscoverRecipes` / `useSavedLibraryRecipes`; falls
+        // back to a deterministic default when the source has none.
+        image: (r as { image?: string | null }).image ?? null,
       })),
     [savedRecipes, discoverRecipes],
   );
@@ -277,7 +284,13 @@ export default function PlannerScreen() {
   } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
   const [planSlotMenuOpen, setPlanSlotMenuOpen] = useState(false);
-  const [days, setDays] = useState<1 | 3 | 7>(1);
+  // Default to 7 days — Plan is a week tool, and a 1-day default hides
+  // the week-view "wow" behind a tap. Free-tier users see the 3-day /
+  // 7-day pickers as locked (existing gate below); the default still
+  // lands on the 7-day shape so they understand what they'd unlock.
+  // Audit-vs-competitors wave 2 (2026-04-30): customer-lens flagged the
+  // 1-day default as "Today with extra steps".
+  const [days, setDays] = useState<1 | 3 | 7>(7);
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
 
@@ -354,6 +367,18 @@ export default function PlannerScreen() {
   }, [userId]);
 
   const isFree = userTier === "free";
+  // Wave-2 (2026-04-30): the default day count is 7 (Plan = week tool),
+  // but free-tier users can only generate 1-day plans. When the async
+  // tier resolves to "free" — and the user hasn't manually changed the
+  // pick yet — clamp the chip back to 1 so the picker reflects reality.
+  // We track manual interaction via a ref so a Pro user who tapped "1"
+  // doesn't get bumped back to 7 on a later effect re-run.
+  const userPickedDaysRef = useRef(false);
+  useEffect(() => {
+    if (isFree && !userPickedDaysRef.current) {
+      setDays(1);
+    }
+  }, [isFree]);
   const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number; fiber?: number } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
@@ -697,11 +722,6 @@ export default function PlannerScreen() {
   }, [plan, planTargets]);
 
   const portionMultiplierList = useMemo(() => plannerPortionMultiplierSteps(), []);
-
-  // Helper to truncate meal names in day cards
-  const truncateMealName = (name: string, maxLen: number = 12) => {
-    return name.length > maxLen ? name.substring(0, maxLen - 1) + "…" : name;
-  };
 
   // Determine progress bar color based on calorie percentage vs target
   const getProgressColor = (cals: number, target: number) => {
@@ -1769,6 +1789,7 @@ export default function PlannerScreen() {
                             ]);
                             return;
                           }
+                          userPickedDaysRef.current = true;
                           setDays(d);
                         }}
                       >
@@ -1905,6 +1926,7 @@ export default function PlannerScreen() {
                         ]);
                         return;
                       }
+                      userPickedDaysRef.current = true;
                       setDays(d);
                     }}
                   >
@@ -2291,17 +2313,41 @@ export default function PlannerScreen() {
                   );
                 }}
               >
-                {/* Prototype port (2026-04-20) — 36×36 slot icon-box on
-                    the left. Key resolves via shared `resolvePlanSlotIconKey`
-                    so legacy / voice-parsed slot text still lands on a
-                    sensible icon. Both platforms now map the key to
-                    lucide icons (see `SLOT_ICON_MOBILE` +
-                    `SLOT_ICON_WEB` — the single source of truth is the
-                    shared key). */}
+                {/* Prototype port (2026-04-20) — 36×36 thumbnail on the
+                    left of every meal row. Wave-2 (2026-04-30): when the
+                    meal has a recipe with a hero image, render that
+                    image so a multi-day plan reads as a visual scan of
+                    actual meals (not a column of identical slot icons).
+                    Falls back to the slot icon-box when no recipe (empty
+                    slot) or no image (default-pack recipe with the same
+                    hero across IDs). Slot icon-box still uses the shared
+                    `resolvePlanSlotIconKey` so legacy / voice-parsed
+                    slot text lands on the right icon. */}
                 {(() => {
                   const slotKey = resolvePlanSlotIconKey(meal.name);
                   const Icon = SLOT_ICON_MOBILE[slotKey];
                   const tint = SLOT_COLOR_MOBILE[slotKey];
+                  const ref =
+                    (meal.recipeId
+                      ? planRecipePool.find((r) => r.id === meal.recipeId)
+                      : undefined) ??
+                    planRecipePool.find(
+                      (r) => r.title.trim() === meal.recipeTitle.trim(),
+                    );
+                  const imageUri = ref?.image ?? null;
+                  if (planMealHasRecipe(meal) && imageUri) {
+                    return (
+                      <Image
+                        source={{ uri: imageUri }}
+                        accessibilityLabel={`${meal.recipeTitle} thumbnail`}
+                        style={[
+                          styles.mealIconBox,
+                          { backgroundColor: tint + "22" },
+                        ]}
+                        resizeMode="cover"
+                      />
+                    );
+                  }
                   return (
                     <View style={[styles.mealIconBox, { backgroundColor: tint + "22" }]}>
                       <Icon size={16} color={tint} strokeWidth={1.75} />

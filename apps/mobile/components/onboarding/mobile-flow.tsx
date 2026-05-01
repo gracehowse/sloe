@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import {
   ONBOARDING_SEEDS,
+  defaultOnboardingSeeds,
   type OnboardingSeed,
 } from "../../../../src/lib/onboarding/onboardingSeeds";
 import { buildFirstWeekFromSeeds } from "../../../../src/lib/onboarding/onboardingFirstWeek";
@@ -119,9 +120,29 @@ export function MobileFlow() {
         targets,
       });
 
-      const pickedSeeds: OnboardingSeed[] = ONBOARDING_SEEDS.filter((s) =>
-        state.pickedRecipeSlugs.includes(s.slug),
-      );
+      // Activation hook (audit 2026-04-30): the Recipes step was pulled
+      // from the linear flow in the 15→12 shrink, so for a normal
+      // completion `pickedRecipeSlugs` is empty. Without seeded recipes
+      // the user lands on Today with an empty library and the
+      // north-star block is permanently stuck in its empty-state — the
+      // "What to eat next" promise evaporates. When the user hasn't
+      // picked any recipes we fall back to a curated 5-seed default
+      // (`defaultOnboardingSeeds`) so the library hits the
+      // `NORTH_STAR_LIBRARY_MIN` threshold immediately. The default
+      // honours the user's diet/allergens — see `defaultOnboardingSeeds`
+      // in `src/lib/onboarding/onboardingSeeds.ts`.
+      const pickedSeeds: OnboardingSeed[] =
+        state.pickedRecipeSlugs.length > 0
+          ? ONBOARDING_SEEDS.filter((s) =>
+              state.pickedRecipeSlugs.includes(s.slug),
+            )
+          : Array.from(
+              defaultOnboardingSeeds({
+                diet: state.diet,
+                allergies: state.allergies,
+              }),
+            );
+      const usedDefaults = state.pickedRecipeSlugs.length === 0;
       let planFailed = false;
       let missingCount = 0;
       if (pickedSeeds.length > 0) {
@@ -157,6 +178,10 @@ export function MobileFlow() {
           recipes_picked: pickedSeeds.length,
           recipes_resolved: pickedSeeds.length - missingCount,
           plan_built: !planFailed,
+          // Activation hook (audit 2026-04-30): tracks how many users
+          // hit the curated-default fallback vs hand-picked. Used to
+          // monitor the activation lift after the seed-defaults ship.
+          used_default_seeds: usedDefaults,
         });
       } catch {
         /* analytics is fire-and-forget */
@@ -171,9 +196,13 @@ export function MobileFlow() {
         /* non-fatal */
       }
 
+      // Activation hook (audit 2026-04-30): always pass `firstRun=1` on
+      // the post-onboarding land so Today can fire its first-run
+      // polish (push-permission explainer, ring-celebration, etc.)
+      // without re-querying `onboarding_completed`.
       const homeQs = planFailed
-        ? "?onboarding_complete=1&plan_build=failed"
-        : "?onboarding_complete=1";
+        ? "?onboarding_complete=1&plan_build=failed&firstRun=1"
+        : "?onboarding_complete=1&firstRun=1";
       router.replace(`/(tabs)${homeQs}`);
     } catch (e) {
       setCompleting(false);

@@ -180,6 +180,15 @@ export default function HealthSyncScreen() {
             await AsyncStorage.setItem("health_import_nutrition", "true");
             setImportEnabled(true);
           }
+          // Audit/2026-04-30 — match the read posture for write too:
+          // default ON on first connect (parity with MFP / Cal AI).
+          // User can still toggle off in Settings → Health Sync; the
+          // explicit opt-out is preserved (existing != null).
+          const existingExport = await AsyncStorage.getItem("health_export_nutrition");
+          if (existingExport == null) {
+            await AsyncStorage.setItem("health_export_nutrition", "true");
+            setExportEnabled(true);
+          }
         } catch {
           /* ignore */
         }
@@ -366,7 +375,7 @@ export default function HealthSyncScreen() {
       <View style={styles.card}>
         <CardTitle styles={styles} icon="nutrition" text="Nutrition Sync" />
         <Text style={styles.desc}>
-          {`Share your Suppr meals to Apple Health so other apps can see them. When you tap "Complete Day" on the Today tab, your logged meals are written to Health.`}
+          {`Share your Suppr meals to Apple Health so other apps can see them. Audit/2026-04-30 — meals are now written per-log (matching MyFitnessPal / Cal AI), not only at "Complete Day". Energy, protein, carbs, fat, and fibre are written for every meal you log; AI-estimated rows are skipped until you confirm them.`}
         </Text>
 
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
@@ -415,7 +424,7 @@ export default function HealthSyncScreen() {
             />
           </View>
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
-            Your logged meals will be written to Apple Health for other apps to read
+            Your logged meals will be written to Apple Health for other apps to read. Each meal is written when you log it; re-logs of the same entry are de-duplicated.
           </Text>
         </View>
 

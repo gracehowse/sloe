@@ -21,6 +21,7 @@ import {
   detectSlotForHour,
   isLibraryEligibleForNorthStar,
   pickNorthStarSuggestion,
+  whyLineForSuggestion,
   type NorthStarRecipe,
 } from "../../../../src/lib/nutrition/northStarSuggestion";
 
@@ -150,6 +151,10 @@ export function NorthStarBlockHost({
         predictedFat: suggestion.predictedFat,
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
+        // Activation hook (audit 2026-04-30 — leak fix #5): expose
+        // the strongest WHY (which macro the suggestion fits) so the
+        // card stops reading as black-box. See `whyLineForSuggestion`.
+        whyLine: whyLineForSuggestion(suggestion, remaining),
       }}
       onPrimaryCta={() => onPrimaryCta(suggestion.recipe.id)}
       onSkip={() => handleSkip(suggestion.recipe.id)}

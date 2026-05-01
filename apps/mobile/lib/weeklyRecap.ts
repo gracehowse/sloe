@@ -11,6 +11,7 @@ export {
   formatRecapForShare,
   formatWeekLabel,
   nextRecapFireDate,
+  selectClosestToTargetDay,
   shouldShowRecap,
   weekKeyFor,
   type UsualMealRecapInsight,
