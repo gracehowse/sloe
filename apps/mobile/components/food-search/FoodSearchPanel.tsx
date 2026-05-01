@@ -77,6 +77,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   searchFoods,
   getFoodMacros,
+  getFatSecretFood,
   scaleMacros,
   type UnifiedSearchResult,
   type FoodPortion,
@@ -142,7 +143,7 @@ export type Macros = {
 
 export type SelectedFood = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
   macrosPer100g: Macros;
   microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
@@ -151,6 +152,7 @@ export type SelectedFood = {
   fdcId?: number;
   barcode?: string;
   customFoodId?: string;
+  fatSecretFoodId?: string;
   servingLabel?: string;
 };
 
@@ -158,7 +160,7 @@ export type SupabaseLike = { from: (table: string) => unknown };
 
 /** Local superset of UnifiedSearchResult — see FoodSearchModal history. */
 type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
-  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "GenericBeverage" | "GenericFood";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _custom?: CustomFood;
 };
 
@@ -357,7 +359,7 @@ export default function FoodSearchPanel({
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+    source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
     macrosPer100g: Macros;
     microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
@@ -367,6 +369,7 @@ export default function FoodSearchPanel({
     fdcId?: number;
     barcode?: string;
     customFoodId?: string;
+    fatSecretFoodId?: string;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
@@ -598,6 +601,29 @@ export default function FoodSearchPanel({
           quantity,
           quantityText: String(quantity),
         });
+      } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
+        // Lane-A (2026-04-30) — branded FatSecret rows usually surface
+        // with null per-100g macros (the inline `food_description` was
+        // per-serving). Fetch the canonical panel before opening the
+        // preview so the portion picker has real values to scale.
+        const result = await getFatSecretFood(item._fatSecretFoodId);
+        setLoadingKey(null);
+        if (!result) return;
+        const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
+        const allPortions = buildPortionList(result.portions, effectivePrimary);
+        const { portion, quantity } = effectivePrimary
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "FatSecret",
+          macrosPer100g: result.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+          fatSecretFoodId: item._fatSecretFoodId,
+        });
       } else if (item._source === "CUSTOM" && item._custom) {
         setLoadingKey(null);
         const food = item._custom;
@@ -803,6 +829,7 @@ export default function FoodSearchPanel({
         fdcId: preview.fdcId,
         barcode: preview.barcode,
         ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+        ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
         ...(servingLabel ? { servingLabel } : {}),
       });
       setPreview(null);

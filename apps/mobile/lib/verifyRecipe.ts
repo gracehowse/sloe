@@ -614,12 +614,16 @@ export type UnifiedSearchResult = {
   /** Internal: source type for fetching full data on tap.
    *  F-73 (2026-04-27): "GenericBeverage" + "GenericFood" rows are seeded
    *  in-memory from `src/lib/nutrition/genericBeverages.ts` /
-   *  `genericFoods.ts` and need no on-tap fetch. */
-  _source: "USDA" | "OFF" | "Edamam" | "GenericBeverage" | "GenericFood";
+   *  `genericFoods.ts` and need no on-tap fetch.
+   *  Lane-A 2026-04-30: "FatSecret" added as the 4th external source —
+   *  per-serving rows carry no per-100g macros until `food.get` lands. */
+  _source: "USDA" | "OFF" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _fdcId?: number;
   _offCode?: string;
   /** Edamam food identifier — stable string, not numeric. */
   _edamamFoodId?: string;
+  /** FatSecret food identifier — stable string. Used by `getFatSecretFood`. */
+  _fatSecretFoodId?: string;
 };
 
 /** Edamam hit shape returned by `/api/edamam/search`. */
@@ -689,6 +693,69 @@ export async function searchEdamam(
   }
 }
 
+/** FatSecret hit shape returned by `/api/fatsecret/search`. */
+export type FatSecretSearchResult = {
+  foodId: string;
+  label: string;
+  brand: string | null;
+  /** Per-100g macros — only present when the inline `food_description` was per 100g. */
+  macrosPer100g: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null;
+  /** Free-text serving label from FatSecret (e.g. "1 sandwich (240g)"). */
+  servingLabel: string | null;
+  /** Gram weight pulled from "(N g)" suffix when present. */
+  servingGrams: number | null;
+  /** Per-serving macros — present when the row was per-serving. */
+  macrosPerServing: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null;
+};
+
+/**
+ * Search FatSecret via our Next.js API route. Lane-A 2026-04-30 wired
+ * FatSecret in as the 4th source (alongside USDA / OFF / Edamam) so
+ * branded queries like "Big Mac" / "Starbucks grande latte" surface
+ * with brand attribution rather than a no-results state.
+ *
+ * Empty on network / server / rate-limit errors so it never blocks the
+ * other three sources from rendering. Per-serving rows surface with
+ * null per-100g macros — the on-tap detail fetch (`getFatSecretFood`)
+ * lands the canonical panel before the preview opens. Never invents
+ * macros.
+ */
+export async function searchFatSecret(
+  query: string,
+  opts?: { page?: number },
+): Promise<FatSecretSearchResult[]> {
+  const base = apiBase();
+  const q = effectiveFoodSearchQuery(query);
+  if (!base || !q.trim()) return [];
+  const page = opts?.page && opts.page > 0 ? Math.floor(opts.page) : 1;
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12000);
+    const res = await authedFetch(
+      `${base}/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(t);
+    const json = await res.json();
+    if (!json.ok || !Array.isArray(json.hits)) return [];
+    return json.hits as FatSecretSearchResult[];
+  } catch (e) {
+    if (isBenignAbort(e)) return [];
+    console.error("[searchFatSecret] failed:", e instanceof Error ? e.message : e);
+    return [];
+  }
+}
+
 /** Simple word-overlap relevance score for ranking */
 function searchRelevance(query: string, name: string): number {
   const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
@@ -745,10 +812,12 @@ export async function searchFoods(
   const usdaP = searchUsda(t, { page });
   const offP = searchOpenFoodFacts(t, { page });
   const edamamP = searchEdamam(t, { page });
+  const fatsecretP = searchFatSecret(t, { page });
 
   let usda: FoodSearchResult[] = [];
   let off: OffSearchResult[] = [];
   let eda: EdamamSearchResult[] = [];
+  let fs: FatSecretSearchResult[] = [];
 
   // F-73: when a generic match landed, surface it synchronously (no
   // async wait) so the user sees the right answer instantly. Other
@@ -763,27 +832,35 @@ export async function searchFoods(
   if (onPartial) {
     // Stream: deliver whichever source responds first, then keep appending
     // as the others resolve. Users see USDA / OFF hits instantly without
-    // waiting for Edamam's network round-trip.
+    // waiting for Edamam / FatSecret's network round-trip.
     const usdaLabelled = usdaP.then((r) => { usda = r; return "usda" as const; });
     const offLabelled = offP.then((r) => { off = r; return "off" as const; });
     const edaLabelled = edamamP.then((r) => { eda = r; return "edamam" as const; });
-    const pending = new Set<Promise<"usda" | "off" | "edamam">>([
+    const fsLabelled = fatsecretP.then((r) => { fs = r; return "fatsecret" as const; });
+    const pending = new Set<Promise<"usda" | "off" | "edamam" | "fatsecret">>([
       usdaLabelled,
       offLabelled,
       edaLabelled,
+      fsLabelled,
     ]);
     while (pending.size > 0) {
       const done = await Promise.race(pending);
       pending.delete(
-        done === "usda" ? usdaLabelled : done === "off" ? offLabelled : edaLabelled,
+        done === "usda"
+          ? usdaLabelled
+          : done === "off"
+            ? offLabelled
+            : done === "edamam"
+              ? edaLabelled
+              : fsLabelled,
       );
-      onPartial([...genericRows, ...mergeResults(qRank, usda, off, eda, limit - genericRows.length)]);
+      onPartial([...genericRows, ...mergeResults(qRank, usda, off, eda, fs, limit - genericRows.length)]);
     }
   } else {
-    [usda, off, eda] = await Promise.all([usdaP, offP, edamamP]);
+    [usda, off, eda, fs] = await Promise.all([usdaP, offP, edamamP, fatsecretP]);
   }
 
-  return [...genericRows, ...mergeResults(qRank, usda, off, eda, limit - genericRows.length)];
+  return [...genericRows, ...mergeResults(qRank, usda, off, eda, fs, limit - genericRows.length)];
 }
 
 /**
@@ -879,6 +956,7 @@ function mergeResults(
   usda: FoodSearchResult[],
   off: OffSearchResult[],
   edamam: EdamamSearchResult[] = [],
+  fatsecret: FatSecretSearchResult[] = [],
   limit: number = 24,
 ): UnifiedSearchResult[] {
   const results: (UnifiedSearchResult & { _relevance: number })[] = [];
@@ -1022,6 +1100,59 @@ function mergeResults(
     });
   }
 
+  for (const item of fatsecret) {
+    const brand = item.brand ? titleCase(item.brand) : "";
+    const cleanLabel = titleCase(
+      // Server label may already be "Brand · Name" — strip the prefix
+      // so we don't double-render the brand. Defensive; the route shape
+      // is currently the joined string.
+      brand && item.label.startsWith(`${brand} · `) ? item.label.slice(brand.length + 3) : item.label,
+    );
+    const displayName = brand ? `${brand} · ${cleanLabel}` : cleanLabel;
+    // Synthesise primary serving when FatSecret embedded both a label
+    // AND a gram weight ("(N g)"). Per-serving rows without a gram
+    // weight surface as per-100g-only — the on-tap detail fetch lands
+    // the canonical panel before the preview opens.
+    const primaryServing: PrimaryServing | null =
+      item.macrosPerServing && item.servingLabel && item.servingGrams && item.servingGrams > 0
+        ? {
+            label: item.servingLabel,
+            grams: item.servingGrams,
+            kcal: item.macrosPerServing.calories,
+            protein: item.macrosPerServing.protein,
+            carbs: item.macrosPerServing.carbs,
+            fat: item.macrosPerServing.fat,
+          }
+        : null;
+    // Lane-A (2026-04-30) — FatSecret is a commercial source with high
+    // brand coverage. Same trust band as Edamam (-0.05); the merge
+    // still defers to verified USDA on tie. Without this, branded
+    // queries like "Big Mac" / "Starbucks" never surfaced because
+    // FatSecret wasn't in the merge AT ALL pre-Lane-A.
+    results.push({
+      key: `fatsecret-${item.foodId}`,
+      name: displayName,
+      calsPer100g: item.macrosPer100g?.calories ?? undefined,
+      macrosPer100g: item.macrosPer100g
+        ? {
+            calories: item.macrosPer100g.calories,
+            protein: item.macrosPer100g.protein,
+            carbs: item.macrosPer100g.carbs,
+            fat: item.macrosPer100g.fat,
+            fiberG: 0,
+            sugarG: 0,
+            sodiumMg: 0,
+            caffeineMgPer100g: null,
+            alcoholGPer100g: null,
+          }
+        : undefined,
+      primaryServing,
+      _source: "FatSecret",
+      _fatSecretFoodId: item.foodId,
+      _relevance: Math.max(0, searchRelevance(query, displayName) - 0.05),
+    });
+  }
+
   results.sort((a, b) => b._relevance - a._relevance);
 
   // F-89 + F-90 (2026-04-25) — defence-in-depth filters that fire AFTER
@@ -1084,6 +1215,44 @@ export async function getFoodMacros(
   } catch (e) {
     if (isBenignAbort(e)) return null;
     console.error("[getFoodMacros] failed for fdcId", fdcId, ":", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/**
+ * Fetch the canonical per-100g macro panel + portions for a FatSecret
+ * food via `/api/fatsecret/food`. Mirrors `getFoodMacros` (USDA detail).
+ *
+ * Returns null on failure so the on-tap handler quietly drops the row
+ * instead of surfacing a broken preview. Per-serving FatSecret rows
+ * carry no inline per-100g macros from the search route — this is the
+ * canonical-panel resolver before opening the preview.
+ */
+export async function getFatSecretFood(
+  foodId: string,
+): Promise<{
+  macrosPer100g: MacrosPer100g;
+  portions: FoodPortion[];
+  primaryPortion?: PrimaryServing | null;
+} | null> {
+  const base = apiBase();
+  if (!base || !foodId) return null;
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12000);
+    const res = await authedFetch(
+      `${base}/api/fatsecret/food?foodId=${encodeURIComponent(foodId)}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(t);
+    const json = await res.json();
+    if (!json.ok) return null;
+    const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
+    const primaryPortion: PrimaryServing | null = json.primaryPortion ?? null;
+    return { macrosPer100g: json.macrosPer100g, portions, primaryPortion };
+  } catch (e) {
+    if (isBenignAbort(e)) return null;
+    console.error("[getFatSecretFood] failed for foodId", foodId, ":", e instanceof Error ? e.message : e);
     return null;
   }
 }

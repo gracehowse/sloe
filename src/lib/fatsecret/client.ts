@@ -246,15 +246,26 @@ async function fatSecretGet<T>(cfg: FatSecretConfig, params: Record<string, stri
   return json as T;
 }
 
-export async function fatSecretFoodSearch(cfg: FatSecretConfig, query: string): Promise<FatSecretFoodSearchResult[]> {
-  const data = await fatSecretGet<{
-    foods?: { food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult };
-  }>(cfg, {
+export async function fatSecretFoodSearch(
+  cfg: FatSecretConfig,
+  query: string,
+  opts?: { maxResults?: number; pageNumber?: number },
+): Promise<FatSecretFoodSearchResult[]> {
+  // Defaults preserve historical behaviour for `verifyIngredients` callers
+  // (10 results, page 1). The food-search merge pipeline overrides both —
+  // see `app/api/fatsecret/search/route.ts`.
+  const max = Math.max(1, Math.min(50, opts?.maxResults ?? 10));
+  const page = Math.max(0, Math.floor(opts?.pageNumber ?? 0));
+  const params: Record<string, string> = {
     method: "foods.search",
     format: "json",
     search_expression: query,
-    max_results: "10",
-  });
+    max_results: String(max),
+  };
+  if (page > 0) params.page_number = String(page);
+  const data = await fatSecretGet<{
+    foods?: { food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult };
+  }>(cfg, params);
   const f = data.foods?.food;
   if (!f) return [];
   return Array.isArray(f) ? f : [f];
