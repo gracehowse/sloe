@@ -540,6 +540,33 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     }
   }, []);
 
+  // P3-30 (2026-04-25) — net-carbs lens opt-in. Source of truth:
+  // `profiles.net_carbs_lens_enabled` (migration 20260503103000).
+  // Migrated 2026-05-01 from the legacy `/(tabs)/settings.tsx`
+  // Journal display section into the bundle's Display & extras
+  // section so the structural collapse doesn't lose this toggle.
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("net_carbs_lens_enabled")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setNetCarbsLensEnabled(
+          Boolean((data as { net_carbs_lens_enabled?: unknown }).net_carbs_lens_enabled),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   // P1-8 (2026-05-01) — real Apple Health connection state. The
   // pre-fix code surfaced `isHealthSyncAvailable()` which only
   // checks platform support, not user grant: a brand-new install on
@@ -1298,6 +1325,63 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 trackAlcohol: v,
               })
             }
+            trackColor={{ true: Accent.primary }}
+          />
+        </View>
+        {/* P3-30 (2026-04-25) — Show net carbs toggle. Migrated
+            2026-05-01 from the legacy `/(tabs)/settings.tsx` Journal
+            display section so the structural collapse doesn't lose
+            this preference. Tracker carbs tile + Recipe Detail
+            nutrition row swap "Carbs" → "Net carbs" via
+            src/lib/nutrition/netCarbs.ts. */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderTopWidth: 1,
+            borderTopColor: colors.cardBorder,
+          }}
+        >
+          <IconBox color={t.accent}>
+            <Sparkles size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.text,
+                lineHeight: 17,
+              }}
+            >
+              Show net carbs
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              Display "Net carbs" (carbs − fibre) on the Tracker and
+              recipe pages. Useful for keto / low-carb tracking.
+            </Text>
+          </View>
+          <Switch
+            testID="settings-net-carbs-lens-toggle"
+            value={netCarbsLensEnabled}
+            onValueChange={async (v) => {
+              setNetCarbsLensEnabled(v);
+              if (userId) {
+                await supabase
+                  .from("profiles")
+                  .update({ net_carbs_lens_enabled: v } as never)
+                  .eq("id", userId);
+              }
+            }}
             trackColor={{ true: Accent.primary }}
           />
         </View>
