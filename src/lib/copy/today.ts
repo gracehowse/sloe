@@ -92,15 +92,29 @@ export function todayBalanceHeadline(balanceKcal: number): string {
 }
 
 /** Phrases that must never ship on any Today surface. Used by
- *  `tests/unit/todayCopyParity.test.ts` as a grep list. If a real
- *  user-facing need brings one of these back, update *both* the test
- *  allowlist and this constant so the drift is a deliberate decision. */
+ *  `tests/unit/todayCopyParity.test.ts` as a grep list. The match
+ *  is case-INSENSITIVE — "Over budget" and "over budget" are both
+ *  rejected; the test normalises both source and pattern to lower-
+ *  case before scanning. If a real user-facing need brings one of
+ *  these back, update *both* the test allowlist and this constant
+ *  so the drift is a deliberate decision.
+ *
+ *  Calm-tone audit (round 4, 2026-04-30): "Over budget" / "Under
+ *  budget" surfaced on the Week-mode Today view (web + mobile);
+ *  replaced with the canonical "Net deficit" / "Net surplus"
+ *  phrasing per UCL Oct 2025 study + r/loseit data showing
+ *  punitive-budget framing drives logging avoidance + ED-cohort
+ *  harm. */
 export const FORBIDDEN_TODAY_PHRASES = [
   "below maint",
   "below maintenance",
   "below TDEE",
   "under budget",
   "over budget",
+  "you went over",
+  "don't break your streak",
+  "streak lost",
+  "broke your streak",
   "Today's meals",
   "Today’s meals",
 ] as const;

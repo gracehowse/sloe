@@ -1,0 +1,201 @@
+# Data export ("Export everything")
+
+Status: shipped 2026-04-30
+Owner: product-engineer
+Surfaces: web Settings → Privacy & Security; mobile Settings → "Data" section
+
+## Why this exists
+
+The 2026-04-30 user-sentiment audit found a universal pattern across
+competitor reviews — "lock-in anxiety". Common complaints:
+
+- Paprika: "recipes disappeared after upgrade"
+- MyFitnessPal: "history gone after update"
+- Recime / Honeydew: "data vanished post-payment"
+
+The universal counter is **explicit, visible, exportable user data**.
+
+GDPR Article 20 (right to data portability) is the legal floor;
+Suppr exceeds it by making the export one tap deep, zero-friction,
+and authenticated-only — no email round-trip, no support ticket,
+no waiting period.
+
+The user-facing affordance is "Export everything" with the trust
+line "Yours forever. Take your data anywhere."
+
+## What gets exported
+
+A single JSON blob with the following keys:
+
+| Key                   | Source table             | Window    |
+|-----------------------|--------------------------|-----------|
+| `profile`             | `profiles`               | full row  |
+| `recipes`             | `recipes` (own)          | all       |
+| `recipeIngredients`   | `recipe_ingredients`     | for own recipes |
+| `saves`               | `saves`                  | all       |
+| `mealLog`             | `nutrition_entries`      | last 365 days |
+| `weightHistory`       | `health_snapshots`       | last 365 days |
+| `customFoods`         | `user_custom_foods`      | all       |
+| `plans`               | `meal_plans`             | all       |
+| `planDays`            | `meal_plan_days`         | all       |
+| `planMeals`           | `meal_plan_meals`        | for own plan days |
+| `shopping`            | `shopping_items`         | active only |
+| `savedMeals`          | `user_saved_meals`       | all       |
+| `savedMealItems`      | `user_saved_meal_items`  | for own saved meals |
+| `recipeNotes`         | `user_recipe_notes`      | all       |
+
+Plus the meta fields:
+
+- `schemaVersion` — bumped on every breaking shape change
+- `exportedAt` — ISO timestamp of the read
+- `userId` — Supabase auth UID
+- `windowDays` — currently `365`
+
+Tables that aren't yet present in a given Supabase environment
+(e.g. `user_recipe_notes` on older deployments) degrade to `[]`
+rather than 500-ing the request — the export should never silently
+truncate.
+
+## File format
+
+JSON. UTF-8. Pretty-printed with 2-space indent. Filename:
+`suppr-export-{userId}-{YYYY-MM-DD}.json` on web and
+`suppr-export-{userId.slice(0, 8)}-{YYYY-MM-DD}.json` on mobile
+(the mobile filename is shortened to keep Files-app rows readable).
+
+## Endpoint
+
+`GET /api/export/me`
+
+- Auth: `Authorization: Bearer <jwt>` (mobile) or `sb-*` cookies (web)
+- Response: `200` with `Content-Type: application/json` and
+  `Content-Disposition: attachment; filename="..."`
+- Cache: `Cache-Control: no-store` (the payload is PII)
+- Errors:
+  - `401 unauthorized` — missing / invalid auth
+  - `429 rate_limited` — see below; sets `Retry-After`
+  - `503 service_unavailable` — service-role key not configured
+  - `500 export_failed` — any non-ignorable Supabase error during read
+
+## Schema version
+
+Currently `1`. Increment when the export shape breaks consumer
+assumptions:
+
+- key rename
+- key removal
+- semantics change
+
+Additive new keys are NOT a breaking change — existing consumers
+ignore unknown fields.
+
+## Rate limit
+
+1 export / 60s per user. The bucket key composes as
+`api:export:me:user:{userId}:{ip}` so:
+
+- A user double-tapping the row gets a clean `429` (with
+  `Retry-After: <seconds>`) on the second tap — they don't
+  accidentally trigger two downloads.
+- An IP-rotating attacker can't drain the bucket on behalf of
+  another user (per-user scoping closes the
+  cross-user starvation hole the original IP-only key had).
+- A shared NAT (corporate Wi-Fi) doesn't starve legitimate users.
+
+The window is intentionally short — this is a moat-builder, not a
+high-frequency endpoint, but the UI shouldn't feel locked-out.
+
+## Re-import to other tools
+
+Suppr does not yet offer "import from Suppr export" — the JSON is
+intended for:
+
+- **User backup**: drop in iCloud Drive / Dropbox; sleep easier.
+- **Migration to spreadsheets**: jq one-liners turn `mealLog` into
+  CSV; for example
+  `jq '.mealLog | map([.date_key, .name, .calories]) | .[] | @csv' export.json`.
+- **Migration to other apps**: most competitors accept JSON imports
+  with a custom mapping. We don't ship per-competitor adapters; the
+  export is documented enough for the user (or their developer) to
+  build one.
+
+For spreadsheet-friendly meal-log-only exports, the existing CSV
+button at Settings → "Export nutrition log (CSV)" is unchanged.
+
+## Analytics
+
+`data_export_initiated` fires server-side (via
+`src/lib/analytics/serverTrack.ts`) after the payload is built so
+`sizeBytes` is real, not estimated. Properties:
+
+```
+{
+  sizeBytes: number,
+  recipeCount: number,
+  mealLogCount: number,
+  weightCount: number,
+  customFoodCount: number,
+  planCount: number,
+  shoppingCount: number,
+  schemaVersion: number,
+  platform: "web" | "ios"
+}
+```
+
+This is the moat-tracking surface: we want to know how often this
+is used because that's how we tell whether the lock-in
+counter-message is reaching users. Funnel pair: settings page view →
+`data_export_initiated`.
+
+## Estimated typical export size
+
+Rough sizing for a moderately active user:
+
+- Profile: ~2 KB
+- 365 days of meal-log entries (avg 4 / day): ~250 KB
+- 365 days of weight + activity snapshots: ~60 KB
+- Recipes + ingredients: ~30 KB
+- Plans + days + meals: ~30 KB
+- Saves, custom foods, shopping, saved meals: ~10 KB
+
+**Typical total: 300-500 KB. p95 under 1 MB.** Power users with
+multi-year-equivalent activity inside the 365-day window or large
+custom-food libraries can push past 1 MB. We have not yet seen a
+real export above 5 MB, but if that becomes load-bearing the v2
+path is paginated chunks (e.g. month-windowed `mealLog` ZIPs) — we
+will revisit when sustained `sizeBytes` p99 trends past 5 MB in
+PostHog.
+
+## Cross-platform parity
+
+| Platform | Surface                                | Auth path        | File handling                         |
+|----------|----------------------------------------|------------------|---------------------------------------|
+| Web      | Settings → Privacy → Export everything | sb-* cookies     | Blob → `<a download>` triggers save   |
+| Mobile   | Settings → Data → Export everything    | Bearer token     | `expo-file-system` writeAsStringAsync to cache → `Share.share({ url })` opens iOS activity sheet (Save to Files / AirDrop / Mail / Messages) |
+
+Both platforms call the **same endpoint** — bytes are identical.
+Differences are surface-only: web download dialog vs iOS share sheet.
+
+The mobile flow is iOS-only by spec (the only mobile platform on
+TestFlight today). When Android joins the platform list, swap
+`Share.share` for `expo-sharing`'s `Sharing.shareAsync` to abstract
+the platform.
+
+## Files
+
+- Server endpoint: `app/api/export/me/route.ts`
+- Mobile helper: `apps/mobile/lib/exportEverything.ts`
+- Mobile UI: `apps/mobile/components/settings/SettingsBundleContent.tsx`
+  (search `settings-bundle-export-everything-row`)
+- Web UI: `src/app/components/Settings.tsx` (search
+  `settings-export-everything-button`)
+- Tests:
+  - `tests/integration/exportMeRoute.test.ts`
+  - `tests/unit/settingsExportEverythingWeb.test.ts`
+  - `apps/mobile/tests/unit/exportEverything.test.ts`
+  - `apps/mobile/tests/unit/settingsExportEverythingRow.test.ts`
+
+## Related
+
+- Account deletion (the destructive twin): `app/api/account/delete/route.ts`
+- CSV meal-log export (curated subset): `src/lib/export/nutritionLogToCsv.ts`

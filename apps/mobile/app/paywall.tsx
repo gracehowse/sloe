@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, Tag, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react-native";
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -38,6 +38,7 @@ import { usePromoCode } from "@/hooks/usePromoCode";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
 import { PRICING_TIERS, type PricingTier } from "../../../src/lib/landing/pricingTiers";
+import { PAYWALL_TRUST_CHIPS, buildReceiptTrustCopy } from "../../../src/lib/landing/paywallTrust";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -409,7 +410,30 @@ export default function PaywallScreen() {
             from: paywallFrom,
             trialApplied: trialOnThisPurchase,
           });
-          router.replace("/notifications-prompt");
+          // Trust-explicit confirmation Alert (audit 2026-04-30,
+          // user-sentiment pain #1). Lead with cancel-anytime, then
+          // trial-end + first-charge, then refund window + zero-email
+          // promise. Apple's receipt has the wall-clock dates; the
+          // alert states the cadence in plain English. The Alert is
+          // dismissed before navigation so the user explicitly
+          // acknowledges the disclosures, never bypassing them.
+          const cancelPath =
+            Platform.OS === "ios"
+              ? "Settings > Apple ID > Subscriptions"
+              : "Google Play > Payments & subscriptions";
+          const trialEndsLabel = trialOnThisPurchase
+            ? "in 7 days"
+            : "with your billing period";
+          const message = buildReceiptTrustCopy({
+            trialEndsLabel,
+            cancelPath,
+          });
+          Alert.alert("You're in", message, [
+            {
+              text: "Continue",
+              onPress: () => router.replace("/notifications-prompt"),
+            },
+          ]);
         } else {
           Alert.alert(
             "Almost there",
@@ -591,6 +615,31 @@ export default function PaywallScreen() {
     },
 
     scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl },
+
+    trustStripWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      marginTop: Spacing.lg,
+      marginBottom: Spacing.xs,
+    },
+    trustChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
+    },
+    trustChipText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
 
     toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl },
     toggleRow: {
@@ -868,6 +917,30 @@ export default function PaywallScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Trust strip — three chips (cancel anytime / 7-day refund /
+            price never changes mid-trial) rendered ABOVE the tier
+            cards. Counter to the #1 user-sentiment pain across the
+            competitive set per the 2026-04-30 14-app audit. Copy SSOT
+            in `src/lib/landing/paywallTrust.ts`; the web /pricing
+            surface renders the same three chips in identical order. */}
+        <View
+          testID="paywall-trust-strip"
+          style={styles.trustStripWrap}
+          accessibilityRole="summary"
+          accessibilityLabel="Trust commitments: cancel anytime in-app, 7-day refund no email needed, price never changes mid-trial"
+        >
+          {PAYWALL_TRUST_CHIPS.map((chip) => (
+            <View
+              key={chip.label}
+              style={styles.trustChip}
+              accessibilityLabel={chip.a11yLabel}
+            >
+              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
+              <Text style={styles.trustChipText}>{chip.label}</Text>
+            </View>
+          ))}
+        </View>
+
         {showToggle ? (
           <View style={styles.toggleWrap}>
             <View

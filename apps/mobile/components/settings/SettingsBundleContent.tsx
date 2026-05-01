@@ -61,6 +61,7 @@ import {
   nutritionLogToCsv,
   nutritionLogCsvFilename,
 } from "../../../../src/lib/export/nutritionLogToCsv";
+import { exportEverythingToFile } from "@/lib/exportEverything";
 import { getMyHousehold } from "../../../../src/lib/household/householdClient";
 import {
   presetFromShareLunch,
@@ -464,6 +465,51 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [weeklyRecapPushPickerOpen, setWeeklyRecapPushPickerOpen] = useState(
     false,
   );
+  // "Export everything" flow (2026-04-30 user-sentiment audit). The
+  // row spinner is gated by this flag; double-taps are no-ops.
+  const [exportingEverything, setExportingEverything] = useState(false);
+
+  const runExportEverything = useCallback(async () => {
+    if (!userId) return;
+    if (exportingEverything) return;
+    setExportingEverything(true);
+    try {
+      const result = await exportEverythingToFile(userId);
+      if (!result.ok) {
+        if (result.reason === "rate_limited") {
+          Alert.alert("Slow down", result.message);
+        } else if (result.reason === "not_authenticated") {
+          Alert.alert("Sign in required", result.message);
+        } else {
+          Alert.alert("Export failed", result.message);
+        }
+        return;
+      }
+      // Hand the file to the iOS share sheet. `Share.share({ url })`
+      // accepts a `file://` URI on iOS and opens the native
+      // UIActivityViewController — Save to Files / AirDrop / Mail
+      // / Messages all surface from there.
+      try {
+        await Share.share({
+          url: result.fileUri,
+          title: result.filename,
+        });
+        Alert.alert(
+          "Exported",
+          `${result.filename} (${(result.sizeBytes / 1024).toFixed(1)} KB)`,
+        );
+      } catch (e) {
+        Alert.alert(
+          "Couldn't open share sheet",
+          e instanceof Error
+            ? e.message
+            : "The file was saved but the share sheet didn't open.",
+        );
+      }
+    } finally {
+      setExportingEverything(false);
+    }
+  }, [userId, exportingEverything]);
 
   useEffect(() => {
     if (!userId) return;
@@ -1007,50 +1053,44 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             }
           }}
         />
+        {/* "Export everything" — counters lock-in anxiety per the
+            2026-04-30 user-sentiment audit (Paprika "recipes
+            disappeared after upgrade", MFP "history gone after
+            update", etc.). One server-authoritative endpoint emits
+            the canonical payload (`/api/export/me`); the file is
+            written to the iOS cache directory and surfaced via the
+            standard share sheet so the user can save to Files,
+            AirDrop, Mail, or Messages. The legacy partial JSON row
+            (profile + entries + saves only) was replaced 2026-04-30
+            because it both shipped truncated data AND used
+            `Share.share({ message })` which routes through copy/
+            paste — broken for any meaningful payload. */}
         <SettingsRow
-          testID="settings-bundle-export-json-row"
-          icon={Code}
-          iconColor={colors.textTertiary}
-          label="Export all data (JSON)"
-          sub="Full backup for developers or migration."
-          onPress={async () => {
+          testID="settings-bundle-export-everything-row"
+          icon={Download}
+          iconColor={t.accent}
+          label="Export everything"
+          sub={
+            exportingEverything
+              ? "Preparing your file…"
+              : "Yours forever. Take your data anywhere."
+          }
+          onPress={() => {
+            if (exportingEverything) return;
             if (!userId) return;
-            try {
-              const [{ data: profile }, { data: entries }, { data: recipes }] =
-                await Promise.all([
-                  supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("id", userId)
-                    .maybeSingle(),
-                  supabase
-                    .from("nutrition_entries")
-                    .select("*")
-                    .eq("user_id", userId)
-                    .order("created_at", { ascending: true }),
-                  supabase
-                    .from("saves")
-                    .select("recipe_id")
-                    .eq("user_id", userId),
-                ]);
-              const payload = JSON.stringify(
+            Alert.alert(
+              "Export everything?",
+              "We'll download all your recipes, meal log, weights, and plans to your device. Continue?",
+              [
+                { text: "Cancel", style: "cancel" },
                 {
-                  exportedAt: new Date().toISOString(),
-                  profile,
-                  entries,
-                  savedRecipeIds:
-                    recipes?.map((r: any) => r.recipe_id) ?? [],
+                  text: "Continue",
+                  onPress: () => {
+                    void runExportEverything();
+                  },
                 },
-                null,
-                2,
-              );
-              await Share.share({ message: payload, title: "Suppr Data Export" });
-            } catch (e) {
-              Alert.alert(
-                "Export failed",
-                e instanceof Error ? e.message : "Unknown error",
-              );
-            }
+              ],
+            );
           }}
         />
         <SettingsRow

@@ -23,6 +23,14 @@ export type CustomFoodServing = {
   grams: number;
 };
 
+/** Provenance of a custom-food row. Most rows are `manual` (entered via
+ *  the Create Custom Food form or migrated from legacy data). Photo /
+ *  voice correction rows are auto-upserted by the AI-log review path so
+ *  the next AI log of the same food uses the user's corrected macros
+ *  instead of re-asking the model (user-sentiment audit round 4,
+ *  2026-04-30 — Cal AI's failure pattern, MacroFactor's emerging lead). */
+export type CustomFoodSource = "manual" | "photo_correction" | "voice_correction";
+
 /** One row of `public.user_custom_foods` in client-friendly shape. */
 export type CustomFood = {
   id: string;
@@ -37,6 +45,10 @@ export type CustomFood = {
   fat: number;
   /** Optional: homemade items often genuinely lack a fiber value. */
   fiber?: number;
+  /** Provenance — `manual` by default for legacy rows + the Create
+   *  Custom Food form; `photo_correction` / `voice_correction` for
+   *  rows auto-upserted from AI-log review corrections. */
+  source?: CustomFoodSource;
   /**
    * Natural-portion shortcuts, e.g. `[{"label":"1 slice","grams":30}]`.
    * By convention the first entry — when present — is treated as the

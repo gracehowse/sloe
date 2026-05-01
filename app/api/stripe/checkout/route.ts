@@ -122,7 +122,14 @@ export async function POST(req: Request) {
       subscription_data: {
         metadata: { supabase_user_id: userId, tier, period },
       },
-      success_url: `${origin}/?checkout=success`,
+      // Audit 2026-04-30 (user-sentiment pain #1): the success page is
+      // a dedicated `/checkout/success` route that surfaces an explicit
+      // trust-copy receipt (cancel path, trial-end, refund window,
+      // support email) before bouncing the user back into the app.
+      // Pre-audit this redirected silently to `/?checkout=success`
+      // which `App.tsx` swallowed without confirmation — the pattern
+      // every competitor on the 14-app sentiment list got dinged for.
+      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}&period=${period}&tier=${tier}`,
       cancel_url: `${origin}/?checkout=cancel`,
       allow_promotion_codes: true,
       ...taxFields,

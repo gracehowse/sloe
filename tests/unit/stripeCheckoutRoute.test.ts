@@ -151,9 +151,34 @@ describe("POST /api/stripe/checkout — Stripe Tax wiring", () => {
         period: "monthly",
       },
     });
-    expect(payload.success_url).toBe("https://example.test/?checkout=success");
+    // Audit 2026-04-30 (user-sentiment pain #1): success URL now
+    // points to the dedicated `/checkout/success` route which surfaces
+    // the trust-explicit receipt copy (cancel path, trial-end, refund
+    // window, support email). Pre-audit this redirected silently to
+    // `/?checkout=success` and `App.tsx` swallowed the query param —
+    // users got zero confirmation, which mirrors the dark-pattern
+    // every competitor on the 14-app sentiment list got dinged for.
+    expect(payload.success_url).toBe(
+      "https://example.test/checkout/success?session_id={CHECKOUT_SESSION_ID}&period=monthly&tier=pro",
+    );
     expect(payload.cancel_url).toBe("https://example.test/?checkout=cancel");
     expect(payload.allow_promotion_codes).toBe(true);
+  });
+
+  it("includes the Stripe session_id placeholder so the success page can retrieve subscription data", async () => {
+    const POST = await loadRoute();
+    await POST(makeReq({ tier: "pro", period: "annual" }));
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    // Stripe substitutes `{CHECKOUT_SESSION_ID}` at redirect time. The
+    // /checkout/success page can use this to look up the real
+    // subscription details (trial_end timestamp, customer email)
+    // when we wire up server-side receipt rendering.
+    expect(payload.success_url).toContain("session_id={CHECKOUT_SESSION_ID}");
+    // `period` and `tier` are echoed into the URL so the success
+    // page can render the right "trial ends in 7 days" vs
+    // "billed monthly" copy without a Stripe round-trip.
+    expect(payload.success_url).toContain("period=annual");
+    expect(payload.success_url).toContain("tier=pro");
   });
 });
 

@@ -1434,6 +1434,11 @@ export type Database = {
           servings: Json
           servings_per_container: number | null
           sodium_mg: number | null
+          // Round 4 user-sentiment audit (2026-04-30): provenance of the
+          // row. `manual` for legacy/curated entries, `photo_correction`
+          // / `voice_correction` for AI-log review writebacks. Defaults
+          // to `manual` at the DB level.
+          source: string
           sugar_g: number | null
           updated_at: string
           user_id: string
@@ -1454,6 +1459,7 @@ export type Database = {
           servings?: Json
           servings_per_container?: number | null
           sodium_mg?: number | null
+          source?: string
           sugar_g?: number | null
           updated_at?: string
           user_id: string
@@ -1474,6 +1480,7 @@ export type Database = {
           servings?: Json
           servings_per_container?: number | null
           sodium_mg?: number | null
+          source?: string
           sugar_g?: number | null
           updated_at?: string
           user_id?: string

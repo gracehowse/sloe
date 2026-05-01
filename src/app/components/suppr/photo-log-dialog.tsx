@@ -30,6 +30,7 @@ import { Input } from "../ui/input";
 import { Icons } from "../ui/icons";
 import { ConfidenceDot } from "./confidence-dot";
 import { Badge } from "./badge";
+import { toast } from "sonner";
 import {
   aggregateTotals,
   averageConfidence,
@@ -38,8 +39,15 @@ import {
   sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../lib/nutrition/aiLogging";
+import { persistPhotoCorrections } from "../../../lib/nutrition/photoCorrectionPersist";
+import { supabase } from "../../../lib/supabase/browserClient";
 import { track } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
+
+/** localStorage key for the one-time "we'll remember this for next
+ *  time" toast on web. Mirrors the mobile AsyncStorage flag —
+ *  per-device, not per-user, because the lesson is for the human. */
+export const PHOTO_CORRECTION_TOAST_KEY = "suppr.photo-correction-tooltip-shown.v1";
 
 export type PhotoLogDialogProps = {
   open: boolean;
@@ -57,6 +65,11 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
   const [items, setItems] = useState<AiLoggedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  /** Snapshot of the AI's original items, before the user edited any
+   *  field. Used at commit time to detect which rows the user
+   *  actually corrected so we only persist meaningful edits to the
+   *  bank. Stored as a ref because we never re-render off it. */
+  const originalItemsRef = useRef<AiLoggedItem[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -64,6 +77,7 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
       setFile(null);
       setItems([]);
       setError(null);
+      originalItemsRef.current = [];
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       track(AnalyticsEvents.ai_photo_log_started);
@@ -132,6 +146,9 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         setStage("error");
         return;
       }
+      // Snapshot AI's original items so we can detect user
+      // corrections at commit time (mirror of mobile PhotoLogSheet).
+      originalItemsRef.current = cleaned.map((it) => ({ ...it }));
       setItems(cleaned);
       setStage("review");
     } catch {
@@ -158,6 +175,41 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
       itemCount: items.length,
       avgConfidence: averageConfidence(items),
     });
+
+    // Fire-and-forget: persist corrected items to the user's
+    // personal food bank so the next photo log of the same item
+    // uses these macros. Mirror of mobile `PhotoLogSheet`.
+    void (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id ?? null;
+        if (!userId) return;
+        const result = await persistPhotoCorrections({
+          supabase: supabase as Parameters<typeof persistPhotoCorrections>[0]["supabase"],
+          userId,
+          originals: originalItemsRef.current,
+          corrected: items,
+          track: (event, payload) => {
+            track(event as never, payload as never);
+          },
+        });
+        if (!result.anyPersisted) return;
+        const seen =
+          typeof window !== "undefined" &&
+          window.localStorage?.getItem(PHOTO_CORRECTION_TOAST_KEY) === "1";
+        if (seen) return;
+        try {
+          window.localStorage?.setItem(PHOTO_CORRECTION_TOAST_KEY, "1");
+        } catch {
+          /* localStorage flaky — still surface the toast once this
+             session, the next session may re-show */
+        }
+        toast.success("Got it — we'll remember this for next time.");
+      } catch {
+        /* fail closed — the meal already committed */
+      }
+    })();
+
     onOpenChange(false);
   };
 

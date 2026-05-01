@@ -14,6 +14,7 @@ import {
   averageConfidence,
   classifyConfidence,
   isLowConfidence,
+  isMeaningfulPhotoCorrection,
   LOW_CONFIDENCE_THRESHOLD,
   sanitiseAiItem,
   sanitiseAiItems,
@@ -331,5 +332,71 @@ describe("sanitiseAiItems", () => {
   it("non-array input returns empty", () => {
     expect(sanitiseAiItems("not an array" as unknown, "voice")).toEqual([]);
     expect(sanitiseAiItems(undefined, "voice")).toEqual([]);
+  });
+});
+
+describe("isMeaningfulPhotoCorrection", () => {
+  /**
+   * Pins the detection thresholds used by the photo-correction
+   * persistence loop (round 4 user-sentiment audit, 2026-04-30 — Cal
+   * AI's failure pattern). Anything within rounding noise is "no
+   * change"; anything beyond it (or any name diff) is a correction.
+   */
+  const base = (overrides: Partial<AiLoggedItem> = {}): AiLoggedItem => ({
+    name: "Salmon",
+    calories: 200,
+    protein: 25,
+    carbs: 0,
+    fat: 12,
+    confidence: 0.7,
+    source: "ai_photo",
+    ...overrides,
+  });
+
+  it("identical items return false", () => {
+    const a = base();
+    expect(isMeaningfulPhotoCorrection(a, { ...a })).toBe(false);
+  });
+
+  it("a name change always counts as meaningful", () => {
+    expect(isMeaningfulPhotoCorrection(base(), base({ name: "Tuna" }))).toBe(true);
+  });
+
+  it("calorie delta within rounding noise (<=2) is no-change", () => {
+    expect(isMeaningfulPhotoCorrection(base(), base({ calories: 201 }))).toBe(false);
+    expect(isMeaningfulPhotoCorrection(base(), base({ calories: 198 }))).toBe(false);
+  });
+
+  it("calorie delta beyond noise floor flips meaningful", () => {
+    expect(isMeaningfulPhotoCorrection(base(), base({ calories: 250 }))).toBe(true);
+    expect(isMeaningfulPhotoCorrection(base(), base({ calories: 197 }))).toBe(true);
+  });
+
+  it("protein / carbs / fat each scrutinised at 0.5 g threshold", () => {
+    expect(isMeaningfulPhotoCorrection(base(), base({ protein: 25.4 }))).toBe(false);
+    expect(isMeaningfulPhotoCorrection(base(), base({ protein: 26 }))).toBe(true);
+    expect(isMeaningfulPhotoCorrection(base(), base({ carbs: 0.4 }))).toBe(false);
+    expect(isMeaningfulPhotoCorrection(base(), base({ carbs: 5 }))).toBe(true);
+    expect(isMeaningfulPhotoCorrection(base(), base({ fat: 12.3 }))).toBe(false);
+    expect(isMeaningfulPhotoCorrection(base(), base({ fat: 14 }))).toBe(true);
+  });
+
+  it("name comparison is trim + case-insensitive", () => {
+    expect(
+      isMeaningfulPhotoCorrection(base(), base({ name: "  salmon  " })),
+    ).toBe(false);
+    expect(isMeaningfulPhotoCorrection(base(), base({ name: "SALMON" }))).toBe(false);
+  });
+
+  it("fiber added by the user counts as meaningful", () => {
+    const orig = base(); // no fiber
+    const corrected = base({ fiber: 3 });
+    expect(isMeaningfulPhotoCorrection(orig, corrected)).toBe(true);
+  });
+
+  it("fiber within noise floor is not meaningful", () => {
+    const orig = base({ fiber: 3 });
+    const corrected = base({ fiber: 3.3 });
+    expect(isMeaningfulPhotoCorrection(orig, corrected)).toBe(false);
   });
 });

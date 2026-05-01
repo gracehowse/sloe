@@ -30,9 +30,7 @@ import {
   Plus,
   PlusCircle,
   Share2,
-  Timer,
   UtensilsCrossed,
-  Users,
   X,
 } from "lucide-react-native";
 
@@ -95,6 +93,10 @@ import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
 // scan, not a fabricated source claim.
 import { classifyRecipeGluten } from "@/lib/recipeTrust";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
+import {
+  composeSubtitleParts,
+  shouldRenderTimeStats,
+} from "../../lib/recipe/recipeDetailLayout";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
 
@@ -1184,26 +1186,42 @@ export default function RecipeDetailScreen() {
     },
     headerBtnText: { color: colors.text, fontSize: 22, fontWeight: "600" },
 
-    body: { padding: Spacing.xl, gap: Spacing.lg },
+    // 2026-04-30 ui-product-designer recipe-detail audit: tightened
+    // page rhythm from Spacing.lg (16) to Spacing.md (12) so the hero
+    // stack (title, subtitle, time stats, kcal hero, macro tiles)
+    // reads as one composed unit instead of five separate cards.
+    body: { padding: Spacing.xl, gap: Spacing.md },
 
     title: { fontSize: 24, fontWeight: "700", color: colors.text },
     authorName: { fontSize: 14, color: colors.textSecondary },
-    mealTypeBadge: {
-      alignSelf: "flex-start",
-      backgroundColor: Accent.primary + "20",
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.sm,
+    // 2026-04-30 ui-product-designer recipe-detail audit: subtitle is
+    // a single flex-wrap row joined by `·` separators ("by author ·
+    // lunch · serves 3"). The standalone `mealTypeBadge` pill +
+    // separate `authorName` row are gone — this row replaces both.
+    subtitleRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 4,
     },
-    mealTypeText: { color: Accent.primary, fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+    subtitleText: { fontSize: 13, color: colors.textSecondary },
+    subtitleSeparator: { fontSize: 13, color: colors.textTertiary },
+    timeStatsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 2,
+    },
+    timeStatsText: { fontSize: 13, color: colors.textTertiary },
 
-    calorieHero: { alignItems: "center", paddingVertical: Spacing.lg },
     // F-23 (2026-04-21): calories hero was consuming ~a third of the screen
     // on the recipe detail (TestFlight AIf4Z6q1KL2j). Shrink the numeral and
     // trim the surrounding card padding so the macro tiles below get their
-    // breathing room back.
+    // breathing room back. 2026-04-30 audit Fix 3: hero container styles
+    // moved inline alongside the verdict pill so the two render as one
+    // composite block (`recipe-calorie-hero` testID).
     calorieNumber: { fontSize: 26, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
-    calorieLabel: { fontSize: 12, color: colors.textSecondary, marginTop: -2 },
 
     card: {
       backgroundColor: colors.card,
@@ -1279,12 +1297,10 @@ export default function RecipeDetailScreen() {
     },
     actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-    infoRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg },
-    infoItem: { alignItems: "center", flex: 1 },
-    infoIcon: { marginBottom: 6 },
-    infoValue: { fontSize: 14, fontWeight: "700", color: colors.text },
-    infoLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
-
+    // 2026-04-30 ui-product-designer audit: the three big icon-circle
+    // stat tiles (Prep / Cook / Servings) are gone — replaced by a
+    // compact single-line `timeStatsRow` above. Servings moved into
+    // the subtitle. Confidence tile removed (backstage signal).
     tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: Spacing.lg, gap: 0 },
     tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
     tabText: { fontSize: 14, fontWeight: "600", color: colors.textTertiary },
@@ -1529,101 +1545,158 @@ export default function RecipeDetailScreen() {
               ) : null;
             })()}
           </View>
-          {recipeByline.label ? (
-            <Pressable
-              onPress={() => {
-                if (recipeByline.href) void Linking.openURL(recipeByline.href);
-              }}
-              disabled={!recipeByline.href}
-              style={{ alignSelf: "flex-start" }}
-            >
-              <Text
-                style={[
-                  styles.authorName,
-                  recipeByline.href ? { textDecorationLine: "underline" } : null,
-                ]}
-              >
-                by {recipeByline.label}
-              </Text>
-            </Pressable>
-          ) : null}
-          {recipe.meal_type && recipe.meal_type.length > 0 && (
-            <View style={styles.mealTypeBadge}>
-              <Text style={styles.mealTypeText}>{recipe.meal_type.join(", ")}</Text>
-            </View>
-          )}
-
-          {/* Info row: Prep time, Cook time, Servings, Confidence */}
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Clock size={20} color={colors.textSecondary} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>
-                {recipe.prep_time_min != null && recipe.prep_time_min > 0 ? formatMinutes(recipe.prep_time_min) : "—"}
-              </Text>
-              <Text style={styles.infoLabel}>Prep</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Timer size={20} color={colors.textSecondary} style={styles.infoIcon} />
-              <Text style={styles.infoValue}>
-                {recipe.cook_time_min != null && recipe.cook_time_min > 0 ? formatMinutes(recipe.cook_time_min) : "—"}
-              </Text>
-              <Text style={styles.infoLabel}>Cook</Text>
-            </View>
-            {isRecipeOwner ? (
-              <Pressable
-                onPress={() => {
-                  setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
-                  setYieldEditOpen(true);
-                }}
-                style={styles.infoItem}
-                accessibilityRole="button"
-                accessibilityLabel="Servings"
-                accessibilityHint="Opens editor to change how many portions the full recipe makes"
-              >
-                <Users size={20} color={colors.textSecondary} style={styles.infoIcon} />
-                <Text style={styles.infoValue}>{recipe.servings}</Text>
-                <Text style={styles.infoLabel}>Servings</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.infoItem}>
-                <Users size={20} color={colors.textSecondary} style={styles.infoIcon} />
-                <Text style={styles.infoValue}>{recipe.servings}</Text>
-                <Text style={styles.infoLabel}>Servings</Text>
-              </View>
-            )}
-            {/* P2-33 (2026-04-25 design-system-enforcer): "Confidence
-                92%" was a backstage signal in a user-facing meta strip
-                — the user has no actionable interpretation of "92%
-                confident". Removed; the existing source-attribution
-                row in the Nutrition tab is the right surface if the
-                user wants to dig into trust. */}
-          </View>
-
-          {/* Calories hero (per portion); macro tiles follow dashboard widget prefs */}
+          {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
+              the prior layout had two separate rows ("by {author}"
+              underline + ALL-CAPS-ish "Lunch" pill) followed by a big
+              icon-circle stats row. Tester read this as four stacked
+              cards. We collapse attribution + slot + serves into one
+              flex-wrap subtitle joined by `·` separators. Author is
+              tappable (no underline) when `recipeByline.href` is
+              present; otherwise it's plain secondary text. */}
           {(() => {
-            // P1-16 (TestFlight `ABCjwJb4cU5UabbaXfYEbOY`, 2026-04-22):
-            // when a recipe has 0 calories (import-time nutrition
-            // failed, or the user just opened a stub), the green
-            // accent card confidently rendered "0 kcal per portion".
-            // Render a dimmed "Calculating…" state instead so the
-            // user can tell that nutrition is missing, not zero.
+            const subtitleParts = composeSubtitleParts({
+              authorLabel: recipeByline.label || null,
+              slots: recipe.meal_type ?? null,
+              servings: recipe.servings,
+            });
+            if (subtitleParts.length === 0) return null;
+            return (
+              <View
+                style={styles.subtitleRow}
+                testID="recipe-subtitle-row"
+                accessibilityLabel={subtitleParts.map((p) => p.label).join(", ")}
+              >
+                {subtitleParts.map((part, idx) => {
+                  const isAuthor =
+                    part.key === "by" && Boolean(recipeByline.href);
+                  return (
+                    <View
+                      key={part.key}
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      {idx > 0 ? (
+                        <Text style={[styles.subtitleSeparator, { marginRight: 4 }]}>·</Text>
+                      ) : null}
+                      {isAuthor ? (
+                        <Pressable
+                          onPress={() => {
+                            if (recipeByline.href)
+                              void Linking.openURL(recipeByline.href);
+                          }}
+                          accessibilityRole="link"
+                          accessibilityLabel={`Open source: ${recipeByline.label}`}
+                        >
+                          <Text style={styles.subtitleText}>{part.label}</Text>
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.subtitleText}>{part.label}</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
+
+          {/* 2026-04-30 ui-product-designer audit Fix 2 — the old
+              icon-circle stats row (Prep / Cook / Servings) consumed a
+              third of the screen on a recipe with no times. Replaced
+              with a compact one-line form that hides entirely when
+              both prep and cook are unknown (servings already lives in
+              the subtitle above). When the recipe owner is viewing
+              their own recipe, an `Edit servings` affordance trails
+              the row. */}
+          {(() => {
+            const prepMin = recipe.prep_time_min;
+            const cookMin = recipe.cook_time_min;
+            const showRow = shouldRenderTimeStats(prepMin, cookMin);
+            if (!showRow && !isRecipeOwner) return null;
+            const parts: string[] = [];
+            if (prepMin != null && prepMin > 0)
+              parts.push(`${formatMinutes(prepMin)} prep`);
+            if (cookMin != null && cookMin > 0)
+              parts.push(`${formatMinutes(cookMin)} cook`);
+            return (
+              <View style={styles.timeStatsRow} testID="recipe-time-stats">
+                {showRow ? (
+                  <>
+                    <Clock size={13} color={colors.textTertiary} />
+                    <Text style={styles.timeStatsText}>{parts.join(" · ")}</Text>
+                  </>
+                ) : null}
+                {isRecipeOwner ? (
+                  <Pressable
+                    onPress={() => {
+                      setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
+                      setYieldEditOpen(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit servings"
+                    accessibilityHint="Opens editor to change how many portions the full recipe makes"
+                    style={
+                      showRow ? { marginLeft: Spacing.sm } : undefined
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.timeStatsText,
+                        { color: Accent.primary, fontWeight: "600" },
+                      ]}
+                    >
+                      Edit servings
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          })()}
+
+          {/* 2026-04-30 ui-product-designer audit Fix 3 — the verdict
+              ("Fits your day") and the kcal hero had become two
+              adjacent cards with a stripe of empty space between
+              them. Fused into a single `recipe-calorie-hero` block:
+              the verdict pill is now a CHILD of the hero, not a
+              sibling. Tests assert the parent/child relationship via
+              `within(getByTestId('recipe-calorie-hero')).getByTestId
+              ('recipe-fits-your-day')`. Verdict logic unchanged.
+
+              P1-16 zero-nutrition behaviour preserved: when import-
+              time nutrition fails (kcal=0 + macros=0), render a
+              dimmed "not yet computed" state instead of a confident
+              "0 kcal". */}
+          {(() => {
             const kcalNum = Math.round(macros.calories);
             const hasNutrition =
               kcalNum > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fat > 0;
+            const targetCals = userTargets.calories;
+            const showVerdict =
+              hasNutrition && Boolean(targetCals) && targetCals > 0;
+            const rawPct = showVerdict ? (kcalNum / targetCals) * 100 : 0;
+            const pct = showVerdict
+              ? Math.max(1, Math.round(rawPct / 5) * 5)
+              : 0;
+            const fits = pct > 0 && pct <= 50;
+            const overDay = pct >= 100;
+            const verdictTone = fits
+              ? { bg: Accent.success + "1A", fg: Accent.success }
+              : overDay
+                ? { bg: Accent.destructive + "1A", fg: Accent.destructive }
+                : { bg: Accent.warning + "1A", fg: Accent.warning };
+            const verdictLabel = fits
+              ? "Fits your day"
+              : overDay
+                ? `≈ ${pct}% of your day · over a full day`
+                : `≈ ${pct}% of your day`;
+            const verdictA11y = fits
+              ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+              : overDay
+                ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
+                : `Approximately ${pct} percent of your daily calorie target.`;
             return (
               <View
+                testID="recipe-calorie-hero"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "baseline",
-                  justifyContent: "center",
-                  gap: 6,
-                  // Polish (2026-04-25 visual-qa): tighten the gap between
-                  // the calories hero and the macro tiles. Pre-fix margin
-                  // was Spacing.md (12) plus a redundant "Macros" overline
-                  // label below — visually read as a 30+px void. The
-                  // overline is gone (tiles self-label) and margin drops
-                  // to Spacing.sm.
-                  marginBottom: Spacing.sm,
+                  alignItems: "center",
                   paddingVertical: Spacing.sm,
                   paddingHorizontal: Spacing.lg,
                   borderRadius: Radius.lg,
@@ -1635,6 +1708,7 @@ export default function RecipeDetailScreen() {
                     ? MacroColors.calories + "14"
                     : "transparent",
                   opacity: hasNutrition ? 1 : 0.7,
+                  gap: 6,
                 }}
                 accessibilityLabel={
                   hasNutrition
@@ -1642,83 +1716,55 @@ export default function RecipeDetailScreen() {
                     : "Calories not yet computed for this recipe"
                 }
               >
-                {hasNutrition ? (
-                  <>
-                    <Text style={[styles.calorieNumber, { color: colors.text }]}>
-                      {kcalNum}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  {hasNutrition ? (
+                    <>
+                      <Text style={[styles.calorieNumber, { color: colors.text }]}>
+                        {kcalNum}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                        kcal per portion
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>
+                      Calories not yet computed — open the Ingredients tab to verify
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                      kcal per portion
+                  )}
+                </View>
+                {showVerdict ? (
+                  <View
+                    testID="recipe-fits-your-day"
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: 4,
+                      borderRadius: Radius.full,
+                      backgroundColor: verdictTone.bg,
+                    }}
+                    accessibilityLabel={verdictA11y}
+                  >
+                    {fits ? (
+                      <Check size={14} color={verdictTone.fg} strokeWidth={2.5} />
+                    ) : null}
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: verdictTone.fg }}>
+                      {verdictLabel}
                     </Text>
-                  </>
-                ) : (
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>
-                    Calories not yet computed — open the Ingredients tab to verify
-                  </Text>
-                )}
-              </View>
-            );
-          })()}
-
-          {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
-              Ties the recipe back to the user's daily calorie target,
-              the killer differentiator vs MFP / Lifesum.
-
-              Verdict treatment (audit re-run 2026-04-30 ui-critic A3:
-              the original `≈ 30% of your day` was just a number, not a
-              verdict — same colour regardless of whether the recipe
-              fits a sensible portion of the day or blows through it).
-                ≤ 50%   → "Fits your day" with checkmark, success-green
-                51–99%  → `≈ X% of your day`, amber warning tinge
-                ≥ 100%  → `≈ X% of your day · over a full day`, red
-              Skipped when nutrition is unknown or the target is the
-              app default (suggests the user hasn't set their target). */}
-          {(() => {
-            const kcalNum = Math.round(macros.calories);
-            const targetCals = userTargets.calories;
-            if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
-            const rawPct = (kcalNum / targetCals) * 100;
-            const pct = Math.max(1, Math.round(rawPct / 5) * 5);
-            const fits = pct <= 50;
-            const overDay = pct >= 100;
-            const tone = fits
-              ? { bg: Accent.success + "1A", fg: Accent.success }
-              : overDay
-                ? { bg: Accent.destructive + "1A", fg: Accent.destructive }
-                : { bg: Accent.warning + "1A", fg: Accent.warning };
-            const label = fits
-              ? "Fits your day"
-              : overDay
-                ? `≈ ${pct}% of your day · over a full day`
-                : `≈ ${pct}% of your day`;
-            const a11y = fits
-              ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
-              : overDay
-                ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
-                : `Approximately ${pct} percent of your daily calorie target.`;
-            return (
-              <View
-                style={{
-                  alignSelf: "center",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: Spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: Radius.full,
-                  backgroundColor: tone.bg,
-                  marginBottom: Spacing.lg,
-                }}
-                accessibilityLabel={a11y}
-              >
-                {fits ? <Check size={14} color={tone.fg} strokeWidth={2.5} /> : null}
-                <Text style={{ fontSize: 12, fontWeight: "700", color: tone.fg }}>
-                  {label}
-                </Text>
-                {fits ? (
-                  <Text style={{ fontSize: 12, fontWeight: "500", color: tone.fg, opacity: 0.7 }}>
-                    · ≈ {pct}%
-                  </Text>
+                    {fits ? (
+                      <Text style={{ fontSize: 12, fontWeight: "500", color: verdictTone.fg, opacity: 0.7 }}>
+                        · ≈ {pct}%
+                      </Text>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
             );

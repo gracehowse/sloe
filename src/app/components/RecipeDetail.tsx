@@ -49,6 +49,10 @@ import {
 } from "./ui/dropdown-menu.tsx";
 import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
+import {
+  composeSubtitleParts,
+  shouldRenderTimeStats,
+} from "../../lib/recipe/recipeDetailLayout.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
@@ -1168,7 +1172,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         />
       ) : null}
 
-      <div className="px-6 py-8 space-y-8">
+      {/* 2026-04-30 ui-product-designer recipe-detail audit: tightened
+          page rhythm from `space-y-8` (32px) to `space-y-5` (20px) so
+          the hero stack reads as one composed unit instead of five
+          separate cards. Mobile parity in `apps/mobile/app/recipe/
+          [id].tsx` body StyleSheet (Spacing.md = 12). */}
+      <div className="px-6 py-8 space-y-5">
         <div className="rounded-xl border border-border/80 bg-muted/90 px-4 py-3 text-sm text-foreground">
           {isCatalogRecipe ? (
             <p>
@@ -1216,54 +1225,98 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           );
         })()}
 
-        {/* 2026-04-20 prototype port — tag pill row directly under
-            the hero. Neutral pills for each recipe tag, trailing
-            primary-tinted fit-percent pill (parity with Discover).
-            `mealSlots` is the RecipeCard-side source of the
-            category strings that the prototype shows as "tags"
-            (prod has no separate `tags` column yet).
-
-            Phase 4 / B3.X (2026-04-27, D-2026-04-27-16): the
-            `<TrustChip>` is appended at the row end as the spec's
-            "TrustChip immediately under the title" — provenance is
-            visible without users having to dive into the ingredients
-            tab. Aggregated across rows so the recipe-level chip
-            reflects the worst-case ingredient (estimated wins). */}
+        {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
+            web parity gap closed. Mobile body has always rendered the
+            recipe title + byline subtitle below the hero; the web
+            detail leaned on the sticky-bar `<h2>` only, leaving the
+            body looking unanchored once you scrolled. Inserted body
+            `<h1>` (the real heading for the page) + a single
+            flex-wrap subtitle row joined by `·` ("by author · lunch ·
+            serves 3"). Author is tappable when `recipe.sourceUrl` is
+            present, no underline. Mobile parity in
+            `apps/mobile/app/recipe/[id].tsx` (subtitleRow). */}
         {(() => {
-          const pillTags: readonly string[] = Array.isArray(recipe.mealSlots) ? recipe.mealSlots : [];
-          // GW-08 (audit 2026-04-28): the recipe-level fit-percent pill
-          // and the source TrustChip were removed.
-          //   - The fit pill was computed with `targets = null`, so it
-          //     always rendered the helper's NEUTRAL_FALLBACK = 85.
-          //     F-45 already removed the same pill from Discover hero
-          //     for the same reason ("Score means nothing — remove").
-          //   - The source TrustChip was sourced from
-          //     `aggregateRecipeTrust(ingredients[].isVerified)`, but
-          //     that boolean is fabricated at load via the synthetic
-          //     `confidence ≥ 0.7` mapping in `verifyRecipe.ts`. Until
-          //     real per-ingredient confidence is hydrated end-to-end
-          //     (P2 GW-08 work) the chip is decorative.
-          // The gluten classifier chip stays — it walks ingredient
-          // strings against a real keyword set and is honest.
+          const bylineLabel: string | null =
+            recipe.creatorName && recipe.creatorName !== "Community"
+              ? recipe.creatorName
+              : null;
+          const bylineHref =
+            typeof recipe.sourceUrl === "string" && recipe.sourceUrl.trim()
+              ? recipe.sourceUrl.trim()
+              : null;
+          const slots: string[] = Array.isArray(recipe.mealSlots)
+            ? (recipe.mealSlots as readonly string[]).map(String)
+            : [];
+          const subtitleParts = composeSubtitleParts({
+            authorLabel: bylineLabel,
+            slots,
+            servings: baseServings,
+          });
+          return (
+            <div className="space-y-1">
+              <h1
+                className="text-2xl font-bold text-foreground leading-tight"
+                data-testid="recipe-body-title"
+              >
+                {normaliseRecipeDisplayTitle(recipe.title)}
+              </h1>
+              {subtitleParts.length > 0 ? (
+                <div
+                  className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground"
+                  data-testid="recipe-subtitle-row"
+                >
+                  {subtitleParts.map((part, idx) => {
+                    const isAuthor = part.key === "by" && Boolean(bylineHref);
+                    return (
+                      <span key={part.key} className="inline-flex items-center">
+                        {idx > 0 ? (
+                          <span aria-hidden className="mr-1 text-muted-foreground/70">
+                            ·
+                          </span>
+                        ) : null}
+                        {isAuthor ? (
+                          <a
+                            href={bylineHref ?? undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground no-underline hover:text-foreground"
+                          >
+                            {part.label}
+                          </a>
+                        ) : (
+                          <span>{part.label}</span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })()}
+
+        {/* 2026-04-20 prototype port — tag pill row directly under
+            the hero. Mobile parity (2026-04-30 ui-product-designer
+            audit Fix 1): meal-slot pills now live in the new subtitle
+            row above (`by author · lunch · serves 3`), so this row
+            is gluten-classifier only on both platforms. The
+            `<TrustChip>` is the spec's "TrustChip immediately under
+            the title" surface from D-2026-04-27-16. */}
+        {(() => {
+          // GW-08 (audit 2026-04-28): the recipe-level fit-percent
+          // pill and the source TrustChip were removed. The gluten
+          // classifier chip stays — it walks ingredient strings
+          // against a real keyword set and is honest.
           const glutenResult = classifyRecipeGluten(
             ingredients.map((ing) => String(ing.name ?? "")),
           );
+          if (!glutenResult.variant) return null;
           return (
             <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
-              {pillTags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                >
-                  {t.toLowerCase()}
-                </span>
-              ))}
-              {glutenResult.variant ? (
-                <TrustChip
-                  variant={glutenResult.variant}
-                  data-testid="recipe-detail-gluten-chip"
-                />
-              ) : null}
+              <TrustChip
+                variant={glutenResult.variant}
+                data-testid="recipe-detail-gluten-chip"
+              />
             </div>
           );
         })()}
@@ -1336,74 +1389,86 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           ) : null}
         </div>
 
-        {/* Info Row — Prep / Cook / Portions (tap total to edit yield if yours) / Confidence */}
-        <div className="flex gap-3">
-          {[
-            { icon: Icons.timer, label: "Prep", value: prepDisplay },
-            { icon: Icons.time, label: "Cook", value: cookDisplay },
-          ].map((item) => (
-            <div key={item.label} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border">
-              <item.icon className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-bold text-foreground">{item.value}</span>
-              <span className="text-[10px] text-muted-foreground">{item.label}</span>
+        {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 2 —
+            the 4-tile info row (Prep / Cook / Portions / Confidence)
+            consumed a third of the screen on every recipe regardless
+            of whether the timings were known. Replaced with a compact
+            single-line form. Hidden entirely when both prep and cook
+            are unknown (servings already lives in the subtitle and the
+            "Portions to view" stepper below covers per-serving sizing).
+            Confidence tile removed — backstage signal, no actionable
+            interpretation for a user. Mobile parity in
+            `apps/mobile/app/recipe/[id].tsx` (timeStatsRow). */}
+        {(() => {
+          const hasPrep = dbPrepMin != null && dbPrepMin > 0;
+          const hasCook = dbCookMin != null && dbCookMin > 0;
+          const showRow = shouldRenderTimeStats(dbPrepMin, dbCookMin);
+          const showOwnerEdit =
+            isMyRecipe && !isCatalogRecipe && (showRow || true);
+          if (!showRow && !showOwnerEdit) return null;
+          const segments: string[] = [];
+          if (hasPrep) segments.push(`${prepDisplay} prep`);
+          if (hasCook) segments.push(`${cookDisplay} cook`);
+          return (
+            <div
+              className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+              data-testid="recipe-time-stats"
+            >
+              {showRow ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Icons.timer className="w-3.5 h-3.5 text-muted-foreground/80" />
+                  <span>{segments.join(" · ")}</span>
+                </span>
+              ) : null}
+              {showOwnerEdit ? (
+                recipeYieldEditing ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span>Recipe makes</span>
+                    <input
+                      ref={recipeYieldInputRef}
+                      type="number"
+                      min={1}
+                      max={48}
+                      inputMode="numeric"
+                      disabled={recipeYieldSaving || dbLoading}
+                      value={recipeYieldDraft}
+                      onChange={(e) => setRecipeYieldDraft(e.target.value)}
+                      onBlur={() => void commitInlineRecipeYield()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          (e.target as HTMLInputElement).blur();
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelInlineRecipeYield();
+                        }
+                      }}
+                      className="w-12 min-w-0 rounded-md border border-primary bg-background px-1 py-0.5 text-center text-xs font-bold text-foreground"
+                      aria-label="Total portions this full recipe makes"
+                    />
+                    <span>portions</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={recipeYieldSaving || dbLoading}
+                    onClick={() => {
+                      recipeYieldEscapeBlurRef.current = false;
+                      setRecipeYieldDraft(String(baseServings));
+                      setRecipeYieldEditing(true);
+                    }}
+                    title="Change how many portions the full recipe makes"
+                    className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                    aria-label={`Full recipe makes ${baseServings} portions. Click to edit.`}
+                  >
+                    Edit servings
+                  </button>
+                )
+              ) : null}
             </div>
-          ))}
-          <div className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border min-w-0">
-            <Icons.target className="w-4 h-4 text-muted-foreground" />
-            <div className="flex items-baseline justify-center gap-0.5 text-xs font-bold text-foreground tabular-nums">
-              <span>{servings}</span>
-              <span className="text-muted-foreground font-semibold">/</span>
-              {isMyRecipe && !isCatalogRecipe && recipeYieldEditing ? (
-                <input
-                  ref={recipeYieldInputRef}
-                  type="number"
-                  min={1}
-                  max={48}
-                  inputMode="numeric"
-                  disabled={recipeYieldSaving || dbLoading}
-                  value={recipeYieldDraft}
-                  onChange={(e) => setRecipeYieldDraft(e.target.value)}
-                  onBlur={() => void commitInlineRecipeYield()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      (e.target as HTMLInputElement).blur();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      cancelInlineRecipeYield();
-                    }
-                  }}
-                  className="w-11 min-w-0 rounded-md border border-primary bg-background px-1 py-0.5 text-center text-xs font-bold text-foreground"
-                  aria-label="Total portions this full recipe makes"
-                />
-              ) : isMyRecipe && !isCatalogRecipe ? (
-                <button
-                  type="button"
-                  disabled={recipeYieldSaving || dbLoading}
-                  onClick={() => {
-                    recipeYieldEscapeBlurRef.current = false;
-                    setRecipeYieldDraft(String(baseServings));
-                    setRecipeYieldEditing(true);
-                  }}
-                  title="Change how many portions the full recipe makes"
-                  className="min-w-[1.25rem] rounded-md border border-transparent px-0.5 py-0.5 hover:border-border hover:bg-muted/60 disabled:opacity-50 underline decoration-dotted decoration-muted-foreground/70 underline-offset-2"
-                  aria-label={`Full recipe makes ${baseServings} portions. Click to edit.`}
-                >
-                  {baseServings}
-                </button>
-              ) : (
-                <span>{baseServings}</span>
-              )}
-            </div>
-            <span className="text-[10px] text-muted-foreground text-center leading-tight px-0.5">Portions</span>
-          </div>
-          <div className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-card border border-border">
-            <Icons.verified className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-bold text-foreground">{isCatalogRecipe ? "Verified" : "Estimated"}</span>
-            <span className="text-[10px] text-muted-foreground">Confidence</span>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Servings Selector — how many portions you are viewing / logging */}
         <div className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border">
@@ -1427,12 +1492,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         </div>
 
-        {/* Calories hero + macro tiles from profile tracked_macros.
-            P1-16 web parity (TestFlight `ABCjwJb4cU5UabbaXfYEbOY`,
-            2026-04-25): when nutrition is missing on a recipe, show a
-            dimmed "not yet computed" state instead of a confident
-            "0 kilocalories" in a green frame. Also drop the verbose
-            "kilocalories" caption — kcal is the standard unit. */}
+        {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 3 —
+            web parity. Pre-fix the kcal hero and the "Fits your day"
+            verdict were two adjacent cards with `mb-3` / `mb-4`
+            stacking, reading as separate widgets. Fused into one
+            `recipe-calorie-hero` block with the verdict pill rendered
+            as a CHILD of the hero (not a sibling). Tests assert the
+            parent/child relationship. Verdict logic unchanged.
+
+            P1-16 zero-nutrition behaviour preserved: when import-time
+            nutrition fails (kcal=0 + macros=0), render a dimmed "not
+            yet computed" state instead of a confident "0 kcal". */}
         {(() => {
           const kcalNum = Math.round(scaledMacros.calories);
           const hasNutrition =
@@ -1440,9 +1510,36 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             scaledMacros.protein > 0 ||
             scaledMacros.carbs > 0 ||
             scaledMacros.fat > 0;
+          const targetCals = nutritionTargets.calories;
+          const showVerdict =
+            hasNutrition && Boolean(targetCals) && targetCals > 0;
+          const rawPct = showVerdict ? (kcalNum / targetCals) * 100 : 0;
+          const pct = showVerdict
+            ? Math.max(1, Math.round(rawPct / 5) * 5)
+            : 0;
+          const fits = pct > 0 && pct <= 50;
+          const overDay = pct >= 100;
+          const toneVar = fits
+            ? "var(--success)"
+            : overDay
+              ? "var(--destructive)"
+              : "var(--warning)";
+          const verdictLabel = fits
+            ? "Fits your day"
+            : overDay
+              ? `≈ ${pct}% of your day · over a full day`
+              : `≈ ${pct}% of your day`;
+          const verdictA11y = fits
+            ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+            : overDay
+              ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
+              : `Approximately ${pct} percent of your daily calorie target.`;
           if (!hasNutrition) {
             return (
-              <div className="mb-3 rounded-2xl border px-5 py-5 text-center text-muted-foreground border-border bg-muted/30">
+              <div
+                data-testid="recipe-calorie-hero"
+                className="rounded-2xl border px-5 py-5 text-center text-muted-foreground border-border bg-muted/30"
+              >
                 <div className="text-[11px] font-extrabold uppercase tracking-wider">
                   Calories per portion
                 </div>
@@ -1454,7 +1551,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           }
           return (
             <div
-              className="mb-3 rounded-2xl border px-5 py-6 text-center"
+              data-testid="recipe-calorie-hero"
+              className="rounded-2xl border px-5 py-5 text-center flex flex-col items-center gap-2"
               style={{
                 borderColor: "color-mix(in srgb, var(--macro-calories) 45%, var(--border))",
                 backgroundColor: "color-mix(in srgb, var(--macro-calories) 14%, transparent)",
@@ -1466,72 +1564,36 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               >
                 Calories per portion
               </div>
-              <div className="mt-2 text-4xl font-extrabold tabular-nums text-foreground">
+              <div className="text-4xl font-extrabold tabular-nums text-foreground leading-none">
                 {kcalNum}
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">kcal</div>
-            </div>
-          );
-        })()}
-        {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
-            Mobile parity with `apps/mobile/app/recipe/[id].tsx` L1597-1660.
-            Ties the recipe to the user's daily calorie target — the
-            killer differentiator vs MFP / Lifesum.
-
-            Verdict treatment:
-              ≤ 50%  → "Fits your day" with checkmark, success-green
-              51–99% → `≈ X% of your day`, amber warning
-              ≥ 100% → `≈ X% of your day · over a full day`, destructive
-
-            Skipped when nutrition is unknown or target unset. */}
-        {(() => {
-          const kcalNum = Math.round(scaledMacros.calories);
-          const targetCals = nutritionTargets.calories;
-          if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
-          const rawPct = (kcalNum / targetCals) * 100;
-          const pct = Math.max(1, Math.round(rawPct / 5) * 5);
-          const fits = pct <= 50;
-          const overDay = pct >= 100;
-          const toneVar = fits
-            ? "var(--success)"
-            : overDay
-              ? "var(--destructive)"
-              : "var(--warning)";
-          const label = fits
-            ? "Fits your day"
-            : overDay
-              ? `≈ ${pct}% of your day · over a full day`
-              : `≈ ${pct}% of your day`;
-          const a11y = fits
-            ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
-            : overDay
-              ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
-              : `Approximately ${pct} percent of your daily calorie target.`;
-          return (
-            <div className="mb-4 flex justify-center">
-              <div
-                className="inline-flex items-center gap-1.5 rounded-full"
-                style={{
-                  paddingLeft: 12,
-                  paddingRight: 12,
-                  paddingTop: 6,
-                  paddingBottom: 6,
-                  backgroundColor: `color-mix(in srgb, ${toneVar} 10%, transparent)`,
-                  color: toneVar,
-                }}
-                role="status"
-                aria-label={a11y}
-              >
-                {fits ? <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden /> : null}
-                <span className="font-bold" style={{ fontSize: 12 }}>
-                  {label}
-                </span>
-                {fits ? (
-                  <span className="font-medium" style={{ fontSize: 12, opacity: 0.7 }}>
-                    · ≈ {pct}%
+              <div className="text-xs text-muted-foreground">kcal</div>
+              {showVerdict ? (
+                <div
+                  data-testid="recipe-fits-your-day"
+                  className="inline-flex items-center gap-1.5 rounded-full"
+                  style={{
+                    paddingLeft: 12,
+                    paddingRight: 12,
+                    paddingTop: 4,
+                    paddingBottom: 4,
+                    backgroundColor: `color-mix(in srgb, ${toneVar} 10%, transparent)`,
+                    color: toneVar,
+                  }}
+                  role="status"
+                  aria-label={verdictA11y}
+                >
+                  {fits ? <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden /> : null}
+                  <span className="font-bold" style={{ fontSize: 12 }}>
+                    {verdictLabel}
                   </span>
-                ) : null}
-              </div>
+                  {fits ? (
+                    <span className="font-medium" style={{ fontSize: 12, opacity: 0.7 }}>
+                      · ≈ {pct}%
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           );
         })()}
