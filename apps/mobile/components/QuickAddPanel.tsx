@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
+import { SourceDot } from "@/components/ui/SourceDot";
 import {
   computeFrequentMeals,
   computeRecentMeals,
@@ -21,6 +22,7 @@ import {
   type FoodHistoryItem,
   type FoodHistoryMealLike,
 } from "../../../src/lib/nutrition/foodHistory";
+import { mapMealSourceToDot } from "../../../src/lib/nutrition/sourceMap";
 import {
   addFavorite,
   favoriteKey,
@@ -37,7 +39,10 @@ import {
   type SavedMeal,
   type SavedMealItem,
 } from "../../../src/lib/nutrition/savedMeals";
-import { summariseSavedMeal } from "../../../src/lib/nutrition/savedMealsLogic";
+import {
+  dominantSavedMealSource,
+  summariseSavedMeal,
+} from "../../../src/lib/nutrition/savedMealsLogic";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import EmptyState from "@/components/EmptyState";
@@ -555,6 +560,10 @@ export function QuickAddPanel({
               )} grams, carbs ${Math.round(summary.totalCarbs)} grams, fat ${Math.round(
                 summary.totalFat,
               )} grams`;
+              // Trust posture (audit 2026-04-30 round-2 fix #B7) —
+              // dominant source across the meal's items. See
+              // `dominantSavedMealSource` (shared lib).
+              const dominantSource = dominantSavedMealSource(meal);
               return (
                 <Pressable
                   key={meal.id}
@@ -576,6 +585,11 @@ export function QuickAddPanel({
                     opacity: pending ? 0.6 : 1,
                   }}
                 >
+                  <SourceDot
+                    source={dominantSource}
+                    size={6}
+                    style={{ marginRight: 8 }}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text
                       numberOfLines={1}
@@ -637,6 +651,10 @@ export function QuickAddPanel({
             const starred = Boolean(row.favoriteId);
             const pending = pendingKeys.has(favoriteKey(row.recipeTitle, row.calories));
             const isAi = isAiSourcedFoodHistoryItem(row);
+            // Trust posture (audit 2026-04-30 round-2 fix #B7) —
+            // surface the row's source via canonical dot. Falls back
+            // to "manual" when no source metadata exists.
+            const sourceKey = mapMealSourceToDot(row.source ?? null);
             return (
               <Pressable
                 key={`${row.recipeTitle}-${row.calories}-${idx}`}
@@ -655,6 +673,7 @@ export function QuickAddPanel({
                 accessibilityLabel={`Log ${row.recipeTitle} to ${activeSlot}`}
                 onPress={() => onLog(row)}
               >
+                <SourceDot source={sourceKey} size={6} style={{ marginRight: 8 }} />
                 <View style={{ flex: 1 }}>
                   <View
                     style={{

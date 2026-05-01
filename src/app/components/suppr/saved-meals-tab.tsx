@@ -23,8 +23,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { SourceDot } from "../ui/source-dot";
 import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
-import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
+import {
+  dominantSavedMealSource,
+  summariseSavedMeal,
+} from "../../../lib/nutrition/savedMealsLogic";
 import { EmptyState } from "./empty-state";
 
 export type SavedMealsTabProps = {
@@ -98,8 +102,14 @@ export function SavedMealsTab({
         const pending = pendingIds.has(meal.id);
         const slotLabel = meal.defaultMealSlot ?? activeSlot;
         const itemsLabel = summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+        // Trust posture (audit 2026-04-30 round-2 fix #B7) — surface
+        // the dominant source across this meal's items so the saved
+        // meal row carries the same provenance signal as a single
+        // diary row. See `dominantSavedMealSource` for the rule.
+        const dominantSource = dominantSavedMealSource(meal);
         return (
           <div key={meal.id} className="flex items-center gap-2 px-3.5 py-2.5">
+            <SourceDot source={dominantSource} size={6} className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-foreground truncate">{meal.name}</p>
               <p className="text-[11px] text-muted-foreground">

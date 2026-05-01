@@ -374,10 +374,78 @@ export function whyLineForSuggestion(
 export const NORTH_STAR_LIBRARY_MIN = 5 as const;
 
 /**
+ * Activation-window threshold (audit 2026-04-30 — round-2 leak fix #5).
+ *
+ * For the first 30 days after account creation we drop the library
+ * threshold from 5 → 2 so a new user who only saved 2-3 recipes in
+ * onboarding (or whose seeds didn't fully resolve) still sees a real
+ * suggestion. The steady-state ≥5 threshold is the right floor for
+ * the long tail of users — but it's brutal at activation, where the
+ * whole point of the block is to show the new user the value of the
+ * library. After 30 days, threshold reverts to the canonical 5.
+ *
+ * Cross-platform: same value used by web + mobile call sites.
+ */
+export const NORTH_STAR_LIBRARY_MIN_ACTIVATION = 2 as const;
+
+/** Activation window in days (account < ACTIVATION_WINDOW_DAYS old → relaxed threshold). */
+export const NORTH_STAR_ACTIVATION_WINDOW_DAYS = 30 as const;
+
+/**
+ * Whether the account is inside the activation window (first
+ * `NORTH_STAR_ACTIVATION_WINDOW_DAYS` days after creation).
+ *
+ * Returns `true` when:
+ *   - `userCreatedAt` is null/undefined (defensive — treat unknown
+ *     creation date as a new user safety net so we don't accidentally
+ *     gate the relaxed threshold off via missing data)
+ *   - the supplied date is unparseable (same safety net)
+ *   - the parsed date is < `NORTH_STAR_ACTIVATION_WINDOW_DAYS` ago
+ *     relative to `now`
+ *
+ * Returns `false` when the account is ≥ window days old.
+ *
+ * Pure helper — caller passes `now` (or omits to use `Date.now`) so
+ * tests are deterministic.
+ */
+export function isWithinNorthStarActivationWindow(
+  userCreatedAt: Date | string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (userCreatedAt == null) return true;
+  const created =
+    userCreatedAt instanceof Date ? userCreatedAt : new Date(userCreatedAt);
+  const ms = created.getTime();
+  if (!Number.isFinite(ms)) return true;
+  const diffMs = now.getTime() - ms;
+  // Future creation date (clock drift / wrong tz) — treat as new user.
+  if (diffMs < 0) return true;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays < NORTH_STAR_ACTIVATION_WINDOW_DAYS;
+}
+
+/**
  * Whether the block should render at all given the library size.
  * Below the threshold the block surfaces its "Pick a few recipes"
  * invitation state; at or above it surfaces a real suggestion.
+ *
+ * `userCreatedAt` (audit 2026-04-30) — when supplied and the account
+ * is inside the activation window (first 30 days), the threshold is
+ * relaxed to `NORTH_STAR_LIBRARY_MIN_ACTIVATION` (2). After 30 days,
+ * it reverts to the canonical `NORTH_STAR_LIBRARY_MIN` (5). When the
+ * date is null/undefined, the relaxed threshold applies as a safety
+ * net so a brand-new user with no resolved profile date still gets
+ * the activation experience. Callers should pass
+ * `session.user.created_at` when available.
  */
-export function isLibraryEligibleForNorthStar(librarySize: number): boolean {
-  return Number.isFinite(librarySize) && librarySize >= NORTH_STAR_LIBRARY_MIN;
+export function isLibraryEligibleForNorthStar(
+  librarySize: number,
+  userCreatedAt?: Date | string | null,
+  now?: Date,
+): boolean {
+  if (!Number.isFinite(librarySize)) return false;
+  const threshold = isWithinNorthStarActivationWindow(userCreatedAt, now)
+    ? NORTH_STAR_LIBRARY_MIN_ACTIVATION
+    : NORTH_STAR_LIBRARY_MIN;
+  return librarySize >= threshold;
 }

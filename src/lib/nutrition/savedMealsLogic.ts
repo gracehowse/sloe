@@ -18,6 +18,8 @@
  */
 
 import type { SavedMeal, SavedMealItem } from "./savedMeals";
+import { mapMealSourceToDot } from "./sourceMap";
+import type { SourceDotSource } from "../types/source";
 
 function safeNumber(n: unknown): number {
   const v = typeof n === "number" ? n : Number(n);
@@ -27,6 +29,60 @@ function safeNumber(n: unknown): number {
 function safeNonNegative(n: unknown): number {
   const v = safeNumber(n);
   return v >= 0 ? v : 0;
+}
+
+/**
+ * Dominant source for a saved meal — the SourceDot key shared by the
+ * largest macro-bearing share of its items. Used by the trust-posture
+ * dot on the saved-meal row in QuickAdd / SavedMeals lists (audit
+ * 2026-04-30 round-2 fix #B7).
+ *
+ * Resolution rules:
+ *  - Tally each item's `source` via `mapMealSourceToDot` (which folds
+ *    every legacy variant — "USDA", "OFF", "AI photo", "Custom" — into
+ *    one of five canonical keys).
+ *  - The most-cited key wins. Ties are broken by item-order (the first
+ *    item's source takes precedence) so the result is stable across
+ *    re-renders.
+ *  - Empty meals (or meals where every item lacks source metadata)
+ *    fall back to `"manual"` — matches `mapMealSourceToDot`'s own
+ *    null fallback so the saved-meal dot reads consistently with what
+ *    the user would see on individual items.
+ *
+ * Pure function — no I/O, no side effects.
+ */
+export function dominantSavedMealSource(meal: SavedMeal): SourceDotSource {
+  const items = Array.isArray(meal?.items) ? meal.items : [];
+  if (items.length === 0) return "manual";
+
+  // Tally with first-seen order so we can break ties deterministically.
+  const tally = new Map<SourceDotSource, { count: number; firstSeen: number }>();
+  let idx = 0;
+  for (const it of items) {
+    const key = mapMealSourceToDot(it.source ?? null);
+    const existing = tally.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      tally.set(key, { count: 1, firstSeen: idx });
+    }
+    idx += 1;
+  }
+
+  let bestKey: SourceDotSource = "manual";
+  let bestCount = -1;
+  let bestFirstSeen = Infinity;
+  for (const [key, info] of tally.entries()) {
+    if (
+      info.count > bestCount ||
+      (info.count === bestCount && info.firstSeen < bestFirstSeen)
+    ) {
+      bestKey = key;
+      bestCount = info.count;
+      bestFirstSeen = info.firstSeen;
+    }
+  }
+  return bestKey;
 }
 
 /** Effective portion multiplier — always > 0. Missing / zero / negative
