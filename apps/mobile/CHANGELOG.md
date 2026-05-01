@@ -1,5 +1,30 @@
 # Mobile App Changelog
 
+## 2026-04-30 — EAS Update (OTA JS pushes)
+
+### Infra
+- **`expo-updates`** installed (`~29.0.17`, SDK-aligned). Wires the
+  iOS binary up to receive over-the-air JS bundle updates.
+- **`app.json`** now declares `expo.runtimeVersion.policy = "appVersion"`,
+  `expo.updates.url` (EAS Update endpoint for the existing project ID),
+  `expo.updates.fallbackToCacheTimeout = 0`, and
+  `expo.updates.checkAutomatically = "ON_LOAD"`. The runtime-version
+  policy means OTA updates only ship to binaries with a matching
+  `expo.version` — native or `app.json`-config changes still require a
+  fresh TestFlight build.
+- **`eas.json`** build profiles now declare matching `channel` values
+  (`development`, `preview`, `production`). Channels are how EAS Update
+  routes a publish to the right binaries — without them, OTA cannot land.
+
+### Why
+JS-only fixes used to require a 15-25 minute TestFlight build cycle
+before they reached the test device. With OTA wired, the publish path
+is `cd apps/mobile && eas update --branch production --message "..."`
+and the new bundle lands on devices in ~30s on the next launch.
+Workflow + safety rules at
+`docs/operations/eas-update-workflow.md`. Decision record at
+`docs/decisions/2026-04-30-eas-update-ota.md`.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
