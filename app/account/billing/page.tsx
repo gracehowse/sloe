@@ -17,12 +17,13 @@ import { BillingUnavailableFallback } from "./BillingUnavailableFallback.tsx";
  * (Supabase SSR cookies, Stripe SDK, `redirect()` side effects).
  *
  * Never 404s. Never crashes. Priority order (monetisation-architect
- * spec, 2026-04-19 round 3):
- *   1. Unauthenticated           → redirect `/login?redirect=/account/billing`
- *   2. No `stripe_customer_id`   → redirect `/pricing?ref=billing`
- *   3. `STRIPE_SECRET_KEY` unset → static support-email fallback
- *   4. Stripe API error          → static support-email fallback
- *   5. Happy path                → redirect to the Stripe portal URL
+ * spec, 2026-04-19 round 3, plus the 2026-04-30 P0-1 App Store branch):
+ *   1. Unauthenticated                         → redirect `/login?redirect=/account/billing`
+ *   2. Pro user, no `stripe_customer_id`       → fallback (App Store / RevenueCat path)
+ *   2b. Non-Pro user, no `stripe_customer_id`  → redirect `/pricing?ref=billing`
+ *   3. `STRIPE_SECRET_KEY` unset               → static support-email fallback
+ *   4. Stripe API error                        → static support-email fallback
+ *   5. Happy path                              → redirect to the Stripe portal URL
  *
  * Runs on the Node.js runtime (not Edge) because the Stripe SDK
  * depends on Node's `crypto`.
@@ -71,10 +72,14 @@ export default async function AccountBillingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 2. Look up the Stripe customer id via the service-role client so
-  //    RLS doesn't hide the row. Only executed when the user is
-  //    authenticated — the outcome helper handles the unauth path.
+  // 2. Look up the Stripe customer id + active tier via the
+  //    service-role client so RLS doesn't hide the row. Only executed
+  //    when the user is authenticated — the outcome helper handles the
+  //    unauth path. `user_tier` rides along to disambiguate "no customer
+  //    id because Free" from "no customer id because paid via App Store"
+  //    (2026-04-30 P0-1).
   let stripeCustomerId: string | null = null;
+  let userTier: "free" | "base" | "pro" | null = null;
   if (user) {
     const admin = createSupabaseServiceRoleClient();
     if (!admin) {
@@ -89,7 +94,7 @@ export default async function AccountBillingPage() {
     }
     const { data: profileRow, error: profileErr } = await admin
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, user_tier")
       .eq("id", user.id)
       .maybeSingle();
     if (profileErr) {
@@ -101,6 +106,8 @@ export default async function AccountBillingPage() {
     }
     stripeCustomerId =
       (profileRow?.stripe_customer_id as string | null | undefined) ?? null;
+    const t = profileRow?.user_tier as string | null | undefined;
+    userTier = t === "pro" || t === "base" || t === "free" ? t : null;
   }
 
   // 3. Build the portal opener — `null` when STRIPE_SECRET_KEY is unset.
@@ -118,6 +125,7 @@ export default async function AccountBillingPage() {
   const outcome = await resolveBillingPortalOutcome({
     userId: user?.id ?? null,
     stripeCustomerId,
+    userTier,
     openPortal,
   });
 
