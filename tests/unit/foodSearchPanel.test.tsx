@@ -575,3 +575,196 @@ describe("FoodSearchPanel — mode prop changes density", () => {
   });
 });
 
+/**
+ * Locale-aware empty-state hint
+ * (2026-04-26 — FatSecret Premier Free upgrade).
+ *
+ * The hint appears alongside the "No results" copy when:
+ *   - the user's locale is non-US, AND
+ *   - the host wired `onScanBarcodePressed`, AND
+ *   - the host is not already in barcode mode.
+ *
+ * It is suppressed for en-US users (FatSecret Premier Free is a US
+ * dataset; false-positive UK suggestions are the original concern).
+ */
+describe("FoodSearchPanel — locale-aware barcode-fallback hint", () => {
+  function renderEmpty(props: Partial<FoodSearchPanelProps>) {
+    vi.stubGlobal(
+      "fetch",
+      makeFetchStub({
+        "/api/usda/search": () => jsonResponse({ ok: true, hits: [] }),
+        "openfoodfacts.org": () => jsonResponse({ products: [] }),
+        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+        "/api/fatsecret/autocomplete": () =>
+          jsonResponse({ ok: true, tier: "basic", suggestions: [] }),
+      }),
+    );
+    return renderPanel({ query: "no-such-thing", ...props });
+  }
+
+  async function drain() {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450);
+    });
+  }
+
+  it("shows the hint for en-GB users", async () => {
+    const onScanBarcodePressed = vi.fn();
+    renderEmpty({
+      onScanBarcodePressed,
+      localeOverride: "en-GB",
+    });
+    await drain();
+    expect(
+      screen.getByTestId("food-search-barcode-fallback-hint"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the hint for en-AU users", async () => {
+    renderEmpty({
+      onScanBarcodePressed: vi.fn(),
+      localeOverride: "en-AU",
+    });
+    await drain();
+    expect(
+      screen.getByTestId("food-search-barcode-fallback-hint"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the hint for en-US users", async () => {
+    renderEmpty({
+      onScanBarcodePressed: vi.fn(),
+      localeOverride: "en-US",
+    });
+    await drain();
+    expect(screen.queryByTestId("food-search-barcode-fallback-hint")).toBeNull();
+  });
+
+  it("hides the hint when host is already in barcode mode", async () => {
+    renderEmpty({
+      onScanBarcodePressed: vi.fn(),
+      localeOverride: "en-GB",
+      inBarcodeMode: true,
+    });
+    await drain();
+    expect(screen.queryByTestId("food-search-barcode-fallback-hint")).toBeNull();
+  });
+
+  it("hides the hint when no onScanBarcodePressed callback was provided", async () => {
+    renderEmpty({
+      localeOverride: "en-GB",
+    });
+    await drain();
+    expect(screen.queryByTestId("food-search-barcode-fallback-hint")).toBeNull();
+  });
+
+  it("invokes onScanBarcodePressed when the user clicks the hint", async () => {
+    const onScanBarcodePressed = vi.fn();
+    renderEmpty({
+      onScanBarcodePressed,
+      localeOverride: "en-GB",
+    });
+    await drain();
+    const btn = await screen.findByTestId("food-search-barcode-fallback-hint");
+    await act(async () => {
+      btn.click();
+    });
+    expect(onScanBarcodePressed).toHaveBeenCalledTimes(1);
+  });
+
+  it("never shows the hint when results.length > 0", async () => {
+    vi.stubGlobal(
+      "fetch",
+      makeFetchStub({
+        "/api/usda/search": () =>
+          jsonResponse({ ok: true, hits: [USDA_HIT_TILAPIA] }),
+        "openfoodfacts.org": () => jsonResponse({ products: [] }),
+        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+        "/api/fatsecret/autocomplete": () =>
+          jsonResponse({ ok: true, tier: "basic", suggestions: [] }),
+      }),
+    );
+    renderPanel({
+      query: "tilapia raw",
+      localeOverride: "en-GB",
+      onScanBarcodePressed: vi.fn(),
+    });
+    await drain();
+    // A real result rendered, so the empty-state hint must not appear.
+    expect(await screen.findByText(TILAPIA_DISPLAY)).toBeInTheDocument();
+    expect(screen.queryByTestId("food-search-barcode-fallback-hint")).toBeNull();
+  });
+});
+
+/**
+ * Premier-tier autocomplete typeahead row
+ * (2026-04-26 — FatSecret Premier Free upgrade).
+ *
+ *   - Premier tier + suggestions present → row renders above results.
+ *   - Basic tier → row hidden, no flicker, no extra DOM nodes.
+ *   - Empty query → row hidden.
+ */
+describe("FoodSearchPanel — Premier-tier autocomplete row", () => {
+  it("renders the autocomplete row when the server reports tier=premier", async () => {
+    vi.stubGlobal(
+      "fetch",
+      makeFetchStub({
+        "/api/usda/search": () => jsonResponse({ ok: true, hits: [] }),
+        "openfoodfacts.org": () => jsonResponse({ products: [] }),
+        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+        "/api/fatsecret/autocomplete": () =>
+          jsonResponse({
+            ok: true,
+            tier: "premier",
+            suggestions: ["whole milk", "skim milk"],
+          }),
+      }),
+    );
+    renderPanel({ query: "milk" });
+    await act(async () => {
+      // Drain BOTH debounces — autocomplete (250ms) + main search (400ms).
+      await vi.advanceTimersByTimeAsync(450);
+    });
+    const row = await screen.findByTestId("fatsecret-autocomplete-row");
+    expect(row).toBeInTheDocument();
+    expect(row).toHaveTextContent("whole milk");
+    expect(row).toHaveTextContent("skim milk");
+  });
+
+  it("hides the row on Basic tier (suggestions: [])", async () => {
+    vi.stubGlobal(
+      "fetch",
+      makeFetchStub({
+        "/api/usda/search": () => jsonResponse({ ok: true, hits: [] }),
+        "openfoodfacts.org": () => jsonResponse({ products: [] }),
+        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+        "/api/fatsecret/autocomplete": () =>
+          jsonResponse({ ok: true, tier: "basic", suggestions: [] }),
+      }),
+    );
+    renderPanel({ query: "milk" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450);
+    });
+    expect(screen.queryByTestId("fatsecret-autocomplete-row")).toBeNull();
+  });
+
+  it("does not call autocomplete on empty query", async () => {
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      return new Response(JSON.stringify({ ok: true, hits: [], products: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderPanel({ query: "" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450);
+    });
+    const autocompleteCalls = fetchSpy.mock.calls.filter(([u]) =>
+      String(u).includes("/api/fatsecret/autocomplete"),
+    );
+    expect(autocompleteCalls.length).toBe(0);
+  });
+});

@@ -49,7 +49,7 @@
  * Prop names + signatures kept identical for sync-enforcer cross-check.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Barcode, Loader2 } from "lucide-react";
 import { Icons } from "../ui/icons";
 import { Badge } from "../suppr/badge";
 import {
@@ -101,6 +101,8 @@ import {
 } from "../../../lib/nutrition/foodSearchHeadline";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
+import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
+import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -185,6 +187,28 @@ export type FoodSearchPanelProps = {
    * Same data, same accessibility, same handlers — visual density only.
    */
   mode?: "full" | "compact";
+  /**
+   * Locale-aware empty-state hint (2026-04-26 — FatSecret Premier Free).
+   * Premier Free is a US-only dataset; UK / EU / AU users searching
+   * for a regional brand will hit the "No results" path. When this
+   * callback is supplied AND the user's locale is non-US, the empty
+   * state surfaces a "Brand not found? Try a barcode scan" CTA that
+   * fires this handler. Caller is responsible for opening the
+   * BarcodeScannerModal.
+   *
+   * If the host is already in barcode-scan mode (e.g. the LogSheet's
+   * scan-tab is active), pass `inBarcodeMode={true}` to suppress the
+   * hint and avoid the loop.
+   */
+  onScanBarcodePressed?: () => void;
+  /** Suppresses the barcode-fallback hint when the host is already in barcode mode. */
+  inBarcodeMode?: boolean;
+  /**
+   * Override for the resolved BCP-47 locale string. Defaults to
+   * `Intl.DateTimeFormat().resolvedOptions().locale`. Tests override
+   * this directly; production callers should leave it undefined.
+   */
+  localeOverride?: string;
 };
 
 // ── Standard units ──────────────────────────────────────────────────
@@ -584,10 +608,24 @@ export function FoodSearchPanel({
   userId,
   onSelect,
   mode = "full",
+  onScanBarcodePressed,
+  inBarcodeMode = false,
+  localeOverride,
 }: FoodSearchPanelProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  /**
+   * Premier-tier autocomplete suggestions (2026-04-26 — FatSecret
+   * Premier Free). Surfaced as a fast typeahead row that renders
+   * BEFORE the full-search results. State is cleared whenever the
+   * query changes; never blocks the main search.
+   */
+  const [autocomplete, setAutocomplete] = useState<{ tier: "basic" | "premier"; suggestions: string[] }>(
+    { tier: "basic", suggestions: [] },
+  );
+  const autocompleteAbortRef = useRef<AbortController | null>(null);
+  const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageRef = useRef(1);
   const hasMoreRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -722,6 +760,37 @@ export function FoodSearchPanel({
     },
     [],
   );
+
+  // ── Premier-tier autocomplete typeahead ────────────────────────────
+  //
+  // Debounced 250 ms so we fire ~5x faster than the full search (which
+  // sits on 400 ms). On Basic tier the route returns an empty list so
+  // this is effectively a no-op. Cancellation via AbortController so
+  // an in-flight autocomplete is cancelled when the user keeps typing.
+  useEffect(() => {
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+    if (autocompleteAbortRef.current) {
+      autocompleteAbortRef.current.abort();
+      autocompleteAbortRef.current = null;
+    }
+    const q = query.trim();
+    if (!q) {
+      setAutocomplete({ tier: "basic", suggestions: [] });
+      return;
+    }
+    autocompleteDebounceRef.current = setTimeout(async () => {
+      const ctl = new AbortController();
+      autocompleteAbortRef.current = ctl;
+      const result = await fetchFatSecretAutocomplete(q, { signal: ctl.signal, maxResults: 4 });
+      // Discard a stale resolution if the user kept typing.
+      if (autocompleteAbortRef.current !== ctl) return;
+      setAutocomplete(result);
+    }, 250);
+    return () => {
+      if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+      if (autocompleteAbortRef.current) autocompleteAbortRef.current.abort();
+    };
+  }, [query]);
 
   // Re-run the multi-source search whenever `query` changes. Caller-owned
   // state — the panel is purely reactive. Debounced 400 ms.
@@ -1054,6 +1123,24 @@ export function FoodSearchPanel({
     return () => io.disconnect();
   }, [preview, results.length, loadMore]);
 
+  // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
+  // Memoised so we don't re-evaluate Intl on every render. Hoisted
+  // ABOVE the preview-mode early return so React's hook-order
+  // invariant is preserved when the user toggles into the preview.
+  const showBarcodeFallbackHint = useMemo(() => {
+    if (inBarcodeMode) return false;
+    if (!onScanBarcodePressed) return false;
+    let locale = localeOverride;
+    if (!locale) {
+      try {
+        locale = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().locale : undefined;
+      } catch {
+        locale = undefined;
+      }
+    }
+    return shouldShowBarcodeFallbackHint(locale ?? null);
+  }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
+
   // Preview takes over the panel when set.
   if (preview && scaled) {
     return (
@@ -1228,6 +1315,31 @@ export function FoodSearchPanel({
   return (
     <div className={`flex flex-col h-full ${px}`}>
       <div className="flex-1 overflow-y-auto pb-3">
+        {/* Premier-tier autocomplete typeahead row.
+            Only renders when the server has confirmed Premier tier AND
+            we have at least one suggestion. On Basic this stays empty
+            (no UI cost). The full-search results render below as
+            normal — autocomplete is additive, not replacement. */}
+        {autocomplete.tier === "premier" && autocomplete.suggestions.length > 0 && query.trim() && (
+          <div
+            data-testid="fatsecret-autocomplete-row"
+            className="mb-2 flex flex-wrap gap-1.5"
+            role="listbox"
+            aria-label="Suggested completions"
+          >
+            {autocomplete.suggestions.map((s) => (
+              <span
+                key={s}
+                role="option"
+                aria-selected="false"
+                className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+
         {loading && results.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1370,10 +1482,27 @@ export function FoodSearchPanel({
         )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No results for &quot;{query}&quot;.
-            {customEnabled ? " Can't find it? Create your own." : " Try a simpler term."}
-          </p>
+          <>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No results for &quot;{query}&quot;.
+              {customEnabled ? " Can't find it? Create your own." : " Try a simpler term."}
+            </p>
+            {showBarcodeFallbackHint && (
+              <button
+                type="button"
+                onClick={onScanBarcodePressed}
+                data-testid="food-search-barcode-fallback-hint"
+                className="w-full flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 text-left hover:bg-muted/40 transition-colors"
+                aria-label="Scan a barcode — works for UK and EU products"
+              >
+                <Barcode className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                <span className="flex-1 text-sm text-foreground">
+                  Brand not found? Try a barcode scan — works for UK &amp; EU products
+                </span>
+                <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              </button>
+            )}
+          </>
         )}
 
         {/* Persistent "+ Create custom food" entry point. */}
