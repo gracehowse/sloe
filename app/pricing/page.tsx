@@ -8,6 +8,7 @@ import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib
 import { detectRegion } from "../../src/lib/region/detectRegion.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
+import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
 import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
@@ -185,6 +186,14 @@ export default async function PricingPage({
             trust-signal + FAQ composition. Mirrors the prototype paywall
             banner in `flows.jsx:555-564`. */}
         <PricingHero />
+
+        {/* Trust strip — three chips (cancel anytime / 7-day refund /
+            price never changes mid-trial) rendered above the tier
+            grid. Counter to the #1 user-sentiment pain across the
+            competitive set per the 2026-04-30 14-app audit. Copy SSOT
+            in `src/lib/landing/paywallTrust.ts`; mobile paywall renders
+            the same three chips with identical wording. */}
+        <PaywallTrustStrip />
 
         {/* Tier cards — client component owns the monthly ↔ annual
             toggle state. Price, period, and billing-renewal disclosure
