@@ -304,12 +304,26 @@ export default function CalorieRing({
             strokeWidth={STROKE}
             opacity={isEmpty ? 0.18 : 1}
           />
-          {/* Main calorie ring progress */}
+          {/* Main calorie ring progress.
+              TestFlight Build 40 feedback (`AEvjNTAVsipFKDysDkJD2g4`,
+              2026-05-01): "Why is the ring now gradient even when the
+              user has logged instead of green?" — the post-59cc821
+              gradient ran across the whole consumed-vs-target range,
+              including hit-target days, so the user never saw the
+              "you're done" success signal. Build 41 fix: keep the
+              brand gradient for the in-progress arc (`consumed <
+              goal`), switch to solid `Accent.success` once the user
+              hits or exceeds the target. Over-budget no longer flips
+              to destructive — going over is part of normal calorie
+              tracking, not an error state, and the user explicitly
+              asked for green when "logged" (i.e. at or beyond goal). */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
             r={R}
-            stroke={isOver ? Accent.destructive : "url(#calorie-ring-gradient)"}
+            stroke={consumed >= goal && goal > 0
+              ? Accent.success
+              : "url(#calorie-ring-gradient)"}
             strokeWidth={STROKE}
             fill="none"
             strokeDasharray={`${mainCirc}`}

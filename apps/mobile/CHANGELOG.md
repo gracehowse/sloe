@@ -1,5 +1,82 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Build 41 P0 batch (TestFlight Build 40 feedback)
+
+Four P0 fixes consolidated for TestFlight Build 41. All sourced from
+TestFlight feedback IDs filed during a single Build 40 session.
+
+### Calorie ring — solid green at-or-above target
+TestFlight `AEvjNTAVsipFKDysDkJD2g4`: "Why is the ring now gradient even
+when the user has logged instead of green?". The post-59cc821 brand
+gradient ran across the whole consumed-vs-target range, so users never
+saw the "you're done" success signal once they hit their target.
+
+Build 41 fix: keep the gradient for the in-progress arc
+(`consumed < goal`), switch to solid `Accent.success` once
+`consumed >= goal`. Going over no longer flips the ring to destructive
+red — going over a daily calorie target is normal tracking, not an
+error state. Centre text colour still flips to warning amber when
+the user is over and viewing in `remaining` displayMode.
+Mirrored on web via `src/app/components/suppr/daily-ring.tsx`.
+
+### Tracking-extras quick-add chips persist again
+TestFlight `AEsaeOW2Qw-BQa29teBp-Ns`: "Adding alcohol or coffee still
+not impacting these numbers." The previous (round 3) fix relied on
+capturing the computed `next` map inside a `setState((prev) => ...)`
+updater and reading `persisted` on the next line. React 18 invokes
+functional updaters lazily during the next commit, so `persisted` was
+always `null` when the persist branch checked it. The supabase write
+therefore never fired, and the Build 40 server row stayed at zero —
+on next focus the local state hydrated from the (still-zero) server
+and the count appeared to "reset".
+
+Build 41 fix: compute `next` synchronously from the closure-captured
+map, persist with that value directly, use a non-functional setState
+call. Same pattern applied to `addCaffeineMg`, `addAlcoholG`,
+`addWaterMl`, and `resetHydrationStimulantsForDay`. Web's
+`addCaffeineMgForSelectedDay` was always correct (persists inside the
+updater) so no web change was needed.
+
+### Recipe → Log honours `recipe.meal_type` first, time-of-day second
+TestFlight `AB1PYpfPjbd9li7jtnlAsIE`: "Doesn't give me an option of
+which meal to log this for and it ended up logging it as lunch.
+Also this was a breakfast recipe and I marked it as such when I
+imported it." The mobile recipe Log button used a helper that
+hard-fell-back to "Lunch" when meal_type was null/unmatched —
+explicitly tagged recipes already worked, but a recipe imported
+without a meal_type tag and logged at 7pm landed in Lunch.
+
+Build 41 fix: extracted `journalSlotFromMealTypes` to
+`src/lib/nutrition/recipeJournalSlot.ts` and added a
+`fallbackSlotFromTimeOfDay` ladder (Breakfast < 11, Lunch < 15,
+Snacks < 17, Dinner). Priority is now: explicit meal_type → tag
+match → time-of-day fallback → normaliseMealSlot last-chance →
+time-of-day fallback. Web's CookMode (`src/app/components/CookMode.tsx`)
+now imports the same shared helper so both platforms agree on which
+slot a given recipe + clock resolve to.
+
+A meal-slot picker (Breakfast / Lunch / Dinner / Snack) is the better
+long-term answer per the user's request, but the cheapest correct fix
+for Build 41 is honour the recipe's tag + time-of-day fallback.
+
+### FatSecret in mobile food search (regression pin only)
+TestFlight `AKhE2_le-T2ml0cjmysFB1w`: "Still no fat secret option
+showing for big mac." The Lane-A wire-up (PR #11, commit 8889411,
+2026-04-30) added `searchFatSecret`, `getFatSecretFood`, and merged
+FatSecret into `searchFoods`'s parallel fan-out before Build 40 was
+cut. Build 40 must have been cut before that PR landed. No code
+change required for Build 41 — the wiring is already in `verifyRecipe.ts`
+and pinned by `apps/mobile/tests/unit/foodSearchFatSecretMerge.test.ts`.
+
+### Tests
+- `tests/unit/recipeJournalSlot.test.ts` — 12 tests covering meal_type
+  priority, time-of-day fallback, last-chance normalise.
+- `tests/unit/calorieRingSolidGreenAtTarget.test.ts` — 6 source-pin
+  tests across mobile + web ring stroke logic.
+- `apps/mobile/tests/unit/trackingExtrasPersist.test.ts` — 12 source-
+  pin tests across the four quick-add handlers, locking in the
+  direct-capture pattern.
+
 ## 2026-04-30 — EAS Update (OTA JS pushes)
 
 ### Infra

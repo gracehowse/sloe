@@ -123,14 +123,11 @@ function DailyRing({
   const offset = circumference * (1 - pct);
   const remaining = Math.max(Math.round(target - consumed), 0);
   const isOverBudget = consumed > target;
-  const ringColor =
-    displayMode === "consumed"
-      ? isOverBudget
-        ? "var(--warning)"
-        : "var(--success)"
-      : isOverBudget
-        ? "var(--warning)"
-        : "var(--macro-calories)";
+  // Build 41 (2026-05-01) — the legacy `ringColor` ladder (warning /
+  // success / macro-calories per displayMode + over-budget) was used
+  // to colour the ring stroke before the gradient was introduced.
+  // Post-59cc821 the stroke is gradient-or-success, so the ladder is
+  // unused. Centre text colour still flips to warning when over.
   const centerValue = displayMode === "consumed" ? Math.round(consumed) : remaining;
   const centerLabel =
     displayMode === "consumed"
@@ -208,15 +205,23 @@ function DailyRing({
           strokeWidth={strokeWidth}
           opacity={isEmpty ? 0.18 : 1}
         />
-        {/* Main calorie ring progress. Over-budget keeps the
-            destructive (warning-amber) solid stroke; otherwise the
-            gradient is used for parity with mobile. */}
+        {/* Main calorie ring progress. Build 41 (TestFlight feedback
+            `AEvjNTAVsipFKDysDkJD2g4`, 2026-05-01): the post-59cc821
+            gradient ran across the whole consumed-vs-target range,
+            so users never saw the "you're done" success signal once
+            they hit their target. Mirrors mobile `CalorieRing.tsx`:
+            keep gradient while in progress (`consumed < target`),
+            switch to solid `--success` once consumed >= target. Going
+            over is normal calorie tracking, not a destructive event
+            — green stays through over-budget. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={isOverBudget ? ringColor : "url(#daily-ring-gradient)"}
+          stroke={consumed >= target && target > 0
+            ? "var(--success)"
+            : "url(#daily-ring-gradient)"}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
