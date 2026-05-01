@@ -93,7 +93,9 @@ export function ActivityLevelPickerDialog({
             How active are you on a typical day?
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Used to estimate your baseline calorie burn before workouts and steps.
+            {/* Audit 2026-04-30 round-2 fix #3 — plain-English copy
+                in lockstep with mobile settings. */}
+            How active you are on a typical day.
           </DialogDescription>
         </DialogHeader>
         <div className="py-2">

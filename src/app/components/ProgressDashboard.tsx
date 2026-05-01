@@ -70,6 +70,9 @@ import { HouseholdBar } from "./HouseholdBar.tsx";
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
 import { ProgressHeadline } from "./suppr/progress-headline.tsx";
+import { ProgressStoryGate } from "./suppr/progress-story-gate.tsx";
+import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
+import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
@@ -831,7 +834,21 @@ function ProgressDashboardContent() {
 
           Note on avgIntakeOnLossWeeksKcal: similarly deferred until
           the weekly aggregate stream is in place. */}
+      {/* customer-lens audit (2026-04-30): the live story renders even
+          when `adaptiveTdee == null` and the user has < 3 days of
+          logging — narrative based on null is broken UX. Gate via
+          `hasEnoughDataForStory(daysLogged)` and render the
+          `<ProgressStoryGate>` placeholder card until the floor is
+          reached. Geometry matches so the slot doesn't jump. */}
       {(() => {
+        const daysLogged = weekStatsBundle.daysWithFood;
+        if (!hasEnoughDataForStory(daysLogged)) {
+          return (
+            <div className="mb-4">
+              <ProgressStoryGate daysLogged={daysLogged} />
+            </div>
+          );
+        }
         const commentary = generateProgressCommentary({
           current:
             adaptiveTdee != null && adaptiveConfidence != null
@@ -850,6 +867,7 @@ function ProgressDashboardContent() {
                   windowDays: 28,
                 }
               : null,
+          loggingDays: daysLogged,
         });
         return (
           <div className="mb-4">
@@ -1084,103 +1102,145 @@ function ProgressDashboardContent() {
         );
       })() : null}
 
-      {/* 2x2 STAT GRID */}
-      <div className="grid grid-cols-2 gap-2 mb-6">
+      {/* Week digest — narrative LEAD card. Replaces the 2x2 grid as
+          the visual focus. customer-lens audit 2026-04-30 +
+          D-2026-04-27-17. */}
+      <div className="mb-4">
+        <DigestStoryCard
+          weekLabel={recap.weekLabel}
+          daysLogged={weekStatsBundle.daysWithFood}
+          avgCalories={weekStatsBundle.avgCalories}
+          targetCalories={targets.calories}
+          avgProtein={recap.avgProtein}
+          targetProtein={targets.protein}
+          proteinOnTargetDays={weekStatsBundle.proteinOnTarget}
+          closestToTarget={recap.bestDay
+            ? {
+                label: recap.bestDay.label,
+                calories: recap.bestDay.calories,
+                protein: recap.bestDay.protein,
+              }
+            : null}
+        />
+      </div>
+
+      {/* DEMOTED stat chips (D-2026-04-27-17 — tiles demoted, not
+          deleted). Was a 4-tile 2x2 grid that anchored the page; now
+          a compact chip row of small KPIs that still link out to per-
+          metric drill-downs. Smaller padding, subtler border, no
+          tinted backgrounds — reads as a footer summary, not the
+          lead. Trend is non-clickable on web (matches mobile). */}
+      <div
+        data-testid="progress-demoted-chips"
+        className="grid grid-cols-2 gap-2 mb-6"
+      >
         <button
           type="button"
           onClick={() => openMetric("calories")}
-          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+          data-testid="progress-demoted-chip-calories"
+          className="rounded-lg border border-border bg-transparent px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center gap-2"
         >
-          <div className="flex items-center gap-1.5 mb-2">
-            <IconBox size="sm" tone="warning"><Icons.calories /></IconBox>
-            <span
-              className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+          <Icons.calories className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p
               data-testid="progress-avg-calories-label"
+              className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate"
             >
               {avgCaloriesTileLabel}
-            </span>
+            </p>
+            <p className="text-[13px] font-semibold tabular-nums text-foreground truncate">
+              {avgCalories}
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                vs {targets.calories.toLocaleString()}
+              </span>
+            </p>
           </div>
-          <p className="text-[22px] font-bold text-warning tabular-nums mb-0.5">{avgCalories}</p>
-          <p className="text-[11px] text-muted-foreground">vs {targets.calories.toLocaleString()} target</p>
+          <Icons.forward className="h-3 w-3 text-muted-foreground/60 shrink-0" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => openMetric("protein")}
-          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+          data-testid="progress-demoted-chip-protein"
+          className="rounded-lg border border-border bg-transparent px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center gap-2"
         >
-          <div className="flex items-center gap-1.5 mb-2">
-            <IconBox size="sm" tone="success"><Icons.check /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Protein Hit</span>
+          <Icons.check className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+              Protein Hit
+            </p>
+            <p className="text-[13px] font-semibold tabular-nums text-foreground truncate">
+              {proteinOnTarget}/7
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                days on target
+              </span>
+            </p>
           </div>
-          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{proteinOnTarget}/7</p>
-          <p className="text-[11px] text-muted-foreground">days on target</p>
+          <Icons.forward className="h-3 w-3 text-muted-foreground/60 shrink-0" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => openMetric("streak")}
-          className="rounded-xl bg-card border border-border p-3 text-left hover:bg-muted/40 transition-colors"
+          data-testid="progress-demoted-chip-streak"
+          className="rounded-lg border border-border bg-transparent px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center gap-2"
         >
-          <div className="flex items-center gap-1.5 mb-2">
-            <IconBox size="sm" tone="success"><Icons.trophy /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Streak</span>
+          <Icons.trophy className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+              Streak
+            </p>
+            <p className="text-[13px] font-semibold tabular-nums text-foreground truncate">
+              {streakDays} day{streakDays === 1 ? "" : "s"}
+              {freezesAvailable > 0 ? (
+                <span className="ml-1.5 text-[11px] font-normal text-primary">
+                  · {freezesAvailable} freeze{freezesAvailable === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </p>
           </div>
-          <p className="text-[22px] font-bold text-success tabular-nums mb-0.5">{streakDays} days</p>
-          <p className="text-[11px] text-muted-foreground">
-            logging streak{freezesAvailable > 0 ? (
-              <span className="inline-flex items-center gap-1 ml-1">
-                <Icons.streakFreeze className="h-3 w-3 text-primary" aria-hidden />
-                <span className="text-primary font-semibold">{freezesAvailable}</span>
-              </span>
-            ) : null}
-          </p>
+          <Icons.forward className="h-3 w-3 text-muted-foreground/60 shrink-0" aria-hidden />
         </button>
-        <div className="rounded-xl bg-card border border-border p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <IconBox size="sm" tone="primary"><Icons.progress /></IconBox>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trend</span>
-          </div>
-          {/* Action 13 Item #2 (2026-04-19) — single shared
-              `computeWeightTrendCopy` helper drives both the headline
-              delta and the on-track copy so they can't diverge. The
-              earlier two-IIFE version evaluated `weightKg ?? Infinity`
-              and `weightKg ?? 0` independently, which trivially flagged
-              a "gain" user with no logged weight as "on track"
-              (Infinity > 0). Helper returns `{ delta: null, copy: "Log
-              weight to see trend" }` when we don't have ≥2 weigh-ins. */}
-          {(() => {
-            const trend = computeWeightTrendCopy({
-              weightKgByDay,
-              weightKg,
-              goalKg: goalWeightKg,
-            });
-            const headline = trend.delta == null
-              ? "—"
-              : (() => {
-                  const abs = Math.abs(trend.delta);
-                  const val = profileMeasurementSystem === "imperial"
-                    ? Math.round(kgToLb(abs) * 10) / 10
-                    : Math.round(abs * 10) / 10;
-                  const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
-                  const sign = trend.delta < 0 ? "−" : trend.delta > 0 ? "+" : "";
-                  return `${sign}${val} ${unit}`;
-                })();
-            return (
-              <>
+        <div
+          data-testid="progress-demoted-chip-trend"
+          className="rounded-lg border border-border bg-transparent px-3 py-2 flex items-center gap-2"
+        >
+          <Icons.progress className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+              Trend
+            </p>
+            {(() => {
+              const trend = computeWeightTrendCopy({
+                weightKgByDay,
+                weightKg,
+                goalKg: goalWeightKg,
+              });
+              const headline = trend.delta == null
+                ? "—"
+                : (() => {
+                    const abs = Math.abs(trend.delta);
+                    const val = profileMeasurementSystem === "imperial"
+                      ? Math.round(kgToLb(abs) * 10) / 10
+                      : Math.round(abs * 10) / 10;
+                    const unit = profileMeasurementSystem === "imperial" ? "lb" : "kg";
+                    const sign = trend.delta < 0 ? "−" : trend.delta > 0 ? "+" : "";
+                    return `${sign}${val} ${unit}`;
+                  })();
+              return (
                 <p
-                  className="text-[22px] font-bold text-primary tabular-nums mb-0.5"
                   data-testid="progress-trend-headline"
+                  className="text-[13px] font-semibold tabular-nums text-foreground truncate"
                 >
                   {headline}
+                  <span
+                    data-testid="progress-trend-copy"
+                    className="ml-1.5 text-[11px] font-normal text-muted-foreground"
+                  >
+                    {trend.copy}
+                  </span>
                 </p>
-                <p
-                  className="text-[11px] text-muted-foreground"
-                  data-testid="progress-trend-copy"
-                >
-                  {trend.copy}
-                </p>
-              </>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
       </div>
 

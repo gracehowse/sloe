@@ -779,8 +779,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <div className="flex gap-3">
               {(
                 [
-                  { mode: "rolling" as const, label: "Rolling (last 7 days)" },
-                  { mode: "calendar_week" as const, label: "This week" },
+                  // Audit 2026-04-30 round-2 fix #3 — imperative
+                  // labels in lockstep with mobile settings.
+                  { mode: "rolling" as const, label: "Last 7 days" },
+                  { mode: "calendar_week" as const, label: "Mon–Sun" },
                 ] as const
               ).map(({ mode, label }) => {
                 const active = normalizeWeekSummaryMode(notifications.weekSummaryMode) === mode;
@@ -817,7 +819,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 Activity level
               </span>
               <span className="block text-xs text-muted-foreground mt-1">
-                Used to estimate your baseline calorie burn before workouts and steps.
+                {/* Audit 2026-04-30 round-2 fix #3 — plain-English
+                    label in lockstep with mobile settings. */}
+                How active you are on a typical day.
               </span>
             </div>
             <span
@@ -965,9 +969,17 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="text-xs text-muted-foreground mb-3">
               Off by default. Hydration stays on regardless. When off, your existing logs are preserved but the row is hidden on Today.
             </p>
+            {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
+                carries a one-line helper so the user knows what
+                enabling it does. Mirror of mobile settings. */}
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
-                <span className="text-sm text-foreground">Track caffeine</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-foreground">Track caffeine</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Show a caffeine row on Today. Logs in mg, off by default.
+                  </span>
+                </span>
                 <Switch
                   checked={trackingExtras.trackCaffeine}
                   onCheckedChange={(next) => persistTrackingExtras({ ...trackingExtras, trackCaffeine: !!next })}
@@ -975,7 +987,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 />
               </label>
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
-                <span className="text-sm text-foreground">Track alcohol</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-foreground">Track alcohol</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Show an alcohol row on Today. Logs units + kcal, off by default.
+                  </span>
+                </span>
                 <Switch
                   checked={trackingExtras.trackAlcohol}
                   onCheckedChange={(next) => persistTrackingExtras({ ...trackingExtras, trackAlcohol: !!next })}

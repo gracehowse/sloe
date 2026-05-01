@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMealEntriesFromSavedMeal,
+  dominantSavedMealSource,
   effectivePortionMultiplier,
   summariseSavedMeal,
 } from "@/lib/nutrition/savedMealsLogic";
@@ -300,5 +301,86 @@ describe("buildMealEntriesFromSavedMeal", () => {
     );
     expect(entries).toEqual([]);
     expect(calls).toBe(0);
+  });
+});
+
+describe("dominantSavedMealSource (audit 2026-04-30 fix #B7)", () => {
+  it("returns 'manual' for an empty meal", () => {
+    expect(dominantSavedMealSource(mkMeal({ items: [] }))).toBe("manual");
+  });
+
+  it("returns 'manual' when no item carries source metadata", () => {
+    expect(
+      dominantSavedMealSource(
+        mkMeal({ items: [mkItem({ source: undefined }), mkItem({ source: undefined })] }),
+      ),
+    ).toBe("manual");
+  });
+
+  it("returns the single item's source key", () => {
+    expect(
+      dominantSavedMealSource(mkMeal({ items: [mkItem({ source: "USDA" })] })),
+    ).toBe("usda");
+    expect(
+      dominantSavedMealSource(mkMeal({ items: [mkItem({ source: "OFF" })] })),
+    ).toBe("off");
+    expect(
+      dominantSavedMealSource(mkMeal({ items: [mkItem({ source: "FatSecret" })] })),
+    ).toBe("fatsecret");
+    expect(
+      dominantSavedMealSource(mkMeal({ items: [mkItem({ source: "AI photo" })] })),
+    ).toBe("ai");
+    expect(
+      dominantSavedMealSource(mkMeal({ items: [mkItem({ source: "Custom" })] })),
+    ).toBe("manual");
+  });
+
+  it("returns the most-cited source when items disagree", () => {
+    const meal = mkMeal({
+      items: [
+        mkItem({ source: "USDA", position: 0 }),
+        mkItem({ source: "USDA", position: 1 }),
+        mkItem({ source: "OFF", position: 2 }),
+      ],
+    });
+    expect(dominantSavedMealSource(meal)).toBe("usda");
+  });
+
+  it("breaks ties in favour of the first item's source (deterministic)", () => {
+    // 1 USDA, 1 OFF — same count. Item-order tie-break → first wins.
+    const usdaFirst = mkMeal({
+      items: [
+        mkItem({ source: "USDA", position: 0 }),
+        mkItem({ source: "OFF", position: 1 }),
+      ],
+    });
+    expect(dominantSavedMealSource(usdaFirst)).toBe("usda");
+
+    const offFirst = mkMeal({
+      items: [
+        mkItem({ source: "OFF", position: 0 }),
+        mkItem({ source: "USDA", position: 1 }),
+      ],
+    });
+    expect(dominantSavedMealSource(offFirst)).toBe("off");
+  });
+
+  it("folds variant labels via mapMealSourceToDot before tallying", () => {
+    // "Open Food Facts", "OFF", "OpenFoodFacts" all → off — must
+    // tally as the same key.
+    const meal = mkMeal({
+      items: [
+        mkItem({ source: "Open Food Facts", position: 0 }),
+        mkItem({ source: "OFF", position: 1 }),
+        mkItem({ source: "USDA", position: 2 }),
+      ],
+    });
+    expect(dominantSavedMealSource(meal)).toBe("off");
+  });
+
+  it("survives malformed items array (defensive null/undefined)", () => {
+    // The function tolerates `items: null` (some legacy fixtures).
+    const malformed = { ...mkMeal({}), items: null as unknown as SavedMealItem[] };
+    expect(dominantSavedMealSource(malformed)).toBe("manual");
   });
 });

@@ -12,7 +12,7 @@
  * Shares sanitisation / confidence classification / totals with web via
  * `src/lib/nutrition/aiLogging.ts`.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -22,7 +22,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,16 +29,15 @@ import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
-  aggregateTotals,
   averageConfidence,
-  classifyConfidence,
   isLowConfidence,
   sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../src/lib/nutrition/aiLogging";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
-import Badge from "./Badge";
+import AiLogReviewItem from "./AiLogReviewItem";
+import AiLogReviewSummary from "./AiLogReviewSummary";
 
 type Theme = {
   text: string;
@@ -191,7 +189,6 @@ export default function PhotoLogSheet({
     }
   }, [accessToken, apiBase, asset]);
 
-  const totals = useMemo(() => aggregateTotals(items), [items]);
   const hasLowConfidence = items.some((i) => isLowConfidence(i));
 
   const updateItem = (index: number, patch: Partial<AiLoggedItem>) => {
@@ -210,44 +207,6 @@ export default function PhotoLogSheet({
       avgConfidence: averageConfidence(items),
     });
     onClose();
-  };
-
-  const numField = (
-    label: string,
-    value: number,
-    onChange: (n: number) => void,
-    accessibilityLabel: string,
-  ) => (
-    <View style={{ flex: 1 }}>
-      <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: "700", textTransform: "uppercase" }}>
-        {label}
-      </Text>
-      <TextInput
-        accessibilityLabel={accessibilityLabel}
-        keyboardType="numeric"
-        value={String(value)}
-        onChangeText={(t) => {
-          const n = Math.max(0, Number(t.replace(/[^0-9.]/g, "")));
-          onChange(Number.isFinite(n) ? Math.round(n) : 0);
-        }}
-        style={{
-          backgroundColor: colors.inputBg,
-          borderRadius: Radius.sm,
-          paddingHorizontal: 8,
-          paddingVertical: 6,
-          fontSize: 13,
-          color: colors.text,
-          marginTop: 2,
-        }}
-      />
-    </View>
-  );
-
-  const confidenceColor = (c: number) => {
-    const level = classifyConfidence(c);
-    if (level === "high") return Accent.success;
-    if (level === "medium") return Accent.warning;
-    return "#EF4444";
   };
 
   return (
@@ -299,7 +258,7 @@ export default function PhotoLogSheet({
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"
-                ? `We identified ${items.length} item${items.length === 1 ? "" : "s"}. Review, edit or remove before logging.`
+                ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we identified. Edit or remove before logging.`
                 : "Snap a photo of your meal and we'll estimate portions and macros."}
             </Text>
 
@@ -419,111 +378,21 @@ export default function PhotoLogSheet({
                     resizeMode="cover"
                   />
                 )}
-                {items.map((item, i) => {
-                  const low = isLowConfidence(item);
-                  const cColor = confidenceColor(item.confidence);
-                  return (
-                    <View
-                      key={`${item.name}-${i}`}
-                      style={{
-                        borderWidth: 1,
-                        borderColor: low ? "#F59E0B55" : colors.cardBorder,
-                        backgroundColor: low ? "#F59E0B0F" : colors.background,
-                        borderRadius: Radius.md,
-                        padding: Spacing.md,
-                        marginBottom: Spacing.sm,
-                      }}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                        <View style={{ flex: 1 }}>
-                          <TextInput
-                            accessibilityLabel={`Item ${i + 1} name`}
-                            value={item.name}
-                            onChangeText={(t) => updateItem(i, { name: t })}
-                            style={{
-                              backgroundColor: colors.inputBg,
-                              borderRadius: Radius.sm,
-                              paddingHorizontal: 8,
-                              paddingVertical: 6,
-                              fontSize: 14,
-                              fontWeight: "600",
-                              color: colors.text,
-                            }}
-                          />
-                          {item.unit && (
-                            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
-                              {item.unit}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={{ alignItems: "flex-end", gap: 4 }}>
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 4,
-                              borderRadius: 999,
-                              paddingHorizontal: 6,
-                              paddingVertical: 2,
-                              backgroundColor: cColor + "22",
-                            }}
-                          >
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cColor }} />
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: cColor }}>
-                              {classifyConfidence(item.confidence) === "high"
-                                ? "High"
-                                : classifyConfidence(item.confidence) === "medium"
-                                  ? "Med"
-                                  : "Low"}
-                            </Text>
-                          </View>
-                          <Badge
-                            variant="ai"
-                            accessibilityLabel="AI estimated nutrition"
-                            icon={<Ionicons name="sparkles-outline" size={10} color="#8b5cf6" />}
-                          >
-                            AI estimate
-                          </Badge>
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove ${item.name}`}
-                          onPress={() => removeItem(i)}
-                          hitSlop={8}
-                        >
-                          <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
-                        </Pressable>
-                      </View>
-                      <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>
-                        {numField("kcal", item.calories, (n) => updateItem(i, { calories: n }), `${item.name} calories`)}
-                        {numField("P (g)", item.protein, (n) => updateItem(i, { protein: n }), `${item.name} protein`)}
-                        {numField("C (g)", item.carbs, (n) => updateItem(i, { carbs: n }), `${item.name} carbs`)}
-                        {numField("F (g)", item.fat, (n) => updateItem(i, { fat: n }), `${item.name} fat`)}
-                      </View>
-                      {low && (
-                        <Text
-                          accessibilityRole="alert"
-                          style={{ fontSize: 11, color: "#B45309", marginTop: 6 }}
-                        >
-                          Low confidence — please verify portion and macros before logging.
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
-                <View
-                  style={{
-                    backgroundColor: colors.inputBg,
-                    borderRadius: Radius.md,
-                    padding: Spacing.md,
-                    marginTop: 4,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                    Logging to <Text style={{ color: colors.text, fontWeight: "700" }}>{activeSlot}</Text>. Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g
-                    {totals.fiber != null ? ` · Fi ${totals.fiber}g` : ""}
-                  </Text>
-                </View>
+                {items.map((item, i) => (
+                  <AiLogReviewItem
+                    key={`${item.name}-${i}`}
+                    item={item}
+                    index={i}
+                    onChange={(patch) => updateItem(i, patch)}
+                    onRemove={() => removeItem(i)}
+                    colors={colors}
+                  />
+                ))}
+                <AiLogReviewSummary
+                  items={items}
+                  slotLabel={activeSlot}
+                  colors={colors}
+                />
               </ScrollView>
             )}
 

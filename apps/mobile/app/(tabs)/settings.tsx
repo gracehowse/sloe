@@ -760,7 +760,12 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>Activity level</Text>
                   <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
-                    Used to estimate your baseline calorie burn before workouts and steps.
+                    {/* Audit 2026-04-30 round-2 fix #3 (customer-lens
+                        wave 2 carry-over). Plain-English replacement
+                        for "Used to estimate your baseline calorie
+                        burn before workouts and steps." which buried
+                        the user-facing meaning in jargon. */}
+                    How active you are on a typical day.
                   </Text>
                 </View>
                 <Text
@@ -788,6 +793,8 @@ export default function SettingsScreen() {
               "Rolling",
               "calendar",
               "Weekly",
+              "Last 7 days",
+              "Mon–Sun",
             ]) ? (
             <>
             <Text style={styles.sectionTitle}>Journal display</Text>
@@ -917,7 +924,12 @@ export default function SettingsScreen() {
                         prefs.weekSummaryMode === "rolling" && styles.segmentBtnTextActive,
                       ]}
                     >
-                      Rolling (last 7 days)
+                      {/* Audit 2026-04-30 round-2 fix #3 — imperative
+                          labels instead of parenthetical hints. Two
+                          tokens both have to fit a small segmented
+                          control on iOS, and the reader needs to pick
+                          one at a glance. */}
+                      Last 7 days
                     </Text>
                   </Pressable>
                   <Pressable
@@ -931,7 +943,7 @@ export default function SettingsScreen() {
                         prefs.weekSummaryMode === "calendar_week" && styles.segmentBtnTextActive,
                       ]}
                     >
-                      This week
+                      Mon–Sun
                     </Text>
                   </Pressable>
                 </View>
@@ -1012,8 +1024,14 @@ export default function SettingsScreen() {
             <>
             <Text style={styles.sectionTitle}>Tracking extras</Text>
             <View style={styles.card}>
+              {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
+                  carries a one-line helper so the user knows what
+                  enabling it does. Pre-fix the labels stood alone
+                  ("Track caffeine") and customer-lens flagged
+                  the missing context. */}
               <Row
                 label="Track caffeine"
+                description="Show a caffeine row on Today. Logs in mg, off by default."
                 value={trackingExtras.trackCaffeine}
                 onToggle={() => void persistTrackingExtras({ ...trackingExtras, trackCaffeine: !trackingExtras.trackCaffeine })}
                 styles={styles}
@@ -1021,6 +1039,7 @@ export default function SettingsScreen() {
               />
               <Row
                 label="Track alcohol"
+                description="Show an alcohol row on Today. Logs units + kcal, off by default."
                 value={trackingExtras.trackAlcohol}
                 onToggle={() => void persistTrackingExtras({ ...trackingExtras, trackAlcohol: !trackingExtras.trackAlcohol })}
                 isLast
@@ -1157,7 +1176,7 @@ export default function SettingsScreen() {
           "Appearance", "Theme", "Automatic", "Light", "Dark",
           "Account", "Change Password", "Sign Out", "email", "password",
           "Body & activity", "Activity level", "TDEE", "active", "sedentary",
-          "Journal display", "Show meal times", "Adjust goal for activity", "bonus calories", "Show net carbs", "Net carbs", "weight", "How weight shows up", "Burn / deficit summary", "Rolling", "calendar", "Weekly",
+          "Journal display", "Show meal times", "Adjust goal for activity", "bonus calories", "Show net carbs", "Net carbs", "weight", "How weight shows up", "Burn / deficit summary", "Rolling", "calendar", "Weekly", "Last 7 days", "Mon–Sun",
           "Notifications", "New recipes", "people you follow", "Meal plan ready", "Weekly summary", "creator", "Updates on your published recipes", "Open notifications",
           "Tracking extras", "Track caffeine", "Track alcohol", "Hydration", "alcohol", "caffeine",
           "About", "What's new", "Whats new", "release", "build",
@@ -1253,7 +1272,9 @@ export default function SettingsScreen() {
               How active are you on a typical day?
             </Text>
             <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: Spacing.md }}>
-              Used to estimate your baseline calorie burn before workouts and steps.
+              {/* Audit 2026-04-30 round-2 fix #3 — plain-English
+                  copy mirrored across the row + the picker modal. */}
+              How active you are on a typical day.
             </Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               <ActivityLevelPreview
@@ -1274,16 +1295,35 @@ export default function SettingsScreen() {
 
 function Row(props: {
   label: string;
+  /** Optional one-line helper text rendered beneath the label. Used
+   *  by the Tracking-extras toggles (audit 2026-04-30 round-2 fix
+   *  #3) so each toggle explains what enabling it does. */
+  description?: string;
   value: boolean;
   onToggle: () => void;
   disabled?: boolean;
   isLast?: boolean;
   styles: Record<string, any>;
-  colors: { text: string; textTertiary: string; border: string };
+  colors: { text: string; textSecondary?: string; textTertiary: string; border: string };
 }) {
+  const hasDescription = typeof props.description === "string" && props.description.length > 0;
   return (
     <View style={[props.styles.row, props.isLast && props.styles.rowLast]}>
-      <Text style={props.styles.rowLabel}>{props.label}</Text>
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        <Text style={props.styles.rowLabel}>{props.label}</Text>
+        {hasDescription ? (
+          <Text
+            style={{
+              fontSize: 12,
+              color: props.colors.textSecondary ?? props.colors.textTertiary,
+              lineHeight: 17,
+              marginTop: 2,
+            }}
+          >
+            {props.description}
+          </Text>
+        ) : null}
+      </View>
       <Switch
         value={props.value}
         onValueChange={() => props.onToggle()}

@@ -70,6 +70,12 @@ export interface NorthStarBlockHostProps {
   /** Date scope for the skip ledger. Should match the host screen's
    *  selectedDateKey so the set resets daily. */
   selectedDateKey: string;
+  /** Account creation timestamp (ISO string from
+   *  `session.user.created_at`). When the account is < 30 days old
+   *  the library threshold relaxes from ≥5 to ≥2 (audit 2026-04-30
+   *  activation leak fix). Pass `undefined` only when the value is
+   *  unknown — the gate treats unknown as new-user. */
+  userCreatedAt?: string | null;
 }
 
 export function NorthStarBlockHost({
@@ -82,6 +88,7 @@ export function NorthStarBlockHost({
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
+  userCreatedAt,
 }: NorthStarBlockHostProps) {
   const [skippedIds, setSkippedIds] = React.useState<Set<string>>(new Set());
 
@@ -113,7 +120,12 @@ export function NorthStarBlockHost({
     return <NorthStarBlock kind="over-budget" />;
   }
 
-  if (!isLibraryEligibleForNorthStar(savedRecipesForLibrary.length)) {
+  if (
+    !isLibraryEligibleForNorthStar(
+      savedRecipesForLibrary.length,
+      userCreatedAt,
+    )
+  ) {
     return (
       <NorthStarBlock kind="library-empty" onOpenLibrary={onBrowseLibrary} />
     );

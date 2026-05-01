@@ -30,7 +30,10 @@ import {
   bandLabel,
   whyLineForSuggestion,
   NORTH_STAR_LIBRARY_MIN,
+  NORTH_STAR_LIBRARY_MIN_ACTIVATION,
+  NORTH_STAR_ACTIVATION_WINDOW_DAYS,
   isLibraryEligibleForNorthStar,
+  isWithinNorthStarActivationWindow,
   type NorthStarRecipe,
 } from "../../src/lib/nutrition/northStarSuggestion";
 
@@ -270,12 +273,116 @@ describe("library threshold (V-6 sub-decision)", () => {
     expect(NORTH_STAR_LIBRARY_MIN).toBe(5);
   });
 
-  it("isLibraryEligibleForNorthStar gates at 5", () => {
-    expect(isLibraryEligibleForNorthStar(0)).toBe(false);
-    expect(isLibraryEligibleForNorthStar(4)).toBe(false);
-    expect(isLibraryEligibleForNorthStar(5)).toBe(true);
-    expect(isLibraryEligibleForNorthStar(50)).toBe(true);
-    expect(isLibraryEligibleForNorthStar(NaN)).toBe(false);
+  it("isLibraryEligibleForNorthStar gates at 5 for steady-state users (account ≥ 30 days)", () => {
+    // Pre-2026-04-30 the gate had no activation window — single-arg
+    // calls always used the steady-state ≥5 threshold. The leak fix
+    // #5 round-2 introduced a 30-day activation relax to ≥2; to
+    // continue testing the legacy gate at 5 we must explicitly pass
+    // an "old enough" creation date. See the
+    // "activation-window threshold" describe block below for the
+    // single-arg semantics (which now defaults to the relaxed path).
+    const old = new Date("2026-01-01T00:00:00.000Z");
+    const NOW_LEGACY = new Date("2026-04-30T00:00:00.000Z");
+    expect(isLibraryEligibleForNorthStar(0, old, NOW_LEGACY)).toBe(false);
+    expect(isLibraryEligibleForNorthStar(4, old, NOW_LEGACY)).toBe(false);
+    expect(isLibraryEligibleForNorthStar(5, old, NOW_LEGACY)).toBe(true);
+    expect(isLibraryEligibleForNorthStar(50, old, NOW_LEGACY)).toBe(true);
+    expect(isLibraryEligibleForNorthStar(NaN, old, NOW_LEGACY)).toBe(false);
+  });
+});
+
+describe("activation-window threshold (audit 2026-04-30 leak fix #5)", () => {
+  // Reference "now" — used as the second argument so tests are
+  // deterministic regardless of when CI runs.
+  const NOW = new Date("2026-04-30T12:00:00.000Z");
+
+  it("relaxed threshold + window constants are 2 / 30 days", () => {
+    expect(NORTH_STAR_LIBRARY_MIN_ACTIVATION).toBe(2);
+    expect(NORTH_STAR_ACTIVATION_WINDOW_DAYS).toBe(30);
+  });
+
+  describe("isWithinNorthStarActivationWindow", () => {
+    it("returns true for null/undefined (new-user safety net)", () => {
+      expect(isWithinNorthStarActivationWindow(null, NOW)).toBe(true);
+      expect(isWithinNorthStarActivationWindow(undefined, NOW)).toBe(true);
+    });
+
+    it("returns true for unparseable input (safety net)", () => {
+      expect(isWithinNorthStarActivationWindow("not-a-date", NOW)).toBe(true);
+    });
+
+    it("returns true when account is < 30 days old", () => {
+      const created = new Date("2026-04-20T12:00:00.000Z"); // 10 days
+      expect(isWithinNorthStarActivationWindow(created, NOW)).toBe(true);
+      // Same as ISO string.
+      expect(isWithinNorthStarActivationWindow(created.toISOString(), NOW)).toBe(true);
+    });
+
+    it("returns true at exactly 29 days, false at exactly 31 days", () => {
+      const day29 = new Date("2026-04-01T12:00:00.000Z"); // 29 days
+      const day31 = new Date("2026-03-30T12:00:00.000Z"); // 31 days
+      expect(isWithinNorthStarActivationWindow(day29, NOW)).toBe(true);
+      expect(isWithinNorthStarActivationWindow(day31, NOW)).toBe(false);
+    });
+
+    it("returns false when account is older than 30 days", () => {
+      const created = new Date("2026-01-01T12:00:00.000Z"); // ~120 days
+      expect(isWithinNorthStarActivationWindow(created, NOW)).toBe(false);
+      expect(isWithinNorthStarActivationWindow(created.toISOString(), NOW)).toBe(false);
+    });
+
+    it("returns true when creation date is in the future (clock drift safety)", () => {
+      const future = new Date("2026-05-15T00:00:00.000Z");
+      expect(isWithinNorthStarActivationWindow(future, NOW)).toBe(true);
+    });
+  });
+
+  describe("isLibraryEligibleForNorthStar with userCreatedAt", () => {
+    it("threshold is 2 for accounts < 30 days old", () => {
+      const created = new Date("2026-04-20T12:00:00.000Z"); // 10 days
+      expect(isLibraryEligibleForNorthStar(0, created, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(1, created, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(2, created, NOW)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(3, created, NOW)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(5, created, NOW)).toBe(true);
+    });
+
+    it("threshold is 5 for accounts >= 30 days old", () => {
+      const created = new Date("2026-01-01T12:00:00.000Z"); // ~120 days
+      expect(isLibraryEligibleForNorthStar(2, created, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(3, created, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(4, created, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(5, created, NOW)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(50, created, NOW)).toBe(true);
+    });
+
+    it("threshold is 2 when userCreatedAt is null (safety net for new users)", () => {
+      expect(isLibraryEligibleForNorthStar(2, null, NOW)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(2, undefined, NOW)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(1, null, NOW)).toBe(false);
+    });
+
+    it("rejects non-finite library size regardless of account age", () => {
+      const young = new Date("2026-04-25T12:00:00.000Z");
+      const old = new Date("2025-01-01T12:00:00.000Z");
+      expect(isLibraryEligibleForNorthStar(NaN, young, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(NaN, old, NOW)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(Infinity, young, NOW)).toBe(false);
+    });
+
+    it("single-arg call defaults to the relaxed (activation-window) threshold", () => {
+      // Behaviour change (audit 2026-04-30): single-arg calls now
+      // default to the relaxed path because "we don't know how old
+      // this user is" is the same risk shape as "this is a new user".
+      // The safety net is intentional — better to surface a real
+      // suggestion to a 90-day-old user once than gate it off from
+      // a 5-day-old user. Callers that need the strict ≥5 path must
+      // pass an old-enough creation date explicitly.
+      expect(isLibraryEligibleForNorthStar(2)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(1)).toBe(false);
+      expect(isLibraryEligibleForNorthStar(5)).toBe(true);
+      expect(isLibraryEligibleForNorthStar(0)).toBe(false);
+    });
   });
 });
 

@@ -290,6 +290,7 @@ function NorthStarBlockHost({
   onPrimaryCta,
   onBrowseLibrary,
   selectedDateKey,
+  userCreatedAt,
 }: {
   viewMode: string;
   savedRecipesForLibrary: NorthStarRecipe[];
@@ -304,6 +305,12 @@ function NorthStarBlockHost({
   onBrowseLibrary: () => void;
   /** Date scope for the skip ledger (Phase 4 / B3.Y). */
   selectedDateKey: string;
+  /** ISO `created_at` for the auth user. Drives the activation-window
+   *  threshold relax (audit 2026-04-30 round-2 leak fix #5). When the
+   *  account is < 30 days old the library threshold drops from ≥5 to
+   *  ≥2 so a new user with 2-3 saved recipes still sees a real
+   *  suggestion, not the empty-state. */
+  userCreatedAt?: string | null;
 }) {
   // Phase 4 / B3.Y — per-day skip ledger keyed by selected date.
   const [skippedIds, setSkippedIds] = useState<Set<string>>(() =>
@@ -336,7 +343,15 @@ function NorthStarBlockHost({
   }
 
   // Library too small — invite the user to seed it.
-  if (!isLibraryEligibleForNorthStar(savedRecipesForLibrary.length)) {
+  // Audit 2026-04-30 leak fix #5: threshold relaxes to ≥2 inside the
+  // 30-day activation window (drops back to ≥5 once the account
+  // matures). `userCreatedAt` is sourced from the auth session.
+  if (
+    !isLibraryEligibleForNorthStar(
+      savedRecipesForLibrary.length,
+      userCreatedAt,
+    )
+  ) {
     return <NorthStarBlock kind="library-empty" onOpenLibrary={onBrowseLibrary} />;
   }
 
@@ -661,7 +676,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId } = useAuthSession();
+  const { authedUserId, authUserCreatedAt } = useAuthSession();
 
   // Audit M4 (2026-04-18) — Today progressive disclosure on web.
   // Matches mobile. Persists the Quick Add collapsed pref via localStorage
@@ -1993,6 +2008,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               setLogSheetOpen(true);
             }}
             selectedDateKey={selectedDateKey}
+            // Activation leak fix #5 (round 2, 2026-04-30): accounts
+            // < 30 days old get the relaxed library threshold (≥2,
+            // not ≥5) so a new user with 2-3 recipes still sees a
+            // real suggestion instead of the empty-state.
+            userCreatedAt={authUserCreatedAt}
           />
         );
       })()}

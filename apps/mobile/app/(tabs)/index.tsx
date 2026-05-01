@@ -3708,6 +3708,13 @@ export default function TrackerScreen() {
                     onPrimaryCta={(recipeId) => router.push(`/recipe/${recipeId}`)}
                     onBrowseLibrary={() => router.push("/(tabs)/library")}
                     selectedDateKey={dayKey}
+                    // Activation leak fix #5 (round 2, 2026-04-30):
+                    // accounts < 30 days old fall back to the relaxed
+                    // library threshold (≥2 instead of ≥5) so a user
+                    // who only saved 2-3 recipes during onboarding (or
+                    // skipped seed-picking) still gets a real
+                    // suggestion on Today, not the empty-state.
+                    userCreatedAt={session?.user?.created_at ?? null}
                   />
                 );
               }

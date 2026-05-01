@@ -163,6 +163,62 @@ describe("NorthStarBlockHost branching", () => {
     }
   });
 
+  it("renders a default suggestion with only 2 saved recipes inside the activation window (round-2 fix #5)", () => {
+    // Audit 2026-04-30 round-2 fix #1 — accounts < 30 days old fall
+    // back to the relaxed library threshold (≥2 instead of ≥5). Pin
+    // the host's wiring of `userCreatedAt` end-to-end: with 2 saved
+    // recipes + a young account, the empty-state must NOT render.
+    const lib2: readonly NorthStarRecipe[] = [
+      { id: "r-0", title: "A", calories: 500, protein: 30, carbs: 50, fat: 18 },
+      { id: "r-1", title: "B", calories: 480, protein: 28, carbs: 48, fat: 17 },
+    ];
+    const youngAccount = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    const tree = render(
+      <NorthStarBlockHost
+        viewMode="day"
+        savedRecipesForLibrary={lib2}
+        remainingCalories={500}
+        remainingProtein={20}
+        remainingCarbs={40}
+        remainingFat={15}
+        onPrimaryCta={() => {}}
+        onBrowseLibrary={() => {}}
+        selectedDateKey="2026-04-30"
+        userCreatedAt={youngAccount}
+      />,
+    );
+    // Empty-state must NOT render — the relaxed threshold allows
+    // the default suggestion through.
+    expect(tree.queryByTestId("north-star-library-empty")).toBeNull();
+    expect(tree.queryByTestId("north-star-over-budget")).toBeNull();
+  });
+
+  it("renders the empty-state with only 2 saved recipes once the account is > 30 days old", () => {
+    // Steady-state path — same library, same remaining macros, but
+    // the account is older than the activation window. Threshold
+    // reverts to 5; lib of 2 → empty-state.
+    const lib2: readonly NorthStarRecipe[] = [
+      { id: "r-0", title: "A", calories: 500, protein: 30, carbs: 50, fat: 18 },
+      { id: "r-1", title: "B", calories: 480, protein: 28, carbs: 48, fat: 17 },
+    ];
+    const oldAccount = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+    const tree = render(
+      <NorthStarBlockHost
+        viewMode="day"
+        savedRecipesForLibrary={lib2}
+        remainingCalories={500}
+        remainingProtein={20}
+        remainingCarbs={40}
+        remainingFat={15}
+        onPrimaryCta={() => {}}
+        onBrowseLibrary={() => {}}
+        selectedDateKey="2026-04-30"
+        userCreatedAt={oldAccount}
+      />,
+    );
+    expect(tree.queryByTestId("north-star-library-empty")).toBeTruthy();
+  });
+
   it("renders the why-line subtitle on the default suggestion (activation hook leak fix #5)", () => {
     // The card must surface "Fits your remaining N kcal" (or one of
     // the protein variants) below the title so the user sees WHICH

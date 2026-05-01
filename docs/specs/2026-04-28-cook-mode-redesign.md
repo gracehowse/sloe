@@ -4,6 +4,16 @@
 **Authority:** `docs/specs/2026-04-27-production-design-spec.md` motion §1.1, type §1.2, depth §1.3, dark mode §1.4, iconography §1.5, voice §1.7.
 **Source:** `docs/audits/2026-04-28-visual-qa-pixel-level.md` finding #1.
 
+## Ship status (2026-04-30 partial — audit P1 / B5)
+
+Mobile took a focused subset of this spec on 2026-04-30 ahead of the full visual refit, driven by the customer-lens audit:
+
+- **§6 multi-timer story** — partially shipped. Mobile now imports `parseTimersInStep` + `formatTimer` from the shared `recipeTimers.ts` (item 1) and renders a single suggested-duration pill from the first match in the current step's text. Count-down with Success haptic + "Step done?" prompt on completion. Multi-timer rail (items 2–4) and stopwatch retirement (item 5) remain backlog — the legacy stopwatch is preserved as a fallback when no duration is parseable, so the screen never regresses from the prior UX.
+- **§7 done state** — partially shipped. `🎉` retired in favour of a calm completion card with `CheckCircle2` (lucide) hero, captured cook duration ("Took you Nm SSs"), 1-tap rating row (5 lucide `Star` icons; persistence deferred — no `recipe_ratings` table yet), and "Add to my regulars" which writes a single-item `user_saved_meal` via the shared `createSavedMeal` so the user can re-log the recipe from Quick Add. Per-recipe `cook_history` persists to AsyncStorage (`suppr-cook-history-v1:{recipeId}`), capped at 10 entries, ready for the planned "you usually cook this in N min" surface. Headline copy is **"Recipe done."** (audit task brief 2026-04-30) rather than **"Plated."** — when the full spec ships the brand-direction wins; today's ship matches the user-facing audit.
+- **§9 cross-platform parity** — also took a focused parity lift on the AI logging review surfaces (audit B5). Voice + Photo log sheets now compose from shared `<AiLogReviewItem>` and `<AiLogReviewSummary>` components so confidence chips, Low/Med/High colour, "Log anyway" gate and totals row can never drift between the two AI surfaces. Includes percentage chip ("High 92%") and the new "Overall AI confidence" header.
+
+Items not yet shipped (canonical spec target): force-dark default, gradient IconBox, multi-timer active rail, `expo-notifications` backgrounded reminders, web parity for the same completion polish, `recipe_ratings` schema + persistence, "Plated." rebrand of headline copy.
+
 ---
 
 ## 1. Design intent

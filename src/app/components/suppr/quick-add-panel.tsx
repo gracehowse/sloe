@@ -27,6 +27,8 @@ import {
   type FoodHistoryItem,
   type FoodHistoryMealLike,
 } from "../../../lib/nutrition/foodHistory";
+import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
+import { SourceDot } from "../ui/source-dot";
 import {
   addFavorite,
   listFavorites,
@@ -534,6 +536,20 @@ export function QuickAddPanel({
             const isAiSourced = isAiSourcedFoodHistoryItem(row);
             return (
               <div key={rowKey} className="flex items-center gap-2 px-3.5 py-2.5">
+                {/* Trust posture (audit 2026-04-30 round-2 fix #B7) —
+                    every macro-bearing row across the app carries a
+                    provenance dot. QuickAdd / SavedMeals were missed
+                    in the original sweep (Phase 3 / B2.4). The dot
+                    classifies row.source via the canonical
+                    `mapMealSourceToDot` (USDA/OFF/FatSecret/Manual/AI),
+                    matches LogSheet + diary's 6pt size, and falls back
+                    to "manual" when source metadata isn't carried by
+                    the underlying favourite/history item. */}
+                <SourceDot
+                  source={mapMealSourceToDot(row.source ?? null)}
+                  size={6}
+                  className="shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground truncate flex items-center gap-1.5">
                     {row.recipeTitle}
