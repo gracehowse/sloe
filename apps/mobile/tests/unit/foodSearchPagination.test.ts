@@ -30,7 +30,17 @@ const PANEL_PATH = resolve(
   "../../components/food-search/FoodSearchPanel.tsx",
 );
 const VERIFY_PATH = resolve(__dirname, "../../lib/verifyRecipe.ts");
-const WEB_PATH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into a
+ * shared `FoodSearchPanel.tsx` (~1429 LOC) inside `food-search/` in
+ * commit `cb1317f`. The wrapper kept only the dialog shell; pagination
+ * state + source helpers + row JSX all live in the panel now (mirrors
+ * mobile commit `1968953`). Source-pin parity reads the panel.
+ */
+const WEB_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
 const USDA_ROUTE_PATH = resolve(
   __dirname,
   "../../../../app/api/usda/search/route.ts",
@@ -149,9 +159,19 @@ describe("F-10 food search pagination — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/setLoadingMore/);
   });
 
-  it("web resets pagination state on new query (two call sites)", () => {
+  it("web resets pagination state when the query changes", () => {
+    // Pre-`cb1317f` the wrapper had two separate reset sites (open
+    // toggle + onChangeText). The lift into <FoodSearchPanel> made
+    // `query` a caller-owned prop, so a single useEffect now resets
+    // both `pageRef` and `hasMoreRef` whenever the query changes —
+    // single source of truth, harder to drift.
     const resets = WEB_SRC.match(/pageRef\.current = 1/g) ?? [];
-    expect(resets.length).toBeGreaterThanOrEqual(2);
+    expect(resets.length).toBeGreaterThanOrEqual(1);
+    // The reset must sit inside the `[query, ...]`-keyed effect so a
+    // new search does not append to the previous result set.
+    expect(WEB_SRC).toMatch(
+      /pageRef\.current = 1;\s*\n\s*hasMoreRef\.current = true;/,
+    );
   });
 
   it("web forwards `page` to all three source helpers", () => {

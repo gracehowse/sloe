@@ -43,13 +43,18 @@ const PUBLIC_ROUTES: Array<{ path: string; name: string; waitFor?: string }> = [
 ];
 
 /** Authed routes — these redirect to /signin without a session, so
- *  we capture them anyway to lock the redirect contract. */
+ *  we capture them anyway to lock the redirect contract.
+ *
+ *  2026-04-30 (commit `9c38512`) — the legacy 4-step `/onboarding` was
+ *  tombstoned and `/onboarding/v2` was folded into the canonical
+ *  `/onboarding` route. The two stale entries ("onboarding-legacy" +
+ *  "onboarding-v2") collapse into a single capture against the
+ *  canonical mount. */
 const AUTHED_ROUTES: Array<{ path: string; name: string }> = [
   { path: "/home", name: "home" },
   { path: "/fasting", name: "fasting" },
   { path: "/account/billing", name: "account-billing" },
-  { path: "/onboarding", name: "onboarding-legacy" },
-  { path: "/onboarding/v2", name: "onboarding-v2" },
+  { path: "/onboarding", name: "onboarding" },
 ];
 
 /** Dev surfaces — useful for design-system sanity. */

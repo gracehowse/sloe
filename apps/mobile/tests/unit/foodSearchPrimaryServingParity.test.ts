@@ -29,7 +29,16 @@ const MOBILE_PANEL_PATH = resolve(
   "../../components/food-search/FoodSearchPanel.tsx",
 );
 const MOBILE_VERIFY_PATH = resolve(__dirname, "../../lib/verifyRecipe.ts");
-const WEB_PATH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into
+ * `food-search/FoodSearchPanel.tsx` (commit `cb1317f`). The wrapper
+ * keeps only the dialog shell; primary-serving + headline imports
+ * + row JSX all live in the panel. Source-pin parity reads the panel.
+ */
+const WEB_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
 const HELPER_PATH = resolve(
   __dirname,
   "../../../../src/lib/nutrition/primaryServing.ts",
