@@ -1,6 +1,7 @@
-import { memo, useMemo } from "react";
-import { X } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { Users, X } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
   formatMixedShoppingAmounts,
   groupShoppingItemsByIngredientName,
@@ -8,6 +9,15 @@ import {
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
 import { dedupeShoppingLabel } from "../../lib/planning/shoppingListLifecycle.ts";
+import {
+  getMyHousehold,
+  type HouseholdData,
+} from "../../lib/household/householdClient.ts";
+import {
+  householdMemberAccent,
+  householdMemberFirstName,
+  householdMemberInitials,
+} from "../../lib/household/memberAccents.ts";
 import type { UserTier } from "../../types/recipe.ts";
 
 interface ShoppingListProps {
@@ -30,6 +40,13 @@ interface ShoppingListProps {
  *  - "Remove N checked" link, only when ≥1 row is checked
  *  - Slim progress bar with `role="progressbar"` + `aria-valuenow`
  *
+ * Honeydew parity (2026-04-30): when the user is in a household, the
+ * shopping list is shared. Real-time sync (item add/check/remove
+ * propagates within ~1s) is wired in `useShoppingListState`. This
+ * component surfaces:
+ *  - "Shared with Sarah & Tom" banner above the subtitle
+ *  - Per-row attribution chip showing who checked an item
+ *
  * Intentionally NOT shipped (prototype strip holds for chrome):
  *  - Share button (defer until web share format is designed)
  *  - Trash / clear-all (redundant with clear-checked + plan regen)
@@ -39,7 +56,9 @@ interface ShoppingListProps {
  *  - Recipe thumbnail images
  *
  * Data flow: `toggleShoppingChecked`, `removeShoppingItem`, and
- * `setShoppingItems` all persist via `useAppData`.
+ * `setShoppingItems` all persist via `useAppData`. The hook also
+ * subscribes to Supabase real-time changes and refreshes on every
+ * household-mate edit.
  */
 export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
@@ -51,7 +70,56 @@ export const ShoppingList = memo(function ShoppingList({
     toggleShoppingChecked,
     removeShoppingItem,
     setShoppingItems,
+    userId,
+    activeHouseholdId,
   } = useAppData();
+
+  // Resolve member metadata once, only when in a household. Used for
+  // the "Shared with Sarah & Tom" banner + per-row attribution chip.
+  const [household, setHousehold] = useState<HouseholdData | null>(null);
+  useEffect(() => {
+    if (!userId || !activeHouseholdId) {
+      setHousehold(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        // `supabase` from browserClient.ts is the typed client; the
+        // shared household helper takes a structurally-typed client so
+        // we cast through `unknown` to keep the isolation contract.
+        const { data } = await getMyHousehold(
+          supabase as unknown as Parameters<typeof getMyHousehold>[0],
+          userId,
+        );
+        if (!cancelled) setHousehold(data ?? null);
+      } catch {
+        if (!cancelled) setHousehold(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, activeHouseholdId]);
+
+  const memberById = useMemo(() => {
+    const m = new Map<string, { displayName: string; index: number }>();
+    (household?.members ?? []).forEach((member, idx) => {
+      m.set(member.userId, { displayName: member.displayName, index: idx });
+    });
+    return m;
+  }, [household]);
+
+  const sharedWithLabel = useMemo(() => {
+    if (!household?.household || !userId) return null;
+    const others = (household.members ?? [])
+      .filter((m) => m.userId !== userId)
+      .map((m) => householdMemberFirstName(m.displayName));
+    if (others.length === 0) return null;
+    if (others.length === 1) return `Shared with ${others[0]}`;
+    if (others.length === 2) return `Shared with ${others[0]} & ${others[1]}`;
+    return `Shared with ${others.slice(0, -1).join(", ")} & ${others[others.length - 1]}`;
+  }, [household, userId]);
 
   const categories = useMemo(
     () => Array.from(new Set(shoppingItems.map((item) => item.category))),
@@ -74,8 +142,6 @@ export const ShoppingList = memo(function ShoppingList({
     [categorySections],
   );
 
-  // F3 (2026-04-28): count of fully-checked groups for the progress
-  // bar and the "Remove N checked" link.
   const checkedCount = useMemo(
     () =>
       categorySections.reduce(
@@ -98,15 +164,10 @@ export const ShoppingList = memo(function ShoppingList({
     }
   };
 
-  /** F3 (2026-04-28) — per-row remove. Mobile parity at
-   *  `apps/mobile/app/shopping.tsx` (uses the same context handler). */
   const removeGroup = (group: ShoppingDisplayGroup) => {
     for (const item of group.items) removeShoppingItem(item.id);
   };
 
-  /** F3 (2026-04-28) — clear-checked link. Filters the persisted
-   *  shopping array down to unchecked items in one write. Mirrors
-   *  the mobile flow which uses the same `setShoppingItems` setter. */
   const handleClearChecked = () => {
     if (checkedCount === 0) return;
     setShoppingItems((prev) => prev.filter((item) => !item.checked));
@@ -114,7 +175,26 @@ export const ShoppingList = memo(function ShoppingList({
 
   return (
     <div className="max-w-5xl mx-auto px-pm-5 py-pm-5">
-      {/* Title + subtitle — paste-level fidelity to prototype WebShopping. */}
+      {/* Honeydew parity banner — visible only when in a household.
+          Renders above the title so the user sees who they're shopping
+          with before scanning the list. Hidden for solo users. */}
+      {sharedWithLabel ? (
+        <button
+          type="button"
+          data-testid="shopping-household-banner"
+          aria-label={`${sharedWithLabel}. Manage household.`}
+          onClick={() => _onNavigate?.("household-settings")}
+          className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-primary/10 text-foreground hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          style={{ maxWidth: 900 }}
+        >
+          <Users width={14} height={14} className="text-primary shrink-0" aria-hidden />
+          <span className="text-[12px] font-semibold">{sharedWithLabel}</span>
+          <span className="text-[11px] text-muted-foreground ml-auto">
+            Synced live across your household
+          </span>
+        </button>
+      ) : null}
+
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
         style={{ fontSize: 24, margin: "0 0 4px" }}
@@ -125,10 +205,6 @@ export const ShoppingList = memo(function ShoppingList({
         {subtitle}
       </p>
 
-      {/* F3 (2026-04-28): slim progress bar + clear-checked link.
-          Mobile parity at `apps/mobile/app/shopping.tsx`. Hidden on
-          empty lists; the clear-checked link only renders when ≥1
-          row is checked. */}
       {totalItemCount > 0 ? (
         <div
           className="flex items-center gap-3 mb-5"
@@ -184,12 +260,6 @@ export const ShoppingList = memo(function ShoppingList({
           style={{ maxWidth: 900 }}
         >
           {categorySections.map((section) => {
-            // 2026-04-30 audit visual-qa P1 #8 (mobile parity with
-            // `apps/mobile/app/shopping.tsx` L471-503): section-level
-            // progress so the user feels each category complete as
-            // they shop. A group is "checked" when all its items are
-            // checked — same `isShoppingGroupFullyChecked` predicate
-            // used elsewhere in this file for the row toggle.
             const sectionTotal = section.groups.length;
             const sectionChecked = section.groups.filter((g) =>
               isShoppingGroupFullyChecked(g),
@@ -231,15 +301,27 @@ export const ShoppingList = memo(function ShoppingList({
                   const displayName = dedupedSingle
                     ? dedupedSingle.name
                     : group.displayName;
-                  // Audit 2026-04-30 visual-qa P2 #16 — the row used to
-                  // render "2 cups flour (2 cups)" when the ingredient
-                  // display name already had the qty inlined. Skip the
-                  // parenthetical when `qtyLine` is already a substring
-                  // of `displayName` (case-insensitive).
                   const rowLabel =
                     qtyLine && !displayName.toLowerCase().includes(qtyLine.toLowerCase())
                       ? `${displayName} (${qtyLine})`
                       : displayName;
+
+                  // Honeydew parity (2026-04-30): per-row check
+                  // attribution. When the group is checked AND we
+                  // have a household AND a single member toggled it,
+                  // surface their initials chip.
+                  const checkedByEntries = group.items
+                    .map((i) => i.checkedBy ?? null)
+                    .filter((id): id is string => Boolean(id));
+                  const uniqueCheckedBy = [...new Set(checkedByEntries)];
+                  const showAttribution =
+                    activeHouseholdId != null &&
+                    allChecked &&
+                    uniqueCheckedBy.length === 1;
+                  const attributedMember = showAttribution
+                    ? memberById.get(uniqueCheckedBy[0]!)
+                    : null;
+
                   return (
                     <li
                       key={group.key}
@@ -270,10 +352,29 @@ export const ShoppingList = memo(function ShoppingList({
                       >
                         {rowLabel}
                       </span>
-                      {/* F3 (2026-04-28): per-row remove button.
-                          Visible on hover (group-hover:opacity-100)
-                          + always visible on focus for keyboard
-                          users. Mobile parity. */}
+                      {attributedMember ? (
+                        <span
+                          data-testid={`shopping-attribution-${group.key}`}
+                          className="inline-flex items-center gap-1 shrink-0"
+                          title={`${householdMemberFirstName(attributedMember.displayName)} checked this`}
+                        >
+                          <span
+                            aria-hidden
+                            className="inline-flex items-center justify-center text-[9px] font-bold text-white"
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 7,
+                              background: householdMemberAccent(attributedMember.index),
+                            }}
+                          >
+                            {householdMemberInitials(attributedMember.displayName)}
+                          </span>
+                          <span className="text-[10px] font-semibold text-muted-foreground">
+                            {householdMemberFirstName(attributedMember.displayName)}
+                          </span>
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeGroup(group)}

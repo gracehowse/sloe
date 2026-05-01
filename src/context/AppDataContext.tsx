@@ -65,6 +65,12 @@ import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 import { useShoppingListState } from "./appData/useShoppingListState.ts";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
+import { getMyHousehold } from "../lib/household/householdClient.ts";
+import {
+  shoppingScopeFor,
+  shoppingScopeInsertStamp,
+  type ShoppingScope,
+} from "../lib/household/shoppingScope.ts";
 import { isAuthLockAbort } from "../lib/supabase/isAuthLockAbort.ts";
 import { filterOrphanSaves } from "../lib/recipes/filterOrphanSaves.ts";
 import { composeLibraryEntries } from "../lib/recipes/composeLibraryEntries.ts";
@@ -138,6 +144,13 @@ interface AppDataContextValue {
   toggleShoppingChecked: (itemId: string) => void;
   removeShoppingItem: (itemId: string) => void;
   addShoppingItem: (item: Omit<ShoppingItem, "id" | "checked"> & { checked?: boolean }) => void;
+  /**
+   * Honeydew parity (2026-04-30): the user's active household id, or
+   * null when solo. Surfaced so the ShoppingList component can render
+   * the "Shared with Sarah & Tom" banner + per-row attribution chips
+   * without re-fetching `getMyHousehold` itself.
+   */
+  activeHouseholdId: string | null;
   nutritionTargets: MacroTargets;
   setNutritionTargets: Dispatch<SetStateAction<MacroTargets>>;
   preferActivityAdjustedCalories: boolean;
@@ -358,13 +371,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [dbMealPlanWarned, setDbMealPlanWarned] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
 
+  // Honeydew parity (2026-04-30) — resolve the user's active household
+  // once on auth, and re-resolve after a join/leave (best-effort: we
+  // don't yet emit a global "household changed" event, but the
+  // HouseholdSettingsPage hard-reloads on those flows so the next
+  // mount picks up the new id). Drives scope on
+  // `useShoppingListState` and on the local generate / clear paths.
+  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!authedUserId) { setActiveHouseholdId(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await getMyHousehold(supabase as unknown as { from: (t: string) => unknown; rpc: (f: string, p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> }, authedUserId);
+        if (!cancelled) {
+          const hh = (data as { household?: { id?: string } | null } | null)?.household;
+          setActiveHouseholdId(hh?.id ?? null);
+        }
+      } catch {
+        if (!cancelled) setActiveHouseholdId(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authedUserId]);
+
+  const shoppingScope: ShoppingScope | null = useMemo(() => {
+    if (!authedUserId) return null;
+    return shoppingScopeFor({ userId: authedUserId, householdId: activeHouseholdId });
+  }, [authedUserId, activeHouseholdId]);
+
   const {
     shoppingItems,
     setShoppingItems,
     toggleShoppingChecked,
     removeShoppingItem,
     addShoppingItem,
-  } = useShoppingListState({ authedUserId, initialItems: initial.shoppingItems });
+  } = useShoppingListState({
+    authedUserId,
+    initialItems: initial.shoppingItems,
+    activeHouseholdId,
+  });
 
   const [shoppingListSourceFingerprint, setShoppingListSourceFingerprint] = useState<string | null>(
     initial.shoppingListSourceFingerprint ?? null,
@@ -446,10 +492,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setShoppingItems([]);
       setShoppingListSourceFingerprint(null);
     }
-    if (decision.clearServer && authedUserId) {
-      void supabase.from("shopping_items").delete().eq("user_id", authedUserId);
+    if (decision.clearServer && authedUserId && shoppingScope) {
+      // 2026-04-30 (Honeydew parity): scope-aware wipe so a member
+      // whose plan empties doesn't nuke the shared household list.
+      let q = supabase.from("shopping_items").delete();
+      if (shoppingScope.kind === "household") {
+        q = q.eq("household_id", shoppingScope.householdId);
+      } else {
+        q = q.eq("user_id", authedUserId).is("household_id", null);
+      }
+      void q;
     }
-  }, [mealPlan, shoppingItems.length, shoppingListSourceFingerprint, setShoppingItems, authedUserId]);
+  }, [mealPlan, shoppingItems.length, shoppingListSourceFingerprint, setShoppingItems, authedUserId, shoppingScope]);
 
   // Load profile basics (tier/display name). Falls back to local profile if needed.
   useEffect(() => {
@@ -1133,14 +1187,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     // next cold start from the DB load in `useShoppingListState`.
     // The null-transition effect above only fires on plan → null,
     // so regenerate (truthy → truthy) never touches the server.
-    if (authedUserId) {
-      const { error: delErr } = await supabase
-        .from("shopping_items")
-        .delete()
-        .eq("user_id", authedUserId);
+    if (authedUserId && shoppingScope) {
+      // 2026-04-30 (Honeydew parity): scope-aware purge + insert. Solo
+      // wipes its own per-user rows; household wipes the shared row
+      // set so a regenerate doesn't double-stack items.
+      let delQ = supabase.from("shopping_items").delete();
+      if (shoppingScope.kind === "household") {
+        delQ = delQ.eq("household_id", shoppingScope.householdId);
+      } else {
+        delQ = delQ.eq("user_id", authedUserId).is("household_id", null);
+      }
+      const { error: delErr } = await delQ;
       if (!delErr && list.length > 0) {
+        const stamp = shoppingScopeInsertStamp(shoppingScope);
         const inserts = list.map((item) => ({
-          user_id: authedUserId,
+          user_id: stamp.user_id,
+          household_id: stamp.household_id,
           name: item.name,
           amount: item.amount,
           unit: item.unit,
@@ -1148,8 +1210,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           checked: item.checked,
           source: item.from,
         }));
-        // Batch 50 to avoid payload limits (matches mobile's
-        // `planner.tsx` insert loop).
         for (let i = 0; i < inserts.length; i += 50) {
           await supabase.from("shopping_items").insert(inserts.slice(i, i + 50));
         }
@@ -1868,6 +1928,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toggleShoppingChecked,
       removeShoppingItem,
       addShoppingItem,
+      activeHouseholdId,
       nutritionTargets,
       setNutritionTargets,
       preferActivityAdjustedCalories,
@@ -1954,6 +2015,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toggleShoppingChecked,
       removeShoppingItem,
       addShoppingItem,
+      activeHouseholdId,
       nutritionTargets,
       setNutritionTargets,
       preferActivityAdjustedCalories,

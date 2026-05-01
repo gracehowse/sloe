@@ -1354,7 +1354,10 @@ export type Database = {
           amount: string
           category: string
           checked: boolean
+          checked_at: string | null
+          checked_by: string | null
           created_at: string
+          household_id: string | null
           id: string
           name: string
           source: string
@@ -1365,7 +1368,10 @@ export type Database = {
           amount?: string
           category?: string
           checked?: boolean
+          checked_at?: string | null
+          checked_by?: string | null
           created_at?: string
+          household_id?: string | null
           id?: string
           name?: string
           source?: string
@@ -1376,14 +1382,25 @@ export type Database = {
           amount?: string
           category?: string
           checked?: boolean
+          checked_at?: string | null
+          checked_by?: string | null
           created_at?: string
+          household_id?: string | null
           id?: string
           name?: string
           source?: string
           unit?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shopping_items_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       stripe_webhook_events: {
         Row: {
