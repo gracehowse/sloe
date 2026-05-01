@@ -893,9 +893,9 @@ export default function CreateRecipeWizard() {
         {step === "ingredients" && (
           <View style={{ gap: Spacing.md }}>
             <View>
-              <Text style={styles.sectionTitle}>What's in it?</Text>
+              <Text style={styles.sectionTitle}>What&apos;s in it?</Text>
               <Text style={styles.sectionSub}>
-                Tap to search the food database. We'll match nutrition where
+                Tap to search the food database. We&apos;ll match nutrition where
                 we can. {ingredients.length === 0 ? "Add at least one ingredient to continue." : null}
               </Text>
             </View>
@@ -1086,7 +1086,7 @@ export default function CreateRecipeWizard() {
             <View>
               <Text style={styles.sectionTitle}>Save your recipe</Text>
               <Text style={styles.sectionSub}>
-                "{normalizeRecipeTitle(title.trim())}" — {servings}{" "}
+                &ldquo;{normalizeRecipeTitle(title.trim())}&rdquo; — {servings}{" "}
                 {servings === 1 ? "serving" : "servings"} ·{" "}
                 {ingredients.length}{" "}
                 {ingredients.length === 1 ? "ingredient" : "ingredients"} ·{" "}
