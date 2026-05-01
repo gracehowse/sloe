@@ -310,6 +310,10 @@ const STACK_HEADER_HIDDEN = new Set([
   "fasting",
   "nutrition-sources",
   "create-recipe",
+  // Wizard route. Renders its own top bar + step counter — the auto
+  // stack header would duplicate the back affordance and clash with
+  // the in-screen "Step N of 5" announcement (a11y).
+  "recipe/create",
   "recipe/[id]",
   // P1-27 (TestFlight `AHitOL0RmJmQqYwdVzqw-2c`, 2026-04-22):
   // household-settings has its own in-page back chevron + title.
@@ -338,6 +342,7 @@ const STACK_TITLES: Record<string, string> = {
   "weight-tracker": "Weight & trends",
   "recipe/[id]": "Recipe",
   "create-recipe": "New recipe",
+  "recipe/create": "New recipe",
   "nutrition-sources": "Nutrition sources",
   "whats-new": "What's new",
   // 2026-04-30 — destination for the StreakPip tap. The header back

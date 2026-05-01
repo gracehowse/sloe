@@ -25,6 +25,7 @@ import {
   Bookmark,
   ChevronLeft,
   ArrowUpDown,
+  Plus,
   Search as SearchIcon,
   BookOpen,
   MoreHorizontal,
@@ -204,6 +205,23 @@ export default function LibraryScreen() {
       borderColor: colors.border,
     },
     sortText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    // 2026-04-30 audit (customer-lens): Library was the obvious spot
+    // for "+ Create" but had no entry — the only way to reach the
+    // create flow was More → Settings → Create Recipe. Pill placed
+    // next to Sort so the two header controls feel like peers (Sort
+    // affects what's shown, Create adds a new row to the list).
+    createBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.primary,
+      borderWidth: 1,
+      borderColor: Accent.primary,
+    },
+    createBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     filterScroll: {
       paddingHorizontal: Spacing.xl,
@@ -501,6 +519,19 @@ export default function LibraryScreen() {
           <ArrowUpDown size={14} color={colors.textSecondary} />
           <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
         </Pressable>
+        {/* 2026-04-30 audit (customer-lens): first-class "+ Create"
+            entry. Routes to the wizard at `/recipe/create` (5-step
+            guided flow). Surfaces the create-from-scratch path that
+            was previously buried under More → Settings. */}
+        <Pressable
+          style={styles.createBtn}
+          onPress={() => router.push("/recipe/create")}
+          accessibilityLabel="Create a new recipe"
+          accessibilityHint="Opens the new recipe wizard"
+        >
+          <Plus size={14} color="#fff" />
+          <Text style={styles.createBtnText}>Create</Text>
+        </Pressable>
       </View>
 
       <View style={styles.searchRow}>
@@ -582,11 +613,14 @@ export default function LibraryScreen() {
                 <BookOpen size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
                 <Text style={styles.emptyTitle}>No saved recipes</Text>
                 <Text style={styles.emptySubtext}>
-                  Save recipes from Discover or paste a recipe URL — everything you save shows up here for meal plans.
+                  Save recipes from Discover, import one you found, or write your own from scratch — everything shows up here for meal plans.
                 </Text>
                 <View style={styles.emptyActions}>
-                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/discover")}>
-                    <Text style={styles.ctaBtnText}>Go to Discover</Text>
+                  <Pressable style={styles.ctaBtn} onPress={() => router.push("/recipe/create")}>
+                    <Text style={styles.ctaBtnText}>Create a recipe</Text>
+                  </Pressable>
+                  <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/(tabs)/discover")}>
+                    <Text style={styles.ctaBtnSecondaryText}>Go to Discover</Text>
                   </Pressable>
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/import-shared")}>
                     <Text style={styles.ctaBtnSecondaryText}>Import a recipe</Text>

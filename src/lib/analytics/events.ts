@@ -454,6 +454,17 @@ export const AnalyticsEvents = {
    *   platform?: "web" | "ios" | "android", avgIngredientConfidence?, minIngredientConfidence? }`.
    * `recipe_id` omitted on create paste; set on recipe detail / verify flows when the recipe exists. */
   recipe_verify_needs_review: "recipe_verify_needs_review",
+  /** Mobile create-recipe wizard: a step transition (Continue tap or Back tap).
+   * Payload: `{ from: stepId, to: stepId, direction: "next" | "back",
+   * platform: "ios" | "android" | "web" }`. Funnel-builder for "where do
+   * users drop out of the wizard" — pairs with `recipe_create_wizard_saved`
+   * to compute step-level abandonment. */
+  recipe_create_wizard_step: "recipe_create_wizard_step",
+  /** Mobile create-recipe wizard: terminal save tap. Payload:
+   * `{ recipe_id, published: boolean, ingredient_count: number,
+   * step_count: number, has_macro_overrides: boolean,
+   * platform: "ios" | "android" | "web" }`. */
+  recipe_create_wizard_saved: "recipe_create_wizard_saved",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
