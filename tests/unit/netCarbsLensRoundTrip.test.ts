@@ -59,15 +59,24 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
   });
 
   describe("Settings toggle (mobile)", () => {
+    // 2026-05-01 (`claude/settings-mobile-structural-fix` P0-1): the
+    // toggle migrated from the legacy in-file Journal display section
+    // in `app/(tabs)/settings.tsx` into `<SettingsBundleContent>`'s
+    // Display & extras section, alongside the caffeine + alcohol
+    // Today opt-ins. The bundle is the canonical body of /settings
+    // (and the redirect target for /more).
+    const BUNDLE_PATH =
+      "apps/mobile/components/settings/SettingsBundleContent.tsx";
+
     it("renders a toggle backed by direct supabase update", () => {
-      const src = read("apps/mobile/app/(tabs)/settings.tsx");
+      const src = read(BUNDLE_PATH);
       expect(src).toMatch(/setNetCarbsLensEnabled\(/);
       expect(src).toMatch(/update\(\s*\{\s*net_carbs_lens_enabled/);
       expect(src).toMatch(/testID=["']settings-net-carbs-lens-toggle["']/);
     });
 
     it("fetches net_carbs_lens_enabled from profiles", () => {
-      const src = read("apps/mobile/app/(tabs)/settings.tsx");
+      const src = read(BUNDLE_PATH);
       expect(src).toMatch(/net_carbs_lens_enabled/);
     });
   });
