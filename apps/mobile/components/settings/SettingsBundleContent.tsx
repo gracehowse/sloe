@@ -3,6 +3,7 @@ import {
   Alert,
   Linking,
   Modal,
+  Platform,
   Pressable,
   Share,
   Switch,
@@ -14,6 +15,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
+// 2026-05-01 (P0-1, `claude/settings-mobile-structural-fix`) — the
+// bundle now owns Manage subscription + promo-code redemption. Pre-
+// fix these lived in the legacy in-file Plan section in
+// `/(tabs)/settings.tsx`; the structural collapse moved them into
+// the canonical Membership card so the bundle is the single source
+// of truth.
+import { presentCustomerCenter } from "@/lib/purchases";
+import { usePromoCode } from "@/hooks/usePromoCode";
 import {
   Bell,
   BookOpen,
@@ -50,7 +59,7 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
-import { isHealthSyncAvailable } from "@/lib/healthSync";
+import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "../../../../src/lib/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
@@ -62,6 +71,13 @@ import {
   nutritionLogCsvFilename,
 } from "../../../../src/lib/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
+import {
+  DEFAULT_TRACKING_EXTRAS,
+  TRACKING_EXTRAS_STORAGE_KEY,
+  parseTrackingExtras,
+  serializeTrackingExtras,
+  type TrackingExtras,
+} from "../../../../src/lib/nutrition/trackingExtras";
 import { getMyHousehold } from "../../../../src/lib/household/householdClient";
 import {
   presetFromShareLunch,
@@ -157,6 +173,12 @@ function SettingsRow({
   onPress?: () => void;
 }) {
   const colors = useThemeColors();
+  // P2-10 (2026-05-01) — tabular-nums on numeric sub copies. Things
+  // like "400 mg/day", "120 g/week", "build 47" align across rows
+  // when figures share the same advance width. Detection: any digit
+  // in the string. Pure-text subs (e.g. "Connected") fall through
+  // to the default proportional figures.
+  const subHasNumber = typeof sub === "string" && /\d/.test(sub);
   return (
     <Pressable
       testID={testID}
@@ -187,7 +209,14 @@ function SettingsRow({
         </Text>
         {sub ? (
           <Text
-            style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}
+            style={{
+              fontSize: 11,
+              color: colors.textSecondary,
+              marginTop: 2,
+              ...(subHasNumber
+                ? { fontVariant: ["tabular-nums"] as const }
+                : {}),
+            }}
             numberOfLines={2}
           >
             {sub}
@@ -468,6 +497,123 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // "Export everything" flow (2026-04-30 user-sentiment audit). The
   // row spinner is gated by this flag; double-taps are no-ops.
   const [exportingEverything, setExportingEverything] = useState(false);
+  // CSV export — file-write spinner so the row sub copy reads
+  // "Preparing your file…" while we hit Supabase + write to cache.
+  // Replaces the silent broken Share.share({ message: csv }) path
+  // (P0-2 — `claude/settings-mobile-structural-fix` 2026-05-01).
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  // P0-1 / Tracking extras (2026-05-01,
+  // `claude/settings-mobile-structural-fix`) — caffeine + alcohol
+  // Today widgets default OFF. Migrated from `/(tabs)/settings.tsx`
+  // legacy section so the bundle is the single source of truth.
+  // AsyncStorage-only (no schema change). Toggling persists
+  // immediately so the Today tracker host picks up the change on
+  // next render.
+  const [trackingExtras, setTrackingExtras] = useState<TrackingExtras>(
+    DEFAULT_TRACKING_EXTRAS,
+  );
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(TRACKING_EXTRAS_STORAGE_KEY);
+        if (cancelled) return;
+        setTrackingExtras(parseTrackingExtras(raw));
+      } catch {
+        // Storage unavailable — keep defaults.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const persistTrackingExtras = useCallback(async (next: TrackingExtras) => {
+    setTrackingExtras(next);
+    try {
+      await AsyncStorage.setItem(
+        TRACKING_EXTRAS_STORAGE_KEY,
+        serializeTrackingExtras(next),
+      );
+    } catch {
+      // Soft failure — local state already reflects the toggle.
+    }
+  }, []);
+
+  // P1-8 (2026-05-01) — real Apple Health connection state. The
+  // pre-fix code surfaced `isHealthSyncAvailable()` which only
+  // checks platform support, not user grant: a brand-new install on
+  // iOS saw "Connected" before the permission sheet ever opened. We
+  // now (a) seed from the `health_sync_apple_connected` flag the
+  // /health-sync screen writes after a successful connect, then
+  // (b) re-probe HealthKit on focus via `probeHealthAccess()` and
+  // flip back to "Permission needed" on bridge-error (revoked in
+  // iOS Settings).
+  const [appleHealthState, setAppleHealthState] = useState<
+    "checking" | "connected" | "permission_needed" | "unavailable"
+  >("checking");
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const cached = await AsyncStorage.getItem(
+            "health_sync_apple_connected",
+          );
+          if (!cancelled && cached === "true") setAppleHealthState("connected");
+        } catch {
+          // ignore — the probe below is authoritative.
+        }
+        const status = await probeHealthAccess();
+        if (cancelled) return;
+        if (status === "connected") setAppleHealthState("connected");
+        else if (status === "denied") setAppleHealthState("permission_needed");
+        else setAppleHealthState("unavailable");
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  // P0-1 (2026-05-01) — Manage subscription + promo-code redemption
+  // migrated from the legacy `/(tabs)/settings.tsx` Plan section
+  // into the bundle's Membership card. Free users see View plans /
+  // Upgrade only; base/pro see Manage subscription. The promo-code
+  // input lives beneath both gates so testers can redeem regardless
+  // of tier.
+  const {
+    code: promoCode,
+    setCode: setPromoCode,
+    submitting: promoSubmitting,
+    redeem: redeemPromo,
+  } = usePromoCode({ userId });
+  const handleRedeemPromo = useCallback(async () => {
+    const result = await redeemPromo();
+    if (result.ok) {
+      // Force a profile refetch so the tier badge / upgrade row
+      // reflects the new entitlement immediately.
+      loadProfileData();
+    }
+  }, [redeemPromo, loadProfileData]);
+  const handleManageSubscription = useCallback(async () => {
+    const result = await presentCustomerCenter();
+    if (result.presented) return;
+    // Fallback: send the user to the platform's native subscription
+    // surface so "manage my plan" is never a dead end. `no_api_key`
+    // hits this path in builds where RC isn't provisioned;
+    // `ui_unavailable` hits it in Expo Go or on web.
+    const url =
+      Platform.OS === "ios"
+        ? "https://apps.apple.com/account/subscriptions"
+        : "https://play.google.com/store/account/subscriptions";
+    await Linking.openURL(url).catch(() => {
+      Alert.alert(
+        "Couldn't open subscription settings",
+        "Manage your Suppr subscription from the App Store / Play Store app.",
+      );
+    });
+  }, []);
 
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
@@ -760,76 +906,190 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         ))}
       </View>
 
-      {/* Membership */}
-      {profileData.userTier !== "pro" ? (
-        <>
-          <SectionHeading title="Membership" />
-          <View
+      {/* Membership — restructured 2026-05-01
+          (`claude/settings-mobile-structural-fix` P0-1). The card now
+          carries every Plan-related row migrated from the legacy
+          `/(tabs)/settings.tsx`: upgrade (free/base) → Manage
+          subscription (base/pro) → promo-code input (always). */}
+      <SectionHeading title="Membership" />
+      <View
+        style={{
+          backgroundColor: colors.card,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          overflow: "hidden",
+        }}
+      >
+        {profileData.userTier !== "pro" ? (
+          <Pressable
+            testID="settings-bundle-upgrade-row"
+            onPress={() => router.push("/paywall?from=settings" as any)}
+            accessibilityRole="button"
             style={{
-              backgroundColor: colors.card,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              overflow: "hidden",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 14,
             }}
           >
-            <Pressable
-              testID="settings-bundle-upgrade-row"
-              onPress={() => router.push("/paywall?from=settings" as any)}
-              accessibilityRole="button"
+            <View
               style={{
-                flexDirection: "row",
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: Accent.primary + "22",
                 alignItems: "center",
-                gap: 12,
-                paddingVertical: 14,
-                paddingHorizontal: 14,
+                justifyContent: "center",
               }}
             >
-              <View
+              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: Accent.primary + "22",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: colors.text,
                 }}
               >
-                <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: colors.text,
-                  }}
-                >
-                  {profileData.userTier === "free"
-                    ? "Upgrade your plan"
-                    : "Upgrade to Pro"}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginTop: 2,
-                  }}
-                >
-                  {profileData.userTier === "free"
-                    ? "Unlimited recipes, multi-day plans, and AI logging"
-                    : "Unlock AI photo and voice logging with Pro"}
-                </Text>
-              </View>
-              <ChevronRight
-                size={16}
-                color={colors.textTertiary}
-                strokeWidth={1.75}
-              />
+                {profileData.userTier === "free"
+                  ? "Upgrade your plan"
+                  : "Upgrade to Pro"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  marginTop: 2,
+                }}
+              >
+                {profileData.userTier === "free"
+                  ? "Unlimited recipes, multi-day plans, and AI logging"
+                  : "Unlock AI photo and voice logging with Pro"}
+              </Text>
+            </View>
+            <ChevronRight
+              size={16}
+              color={colors.textTertiary}
+              strokeWidth={1.75}
+            />
+          </Pressable>
+        ) : null}
+        {profileData.userTier !== "free" ? (
+          <Pressable
+            testID="settings-manage-subscription-row"
+            onPress={() => void handleManageSubscription()}
+            accessibilityRole="button"
+            accessibilityLabel="Manage subscription"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 14,
+              borderTopWidth:
+                profileData.userTier !== "pro" ? 1 : 0,
+              borderTopColor: colors.cardBorder,
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: Accent.primary + "18",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Sparkles size={18} color={Accent.primary} strokeWidth={1.75} />
+            </View>
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 14,
+                fontWeight: "600",
+                color: colors.text,
+              }}
+            >
+              Manage subscription
+            </Text>
+            <ChevronRight
+              size={16}
+              color={colors.textTertiary}
+              strokeWidth={1.75}
+            />
+          </Pressable>
+        ) : null}
+        {/* Promo-code redemption — testers + creator codes. Sits
+            beneath both upgrade / manage rows so it's reachable
+            regardless of tier. Logic lives in `usePromoCode`. */}
+        <View
+          style={{
+            paddingHorizontal: 14,
+            paddingVertical: 14,
+            gap: 10,
+            borderTopWidth: 1,
+            borderTopColor: colors.cardBorder,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.textSecondary,
+              letterSpacing: 0.6,
+            }}
+          >
+            PROMO CODE
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+            Enter your code exactly as provided (letters are not
+            case-sensitive).
+          </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TextInput
+              testID="settings-bundle-promo-code-input"
+              value={promoCode}
+              onChangeText={setPromoCode}
+              placeholder="e.g. SUPPR_TEST_PREMIUM"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              style={{
+                flex: 1,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+                color: colors.text,
+                fontSize: 14,
+              }}
+            />
+            <Pressable
+              testID="settings-bundle-promo-code-apply"
+              onPress={() => void handleRedeemPromo()}
+              disabled={promoSubmitting || !promoCode.trim()}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: Accent.primary,
+                opacity: promoSubmitting || !promoCode.trim() ? 0.4 : 1,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                {promoSubmitting ? "..." : "Apply"}
+              </Text>
             </Pressable>
           </View>
-        </>
-      ) : null}
+        </View>
+      </View>
 
       {/* Household — hides when the user isn't in a household */}
       {householdSummary ? (
@@ -931,6 +1191,118 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </View>
 
+      {/* Display & extras — caffeine + alcohol Today widgets opt-in.
+          Migrated from the legacy `/(tabs)/settings.tsx` Tracking
+          extras section (P0-1, `claude/settings-mobile-structural-fix`
+          2026-05-01). AsyncStorage-only via
+          `TRACKING_EXTRAS_STORAGE_KEY`; Today's tracker host re-reads
+          on focus. Hydration stays on regardless; turning these off
+          hides the row on Today but preserves any historical logs. */}
+      <SectionHeading title="Display & extras" />
+      <View
+        style={{
+          backgroundColor: colors.card,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+          }}
+        >
+          <IconBox color={t.accent}>
+            <Coffee size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.text,
+                lineHeight: 17,
+              }}
+            >
+              Track caffeine
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              Show a caffeine row on Today. Logs in mg, off by default.
+            </Text>
+          </View>
+          <Switch
+            testID="settings-bundle-track-caffeine-toggle"
+            value={trackingExtras.trackCaffeine}
+            onValueChange={(v) =>
+              void persistTrackingExtras({
+                ...trackingExtras,
+                trackCaffeine: v,
+              })
+            }
+            trackColor={{ true: Accent.primary }}
+          />
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderTopWidth: 1,
+            borderTopColor: colors.cardBorder,
+          }}
+        >
+          <IconBox color={t.accent}>
+            <Wine size={18} color={t.accent} strokeWidth={1.75} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.text,
+                lineHeight: 17,
+              }}
+            >
+              Track alcohol
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              Show an alcohol row on Today. Logs units + kcal, off by
+              default.
+            </Text>
+          </View>
+          <Switch
+            testID="settings-bundle-track-alcohol-toggle"
+            value={trackingExtras.trackAlcohol}
+            onValueChange={(v) =>
+              void persistTrackingExtras({
+                ...trackingExtras,
+                trackAlcohol: v,
+              })
+            }
+            trackColor={{ true: Accent.primary }}
+          />
+        </View>
+      </View>
+
       {/* Connections */}
       <SectionHeading title="Connections" />
       <View
@@ -948,7 +1320,19 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           icon={HeartPulse}
           iconColor={t.green}
           label="Apple Health"
-          sub={isHealthSyncAvailable() ? "Connected" : "Not connected"}
+          // P1-8 (2026-05-01) — reflect the real permission state, not
+          // the bare platform capability. `probeHealthAccess()` issues
+          // a 24h step-samples read; bridge errors mean the user
+          // revoked access in iOS Settings → Privacy → Health → Suppr.
+          sub={
+            appleHealthState === "connected"
+              ? "Connected"
+              : appleHealthState === "permission_needed"
+                ? "Permission needed · tap to fix"
+                : appleHealthState === "unavailable"
+                  ? "Not available on this device"
+                  : "Checking…"
+          }
           onPress={() => router.push("/health-sync" as any)}
         />
         <SettingsRow
@@ -1026,9 +1410,22 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           icon={Download}
           iconColor={t.accent}
           label="Export nutrition log (CSV)"
-          sub="Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets."
+          sub={
+            exportingCsv
+              ? "Preparing your file…"
+              : "Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets."
+          }
           onPress={async () => {
             if (!userId) return;
+            if (exportingCsv) return;
+            // P0-2 (2026-05-01) — write the CSV to the cache directory
+            // and surface the iOS share sheet via Share.share({ url }).
+            // The legacy path used Share.share copy-paste payload which
+            // routes through pasteboard and silently truncates above
+            // ~64KB; a real user with a few months of logs hit the
+            // limit on day 1. Mirrors the export-everything pattern in
+            // `lib/exportEverything.ts`.
+            setExportingCsv(true);
             try {
               const { data: entries, error } = await supabase
                 .from("nutrition_entries")
@@ -1044,12 +1441,83 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               }
               const csv = nutritionLogToCsv(entries ?? []);
               const filename = nutritionLogCsvFilename();
-              await Share.share({ message: csv, title: filename });
+
+              // Dynamic import keeps unit tests under vitest from
+              // failing on the optional native module — same pattern
+              // as `exportEverythingToFile`.
+              let fsModule: unknown;
+              try {
+                fsModule = await import("expo-file-system");
+              } catch {
+                Alert.alert(
+                  "Export failed",
+                  "We couldn't access local storage to save the file.",
+                );
+                return;
+              }
+              const fsModAny = fsModule as {
+                cacheDirectory?: unknown;
+                writeAsStringAsync?: unknown;
+                default?: {
+                  cacheDirectory?: unknown;
+                  writeAsStringAsync?: unknown;
+                };
+              };
+              const cacheDir =
+                (typeof fsModAny.cacheDirectory === "string"
+                  ? fsModAny.cacheDirectory
+                  : null) ??
+                (typeof fsModAny.default?.cacheDirectory === "string"
+                  ? fsModAny.default?.cacheDirectory
+                  : null);
+              const writeAsStringAsync =
+                (typeof fsModAny.writeAsStringAsync === "function"
+                  ? fsModAny.writeAsStringAsync
+                  : null) ??
+                (typeof fsModAny.default?.writeAsStringAsync === "function"
+                  ? fsModAny.default?.writeAsStringAsync
+                  : null);
+              if (!cacheDir || !writeAsStringAsync) {
+                Alert.alert(
+                  "Export failed",
+                  "We couldn't access local storage to save the file.",
+                );
+                return;
+              }
+              const fileUri = `${(cacheDir as string).replace(/\/$/, "")}/${filename}`;
+              try {
+                await (
+                  writeAsStringAsync as (
+                    uri: string,
+                    body: string,
+                  ) => Promise<void>
+                )(fileUri, csv);
+              } catch (e) {
+                Alert.alert(
+                  "Export failed",
+                  e instanceof Error
+                    ? `Couldn't save to your device: ${e.message}`
+                    : "Couldn't save the export to your device.",
+                );
+                return;
+              }
+              try {
+                await Share.share({ url: fileUri, title: filename });
+              } catch (e) {
+                Alert.alert(
+                  "Couldn't open share sheet",
+                  e instanceof Error
+                    ? e.message
+                    : "The file was saved but the share sheet didn't open.",
+                );
+              }
             } catch (e) {
               Alert.alert(
                 "Export failed",
                 e instanceof Error ? e.message : "Unknown error",
               );
+            } finally {
+              setExportingCsv(false);
             }
           }}
         />
@@ -1220,12 +1688,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                           text: "Delete account",
                           style: "destructive",
                           onPress: async (text?: string) => {
+                            // P1-7 (2026-05-01) — drop the
+                            // "(lowercase)" qualifier. The compare
+                            // already lowercases the typed input so
+                            // the hint was misleading: "Delete" /
+                            // "DELETE" both worked but the copy
+                            // implied otherwise.
                             if (
                               (text ?? "").trim().toLowerCase() !== "delete"
                             ) {
                               Alert.alert(
                                 "Not deleted",
-                                "Type the word 'delete' (lowercase) to confirm.",
+                                "Type the word delete to confirm.",
                               );
                               return;
                             }
@@ -1279,25 +1753,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </View>
 
-      {/* Sign Out — kept as a standalone destructive button beneath the
-          card stack so the action stays obvious and reachable after
-          long-scroll. */}
-      <Pressable
-        testID="settings-bundle-sign-out"
-        onPress={() => void supabase.auth.signOut()}
-        style={{
-          paddingVertical: 16,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: t.red + "40",
-          alignItems: "center",
-          marginTop: 22,
-        }}
-      >
-        <Text style={{ color: t.red, fontWeight: "600", fontSize: 15 }}>
-          Sign Out
-        </Text>
-      </Pressable>
+      {/* Sign Out lives in the parent /(tabs)/settings.tsx as a single
+          neutral row beneath this bundle. Sign Out is reversible
+          (sign back in is a single tap), so red is reserved for
+          irreversible actions like Delete Account. The bundle no
+          longer renders its own destructive-bordered Sign Out (P1-5,
+          `claude/settings-mobile-structural-fix` 2026-05-01). */}
 
       {/* Reset / erase modal */}
       <Modal
@@ -1406,9 +1867,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
             <Pressable
               onPress={() => {
+                // P1-6 (2026-05-01) — calm-streak copy. Drops the
+                // double "permanently / cannot be undone" pattern in
+                // favour of a single forward-looking line. The body
+                // still enumerates what gets wiped (lowercase list)
+                // so the user understands the scope; categories list
+                // is a behavioural pin in `settingsBundleParity.test.ts`.
                 Alert.alert(
-                  "Erase everything?",
-                  "This will permanently delete your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay. This cannot be undone.",
+                  "Delete your data and start fresh?",
+                  "You can re-import from your export file anytime. We'll clear your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay.",
                   [
                     { text: "Cancel", style: "cancel" },
                     {
