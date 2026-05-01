@@ -91,6 +91,9 @@ import { HouseholdBar } from "@/components/HouseholdBar";
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
 import { ProgressHeadline } from "@/components/today/ProgressHeadline";
+import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
+import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
+import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
@@ -911,34 +914,46 @@ export default function ProgressScreen() {
       {/* Phase 4 / B3.1 — Progress story headline (Surface E).
           Engine-led commentary line replacing the stat-card dashboard
           as the visual focus. The maintenance card / charts / stat
-          cards beneath remain (demoted) — this card is the lead.
+          chips beneath remain (demoted) — this card is the lead.
           Authority: D-2026-04-27-12 (always-on TDEE) +
           D-2026-04-27-17 (Progress is a story).
+
+          customer-lens audit (2026-04-30): the live story renders
+          even when `adaptiveTdee == null` and the user has < 3
+          logged days, which produces narrative based on null. Gate
+          via `hasEnoughDataForStory(daysLogged)` and render the
+          `<ProgressStoryGate>` placeholder card instead until the
+          floor is reached. Geometry matches so the slot doesn't jump.
 
           See ProgressDashboard.tsx (web) for the deferred-data notes
           on `prevWeekTdee` / `avgIntakeOnLossWeeksKcal`. */}
       <View style={{ marginBottom: 14 }}>
-        <ProgressHeadline
-          commentary={generateProgressCommentary({
-            current:
-              adaptiveTdee != null && adaptiveConfidence != null
-                ? {
-                    tdee: adaptiveTdee,
-                    confidence:
-                      adaptiveConfidence === "high" ||
-                      adaptiveConfidence === "medium" ||
-                      adaptiveConfidence === "low"
-                        ? adaptiveConfidence
-                        : "low",
-                    loggingDays: Object.keys(byDay ?? {}).length,
-                    weighInCount: Object.keys(weightKgByDay ?? {}).length,
-                    avgDailyIntake: 0,
-                    smoothedWeightChangeKgPerDay: 0,
-                    windowDays: 28,
-                  }
-                : null,
-          })}
-        />
+        {hasEnoughDataForStory(weekStats.daysWithFood) ? (
+          <ProgressHeadline
+            commentary={generateProgressCommentary({
+              current:
+                adaptiveTdee != null && adaptiveConfidence != null
+                  ? {
+                      tdee: adaptiveTdee,
+                      confidence:
+                        adaptiveConfidence === "high" ||
+                        adaptiveConfidence === "medium" ||
+                        adaptiveConfidence === "low"
+                          ? adaptiveConfidence
+                          : "low",
+                      loggingDays: Object.keys(byDay ?? {}).length,
+                      weighInCount: Object.keys(weightKgByDay ?? {}).length,
+                      avgDailyIntake: 0,
+                      smoothedWeightChangeKgPerDay: 0,
+                      windowDays: 28,
+                    }
+                  : null,
+              loggingDays: weekStats.daysWithFood,
+            })}
+          />
+        ) : (
+          <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
+        )}
       </View>
 
       {/* Range-picker segmented control — [7d, 30d, 90d, All]. Port
@@ -1147,12 +1162,39 @@ export default function ProgressScreen() {
             );
           })() : null}
 
-          {/* 2x2 Stat Grid
-              Action 5 Item 3 (2026-04-19) — partial-week label uses
-              `formatAvgCaloriesLabel(daysWithFood)` so the headline
-              number isn't misread as "average per day this week".
-              Shared helper keeps web + mobile copy identical. */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {/* Week digest — narrative LEAD card. Replaces the 2x2 grid
+              as the visual focus. customer-lens audit 2026-04-30 +
+              D-2026-04-27-17. */}
+          <View style={{ marginBottom: 14 }}>
+            <DigestStoryCard
+              weekLabel={recap.weekLabel}
+              daysLogged={weekStats.daysWithFood}
+              avgCalories={weekStats.avgCalories}
+              targetCalories={targets.calories}
+              avgProtein={recap.avgProtein}
+              targetProtein={targets.protein}
+              proteinOnTargetDays={weekStats.proteinOnTarget}
+              closestToTarget={recap.bestDay
+                ? {
+                    label: recap.bestDay.label,
+                    calories: recap.bestDay.calories,
+                    protein: recap.bestDay.protein,
+                  }
+                : null}
+            />
+          </View>
+
+          {/* DEMOTED stat chips (D-2026-04-27-17 — tiles demoted, not
+              deleted). Was a 4-tile 2x2 grid that anchored the page;
+              now a compact 2-row chip list of small KPIs that still
+              link out to per-metric drill-downs (`progress-metric` +
+              `weight-tracker`). Smaller padding, smaller numerals,
+              no IconBox tinted backgrounds — reads as a footer
+              summary, not the lead. */}
+          <View
+            testID="progress-demoted-chips"
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}
+          >
             {([
               [
                 formatAvgCaloriesLabel(weekStats.daysWithFood),
@@ -1172,19 +1214,13 @@ export default function ProgressScreen() {
                 "Streak",
                 `${streakDays} day${streakDays !== 1 ? "s" : ""}`,
                 freezesAvailable > 0
-                  ? `logging streak · ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`
+                  ? `· ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`
                   : "logging streak",
                 streakDays >= 3 ? t.green : t.accent,
                 Trophy,
               ],
               [
                 "Trend",
-                // Action 13 Item #6 (2026-04-19) — render the delta in
-                // the user's preferred unit. Was hard-coded to "kg"
-                // suffix even for imperial users, who saw "lb" on every
-                // other weight surface — pure unit drift. The signed
-                // formatter handles "+" / "−" so we don't repeat the
-                // sign logic at the call site.
                 weightTrend
                   ? formatWeightForUnit({ kg: weightTrend.diff, system: measurementSystem, signed: true })
                   : latestWeightKg != null
@@ -1202,30 +1238,8 @@ export default function ProgressScreen() {
               ],
             ] as const).map(([title, val, sub, color, IconCmp], i) => {
               const Icon = IconCmp as LucideIcon;
-              const tileBody = (
-                <>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <IconBox color={color as string} size={24}>
-                      <Icon size={12} color={color as string} strokeWidth={1.75} />
-                    </IconBox>
-                    <Text style={{ fontSize: 11, color: t.dim, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Text>
-                  </View>
-                  <Text style={{ fontSize: 22, fontWeight: "700", color: color as string, fontVariant: ["tabular-nums"] }}>{val}</Text>
-                  <Text style={{ fontSize: 12, color: t.sub, marginTop: 2 }}>{sub}</Text>
-                </>
-              );
-              const shellStyle = {
-                width: "47%" as const,
-                padding: 14,
-                borderRadius: Radius.lg,
-                backgroundColor: t.elevated,
-                borderWidth: 1,
-                borderColor: t.border,
-              };
-              // Action 5 Item 3 — the "Avg Calories" tile title now varies
-              // ("Avg Calories" full week, "Avg on logged days (X/7)"
-               // partial). Match by prefix so the routing + a11y branches
-              // still resolve cleanly without hard-coding both shapes.
+              // Match by prefix — `formatAvgCaloriesLabel` returns
+              // either "Avg Calories" or "Avg on logged days (X/7)".
               const isAvgCaloriesTile =
                 title === "Avg Calories" || title.startsWith("Avg on logged days");
               const openTile = () => {
@@ -1247,21 +1261,61 @@ export default function ProgressScreen() {
                     : title === "Protein Hit"
                       ? `Protein on target ${val}, ${sub}`
                       : `Logging streak ${val}, ${sub}`;
-              const footerLabel = title === "Trend" ? "Chart & breakdown" : "Tap for breakdown";
               return (
                 <Pressable
                   key={i}
+                  testID={`progress-demoted-chip-${i}`}
                   onPress={openTile}
                   accessibilityRole="button"
                   accessibilityLabel={a11yLabel}
                   accessibilityHint="Opens detailed breakdown"
-                  style={({ pressed }) => [shellStyle, pressed && { opacity: 0.92 }]}
+                  style={({ pressed }) => [
+                    {
+                      width: "48%",
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderRadius: Radius.md,
+                      backgroundColor: "transparent",
+                      borderWidth: 1,
+                      borderColor: t.border,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    },
+                    pressed && { opacity: 0.85 },
+                  ]}
                 >
-                  {tileBody}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: t.accent }}>{footerLabel}</Text>
-                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
+                  <Icon size={12} color={color as string} strokeWidth={1.75} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 10,
+                        color: t.dim,
+                        fontWeight: "500",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      {title}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 13,
+                        color: t.text,
+                        fontWeight: "600",
+                        fontVariant: ["tabular-nums"],
+                        marginTop: 1,
+                      }}
+                    >
+                      {val}
+                      <Text style={{ fontSize: 11, color: t.sub, fontWeight: "400" }}>
+                        {sub ? `  ${sub}` : ""}
+                      </Text>
+                    </Text>
                   </View>
+                  <ChevronRight size={12} color={t.dim} strokeWidth={1.75} />
                 </Pressable>
               );
             })}
