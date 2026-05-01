@@ -3,11 +3,13 @@ import {
   View,
   Text,
   Pressable,
+  ScrollView,
   StyleSheet,
   Dimensions,
   Alert,
   Animated,
   ToastAndroid,
+  TextInput,
   Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -28,8 +30,24 @@ import {
 } from "../../../src/lib/nutrition/recipeTimers";
 import { createSavedMeal } from "../../../src/lib/nutrition/savedMeals";
 import {
+  COOK_SCALE_PRESETS,
+  clampCookScale,
+  cookScaleCaption,
+  cookScaleStorageKey,
+  formatCookScaleLabel,
+  scaleAmountText,
+} from "../../../src/lib/nutrition/recipeScale";
+import {
+  formatCookHistoryPreview,
+  insertCookHistory,
+  listRecentCookHistory,
+  type CookHistoryRow,
+} from "../../../src/lib/nutrition/recipeCookHistoryClient";
+import {
   COOK_HISTORY_KEY_PREFIX,
+  COOK_NOTE_MAX_LEN,
   appendCookHistoryEntry,
+  clampCookNote,
   formatCookDuration,
   medianCookDuration,
   parseCookHistory,
@@ -109,10 +127,42 @@ export default function CookModeScreen() {
   const [priorCookMedianSec, setPriorCookMedianSec] = useState<number | null>(
     null,
   );
+  /** Active scale factor (Paprika parity, 2026-04-30). 0.5 / 1 / 1.5 /
+   *  2 / 4 — see `COOK_SCALE_PRESETS`. Persisted per (userId, recipeId)
+   *  to AsyncStorage so reopening the same recipe in Cook mode remembers
+   *  the last scale used. Initialised optimistically to 1; the hydration
+   *  effect below upgrades it once we've read storage. */
+  const [scale, setScale] = useState<number>(1);
+  /** Auth user id — used both as part of the scale storage key (so
+   *  shared devices don't bleed scale between accounts) and as the
+   *  Supabase write owner for the cook-history insert. Null until the
+   *  hydration effect resolves; we treat null as "anon" for the local
+   *  scale key, and skip the Supabase write entirely. */
+  const [userId, setUserId] = useState<string | null>(null);
+  /** Free-text per-cook note (Paprika parity). Capped at
+   *  `COOK_NOTE_MAX_LEN` (500) chars by the input + clamp. */
+  const [noteDraft, setNoteDraft] = useState<string>("");
+  /** Latest 3 prior cook-history rows for this recipe, surfaced on the
+   *  "Last time" card at the top of cook mode. Empty when the user has
+   *  never cooked this recipe / read failed silently. */
+  const [recentHistory, setRecentHistory] = useState<CookHistoryRow[]>([]);
+  /** True while we're writing the completion entry to Supabase. Drives
+   *  the Save button's loading state. */
+  const [savingHistory, setSavingHistory] = useState(false);
+  /** Whether the user has saved this completion. Idempotent — once
+   *  true, the Save button stays disabled. */
+  const [historySaved, setHistorySaved] = useState(false);
 
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
-  const stepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
+  const rawStepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
+  /** Visible step text with amounts rewritten by the active scale.
+   *  Returns the original verbatim when scale === 1 so the timer
+   *  parser still indexes against the unchanged offsets when no
+   *  scaling is active. The scaling itself is text-level only — the
+   *  shared `scaleAmountText` helper picks up cooking units / count
+   *  nouns and skips time / temperature / step numbers. */
+  const stepText = useMemo(() => scaleAmountText(rawStepText, scale), [rawStepText, scale]);
 
   /** Parse durations out of the current step text. First match wins —
    *  if the step contains multiple ("simmer 10 minutes, then bake 25
@@ -121,9 +171,14 @@ export default function CookModeScreen() {
    *  longest would be wrong as often as right (instructions list the
    *  decisive step first). Future iteration: render a row of pills,
    *  one per match. */
+  // Parse timers off the RAW step text — scaling can rewrite "2 cups"
+  // → "1 cup" but must never touch "bake for 25 minutes" (the time-
+  // unit guard in `scaleAmountText` enforces this). Indexing against
+  // the raw text keeps the timer offsets stable regardless of the
+  // active scale.
   const parsedTimers: ParsedTimer[] = useMemo(
-    () => parseTimersInStep(stepText),
-    [stepText],
+    () => parseTimersInStep(rawStepText),
+    [rawStepText],
   );
   const suggestedTimer: ParsedTimer | null = parsedTimers[0] ?? null;
   /** True only when there's a suggested timer AND the user hasn't
@@ -167,6 +222,104 @@ export default function CookModeScreen() {
       cancelled = true;
     };
   }, [recipeId]);
+
+  /** Hydrate the auth user id once on mount. We need it for the per-
+   *  user scale storage key and the cook-history Supabase write. Both
+   *  surfaces gracefully degrade when the read fails — the scale falls
+   *  back to the "anon:{recipeId}" key, the Supabase insert is skipped. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (cancelled) return;
+        const id = data?.user?.id ?? null;
+        setUserId(id);
+      } catch {
+        /* auth flaky — userId stays null */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Hydrate the persisted scale factor for this (userId, recipeId).
+   *  Storage-only, no network. Falls back to 1 when the key is missing
+   *  / malformed. Re-runs when userId resolves so a signed-in user
+   *  picks up their account-scoped scale on first auth tick. */
+  useEffect(() => {
+    if (!recipeId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const key = cookScaleStorageKey(userId, recipeId);
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw || cancelled) return;
+        const parsed = Number.parseFloat(raw);
+        const clamped = clampCookScale(parsed);
+        if (clamped !== 1) setScale(clamped);
+      } catch {
+        /* storage flaky — leave scale at 1 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipeId, userId]);
+
+  /** Hydrate the latest 3 cook-history rows for the "Last time" card.
+   *  Network read; failures fall back to an empty array (no card).
+   *  Skipped when the user is not signed in (no rows can exist) or
+   *  when the recipeId isn't a uuid (FK rejects non-uuid). */
+  useEffect(() => {
+    if (!recipeId || !userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listRecentCookHistory(supabase, userId, recipeId, 3);
+        if (cancelled) return;
+        setRecentHistory(rows);
+      } catch {
+        /* network / RLS flaky — fail closed */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipeId, userId]);
+
+  /** Persist a freshly-picked scale to AsyncStorage. Fire-and-forget;
+   *  storage failures don't block the user. */
+  const persistScale = useCallback(
+    (next: number) => {
+      if (!recipeId) return;
+      const key = cookScaleStorageKey(userId, recipeId);
+      void AsyncStorage.setItem(key, String(next)).catch(() => {
+        /* storage flaky — fail closed, scale stays in memory */
+      });
+    },
+    [recipeId, userId],
+  );
+
+  const handleScaleChange = useCallback(
+    (next: number) => {
+      const clamped = clampCookScale(next);
+      if (clamped === scale) return;
+      setScale(clamped);
+      void Haptics.selectionAsync();
+      persistScale(clamped);
+      try {
+        track(AnalyticsEvents.recipe_scale_changed, {
+          recipeId,
+          scale: clamped,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    },
+    [scale, persistScale, recipeId],
+  );
 
   // Timer tick — supports both stopwatch (count-up) and parsed-duration
   // (count-down) modes. When `timerDurationSec > 0`, fires a one-shot
@@ -274,7 +427,16 @@ export default function CookModeScreen() {
     setCookDurationSec(elapsedSec);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (recipeId) {
-      void persistCookHistoryEntry(recipeId, elapsedSec);
+      // Best-effort local-history write so the median + "Last time"
+      // surfaces have data even when the user never taps Save. The
+      // Save button enriches this row with rating / note / scale +
+      // writes to Supabase; this initial write only captures the
+      // duration so the median reads remain stable. The active scale
+      // is included so the local cache reflects how the dish was
+      // cooked even if the network write is skipped.
+      void persistCookHistoryEntry(recipeId, elapsedSec, {
+        ...(scale !== 1 ? { scale } : {}),
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDone]);
@@ -338,46 +500,151 @@ export default function CookModeScreen() {
   /** Append a cook session to the per-recipe history in AsyncStorage.
    *  Pure logic lives in `appendCookHistoryEntry` (cap + slice); this
    *  wrapper handles the storage I/O and never throws — flaky storage
-   *  drops the entry silently. */
+   *  drops the entry silently. Extra fields (scale / rating / note /
+   *  recipeCookHistoryId) are stored alongside the duration so a
+   *  future read of the local cache surfaces the full per-cook record
+   *  even when the device was offline at write time. */
   async function persistCookHistoryEntry(
     rid: string,
     durationSec: number,
+    extra: {
+      scale?: number;
+      rating?: number;
+      note?: string;
+      recipeCookHistoryId?: string;
+    } = {},
   ): Promise<void> {
     try {
       const key = COOK_HISTORY_KEY_PREFIX + rid;
       const existing = await AsyncStorage.getItem(key);
       const prior = existing ? parseCookHistory(JSON.parse(existing)) : [];
-      const next = appendCookHistoryEntry(prior, {
+      const entry: import("@/lib/cookSession").CookHistoryEntry = {
         durationSec,
         ts: Date.now(),
-      });
+        ...(extra.scale != null && extra.scale !== 1 ? { scale: extra.scale } : {}),
+        ...(extra.rating != null ? { rating: extra.rating } : {}),
+        ...(extra.note ? { note: extra.note } : {}),
+        ...(extra.recipeCookHistoryId
+          ? { recipeCookHistoryId: extra.recipeCookHistoryId }
+          : {}),
+      };
+      const next = appendCookHistoryEntry(prior, entry);
       await AsyncStorage.setItem(key, JSON.stringify(next));
     } catch {
       /* fail closed */
     }
   }
 
+  /** Tap handler for a rating star on the completion card. Stores in
+   *  memory only — the actual Supabase write happens when the user
+   *  taps Save (so they can adjust the rating + note together before
+   *  committing one row). Light haptic confirms the tap. */
   const handleRate = useCallback(
     (stars: number) => {
-      // Persistence to a recipe_ratings table is deferred — there's no
-      // schema for it yet (CLAUDE.md: never invent backend). For now we
-      // confirm the tap visually + keep the in-memory state so the
-      // stars stay highlighted; the next iteration adds the migration
-      // and writes through here. Defer documented in the audit report.
       setSavedRating(stars);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      showToast(`Rated ${stars} star${stars === 1 ? "" : "s"}`);
     },
     [],
   );
+
+  /** Save the per-cook history row: writes one row to
+   *  `recipe_cook_history` (Supabase) and also enriches the local
+   *  AsyncStorage cache so the "Last time" card has data even on the
+   *  next offline open. Idempotent — disables itself once the row
+   *  exists. Failures route to a toast; the local cache write still
+   *  happens so the user's note isn't lost. */
+  const handleSaveHistory = useCallback(async () => {
+    if (!recipeId) return;
+    if (historySaved || savingHistory) return;
+    if (cookDurationSec == null) return; // shouldn't fire before completion
+
+    const note = clampCookNote(noteDraft);
+    const ratingValue = savedRating;
+    const scaleValue = scale;
+
+    setSavingHistory(true);
+
+    let savedId: string | undefined;
+    try {
+      if (userId) {
+        const row = await insertCookHistory(supabase, userId, {
+          recipeId,
+          durationSec: cookDurationSec,
+          scaleFactor: scaleValue,
+          rating: ratingValue ?? null,
+          note: note ?? null,
+        });
+        savedId = row.id;
+      }
+      // Local cache enrichment runs even when the network write was
+      // skipped (no userId) so the "Last time" card surfaces something.
+      await persistCookHistoryEntry(recipeId, cookDurationSec, {
+        scale: scaleValue,
+        rating: ratingValue ?? undefined,
+        note: note ?? undefined,
+        recipeCookHistoryId: savedId,
+      });
+
+      setHistorySaved(true);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        track(AnalyticsEvents.cook_history_saved, {
+          recipeId,
+          scale: scaleValue,
+          rating: ratingValue,
+          hasNote: Boolean(note),
+          durationSec: cookDurationSec,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      showToast(
+        ratingValue != null && note
+          ? `Saved · ${ratingValue} star${ratingValue === 1 ? "" : "s"}`
+          : "Saved this cook",
+      );
+    } catch (err) {
+      console.warn("Cook history save failed", err);
+      Alert.alert(
+        "Could not save",
+        "Your rating + note are stored locally. Try again when you're back online.",
+      );
+      // Best-effort local write so the user's note isn't blackholed.
+      try {
+        await persistCookHistoryEntry(recipeId, cookDurationSec, {
+          scale: scaleValue,
+          rating: ratingValue ?? undefined,
+          note: note ?? undefined,
+        });
+      } catch {
+        /* fail closed */
+      }
+    } finally {
+      setSavingHistory(false);
+    }
+  }, [
+    recipeId,
+    userId,
+    historySaved,
+    savingHistory,
+    cookDurationSec,
+    noteDraft,
+    savedRating,
+    scale,
+  ]);
 
   const handleAddToRegulars = useCallback(async () => {
     if (!recipeId) return;
     if (addedToRegulars) return; // idempotent — disable button after first add
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id;
-      if (!userId) {
+      // Use the hydrated userId when available, fall back to a fresh
+      // read for the case where the auth tick hasn't landed yet.
+      let resolvedUserId = userId;
+      if (!resolvedUserId) {
+        const { data: authData } = await supabase.auth.getUser();
+        resolvedUserId = authData?.user?.id ?? null;
+      }
+      if (!resolvedUserId) {
         Alert.alert("Sign in needed", "Sign in to save this recipe as a regular.");
         return;
       }
@@ -391,7 +658,17 @@ export default function CookModeScreen() {
         return;
       }
       const slot = pickDefaultRegularsSlot(new Date());
-      await createSavedMeal(supabase, userId, {
+      // Macro fields are scaled by the active cook factor so "Add to
+      // my regulars" at 2x stores the doubled portion. Fiber follows
+      // the same scaling. We apply scale via a small inline multiply
+      // (not the `scaledMacro` helper from portionMultiplier — that
+      // helper clamps to multiplier semantics for plan totals; here
+      // we want a direct factor multiply with rounding to whole
+      // grams so the saved meal lines up with the displayed
+      // ingredient amounts).
+      const scaleMacro = (v: unknown): number =>
+        Math.max(0, Math.round((Number(v) || 0) * scale));
+      await createSavedMeal(supabase, resolvedUserId, {
         name: typeof recipe.title === "string" && recipe.title
           ? recipe.title
           : (title || "My usual meal"),
@@ -402,12 +679,12 @@ export default function CookModeScreen() {
               typeof recipe.title === "string" && recipe.title
                 ? recipe.title
                 : (title || "Saved meal"),
-            calories: Math.max(0, Math.round(Number(recipe.calories) || 0)),
-            protein: Math.max(0, Math.round(Number(recipe.protein) || 0)),
-            carbs: Math.max(0, Math.round(Number(recipe.carbs) || 0)),
-            fat: Math.max(0, Math.round(Number(recipe.fat) || 0)),
+            calories: scaleMacro(recipe.calories),
+            protein: scaleMacro(recipe.protein),
+            carbs: scaleMacro(recipe.carbs),
+            fat: scaleMacro(recipe.fat),
             ...(recipe.fiber_g != null && Number.isFinite(Number(recipe.fiber_g))
-              ? { fiber: Math.max(0, Math.round(Number(recipe.fiber_g))) }
+              ? { fiber: scaleMacro(recipe.fiber_g) }
               : {}),
             source: "recipe",
             sourceId: String(recipe.id),
@@ -430,7 +707,7 @@ export default function CookModeScreen() {
       console.warn("Cook → Add to regulars failed", err);
       Alert.alert("Could not add", "Try again in a moment.");
     }
-  }, [recipeId, title, addedToRegulars]);
+  }, [recipeId, title, addedToRegulars, userId, scale]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -489,6 +766,123 @@ export default function CookModeScreen() {
       color: colors.text,
       textAlign: "center",
       lineHeight: 24,
+    },
+
+    /** Recipe-scale segmented control (Paprika parity, 2026-04-30).
+     *  Sits above the step text so the user can adjust amounts without
+     *  leaving cook mode. Each pill is one of `COOK_SCALE_PRESETS`. */
+    scaleRow: {
+      flexDirection: "row",
+      alignSelf: "center",
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    scalePill: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 999,
+      minWidth: 44,
+      alignItems: "center",
+    },
+    scalePillActive: {
+      backgroundColor: Accent.primary,
+    },
+    scalePillText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      fontVariant: ["tabular-nums"],
+    },
+    scalePillTextActive: {
+      color: "#fff",
+      fontWeight: "700",
+    },
+    scaleCaption: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: Spacing.xs,
+    },
+
+    /** "Last time" card surfaced above the step text so the user
+     *  walks into the cook session reminded of their last cook (timer,
+     *  rating, note). Shown only when at least one row exists in
+     *  `recipe_cook_history` for this (user, recipe). */
+    lastTimeCard: {
+      width: "100%",
+      maxWidth: 380,
+      alignSelf: "center",
+      backgroundColor: colors.card,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginHorizontal: Spacing.xl,
+      marginTop: Spacing.md,
+      gap: 4,
+    },
+    lastTimeLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1.5,
+      color: colors.textTertiary,
+      textTransform: "uppercase",
+    },
+    lastTimePreview: {
+      fontSize: 13,
+      color: colors.text,
+      fontWeight: "500",
+      lineHeight: 18,
+    },
+    lastTimeMore: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+
+    /** Per-cook notes input on the completion card. Auto-grows up to
+     *  ~5 lines via `multiline` + min/max heights; the 500-char cap is
+     *  enforced via `maxLength`. */
+    noteInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: Radius.md,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.text,
+      backgroundColor: colors.background,
+      minHeight: 64,
+      textAlignVertical: "top",
+    },
+    noteCounter: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      textAlign: "right",
+    },
+    saveBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      backgroundColor: Accent.primary,
+    },
+    saveBtnDisabled: {
+      opacity: 0.5,
+    },
+    saveBtnDone: {
+      backgroundColor: Accent.success,
+    },
+    saveBtnText: {
+      color: "#fff",
+      fontSize: 14,
+      fontWeight: "700",
     },
 
     timerSection: { alignItems: "center", gap: Spacing.md },
@@ -676,11 +1070,75 @@ export default function CookModeScreen() {
         />
       </View>
 
+      {/* "Last time" preview card — only when we have prior cook history.
+          Renders above the active step so the user walks in reminded of
+          how the previous cook went (Paprika parity, 2026-04-30). The
+          first row gets the rich preview; the count of older rows is
+          surfaced as a small subline. */}
+      {!isDone && recentHistory.length > 0 && (
+        <View style={styles.lastTimeCard}>
+          <Text style={styles.lastTimeLabel}>Last time</Text>
+          <Text style={styles.lastTimePreview}>
+            {formatCookHistoryPreview(recentHistory[0]!)}
+          </Text>
+          {recentHistory.length > 1 && (
+            <Text style={styles.lastTimeMore}>
+              {recentHistory.length === 2
+                ? "1 earlier cook on file."
+                : `${recentHistory.length - 1} earlier cooks on file.`}
+            </Text>
+          )}
+        </View>
+      )}
+
       {!isDone ? (
         <View style={styles.stepContainer}>
           {/* Step number */}
           <View style={styles.stepNumber}>
             <Text style={styles.stepNumberText}>{current + 1}</Text>
+          </View>
+
+          {/* Recipe scale segmented control (Paprika parity, 2026-04-30).
+              Tap a preset to rewrite the visible amounts in the step
+              text. Persisted per (userId, recipeId). The caption below
+              the control reads "Original recipe" at 1x, otherwise
+              "Scaled Nx". */}
+          <View style={{ alignItems: "center", gap: Spacing.xs }}>
+            <View
+              style={styles.scaleRow}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Recipe scale"
+            >
+              {COOK_SCALE_PRESETS.map((preset) => {
+                const active = Math.abs(scale - preset) < 1e-6;
+                return (
+                  <Pressable
+                    key={preset}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Scale ${formatCookScaleLabel(preset)}`}
+                    onPress={() => handleScaleChange(preset)}
+                    style={[
+                      styles.scalePill,
+                      active && styles.scalePillActive,
+                    ]}
+                    hitSlop={4}
+                  >
+                    <Text
+                      style={[
+                        styles.scalePillText,
+                        active && styles.scalePillTextActive,
+                      ]}
+                    >
+                      {formatCookScaleLabel(preset)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.scaleCaption}>
+              {cookScaleCaption(scale, null)}
+            </Text>
           </View>
 
           {/* Step text */}
@@ -756,13 +1214,19 @@ export default function CookModeScreen() {
       ) : (
         /* Done state — calmer completion card (audit P1, 2026-04-30).
            Replaces the static 🎉 hero with a useful "what next" surface:
-           captured cook duration, 1-tap star rating (visual only — no
-           ratings table yet, see persistence note in `handleRate`), and
-           "Add to my regulars" which writes the recipe straight into
-           the user's `user_saved_meals` so they can re-log it from the
-           Quick Add panel without retyping. The two existing buttons
-           (Log this meal / Skip) stay below so we don't break P2-24. */
-        <View style={styles.centered}>
+           captured cook duration, 1-tap star rating (now persisted via
+           recipe_cook_history — Paprika parity), and "Add to my regulars"
+           which writes the recipe straight into the user's
+           `user_saved_meals` so they can re-log it from the Quick Add
+           panel without retyping. The two existing buttons (Log this
+           meal / Skip) stay below so we don't break P2-24. Wrapped in a
+           ScrollView 2026-04-30 so the completion card remains usable
+           on small devices once the per-cook notes input lands — the
+           card overflowed on iPhone SE without it. */
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.doneCard}>
             <View style={styles.doneCheck}>
               <CheckCircle2
@@ -808,6 +1272,57 @@ export default function CookModeScreen() {
               })}
             </View>
 
+            {/* Per-cook notes input (Paprika parity, 2026-04-30). Free-
+                form, optional, capped at COOK_NOTE_MAX_LEN by the
+                input + clamp. The placeholder phrasing intentionally
+                hints at the Paprika behaviour ("added more garlic,
+                cooked 5 min less"). The counter only shows once the
+                user is past 80% of the cap so it doesn't clutter the
+                empty state. */}
+            <TextInput
+              accessibilityLabel="Notes for next time"
+              placeholder="Notes for next time (optional)"
+              placeholderTextColor={colors.textTertiary}
+              value={noteDraft}
+              onChangeText={setNoteDraft}
+              multiline
+              maxLength={COOK_NOTE_MAX_LEN}
+              editable={!historySaved}
+              style={styles.noteInput}
+            />
+            {noteDraft.length > Math.floor(COOK_NOTE_MAX_LEN * 0.8) && (
+              <Text style={styles.noteCounter}>
+                {noteDraft.length}/{COOK_NOTE_MAX_LEN}
+              </Text>
+            )}
+
+            {/* Save — writes one row to recipe_cook_history with the
+                duration, scale, rating, and note. Idempotent. Locally
+                cached when the network write fails so the user's note
+                is never lost. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={historySaved ? "Saved this cook" : "Save this cook"}
+              onPress={() => void handleSaveHistory()}
+              disabled={historySaved || savingHistory}
+              style={[
+                styles.saveBtn,
+                (historySaved || savingHistory) && styles.saveBtnDisabled,
+                historySaved && styles.saveBtnDone,
+              ]}
+            >
+              {historySaved && (
+                <CheckCircle2 size={16} color="#fff" strokeWidth={2.25} />
+              )}
+              <Text style={styles.saveBtnText}>
+                {historySaved
+                  ? "Saved"
+                  : savingHistory
+                    ? "Saving…"
+                    : "Save this cook"}
+              </Text>
+            </Pressable>
+
             {/* Add to my regulars — writes a saved meal so the user can
                 one-tap re-log this recipe from Quick Add tomorrow. */}
             <Pressable
@@ -852,7 +1367,15 @@ export default function CookModeScreen() {
             onPress={() => {
               if (recipeId) {
                 track(AnalyticsEvents.cook_mode_log_tapped, { recipeId });
-                router.replace(`/recipe/${recipeId}?autoLog=1` as never);
+                // Pass the active cook scale through so the recipe
+                // page's autoLog flow scales the journal entry by the
+                // same factor — matches the "Add to my regulars" path
+                // above. The recipe page already reads `portion` and
+                // multiplies macros by it; passing 1 is a no-op.
+                const scaleQuery = scale !== 1 ? `&portion=${scale}` : "";
+                router.replace(
+                  `/recipe/${recipeId}?autoLog=1${scaleQuery}` as never,
+                );
               } else {
                 router.back();
               }
@@ -865,10 +1388,12 @@ export default function CookModeScreen() {
             onPress={() => router.back()}
           >
             <Text style={[styles.doneBtnText, { color: colors.textSecondary }]}>
-              {savedRating != null || addedToRegulars ? "Done" : "Skip — back to recipe"}
+              {savedRating != null || addedToRegulars || historySaved
+                ? "Done"
+                : "Skip — back to recipe"}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
     </View>
   );

@@ -20,7 +20,13 @@ const RECIPE = readFileSync(resolve(REPO, "apps/mobile/app/recipe/[id].tsx"), "u
 
 describe("cook-mode autoLog flow (P2-24 + polish A.1)", () => {
   it("cook.tsx done state navigates with `?autoLog=1` and fires the cook_mode_log_tapped analytics event", () => {
-    expect(COOK).toMatch(/router\.replace\(`\/recipe\/\$\{recipeId\}\?autoLog=1`/);
+    // 2026-04-30 (Paprika parity): the cook screen optionally appends
+    // `&portion=<scale>` to the URL when the user has picked a non-1x
+    // scale, so the regex tolerates extra template-literal trailing
+    // characters between `autoLog=1` and the closing backtick.
+    expect(COOK).toMatch(
+      /router\.replace\(\s*`\/recipe\/\$\{recipeId\}\?autoLog=1[^`]*`/,
+    );
     expect(COOK).toMatch(/cook_mode_log_tapped/);
   });
 

@@ -34,6 +34,8 @@ import { describe, expect, it } from "vitest";
 import {
   appendCookHistoryEntry,
   COOK_HISTORY_MAX_ENTRIES,
+  COOK_NOTE_MAX_LEN,
+  clampCookNote,
   formatCookDuration,
   medianCookDuration,
   parseCookHistory,
@@ -200,6 +202,67 @@ describe("medianCookDuration (pure helper)", () => {
   });
 });
 
+describe("parseCookHistory (extended fields, Paprika parity 2026-04-30)", () => {
+  it("rehydrates scale / rating / note when present", () => {
+    const out = parseCookHistory([
+      {
+        durationSec: 600,
+        ts: 1700000000000,
+        scale: 2,
+        rating: 4,
+        note: "added garlic",
+        recipeCookHistoryId: "row-1",
+      },
+    ]);
+    expect(out).toEqual([
+      {
+        durationSec: 600,
+        ts: 1700000000000,
+        scale: 2,
+        rating: 4,
+        note: "added garlic",
+        recipeCookHistoryId: "row-1",
+      },
+    ]);
+  });
+  it("ignores out-of-range rating + non-finite scale + blank note", () => {
+    const out = parseCookHistory([
+      {
+        durationSec: 600,
+        ts: 1700000000000,
+        scale: NaN,
+        rating: 7,
+        note: "   ",
+      },
+    ]);
+    // Only the v1 fields survive when the new fields fail validation.
+    expect(out).toEqual([{ durationSec: 600, ts: 1700000000000 }]);
+  });
+  it("preserves backward-compat with v1 entries (no extra fields)", () => {
+    expect(parseCookHistory([{ durationSec: 600, ts: 1 }])).toEqual([
+      { durationSec: 600, ts: 1 },
+    ]);
+  });
+});
+
+describe("clampCookNote (Paprika parity)", () => {
+  it("returns undefined for non-string / empty / whitespace input", () => {
+    expect(clampCookNote(null)).toBeUndefined();
+    expect(clampCookNote(undefined)).toBeUndefined();
+    expect(clampCookNote(123 as unknown)).toBeUndefined();
+    expect(clampCookNote("")).toBeUndefined();
+    expect(clampCookNote("   ")).toBeUndefined();
+  });
+  it("trims surrounding whitespace", () => {
+    expect(clampCookNote("  added garlic  ")).toBe("added garlic");
+  });
+  it("slices to COOK_NOTE_MAX_LEN", () => {
+    const input = "y".repeat(COOK_NOTE_MAX_LEN + 50);
+    const out = clampCookNote(input);
+    expect(out?.length).toBe(COOK_NOTE_MAX_LEN);
+  });
+});
+
 describe("appendCookHistoryEntry (pure helper)", () => {
   it("appends to an empty history", () => {
     expect(
@@ -218,6 +281,28 @@ describe("appendCookHistoryEntry (pure helper)", () => {
       { durationSec: 300, ts: 1 },
       { durationSec: 400, ts: 2 },
       { durationSec: 500, ts: 3 },
+    ]);
+  });
+
+  it("preserves the new optional fields when appending", () => {
+    expect(
+      appendCookHistoryEntry([], {
+        durationSec: 700,
+        ts: 4,
+        scale: 1.5,
+        rating: 5,
+        note: "doubled the garlic",
+        recipeCookHistoryId: "row-x",
+      }),
+    ).toEqual([
+      {
+        durationSec: 700,
+        ts: 4,
+        scale: 1.5,
+        rating: 5,
+        note: "doubled the garlic",
+        recipeCookHistoryId: "row-x",
+      },
     ]);
   });
 
@@ -374,5 +459,85 @@ describe("Cook screen — FIX 3 (completion polish) source structure", () => {
   it("preserves the 'Log this meal' P2-24 path so we don't break the journal hook", () => {
     expect(SOURCE).toMatch(/cook_mode_log_tapped/);
     expect(SOURCE).toMatch(/autoLog=1/);
+  });
+});
+
+describe("Cook screen — Paprika parity FIX 1 (recipe scaling) source structure", () => {
+  it("imports the shared scaleAmountText / COOK_SCALE_PRESETS helpers", () => {
+    // Critical: the scaling regex lives in shared `recipeScale.ts` so
+    // web + mobile classify the same text the same way. Re-rolling
+    // here would let the platforms diverge mid-cook.
+    expect(SOURCE).toMatch(
+      /COOK_SCALE_PRESETS[^;]*from\s+["'][^"']+recipeScale["']/,
+    );
+    expect(SOURCE).toMatch(/\bscaleAmountText\b/);
+  });
+  it("renders a segmented control with the 0.5x / 1x / 1.5x / 2x / 4x presets", () => {
+    expect(SOURCE).toMatch(/COOK_SCALE_PRESETS\.map/);
+    expect(SOURCE).toMatch(/handleScaleChange/);
+    // Segmented control has accessibility role="radiogroup"+ "radio".
+    expect(SOURCE).toMatch(/accessibilityRole="radiogroup"/);
+    expect(SOURCE).toMatch(/accessibilityRole="radio"/);
+  });
+  it("persists the chosen scale per (userId, recipeId) via cookScaleStorageKey", () => {
+    expect(SOURCE).toMatch(/cookScaleStorageKey/);
+    expect(SOURCE).toMatch(/AsyncStorage\.setItem/);
+  });
+  it("scales the visible step text via the shared helper (timer parser stays on raw text)", () => {
+    // Timer offsets must index against the unchanged string — we
+    // memoise both `rawStepText` (for the parser) and `stepText`
+    // (for the rendered surface).
+    expect(SOURCE).toMatch(/rawStepText/);
+    expect(SOURCE).toMatch(/scaleAmountText\(rawStepText,\s*scale\)/);
+    expect(SOURCE).toMatch(/parseTimersInStep\(rawStepText\)/);
+  });
+  it("emits recipe_scale_changed analytics on commit", () => {
+    expect(SOURCE).toMatch(/AnalyticsEvents\.recipe_scale_changed/);
+  });
+  it("renders the 'Original recipe' / 'Scaled' caption from the shared helper", () => {
+    expect(SOURCE).toMatch(/cookScaleCaption/);
+  });
+  it("scales the Add to my regulars + Log this meal surfaces by the same factor", () => {
+    // Add to regulars uses a `scaleMacro` helper that multiplies by
+    // the active `scale` so saved meals reflect the cooked portion.
+    expect(SOURCE).toMatch(/scaleMacro/);
+    // Log this meal forwards `&portion={scale}` to the recipe page
+    // when scale !== 1 so the autoLog path multiplies macros there too.
+    expect(SOURCE).toMatch(/portion=\$\{scale\}/);
+  });
+});
+
+describe("Cook screen — Paprika parity FIX 2 (notes + rating persistence) source structure", () => {
+  it("imports the supabase recipeCookHistoryClient (single-source-of-truth)", () => {
+    expect(SOURCE).toMatch(
+      /insertCookHistory[^;]*from\s+["'][^"']+recipeCookHistoryClient["']/,
+    );
+    expect(SOURCE).toMatch(
+      /listRecentCookHistory[^;]*from\s+["'][^"']+recipeCookHistoryClient["']/,
+    );
+  });
+  it("renders a notes TextInput placeholder phrasing matching the spec", () => {
+    expect(SOURCE).toMatch(/Notes for next time \(optional\)/);
+    expect(SOURCE).toMatch(/maxLength=\{COOK_NOTE_MAX_LEN\}/);
+  });
+  it("renders a Save button that calls handleSaveHistory", () => {
+    expect(SOURCE).toMatch(/handleSaveHistory/);
+    expect(SOURCE).toMatch(/Save this cook/);
+  });
+  it("renders a 'Last time' card from listRecentCookHistory + formatCookHistoryPreview", () => {
+    expect(SOURCE).toMatch(/recentHistory/);
+    expect(SOURCE).toMatch(/formatCookHistoryPreview/);
+    // Copy is load-bearing — sync-enforcer checks parity with web.
+    expect(SOURCE).toMatch(/Last time/);
+  });
+  it("emits cook_history_saved analytics after the row writes", () => {
+    expect(SOURCE).toMatch(/AnalyticsEvents\.cook_history_saved/);
+  });
+  it("falls back to a local AsyncStorage write when the network insert fails", () => {
+    // The catch path still runs persistCookHistoryEntry so the user's
+    // note isn't blackholed on offline / RLS errors.
+    expect(SOURCE).toMatch(/persistCookHistoryEntry/);
+    // A user-visible error surface — not silent.
+    expect(SOURCE).toMatch(/Could not save/);
   });
 });

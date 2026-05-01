@@ -103,6 +103,18 @@ export const AnalyticsEvents = {
   recipe_timer_completed: "recipe_timer_completed",
   /** Cook mode opened — drives wake-lock usage measurement (Batch 3.8). */
   cook_mode_opened: "cook_mode_opened",
+  /** User changed the recipe scale on the Cook screen (Paprika parity,
+   *  2026-04-30). Payload: `{ recipeId, scale }`. Fires when the
+   *  segmented control commit advances; not on first render. Used to
+   *  measure scaling adoption + the most-popular preset. */
+  recipe_scale_changed: "recipe_scale_changed",
+  /** User saved a per-cook history row from the completion card
+   *  (Paprika parity, 2026-04-30). Payload:
+   *    `{ recipeId, scale, rating, hasNote, durationSec }`.
+   *  Fires once per session, after the row writes to
+   *  `recipe_cook_history`. Distinct from `recipe_note_saved` which
+   *  fires for the rolling per-recipe note in the recipe detail screen. */
+  cook_history_saved: "cook_history_saved",
   /** P2-24 (2026-04-25): user tapped "Log this meal" from the cook-mode
    *  done state on mobile. Pairs with `food_logged` after the recipe
    *  page's autoLog flow runs (the recipe page owns the journal write
@@ -212,6 +224,50 @@ export const AnalyticsEvents = {
    *   - `seedCount`: number of items pre-seeded (2–4). Product can join
    *     this against `saved_meal_created` to measure funnel completion. */
   weekly_recap_save_prompt_tapped: "weekly_recap_save_prompt_tapped",
+  /** Weekly Check-in surface (TDEE delta + goal-pace re-tune) was viewed.
+   * MacroFactor parity (extended-competitor-audit, 2026-04-30). Fires
+   * once per visible weekKey on either platform — mobile from the
+   * Weekly Recap screen's check-in section, web from the Digest's TDEE
+   * subsection. Payload:
+   *   - `weekKey`: stable `YYYY-Www` key for the week in scope.
+   *   - `kind`: "first_week" | "low_confidence" | "ready" — the gate
+   *     the cascade landed on. Lets product split engagement by
+   *     whether the user is seeing real numbers vs the placeholder.
+   *   - `direction`: "up" | "down" | "flat" — only meaningful for
+   *     `kind === "ready"`. Sent for all kinds for shape stability.
+   *   - `tdeeDeltaKcal`: signed kcal delta. `null` when kind != "ready". */
+  weekly_checkin_viewed: "weekly_checkin_viewed",
+  /** User confirmed a goal-pace re-tune from the Weekly Check-in
+   * surface (MacroFactor parity). The re-tune writes new targets to
+   * `profiles` (target_calories, target_protein, target_carbs,
+   * target_fat, target_fiber_g, plan_pace) without re-running
+   * onboarding. Payload:
+   *   - `previousPaceKgPerWeek`: number — the pace inferred from the
+   *     prior target (snapped to the closest preset). `null` when we
+   *     couldn't infer one.
+   *   - `newPaceKgPerWeek`: number — the user's chosen preset (0,
+   *     0.25, 0.5, 0.75, 1.0).
+   *   - `previousTargetKcal`: number — the calorie target before the
+   *     re-tune.
+   *   - `newTargetKcal`: number — the calorie target after the re-tune.
+   *   - `belowSafetyFloor`: boolean — true when the new target dipped
+   *     below the soft-warn floor. Suppr policy: soft-warn-not-block,
+   *     so this is informational not blocking.
+   *   - `surface`: "weekly_checkin_sheet" | "settings_targets" — which
+   *     entry point the user used. */
+  goal_pace_adjusted: "goal_pace_adjusted",
+  /** User dismissed the Sunday "Weekly check-in available" banner on
+   * Today (mobile-only — web does not surface the same banner because
+   * the Digest already lives on Progress). Payload:
+   *   - `weekKey`: stable `YYYY-Www` key for the week the banner was
+   *     gated on. Lets product distinguish "dismissed this week" from
+   *     "dismissed last week" when looking at week-over-week
+   *     dismissal rates. */
+  weekly_checkin_banner_dismissed: "weekly_checkin_banner_dismissed",
+  /** User tapped the Sunday "Weekly check-in available" banner on
+   * Today and was routed to the Weekly Recap screen. Payload:
+   *   - `weekKey`: stable `YYYY-Www` key for the week. */
+  weekly_checkin_banner_tapped: "weekly_checkin_banner_tapped",
   /** iOS home/lock-screen widget snapshot was written to the shared App
    * Group (Batch 5.12). Fires when Today totals or active fast state
    * change. Mobile-only. No payload — use `$sent_at` for freshness. */

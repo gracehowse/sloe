@@ -55,7 +55,13 @@ describe("Fix 1 — cook mode 'Log this meal' CTA on done state", () => {
   it("routes to /recipe/<id>?autoLog=1 so the recipe page's autoLog handler fires", () => {
     // The exact route shape the recipe detail screen consumes
     // (`useLocalSearchParams<{ autoLog?: string }>` at line 186).
-    expect(SRC.cook).toMatch(/router\.replace\(\s*`\/recipe\/\$\{recipeId\}\?autoLog=1`/);
+    // 2026-04-30 (Paprika parity): the cook screen optionally appends
+    // a `&portion=<scale>` suffix when the user has picked a non-1x
+    // scale, so the regex tolerates an extra template-literal trailing
+    // segment between `autoLog=1` and the closing backtick.
+    expect(SRC.cook).toMatch(
+      /router\.replace\(\s*`\/recipe\/\$\{recipeId\}\?autoLog=1[^`]*`/,
+    );
   });
 
   it("guards against missing recipeId by falling back to router.back()", () => {
