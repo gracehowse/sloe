@@ -121,6 +121,15 @@ export const AnalyticsEvents = {
    *  for parity with the explicit "Add to today" button on the same
    *  page). Payload: `{ recipeId }`. */
   cook_mode_log_tapped: "cook_mode_log_tapped",
+  /** Recime parity (2026-04-30): user tapped the "Watch original"
+   *  button on the Cook screen header. Only renders when the recipe
+   *  has a `source_video_url` (or, until that field exists in DB, a
+   *  `source_url` that is itself a known video host URL). Payload:
+   *    `{ recipeId, videoHost: "youtube" | "instagram" | "tiktok" | "other" }`.
+   *  Slices tap-through by host so we can see whether YT / IG / TT
+   *  imports are pulling users away from the Cook flow at different
+   *  rates. The URL itself is never sent — host classification only. */
+  cook_watch_original_tapped: "cook_watch_original_tapped",
   /** User created a new custom food row (Batch 3.9). Payload: `{ hasBrand, servingCount }`. */
   custom_food_created: "custom_food_created",
   /** User edited an existing custom food row (Batch 3.9). */

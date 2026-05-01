@@ -95,7 +95,14 @@ describe("web recipe detail — known-gap parity note (E-4)", () => {
     // (build 10 entry, 2026-04-19). When this assertion starts failing
     // because someone added a web source card, replace it with the same
     // three render-mode pins used for mobile above.
-    expect(WEB_DETAIL_SRC).not.toMatch(/source_url/);
+    //
+    // 2026-04-30 — narrowed from a blanket `/source_url/` scan to the
+    // canonical mobile source-card markers (`Source · `, `View original
+    // recipe`). The Recime parity quick-win added a `source_url` JS
+    // property key in a helper call (`pickHeroImageUrl({ source_url:
+    // recipe.sourceUrl })`) — that's a hero-image fallback, not a
+    // source attribution card, and shouldn't trip this gap tracker.
+    expect(WEB_DETAIL_SRC).not.toMatch(/Source · \$\{recipe\.source_name/);
     expect(WEB_DETAIL_SRC).not.toMatch(/View original recipe/);
   });
 

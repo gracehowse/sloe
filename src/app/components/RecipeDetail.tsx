@@ -19,6 +19,8 @@ import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
+import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
+import { DEFAULT_UPLOADED_RECIPE_IMAGE } from "../../context/appData/constants.ts";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
 import {
@@ -1184,16 +1186,35 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Hero Image */}
         {/* Phase 5 / B5 (2026-04-27) — matching view-transition-name
-            anchors the card-to-detail morph. Spec §1.1 + Surface H. */}
-        <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
-          <img
-            src={recipe.image}
-            alt={recipe.title}
-            className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
-            style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-        </div>
+            anchors the card-to-detail morph. Spec §1.1 + Surface H.
+
+            Recime parity (2026-04-30): when the recipe has no real
+            image (hydration defaulted to DEFAULT_UPLOADED_RECIPE_IMAGE
+            in AppDataContext) but the source URL is a YouTube watch /
+            shorts URL, surface the YT thumbnail instead of the stock
+            placeholder. See `src/lib/recipes/heroImageFallback.ts`. */}
+        {(() => {
+          const hasRealImage =
+            typeof recipe.image === "string" &&
+            recipe.image !== "" &&
+            recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+          const ladderSrc = pickHeroImageUrl({
+            image_url: hasRealImage ? recipe.image : null,
+            source_url: recipe.sourceUrl ?? null,
+          });
+          const heroSrc = ladderSrc ?? recipe.image;
+          return (
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
+              <img
+                src={heroSrc}
+                alt={recipe.title}
+                className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
+                style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+            </div>
+          );
+        })()}
 
         {/* 2026-04-20 prototype port — tag pill row directly under
             the hero. Neutral pills for each recipe tag, trailing
