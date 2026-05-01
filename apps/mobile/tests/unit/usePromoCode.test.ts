@@ -135,11 +135,16 @@ describe("paywall promo expander — source-level wiring", () => {
 });
 
 describe("settings consumes the shared hook", () => {
-  const SETTINGS_PATH = resolve(
+  // 2026-05-01 (`claude/settings-mobile-structural-fix` P0-1): the
+  // promo-code redemption UI migrated from the legacy in-file
+  // `/(tabs)/settings.tsx` Plan section into
+  // `<SettingsBundleContent>` Membership card. The bundle is now the
+  // canonical consumer of the hook.
+  const BUNDLE_PATH = resolve(
     __dirname,
-    "../../app/(tabs)/settings.tsx",
+    "../../components/settings/SettingsBundleContent.tsx",
   );
-  const src = readFileSync(SETTINGS_PATH, "utf8");
+  const src = readFileSync(BUNDLE_PATH, "utf8");
 
   it("imports usePromoCode from the shared module", () => {
     expect(src).toMatch(/from\s+"@\/hooks\/usePromoCode"/);
