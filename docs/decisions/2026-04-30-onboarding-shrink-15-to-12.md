@@ -74,10 +74,76 @@ the persist path already handles gracefully).
 
 ## Follow-ups (not in this PR)
 
-- Build the post-launch nudge queue: persistent banners on Today for
-  Health permissions, Import, and Recipes seeding, with a per-banner
-  cooldown (7 d / 7 d / 14 d) and priority ordering. The component
-  files for each are already on disk.
+- ~~Build the post-launch nudge queue~~ — shipped in
+  `apps/mobile/components/today/onboarding-nudges/` (2026-04-30).
+  See "Post-launch nudge queue" below.
 - Update the customer-lens journey doc to reflect the new step count.
 - Notion: update Roadmap ("Onboarding shrink") and add a Decisions row
   pointing at this file.
+
+## Post-launch nudge queue
+
+Shipped 2026-04-30 as the deferred half of this decision. Three
+banners, one at a time, in priority order on the Today tab — directly
+below the calorie ring card — each with an AsyncStorage-gated
+cooldown.
+
+Code lives in `apps/mobile/components/today/onboarding-nudges/`:
+
+| File                          | Role                                   |
+| ----------------------------- | -------------------------------------- |
+| `types.ts`                    | Nudge contract + storage key helpers   |
+| `nudges.ts`                   | Static catalogue (priority order)      |
+| `useNextNudge.ts`             | Queue selector hook + dismissal writer |
+| `OnboardingNudgeBanner.tsx`   | Presentation + per-id action wiring    |
+| `index.ts`                    | Barrel                                 |
+
+Mounted from `apps/mobile/app/(tabs)/index.tsx` between the single
+context block (fasting / eat-again / north-star / deficit) and the
+2x2 macro tiles, gated on `isToday && mealsToday.length > 0` so the
+zero-state Today moment (calorie ring + north-star block) lands first
+without the banner crowding it.
+
+### Priority + cooldowns
+
+| Order | Id            | Cooldown | Removes on action? | Primary action                                                |
+| ----- | ------------- | -------- | ------------------ | ------------------------------------------------------------- |
+| 1     | `permissions` | 7 days   | Yes                | `requestHealthPermissions()` + `expo-notifications` prompt    |
+| 2     | `import`      | 7 days   | No                 | `router.push("/import-shared")`                               |
+| 3     | `recipes`     | 14 days  | No                 | `router.push("/(tabs)/library")`                              |
+
+The permissions banner uses the same OS-permission helpers as
+`apps/mobile/components/onboarding/steps/permissions.tsx` — no parallel
+implementation, no local-flag fallback. Once the user has answered the
+OS prompt (granted OR denied), the catalogue's `removeOnAction: true`
+flag drops the banner from the queue forever; re-asking via this
+surface would talk past the answer the user just gave.
+
+### Storage layout
+
+Per nudge id, two AsyncStorage keys under `suppr.nudge.`:
+
+- `suppr.nudge.${id}.last-dismissed-at` — ISO timestamp; cooldown gate.
+- `suppr.nudge.${id}.removed`           — `"true"` once permanently dropped.
+
+Corrupt timestamps are treated as "never dismissed" so a bad write can
+never silently lock the user out of seeing a prompt forever.
+
+### Mobile-only
+
+Web does not get a parity port. Apple Health is iOS-native, and the
+import + recipes nudges live alongside it on the Today queue rather
+than as standalone surfaces — web has no equivalent home for them.
+`sync-enforcer` should treat this as a deliberate carve-out, mirroring
+the `move-meal` and `recipe go-public` carve-outs already on file.
+
+### Tests
+
+`apps/mobile/tests/unit/onboardingNudgeQueue.test.tsx` (12 cases) pins:
+priority order, cooldown filtering, cooldown elapsed → re-shows,
+"Maybe later" writes timestamp without firing OS APIs or routing,
+primary on permissions calls real HealthKit + Notifications APIs and
+sets the permanent-removal flag, primary on import routes to
+`/import-shared`, primary on recipes routes to `/(tabs)/library`,
+permanent-removal survives a missing timestamp, corrupt timestamps
+fail-open to "never dismissed".
