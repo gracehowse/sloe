@@ -125,6 +125,24 @@ export default function SettingsScreen() {
   const [profileNutritionStrategy, setProfileNutritionStrategy] =
     useState<NutritionStrategy | null>(null);
 
+  // Wave-2 (2026-04-30 audit-vs-competitors) — Settings search. Flat,
+  // section-level filter against the section title + every label /
+  // description string the section renders. Empty query shows all.
+  // Cleared on tab navigation away by the parent navigator (we don't
+  // persist; search is intentional, not sticky — see spec FIX 6).
+  const [searchQuery, setSearchQuery] = useState("");
+  const matchesSearch = useCallback(
+    (haystack: readonly string[]): boolean => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      for (const s of haystack) {
+        if (s.toLowerCase().includes(q)) return true;
+      }
+      return false;
+    },
+    [searchQuery],
+  );
+
   // Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras opt-in.
   // Defaults OFF. AsyncStorage-only (no schema change). Toggling
   // updates the local state + persists immediately so Today picks up
@@ -517,7 +535,62 @@ export default function SettingsScreen() {
           Plan, appearance, and notifications.
         </Text>
 
+        {/* Wave-2 (2026-04-30 audit-vs-competitors) — Settings search.
+            Sticks at the top of the ScrollView; a substring of any
+            section title / row label / row description shows that
+            section. Section-level filter (not per-row) so we keep
+            sections intact when any of their content matches; the
+            spec's "no orphan headers" rule comes for free. */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            backgroundColor: colors.card,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: 8,
+          }}
+        >
+          <Text style={{ color: colors.textTertiary, fontSize: 14 }} accessibilityElementsHidden>
+            🔍
+          </Text>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search settings"
+            placeholderTextColor={colors.textTertiary}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            accessibilityLabel="Search settings"
+            testID="settings-search-input"
+            style={{
+              flex: 1,
+              color: colors.text,
+              fontSize: 15,
+              paddingVertical: 0,
+            }}
+          />
+          {searchQuery.length > 0 ? (
+            <Pressable
+              onPress={() => setSearchQuery("")}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={8}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "600" }}>
+                Clear
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
         {/* Plan + promo first (not grouped under appearance / theme) */}
+        {matchesSearch(["Your plan", "Pro", "Free", "Subscription", "promo code", "View plans", "Manage subscription"]) ? (
+        <>
         <Text style={styles.sectionTitle}>Your plan</Text>
         <View style={styles.card}>
           <View style={[styles.row, { justifyContent: "flex-start", gap: 12 }]}>
@@ -611,7 +684,11 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+        </>
+        ) : null}
 
+        {matchesSearch(["Appearance", "Theme", "Automatic", "Light", "Dark"]) ? (
+        <>
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.segmentedRow}>
           {THEME_OPTIONS.map((opt, idx) => {
@@ -633,8 +710,12 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+        </>
+        ) : null}
 
         {/* Account */}
+        {matchesSearch(["Account", "Change Password", "Sign Out", "email", "password"]) ? (
+        <>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.card}>
           <Pressable style={styles.row} onPress={() => void handleChangePassword()}>
@@ -645,10 +726,16 @@ export default function SettingsScreen() {
             style={[styles.row, styles.rowLast]}
             onPress={() => void supabase.auth.signOut()}
           >
-            <Text style={[styles.rowLabel, { color: Accent.destructive }]}>Sign Out</Text>
-            <LogOut size={18} color={Accent.destructive} strokeWidth={1.75} />
+            {/* Wave-2 (2026-04-30) — Sign Out is reversible (sign back in
+                anytime). Red is reserved for irreversible actions like
+                Delete Account. Render in neutral text colour to match the
+                surrounding rows. */}
+            <Text style={styles.rowLabel}>Sign Out</Text>
+            <LogOut size={18} color={colors.textTertiary} strokeWidth={1.75} />
           </Pressable>
         </View>
+        </>
+        ) : null}
 
         {loading ? (
           <View style={styles.center}>
@@ -657,6 +744,8 @@ export default function SettingsScreen() {
         ) : (
           <>
             {error ? <Text style={styles.err}>{error}</Text> : null}
+            {matchesSearch(["Body & activity", "Activity level", "TDEE", "active", "sedentary"]) ? (
+            <>
             <Text style={styles.sectionTitle}>Body & activity</Text>
             <View style={styles.card}>
               {/* Activity level row (build 10 fix E-2, 2026-04-19 —
@@ -683,7 +772,24 @@ export default function SettingsScreen() {
                 <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>
+            </>
+            ) : null}
 
+            {matchesSearch([
+              "Journal display",
+              "Show meal times",
+              "Adjust goal for activity",
+              "bonus calories",
+              "Show net carbs",
+              "Net carbs",
+              "weight",
+              "How weight shows up",
+              "Burn / deficit summary",
+              "Rolling",
+              "calendar",
+              "Weekly",
+            ]) ? (
+            <>
             <Text style={styles.sectionTitle}>Journal display</Text>
             <View style={styles.card}>
               <Row
@@ -831,6 +937,19 @@ export default function SettingsScreen() {
                 </View>
               </View>
             </View>
+            </>
+            ) : null}
+            {matchesSearch([
+              "Notifications",
+              "New recipes",
+              "people you follow",
+              "Meal plan ready",
+              "Weekly summary",
+              "creator",
+              "Updates on your published recipes",
+              "Open notifications",
+            ]) ? (
+            <>
             <Text style={styles.sectionTitle}>Notifications</Text>
             <View style={styles.card}>
               <Row
@@ -874,12 +993,23 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
             {saving ? <Text style={styles.saving}>Saving…</Text> : null}
+            </>
+            ) : null}
 
             {/* Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras
                 opt-in. Caffeine + alcohol Today widgets default OFF.
                 Toggling on surfaces the corresponding row in the
                 hydration card on Today and preserves any historical
                 data unchanged. */}
+            {matchesSearch([
+              "Tracking extras",
+              "Track caffeine",
+              "Track alcohol",
+              "Hydration",
+              "alcohol",
+              "caffeine",
+            ]) ? (
+            <>
             <Text style={styles.sectionTitle}>Tracking extras</Text>
             <View style={styles.card}>
               <Row
@@ -903,11 +1033,15 @@ export default function SettingsScreen() {
               your existing logs are preserved but the row is hidden
               on Today.
             </Text>
+            </>
+            ) : null}
 
             {/* About — houses the "What's new in Suppr" surface.
                 Entry point per F-0 spec (2026-04-19): testers should
                 have a single reliable place to see which of their
                 feedback items shipped in the latest build. */}
+            {matchesSearch(["About", "What's new", "Whats new", "release", "build"]) ? (
+            <>
             <Text style={styles.sectionTitle}>About</Text>
             <View style={styles.card}>
               <Pressable
@@ -921,7 +1055,19 @@ export default function SettingsScreen() {
                 <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>
+            </>
+            ) : null}
 
+            {matchesSearch([
+              "Data",
+              "Export",
+              "CSV",
+              "JSON",
+              "nutrition log",
+              "Export nutrition log",
+              "Export all data",
+            ]) ? (
+            <>
             <Text style={styles.sectionTitle}>Data</Text>
             <View style={styles.card}>
               <Pressable
@@ -971,6 +1117,8 @@ export default function SettingsScreen() {
                 <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>Export</Text>
               </Pressable>
             </View>
+            </>
+            ) : null}
           </>
         )}
 
@@ -981,8 +1129,53 @@ export default function SettingsScreen() {
             bundle owns its own state, loading, and modals. Some rows
             (Export CSV/JSON, Notifications) are also rendered above
             in the legacy Settings sections; intentional during
-            B–D, the duplicates are removed in the post-D cleanup. */}
-        <SettingsBundleContent context="settings" />
+            B–D, the duplicates are removed in the post-D cleanup.
+
+            Wave-2 (2026-04-30): the search filter only spans the
+            sections rendered above (legacy in-file Settings). The
+            bundle owns its own header rendering and is always visible
+            below; if the search is non-empty we hide the bundle
+            entirely so the filter result is honest — the user types
+            "creator notifications" and sees ONLY matching rows above,
+            not the bundle's full list below. The bundle keeps its own
+            section structure for its own surfaces (More tab uses it
+            too). When that diverges into in-bundle search, do it
+            inside the bundle component, not here. */}
+        {searchQuery.trim() === "" ? (
+          <SettingsBundleContent context="settings" />
+        ) : null}
+
+        {/* Empty-state when search has no matches across either the
+            legacy in-file sections or the bundle. We render this if
+            the query is non-empty AND no above-section rendered. The
+            sentinel is computed inline because doing it as a memo would
+            require enumerating every section's keyword list a second
+            time. */}
+        {searchQuery.trim() !== "" &&
+        !matchesSearch([
+          "Your plan", "Pro", "Free", "Subscription", "promo code", "View plans", "Manage subscription",
+          "Appearance", "Theme", "Automatic", "Light", "Dark",
+          "Account", "Change Password", "Sign Out", "email", "password",
+          "Body & activity", "Activity level", "TDEE", "active", "sedentary",
+          "Journal display", "Show meal times", "Adjust goal for activity", "bonus calories", "Show net carbs", "Net carbs", "weight", "How weight shows up", "Burn / deficit summary", "Rolling", "calendar", "Weekly",
+          "Notifications", "New recipes", "people you follow", "Meal plan ready", "Weekly summary", "creator", "Updates on your published recipes", "Open notifications",
+          "Tracking extras", "Track caffeine", "Track alcohol", "Hydration", "alcohol", "caffeine",
+          "About", "What's new", "Whats new", "release", "build",
+          "Data", "Export", "CSV", "JSON", "nutrition log", "Export nutrition log", "Export all data",
+        ]) ? (
+          <Text
+            testID="settings-search-empty"
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              textAlign: "center",
+              marginTop: 24,
+              paddingHorizontal: 16,
+            }}
+          >
+            No matches for &quot;{searchQuery.trim()}&quot; — try a different word.
+          </Text>
+        ) : null}
       </ScrollView>
 
       {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19;

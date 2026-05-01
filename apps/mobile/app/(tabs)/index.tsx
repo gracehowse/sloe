@@ -3763,7 +3763,10 @@ export default function TrackerScreen() {
                 cooldown-gated, so a returning user sees at most one
                 eligible nudge per cooldown window. */}
             {isToday && mealsToday.length > 0 && (
-              <OnboardingNudgeBanner />
+              <OnboardingNudgeBanner
+                mealsTodayCount={mealsToday.length}
+                libraryCount={savedLibraryRecipes.length}
+              />
             )}
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients

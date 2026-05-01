@@ -11,9 +11,10 @@ import {
   markNotificationsPromptDismissed,
   registerExpoPushTokenForUser,
 } from "@/lib/expoPushToken";
+import { supabase } from "@/lib/supabase";
 
 import { useNextNudge } from "./useNextNudge";
-import type { OnboardingNudgeId } from "./types";
+import type { NudgeEligibilityState, OnboardingNudgeId } from "./types";
 
 /**
  * Post-launch onboarding nudge banner — Today tab, just below the
@@ -113,13 +114,121 @@ const NUDGE_ACCESSIBILITY_LABEL: Record<OnboardingNudgeId, string> = {
   recipes: "Browse recipes to seed your library",
 };
 
-export function OnboardingNudgeBanner() {
-  const { nudge, markDismissed } = useNextNudge();
+export type OnboardingNudgeBannerProps = {
+  /**
+   * Number of meals logged today. The host (Today screen) also gates
+   * the entire mount on `mealsToday.length >= 1`; this is passed in for
+   * predicate completeness.
+   */
+  mealsTodayCount: number;
+  /**
+   * Total recipes in the user's saved library. Drives the import +
+   * recipes nudge eligibility.
+   */
+  libraryCount: number;
+};
+
+/**
+ * Wave-2 (2026-04-30 audit-vs-competitors): each nudge now carries a
+ * runtime eligibility predicate (`./types.ts → NudgeEligibilityState`).
+ * The banner resolves the parts of state that don't already live on the
+ * Today screen (lifetime meal count + OS notifications status) here, so
+ * the host doesn't have to know about HK / notifications plumbing.
+ */
+export function OnboardingNudgeBanner({
+  mealsTodayCount,
+  libraryCount,
+}: OnboardingNudgeBannerProps) {
   const { session } = useAuth();
   const router = useRouter();
   const colors = useThemeColors();
   const userId = session?.user?.id ?? null;
   const [busy, setBusy] = React.useState(false);
+
+  // Resolve the eligibility-only state: lifetime meal count (Supabase)
+  // + notifications permission status (OS). Both default to "unknown"
+  // until resolved so a nudge that depends on them stays hidden until
+  // we have an authoritative answer — never flash a stale prompt.
+  const [lifetimeMealCount, setLifetimeMealCount] = React.useState<number | null>(null);
+  const [notificationsPermissionStatus, setNotificationsPermissionStatus] = React.useState<
+    "granted" | "denied" | "undetermined" | null
+  >(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      // No session → nothing to gate against. Treat as zero so the
+      // permissions nudge stays hidden (its eligibility requires >= 3).
+      setLifetimeMealCount(0);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      try {
+        const { count, error } = await supabase
+          .from("nutrition_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId);
+        if (cancelled) return;
+        if (error) {
+          // On error, leave count unknown — the permissions nudge
+          // predicate treats `null` as not-yet-eligible, which is the
+          // safer floor.
+          console.warn("[onboarding-nudges] failed to load lifetime meal count", error);
+          setLifetimeMealCount(null);
+          return;
+        }
+        setLifetimeMealCount(typeof count === "number" ? count : 0);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("[onboarding-nudges] lifetime meal count threw", err);
+        setLifetimeMealCount(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const Notifications = await import("expo-notifications");
+        const result = await Notifications.getPermissionsAsync();
+        if (cancelled) return;
+        const status = result.status;
+        if (status === "granted" || status === "denied" || status === "undetermined") {
+          setNotificationsPermissionStatus(status);
+        } else {
+          // Unknown OS status — treat as undetermined so the nudge can
+          // still ask. Underlying request handler is idempotent.
+          setNotificationsPermissionStatus("undetermined");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("[onboarding-nudges] getPermissionsAsync threw", err);
+        // Leave null — predicate treats null as not-yet-eligible.
+        setNotificationsPermissionStatus(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const eligibilityState: NudgeEligibilityState = React.useMemo(
+    () => ({
+      mealsTodayCount,
+      libraryCount,
+      lifetimeMealCount,
+      notificationsPermissionStatus,
+    }),
+    [mealsTodayCount, libraryCount, lifetimeMealCount, notificationsPermissionStatus],
+  );
+
+  const { nudge, markDismissed } = useNextNudge(eligibilityState);
 
   const onPrimary = React.useCallback(async () => {
     if (!nudge || busy) return;
