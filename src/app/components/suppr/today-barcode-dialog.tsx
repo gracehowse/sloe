@@ -12,6 +12,7 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
+import { Icons } from "../ui/icons";
 import {
   fetchProductByBarcode,
   type OffProductMacros,
@@ -91,6 +92,16 @@ export interface TodayBarcodeDialogProps {
   recentFoods: string[];
   onPickRecentFood: (name: string) => void;
   onConfirm: (payload: TodayBarcodeConfirmPayload) => void;
+  /**
+   * Audit 2026-04-30 (Lose It "Closer" parity, Fix 2). When a barcode
+   * lookup returns "not found", surface a primary "Snap the label
+   * instead" CTA that hands off to the AI photo-log path. The host
+   * is responsible for closing this dialog and opening the
+   * `<PhotoLogDialog>` (so Pro gating + analytics stay in one place).
+   * Optional — when omitted the dialog falls back to the legacy
+   * toast-and-stay behaviour.
+   */
+  onPhotoFallback?: () => void;
 }
 
 export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
@@ -126,12 +137,62 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
     recentFoods,
     onPickRecentFood,
     onConfirm,
+    onPhotoFallback,
   } = props;
+
+  // Audit 2026-04-30 — local "not found" state. Surfaced as a
+  // friendly empty state with a primary "Snap the label instead"
+  // CTA. Cleared whenever the barcode input changes so a follow-up
+  // lookup attempt re-renders the regular form.
+  const [notFound, setNotFound] = React.useState(false);
+  React.useEffect(() => {
+    setNotFound(false);
+  }, [barcodeValue]);
+  React.useEffect(() => {
+    if (!open) setNotFound(false);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border">
-        {!barcodePreview ? (
+        {!barcodePreview && notFound ? (
+          // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — soft
+          // empty state with photo-fallback CTA. Mirrors mobile's
+          // BarcodeScannerModal "We don't have this product yet."
+          // branch.
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground">{"We don't have this product yet."}</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Snap the nutrition label and we&apos;ll read it for you, or enter the values manually below.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+              {onPhotoFallback ? (
+                <Button
+                  type="button"
+                  data-testid="barcode-not-found-photo-fallback"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setNotFound(false);
+                    onPhotoFallback();
+                  }}
+                >
+                  <Icons.camera className="mr-2 h-4 w-4" aria-hidden />
+                  Snap the label instead
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setNotFound(false)}
+              >
+                Try another barcode
+              </Button>
+            </DialogFooter>
+          </>
+        ) : !barcodePreview ? (
           <>
             <DialogHeader>
               <DialogTitle className="text-foreground">Barcode (Open Food Facts)</DialogTitle>
@@ -180,15 +241,24 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                   try {
                     const result = await fetchProductByBarcode(barcodeValue);
                     if (!result.ok) {
-                      toast.error(
-                        result.error === "not_found"
-                          ? "Product not found"
-                          : result.error === "invalid"
+                      // Audit 2026-04-30 — when the lookup returns
+                      // "not found" we render a soft empty state
+                      // inline with the photo-fallback CTA instead
+                      // of a transient toast. Other errors (invalid
+                      // input, network) keep the legacy toast since
+                      // the user needs to retry the same surface.
+                      if (result.error === "not_found") {
+                        setNotFound(true);
+                      } else {
+                        toast.error(
+                          result.error === "invalid"
                             ? "Enter a valid barcode"
                             : "Could not reach Open Food Facts",
-                      );
+                        );
+                      }
                       return;
                     }
+                    setNotFound(false);
                     const p = result.product;
                     onBarcodePreviewChange(p);
                     onBarcodeTitleOverrideChange(p.name);

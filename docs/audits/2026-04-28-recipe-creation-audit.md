@@ -84,8 +84,37 @@ From the moment user clicks Import, step 1 is checked-green and steps 2/3 are pu
 
 1. CR-02 / CR-01: No Delete on mobile, no overflow menu — user can't undo.
 2. VR-01: Confirm All promotes low-confidence rows to `is_verified=true`.
-3. CR-03: Mobile Publish toggle has no attestation; web does.
+3. CR-03: Mobile Publish toggle has no attestation; web does. _(Resolved 2026-04-28 single-screen, 2026-04-30 wizard.)_
 4. IM-02: Fake 3-step extraction animation is misleading.
 5. TR-01: `http://` URLs accepted as source attribution.
 6. TR-03: Site-claimed nutrition preferred over our DB match without disclosure.
 7. IM-01: Permanent "No recent imports" decoy + 4 dead source buttons.
+
+---
+
+## 2026-04-30 follow-ups (mobile wizard ship)
+
+Customer-lens audit found that Library had no first-class "+ Create"
+affordance — only entry was More → Settings → Create recipe (a deep
+Settings row no first-time creator would discover). The
+single-screen form at `/create-recipe` worked but felt like an editor,
+not an entry point.
+
+**Shipped:**
+
+- New `/recipe/create` route — 5-step guided wizard
+  (`apps/mobile/components/recipe/CreateRecipeWizard.tsx`,
+  step machine in `src/lib/recipes/createRecipeWizard.ts`).
+- Library "+ Create" pill in the header + primary CTA on the empty
+  state. Routes to `/recipe/create`.
+- CR-03 attestation Alert ported to the wizard's publish action
+  (mirrors single-screen form + web `GoPublicDialog`).
+- CR-05 servings clamp enforced at the step-machine level
+  (`clampServings` rejects NaN / negative / over-50).
+- CR-07 discard-changes guard on Step 1 Back when fields are dirty.
+- Journey doc: `docs/journeys/create-recipe.md`.
+
+The single-screen form at `/create-recipe` is intentionally kept —
+it's still the share-extension fallthrough surface and the e2e
+flow `21-create-recipe` target. Both routes write to the same
+`recipes` / `recipe_ingredients` / `saves` shape.

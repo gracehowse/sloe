@@ -74,6 +74,7 @@ import { ProgressHeadline } from "./suppr/progress-headline.tsx";
 import { ProgressStoryGate } from "./suppr/progress-story-gate.tsx";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
+import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
@@ -1174,7 +1175,11 @@ function ProgressDashboardContent() {
 
       {/* Week digest — narrative LEAD card. Replaces the 2x2 grid as
           the visual focus. customer-lens audit 2026-04-30 +
-          D-2026-04-27-17. */}
+          D-2026-04-27-17.
+
+          `dayOfWeekPattern` is the Lose It "Closer" parity slot
+          (audit 2026-04-30). The helper enforces the 14-day +
+          200-kcal-delta gates so the line never surfaces on noise. */}
       <div className="mb-4">
         <DigestStoryCard
           weekLabel={recap.weekLabel}
@@ -1191,6 +1196,7 @@ function ProgressDashboardContent() {
                 protein: recap.bestDay.protein,
               }
             : null}
+          dayOfWeekPattern={computeDayOfWeekPattern(nutritionByDay)}
         />
       </div>
 
