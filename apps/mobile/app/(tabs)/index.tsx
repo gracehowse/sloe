@@ -167,6 +167,7 @@ import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
+import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
@@ -3439,6 +3440,28 @@ export default function TrackerScreen() {
               // No context block fits this state.
               return null;
             })()}
+
+            {/* Post-launch onboarding nudge banner (2026-04-30 follow-up
+                to the 15→12 onboarding shrink). Three nudges queued in
+                priority order — Permissions → Import → Recipes — shown
+                one at a time below the calorie ring. AsyncStorage-gated
+                cooldowns; the permissions nudge drops permanently after
+                the user answers the OS prompt. Mobile-only by design
+                (Apple Health is iOS-native; web has no equivalent
+                surface). See `docs/decisions/2026-04-30-onboarding-shrink-15-to-12.md`
+                §"Post-launch nudge queue" and
+                `apps/mobile/components/today/onboarding-nudges/types.ts`.
+
+                Visibility gate: only when viewing today AND at least
+                one meal has been logged. The empty-state moment (zero
+                meals on today) belongs to the calorie ring + north-star
+                block — adding a nudge there would clutter the most
+                important first impression. The banner is also internally
+                cooldown-gated, so a returning user sees at most one
+                eligible nudge per cooldown window. */}
+            {isToday && mealsToday.length > 0 && (
+              <OnboardingNudgeBanner />
+            )}
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
