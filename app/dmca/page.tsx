@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { DmcaTakedownForm } from "./_form/DmcaTakedownForm";
 
 // NOTE FOR OPERATOR: To make the § 512(c) safe harbour effective, the Suppr
 // designated agent still needs to be registered with the US Copyright Office
@@ -35,6 +36,17 @@ export default function DmcaPage() {
             Millennium Copyright Act (&ldquo;DMCA&rdquo;, 17 U.S.C. &sect; 512) and the equivalent notice-and-action
             processes in the UK and EU.
           </p>
+
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+            Quick submission form
+          </h2>
+          <p>
+            For most takedown requests, the form below is the fastest path. We
+            record the submission directly to our reviewer queue and respond to
+            the email you provide within 7 business days. The email channel
+            below is still available if you prefer.
+          </p>
+          <DmcaTakedownForm />
 
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Designated agent</h2>
           <p>

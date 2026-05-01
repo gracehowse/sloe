@@ -85,6 +85,33 @@ export default function PrivacyPage() {
               flows.
             </li>
           </ul>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+            Imported recipes from public posts
+          </h2>
+          <p data-testid="privacy-imported-recipes-disclosure">
+            When you share a public post from Instagram, TikTok, or YouTube to
+            Suppr, our app reads the caption text you sent us. We never fetch
+            the original post or video from those platforms ourselves. We store
+            the caption text you supplied, plus the URL, plus the creator&rsquo;s
+            public handle (when available) &mdash; so the recipe is attributed
+            back to its source.
+          </p>
+          <p>
+            Creators can request removal of any recipe imported from their
+            public post by emailing{" "}
+            <a
+              href="mailto:dmca@suppr-club.com"
+              className="text-violet-600 dark:text-violet-400 underline"
+            >
+              dmca@suppr-club.com
+            </a>{" "}
+            or by submitting the form on{" "}
+            <Link href="/dmca" className="text-violet-600 dark:text-violet-400 underline">
+              /dmca
+            </Link>
+            . We&rsquo;ll remove within 7 business days.
+          </p>
+
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
           <p>
             We use the following third-party service providers to operate Suppr. Each is bound by a data-processing
