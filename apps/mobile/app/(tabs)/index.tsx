@@ -3500,10 +3500,18 @@ export default function TrackerScreen() {
             next to the date row. The earlier streak ribbon was removed
             2026-04-20; this pip is the binding pattern going forward.
             Lives above the date header on day-view; suppressed on
-            week-view to keep the week toggle uncrowded. */}
+            week-view to keep the week toggle uncrowded.
+
+            2026-04-30 — pip now opens the weekly-recap surface (audit
+            "cut OR finish" verdict). Zero-streak users land on the
+            same screen which renders an explainer instead of a
+            broken card. */}
         {viewMode === "day" && (
           <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
-            <StreakPip days={streakDays} />
+            <StreakPip
+              days={streakDays}
+              onPress={() => router.push("/weekly-recap" as never)}
+            />
           </View>
         )}
         {/* Date navigation header */}
