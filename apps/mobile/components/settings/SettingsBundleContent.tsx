@@ -1366,8 +1366,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginTop: 2,
               }}
             >
-              Display "Net carbs" (carbs − fibre) on the Tracker and
-              recipe pages. Useful for keto / low-carb tracking.
+              Display &quot;Net carbs&quot; (carbs − fibre) on the
+              Tracker and recipe pages. Useful for keto / low-carb
+              tracking.
             </Text>
           </View>
           <Switch
