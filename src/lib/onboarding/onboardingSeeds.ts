@@ -316,3 +316,121 @@ export function filterOnboardingSeeds(
   }
   return filtered;
 }
+
+/**
+ * Default seed slugs used when the user completes onboarding without
+ * picking any recipes (the Recipes step is currently out of the
+ * linear flow per the 15→12 shrink — see
+ * `docs/decisions/2026-04-30-onboarding-shrink-15-to-12.md`).
+ *
+ * Picked to satisfy the audit-flagged activation contract (commit
+ * 2026-04-30 follow-up): the user's library MUST contain at least
+ * `NORTH_STAR_LIBRARY_MIN` (5) varied recipes the moment they land
+ * on Today, otherwise the north-star block is permanently stuck in
+ * its empty-state and the "What to eat next" promise evaporates.
+ *
+ * Composition (5 high-confidence Mediterranean / Balanced default
+ * seeds spanning slots):
+ *   1. Greek yoghurt overnight oats (breakfast, vegetarian)
+ *   2. Cottage cheese and tomato pasta (lunch, vegetarian, high-protein)
+ *   3. Halloumi and roast veg traybake (lunch/dinner, vegetarian)
+ *   4. Sheet-pan harissa chicken (dinner, omnivore, high-protein)
+ *   5. Miso salmon with greens (dinner, pescatarian, high-protein)
+ *
+ * Why these five:
+ *   - All carry "Suppr onboarding" provenance in `recipes.source_name`
+ *     (the resolver's gate — see `onboardingSeedResolver.ts`).
+ *   - Cover breakfast / lunch / dinner so the time-of-day filter in
+ *     `pickNorthStarSuggestion` always has at least one candidate.
+ *   - Mix of veg / pesc / omni so even a strict-vegan filter leaves
+ *     a fallback (the filter helper falls back to the unfiltered list
+ *     below `SEED_FILTER_FALLBACK_THRESHOLD`).
+ *   - Protein 25–45g — keeps the protein-direction bonus in the
+ *     scorer meaningful for the typical 100–140g protein target.
+ *
+ * The list is intentionally fixed (not a random sample) so two users
+ * onboarding the same week land on the same starter library — easier
+ * to reason about retention cohorts.
+ */
+export const ONBOARDING_DEFAULT_SEED_SLUGS: readonly string[] = [
+  "greek-yogurt-overnight-oats-berries",
+  "cottage-cheese-tomato-pasta",
+  "halloumi-roast-veg-traybake",
+  "sheet-pan-harissa-chicken-chickpeas",
+  "miso-salmon-greens",
+] as const;
+
+/**
+ * Resolve the default-seed slugs to the actual `OnboardingSeed` rows.
+ * Filtered through the user's diet + allergen preferences via
+ * `filterOnboardingSeeds` — same fallback behaviour as the picker (if
+ * the filtered set drops below the threshold, fall through to the
+ * default seeds unfiltered, then finally to the full library if even
+ * the defaults are empty post-filter).
+ *
+ * Returns at most 5 seeds. Always returns at least 1 seed if the
+ * library has any rows at all (the empty input → empty output is the
+ * only failure path).
+ */
+export function defaultOnboardingSeeds(
+  input: SeedFilterInput = { diet: [] },
+): readonly OnboardingSeed[] {
+  const slugs = new Set(ONBOARDING_DEFAULT_SEED_SLUGS);
+  const defaults = ONBOARDING_SEEDS.filter((s) => slugs.has(s.slug));
+
+  const dietRaw = (input.diet ?? []).map((d) => d.toLowerCase().trim());
+  const allergiesRaw = (input.allergies ?? []).map((a) => a.toLowerCase().trim());
+  const noFilter = dietRaw.length === 0 && allergiesRaw.length === 0;
+  if (noFilter) {
+    // Nothing to filter — return the canonical 5 in the canonical order.
+    return defaults;
+  }
+
+  // Apply diet + allergen filters strictly (no soft-fallback) on the
+  // default 5. Diet rules mirror `filterOnboardingSeeds` so the
+  // semantics stay identical to the picker — vegan is strictest band,
+  // vegetarian drops omni/pescatarian, etc.
+  const wantsVegan = dietRaw.includes("vegan");
+  const wantsVegetarian = dietRaw.includes("vegetarian") || wantsVegan;
+  const wantsPescatarian = dietRaw.includes("pescatarian") || wantsVegetarian;
+  const wantsGlutenFree =
+    dietRaw.includes("gluten-free") || dietRaw.includes("gluten free");
+
+  const passesDietAndAllergens = (seed: OnboardingSeed): boolean => {
+    const tags = seed.dietTags.map((t) => t.toLowerCase());
+    if (wantsVegan && !tags.includes("vegan")) return false;
+    if (
+      wantsVegetarian &&
+      !wantsVegan &&
+      !tags.includes("vegan") &&
+      !tags.includes("vegetarian")
+    ) {
+      return false;
+    }
+    if (
+      wantsPescatarian &&
+      !wantsVegetarian &&
+      !tags.includes("vegan") &&
+      !tags.includes("vegetarian") &&
+      !tags.includes("pescatarian")
+    ) {
+      return false;
+    }
+    if (wantsGlutenFree && !tags.includes("gluten-free")) return false;
+    for (const a of allergiesRaw) {
+      if (a.length === 0) continue;
+      if (seed.matchTitle.toLowerCase().includes(a)) return false;
+    }
+    return true;
+  };
+
+  const fromDefaults = defaults.filter(passesDietAndAllergens);
+  if (fromDefaults.length > 0) return fromDefaults;
+
+  // Hard fallback: the user's diet + allergen combo wiped all 5
+  // canonical defaults (e.g. vegan — none of the canonical 5 are
+  // vegan-tagged). Reach into the full library for up to 5 rows that
+  // satisfy both filters. Mirrors the picker's "better than empty"
+  // contract from `filterOnboardingSeeds`.
+  return ONBOARDING_SEEDS.filter(passesDietAndAllergens).slice(0, 5);
+}

@@ -4,6 +4,7 @@ import {
   AppState,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -81,6 +82,7 @@ import {
   exportDayToHealth,
   isHealthSyncAvailable,
 } from "@/lib/healthSync";
+import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { clampJournalDate } from "@/lib/journalNavigation";
 import {
   computeEatAgainForSlot,
@@ -168,6 +170,10 @@ import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
+// Activation hook (audit 2026-04-30) — first-log toast + push explainer.
+import { FirstLogAcknowledgment } from "@/components/today/FirstLogAcknowledgment";
+import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPushExplainer";
+import { registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
@@ -289,7 +295,19 @@ function formatMealTimeDisplay(time: string | undefined, createdAt?: string | nu
 
 export default function TrackerScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string; openLog?: string }>();
+  const params = useLocalSearchParams<{
+    date?: string;
+    _t?: string;
+    editMealId?: string;
+    openLog?: string;
+    /** Activation hook (audit 2026-04-30): set by `notifications-prompt`
+     *  + onboarding completion → triggers first-run polish (push
+     *  explainer, ring celebration). */
+    firstRun?: string;
+    /** Onboarding completion routes through here so Today can show
+     *  post-onboarding nudges. Older code path. */
+    onboarding_complete?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -699,6 +717,155 @@ export default function TrackerScreen() {
          the same session. */
     });
   }, []);
+
+  // Activation hook (audit 2026-04-30 — leak fix #3): first-log toast.
+  // ---------------------------------------------------------------
+  // `firstLogAckShown`:
+  //   - `null`: AsyncStorage read in flight.
+  //   - `false`: storage says we have NOT acknowledged the first log.
+  //     A 0→1 transition in `mealsToday.length` will trigger the toast.
+  //   - `true`: already shown (or just dismissed this session).
+  // The detection runs against a separate counter (`firstLogAckShown`)
+  // rather than today's meal count alone — a returning user who already
+  // saw the toast on day-1 must NOT re-trigger when their day-2 0→1
+  // transition happens. The `false → true` transition is the one that
+  // matters; once `true`, it stays `true` forever.
+  const FIRST_LOG_ACK_STORAGE_KEY = "suppr.first-log-acknowledged.v1";
+  const [firstLogAckShown, setFirstLogAckShown] = useState<boolean | null>(null);
+  const [firstLogToastVisible, setFirstLogToastVisible] = useState(false);
+  const firstLogPrevCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(FIRST_LOG_ACK_STORAGE_KEY)
+      .then((raw) => {
+        if (!cancelled) setFirstLogAckShown(raw != null);
+      })
+      .catch(() => {
+        if (!cancelled) setFirstLogAckShown(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissFirstLogToast = useCallback(() => {
+    setFirstLogToastVisible(false);
+    setFirstLogAckShown(true);
+    void AsyncStorage.setItem(
+      FIRST_LOG_ACK_STORAGE_KEY,
+      new Date().toISOString(),
+    ).catch(() => {
+      /* storage denied — session state hides; worst case it shows
+         once more next launch, never twice this session. */
+    });
+  }, []);
+
+  // Activation hook (audit 2026-04-30 — leak fix #4): post-onboarding
+  // push-permission explainer. The MobilePermissionsStep was removed
+  // from the linear onboarding flow in the 15→12 shrink; without
+  // re-prompting elsewhere, push permission stays at the OS default
+  // and no D1/D7/D30 retention nudge can deliver. We surface the
+  // prompt as a single-screen explainer the first time Today renders
+  // post-onboarding.
+  //
+  // Coordination with `OnboardingNudgeBanner` (commit c60af6d): this
+  // explainer fires FIRST. The `permissions` nudge in that queue is
+  // the recovery path for the case where the user dismissed THIS
+  // prompt — same OS calls, lower priority on re-ask.
+  const POST_ONB_PUSH_PROMPT_KEY = "suppr.post-onboarding-push-prompt.v1";
+  const [postOnbPushVisible, setPostOnbPushVisible] = useState(false);
+  const postOnbPushCheckedRef = useRef(false);
+  useEffect(() => {
+    if (postOnbPushCheckedRef.current) return;
+    if (Platform.OS !== "ios") {
+      // iOS-only by design — Android push prompts route through a
+      // different OS path and aren't in scope for this fix. Mark the
+      // check done so we don't re-evaluate.
+      postOnbPushCheckedRef.current = true;
+      return;
+    }
+    if (!userId) return;
+    postOnbPushCheckedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const shown = await AsyncStorage.getItem(POST_ONB_PUSH_PROMPT_KEY);
+        if (cancelled) return;
+        if (shown === "shown") return;
+        // Honour the user's onboarding-completed status. Tabs layout
+        // already redirects users without onboarding completion to
+        // /onboarding, so by the time we reach Today the user IS
+        // post-onboarding. Belt-and-braces: read `profiles.onboarding_completed`
+        // via the existing supabase client.
+        const { data } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (data?.onboarding_completed !== true) return;
+
+        // OS-permission gate — only ask if the user hasn't already
+        // answered. `getPermissionsAsync` returns `undetermined` when
+        // the OS prompt has never been shown.
+        try {
+          const Notifications = await import("expo-notifications");
+          const existing = await Notifications.getPermissionsAsync();
+          if (cancelled) return;
+          if (existing.status === "undetermined") {
+            setPostOnbPushVisible(true);
+          } else {
+            // Already answered — record so we don't keep checking.
+            await AsyncStorage.setItem(POST_ONB_PUSH_PROMPT_KEY, "shown");
+          }
+        } catch {
+          // expo-notifications not present (Expo Go / older builds) —
+          // skip silently and let the existing nudge banner handle it.
+        }
+      } catch {
+        /* network / storage hiccup — silent skip. */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const dismissPostOnbPush = useCallback(async (granted: boolean) => {
+    setPostOnbPushVisible(false);
+    try {
+      await AsyncStorage.setItem(POST_ONB_PUSH_PROMPT_KEY, "shown");
+    } catch {
+      /* best-effort persist — banner-queue path will recover next launch */
+    }
+    if (granted) {
+      try {
+        await registerExpoPushTokenForUser(userId ?? null);
+      } catch {
+        /* token-fetch failures are non-fatal — see expoPushToken.ts. */
+      }
+    }
+  }, [userId]);
+
+  const onPostOnbPushEnable = useCallback(() => {
+    void (async () => {
+      try {
+        const Notifications = await import("expo-notifications");
+        const existing = await Notifications.getPermissionsAsync();
+        const next =
+          existing.status === "granted"
+            ? existing
+            : await Notifications.requestPermissionsAsync();
+        await dismissPostOnbPush(next.status === "granted");
+      } catch {
+        await dismissPostOnbPush(false);
+      }
+    })();
+  }, [dismissPostOnbPush]);
+
+  const onPostOnbPushSkip = useCallback(() => {
+    void dismissPostOnbPush(false);
+  }, [dismissPostOnbPush]);
 
   const savedMealSlots = useMemo(() => {
     const s = new Set<string>();
@@ -1386,6 +1553,57 @@ export default function TrackerScreen() {
 
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
+
+  // Activation hook (audit 2026-04-30 — leak fix #3): detect the
+  // 0→1 transition in today's meal count and fire the first-log
+  // toast + haptic. The detection runs against the AsyncStorage flag
+  // (`firstLogAckShown === false`) so a returning user who already
+  // saw it on day-1 never re-triggers on day-2.
+  //
+  // We track the previous count via a ref to distinguish "fresh
+  // log" from "rehydrate from storage" — the journal load also
+  // moves `mealsToday.length` from 0 → N on cold start, but that
+  // path doesn't represent a user-initiated log and shouldn't toast.
+  // Solution: compare to `firstLogPrevCountRef.current`. On first
+  // run after journal hydrate, `prev` is `null` → seed without
+  // toasting. On subsequent updates, `0 → 1` triggers the toast.
+  useEffect(() => {
+    if (firstLogAckShown !== false) {
+      // Either still hydrating (`null`) or already shown (`true`).
+      // Keep ref synced so a later transition doesn't false-trigger.
+      firstLogPrevCountRef.current = mealsToday.length;
+      return;
+    }
+    if (!isToday) {
+      // Only Today drives the first-log moment — viewing a prior day
+      // shouldn't fire it.
+      return;
+    }
+    const prev = firstLogPrevCountRef.current;
+    const curr = mealsToday.length;
+    if (prev === null) {
+      // First observation post-hydrate. Seed without toasting.
+      firstLogPrevCountRef.current = curr;
+      return;
+    }
+    if (prev === 0 && curr === 1) {
+      // The user just logged their first meal of the day — and the
+      // storage flag confirms they've never seen the toast before.
+      // Fire the haptic + reveal the toast. Component handles the
+      // 2.5s auto-fade.
+      try {
+        if (Platform.OS === "ios") {
+          void Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          );
+        }
+      } catch {
+        /* haptics not available — toast still renders. */
+      }
+      setFirstLogToastVisible(true);
+    }
+    firstLogPrevCountRef.current = curr;
+  }, [mealsToday.length, firstLogAckShown, isToday]);
 
   // Maintenance tile + popover + activity-bonus baseline. Resolves via
   // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
@@ -2562,6 +2780,15 @@ export default function TrackerScreen() {
         if (legacy && Object.keys(legacy).length > 0) loaded = legacy;
       }
       setByDay(loaded);
+      // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
+      // set with every meal that already exists in the journal at load
+      // time. This ensures the debounced sync effect only writes meals
+      // the user logs AFTER this feature shipped — not historical rows
+      // that pre-date Apple Health export.
+      const existingIds = (rows ?? [])
+        .map((r) => r.id as string)
+        .filter((id): id is string => typeof id === "string" && id.length > 0);
+      void primeWrittenMealIds(existingIds);
     }
     setHydrated(true);
 
@@ -2735,6 +2962,29 @@ export default function TrackerScreen() {
               // insert has `on conflict do nothing` so repeat calls are
               // cheap no-ops.
               void snapshotDailyTargetIfMissing(supabase, userId);
+              // Audit/2026-04-30 — per-meal Apple HealthKit write
+              // (parity with MFP / Cal AI). The debounced upsert covers
+              // every entry-point that mutates `byDay` (LogSheet barcode
+              // confirm, FoodSearch, manual add, copy-meal, plan-meal
+              // log). Idempotent on `meal.id`, so re-renders / multi-
+              // upserts don't double-count. Only fires for the
+              // selected day's meals — past-day backfills go through
+              // their own insert path which calls
+              // `writeMealToHealthKitIfEnabled` directly.
+              for (const m of todayMeals) {
+                void writeMealToHealthKitIfEnabled({
+                  mealId: UUID_RE.test(m.id) ? m.id : "",
+                  name: m.recipeTitle || m.name,
+                  calories: m.calories,
+                  protein: m.protein,
+                  carbs: m.carbs,
+                  fat: m.fat,
+                  fiberG: m.fiberG ?? null,
+                  date: m.createdAt ?? undefined,
+                  source: m.source ?? null,
+                  origin: "journal-sync",
+                });
+              }
             }
           });
       }
@@ -2884,6 +3134,24 @@ export default function TrackerScreen() {
       // F-2 — snapshot today's target regardless of `targetDayKey`
       // (back-dating a snapshot would defeat the purpose).
       void snapshotDailyTargetIfMissing(supabase, userId);
+      // Audit/2026-04-30 — per-meal HK write for the copied rows.
+      // Cloned meals are minted with fresh ids so the dedupe set
+      // doesn't suppress them; the user just logged a real meal on
+      // `targetDayKey`. Same idempotency rules as the debounce path.
+      for (const m of withIds) {
+        void writeMealToHealthKitIfEnabled({
+          mealId: m.id,
+          name: m.recipeTitle || m.name,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          fiberG: m.fiberG ?? null,
+          date: new Date().toISOString(),
+          source: m.source ?? null,
+          origin: "duplicate",
+        });
+      }
       return withIds.length;
     },
     [userId],
@@ -3155,6 +3423,19 @@ export default function TrackerScreen() {
         void loadJournal();
         // F-2 — snapshot today's target on first meal-plan log.
         void snapshotDailyTargetIfMissing(supabase, userId);
+        // Audit/2026-04-30 — per-meal HK write for plan-tap log.
+        void writeMealToHealthKitIfEnabled({
+          mealId: entryId,
+          name: pm.recipe_title ?? pm.name ?? "Meal plan",
+          calories: optimisticMeal.calories,
+          protein: optimisticMeal.protein,
+          carbs: optimisticMeal.carbs,
+          fat: optimisticMeal.fat,
+          fiberG: microsRes.fiberG ?? null,
+          date: new Date().toISOString(),
+          source: "Meal plan",
+          origin: "plan",
+        });
       }
     },
     [userId, selectedDate, loadJournal],
@@ -3200,6 +3481,20 @@ export default function TrackerScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, position: "relative" }]}>
+      {/* Activation hooks (audit 2026-04-30) — mounted at the top of the
+          container so the toast overlays the ScrollView and the modal
+          renders above everything. The toast is absolute-positioned;
+          the modal manages its own scrim. */}
+      <FirstLogAcknowledgment
+        visible={firstLogToastVisible}
+        onDismiss={dismissFirstLogToast}
+        topInset={insets.top + Spacing.sm}
+      />
+      <PostOnboardingPushExplainer
+        visible={postOnbPushVisible}
+        onSkip={onPostOnbPushSkip}
+        onEnable={onPostOnbPushEnable}
+      />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
             next to the date row. The earlier streak ribbon was removed

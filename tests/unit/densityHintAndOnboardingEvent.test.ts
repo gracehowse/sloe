@@ -106,9 +106,16 @@ describe("onboarding_completed event fires from both platforms (P1-13 + polish A
       expect(firstIdx).toBeGreaterThan(0);
       const secondIdx = src.indexOf("AnalyticsEvents.onboarding_completed", firstIdx + 1);
       expect(secondIdx).toBeGreaterThan(firstIdx);
+      // Window widened from 500 → 1200 after the 2026-04-30 activation
+      // hooks audit added the `used_default_seeds` analytics flag with
+      // explanatory comments. The block grew past the previous 500-char
+      // afterward window. The test still pins what it cares about
+      // (try/catch wrapping the canonical authed-completion track)
+      // without forcing future audits to keep the analytics block
+      // artificially compact.
       const ctx = src.slice(
         Math.max(0, secondIdx - 200),
-        secondIdx + 500,
+        secondIdx + 1200,
       );
       expect(ctx).toMatch(/try\s*\{/);
       expect(ctx).toMatch(/\}\s*catch/);

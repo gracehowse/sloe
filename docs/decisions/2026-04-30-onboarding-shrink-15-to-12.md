@@ -147,3 +147,19 @@ sets the permanent-removal flag, primary on import routes to
 `/import-shared`, primary on recipes routes to `/(tabs)/library`,
 permanent-removal survives a missing timestamp, corrupt timestamps
 fail-open to "never dismissed".
+
+## Activation hooks (audit 2026-04-30 follow-up)
+
+The shrink left three audit-flagged leaks downstream. Resolved by the
+five-fix activation pass — see
+`docs/decisions/2026-04-30-activation-hooks-post-onboarding.md`:
+
+1. `notifications-prompt` now routes to Today (not Discover).
+2. `mobile-flow.tsx` seeds the library with curated defaults when
+   `pickedRecipeSlugs` is empty (no more empty-library north-star
+   block on day-1).
+3. First-log toast on Today.
+4. Post-onboarding push-permission explainer on first Today render
+   (the recovery path for the permissions step we removed from the
+   linear flow).
+5. NorthStar why-line so the suggestion stops reading as black-box.
