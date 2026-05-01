@@ -54,7 +54,14 @@ describe("SettingsBundleContent — parity contract", () => {
       "settings-bundle-weekly-recap-row",
       "settings-bundle-create-recipe-row",
       "settings-bundle-export-csv-row",
-      "settings-bundle-export-json-row",
+      // 2026-04-30: legacy `settings-bundle-export-json-row`
+      // (client-side stitched profile + entries + saves) was
+      // retired in favour of the server-authoritative
+      // `settings-bundle-export-everything-row` which calls
+      // `/api/export/me` and includes recipes, weights, plans,
+      // custom foods, etc. — counters lock-in anxiety per the
+      // user-sentiment audit. See `docs/operations/data-export.md`.
+      "settings-bundle-export-everything-row",
       "settings-bundle-help-row",
       "settings-bundle-privacy-row",
       "settings-bundle-terms-row",

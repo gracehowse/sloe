@@ -13,7 +13,13 @@ import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
 } from "../../constants/dietaryPreferences.ts";
-import { buildLocalDataExport, downloadJsonFile } from "../../lib/client/exportSupprLocalData.ts";
+// Legacy local-only export helpers (`buildLocalDataExport`,
+// `downloadJsonFile`) were retired 2026-04-30 when the JSON export
+// moved to the server-authoritative `/api/export/me` endpoint. The
+// CSV path below still uses its own helpers from
+// `nutritionLogToCsv` because CSV is a curated subset (the meal log
+// only) — the full JSON dump is the canonical "Export everything"
+// surface.
 // G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) — CSV path
 // replaces JSON as the primary export for regular users. JSON stays as
 // a secondary "full backup" option. Shared helper so web + mobile emit
@@ -1294,40 +1300,69 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="font-medium">Export nutrition log (CSV)</p>
             <p className="text-xs text-muted-foreground mt-0.5">Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets.</p>
           </button>
+          {/* "Export everything" — server-authoritative path
+              (`/api/export/me`). Counters lock-in anxiety per the
+              2026-04-30 user-sentiment audit (Paprika "recipes
+              disappeared after upgrade", MFP "history gone after
+              update", Recime "data vanished post-payment"). One
+              endpoint emits the canonical payload; both web and
+              mobile call it so the bytes match. The legacy partial
+              path (profile + entries + saves stitched on the
+              client) was replaced 2026-04-30 because it both
+              shipped truncated data AND duplicated logic across the
+              two platforms. */}
           <button
             type="button"
+            data-testid="settings-export-everything-button"
             onClick={() => {
               void (async () => {
                 try {
-                  const localData = buildLocalDataExport();
-
                   const { data: session } = await supabase.auth.getSession();
-                  const uid = session.session?.user.id;
-
-                  let profile: Record<string, unknown> | null = null;
-                  let nutritionEntries: unknown[] = [];
-                  let saves: unknown[] = [];
-
-                  if (uid) {
-                    const [profileRes, entriesRes, savesRes] = await Promise.all([
-                      supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
-                      supabase.from("nutrition_entries").select("*").eq("user_id", uid),
-                      supabase.from("saves").select("recipe_id").eq("user_id", uid),
-                    ]);
-                    profile = profileRes.data ?? null;
-                    nutritionEntries = entriesRes.data ?? [];
-                    saves = savesRes.data ?? [];
+                  const token = session.session?.access_token;
+                  if (!token) {
+                    toast.error("Sign in to export your data.");
+                    return;
                   }
-
-                  const exportData = {
-                    ...localData,
-                    profile,
-                    nutritionEntries,
-                    saves,
-                    exportedAt: new Date().toISOString(),
-                  };
-
-                  downloadJsonFile(`suppr-export-${new Date().toISOString().slice(0, 10)}.json`, exportData);
+                  const res = await fetch("/api/export/me", {
+                    method: "GET",
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (res.status === 429) {
+                    toast.error(
+                      "You can export once per minute. Try again in a moment.",
+                    );
+                    return;
+                  }
+                  if (res.status === 401) {
+                    toast.error("Your session expired. Sign in again.");
+                    return;
+                  }
+                  if (!res.ok) {
+                    let detail = `Export failed (${res.status}).`;
+                    try {
+                      const body = (await res.json()) as { message?: string };
+                      if (body.message) detail = body.message;
+                    } catch {
+                      // Body wasn't JSON — keep the generic message.
+                    }
+                    toast.error(detail);
+                    return;
+                  }
+                  const blob = await res.blob();
+                  const filenameMatch = /filename="([^"]+)"/.exec(
+                    res.headers.get("content-disposition") ?? "",
+                  );
+                  const filename =
+                    filenameMatch?.[1] ??
+                    `suppr-export-${new Date().toISOString().slice(0, 10)}.json`;
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
                   toast.success("Download started.");
                 } catch {
                   toast.error("Could not build export.");
@@ -1336,8 +1371,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             }}
             className="w-full text-left px-4 py-3 bg-muted/60 hover:bg-muted rounded-lg transition-all text-muted-foreground"
           >
-            <p className="font-medium text-foreground">Export all data (JSON)</p>
-            <p className="text-xs mt-0.5">Full backup for developers or migration.</p>
+            <p className="font-medium text-foreground">Export everything</p>
+            <p className="text-xs mt-0.5">
+              Yours forever. Take your data anywhere — recipes, meal log,
+              weights, plans. Downloads as a JSON file.
+            </p>
           </button>
           <Link
             href="/privacy"
