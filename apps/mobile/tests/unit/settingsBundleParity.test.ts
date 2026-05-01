@@ -67,7 +67,24 @@ describe("SettingsBundleContent — parity contract", () => {
       "settings-bundle-terms-row",
       "settings-bundle-reset-row",
       "settings-bundle-delete-account-row",
-      "settings-bundle-sign-out",
+      // 2026-05-01 (`claude/settings-mobile-structural-fix`): the
+      // bundle no longer renders its own destructive-bordered Sign
+      // Out (P1-5). The single neutral Sign Out row lives in
+      // `app/(tabs)/settings.tsx` beneath the bundle (Sign Out is
+      // reversible — red is reserved for irreversible actions).
+      //
+      // P0-1 / Tracking extras toggles (caffeine + alcohol Today
+      // opt-in) — migrated from the legacy `/(tabs)/settings.tsx`
+      // Tracking extras section into a "Display & extras" section
+      // in the bundle.
+      "settings-bundle-track-caffeine-toggle",
+      "settings-bundle-track-alcohol-toggle",
+      // P0-1: Manage subscription + promo-code rows migrated from
+      // the legacy in-file Plan section into the Membership card so
+      // base/pro users can cancel and testers can redeem codes.
+      "settings-manage-subscription-row",
+      "settings-bundle-promo-code-input",
+      "settings-bundle-promo-code-apply",
     ];
     for (const id of expectedTestIds) {
       expect(bundle).toContain(`testID="${id}"`);
@@ -138,7 +155,12 @@ describe("SettingsBundleContent — parity contract", () => {
     // Section paragraph and confirm dialog must agree on what gets wiped.
     // Pre-fix the confirm dialog only mentioned "food log, saved recipes,
     // and meal plans" while the paragraph promised six categories.
-    expect(bundle).toContain("Erase everything?");
+    // 2026-05-01 (P1-6, `claude/settings-mobile-structural-fix`):
+    // the alert title changed from "Erase everything?" to "Delete
+    // your data and start fresh?" as part of the calm-streak copy
+    // pass. Body still enumerates the categories so the test pin
+    // stays meaningful.
+    expect(bundle).toContain("Delete your data and start fresh?");
     expect(bundle).toMatch(/journal/i);
     expect(bundle).toMatch(/library saves/i);
     expect(bundle).toMatch(/shopping lists/i);
