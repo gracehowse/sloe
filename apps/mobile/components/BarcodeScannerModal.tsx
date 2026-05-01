@@ -24,6 +24,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
+import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
 
 type Props = {
   visible: boolean;
@@ -44,6 +45,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
 
   // Serving size picker state
   const [gramsInput, setGramsInput] = useState("100");
+  // Audit/2026-04-30 — when this barcode has been logged before,
+  // surface "You usually log {n} g — using that" near the picker.
+  const [rememberedPortion, setRememberedPortion] = useState<number | null>(null);
   const grams = useMemo(() => {
     const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
     if (!Number.isFinite(n) || n <= 0) return 100;
@@ -108,12 +112,22 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       setLoading(false);
       if (result) {
         setProduct(result);
-        if (result.servingSizeG && result.servingSizeG > 0) {
-          setGramsInput(String(Math.round(result.servingSizeG)));
+        // Audit/2026-04-30 — barcode portion memory.
+        const remembered = await getRememberedPortion(e.data);
+        if (remembered != null && remembered > 0) {
+          const snapped = clampRememberedToServingOptions(remembered, result.servingOptions ?? null);
+          setRememberedPortion(remembered);
+          setGramsInput(String(Math.round(snapped)));
         } else {
-          setGramsInput("100");
+          setRememberedPortion(null);
+          if (result.servingSizeG && result.servingSizeG > 0) {
+            setGramsInput(String(Math.round(result.servingSizeG)));
+          } else {
+            setGramsInput("100");
+          }
         }
       } else {
+        setRememberedPortion(null);
         setError("Product not found in database.");
       }
     },
@@ -161,10 +175,16 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
         portionSummary,
       };
       track(AnalyticsEvents.barcode_lookup, { barcode: scanned });
+      // Audit/2026-04-30 — remember this portion for the next scan.
+      // The host LogSheet does the actual nutrition_entries insert
+      // (and runs `writeMealToHealthKitIfEnabled` when wired); the
+      // memory only needs the barcode + grams the user committed to.
+      void recordPortion(scanned, grams);
       onScan(scanned, scaledProduct);
       setScanned(null);
       setProduct(null);
       setGramsInput("100");
+      setRememberedPortion(null);
     }
   }, [scanned, product, scaled, grams, portionSummary, onScan]);
 
@@ -294,6 +314,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     setManualMode(false);
     setCorrectionMode(false);
     setGramsInput("100");
+    setRememberedPortion(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -303,6 +324,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
     setManualMode(false);
     setCorrectionMode(false);
     setGramsInput("100");
+    setRememberedPortion(null);
     onClose();
   }, [onClose]);
 
@@ -653,7 +675,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
                       "macros scale from per 100 g" aside leaked internal
                       model onto the user; the chip row already tells them
                       what they need to know. */}
-                  <Text style={[styles.per100g, { marginBottom: 2 }]}>Tap a chip or edit grams.</Text>
+                  {rememberedPortion != null && rememberedPortion > 0 ? (
+                    <Text style={[styles.per100g, { marginBottom: 2, color: Accent.primary }]}>
+                      You usually log {Math.round(rememberedPortion)} g — using that.
+                    </Text>
+                  ) : (
+                    <Text style={[styles.per100g, { marginBottom: 2 }]}>Tap a chip or edit grams.</Text>
+                  )}
                   <View style={styles.presetRow}>
                     {(product.servingOptions ?? []).map((o) => {
                       const selected = Math.abs(o.grams - grams) < 0.51;

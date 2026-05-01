@@ -74,6 +74,69 @@ pure helpers live in `apps/mobile/lib/healthSyncCorrelation.ts` (no RN
 imports, so they're tested directly under mobile vitest in
 `apps/mobile/tests/unit/healthSyncCorrelation.test.ts`).
 
+## Per-meal nutrition writes (audit/2026-04-30 — competitive parity)
+
+MyFitnessPal and Cal AI write meals to Apple Health **as the user logs
+them**, so by the time the user opens the iOS Health app the day's
+nutrition is already there. Suppr previously only wrote at end-of-day
+("Complete Day" CTA), so an Apple-loyal user opening Health would see
+zero Suppr nutrition until they remembered to tap Complete Day. The
+audit flagged this as a HIGH-leverage / S-effort gap.
+
+Implementation lives in
+[`apps/mobile/lib/healthKitMealWriter.ts`](../apps/mobile/lib/healthKitMealWriter.ts):
+
+- Reads the existing AsyncStorage flag `health_export_nutrition` (set
+  by Settings → Health Sync → "Share meals to Health"). On first
+  successful HK connect the flag is now seeded to "true" by default,
+  matching the import posture.
+- Per meal: writes a single `saveFoodSample` (energy + protein + carbs
+  + fat + fibre) — same shape as the daily batch path
+  (`exportDayToHealth`), so consumers see a unified record set.
+- Idempotent on `mealId`: a per-device `Set<mealId>` plus AsyncStorage-
+  backed `health_export_written_ids` (capped at 5k LRU) ensures
+  re-render / debounced upsert / copy-meal cycles don't double-count.
+- Skips low-confidence rows: any meal whose `source` matches
+  `ai-estimate` / `low-confidence` is excluded (CLAUDE.md
+  non-negotiable).
+- Fire-and-forget: every call is `void`-ed so HK latency / errors
+  cannot block the actual log persist.
+- First-launch back-fill is suppressed via `primeWrittenMealIds`,
+  which is called at journal hydrate to mark every existing
+  `nutrition_entries.id` as already-written. Only meals logged AFTER
+  this feature shipped are written to HealthKit.
+
+Wired into:
+- `apps/mobile/app/(tabs)/barcode.tsx` (scanner-tab handleLog +
+  handleManualLog)
+- `apps/mobile/app/(tabs)/index.tsx` (debounced byDay sync; cloned-row
+  copy/duplicate insert; meal-plan log)
+- `apps/mobile/app/recipe/[id].tsx` (Add to today journal)
+
+The legacy `exportDayToHealth` path remains for the manual "Complete
+Day" sweep — the dedupe set ensures it's a no-op for meals already
+written per-log.
+
+### Barcode portion memory (audit/2026-04-30 — competitive parity)
+
+When the same barcode is logged repeatedly, the portion picker now
+defaults to the user's previously-chosen grams instead of the OFF
+reference serving. Implementation in
+[`apps/mobile/lib/barcodePortionMemory.ts`](../apps/mobile/lib/barcodePortionMemory.ts):
+
+- AsyncStorage-keyed by barcode (per device) with a 90-day TTL.
+- On scan, the picker pre-fills the remembered grams (snapped to the
+  closest serving option when presets exist) and renders a hint
+  "You usually log {n} g — using that".
+- On commit the new portion overwrites the prior memory.
+- v1 scope: per-device, single-tester (TestFlight). Server-side
+  `user_food_preferences` is a follow-up — call sites are stable so
+  the storage backing can swap without changing readers.
+
+Wired into both barcode entry points: the standalone scanner tab
+(`apps/mobile/app/(tabs)/barcode.tsx`) and the LogSheet barcode
+modal (`apps/mobile/components/BarcodeScannerModal.tsx`).
+
 ## Backlog items
 
 - **Alcohol ↔ Apple Health round-trip (Batch 2.5 follow-up).** Suppr's "Alcohol" row in the hydration & stimulants card tracks grams of ethanol, mirroring the UK CMO weekly-limit model. Apple HealthKit does not expose a dietary alcohol mass type; the only alcohol surface is `HKQuantityTypeIdentifierNumberOfAlcoholicBeverages` (a count, not a mass). That identifier sits outside the dietary `saveFoodSample` path used by our existing meal export, so we cannot round-trip grams idempotently without:
